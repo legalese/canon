@@ -1,21 +1,24 @@
 # Directory conventions for `canon`
 
-**Status (2026-08-05): PROPOSED, not adopted.** Nothing is filed under this tree yet — the
-repository holds zero subjects, which is exactly why the convention is being written now.
-Adoption means: Meng rules on the open questions in §10 (answering by number is enough), and
-the layout block in the top-level [README](../README.md) is amended per §12 in the same
-change. Until then, this document describes a proposal, not the repository.
+**Status (2026-08-05): PROPOSED as a document; its six questions are RULED.** Meng ruled
+Q1–Q6 on 2026-08-05 (§10). Two rulings — Q3 (no primary encoding) and Q4 (pins only, no
+mirroring) — overrule the first draft's recommendations, and they point the same way:
+**canon is a registry, not a curator**. This revision carries that posture through the
+whole document. The document remains proposed rather than adopted until §12's amendments to
+the top-level [README](../README.md) land; nothing is filed under this tree yet.
 
-This document also discharges **SI-R9** ("canon as an index over GitHub", PROPOSED
-2026-08-03 in l4-ide `specs/todo/single-instruction-demo/SPEC.md` §9): §4 is R9's concrete
-on-disk form. §10 Q6 recommends moving R9 from PROPOSED to ANSWERED, in the coexistence
-reading — canon holds a small curated set of vendored encodings _and_ indexes external ones,
-through one leaf grammar.
+This document is **SI-R9**'s concrete on-disk form ("canon as an index over GitHub",
+proposed 2026-08-03 in l4-ide `specs/todo/single-instruction-demo/SPEC.md` §9). Per the Q6
+ruling, R9 moves from PROPOSED to **ANSWERED, in the coexistence form** — canon holds
+vendored encodings _and_ indexes external ones, through one row grammar. The edit recording
+that in SPEC.md lands in l4-ide, not from this repository; §12 states it precisely.
 
-What this document does **not** touch: the inside of a leaf. The subject-sidecar shape
-(descriptor, cases, projections, registers, report, gates) was ruled in SI-R1, is recorded
-in [`subjects/README.md`](../subjects/README.md), and is taken here as fixed input. This
-document supplies the tree **above** the leaves, the pointer mechanism, and the naming rules.
+The inside of an **encoding** — the subject-sidecar shape (descriptor, cases, projections,
+registers, report, gates) ruled in SI-R1 and recorded in
+[`subjects/README.md`](../subjects/README.md) — remains ruled input. The Q3 ruling
+relocates it: the sidecar is now the shape of a vendored encoding **row**, one level below
+the subject, and its descriptor splits into a subject-level and an encoding-level half
+(§4.2); §12 records the `subjects/README.md` amendment this requires.
 
 ---
 
@@ -25,11 +28,16 @@ document supplies the tree **above** the leaves, the pointer mechanism, and the 
 subjects/
   us/                       enacting authority: ISO 3166-1 alpha-2, lowercase
     regcf/                    17 CFR Part 227 — federal, so directly under us/
+      subject.json              the LAW's identity: citation, extent, source facts
+      source/                   the source text (license permitting) — shared by all rows
+      encodings/
+        legalese/               a vendored encoding row — the ruled sidecar shape
+        example-firm.link.json  a pointer row — sha-pinned index entry, equal standing
     ca/                       ISO 3166-2 subdivision: California
       ccpa-2018/
   uk/
     bna-1981/                 British Nationality Act 1981 (extent: UK-wide — metadata)
-    housing-act-1988/         a POINTER leaf: subject.link.json, no vendored content
+    housing-act-1988/         a subject whose only row is a pointer
     sct/                      Acts of the Scottish Parliament
   eu/
     gdpr-2016/                supranational: eu is an ISO 3166-1 exceptionally-reserved code
@@ -44,23 +52,26 @@ subjects/
     GENRES.md                 the controlled genre vocabulary
     insurance/
     investment/
-      yc-safe-postmoney/      a standard form, vendored
+      yc-safe-postmoney/      a standard form
     leasing/
     lending/
-      example-bank-facility-2024/   a bespoke instrument, as a pointer leaf
+      example-bank-facility-2024/   a bespoke instrument; its one row is a pointer
 docs/
   directory-conventions.md    this document
 ```
 
-Two rules generate everything above:
+Three rules generate everything above:
 
-1. **A leaf is a directory containing exactly one of `subject.json` (vendored encoding) or
-   `subject.link.json` (pointer to an encoding hosted elsewhere).** Everything else in the
-   tree is a grouping node.
-2. **The path of a leaf below `subjects/` is its canonical identifier**: `us/regcf`,
-   `uk/bna-1981`, `contracts/investment/yc-safe-postmoney`. The first component selects the
-   grammar — `contracts` opens the genre tree (§3); anything else must be a jurisdiction
-   code and opens the authority tree (§2).
+1. **A subject directory (a _leaf_ of the tree) is a directory containing `subject.json`** —
+   the identity of the body of law itself: citation, extent, source facts. Everything above
+   it is a grouping node.
+2. **The path of a leaf below `subjects/` is the subject's canonical identifier**:
+   `us/regcf`, `uk/bna-1981`, `contracts/investment/yc-safe-postmoney`. The first component
+   selects the grammar — `contracts` opens the genre tree (§3); anything else must be a
+   jurisdiction code and opens the authority tree (§2).
+3. **Encodings of a subject are equal rows under `encodings/`** (Q3): each row is either a
+   vendored directory in the ruled sidecar shape or a sha-pinned pointer file. **No row is
+   primary**; canon records, and does not choose (§4).
 
 ---
 
@@ -92,14 +103,13 @@ Consequences, case by case:
   `subject.json` carries `"transposes": "eu/whistleblower-directive-2019"`. The
   cross-reference is metadata, because the relationship is citational, not hierarchical —
   filing the HinSchG under `eu/` would misstate who enacted it.
-- **The UK.** `uk/` is likewise an exceptionally-reserved ISO code, matches
-  legislation.gov.uk's own usage, and is what everyone says (§10 Q2 offers strict-ISO `gb`
-  as the alternative). Westminster legislation sits directly under `uk/` — including
-  England-only measures, because England has no separate legislature; the devolved
-  legislatures get subdivision components from ISO 3166-2:GB: `uk/sct/` (Acts of the
-  Scottish Parliament), `uk/wls/` (Senedd), `uk/nir/` (NI Assembly). "Is Scotland a
-  jurisdiction?" becomes a non-question: Scotland is an authority when the Scottish
-  Parliament enacts, and an extent when Westminster legislates about it.
+- **The UK.** `uk/` is an exceptionally-reserved ISO code, matches legislation.gov.uk's own
+  usage, and is what everyone says (ruled, §10 Q2). Westminster legislation sits directly
+  under `uk/` — including England-only measures, because England has no separate
+  legislature; the devolved legislatures get subdivision components from ISO 3166-2:GB:
+  `uk/sct/` (Acts of the Scottish Parliament), `uk/wls/` (Senedd), `uk/nir/` (NI Assembly).
+  "Is Scotland a jurisdiction?" becomes a non-question: Scotland is an authority when the
+  Scottish Parliament enacts, and an extent when Westminster legislates about it.
   **England-and-Wales**, which is a legal system but not a legislature, never needs a path
   component — it appears only as an extent value.
 - **Non-Anglophone jurisdictions and non-Latin scripts.** Path components are ASCII slugs
@@ -118,9 +128,8 @@ Consequences, case by case:
   exceptionally-reserved code elements** (`uk`, `eu`). One list, one linter check.
 - **Subdivision component**: the suffix of the ISO 3166-2 code for that country, lowercase —
   `US-CA` → `us/ca`, `AU-NSW` → `au/nsw`, `CA-QC` → `ca/qc`, `JP-13` → `jp/13`, `GB-SCT` →
-  `uk/sct`. Subdivisions **nest** as their own path component rather than Akoma Ntoso's
-  single hyphenated component (`it-45`); §11 records the departure and §10 Q1 offers the
-  AKN form as the alternative.
+  `uk/sct`. Subdivisions **nest** as their own path component (ruled, §10 Q1) rather than
+  Akoma Ntoso's single hyphenated component (`it-45`); §11 records the departure.
 - **Jurisdictions whose subdivisions escape ISO 3166-2** (special administrative
   arrangements, municipal ordinances below the subdivision level): file under the nearest
   ISO-coded ancestor and record the precise authority in `subject.json`'s `authority` field.
@@ -154,56 +163,81 @@ so they get their own grammar under `subjects/contracts/<genre>/<leaf>/`.
   A controlled list keeps genres mechanically checkable (§7) and prevents the
   `loans/`-vs-`lending/`-vs-`credit/` drift that free tagging produces.
 - **Standard forms and bespoke instruments share the tree**, distinguished by a
-  `form_kind: "standard-form" | "bespoke"` field in the descriptor. Same tree, because a
+  `form_kind: "standard-form" | "bespoke"` field in `subject.json`. Same tree, because a
   consumer browses by what the instrument _does_ (is there an encoded lease?) rather than by
   its provenance; a split tree would force every reader to look in two places. A **standard
-  form** leaf names the form lineage — `yc-safe-postmoney`, `isda-master-2002` — and records
-  the exact edition encoded in `subject.json` (`source.edition`); distinct instruments in a
-  family (pre-money vs post-money SAFE) are distinct leaves. A **bespoke** instrument is
-  admissible only if it is public, will usually live in its owner's repository, and
-  therefore usually arrives as a pointer leaf (§4) under an author-qualified slug:
+  form** leaf names the form lineage — `yc-safe-postmoney`, `isda-master-2002` — with the
+  form's known editions recorded in `subject.json` and the edition a given encoding covers
+  recorded in that encoding's row; distinct instruments in a family (pre-money vs post-money
+  SAFE) are distinct leaves. A **bespoke** instrument is admissible only if it is public,
+  will usually live in its owner's repository, and therefore usually arrives as a subject
+  whose only encoding row is a pointer (§4):
   `contracts/lending/example-bank-facility-2024/`.
 
 ---
 
-## 4. Leaves are polymorphic: vendored or linked
+## 4. Encodings: equal rows, vendored or linked
 
-This section is SI-R9's on-disk form. The model is the one this project already operates —
-Claude Code plugin marketplaces, a thin index over GitHub, whose `marketplace.json` entries
-carry a `source` of `{source: github, repo, path}` — extended with the pinning and
-integrity fields a legal corpus needs and a plugin registry can afford to skimp on.
+This section is SI-R9's on-disk form, revised to the Q3/Q4 rulings. The pointer model is
+the one this project already operates — Claude Code plugin marketplaces, a thin index over
+GitHub, whose `marketplace.json` entries carry a `source` of `{source: github, repo, path}` —
+extended with the pinning and integrity fields a legal corpus needs and a plugin registry
+can afford to skimp on. The registry posture is Meng's ruling: **every encoding of a
+subject is an equal row, and canon takes no editorial position on which to use.**
 
-### 4.1 The exactly-one rule
+### 4.1 The row grammar
 
-A leaf directory contains **exactly one** of:
+A subject directory contains `subject.json` (the law's identity — citation, extent, source
+facts), optionally `source/` (§6), and `encodings/`, whose entries are **rows**. Each row
+is **exactly one** of:
 
-- `subject.json` — the encoding is **vendored**: the `.l4`, cases, projections, registers,
-  report, and gates are in this repository, in the ruled sidecar shape.
-- `subject.link.json` — the leaf is a **pointer**: the encoding lives in someone else's
-  repository, and this file is the complete index entry for it.
+- **a vendored row** — a directory `encodings/<encoder>/` holding the encoding in the ruled
+  sidecar shape: `encoding.json` (the encoding-level descriptor, §4.2), `NOTES.md`,
+  `SOURCE-LICENSE.md`, the `.l4`, `cases/`, `projections/`, `registers/`, `report/`,
+  `gates/`;
+- **a pointer row** — a file `encodings/<encoder>.link.json`: the encoding lives in someone
+  else's repository, and this file is the complete index entry for it.
 
-Exactly-one is structural, CI-enforced, and answers "can a subject be both, and which
-wins?" — it cannot be both, so nothing needs to win. When a vendored subject moves to
-upstream maintenance, one PR deletes the content and adds the link (history keeps the old
-content); the reverse deposit is likewise one PR. A consumer distinguishes the two **without
-cloning**: one `GET` of
-`raw.githubusercontent.com/legalese/canon/main/subjects/<path>/subject.link.json` — a 200
-is a pointer, a 404 with `subject.json` present is vendored — or one directory listing via
-the GitHub contents API, or one lookup in the derived index (§4.7), which carries a `kind`
-column.
+`<encoder>` is the row's identity — a slug in the standard charset (§7), by convention the
+encoder's GitHub org or user name (`legalese`, `example-firm`), unique across both forms
+within one subject (a directory `legalese/` and a file `legalese.link.json` may not
+coexist). Exactly-one is structural and mechanically checkable — a row is a directory or a
+file, distinguishable from a single contents-API listing — so "can an encoding be both
+vendored and linked, and which wins?" never arises: one row, one form. When an encoding
+moves upstream, one PR deletes the directory and adds the link (history keeps the old
+content); the reverse deposit is likewise one PR, in the R8 fork-and-PR lane.
 
-### 4.2 The pointer file
+A consumer distinguishes everything **without cloning**: one `GET` of
+`raw.githubusercontent.com/legalese/canon/main/subjects/<path>/subject.json` identifies the
+subject; one directory listing of `encodings/` via the GitHub contents API returns the full
+row set with each row's form (`dir` = vendored, `file` = pointer); one lookup in the
+derived index (§4.7) does both at once.
 
-`subject.link.json`, illustrated with the Housing Act 1988 corpus that today lives in
-l4-ide (`sha`/`tree_sha` values here are illustrative zeros, not real pins):
+### 4.2 Descriptors: the subject/encoding split
+
+The Q3 ruling splits the old single descriptor in two:
+
+- **`subject.json`** (subject level) carries facts about the **law**: `id` (the leaf slug),
+  `display_name`, `citation`, `extent`, `authority` where the path is coarser than the
+  enacting body, `title_native`, `transposes`, the source's URL and known versions, the
+  source text's own license terms; for contracts, `form_kind` and `governing_law`. These
+  are true regardless of who encodes, which is why no encoding row owns them.
+- **`encoding.json`** (in each vendored row) carries facts about the **encoding**:
+  `encoder`, `status` (`draft` / `adversarially-reviewed` / `reviewed`), `version` (semver),
+  `versions_encoded` (which vintages of the text the dated arms cover), `license`,
+  `maintainer`, corpus modules.
+
+A **pointer row** carries the encoding-level facts plus the pin. Illustrated as
+`subjects/uk/housing-act-1988/encodings/legalese.link.json`, for the Housing Act corpus
+that today lives in l4-ide (`sha`/`tree_sha` values are illustrative zeros, not real pins):
 
 ```json
 {
-  "id": "housing-act-1988",
-  "display_name": "Housing Act 1988, Schedule 2 — grounds for possession",
-  "citation": "Housing Act 1988 c. 50, Sch. 2",
+  "encoder": "legalese",
+  "display_name": "Housing Act 1988, Sch. 2 — grounds for possession",
   "status": "draft",
   "status_checked": "2026-08-05",
+  "version": "0.3.0",
   "source": {
     "source": "github",
     "repo": "legalese/l4-ide",
@@ -213,25 +247,23 @@ l4-ide (`sha`/`tree_sha` values here are illustrative zeros, not real pins):
     "tree_sha": "0000000000000000000000000000000000000000"
   },
   "license": "Apache-2.0",
-  "source_license": "OGL-3.0",
   "maintainer": { "name": "Legalese Pte. Ltd.", "github": "legalese" }
 }
 ```
 
 Field notes:
 
-- `id`, `display_name`, `citation`, `status` reuse `subject.json`'s vocabulary exactly, so
-  the derived index treats vendored and linked rows uniformly. `status` carries the same
-  three-value vocabulary (`draft` / `adversarially-reviewed` / `reviewed`) and states what
-  the **upstream** encoding claims; `status_checked` records when canon last verified that
-  claim against the pin. Indexed ≠ reviewed ≠ signed — three distinct claims (R9 cost 3) —
-  and the fields keep them distinct: listing is `id` + `source`; review is `status`; the
-  signature is the HG1 artifact in the **pointed-at** repository, where it binds to content
-  and verifies with `ssh-keygen -Y verify` exactly as for a vendored subject.
-- `source` follows the marketplace shape, plus pins. `path` points at the subject directory
-  inside the source repo, which is expected to be in the sidecar shape.
-- `license` is the license of the encoding; `source_license` the terms of the quoted legal
-  text — the same split the vendored layout makes with `LICENSE`/`SOURCE-LICENSE.md`.
+- `encoder`, `status`, `version` reuse `encoding.json`'s vocabulary exactly, so the derived
+  index treats vendored and pointer rows uniformly. `status` states what the **upstream**
+  encoding claims; `status_checked` records when canon last verified that claim against the
+  pin. Indexed ≠ reviewed ≠ signed — three distinct claims (R9 cost 3) — and the fields
+  keep them distinct: listing is the row's existence; review is `status`; the signature is
+  the HG1 artifact in the **pointed-at** repository, where it binds to content and verifies
+  with `ssh-keygen -Y verify` exactly as for a vendored row.
+- `source` follows the marketplace shape, plus pins. `path` points at the encoding
+  directory inside the source repo, which is expected to be in the sidecar shape.
+- `license` is the license of the encoding. The **law's** citation and source terms are not
+  duplicated here — they live in `subject.json`, one level up, once per subject.
 
 ### 4.3 Pinning: `sha` is mandatory, `ref` is a courtesy
 
@@ -244,62 +276,71 @@ the named ref has since been deleted.
 `tree_sha` is the integrity digest: the git tree object id of `<sha>:<path>`, computed and
 verified with plain git (`git rev-parse <sha>:<path>` in a clone of the source), no bespoke
 tooling. It answers a different question than `sha`: the commit pin says _which snapshot_,
-the tree digest says _this exact content_, so a fetched copy — from a mirror, after a
-force-push, out of a cache — can be checked against what was indexed. (Git tree ids are
-SHA-1; the strong binding for reviewed subjects is the HG1 signature over its sha256
-payload, which travels with the content. `tree_sha` is a fetch-integrity check, not the
-trust anchor.)
+the tree digest says _this exact content_, so a fetched copy — after a force-push, out of a
+cache — can be checked against what was indexed. (Git tree ids are SHA-1; the strong
+binding for reviewed encodings is the HG1 signature over its sha256 payload, which travels
+with the content. `tree_sha` is a fetch-integrity check, not the trust anchor.)
 
-### 4.4 Competing encodings: `alt/`
+### 4.4 No primary: what equal rows mean in practice
 
 Two firms may encode the same statute and disagree; the project holds that
 under-determination is a property of law, not a defect in an encoding, so competing
-encodings are first-class (R9 fit b). The grammar: the leaf root holds the **curated**
-encoding (vendored or linked); additional encodings are pointer files under `alt/`,
-author-qualified by filename:
+encodings are first-class (R9 fit b) — and by the Q3 ruling, **equally so**. There is no
+curated encoding, no blessed row, no `alt/`: that directory existed in the first draft
+precisely to mark second-class rows, so the name dissolves with the concept. The structure
+itself now says "no endorsement": nothing sits above the rows for a reader to mistake for a
+recommendation.
 
-```
-subjects/us/regcf/
-  subject.json                    the curated encoding (vendored)
-  alt/
-    example-firm.link.json        a competing encoding, indexed
-```
+The namespace consequence (R9 cost 4): the **subject owns the path**, the **encoder
+qualifies the row**. `uk/housing-act-1988` is nobody's exclusive name; `legalese` and
+`example-firm` each hold a row under it, each with its own pin, status, and signature
+story.
 
-`alt/` entries are always pointers — a competitor's content lives in the competitor's
-repository, which is R9's whole point — and carry the full §4.2 schema, so each competing
-row has its own pin, status, and signature story. This keeps the jurisdiction tree free of
-author-qualified directory names (R9 cost 4: names cannot be exclusive, so identity is
-path + author, with the path owned by the _subject_ and the author qualification carried by
-the row). The curated/alt distinction is an endorsement decision by the canon maintainer;
-§10 Q3 offers the flatter no-primary alternative.
+What a consumer asking "give me the L4 for Reg CF" gets: **the row set of
+`subjects/us/regcf/encodings/`, and the metadata to choose on** — never a choice made for
+them. The choice fields, all machine-readable per row: `status` (the strongest claim, and
+for `reviewed` rows independently verifiable against the HG1 signature), `status_checked`
+(how fresh canon's verification of that claim is), `versions_encoded` (law-time coverage —
+does this encoding answer for the vintage you care about?), `version`, `maintainer`,
+`license`, and the row's own fidelity reports and fork register. A consumer with a policy —
+"reviewed rows only, widest law-time coverage, most recently checked" — can apply it
+mechanically over the derived index (§4.7), which carries every one of these columns. A
+registry that refuses to choose must make choosing cheap; that is what these fields are
+for.
 
-### 4.5 Rot
+### 4.5 Rot: detectable, not survivable
 
-Pointers rot: repos get deleted, made private, force-pushed. The convention's answers, in
-increasing strength:
+Pointer rows rot: repos get deleted, made private, force-pushed. The convention's answer,
+complete as ruled (Q4: **pins only, no mirroring**):
 
 1. **Every pointer is pinned and digested** (§4.3), so rot is _detectable_ — a fetch either
    yields content matching `tree_sha` or it does not.
 2. **A scheduled link-check** (CI cron) fetches every pointer; on failure it opens a PR
-   adding `"unreachable_since": "<date>"` to the pointer file. The leaf is never deleted for
-   rot and never moves — consumers filter on the field, and a pointer that comes back gets
-   the field removed the same way. A convention that deletes on 404 converts transient
-   outages into permanent index damage.
-3. **Mirroring** (recommended, §10 Q4): at accept time, canon's org takes a mirror fork of
-   the source repository. GitHub forks retain objects when the upstream vanishes, so the
-   pinned `sha` stays fetchable — the Go module proxy's insight (cache immutably at first
-   sight) implemented with zero custom infrastructure. Mirroring is redistribution, so it is
-   only available where `license` permits it; a pointer whose license forbids mirroring is
-   accepted pins-only, eyes open.
+   adding `"unreachable_since": "<date>"` to the row. The row is never deleted for rot and
+   never moves — consumers filter on the field, and a pointer that comes back gets the
+   field removed the same way. A convention that deletes on 404 converts transient outages
+   into permanent index damage.
+
+That is the whole answer. **Rot is detectable but not survivable**: when an upstream
+repository is truly gone, that encoding is simply gone from canon — the row remains as a
+tombstone recording that it existed, what its pin and digest were, and since when it has
+been unreachable, but the content is not recoverable from here. The Q3 and Q4 rulings
+compound deliberately: with no curated vendored copy standing behind a pointer (Q3) and no
+mirror (Q4), **an externally-hosted encoding has exactly one copy in the world**. That is
+Meng's call (2026-08-05), recorded here as a stated consequence, not an objection. The one
+durability path the convention offers is vendoring: an encoder who wants their work to
+outlive their repository deposits it as a vendored row through the R8 fork-and-PR lane —
+durability by the encoder's choice and the maintainer's acceptance, never by canon copying
+unilaterally.
 
 ### 4.6 Rejected mechanisms, and why
 
 - **Git submodules** — rejected. They pin by SHA (good) but drag content into every
   recursive clone, defeating the thin-index goal; a deleted or private upstream breaks
   `clone --recurse` for everyone rather than degrading one row; a submodule points at a
-  whole repo, not a subject subdirectory, so a multi-subject source repo cannot be indexed
-  at subject granularity; and every addition touches the shared top-level `.gitmodules`,
-  recreating the merge-conflict hotspot that per-leaf files exist to avoid.
+  whole repo, not an encoding subdirectory, so a multi-encoding source repo cannot be
+  indexed at row granularity; and every addition touches the shared top-level
+  `.gitmodules`, recreating the merge-conflict hotspot that per-row files exist to avoid.
 - **Git subtree** — rejected. Subtree _vendors_ content wholesale: that is a monorepo with
   extra history, not an index, and it reintroduces exactly the R8 problem R9 dissolves —
   maintainer-side merges that touch contributed content and strand its HG1 signature.
@@ -307,20 +348,25 @@ increasing strength:
   One file every contributor edits is a permanent conflict hotspot; row-level review turns
   into diff archaeology; and a monolithic file cannot carry per-subject artifacts. It
   survives in derived form only (§4.7).
-- **One pointer file per leaf** — **adopted** (§4.2). Additions are conflict-free, review is
+- **One pointer file per row** — **adopted** (§4.2). Additions are conflict-free, review is
   per-row by construction, the pointer sits exactly where the vendored alternative would
-  sit, and the polymorphism rule (§4.1) stays a one-directory property. Prior art:
-  Homebrew, where every formula is a per-leaf pointer file carrying `url` + `sha256` — the
-  same shape at six-figure scale.
+  sit, and the row grammar (§4.1) stays a one-directory property. Prior art: Homebrew,
+  where every formula is a per-leaf pointer file carrying `url` + `sha256` — the same shape
+  at six-figure scale.
+- **Mirroring at accept time** — proposed in the first draft, **rejected by ruling** (Q4).
+  The Go module proxy's cache-immutably-at-first-sight model would have made rot survivable
+  at the cost of org clutter, storage, and — decisively — mirroring being an act of
+  redistribution. Pins-only is the ruled trade: §4.5 states what is given up.
 
 ### 4.7 The derived index
 
-Machine consumers want one fetch, not a tree walk. A generated `index.json` — every leaf's
-id, path, kind (vendored/linked), display name, citation, status, license, and pin —
-is **derived from the leaves by CI and published as a release asset per tag**; it is never
-hand-edited and (recommendation, §10 Q5) never committed, because a committed derivative
-drifts from its sources the moment someone forgets a regeneration step. The leaves are the
-database; the index is a view.
+Machine consumers want one fetch, not a tree walk. A generated `index.json` — one entry per
+**row**: subject path, encoder, kind (vendored/pointer), the subject's display name and
+citation, and the row's status, `status_checked`, version, `versions_encoded`, license, and
+pin — is **derived from the tree by CI and published as a release asset per tag** (ruled,
+§10 Q5); it is never hand-edited and never committed, because a committed derivative drifts
+from its sources the moment someone forgets a regeneration step. The tree is the database;
+the index is a view.
 
 ---
 
@@ -331,11 +377,10 @@ consequence:
 
 - **The law's own time axis** lives _inside_ the encoding: dated arms selected by
   `EVAL UNDER RULES EFFECTIVE AT`. Which vintages of the text an encoding covers is
-  declared in `subject.json` (`source.versions_encoded`, a list of consolidation dates
-  with retrieval provenance — the regcf corpus already records exactly this in
-  `part227.versions.json`).
-- **The encoding's revision** is semver in `subject.json`, advancing while the text stands
-  still. Release tags, where used, are `<subject-path>/v<semver>`.
+  declared in its row (`versions_encoded` in `encoding.json`, §4.2 — the regcf corpus
+  already records exactly this in `part227.versions.json`).
+- **The encoding's revision** is semver in its row's `encoding.json`, advancing while the
+  text stands still. Release tags, where used, are `<subject-path>/<encoder>/v<semver>`.
 
 **Therefore: no dates or versions in paths.** A component like `bna-1981-as-amended-2009/`
 or `regcf-v2/` conflates the axes in the reader's face and is banned by the linter (§7).
@@ -345,10 +390,13 @@ In FRBR terms (the model under both Akoma Ntoso and ELI):
 
 | FRBR level    | in canon                                                                     |
 | ------------- | ---------------------------------------------------------------------------- |
-| Work          | the leaf directory — `subjects/uk/bna-1981`                                  |
+| Work          | the subject directory — `subjects/uk/bna-1981`                               |
 | Expression    | a dated arm inside the encoding, selected by `EVAL UNDER RULES EFFECTIVE AT` |
-| Manifestation | a projection — DMN, BPMN, ladder SVG under `projections/`                    |
+| Manifestation | a projection — DMN, BPMN, ladder SVG under a row's `projections/`            |
 | Item          | the file in git, at a commit                                                 |
+
+Equal rows sit comfortably here: competing encodings are multiple expressions of one work,
+which FRBR models natively — another reason the subject, not any encoding, owns the path.
 
 The deliberate departure from Akoma Ntoso: AKN puts the expression in the identifier
 (`/akn/sl/act/2004-02-13/2/eng@2004-07-21`) because an AKN document _is_ one expression. An
@@ -360,11 +408,12 @@ be"); a projection at a law-date is a representation.
 
 ---
 
-## 6. Inside a leaf: committed vs generated
+## 6. Inside a subject: committed vs generated
 
-The sidecar shape itself is ruled ([`subjects/README.md`](../subjects/README.md)); this
-section adds only the committed/generated discipline, from the regcf corpus as evidence and
-SI-R0 ("the execution is the exhibit") as the ruling that forces the main call:
+The sidecar shape itself is ruled ([`subjects/README.md`](../subjects/README.md)) and now
+describes a vendored row (§4.1); this section adds only the committed/generated discipline,
+from the regcf corpus as evidence and SI-R0 ("the execution is the exhibit") as the ruling
+that forces the main call:
 
 - **Committed, and CI-re-derived**: the executable projections (`projections/` — DMN, BPMN,
   with their fidelity reports), figures (ladder SVGs), and case expectations. R0 means the
@@ -373,20 +422,23 @@ SI-R0 ("the execution is the exhibit") as the ruling that forces the main call:
   artifact reproduces byte-for-byte from the corpus by a stated command, and CI regenerates
   and diffs (the golden pattern), so **committed never means stale** — drift fails the
   build.
-- **Committed, authored**: `subject.json`, `NOTES.md`, `SOURCE-LICENSE.md`, the `.l4`
-  itself, registers, the report, gate artifacts.
-- **Committed where license permits**: the source text, under `source/`, with retrieval
+- **Committed, authored**: `subject.json` at the subject level; per vendored row,
+  `encoding.json`, `NOTES.md`, `SOURCE-LICENSE.md`, the `.l4` itself, registers, the
+  report, gate artifacts.
+- **Committed where license permits**: the source text, under `source/` **at the subject
+  level** — the text is a fact about the law, shared by every row — with retrieval
   provenance (the regcf instance keeps the govinfo XML and a `versions.json`). Where the
-  source terms do not permit redistribution, `registers/source-bundle.json` carries URL,
-  retrieval date, and digest instead — the text is then a pinned pointer, same philosophy
-  as §4. `source/` is proposed here as an **optional class directory** (an additive
-  amendment to the ruled sidecar table, §12).
+  source terms do not permit redistribution, each row's `registers/source-bundle.json`
+  carries URL, retrieval date, and digest instead — the text is then a pinned pointer, same
+  philosophy as §4. `source/` is proposed here as an **optional subject-level directory**
+  (§12); each row's source bundle still records what that encoding actually ingested.
 - **Never committed**: scratch and run outputs — `*.actual`, anything under `out/` —
   gitignored globally.
 
-How a reader tells: location. Everything under `projections/` is derived and carries a
-generator stamp where the format allows comments; everything at the leaf root is authored;
-`cases/` expectations are machine-evaluated, never hand-typed (already the class contract).
+How a reader tells: location. Everything under a row's `projections/` is derived and
+carries a generator stamp where the format allows comments; descriptors, notes, and the
+`.l4` are authored; `cases/` expectations are machine-evaluated, never hand-typed (already
+the class contract).
 
 ---
 
@@ -405,103 +457,117 @@ the linter's second pass.
 2. **First component under `subjects/`** is `contracts` or a valid ISO 3166-1 alpha-2 code
    (including exceptionally-reserved elements), lowercase. No collision is possible: genre
    tree roots are words, country codes are two letters.
-3. **Grouping vs leaf is decided by contents**: a directory with `subject.json` or
-   `subject.link.json` is a leaf; any other directory is a grouping node. In the
-   jurisdiction tree a grouping node below a country must be a valid ISO 3166-2 suffix for
-   that country; in the contracts tree it must be a genre listed in `contracts/GENRES.md`.
-   A leaf slug directly under a country must not equal an ISO 3166-2 suffix of that country
-   (so `us/ca` can never be ambiguous).
+3. **Grouping vs leaf is decided by contents**: a directory with `subject.json` is a leaf;
+   any other directory is a grouping node. In the jurisdiction tree a grouping node below a
+   country must be a valid ISO 3166-2 suffix for that country; in the contracts tree it
+   must be a genre listed in `contracts/GENRES.md`. A leaf slug directly under a country
+   must not equal an ISO 3166-2 suffix of that country (so `us/ca` can never be ambiguous).
 4. **No versions or dates in components**: nothing matching `-v[0-9]+$` or containing an
    ISO date (`[0-9]{4}-[0-9]{2}-[0-9]{2}`); a bare trailing `-[0-9]{4}` (enactment year) is
    permitted.
-5. **Exactly-one** of `subject.json` / `subject.link.json` per leaf (§4.1); `alt/`, if
-   present, contains only `*.link.json` files.
+5. **The row grammar** (§4.1): a leaf contains `subject.json`, optionally `source/`, and
+   `encodings/`; `encodings/` contains only rows — directories holding `encoding.json` (in
+   the sidecar shape) or `<encoder>.link.json` files; an encoder slug appears at most once
+   across both forms within a subject.
 6. **Pointer validity**: `source.sha` present and 40-hex; `source.repo` matches
    `^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$`; `source.tree_sha` present; `license`
    present.
-7. **Reserved names**, usable as neither leaf slugs nor genres: `alt`, `cases`,
-   `projections`, `registers`, `report`, `gates`, `source`, `contracts`, `docs`, `index`.
+7. **Reserved names**, usable as neither leaf slugs nor genres nor encoder slugs:
+   `encodings`, `cases`, `projections`, `registers`, `report`, `gates`, `source`,
+   `contracts`, `docs`, `index`.
 
 ---
 
 ## 8. Worked examples
 
-### 8.1 `subjects/us/regcf/` — vendored, US federal
+### 8.1 `subjects/us/regcf/` — two equal rows, US federal
 
 SEC Regulation Crowdfunding, 17 CFR Part 227, today maintained in l4-ide at
-`jl4/examples/legal/regcf/`; this is its target shape on deposit (an HG2 act, still gated):
+`jl4/examples/legal/regcf/`; this is its target shape on deposit (an HG2 act, still gated),
+demonstrating the equal-rows grammar — one vendored row, one pointer row, neither
+privileged:
 
 ```
 subjects/us/regcf/
-  subject.json                      id: regcf · citation: 17 CFR Part 227 · extent: US
-  NOTES.md
-  SOURCE-LICENSE.md                 US federal text: public domain, 17 U.S.C. § 105
-  regcf.l4
-  regcf-wizard.l4
-  cases/
-    2026-07-23-issuer-eligibility.json
-    ...
-  projections/
-    regcf-corpus.dmn                committed; runs (R0); CI regenerates and diffs
-    regcf-corpus.fidelity.txt
-    regcf-advertising.bpmn
-    figures/
-      regcf-rule-100b.svg
-      ...
-  registers/
-    fork-register.json
-    external-modifications.json
-    source-bundle.json
-  report/
-    2026-08-05-conversion-report.md
-  gates/
-    allowed_signers
-    HG1.payload.txt
-    HG1.payload.sig
-  source/                           license permits: PD federal text, with provenance
+  subject.json                        the LAW: citation 17 CFR Part 227 · extent · source URL + versions
+  source/                             license permits: PD federal text, with provenance
     part227.govinfo-2025.xml
     part227.versions.json
-  alt/
-    example-firm.link.json          a competing encoding, indexed per §4.4
+  encodings/
+    legalese/                         a vendored row — the ruled sidecar shape
+      encoding.json                   encoder: legalese · status · version · versions_encoded
+      NOTES.md
+      SOURCE-LICENSE.md               US federal text: public domain, 17 U.S.C. § 105
+      regcf.l4
+      regcf-wizard.l4
+      cases/
+        2026-07-23-issuer-eligibility.json
+        ...
+      projections/
+        regcf-corpus.dmn              committed; runs (R0); CI regenerates and diffs
+        regcf-corpus.fidelity.txt
+        regcf-advertising.bpmn
+        figures/
+          regcf-rule-100b.svg
+          ...
+      registers/
+        fork-register.json
+        external-modifications.json
+        source-bundle.json
+      report/
+        2026-08-05-conversion-report.md
+      gates/
+        allowed_signers
+        HG1.payload.txt
+        HG1.payload.sig
+    example-firm.link.json            a pointer row — equal standing, own pin and status
 ```
 
-### 8.2 `subjects/uk/bna-1981/` — vendored, UK (Westminster)
+A consumer choosing between the two rows reads their `status`, `status_checked`,
+`versions_encoded`, and fidelity artifacts (§4.4) — canon has not chosen for them.
 
-British Nationality Act 1981 (c. 61). Same shape; the differences are exactly the ones the
-metadata is for: `SOURCE-LICENSE.md` records OGL v3 and the attribution NOTICE requires;
-`subject.json` says `extent: UK-wide`; the encoding's dated arms cover the consolidations
-listed in `source.versions_encoded`. Note what the path does **not** say: not
-`uk/eng/bna-1981` (extent is not authority), and not `uk/bna-1981-as-amended-2009` (the law's
-time axis lives inside the encoding, §5).
+### 8.2 `subjects/uk/bna-1981/` — one vendored row, UK (Westminster)
 
-### 8.3 `subjects/uk/housing-act-1988/` — a pointer leaf
+British Nationality Act 1981 (c. 61). Same grammar, one row
+(`encodings/legalese/`); the differences are exactly the ones the metadata is for: the
+row's `SOURCE-LICENSE.md` records OGL v3 and the attribution NOTICE requires;
+`subject.json` says `extent: UK-wide`; the row's dated arms cover the consolidations listed
+in its `versions_encoded`. Note what the path does **not** say: not `uk/eng/bna-1981`
+(extent is not authority), and not `uk/bna-1981-as-amended-2009` (the law's time axis lives
+inside the encoding, §5).
 
-The directory contains `subject.link.json` (contents in §4.2) and nothing else. A consumer
-lists `uk/`, sees the leaf, fetches one file raw, and knows: what it is (`citation`), where
-it lives (`source.repo` + `path`), which exact content is indexed (`sha` + `tree_sha`),
-what is claimed for it (`status`, checked `status_checked`), and on what terms (`license`,
-`source_license`).
+### 8.3 `subjects/uk/housing-act-1988/` — a subject whose only row is a pointer
+
+```
+subjects/uk/housing-act-1988/
+  subject.json                 the LAW: citation, extent — true whoever encodes
+  encodings/
+    legalese.link.json         §4.2's pointer — the row is the entry
+```
+
+A consumer lists `uk/`, sees the leaf, fetches two small files raw, and knows: what the law
+is (`subject.json`: citation, extent, source terms), who has encoded it (the row set),
+where that encoding lives (`source.repo` + `path`), which exact content is indexed (`sha` +
+`tree_sha`), and what is claimed for it (`status`, checked `status_checked`). Per §4.5,
+this encoding exists in exactly one place — canon holds its pin, not its content.
 
 ### 8.4 `subjects/contracts/investment/yc-safe-postmoney/` — a standard form
 
 ```
 subjects/contracts/investment/yc-safe-postmoney/
-  subject.json          form_kind: standard-form · source.edition: "post-money v1.2"
-                        governing_law: us-de · no citation — forms have publishers, not gazettes
-  NOTES.md
-  SOURCE-LICENSE.md     the form's own distribution terms
-  safe-postmoney.l4
-  cases/
-  projections/
-  registers/
-  report/
-  gates/
+  subject.json          the FORM: form_kind: standard-form · governing_law: us-de
+                        known editions · no citation — forms have publishers, not gazettes
+  encodings/
+    legalese/           a vendored row, sidecar shape as in §8.1
+      encoding.json     which edition this encoding covers, status, version
+      safe-postmoney.l4
+      ...
 ```
 
-A bespoke instrument in the same genre tree arrives as a pointer:
-`subjects/contracts/lending/example-bank-facility-2024/subject.link.json`, with
-`form_kind: "bespoke"` — public one-off instruments live with their owners, and canon
-indexes them.
+A bespoke instrument in the same genre tree is a subject whose only row is a pointer:
+`subjects/contracts/lending/example-bank-facility-2024/encodings/example-bank.link.json`,
+with `form_kind: "bespoke"` in the subject descriptor — public one-off instruments live
+with their owners, and canon indexes them.
 
 ---
 
@@ -514,57 +580,65 @@ requirement on tooling:
    payload binds _content_, not location: it lists corpus files by **basename** with their
    sha256 (`etc/go/phases/p0-preflight.sh` builds `corpus_sha_$(basename …)` entries), plus
    the producing repo's HEAD as provenance. No canon-relative path appears in any payload,
-   so a merge that only moves a leaf — including adopting this very convention over
+   so a merge that only moves a row — including adopting this very convention over
    already-deposited subjects — leaves every signature verifying. This document hardens the
    accident into a rule: **gate payloads must never embed canon paths**. (R8's
    merge-invalidation warning is about edits to file _contents_ during merge; moves are
    safe, edits are not.)
-2. **Pointer leaves dissolve R8's merge problem for external contributions** (R9's central
-   claim, now concrete): accepting an external encoding merges a `subject.link.json` — a
+2. **Pointer rows dissolve R8's merge problem for external contributions** (R9's central
+   claim, now concrete): accepting an external encoding merges an `<encoder>.link.json` — a
    row, not the content — so there is no maintainer edit that could strand the contributor's
    signature, which lives with the content upstream and verifies there indefinitely.
-3. **Vendored deposits keep R8's constraint**: content-preserving merges, or re-signature.
-   Nothing here relaxes that; the exactly-one rule just means it applies only to the leaves
-   that actually carry content.
+3. **Vendored rows keep R8's constraint**: content-preserving merges, or re-signature.
+   Nothing here relaxes that; the row grammar just means it applies only to the rows that
+   actually carry content.
 
 ---
 
-## 10. Open questions for Meng
+## 10. Rulings (2026-08-05)
 
-Numbered so they can be answered by number. Each carries a recommendation and the trade-off
-that made it a question.
+The first draft posed six numbered questions; Meng ruled all six on 2026-08-05. Q1, Q2, Q5
+and Q6 confirmed the draft's recommendations. **Q3 and Q4 overruled them, in the same
+direction: canon is a registry, not a curator** — it records encodings and the evidence
+about them; it does not bless one, and it does not copy them. The original recommendations
+and trade-offs are preserved below for the record.
 
-- **Q1 — Subdivision components: nested (`us/ca/ccpa-2018`) or AKN-style single component
-  (`us-ca/ccpa-2018`)?** Recommendation: **nested**. Nesting groups a country's federal and
-  state law under one browsable node and keeps components on one list each; the AKN form is
-  closer to the standard and avoids needing rule §7.3's leaf/grouping disambiguation, at the
-  cost of a flat, sprawling `subjects/` listing.
-- **Q2 — `uk` or `gb`?** Recommendation: **`uk`** (exceptionally-reserved ISO code, matches
-  legislation.gov.uk and universal usage). The alternative is strict officially-assigned
-  ISO (`gb`), which is purer as a ruleset but perpetually surprising to readers.
-- **Q3 — Curated-primary-plus-`alt/` (§4.4), or no primary (every encoding an equal row)?**
-  Recommendation: **curated primary**. Placing one encoding at the leaf root is an
-  endorsement, which is deliberate — a corpus named canon is curatorial on purpose, and the
-  status fields keep listing/review/signature claims distinct. The flat alternative is more
-  neutral and closer to a pure registry, at the cost of every consumer re-deciding which
-  encoding to use.
-- **Q4 — Mirror against rot (§4.5.3), or pins-only?** Recommendation: **mirror-fork at
-  accept time where the license permits**. Costs: org clutter, storage, and mirroring is
-  itself redistribution — an outward-facing act with license implications, which is why
-  this is a Meng call and not a default.
-- **Q5 — Derived index: release asset per tag (recommended), or committed `index.json` with
-  a CI drift check?** Committed is one raw URL away for consumers but is a derivative in
-  the tree, and derivatives in trees drift; the drift check mitigates but adds a failure
-  mode to every PR.
-- **Q6 — Move SI-R9 from PROPOSED to ANSWERED, in the coexistence form?** Recommendation:
-  **yes**. This document is the concrete shape R9 lacked: canon holds curated vendored
-  subjects _and_ indexes external ones, through one leaf grammar, with R9's five named
-  costs answered in §4 (availability → pins + mirroring Q4; fetch-time verification →
-  `tree_sha`; indexed≠reviewed≠signed → §4.2's field separation; namespace →
-  subject-owned paths with author-qualified `alt/` rows; supply chain → pins make the
-  trust decision explicit and auditable). If adopted, R8 (fork-and-PR) remains the vendored
-  lane's mechanism, per R9's own "coexist" option — and R8's standing instruction (yields
-  to Thomas's better model) is inherited untouched.
+- **Q1 — RULED: nested subdivisions** (`us/ca/ccpa-2018`), as recommended. The AKN-style
+  single component (`us-ca/`) was the alternative: closer to the standard, no
+  leaf/grouping disambiguation rule needed, at the cost of a flat, sprawling listing.
+- **Q2 — RULED: `uk`**, as recommended (exceptionally-reserved ISO code, matches
+  legislation.gov.uk and universal usage). Strict officially-assigned ISO (`gb`) was the
+  alternative: purer as a ruleset, perpetually surprising to readers.
+- **Q3 — RULED: no primary; every encoding an equal row** — overruling the draft's
+  curated-primary-plus-`alt/` recommendation. Structural consequences, carried through this
+  revision: `subject.json` lifts to the subject level as the descriptor of the **law**
+  (§4.2); encodings sit as sibling rows under `encodings/`, vendored rows carrying the
+  ruled sidecar shape with an `encoding.json` descriptor; `alt/` is dissolved — with no
+  first-class rows there are no second-class ones, and the name goes with the concept; the
+  exactly-one rule is restated at row level (§4.1); consumer choice is served by metadata,
+  not editorial position (§4.4). The draft's argument for curation (a corpus named canon is
+  curatorial on purpose) is overruled: the name now refers to the corpus, not to a blessing.
+- **Q4 — RULED: pins only; no mirroring** — overruling the draft's
+  mirror-fork-at-accept-time recommendation. Consequence stated plainly in §4.5: rot is
+  detectable (pins + digests + link-check) but **not survivable**; a deleted upstream means
+  that encoding is gone from canon, its row remaining as a tombstone. Combined with Q3,
+  an externally-hosted encoding has exactly one copy in the world — deliberate, and
+  recorded as a consequence rather than an objection. Durability remains available to any
+  encoder by vendoring through the R8 lane.
+- **Q5 — RULED: derived index as a release asset per tag**, as recommended. The committed
+  `index.json`-with-drift-check alternative was one raw URL closer for consumers but put a
+  derivative in the tree, and derivatives in trees drift.
+- **Q6 — RULED: SI-R9 moves from PROPOSED to ANSWERED, in the coexistence form**, as
+  recommended — canon holds vendored rows _and_ indexes external ones, through one row
+  grammar; R8 (fork-and-PR) remains the vendored lane's mechanism, its standing
+  yield-to-Thomas instruction untouched. R9's five named costs, honestly accounted under
+  the rulings: **availability is only partially answered** — pins make rot detectable, but
+  Q4 rules out mirroring, so survivability is deliberately not provided (an accepted
+  residual, not an open question); fetch-time verification → `tree_sha` (§4.3);
+  indexed≠reviewed≠signed → the field separation in §4.2; namespace → subject-owned paths
+  with encoder-qualified rows (§4.4); supply chain → pins make the trust decision explicit
+  and auditable. The edit recording R9 as ANSWERED lands in l4-ide's SPEC.md — §12 states
+  it precisely; it is applied there, not from this repository.
 
 ---
 
@@ -577,20 +651,38 @@ that made it a question.
 | legislation.gov.uk            | authority-not-territory typing; identifier/representation split echoed as leaf-path vs projections     | no year/number path grammar — citation lives in the descriptor                                                                                  |
 | Claude Code marketplaces      | pointer shape `{source: github, repo, path}`; ref/sha semantics with sha as effective pin              | added `tree_sha`, `status_checked`, license split — integrity and claim-separation a plugin registry can skip and a legal corpus cannot         |
 | Homebrew                      | per-leaf pointer file with integrity digest (formula = url + sha256); conflict-free additions          | —                                                                                                                                               |
-| Terraform registry            | thin index over GitHub; author-namespaced identity for competing providers                             | author qualification only on `alt/` rows, not in every path — subjects, unlike providers, have one canonical referent                           |
-| Go modules / module proxy     | digest database (`go.sum` → `tree_sha`); immutable mirror-at-first-sight (→ Q4)                        | no custom proxy protocol — GitHub raw + forks suffice at this scale                                                                             |
+| Terraform registry            | thin index over GitHub; author-namespaced identity for competing publishers — now every row (Q3)       | encoders qualify rows inside a subject directory rather than leading the path — the subject, not the vendor, owns the address                   |
+| Go modules / module proxy     | digest database (`go.sum` → `tree_sha`)                                                                | no immutable mirror (Q4: pins only) — availability deliberately weaker than the proxy's cache-at-first-sight model; §4.5 states the cost        |
 
 ---
 
 ## 12. Changes to existing files, if adopted
 
-- **`README.md`** — the layout block's first line, `subjects/<subject-id>/`, becomes
-  `subjects/<jurisdiction…>/<subject-id>/` with a pointer to this document. (The link in
-  the prose lands with this proposal; the block amendment lands with adoption, so the
-  README never describes an unadopted tree as current.)
-- **`subjects/README.md`** — gains the first-component grammar (§1) and, if the `source/`
-  amendment is accepted, one additive row in the class table (§6).
-- **`etc/go` sidecars (l4-ide)** — none required: `subject.json` `id` stays the leaf slug;
-  the canon path is carried by location, not duplicated into the descriptor.
+- **`README.md`** — the layout block, `subjects/<subject-id>/…`, becomes
+  `subjects/<jurisdiction…>/<subject-id>/` with `subject.json` + `encodings/` rows beneath,
+  and a pointer to this document. (The link in the prose lands with this proposal; the
+  block amendment lands with adoption, so the README never describes an unadopted tree as
+  current.)
+- **`subjects/README.md`** — gains the first-component grammar (§1) and the Q3 split: the
+  class table's `subject.json` row becomes `encoding.json` (the encoding-level half of the
+  old descriptor, §4.2); a new subject-level `subject.json` is described above the table;
+  the sidecar shape is stated to live per vendored row under `encodings/`; `source/` is
+  added as an optional subject-level directory (§6).
+- **l4-ide `specs/todo/single-instruction-demo/SPEC.md` §9, R9** — to be applied **in
+  l4-ide, not from this repository** (the team lead is handling l4-ide edits): (1) the
+  bullet's opening changes from "**PROPOSED 2026-08-03 (Meng); not yet ruled**" to
+  "**ANSWERED 2026-08-05 (Meng), in the coexistence form** — concrete on-disk shape in
+  legalese/canon `docs/directory-conventions.md` (§4), ruled via its §10"; (2) record the
+  three sub-rulings: pins mandatory (`sha` + `tree_sha`), **no mirroring** (rot detectable,
+  not survivable — cost 1 "availability" is thereby only partially answered, the residual
+  accepted deliberately), and **no curated primary** (every encoding an equal row, cost 4
+  resolved by subject-owned paths with encoder-qualified rows); (3) the closing "**Open for
+  Meng**" paragraph's three opens are ruled — coexist / pin-by-SHA yes / mirror no — so
+  "Until ruled, R8 stands" becomes "R8 stands for the vendored lane", its standing
+  yield-to-Thomas instruction untouched.
+- **`etc/go` sidecars (l4-ide)** — no change to the pipeline sidecar itself; at deposit
+  time its single descriptor maps onto the §4.2 split (subject-level facts to
+  `subject.json`, encoding-level facts to `encoding.json`) — a deposit-tooling mapping, not
+  a sidecar change.
 - **Nothing else** — zero subjects are filed, so there is no migration; that is the point
   of ruling now.
