@@ -668,6 +668,13 @@ and trade-offs are preserved below for the record.
   old descriptor, §4.2); a new subject-level `subject.json` is described above the table;
   the sidecar shape is stated to live per vendored row under `encodings/`; `source/` is
   added as an optional subject-level directory (§6).
+- **`NOTICE`** — **landed 2026-08-08, ahead of adoption**, on Meng's instruction. It named
+  `subjects/<subject-id>/SOURCE-LICENSE.md`, the pre-Q3 path, and now names the row-level
+  one (§4.1) and states that a pointer row records no terms here. This bullet was missing
+  from the first draft of this list: `NOTICE` hardcodes a path, so the Q3 split reaches it
+  the same way it reaches `subjects/README.md`. Unlike the README layout block, this edit
+  did not wait for adoption — a file that misdirects a reader looking for licence terms is
+  a different risk from one that describes an unadopted tree.
 - **l4-ide `specs/todo/single-instruction-demo/SPEC.md` §9, R9** — to be applied **in
   l4-ide, not from this repository** (the team lead is handling l4-ide edits): (1) the
   bullet's opening changes from "**PROPOSED 2026-08-03 (Meng); not yet ruled**" to
