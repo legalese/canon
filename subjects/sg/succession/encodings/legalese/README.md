@@ -28,7 +28,7 @@ sg-wills.l4               WA 1838 — formal validity, capacity, revocation, the
 sg-isa.l4                 ISA 1967 — all ten sections, s 7 rules 1–9, per stirpes
 sg-paa.l4                 PAA 1934 — which grant, to whom, the Schedules, the timetable
 sg-succession.l4          the composition, and the order the questions must be asked in
-cases/                    131 scenario assertions, including one witness per materialised fork
+cases/                    178 scenario assertions, including one witness per materialised fork
 registers/                source bundle · external-modification sweep · fork register
 app/                      a browsable tool, built by RUNNING the encoding (see below)
 report/                   the pipeline's conversion report and its hash-chained run journal

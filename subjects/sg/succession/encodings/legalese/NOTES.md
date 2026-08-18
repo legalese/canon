@@ -9,11 +9,11 @@ here in the same change that moved it.
 
 Three Singapore Acts, encoded as **one** subject rather than three:
 
-| Act                                   | id        | what it answers here                      |
-| ------------------------------------- | --------- | ----------------------------------------- |
-| Wills Act 1838                        | `WA1838`  | is there a valid, unrevoked will?         |
-| Intestate Succession Act 1967         | `ISA1967` | who takes, and in what shares?            |
-| Probate and Administration Act 1934   | `PAA1934` | who administers, in what order, and when? |
+| Act                                 | id        | what it answers here                      |
+| ----------------------------------- | --------- | ----------------------------------------- |
+| Wills Act 1838                      | `WA1838`  | is there a valid, unrevoked will?         |
+| Intestate Succession Act 1967       | `ISA1967` | who takes, and in what shares?            |
+| Probate and Administration Act 1934 | `PAA1934` | who administers, in what order, and when? |
 
 **Why one subject.** They are three views of one event — a death — and they share their nouns.
 The same person is the PAA's "deceased", the Wills Act's "testator" and the ISA's "intestate";
@@ -29,7 +29,7 @@ plus cases plus a wizard.
 
 ## This is the first subject where "de novo" and "corpus" are the same encoding
 
-Every earlier subject had a committed corpus that a de novo run was measured *against*
+Every earlier subject had a committed corpus that a de novo run was measured _against_
 (SPEC.md §8's diff oracle). There is no prior Singapore succession encoding, so there is nothing
 to diff. **The §8 acceptance comparison is inapplicable here, and `denovo.modules` and
 `denovo.surface_map` are deliberately not declared** — a de novo module that IS the corpus makes
@@ -49,7 +49,7 @@ deposits regardless of whether a comparison follows. Running `--milestone g2` va
 A AND NOT B AND NOT C     parses as     A AND NOT (B AND NOT C)
 ```
 
-ISA s 7 rule 1 is *"a surviving spouse, no issue and no parent"*. Transcribed the obvious way,
+ISA s 7 rule 1 is _"a surviving spouse, no issue and no parent"_. Transcribed the obvious way,
 it fired for an intestate leaving a spouse **and two surviving parents**, giving the widow the
 whole estate where rule 4 gives her one-half. The encoding read like the section and computed
 something else. **Every `NOT` in this corpus is parenthesised**, including where it is
@@ -57,11 +57,11 @@ unambiguous. The same trap has a second face: `A AND count xs EQUALS 0` groups a
 `(A AND count xs) EQUALS 0`, which surfaces as an unresolvable `__EQUALS__` overload rather than
 as a wrong answer — noisier, and therefore kinder.
 
-**2. A mixfix name may not end with a keyword.** ``` `any of` people `survived` ``` is accepted
-where it is *defined* and then cannot be applied anywhere: every call site reports *"expects 1
-argument, but you are applying it to 2"* plus *"could not find a definition for `survived`"*.
+**2. A mixfix name may not end with a keyword.** `` `any of` people `survived` `` is accepted
+where it is _defined_ and then cannot be applied anywhere: every call site reports _"expects 1
+argument, but you are applying it to 2"_ plus _"could not find a definition for `survived`"_.
 Reduced to a three-line repro. Every mixfix in this corpus therefore ends with an argument —
-which is why the domain module reads ``` `someone survived among` people ``` rather than the
+which is why the domain module reads `` `someone survived among` people `` rather than the
 more natural form.
 
 Both are reported upstream; see `known-defects.json` for the ones used as negative controls.
@@ -93,11 +93,11 @@ to anyone relying on an answer:
   relations "immediately after those of the whole blood related to him in the same degree". The
   rule-6 and rule-8 arms divide their class equally without applying that ordering, so an estate
   entered with both whole- and half-blood siblings divides equally when the live reading says
-  the half-blood takes nothing. There is a case asserting the *wrong* answer on purpose
+  the half-blood takes nothing. There is a case asserting the _wrong_ answer on purpose
   (`half blood and whole blood siblings`) so the gap is executable and cannot be forgotten.
   **This is the first thing to fix in the next revision.**
 - **F2 — legitimacy is delegated, not decided.** ISA s 3 confines "child" to a legitimate or
-  court-adopted child. The tool cannot observe legitimacy; membership of `Family.children` *is*
+  court-adopted child. The tool cannot observe legitimacy; membership of `Family.children` _is_
   the s 3 determination, made by whoever supplies the facts. A user who enters an illegitimate
   child as a "child" gets an answer the law does not give and nothing in the encoding catches it.
 
@@ -125,14 +125,14 @@ there:
       the decision is TRUE for no assignment of its atoms: as drafting, a requirement nobody can meet.
 ```
 
-That decision encodes **Wills Act s 14**: *"No will shall be revoked by any presumption of an
-intention on the ground of an alteration in circumstances."* The section creates a **deliberately
+That decision encodes **Wills Act s 14**: _"No will shall be revoked by any presumption of an
+intention on the ground of an alteration in circumstances."_ The section creates a **deliberately
 empty category** — it exists to say that this mode of revocation does not exist — so a decision
-that is constantly FALSE is the *faithful* encoding, not a drafting error.
+that is constantly FALSE is the _faithful_ encoding, not a drafting error.
 
 The finding is a true property of the boolean skeleton and a false alarm about the law. It is the
 general shape of a limit worth knowing: `l4 verify`'s unsat rule reads "TRUE for no assignment" as
-*a requirement nobody can meet*, which is the right reading for an obligation and the wrong one for
+_a requirement nobody can meet_, which is the right reading for an obligation and the wrong one for
 a statutory negation. **Do not "fix" it by deleting the decision** — the encoding would then be
 silent about s 14, which is worse. If the run ever reports zero findings here, something has
 changed and s 14 should be re-read.
@@ -141,8 +141,8 @@ changed and s 14 should be re-read.
 
 Both for the same reason, and it is a fact about the law rather than about the tooling: **this
 corpus is entirely constitutive.** It decides who takes what and when a deadline falls; it states
-no `MUST`, `MAY` or `SHANT`. `l4 export --to bpmn` accordingly answers *"No regulative rules found
-in module"*, and the state-graph projection has no transitions to draw.
+no `MUST`, `MAY` or `SHANT`. `l4 export --to bpmn` accordingly answers _"No regulative rules found
+in module"_, and the state-graph projection has no transitions to draw.
 
 That also broke `p0-preflight` the first time this subject ran: `etc/go/lib/discover.mjs` treated an
 empty rule enumeration as a **changed CLI surface** and returned `BROKEN`, so a purely constitutive
@@ -151,5 +151,5 @@ regulative rules is now a legitimate empty set, distinguished from a genuine sha
 `No regulative rules found in module` message. `regcf`'s three rules still pin and check exactly as
 before.
 
-The duties the PAA *does* impose — the s 28 oath, the s 29 security, the s 57 order of application —
+The duties the PAA _does_ impose — the s 28 oath, the s 29 security, the s 57 order of application —
 are the obvious candidates for a regulative pass later. Encoding them would light up both legs.
