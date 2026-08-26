@@ -82,15 +82,65 @@ There is a third population, and it is separate again: the pipeline's **own** re
 inside a shell call is invisible to a tool-name census of what the _model_ did, so those 14 are
 never added to the 1,142.
 
-## No money in the ledgers
+## Priced at list — a dated snapshot
 
-Neither ledger here carries a dollar figure, and the report renderer emits none. Token counts
-are facts about a run; prices are facts about a contract and change without notice, so a rate
-table baked into a generated report goes stale silently — in a document whose whole premise is
-that every number has a row behind it.
+Neither ledger carries a dollar figure and the report renderer emits none, because token counts
+are facts about a run while prices are facts about a contract. So the multiplication is done
+here, once, **dated**, and never folded back into the ledgers.
 
-That is a rule about the _generated_ artifacts, not a prohibition on pricing. A reader with a
-rate card can multiply, and the sibling `sg/child-support` deposit does exactly that in prose.
-If you follow it, **date the rate card and say which one it was**: the multiplication is only
-as good as the row it came from, and unlike the token counts it cannot be re-derived from the
-transcripts later.
+Rates are Anthropic's published list prices for `claude-opus-5`, read **26 August 2026** from
+<https://platform.claude.com/docs/en/about-claude/pricing>: $5/MTok base input, $6.25/MTok
+5-minute cache write, $10/MTok 1-hour cache write, $0.50/MTok cache hit, $25/MTok output, web
+search $10 per 1,000, web fetch free beyond tokens.
+
+| line                            |       tokens | rate          |        cost | share |
+| ------------------------------- | -----------: | ------------- | ----------: | ----: |
+| Cache reads (hits)              |  913,076,205 | $0.50 / MTok  | **$456.54** | 65.9% |
+| Cache writes (1 h TTL)          |   20,845,520 | $10.00 / MTok | **$208.46** | 30.1% |
+| Output — incl. 83,027 reasoning |    1,059,035 | $25.00 / MTok |  **$26.48** |  3.8% |
+| Web search                      | 143 searches | $10 / 1,000   |       $1.43 |  0.2% |
+| Fresh (uncached) input          |        9,860 | $5.00 / MTok  |       $0.05 |  0.0% |
+| **Total**                       |              |               | **$692.95** |       |
+
+That is **2.5¢ per committed line** of 27,515, **$0.36 per assertion** of 1,907, and about **$71
+an hour** across the 9h47m span. The whole session — everything this context ever did, including
+building and repairing the cost machinery — prices at **$1,554.81**.
+
+**This is the one figure here that cannot be re-derived.** The tokens can be recomputed from the
+transcripts at any time; the rate card cannot be recovered from anything once it changes. Treat
+the dollars as a third standing — call it _quoted_ — weaker than attributed, and never merge it
+into either ledger.
+
+### Four things that move it
+
+- **The 1-hour cache TTL.** At the 5-minute TTL ($6.25/MTok) the identical run prices at
+  **$614.78**. Nothing about the work changes; only the row you multiply by.
+- **The fan-outs are 85% of it** — $590.42 of $692.95 across six workflows and 84 agents. Their
+  window figures are a strict subset of the window's line by line (87.5% of requests, 84.7% of
+  cache reads, 69.6% of output tokens), so the costs nest. Per agent they range from $2.33 to
+  $21.32, and the **51-agent** fan-out is the cheapest of the six per agent while the **5-agent**
+  one is the dearest. Head count is close to useless as a cost estimator. Why is NOT established
+  here: six fan-outs, each a different task, cannot separate context-carried from task length.
+- **Never sum a transcript naively.** Measured on this window: 9,777 usage-bearing rows carry
+  only 4,930 distinct requests, because one API response is written as several records that each
+  repeat the same `usage`. A naive sum prices this run at **$1,433.02** against the true
+  **$692.95** — **2.07x**, in the confident direction. The factor is not uniform, so no single
+  fudge rescues it: output over-reports by 5.93x, cache writes 2.14x, cache reads 1.82x. (A note
+  in `l4-ide` quotes 2.2x from a _different_ session; that is not this number.)
+- **What is not in it.** No domain-expert review — HG1 was waived, and reading 27,515 lines
+  against four Acts is the expensive part that has not happened. No human drafting time, no
+  deployment.
+
+### An intuition this pair of deposits retires
+
+The obvious guess is that a shorter session is cheaper per unit of output, since cache reads
+scale with how long a context has been alive. The two deposits under `sg/` say otherwise: the
+`child-support` run priced at **3.5c/line** over 90 minutes, this one at **2.5c/line** over
+9h47m. The long session was the cheaper one per line. Two runs of different subjects prove
+nothing on their own — but they are enough to stop asserting the opposite, and the plausible
+reason is that a cache paid for once amortises over everything after it.
+
+### If you price a run yourself
+
+Date the rate card and say which one it was. Unlike every other number in this directory, the
+multiplication cannot be checked later against anything.
