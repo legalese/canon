@@ -140,6 +140,50 @@ scale with how long a context has been alive. The two deposits under `sg/` say o
 nothing on their own — but they are enough to stop asserting the opposite, and the plausible
 reason is that a cache paid for once amortises over everything after it.
 
+### What the same work costs on a subscription
+
+The figures above are what these tokens would cost **at API list**. The work was not bought that
+way: it ran on a Claude Max 20x subscription, and the two prices are far apart.
+
+**The 25% is a recollection, and it is the only unmeasured input on this page.** The operator's
+estimate is that this work consumed about a quarter of one weekly quota. Nothing measures that —
+Anthropic does not publish how subscription quota is metered, and no artifact in this deposit
+records quota consumption — so it is recorded here as an impression, clearly marked, and every
+figure derived from it inherits that standing.
+
+At $200/month (the operator's own billed rate, not a figure read off a page) and four weeks to a
+month, a weekly quota is $50 and a quarter of it is **$12.50**:
+
+| basis                         |   cost | ratio to the $692.95 at list |
+| ----------------------------- | -----: | ---------------------------: |
+| 25% of a weekly Max 20x quota | $12.50 |                      **55×** |
+
+Two independent things make the 25% look plausible rather than merely recalled. The run spanned
+9h47m with an 8h29m measured-busy floor, against widely-reported (not published) Max 20x weekly
+allowances in the range of a few tens of Opus hours. And that floor is a **union** — summed across
+the 84 agents that ran concurrently, Bash alone accounts for 12h43m — so whatever the metering
+unit, fan-out consumes more of it than wall clock suggests, and 25% may be an underestimate.
+
+**Why this workload flatters the subscription so much.** 96% of the API bill is cache mechanics:
+66% cache reads, 30% cache writes, and only 3.8% output. That is close to the most cache-read-heavy
+shape a workload can have — a long-lived context re-reading a large worktree. A short,
+output-heavy job would show a much smaller gap. Do not generalise 55x to "Claude work is 55x
+cheaper on a subscription"; generalise it to "this shape of work is."
+
+**Three things that would move it:**
+
+- Claude Code weekly limits were running with a **50% boost through 31 August 2026**. A quarter of
+  a temporarily enlarged quota is a larger share of an ordinary one.
+- The metering unit is unpublished. If quota meters on something nearer compute-time than cached-token
+  price, the ratio is an artifact of that mismatch and not a discount.
+- The two prices buy different things. API list is uncapped, programmatic, no session window and no
+  weekly cliff; a subscription is capacity-constrained and rate-limited. This is a real gap, not an
+  arbitrage.
+
+This is the second priced run in `subjects/sg/`. The first, `child-support`, did not record a
+subscription comparison; if a third does, these three lines are the beginning of a series worth
+plotting rather than three anecdotes.
+
 ### If you price a run yourself
 
 Date the rate card and say which one it was. Unlike every other number in this directory, the
