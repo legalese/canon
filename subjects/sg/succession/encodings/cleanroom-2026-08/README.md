@@ -92,7 +92,11 @@ s 5, and turns on three phrases in one sentence: _possessed beneficially_, _expe
 administration_, and what it means to pay _thereout_. On one fact pattern the encoding next
 door returns a **negative** distributable fund of −900,000 where this one floors at zero. The
 dispositions are **UNTRIAGED**: the comparator measures, and triage is a reading of the law.
-See [`report/denovo-diff.md`](report/denovo-diff.md).
+See [`report/denovo-diff.md`](report/denovo-diff.md) for the measurement and
+[`report/TRIAGE.md`](report/TRIAGE.md) for a proposed reading of each — proposed, because HG1 is
+waived and nobody with standing has ruled. Read the diff table's fork column with care: it stamps
+one id on all five witnesses because `fork` is declared per _pair_, and the five actually land on
+three register entries and one gap.
 
 **Five cross-Act joins that a broken upstream Act actually breaks.** Sixteen were claimed;
 eleven turned out to be _adjacency_ — two single-Act assertions side by side, each of which

@@ -2,13 +2,14 @@
 
 One run, and two cost measurements that must not be added to each other.
 
-| file                         | what it is                                                            |
-| ---------------------------- | --------------------------------------------------------------------- |
-| `go-run-report.md` / `.html` | the conversion report, rendered from the journal and nothing else     |
-| `go-run-journal.ndjson`      | the hash-chained journal the report is rendered from                  |
-| `go-run-cost-ledger.json`    | what the **pipeline run** cost — the ledger `p9-cost` built           |
-| `cost-encoding-window.json`  | what the **encoding** cost — a second ledger over a hand-named window |
-| `denovo-diff.md` / `.json`   | the §8 differential comparison against `../../legalese/`              |
+| file                         | what it is                                                              |
+| ---------------------------- | ----------------------------------------------------------------------- |
+| `go-run-report.md` / `.html` | the conversion report, rendered from the journal and nothing else       |
+| `go-run-journal.ndjson`      | the hash-chained journal the report is rendered from                    |
+| `go-run-cost-ledger.json`    | what the **pipeline run** cost — the ledger `p9-cost` built             |
+| `cost-encoding-window.json`  | what the **encoding** cost — a second ledger over a hand-named window   |
+| `denovo-diff.md` / `.json`   | the §8 differential comparison against `../../legalese/`                |
+| `TRIAGE.md`                  | a PROPOSED reading of the five divergences — not a ruling, not evidence |
 
 ## The run
 
