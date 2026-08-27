@@ -1,24 +1,33 @@
 # subjects/
 
-One directory per body of law. Three are deposited as at **2026-08-25**, all Singapore:
+One directory per body of law. Four are deposited as at **2026-08-27**, all Singapore:
 
 | subject | what it encodes | status |
 | --- | --- | --- |
 | [`sg/succession`](sg/succession) | Wills Act 1838, Intestate Succession Act 1967, Probate and Administration Act 1934 — three Acts against one ontology | `draft` |
 | [`sg/child-support`](sg/child-support) | the SG Child Support Package announced at the National Day Rally on 23 August 2026, and childcare leave under the Child Development Co-Savings Act 2001 | `draft` |
 | [`sg/pdpa-2012`](sg/pdpa-2012) | Personal Data Protection Act 2012, Part VIA (data breach notification) | `draft` |
+| [`sg/penal-code-1871`](sg/penal-code-1871) | Penal Code 1871, s 301 (transferred malice), as substituted by Act 15 of 2019 | `draft` |
 
 `sg/child-support` is the odd one and worth knowing about before you read it: its primary
 source is an **announcement, not an enactment**. No Bill has been introduced, so its
 rule-version axis carries *administered today* against *announced*, and the statute the
 announcement would amend is recorded as the source bundle's `instrument`.
 
+`sg/penal-code-1871` is the smallest row here — one section, hand-encoded in inert style,
+with no `cases/`, `projections/`, `registers/`, `report/` or `gates/`. It is filed as a
+subject rather than an l4-ide example because it is a body of law, and this is where bodies
+of law live; its `NOTES.md` states what the sidecar does not carry. It is also the row whose
+**source terms bite hardest**: inert style works by quoting the statute inline, so unlike
+`sg/pdpa-2012` it reproduces its section verbatim rather than paraphrasing it. See that
+row's `SOURCE-LICENSE.md`.
+
 `regcf` (SEC Regulation Crowdfunding) and the British Nationality Act 1981 are encoded in
 `legalese/l4-ide` and have not been deposited here yet.
 
 *(This paragraph read "Empty at this writing" until 2026-08-25, by which point three
-subjects had landed. A README that describes a directory it no longer matches is worse
-than none, because it is believed.)*
+subjects had landed; a fourth landed on 2026-08-27. A README that describes a directory it
+no longer matches is worse than none, because it is believed.)*
 
 The directory contract (the "class" — see the repository README for the class/instance
 design) is the subject-sidecar shape defined by the l4-ide orchestrator:
