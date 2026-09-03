@@ -1,0 +1,442 @@
+-- safe-portfolio.l4 — several Safes converting together in one Equity Financing, and
+-- the round arithmetic the instrument is silent about (SPEC.md §6.3, §6.4).
+--
+-- Source form: Y Combinator, "Postmoney Safe — Valuation Cap Only", version 1.2,
+-- © 2023 Y Combinator Management, LLC, CC BY-ND 4.0 International. Quotations are from
+-- that form; worked-example figures are from YC's "SAFE User Guide", Appendix II.
+--
+-- The three fixpoints, and how each is closed:
+--
+--   1. "Company Capitalization … Includes all Converting Securities", and "Converting
+--      Securities includes this Safe" — so the denominator of the Safe Price contains the
+--      shares the Safe Price determines. With every Safe converting at its cap,
+--          CC = base ÷ (1 − Σᵢ PAᵢ/Capᵢ)                                   (User Guide p. 20)
+--   2. The round prices Standard Preferred at V ÷ (CC + Δ), where the pool increase Δ is
+--      sized so that the available pool after closing is t of the fully diluted total.
+--      With k = t·(V+M)/V:  Δ = (k·CC − p₀) ÷ (1 − k),  and  CC + Δ = (CC − p₀) ÷ (1 − k).
+--   3. Which Safes take the cap method and which the round price depends on that price,
+--      which depends on CC, which depends on which Safes take which method. For a fixed
+--      partition the first two combine into one linear equation in CC (derivation in
+--      `capitalisation under`); the partition itself is iterated to a fixpoint, at most one
+--      pass per Safe. The User Guide runs the loop once and a half (Example 1 Q5); the
+--      `notes` field reports how many passes this encoding needed.
+
+IMPORT prelude
+IMPORT `safe-form`
+IMPORT safe
+
+§ `Conversion output`
+
+DECLARE ConversionRow HAS
+    investor        IS A STRING
+    purchaseAmount  IS A NUMBER
+    cap             IS A NUMBER    -- 0 when the Safe has no Post-Money Valuation Cap
+    discountRate    IS A NUMBER    -- 0 when the Safe has no Discount Rate
+    method          IS A STRING    -- "cap" | "price" | "discount" | "none"
+    safePrice       IS A NUMBER    -- Post-Money Valuation Cap ÷ Company Capitalization; 0 when no cap
+    conversionPrice IS A NUMBER    -- the price per share actually used; 0 when "none"
+    shares          IS A NUMBER    -- whole shares, rounded down (fork F3)
+    series          IS A STRING    -- "Safe Preferred" (cap method) or "Standard Preferred"
+
+DECLARE ProRataRow HAS
+    investor IS A STRING
+    percent  IS A NUMBER    -- as-converted ownership immediately after conversion, in percent
+    shares   IS A NUMBER
+    amount   IS A NUMBER
+
+DECLARE CapTableRow HAS
+    holder              IS A STRING
+    common              IS A NUMBER
+    preferred           IS A NUMBER
+    plan                IS A NUMBER
+    total               IS A NUMBER
+    fullyDilutedPercent IS A NUMBER
+
+DECLARE Conversion HAS
+    companyCapitalization IS A NUMBER
+    standardPrice         IS A NUMBER    -- 0 when the deal names no round
+    optionPoolIncrease    IS A NUMBER
+    newMoneyShares        IS A NUMBER
+    rows                  IS A LIST OF ConversionRow
+    proRata               IS A LIST OF ProRataRow
+    capTableAfter         IS A LIST OF CapTableRow
+    notes                 IS A LIST OF STRING
+
+§ `Helpers`
+
+GIVEN x IS A NUMBER
+GIVETH A NUMBER
+`whole shares` x MEANS FLOOR x
+
+GIVEN safe IS A SafeIn
+GIVETH A NUMBER
+`cap of` safe MEANS fromMaybe 0 (safe's terms's cap)
+
+GIVEN safe IS A SafeIn
+GIVETH A NUMBER
+-- "The “Discount Rate” is [100 minus the discount]%." — as a fraction of 1
+`rate of` safe MEANS
+    CONSIDER safe's terms's discount
+    WHEN JUST d THEN (100 MINUS d) DIVIDED BY 100
+    WHEN NOTHING THEN 0
+
+GIVEN safe IS A SafeIn
+GIVETH A BOOLEAN
+DECIDE `has cap` safe IF isJust (safe's terms's cap)
+
+GIVEN safe IS A SafeIn
+GIVETH A BOOLEAN
+DECIDE `has discount` safe IF isJust (safe's terms's discount)
+
+-- "Company Capitalization … Includes all shares of Capital Stock issued and outstanding;
+--  … Includes all (i) issued and outstanding Options and (ii) Promised Options; and
+--  … Includes the Unissued Option Pool, except that any increase to the Unissued Option
+--  Pool in connection with the Equity Financing will only be included to the extent that
+--  the number of Promised Options exceeds the Unissued Option Pool prior to such increase."
+-- Everything except "all Converting Securities", which is the fixpoint.
+GIVEN ct IS A CapTableIn
+GIVETH A NUMBER
+`base capitalisation` ct MEANS
+        ct's commonOutstanding
+    PLUS ct's optionsOutstanding
+    PLUS ct's promisedOptions
+    PLUS ct's unissuedOptionPool
+
+§ `Company Capitalization under a partition`
+
+-- The partition is the list of investors whose Safes take the round price rather than the
+-- cap method. For a fixed partition and a round, CC solves one linear equation:
+--
+--   CC · (1 − Σ_cap PAᵢ/Capᵢ)  =  base  +  Σ_price PAᵢ / price  +  Σ_discount PAᵢ / (price · rateᵢ)
+--   price = V · (1 − k) / (CC − p₀)
+--   ⇒  CC · (1 − Σ_cap) = base + a · (CC − p₀),   a = (Σ_price PAᵢ + Σ_discount PAᵢ/rateᵢ) / (V · (1 − k))
+--   ⇒  CC = (base − a · p₀) / (1 − Σ_cap − a)
+--
+-- Without a round there is no price, so only cap Safes convert and a = 0.
+GIVEN deal IS A Deal
+      atPrice IS A LIST OF STRING
+GIVETH A NUMBER
+`capitalisation under` deal atPrice MEANS
+    (base MINUS a TIMES p0) DIVIDED BY (1 MINUS sumCapFractions MINUS a)
+  WHERE
+    ct   MEANS deal's company's capTable
+    base MEANS `base capitalisation` ct
+    p0   MEANS ct's unissuedOptionPool
+
+    capSafes MEANS filter (GIVEN s YIELD `has cap` s AND (NOT (elem (s's investor's name) atPrice))) (deal's safes)
+    sumCapFractions MEANS sum (map (GIVEN s YIELD s's purchaseAmount DIVIDED BY `cap of` s) capSafes)
+
+    priceSafes    MEANS filter (GIVEN s YIELD ((NOT (`has cap` s)) AND (NOT (`has discount` s))) OR (`has cap` s AND elem (s's investor's name) atPrice)) (deal's safes)
+    discountSafes MEANS filter `has discount` (deal's safes)
+    priceMoney    MEANS sum (map (GIVEN s YIELD s's purchaseAmount) priceSafes)
+                  PLUS sum (map (GIVEN s YIELD s's purchaseAmount DIVIDED BY `rate of` s) discountSafes)
+
+    a MEANS CONSIDER deal's round
+            WHEN JUST r THEN priceMoney DIVIDED BY (r's preMoneyValuation TIMES (1 MINUS `pool factor` r))
+            WHEN NOTHING THEN 0
+
+GIVEN r IS A RoundIn
+GIVETH A NUMBER
+-- k = t · (V + M) / V, the fraction of the post-conversion count the pool increase must reach
+`pool factor` r MEANS
+    (r's targetPoolPercent DIVIDED BY 100) TIMES (r's preMoneyValuation PLUS r's newMoney) DIVIDED BY r's preMoneyValuation
+
+GIVEN r IS A RoundIn
+      cc IS A NUMBER
+      p0 IS A NUMBER
+GIVETH A NUMBER
+`pool increase` r cc p0 MEANS
+    (`pool factor` r TIMES cc MINUS p0) DIVIDED BY (1 MINUS `pool factor` r)
+
+GIVEN r IS A RoundIn
+      cc IS A NUMBER
+      p0 IS A NUMBER
+GIVETH A NUMBER
+-- "the lowest price per share of the Standard Preferred Stock", by the round's convention:
+-- pre-money valuation ÷ (fully diluted after conversion + option pool increase)
+`standard price` r cc p0 MEANS
+    r's preMoneyValuation DIVIDED BY (cc PLUS `pool increase` r cc p0)
+
+§ `Settling the partition`
+
+-- A cap Safe takes the round price iff that gives at least as many shares as the cap
+-- method: PA ÷ price ≥ PA · CC ÷ Cap  ⇔  price · CC ≤ Cap. Iterate until no Safe changes
+-- side, with a bound of one pass per Safe plus one.
+GIVEN deal IS A Deal
+      atPrice IS A LIST OF STRING
+      passes IS A NUMBER
+GIVETH A LIST OF STRING
+`settle` deal atPrice passes MEANS
+    IF passes EQUALS 0 THEN atPrice
+    ELSE IF `same members` next atPrice THEN atPrice
+         ELSE `settle` deal next (passes MINUS 1)
+  WHERE
+    cc    MEANS `capitalisation under` deal atPrice
+    p0    MEANS deal's company's capTable's unissuedOptionPool
+    price MEANS CONSIDER deal's round
+                WHEN JUST r THEN `standard price` r cc p0
+                WHEN NOTHING THEN 0
+    next  MEANS
+        CONSIDER deal's round
+        WHEN NOTHING THEN EMPTY
+        WHEN JUST r THEN
+            map (GIVEN s YIELD s's investor's name)
+                (filter (GIVEN s YIELD `has cap` s AND price TIMES cc AT MOST `cap of` s) (deal's safes))
+
+GIVEN xs IS A LIST OF STRING
+      ys IS A LIST OF STRING
+GIVETH A BOOLEAN
+DECIDE `same members` xs ys IF
+    all (GIVEN x YIELD elem x ys) xs AND all (GIVEN y YIELD elem y xs) ys
+
+GIVEN deal IS A Deal
+      atPrice IS A LIST OF STRING
+      passes IS A NUMBER
+GIVETH A NUMBER
+`passes used` deal atPrice passes MEANS
+    IF passes EQUALS 0 THEN 0
+    ELSE IF `same members` (`settle` deal atPrice 1) atPrice THEN 1
+         ELSE 1 PLUS `passes used` deal (`settle` deal atPrice 1) (passes MINUS 1)
+
+§ `The conversion`
+
+@export Convert every Safe in the deal at the Equity Financing the deal describes, returning the Company Capitalization, each Safe's method and shares, the round price, the option pool increase, pro rata allocations and the cap table after the round
+GIVEN deal IS A Deal @desc The deal as in deal.json; with no round, only cap Safes convert and prices are reported as 0
+GIVETH A Conversion
+DECIDE `convert` deal IS
+    Conversion WITH
+        companyCapitalization IS cc
+        standardPrice         IS price
+        optionPoolIncrease    IS poolIncrease
+        newMoneyShares        IS newShares
+        rows                  IS rows
+        proRata               IS proRataRows
+        capTableAfter         IS capTable
+        notes                 IS notes
+  WHERE
+    ct      MEANS deal's company's capTable
+    p0      MEANS ct's unissuedOptionPool
+    bound   MEANS count (deal's safes) PLUS 1
+    atPrice MEANS `settle` deal EMPTY bound
+    passes  MEANS `passes used` deal EMPTY bound
+    cc      MEANS `capitalisation under` deal atPrice
+
+    price MEANS CONSIDER deal's round
+                WHEN JUST r THEN `standard price` r cc p0
+                WHEN NOTHING THEN 0
+    poolIncrease MEANS CONSIDER deal's round
+                       WHEN JUST r THEN `whole shares` (`pool increase` r cc p0)
+                       WHEN NOTHING THEN 0
+    newShares MEANS CONSIDER deal's round
+                    WHEN JUST r THEN `whole shares` (r's newMoney DIVIDED BY price)
+                    WHEN NOTHING THEN 0
+    roundName MEANS CONSIDER deal's round
+                    WHEN JUST r THEN r's name
+                    WHEN NOTHING THEN "Equity Financing"
+
+    -- §1(a): "the greater of: (1) the number of shares of Standard Preferred Stock equal to
+    -- the Purchase Amount divided by the lowest price per share of the Standard Preferred
+    -- Stock; or (2) the number of shares of Safe Preferred Stock equal to the Purchase
+    -- Amount divided by the Safe Price."
+    `row for` s MEANS
+        ConversionRow WITH
+            investor        IS s's investor's name
+            purchaseAmount  IS s's purchaseAmount
+            cap             IS `cap of` s
+            discountRate    IS `rate of` s TIMES 100
+            method          IS method
+            safePrice       IS safePrice
+            conversionPrice IS conversionPrice
+            shares          IS IF conversionPrice EQUALS 0 THEN 0 ELSE `whole shares` (s's purchaseAmount DIVIDED BY conversionPrice)
+            series          IS IF method EQUALS "cap" THEN "Safe Preferred" ELSE "Standard Preferred"
+      WHERE
+        safePrice MEANS IF `has cap` s THEN `cap of` s DIVIDED BY cc ELSE 0
+        method MEANS
+            BRANCH
+                IF `has cap` s AND (NOT (elem (s's investor's name) atPrice)) THEN "cap"
+                IF `has cap` s THEN "price"
+                IF `has discount` s AND price GREATER THAN 0 THEN "discount"
+                IF (NOT (`has cap` s)) AND (NOT (`has discount` s)) AND price GREATER THAN 0 THEN "price"
+                OTHERWISE "none"
+        conversionPrice MEANS
+            BRANCH
+                IF method EQUALS "cap" THEN safePrice
+                IF method EQUALS "price" THEN price
+                IF method EQUALS "discount" THEN price TIMES `rate of` s
+                OTHERWISE 0
+
+    rows MEANS map `row for` (deal's safes)
+    convertedShares MEANS sum (map (GIVEN r YIELD r's shares) rows)
+
+    -- Pro Rata Side Letter: "the Investor shall have the right to purchase its pro rata
+    -- share of Standard Preferred Stock being sold in the Equity Financing … equal to the
+    -- ratio of (x) the number of shares of Capital Stock issued from all Safes with a
+    -- 'Post-Money Valuation Cap' … to (y) the Company Capitalization."
+    proRataRows MEANS
+        IF price EQUALS 0 THEN EMPTY
+        ELSE map (GIVEN p YIELD
+                    ProRataRow WITH
+                        investor IS p's investor
+                        percent  IS p's shares DIVIDED BY cc TIMES 100
+                        shares   IS `whole shares` (newShares TIMES p's shares DIVIDED BY cc)
+                        amount   IS `whole shares` (newShares TIMES p's shares DIVIDED BY cc) TIMES price)
+                 (filter (GIVEN r YIELD elem (r's investor) proRataNames AND r's cap GREATER THAN 0) rows)
+    proRataNames MEANS map (GIVEN s YIELD s's investor's name) (filter (GIVEN s YIELD s's proRataSideLetter) (deal's safes))
+    proRataShares MEANS sum (map (GIVEN p YIELD p's shares) proRataRows)
+    leadShares MEANS CONSIDER deal's round
+                     WHEN JUST r THEN CONSIDER r's lead
+                                      WHEN JUST l THEN `whole shares` (l's amount DIVIDED BY price)
+                                      WHEN NOTHING THEN 0
+                     WHEN NOTHING THEN 0
+    leadName MEANS CONSIDER deal's round
+                   WHEN JUST r THEN CONSIDER r's lead
+                                    WHEN JUST l THEN l's name
+                                    WHEN NOTHING THEN ""
+                   WHEN NOTHING THEN ""
+    otherNewShares MEANS newShares MINUS leadShares MINUS proRataShares
+
+    fullyDiluted MEANS `base capitalisation` ct PLUS convertedShares PLUS poolIncrease PLUS newShares
+    `row` holder common preferred plan MEANS
+        CapTableRow WITH
+            holder              IS holder
+            common              IS common
+            preferred           IS preferred
+            plan                IS plan
+            total               IS common PLUS preferred PLUS plan
+            fullyDilutedPercent IS (common PLUS preferred PLUS plan) DIVIDED BY fullyDiluted TIMES 100
+    `pro rata shares of` name MEANS sum (map (GIVEN p YIELD p's shares) (filter (GIVEN p YIELD p's investor EQUALS name) proRataRows))
+    capTable MEANS
+        concat (LIST
+            (LIST (`row` "Founders" (ct's commonOutstanding) 0 0)),
+            (map (GIVEN r YIELD `row` (r's investor) 0 (r's shares PLUS `pro rata shares of` (r's investor)) 0) rows),
+            (IF leadShares GREATER THAN 0 THEN LIST (`row` leadName 0 leadShares 0) ELSE EMPTY),
+            (IF otherNewShares GREATER THAN 0 THEN LIST (`row` "Other new investors" 0 otherNewShares 0) ELSE EMPTY),
+            (LIST (`row` "Options outstanding" 0 0 (ct's optionsOutstanding))),
+            (LIST (`row` "Promised options" 0 0 (ct's promisedOptions))),
+            (LIST (`row` "Options available" 0 0 (p0 PLUS poolIncrease))))
+
+    notes MEANS
+        concat (LIST
+            (IF isNothing (deal's round) THEN LIST "no round given: only Safes with a Post-Money Valuation Cap convert, at the cap; prices are 0" ELSE EMPTY),
+            (LIST (CONCAT "partition settled in ", roundName, " after the passes reported by `passes used`")),
+            (IF any (GIVEN r YIELD r's method EQUALS "none") rows THEN LIST "one or more Safes cannot convert without a round price (discount or MFN terms)" ELSE EMPTY))
+
+§ `Liquidity Event for the whole cap table`
+
+-- What safe.l4's §1(b) needs from the cap table, plus the two figures the form leaves to
+-- the deal: what ranks ahead of the Safes, and how many Promised Options "to the extent
+-- receiving Proceeds" there are (the User Guide zeroes them in its examples, p. 21 n. 3,
+-- "because treatment of promised options is deal-specific").
+DECLARE LiquidityIn HAS
+    proceeds                         IS A NUMBER
+    indebtedness                     IS A NUMBER   -- §1(d)(i): "outstanding indebtedness and creditor claims"
+    promisedOptionsReceivingProceeds IS A NUMBER
+
+DECLARE LiquidityRow HAS
+    investor            IS A STRING
+    purchaseAmount      IS A NUMBER
+    method              IS A STRING    -- "convert" | "cash-out"
+    liquidityPrice      IS A NUMBER
+    conversionShares    IS A NUMBER    -- "the number of shares of Common Stock equal to the Purchase Amount divided by the Liquidity Price"
+    perShare            IS A NUMBER    -- the consideration per share of Common Stock, as converted
+    entitlement         IS A NUMBER    -- §1(b): the greater of the Cash-Out Amount and the amount payable on the Conversion Amount
+    paid                IS A NUMBER    -- after §1(d) priority
+
+DECLARE Liquidity HAS
+    liquidityCapitalization IS A NUMBER
+    perShareConsideration   IS A NUMBER
+    rows                    IS A LIST OF LiquidityRow
+    notes                   IS A LIST OF STRING
+
+-- "“Liquidity Capitalization” is calculated as of immediately prior to the Liquidity
+-- Event, and (without double-counting, in each case calculated on an as-converted to
+-- Common Stock basis): Includes all shares of Capital Stock issued and outstanding;
+-- Includes all (i) issued and outstanding Options and (ii) to the extent receiving
+-- Proceeds, Promised Options; Includes all Converting Securities, other than any Safes
+-- and other convertible securities … where the holders of such securities are receiving
+-- Cash-Out Amounts …; and Excludes the Unissued Option Pool."
+--
+-- The same fixpoint as Company Capitalization, closed the same way. A converting cap Safe
+-- contributes PA/Cap of LC (its shares are PA · LC / Cap); a converting discount Safe,
+-- whose Liquidity Price is the per-share consideration Proceeds/LC times its rate,
+-- contributes PA / (Proceeds · rate). MFN Safes only ever cash out.
+GIVEN deal IS A Deal
+      event IS A LiquidityIn
+      converting IS A LIST OF STRING
+GIVETH A NUMBER
+`liquidity capitalisation under` deal event converting MEANS
+    base DIVIDED BY (1 MINUS sumFractions)
+  WHERE
+    ct   MEANS deal's company's capTable
+    base MEANS ct's commonOutstanding PLUS ct's optionsOutstanding PLUS event's promisedOptionsReceivingProceeds
+    convertingSafes MEANS filter (GIVEN s YIELD elem (s's investor's name) converting) (deal's safes)
+    sumFractions MEANS sum (map fraction convertingSafes)
+    fraction s MEANS
+        BRANCH
+            IF `has cap` s THEN s's purchaseAmount DIVIDED BY `cap of` s
+            IF `has discount` s THEN s's purchaseAmount DIVIDED BY (event's proceeds TIMES `rate of` s)
+            OTHERWISE 0
+
+-- Who converts. For a cap Safe, the amount payable on its Conversion Amount exceeds its
+-- Cash-Out Amount iff Proceeds exceed its cap — both sides scale with 1/LC, so the
+-- partition needs no iteration; for a discount Safe it always does (it receives 1/rate
+-- of its money); an MFN Safe never does. `liquidity` asserts this against safe.l4's
+-- `takes the Conversion Amount`, computed on the resulting Liquidity Capitalization.
+GIVEN deal IS A Deal
+      event IS A LiquidityIn
+GIVETH A LIST OF STRING
+`converting at liquidity` deal event MEANS
+    map (GIVEN s YIELD s's investor's name)
+        (filter (GIVEN s YIELD
+                    BRANCH
+                        IF `has cap` s THEN event's proceeds GREATER THAN `cap of` s
+                        IF `has discount` s THEN `rate of` s LESS THAN 1
+                        OTHERWISE FALSE)
+                (deal's safes))
+
+@export Settle a Liquidity Event (Change of Control, Direct Listing or IPO) for every Safe in the deal: the Liquidity Capitalization, each Safe's choice between its Cash-Out Amount and its Conversion Amount, and what each is paid after the §1(d) priority
+GIVEN deal IS A Deal @desc The deal as in deal.json; the round block is ignored
+      event IS A LiquidityIn @desc Proceeds legally available for distribution, indebtedness ranking ahead, and Promised Options receiving Proceeds
+GIVETH A Liquidity
+DECIDE `liquidity` deal event IS
+    Liquidity WITH
+        liquidityCapitalization IS lc
+        perShareConsideration   IS perShare
+        rows                    IS rows
+        notes                   IS notes
+  WHERE
+    converting MEANS `converting at liquidity` deal event
+    lc         MEANS `liquidity capitalisation under` deal event converting
+    -- Fork F5: the form says "the amount payable on" the as-converted shares; with every
+    -- Safe converting that is Proceeds ÷ LC (User Guide p. 21). When some Safes cash out
+    -- first, what is payable per as-converted share is what remains after §1(d)(i)–(ii).
+    cashOutSafes MEANS filter (GIVEN s YIELD NOT (elem (s's investor's name) converting)) (deal's safes)
+    pariPassu    MEANS sum (map (GIVEN s YIELD `Cash-Out Amount` s) cashOutSafes)
+    cashOutPaid  MEANS sum (map (GIVEN s YIELD `cash-out actually paid` s (event's proceeds) (event's indebtedness) pariPassu) cashOutSafes)
+    remaining    MEANS max 0 (event's proceeds MINUS event's indebtedness MINUS cashOutPaid)
+    perShare     MEANS remaining DIVIDED BY lc
+    le MEANS `Liquidity Event` WITH
+        `Proceeds`                              IS remaining
+        `Liquidity Capitalization`              IS lc
+        `fair market value of the Common Stock` IS perShare
+        `indebtedness and creditor claims`      IS event's indebtedness
+    `row for` s MEANS
+        LiquidityRow WITH
+            investor         IS s's investor's name
+            purchaseAmount   IS s's purchaseAmount
+            method           IS IF converts THEN "convert" ELSE "cash-out"
+            liquidityPrice   IS `Liquidity Price` s le
+            conversionShares IS `whole shares` (`Conversion Amount shares` s le)
+            perShare         IS perShare
+            entitlement      IS `liquidity entitlement` s le
+            paid             IS IF converts
+                                THEN `whole shares` (`Conversion Amount shares` s le) TIMES perShare
+                                ELSE `cash-out actually paid` s (event's proceeds) (event's indebtedness) pariPassu
+      WHERE converts MEANS elem (s's investor's name) converting
+    rows MEANS map `row for` (deal's safes)
+    notes MEANS
+        concat (LIST
+            (IF all (GIVEN s YIELD `takes the Conversion Amount` s le EQUALS elem (s's investor's name) converting) (deal's safes)
+             THEN LIST "the closed-form partition agrees with §1(b)'s greater-of on the resulting Liquidity Capitalization"
+             ELSE LIST "DISAGREEMENT: the closed-form partition and §1(b)'s greater-of differ on the resulting Liquidity Capitalization"),
+            (IF cashOutPaid LESS THAN pariPassu THEN LIST "Proceeds were insufficient for full Cash-Out Amounts; paid pro rata under §1(d)(ii)" ELSE EMPTY))

@@ -1,0 +1,345 @@
+-- cases/user-guide-appendix-ii.l4 — YC's own worked examples as tests (SPEC.md §7).
+--
+-- Source: "SAFE User Guide", Appendix II, Example 1 (two post-money Safes), pp. 19–23 of
+-- the PDF fetched 2026-09-04. The guide rounds the option pool increase to the nearest
+-- thousand shares and prices to four decimals, and computes onward from the rounded
+-- figures; this encoding keeps exact rationals and rounds shares down once, at the end
+-- (fork F3). So Company Capitalization and the cap-method share counts, which do not
+-- depend on the rounded price, are asserted exactly; the price, pool increase, new-money
+-- shares and pro rata shares are asserted to within 0.05% of the guide's printed figures.
+
+IMPORT prelude
+IMPORT `safe-form`
+IMPORT safe
+IMPORT `safe-portfolio`
+
+§ `Tolerance`
+
+GIVEN x IS A NUMBER
+      y IS A NUMBER
+      tolerance IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `close to` x y tolerance IF
+    x MINUS y AT MOST tolerance TIMES y AND y MINUS x AT MOST tolerance TIMES y
+
+GIVEN c IS A Conversion
+      who IS A STRING
+GIVETH A NUMBER
+`shares for` c who MEANS
+    sum (map (GIVEN r YIELD r's shares) (filter (GIVEN r YIELD r's investor EQUALS who) (c's rows)))
+
+GIVEN c IS A Conversion
+      who IS A STRING
+GIVETH A STRING
+`method for` c who MEANS
+    CONSIDER filter (GIVEN r YIELD r's investor EQUALS who) (c's rows)
+    WHEN r FOLLOWED BY rest THEN r's method
+    WHEN EMPTY THEN "absent"
+
+§ `Example 1 — ABC, Inc.`
+
+-- "ABC, Inc. (the “Company”) raised $1,000,000 from two investors. Investor A purchased a
+-- $200,000 safe at a $4m post-money valuation cap safe and Investor B purchased an
+-- $800,000 safe at an $8m post-money valuation cap." — p. 19
+-- Cap table immediately prior: Founders 9,250,000; options outstanding 300,000; promised
+-- options 350,000; options available 100,000; fully diluted 10,000,000.
+
+nobody MEANS Signatory WITH
+    name  IS "—"
+    title IS "—"
+
+GIVEN who IS A STRING
+GIVETH A Party
+`party named` who MEANS Party WITH
+    name      IS who
+    address   IS ""
+    email     IS ""
+    signatory IS nobody
+
+`ABC cap table` MEANS CapTableIn WITH
+    commonOutstanding  IS 9_250_000
+    optionsOutstanding IS 300_000
+    promisedOptions    IS 350_000
+    unissuedOptionPool IS 100_000
+
+`ABC` MEANS CompanyIn WITH
+    name               IS "ABC, Inc."
+    incorporation      IS JUST "Delaware"
+    governingLaw       IS JUST "Delaware"
+    registrationNumber IS NOTHING
+    address            IS ""
+    email              IS ""
+    signatory          IS nobody
+    capTable           IS `ABC cap table`
+
+`US cap form` MEANS FormIn WITH
+    family       IS "postmoney"
+    edition      IS "1.2"
+    jurisdiction IS "us"
+    variant      IS "cap"
+
+`safe A` MEANS SafeIn WITH
+    investor          IS `party named` "Investor A"
+    purchaseAmount    IS 200_000
+    date              IS "2018-10-01"
+    terms             IS `cap terms` 4_000_000
+    proRataSideLetter IS FALSE
+
+`safe B` MEANS SafeIn WITH
+    investor          IS `party named` "Investor B"
+    purchaseAmount    IS 800_000
+    date              IS "2018-10-01"
+    terms             IS `cap terms` 8_000_000
+    proRataSideLetter IS TRUE
+
+GIVEN cap IS A NUMBER
+GIVETH A TermsIn
+`cap terms` cap MEANS TermsIn WITH
+    cap      IS JUST cap
+    discount IS NOTHING
+    mfn      IS NOTHING
+
+§§ `Q1 — no round yet: the implied dilution`
+
+`before any round` MEANS Deal WITH
+    form    IS `US cap form`
+    company IS `ABC`
+    safes   IS LIST `safe A`, `safe B`
+    round   IS NOTHING
+
+#EVAL `validate deal` `before any round`
+#ASSERT null (`validate deal` `before any round`)
+
+-- "Company Capitalization = … = 10,000,000 / (100% - 15%) = 11,764,705" — p. 20
+#EVAL (convert `before any round`)'s companyCapitalization
+#ASSERT `close to` ((convert `before any round`)'s companyCapitalization) 11_764_705 0.0001
+
+-- "Investor A’s shares = 11,764,705 * 5% = 588,235 … Investor B’s shares = 11,764,705 * 10% = 1,176,470" — p. 20
+#ASSERT `shares for` (convert `before any round`) "Investor A" EQUALS 588_235
+#ASSERT `shares for` (convert `before any round`) "Investor B" EQUALS 1_176_470
+
+§§ `Q2 — a $5m Series A at $15m pre-money, 10% post-closing pool`
+
+-- "Pre-money valuation: $15,000,000; Total raise (new cash): $5,000,000; Target available
+--  option pool: 10%; Option pool increase: 1,695,000 shares; Series A price per share:
+--  $1.1144" — p. 19. "Investor C, the lead investor, will be investing $4m".
+
+`series A` MEANS RoundIn WITH
+    name              IS "Series A"
+    preMoneyValuation IS 15_000_000
+    newMoney          IS 5_000_000
+    targetPoolPercent IS 10
+    lead              IS JUST (LeadIn WITH name IS "Investor C", amount IS 4_000_000)
+
+`example 1 Q2` MEANS Deal WITH
+    form    IS `US cap form`
+    company IS `ABC`
+    safes   IS LIST `safe A`, `safe B`
+    round   IS JUST `series A`
+
+#EVAL convert `example 1 Q2`
+
+-- Both Safes convert at their caps: the round price exceeds both Safe Prices.
+#ASSERT `method for` (convert `example 1 Q2`) "Investor A" EQUALS "cap"
+#ASSERT `method for` (convert `example 1 Q2`) "Investor B" EQUALS "cap"
+#ASSERT `shares for` (convert `example 1 Q2`) "Investor A" EQUALS 588_235
+#ASSERT `shares for` (convert `example 1 Q2`) "Investor B" EQUALS 1_176_470
+
+-- The guide's 1,695,000 is its own rounding of 1,694,570 to the thousand (F3).
+#ASSERT `close to` ((convert `example 1 Q2`)'s optionPoolIncrease) 1_695_000 0.0005
+#ASSERT `close to` ((convert `example 1 Q2`)'s standardPrice) 1.1144 0.0005
+-- "The Company will sell 4,486,719 shares of Series A Preferred Stock" — p. 20
+#ASSERT `close to` ((convert `example 1 Q2`)'s newMoneyShares) 4_486_719 0.0005
+-- "Investor B’s pro rata = 4,486,719 * 10% = 448,671 shares … for $499,998.97" — p. 20
+#ASSERT `close to` (sum (map (GIVEN p YIELD p's shares) ((convert `example 1 Q2`)'s proRata))) 448_671 0.0005
+
+§§ `Q5 — a $2.2m Series Seed at $8.8m pre-money: one Safe switches to the round price`
+
+-- "Investor C, the lead investor, will be investing $1.65m" — p. 22. "(2) Safe Price"
+-- wins for Investor A and "(1) Series Seed price per share" wins for Investor B, and A's
+-- Company Capitalization is recomputed as (10,000,000 + 1,216,360) / (100% − 5%) =
+-- 11,806,694, giving A 590,334 shares — p. 23. The guide's B figure carries its rounded
+-- price ($0.6577) and rounded pool increase (1,573,000); the exact fixpoint gives
+-- 11,806,59x and B 1,216,2xx, within 0.05%.
+
+`series Seed` MEANS RoundIn WITH
+    name              IS "Series Seed"
+    preMoneyValuation IS 8_800_000
+    newMoney          IS 2_200_000
+    targetPoolPercent IS 10
+    lead              IS JUST (LeadIn WITH name IS "Investor C", amount IS 1_650_000)
+
+`example 1 Q5` MEANS Deal WITH
+    form    IS `US cap form`
+    company IS `ABC`
+    safes   IS LIST `safe A`, `safe B`
+    round   IS JUST `series Seed`
+
+#EVAL convert `example 1 Q5`
+
+#ASSERT `method for` (convert `example 1 Q5`) "Investor A" EQUALS "cap"
+#ASSERT `method for` (convert `example 1 Q5`) "Investor B" EQUALS "price"
+#ASSERT `close to` ((convert `example 1 Q5`)'s companyCapitalization) 11_806_694 0.0005
+#ASSERT `close to` (`shares for` (convert `example 1 Q5`) "Investor A") 590_334 0.0005
+#ASSERT `close to` (`shares for` (convert `example 1 Q5`) "Investor B") 1_216_360 0.0005
+#ASSERT `close to` ((convert `example 1 Q5`)'s standardPrice) 0.6577 0.0005
+#ASSERT `close to` ((convert `example 1 Q5`)'s optionPoolIncrease) 1_573_000 0.0005
+
+-- How many passes the partition needed. The guide stops after one and a half.
+#EVAL `passes used` `example 1 Q5` EMPTY 3
+
+§§ `Q3 — acquired for $10m cash before any Equity Financing`
+
+-- "Investor A’s Conversion Amount = $200,000 / ($4,000,000 / (9,550,000 / 85%)) = 561,764
+--  Investor B’s Conversion Amount = … = 1,123,529
+--  The per share cash consideration for all stockholders, if the safes convert, is $0.8901
+--  ($10,000,000 divided by the Liquidity Capitalization of 11,235,293). … both safes would
+--  automatically convert … Investor A’s share of cash consideration = 561,764 * $0.8901 =
+--  $500,026; Investor B’s … = $1,000,053" — p. 21. Promised options are zeroed (n. 3).
+
+`acquired for 10m` MEANS LiquidityIn WITH
+    proceeds                         IS 10_000_000
+    indebtedness                     IS 0
+    promisedOptionsReceivingProceeds IS 0
+
+GIVEN l IS A Liquidity
+      who IS A STRING
+GIVETH A LiquidityRow
+`liquidity row for` l who MEANS
+    CONSIDER filter (GIVEN r YIELD r's investor EQUALS who) (l's rows)
+    WHEN r FOLLOWED BY rest THEN r
+    WHEN EMPTY THEN LiquidityRow WITH investor IS "absent", purchaseAmount IS 0, method IS "absent", liquidityPrice IS 0, conversionShares IS 0, perShare IS 0, entitlement IS 0, paid IS 0
+
+#EVAL liquidity `before any round` `acquired for 10m`
+#ASSERT `close to` ((liquidity `before any round` `acquired for 10m`)'s liquidityCapitalization) 11_235_293 0.0001
+#ASSERT (`liquidity row for` (liquidity `before any round` `acquired for 10m`) "Investor A")'s method EQUALS "convert"
+#ASSERT (`liquidity row for` (liquidity `before any round` `acquired for 10m`) "Investor B")'s method EQUALS "convert"
+#ASSERT (`liquidity row for` (liquidity `before any round` `acquired for 10m`) "Investor A")'s conversionShares EQUALS 561_764
+#ASSERT (`liquidity row for` (liquidity `before any round` `acquired for 10m`) "Investor B")'s conversionShares EQUALS 1_123_529
+#ASSERT `close to` ((liquidity `before any round` `acquired for 10m`)'s perShareConsideration) 0.8901 0.0005
+#ASSERT `close to` ((`liquidity row for` (liquidity `before any round` `acquired for 10m`) "Investor A")'s paid) 500_026 0.0005
+#ASSERT `close to` ((`liquidity row for` (liquidity `before any round` `acquired for 10m`) "Investor B")'s paid) 1_000_053 0.0005
+
+§§ `Q4 — acquired for $3m cash`
+
+-- "The per share cash consideration, if the safes convert, is $0.2670 … neither safe would
+--  convert since the safe holders’ pro rata share of the cash consideration is less than
+--  their Purchase Amount … After the safe holders are paid back, the remaining cash
+--  consideration of $2m is shared pro rata among all other stockholders." — p. 22
+
+`acquired for 3m` MEANS LiquidityIn WITH
+    proceeds                         IS 3_000_000
+    indebtedness                     IS 0
+    promisedOptionsReceivingProceeds IS 0
+
+#EVAL liquidity `before any round` `acquired for 3m`
+#ASSERT (`liquidity row for` (liquidity `before any round` `acquired for 3m`) "Investor A")'s method EQUALS "cash-out"
+#ASSERT (`liquidity row for` (liquidity `before any round` `acquired for 3m`) "Investor B")'s method EQUALS "cash-out"
+#ASSERT (`liquidity row for` (liquidity `before any round` `acquired for 3m`) "Investor A")'s paid EQUALS 200_000
+#ASSERT (`liquidity row for` (liquidity `before any round` `acquired for 3m`) "Investor B")'s paid EQUALS 800_000
+-- what the guide calls the per-share consideration "if the safes convert": 3m over the
+-- all-converting Liquidity Capitalization; asserted through the row's liquidityPrice basis
+-- is not possible once nobody converts, so assert the remaining cash instead.
+#ASSERT `close to` ((liquidity `before any round` `acquired for 3m`)'s perShareConsideration TIMES 9_550_000) 2_000_000 0.0001
+
+§§ `Pending`
+
+-- Example 2 mixes a pre-money Safe with a post-money one; its pre-money half waits for
+-- the yc-safe-premoney leaf (SPEC.md §7).
+
+§ `Synthetic cases — not from the User Guide`
+
+-- The guide has no example with discount or MFN Safes converting beside cap Safes, and
+-- none of a deal the generator must refuse. These are ours; the expected values are
+-- derived by hand from the form's formulas, not from any published figure.
+
+§§ `A mixed portfolio: cap, discount and MFN in one Series A`
+
+`safe D` MEANS SafeIn WITH
+    investor          IS `party named` "Investor D"
+    purchaseAmount    IS 100_000
+    date              IS "2018-10-01"
+    terms             IS TermsIn WITH cap IS NOTHING, discount IS JUST 20, mfn IS NOTHING
+    proRataSideLetter IS FALSE
+
+`safe M` MEANS SafeIn WITH
+    investor          IS `party named` "Investor M"
+    purchaseAmount    IS 50_000
+    date              IS "2018-10-01"
+    terms             IS TermsIn WITH cap IS NOTHING, discount IS NOTHING, mfn IS JUST TRUE
+    proRataSideLetter IS FALSE
+
+`mixed deal` MEANS Deal WITH
+    form    IS `US cap form`
+    company IS `ABC`
+    safes   IS LIST `safe A`, `safe B`, `safe D`, `safe M`
+    round   IS JUST `series A`
+
+#EVAL convert `mixed deal`
+#ASSERT `method for` (convert `mixed deal`) "Investor D" EQUALS "discount"
+#ASSERT `method for` (convert `mixed deal`) "Investor M" EQUALS "price"
+-- The discount Safe converts at 80% of the round price and the MFN Safe at the round price,
+-- so D gets exactly 1.25× the shares per dollar that M does.
+#ASSERT `close to` (`shares for` (convert `mixed deal`) "Investor D")
+                   (`shares for` (convert `mixed deal`) "Investor M" TIMES 2 TIMES 1.25) 0.0001
+-- Company Capitalization still satisfies its own definition: base plus every Safe's shares.
+#ASSERT `close to` ((convert `mixed deal`)'s companyCapitalization)
+                   (10_000_000 PLUS sum (map (GIVEN r YIELD r's shares) ((convert `mixed deal`)'s rows))) 0.00001
+
+-- Without a round, discount and MFN Safes have no price to convert at.
+`mixed deal, no round` MEANS Deal WITH
+    form    IS `US cap form`
+    company IS `ABC`
+    safes   IS LIST `safe A`, `safe D`, `safe M`
+    round   IS NOTHING
+#ASSERT `method for` (convert `mixed deal, no round`) "Investor D" EQUALS "none"
+#ASSERT `method for` (convert `mixed deal, no round`) "Investor A" EQUALS "cap"
+
+§§ `Deals the generator must refuse`
+
+-- A discount Safe on the valuation-cap form: the form has no Discount Rate blank.
+#ASSERT NOT null (`validate deal` (Deal WITH form IS `US cap form`, company IS `ABC`, safes IS (LIST `safe D`), round IS NOTHING))
+
+-- Singapore publishes only the valuation-cap form (SPEC.md §3.4).
+`SG discount form` MEANS FormIn WITH
+    family IS "postmoney", edition IS "1.2", jurisdiction IS "sg", variant IS "discount"
+#ASSERT NOT null (`validate deal` (Deal WITH form IS `SG discount form`, company IS `ABC`, safes IS (LIST `safe D`), round IS NOTHING))
+
+-- The Singapore form fixes its governing law and has a registration-number blank;
+-- supplying a governing law, or omitting the number, is refused.
+`SG cap form` MEANS FormIn WITH
+    family IS "postmoney", edition IS "1.2", jurisdiction IS "sg", variant IS "cap"
+`ABC Pte Ltd` MEANS CompanyIn WITH
+    name               IS "ABC Pte. Ltd."
+    incorporation      IS NOTHING
+    governingLaw       IS NOTHING
+    registrationNumber IS JUST "202600001K"
+    address            IS ""
+    email              IS ""
+    signatory          IS nobody
+    capTable           IS `ABC cap table`
+#ASSERT null (`validate deal` (Deal WITH form IS `SG cap form`, company IS `ABC Pte Ltd`, safes IS (LIST `safe A`), round IS NOTHING))
+#ASSERT NOT null (`validate deal` (Deal WITH form IS `SG cap form`, company IS `ABC`, safes IS (LIST `safe A`), round IS NOTHING))
+
+-- A cap at or below the Purchase Amount is refused.
+#ASSERT NOT null (`validate deal` (Deal WITH form IS `US cap form`, company IS `ABC`, safes IS (LIST (SafeIn WITH investor IS `party named` "X", purchaseAmount IS 5_000_000, date IS "2026-01-01", terms IS `cap terms` 4_000_000, proRataSideLetter IS FALSE)), round IS NOTHING))
+
+§ `MFN Amendment Provision — three traces`
+
+-- "promptly" taken as 5 days. Day 0: the Company issues more favorable securities.
+
+-- Notice on day 2, election on day 9 (within 10 of the notice), restatement on day 12.
+#TRACE `MFN Amendment Provision` 5 AT 0 WITH
+    PARTY Company DOES `provide the MFN Notice` AT 2
+    PARTY Investor DOES `notify the Company that the terms are preferable` AT 9
+    PARTY Company DOES `amend and restate this Safe to be identical` AT 12
+
+-- Election on day 14 is outside the 10-day window: the permission lapses, nothing is owed.
+#TRACE `MFN Amendment Provision` 5 AT 0 WITH
+    PARTY Company DOES `provide the MFN Notice` AT 2
+    PARTY Investor DOES `notify the Company that the terms are preferable` AT 14
+
+-- Election in time, but the Company never restates: breach by the Company.
+#TRACE `MFN Amendment Provision` 5 AT 0 WITH
+    PARTY Company DOES `provide the MFN Notice` AT 2
+    PARTY Investor DOES `notify the Company that the terms are preferable` AT 9

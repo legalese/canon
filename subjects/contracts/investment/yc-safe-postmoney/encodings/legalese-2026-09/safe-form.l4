@@ -1,0 +1,198 @@
+-- safe-form.l4 — the deal as the generator supplies it, and the checks that decide
+-- whether a published YC form can be filled from it.
+--
+-- The input types mirror deal.json (l4-ide specs/todo/yc-safe/SPEC.md §5.1) field for
+-- field, so that `l4 batch` can decode a row by name: a MAYBE field may be null or
+-- absent. Internal, prose-named types live in safe.l4; this module is the boundary.
+--
+-- Source form: Y Combinator, "Postmoney Safe" forms, version 1.2 (US) and the Singapore,
+-- Canada and Cayman Islands valuation-cap forms, © 2023 Y Combinator Management, LLC,
+-- CC BY-ND 4.0 International. Quotations below are from those forms.
+
+IMPORT prelude
+
+§ `Deal input`
+
+DECLARE Signatory HAS
+    name  IS A STRING
+    title IS A STRING
+
+DECLARE Party HAS
+    name      IS A STRING
+    address   IS A STRING
+    email     IS A STRING
+    signatory IS A Signatory
+
+-- The four counts the post-money "Company Capitalization" definition needs, as of
+-- immediately prior to the Equity Financing. SPEC.md §10 Q1 records that real cap tables
+-- carry more than this.
+DECLARE CapTableIn HAS
+    commonOutstanding  IS A NUMBER
+    optionsOutstanding IS A NUMBER
+    promisedOptions    IS A NUMBER
+    unissuedOptionPool IS A NUMBER
+
+DECLARE CompanyIn HAS
+    name               IS A STRING
+    incorporation      IS A MAYBE STRING   -- US: "[State of Incorporation]"; CA: "[Canada / Applicable Province]"; SG, KY: none
+    governingLaw       IS A MAYBE STRING   -- US: "[Governing Law Jurisdiction]"; CA: "Province of [___]"; SG, KY: fixed by the form
+    registrationNumber IS A MAYBE STRING   -- SG only: "Company Registration number {. . .}" (variation register J6)
+    address            IS A STRING
+    email         IS A STRING
+    signatory     IS A Signatory
+    capTable      IS A CapTableIn
+
+-- Exactly one of the three is meant to be present; `validate deal` says so when not.
+DECLARE TermsIn HAS
+    cap      IS A MAYBE NUMBER    -- the Post-Money Valuation Cap, in the form's currency
+    discount IS A MAYBE NUMBER    -- the discount (e.g. 20); the form prints the rate, 100 minus this
+    mfn      IS A MAYBE BOOLEAN
+
+DECLARE SafeIn HAS
+    investor          IS A Party
+    purchaseAmount    IS A NUMBER
+    date              IS A STRING   -- ISO 8601; the form prints "on or about [Date of Safe]"
+    terms             IS A TermsIn
+    proRataSideLetter IS A BOOLEAN
+
+DECLARE FormIn HAS
+    family       IS A STRING   -- "postmoney"
+    edition      IS A STRING   -- "1.2"
+    jurisdiction IS A STRING   -- "us" | "sg" | "ca" | "ky"
+    variant      IS A STRING   -- "cap" | "discount" | "mfn"
+
+DECLARE LeadIn HAS
+    name   IS A STRING
+    amount IS A NUMBER
+
+-- The round convention the instrument is silent about (SPEC.md §6.4, ruling R7).
+DECLARE RoundIn HAS
+    name              IS A STRING
+    preMoneyValuation IS A NUMBER
+    newMoney          IS A NUMBER
+    targetPoolPercent IS A NUMBER   -- available pool after closing, as a percent of fully diluted
+    lead              IS A MAYBE LeadIn
+
+DECLARE Deal HAS
+    form    IS A FormIn
+    company IS A CompanyIn
+    safes   IS A LIST OF SafeIn
+    round   IS A MAYBE RoundIn
+
+§ `Published forms`
+
+-- YC publishes six SAFEs: three economic variants for the US and the valuation-cap
+-- variant for Singapore, Canada and the Cayman Islands (SPEC.md §3.4). Any other cell
+-- would be a "modified version of the form", which the licence footer asks people not to
+-- disseminate, so the generator refuses it rather than synthesising it.
+GIVEN form IS A FormIn
+GIVETH A BOOLEAN
+DECIDE `form is published` IF
+        form's family EQUALS "postmoney"
+    AND (   (form's jurisdiction EQUALS "us"
+             AND elem (form's variant) (LIST "cap", "discount", "mfn"))
+         OR (elem (form's jurisdiction) (LIST "sg", "ca", "ky")
+             AND form's variant EQUALS "cap"))
+
+GIVEN discount IS A NUMBER
+GIVETH A NUMBER
+-- "The “Discount Rate” is [100 minus the discount]%." — Postmoney Safe, Discount Only, cover
+`discount rate` discount MEANS 100 MINUS discount
+
+§ `Checks`
+
+GIVEN form IS A FormIn
+      safe IS A SafeIn
+GIVETH A LIST OF STRING
+`reasons the safe cannot be filled` MEANS
+    concat (LIST
+        `terms reasons`,
+        `amount reasons`)
+  WHERE
+    who MEANS safe's investor's name
+    hasCap      MEANS isJust (safe's terms's cap)
+    hasDiscount MEANS isJust (safe's terms's discount)
+    hasMfn      MEANS fromMaybe FALSE (safe's terms's mfn)
+
+    `terms reasons` MEANS
+        BRANCH
+            IF form's variant EQUALS "cap" THEN
+                concat (LIST
+                    (IF NOT hasCap THEN LIST (CONCAT who, ": the valuation-cap form needs a cap") ELSE EMPTY),
+                    (IF hasDiscount OR hasMfn THEN LIST (CONCAT who, ": the valuation-cap form carries no discount and no MFN") ELSE EMPTY),
+                    (IF `cap not above amount` THEN LIST (CONCAT who, ": the cap must exceed the purchase amount") ELSE EMPTY))
+            IF form's variant EQUALS "discount" THEN
+                concat (LIST
+                    (IF NOT hasDiscount THEN LIST (CONCAT who, ": the discount form needs a discount") ELSE EMPTY),
+                    (IF hasCap OR hasMfn THEN LIST (CONCAT who, ": the discount form carries no cap and no MFN") ELSE EMPTY),
+                    (IF `discount out of range` THEN LIST (CONCAT who, ": the discount must be greater than 0 and less than 100") ELSE EMPTY))
+            IF form's variant EQUALS "mfn" THEN
+                concat (LIST
+                    (IF NOT hasMfn THEN LIST (CONCAT who, ": the MFN form needs mfn: true") ELSE EMPTY),
+                    (IF hasCap OR hasDiscount THEN LIST (CONCAT who, ": the MFN form carries no cap and no discount") ELSE EMPTY))
+            OTHERWISE LIST (CONCAT who, ": unknown variant")
+
+    `cap not above amount` MEANS
+        CONSIDER safe's terms's cap
+        WHEN JUST c THEN c AT MOST safe's purchaseAmount
+        WHEN NOTHING THEN FALSE
+
+    `discount out of range` MEANS
+        CONSIDER safe's terms's discount
+        WHEN JUST d THEN d AT MOST 0 OR d AT LEAST 100
+        WHEN NOTHING THEN FALSE
+
+    `amount reasons` MEANS
+        IF safe's purchaseAmount AT MOST 0
+        THEN LIST (CONCAT who, ": the purchase amount must be positive")
+        ELSE EMPTY
+
+GIVEN form IS A FormIn
+      company IS A CompanyIn
+GIVETH A LIST OF STRING
+`reasons the company block cannot be filled` MEANS
+    BRANCH
+        IF form's jurisdiction EQUALS "us" THEN
+            concat (LIST
+                (IF isNothing (company's incorporation) THEN LIST "US form: the State of Incorporation is a blank and must be supplied" ELSE EMPTY),
+                (IF isNothing (company's governingLaw) THEN LIST "US form: the Governing Law Jurisdiction is a blank and must be supplied" ELSE EMPTY))
+        IF form's jurisdiction EQUALS "ca" THEN
+            concat (LIST
+                (IF isNothing (company's incorporation) THEN LIST "Canada form: '[Canada / Applicable Province]' is a blank and must be supplied" ELSE EMPTY),
+                (IF isNothing (company's governingLaw) THEN LIST "Canada form: the governing Province is a blank and must be supplied" ELSE EMPTY))
+        OTHERWISE
+            -- Singapore and Cayman fix the governing law in the form and have no
+            -- incorporation blank; supplying either would be a modification.
+            -- Singapore alone has a registration-number blank on the cover.
+            concat (LIST
+                (IF isJust (company's incorporation) THEN LIST "this form has no State of Incorporation blank; remove company.incorporation" ELSE EMPTY),
+                (IF isJust (company's governingLaw) THEN LIST "this form fixes the governing law; remove company.governingLaw" ELSE EMPTY),
+                (IF form's jurisdiction EQUALS "sg" AND isNothing (company's registrationNumber)
+                 THEN LIST "Singapore form: the Company Registration number is a blank and must be supplied" ELSE EMPTY),
+                (IF (NOT (form's jurisdiction EQUALS "sg")) AND isJust (company's registrationNumber)
+                 THEN LIST "this form has no registration-number blank; remove company.registrationNumber" ELSE EMPTY))
+
+GIVEN round IS A RoundIn
+GIVETH A LIST OF STRING
+`reasons the round is ill-formed` MEANS
+    concat (LIST
+        (IF round's preMoneyValuation AT MOST 0 THEN LIST "round: the pre-money valuation must be positive" ELSE EMPTY),
+        (IF round's newMoney AT MOST 0 THEN LIST "round: the new money must be positive" ELSE EMPTY),
+        (IF round's targetPoolPercent LESS THAN 0 OR round's targetPoolPercent AT LEAST 100 THEN LIST "round: the target pool percent must be in [0, 100)" ELSE EMPTY),
+        (CONSIDER round's lead
+         WHEN JUST l THEN IF l's amount GREATER THAN round's newMoney THEN LIST "round: the lead cannot invest more than the new money" ELSE EMPTY
+         WHEN NOTHING THEN EMPTY))
+
+@export Validate a SAFE deal against the published YC form it names; returns the reasons it cannot be filled, and an empty list when it can
+GIVEN deal IS A Deal @desc The deal as in deal.json: the form (family, edition, jurisdiction, variant), the company, the list of safes, and an optional round
+GIVETH A LIST OF STRING
+DECIDE `validate deal` IS
+    IF NOT `form is published` (deal's form)
+    THEN LIST (CONCAT "no published YC form for jurisdiction '", deal's form's jurisdiction, "' with variant '", deal's form's variant, "'")
+    ELSE concat (LIST
+            `reasons the company block cannot be filled` (deal's form) (deal's company),
+            concat (map (GIVEN s YIELD `reasons the safe cannot be filled` (deal's form) s) (deal's safes)),
+            (IF null (deal's safes) THEN LIST "no safes: nothing to generate" ELSE EMPTY),
+            (CONSIDER deal's round
+             WHEN JUST r THEN `reasons the round is ill-formed` r
+             WHEN NOTHING THEN EMPTY))
