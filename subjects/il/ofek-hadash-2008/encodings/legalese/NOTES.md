@@ -373,3 +373,63 @@ There are none, and that is deliberate. The four-goldens-per-file discipline of 
 applies to files inside `l4-ide`'s corpus globs; this row is in `canon`, which has no CI, so
 committed goldens would be a point-in-time record that nothing regenerates. `check.sh` and
 `source/run-catala.sh` are the reproducible gates instead, and both run in seconds.
+
+## 11. Why every rule repeats its own `GIVEN`
+
+The obvious tidy-up, and why it is not applied.
+
+L4 grew a **section `GIVEN`** in September 2026 (`legalese/l4-ide` #333, elaborated by #344):
+a `GIVEN` written one indent past a `§` heading is read by every rule under that heading, so
+a line repeated on ten consecutive rules is written once. `ofek-pay.l4` looks like the
+textbook case — all ten of its top-level `GIVEN`s are that same line, under one `§`, and the
+three under `ofek-domain.l4`'s `§§ Reading the record` are three more.
+
+Two measured reasons it is the wrong shape for *this* encoding.
+
+**A rule that reads a section `GIVEN` takes no arguments, so no case can be handed to it.**
+The binder is discharged into the rule's parameters at the *evaluation* entry points only;
+the type checker still sees arity zero, and a call site that passes a teacher is a check
+error:
+
+```
+You are giving 1 input to
+  `the rank of the teacher` … of type NUMBER
+but it is not a function, so it takes none.
+```
+
+The house-style answer (the `writing-l4-rules` phrasebook, entry 11.9) is to keep an ordinary
+`GIVEN`-parameterised twin for testing and let the section's rule delegate to it, exercising
+the twin with `#ASSERT` and the section rule with `#CHECK`. That is a good trade for a
+statute whose Part has one operative test. It is a poor one here: **254 assertions** pass a
+teacher, a seniority or a rank explicitly, and the three rules under `§§ Reading the record`
+are called with an explicit teacher from **five** sites in two other modules
+(`ofek-pay.l4:64,82,94,107`, `ofek-placement.l4:60`). Each would need the twin — more
+repetition than the section `GIVEN` removes, and the twins, not the section rules, would be
+the ones the tables actually test.
+
+**`l4 catala` refuses a section `GIVEN` read by anything but the exported decision.** The
+backends lower the module the author wrote, not the discharged one; that is deliberate
+(l4-ide `specs/todo/IMPLICIT-PROPS-DESIGN.md` §11.10, ruling **R10**, ruled 2026-09-04 and
+not yet built), and it makes the construct unusable in the ninth module, which is the whole
+Catala deliverable. Minimal reproduction — a section `GIVEN`, one helper that reads it, one
+`@export` decision that calls the helper:
+
+```
+l4 catala: cannot compile these decisions to Catala:
+  - in `the rank of the teacher`: ASSUMEd input `the teacher` is only readable inside an
+    @export decision's scope (where it becomes a scope `input`); pass it to this helper as
+    a parameter instead
+```
+
+Both were probed on the binary this row is built with (`ofek/build`, at `origin/unstable`
+9d6536a9, which contains #344). **When R10 lands, revisit `ofek-pay.l4` first**: it is the
+one module where every rule under one heading reads the same fact, and it is the module a
+reader is most likely to open.
+
+A third reason is worth stating even though it did not bind. `ofek-domain.l4` declaring a
+section binder and `ofek-pay.l4` importing it is exactly the configuration the props spec
+records as unreached — "no file in `jl4/examples`, `jl4-core/libraries` or `doc/` that
+declares a section binder is `IMPORT`ed by another (measured 2026-09-05)" — and the one
+witness the tree does have for the neighbouring cross-`IMPORT` arity crash needed an
+evaluator-side repair. Being the first reachable case of a construct is a fine thing for a
+compiler test and a poor thing for a corpus row whose job is to be believed.
