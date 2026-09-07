@@ -1,9 +1,10 @@
 # subjects/
 
-One directory per body of law. **Seven are deposited as at 2026-09-04.** Four are Singapore
-statutes; of the other three, one is a synthetic insurance policy and two are commercial standard
-forms. Each of those three is flagged below. One subject, `contracts/investment/yc-safe-premoney`,
-holds source text and no encoding at all, which the `what it encodes` column says plainly.
+One directory per body of law. **Eight are deposited as at 2026-09-07.** Four are Singapore
+statutes; of the other four, one is a synthetic insurance policy, two are commercial standard
+forms, and one is a judge-made doctrine encoded across four jurisdictions. Each of those four is
+flagged below. One subject, `contracts/investment/yc-safe-premoney`, holds source text and no
+encoding at all, which the `what it encodes` column says plainly.
 
 | subject | what it encodes | status |
 | --- | --- | --- |
@@ -14,6 +15,7 @@ holds source text and no encoding at all, which the `what it encodes` column say
 | [`us/chubb-hospital-cash`](us/chubb-hospital-cash) | a **synthetic** supplemental hospitalization cash policy — never law, never in force — encoded twice, independently, as evidence in a replication study | `experimental` |
 | [`contracts/investment/yc-safe-postmoney`](contracts/investment/yc-safe-postmoney) | the Y Combinator post-money SAFE — six instruments plus four Pro Rata Side Letters, with their User Guide — deposited verbatim, with one encoding row | `draft` |
 | [`contracts/investment/yc-safe-premoney`](contracts/investment/yc-safe-premoney) | nothing, and none planned in this repository — **sources only**: the 2013–2018 "original safe", four US variants, recovered from the Internet Archive | `draft` |
+| [`doctrine/contract/unilateral-mistake`](doctrine/contract/unilateral-mistake) | the Singapore doctrine of unilateral mistake in contract — *Chwee Kin Keong v Digilandmall.com* [2005] SGCA 2 — encoded beside three comparators (English common law, *Taylor v Johnson*, Restatement (Second) § 153) against one ontology | `draft` |
 
 `sg/child-support` is the odd one and worth knowing about before you read it: its primary
 source is an **announcement, not an enactment**. No Bill has been introduced, so its
@@ -38,6 +40,27 @@ attribution is required and is recorded in `NOTICE`. Two independent encodings s
 `encodings/`, written blind to each other and to the benchmark's answer key, because the comparison
 between them is the evidence. Read its `NOTES.md` before drawing any conclusion from it: the source
 text was modified before publication in a way that removed the operative insuring clause.
+
+`doctrine/contract/unilateral-mistake` is the first row under a **third grammar**, and the first
+whose subject is **judge-made law**. Everything else here is a text somebody enacted or drafted;
+this is a rule that exists only as a line of holdings, and the encoding's point is comparative —
+Singapore's equitable limb requires constructive knowledge **plus** an additional element of
+impropriety, and that formula is visible as distinctive only when England's, Australia's and the
+American rule are computed on the same facts beside it. Filing it under `sg/` would have made
+three of its four modules trespassers; filing four sibling subjects would have left the comparison
+homeless. So it seeds `doctrine/<area>/<leaf>/`, with a controlled area vocabulary in
+[`doctrine/AREAS.md`](doctrine/AREAS.md) on the model of `contracts/GENRES.md`. **That grammar is a
+proposal, not a ruling** — `docs/directory-conventions.md` §12 owns the rewrite and this row has
+not amended it; the argument is set out in the row's `NOTES.md` §1 so a reviewer can disagree with
+it rather than reconstruct it.
+
+Two things about that row need reading before it is relied on. Its **comparators are read at second
+hand**: the English and Australian authorities were never fetched from their own reports, only from
+*Chwee Kin Keong*'s account of them, and the American column states the Restatement rule rather than
+the law of any State. And it is the first row whose registers had to be **bent to fit** — a judgment
+has no in-force banner and no amendment markers, so the source bundle declares no annotations and
+the sweep register has nothing to dispose of; both say so in their own notes, and both record the
+schema vocabulary gaps as upstream candidates rather than papering over them.
 
 The two `contracts/` rows are the first entries under a **second grammar**. Everything above them
 is enacted law, filed by the authority that enacted it — `sg/`, `us/`, an ISO 3166-1 code. A
@@ -69,9 +92,9 @@ NoDerivatives licence.
 `legalese/l4-ide` and have not been deposited here yet.
 
 *(This paragraph read "Empty at this writing" until 2026-08-25, by which point three
-subjects had landed; a fourth landed on 2026-08-27, a fifth on 2026-08-31, and the two
-`contracts/` rows on 2026-09-04. A README that describes a directory it no longer matches is
-worse than none, because it is believed.)*
+subjects had landed; a fourth landed on 2026-08-27, a fifth on 2026-08-31, the two
+`contracts/` rows on 2026-09-04, and the first `doctrine/` row on 2026-09-07. A README that
+describes a directory it no longer matches is worse than none, because it is believed.)*
 
 The directory contract (the "class" — see the repository README for the class/instance
 design) is the subject-sidecar shape defined by the l4-ide orchestrator:
