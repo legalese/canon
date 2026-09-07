@@ -279,17 +279,50 @@ Even with both worked around, this module's directives are still dropped, so at 
 further trigger remains unidentified. That is stated as a limit of the investigation, not as
 a diagnosis.
 
-**(b) `@export` is not composable.** Annotating both `the monthly pay of` and the
-`the full-post percentage base for` that it calls made the latter lower to a *scope*, and the
-emitted module then called that scope from inside a toplevel definition. `catala typecheck`
-rejects it outright:
+**(b) `l4 catala` can emit a module that `catala typecheck` rejects, and says nothing.**
+Annotating both `the monthly pay of` and the `the full-post percentage base for` it calls made
+the latter lower to a *scope*, and the emitted module then called that scope from inside a
+toplevel definition. `l4 catala` exits 0; `catala typecheck` rejects it outright:
 
 ```
 Scope calls are not allowed outside of a scope.
 ```
 
-So a function that another exported function calls cannot itself be exported. The module
-carries a single `@export` for that reason. Recorded as fork F13.
+**Corrected 2026-09-07.** The lesson first drawn from this — that a function another exported
+function calls cannot itself be exported — is **false**, and the correction matters because it
+was the reason this module carries a single `@export`. An `@export`ed function lowers to a
+scope, and Catala allows a scope call only from inside another scope. So exporting a helper is
+fine *provided every caller of it is exported too*. Two exported functions, one calling the
+other, typecheck. Insert one **non-exported** definition into the chain and the same two
+`@export`s now fail:
+
+```l4
+@export the base
+GIVEN `the n` IS A NUMBER
+GIVETH A NUMBER
+`the base` `the n` MEANS `the n` TIMES 10
+
+GIVEN `the n` IS A NUMBER          -- not exported: lowers to a toplevel definition,
+GIVETH A NUMBER                    -- and this is the call catala refuses
+`the middle` `the n` MEANS `the base` `the n` PLUS 1
+
+@export the pay
+GIVEN `the n` IS A NUMBER
+GIVETH A NUMBER
+`the pay` `the n` MEANS `the middle` `the n` TIMES 2
+```
+
+Delete `the middle` and the module typechecks. That is what broke here: `the full-post
+percentage base for` also has a non-exported caller, `the supplement for one slot of` at
+`ofek-catala.l4:492`.
+
+Measured the whole way, on the real module: putting `@export` on every definition that takes
+a `GIVEN` — 28 in all, the 27 added to the one already there — emits **43 scopes** (five of
+them fan out into `…EqvAgree` / `…EqvModeA` / `…EqvModeB` triples), `catala typecheck`
+succeeds, and the six worked cases return the same six figures as the single-scope build,
+digit for digit. So the single `@export` is a **choice** —
+one published scope instead of forty-three — and not, as recorded here until today, a
+limitation. Recorded as fork F13, restated.
 
 ### 7.4 Reproducing it
 
@@ -410,8 +443,7 @@ the ones the tables actually test.
 **`l4 catala` refuses a section `GIVEN` read by anything but the exported decision.** The
 backends lower the module the author wrote, not the discharged one; that is deliberate
 (l4-ide `specs/todo/IMPLICIT-PROPS-DESIGN.md` §11.10, ruling **R10**, ruled 2026-09-04 and
-not yet built), and it makes the construct unusable in the ninth module, which is the whole
-Catala deliverable. Minimal reproduction — a section `GIVEN`, one helper that reads it, one
+not yet built). Minimal reproduction — a section `GIVEN`, one helper that reads it, one
 `@export` decision that calls the helper:
 
 ```
@@ -420,6 +452,14 @@ l4 catala: cannot compile these decisions to Catala:
     @export decision's scope (where it becomes a scope `input`); pass it to this helper as
     a parameter instead
 ```
+
+The refusal has an escape hatch, found by the `Dynamic GM` session on the l4-ide side and
+verified here: marking the **helper** `@export` as well lifts it, because the binder then
+becomes an `input` on both scopes and the caller threads its own copy through. It typechecks.
+The cost is the one in § 7.3(b) — a published scope per rule that reads the binder, under the
+same all-or-nothing condition, since one non-exported caller anywhere in the chain puts the
+module back in the shape shown there. For `ofek-pay.l4` that is ten published scopes where ten
+helpers were wanted. That is what R10 buys back: the helpers, not the ability to compile.
 
 Both were probed on the binary this row is built with (`ofek/build`, at `origin/unstable`
 9d6536a9, which contains #344). **When R10 lands, revisit `ofek-pay.l4` first**: it is the
