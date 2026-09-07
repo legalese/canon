@@ -47,6 +47,24 @@ act of authorship whatever the status of the thing transcribed. **The corpus rep
 carries no LICENSE file**, which means no permission has been granted and none should be
 inferred. The site does carry a `robots.txt` and an `llms.txt`; neither is a licence.
 
+**Provenance of that repository, measured 2026-09-08.** The repo behind the site —
+`github.com/morimovilimcatala/ofek-hadash-corpus` — holds **one commit** — `f042ee5`, authored by *"ofek-hadash corpus bot
+&lt;noreply@github.com&gt;"*, message *"corpus site, built from b0556fefb418"*. So what was read
+is a **published build artifact**, not the corpus's working repository: the source repo that
+produced `b0556fefb418` is not this one and is not visible from here. Three consequences worth
+having written down.
+
+- There is no `LICENSE` or `COPYING` file anywhere in the first three directory levels, and no
+  licence, copyright or rights wording in `index.html` or `llms.txt` either. The absence is
+  now checked rather than assumed.
+- There is no human author to contact from the repository itself. The only identity it carries
+  is a bot address, so "contact with the corpus's compiler" below has to start from the
+  project's public presence, not from `git log`.
+- A single-commit site repo is one that a rebuild most likely **replaces**. The commit
+  `registers/source-bundle.json` records is today's `HEAD` (checked 2026-09-08, they match),
+  but that SHA should not be relied on to resolve later. The per-document digests in
+  `registers/document-register.json` are the durable link to what was actually read.
+
 The corpus's own `llms.txt` also says something this file must repeat, because it bears on
 citation and not only on copyright:
 
@@ -99,6 +117,8 @@ to that corpus belongs in NOTICE and this row should not be redistributed until 
    5717-1957, and (c) a ministry circular.
 2. Contact with the corpus's compiler to establish the terms on which its transcriptions and
    its Akoma Ntoso encoding may be used, or a re-fetch of the underlying ministry documents
-   so that Question 2 falls away.
+   so that Question 2 falls away. Note that the published repository gives no way to reach a
+   person — see the provenance measurement above — so this starts from the project's public
+   presence. The re-fetch route has the advantage of not depending on an answer arriving.
 
 Until (1) and (2) are answered, this row stays on `mengwong/drafts`.
