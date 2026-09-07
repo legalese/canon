@@ -1,0 +1,387 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `sg-companies-domain`
+
+§ `Part 5 — Management and Administration`
+
+-- ===========================================================================
+-- Companies Act 1967 (Singapore), Part 5, ss 142–201.
+-- Source: SSO current version as at 07 Sep 2026.
+--
+-- Part 5 is the largest Part. This encoding covers the computable rules
+-- in Divisions 1–5 (Office/Name, Directors/Officers, Meetings, Registers,
+-- Annual Return). Purely administrative steps are noted in comments.
+-- ===========================================================================
+
+
+§§ `Division 1 — Office and name`
+
+
+§§§ `s 142 — Registered office`
+
+-- s 142(1): every company must have a registered office in Singapore
+-- s 142(2): 14-day notice to Registrar of any change
+@ref "Companies Act 1967, s 142(2)"
+`registered office change notice days` MEANS 14
+
+
+§§§ `s 144 — Publication of name and registration number`
+
+-- s 144(3): penalty for non-compliance
+@ref "Companies Act 1967, s 144(3)"
+`penalty for name publication default` MEANS 1000
+
+
+§§ `Division 2 — Directors and officers`
+
+
+§§§ `s 145 — Minimum director requirements`
+
+-- s 145(1): at least one director ordinarily resident in Singapore
+-- s 145(2): director must be natural person, aged >= 18
+@ref "Companies Act 1967, s 145(1)–(2)"
+GIVEN `has sg resident director`  IS A BOOLEAN
+    , `director age`              IS A NUMBER
+    , `director is natural person` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `meets director requirements` IF
+        `has sg resident director`
+    AND `director is natural person`
+    AND `director age` AT LEAST 18
+
+-- s 145(5): liability after operating > 6 months without SG-resident director
+@ref "Companies Act 1967, s 145(5)"
+`months without sg resident director before member liability` MEANS 6
+
+
+§§§ `s 147 — Director share qualification`
+
+-- s 147(1): must obtain qualification within 2 months of appointment
+@ref "Companies Act 1967, s 147(1)"
+`director share qualification period months` MEANS 2
+
+
+§§§ `s 149 — Disqualification of unfit directors of insolvent companies`
+
+-- s 149(1): court may disqualify for up to 5 years
+@ref "Companies Act 1967, s 149(1)"
+`maximum disqualification years for unfit director` MEANS 5
+
+-- s 149(1): trigger window — director during or within 3 years before liquidation
+@ref "Companies Act 1967, s 149(1)"
+`unfit director lookback years` MEANS 3
+
+-- s 149(3): minimum notice to respondent
+@ref "Companies Act 1967, s 149(3)"
+`unfit director disqualification notice days` MEANS 14
+
+
+§§§ `s 154 — Disqualification on conviction`
+
+-- s 154(1)(a)(i): offence involving fraud/dishonesty punishable >= 3 months
+-- s 154(3): automatic 5-year disqualification
+@ref "Companies Act 1967, s 154(1),(3)"
+GIVEN `convicted of fraud or dishonesty offence`  IS A BOOLEAN
+    , `offence punishable with imprisonment months` IS A NUMBER
+    , `subject to SFA civil penalty`               IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `automatically disqualified as director` IF
+        (`convicted of fraud or dishonesty offence`
+            AND `offence punishable with imprisonment months` AT LEAST 3)
+    OR  `subject to SFA civil penalty`
+
+-- s 154(3): disqualification period
+@ref "Companies Act 1967, s 154(3)"
+`automatic disqualification period years` MEANS 5
+
+
+§§§ `s 155 — Disqualification for persistent default`
+
+-- s 155(1),(3): disqualification if 3+ offences/orders within 5 years
+@ref "Companies Act 1967, s 155(1),(3)"
+GIVEN `relevant offences or orders` IS A NUMBER
+    , `within 5 year window`       IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `persistently in default` IF
+    `relevant offences or orders` AT LEAST 3
+    AND `within 5 year window`
+
+-- s 155(1): disqualification period after last offence/order
+@ref "Companies Act 1967, s 155(1)"
+`persistent default disqualification years` MEANS 5
+
+-- s 155(1): penalty
+@ref "Companies Act 1967, s 155(1)"
+`penalty for persistent default` MEANS 10000
+`imprisonment for persistent default years` MEANS 2
+
+
+§§§ `s 155A — Disqualification for struck-off companies`
+
+-- s 155A(1): director of 3+ companies struck off within 5 years
+@ref "Companies Act 1967, s 155A(1)"
+GIVEN `companies struck off` IS A NUMBER
+    , `within 5 year period` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `disqualified for struck off companies` IF
+    `companies struck off` AT LEAST 3
+    AND `within 5 year period`
+
+-- s 155A(1A): disqualification period
+@ref "Companies Act 1967, s 155A(1A)"
+GIVEN `previously disqualified under s155A` IS A BOOLEAN
+GIVETH A NUMBER
+DECIDE `struck off disqualification period years` IS
+    IF `previously disqualified under s155A`
+    THEN 5
+    ELSE 3
+
+
+§§§ `s 155B — Debarment order conditions`
+
+-- s 155B(4): conditions for making debarment order
+@ref "Companies Act 1967, s 155B(4)"
+GIVEN `default persisted months`   IS A NUMBER
+    , `was director or secretary`  IS A BOOLEAN
+    , `notice given days`          IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `debarment order conditions met` IF
+        `default persisted months` AT LEAST 3
+    AND `was director or secretary`
+    AND `notice given days` AT LEAST 14
+
+
+§§§ `s 163 — Connected-company loan threshold`
+
+-- s 163(1): director(s) interested in >= 20% of voting power
+@ref "Companies Act 1967, s 163(1)"
+GIVEN `director voting power pct in entity` IS A NUMBER
+    , `is exempt private company`           IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `connected company loan requires approval` IF
+    `director voting power pct in entity` AT LEAST 20
+    AND NOT `is exempt private company`
+
+
+§§§ `s 164A — Director emolument disclosure`
+
+-- s 164A(1): threshold for member demand
+@ref "Companies Act 1967, s 164A(1)"
+GIVEN `percentage of total members`    IS A NUMBER
+    , `percentage of issued shares`    IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `may demand director emolument disclosure` IF
+    `percentage of total members` AT LEAST 10
+    OR `percentage of issued shares` AT LEAST 5
+
+-- s 164A(2),(3): preparation and circulation deadlines
+@ref "Companies Act 1967, s 164A(2)–(3)"
+`emolument statement preparation days` MEANS 14
+`emolument statement circulation days` MEANS 14
+
+
+§§ `Division 3 — Meetings and proceedings`
+
+
+§§§ `s 175 — Annual general meeting`
+
+-- s 175(1): AGM deadline after end of financial year
+@ref "Companies Act 1967, s 175(1)"
+GIVEN `is listed public company` IS A BOOLEAN
+GIVETH A NUMBER
+DECIDE `AGM deadline months after financial year end` IS
+    IF `is listed public company`
+    THEN 4
+    ELSE 6
+
+-- s 175(4): penalty for non-compliance
+@ref "Companies Act 1967, s 175(4)"
+`penalty for AGM non compliance` MEANS 5000
+
+
+§§§ `s 176 — EGM on member requisition`
+
+-- s 176(1): requisition threshold — 10% of paid-up voting shares
+@ref "Companies Act 1967, s 176(1)"
+GIVEN `percentage of paid up voting shares` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `may requisition EGM` IF
+    `percentage of paid up voting shares` AT LEAST 10
+
+-- s 176(1): directors must convene within 2 months
+@ref "Companies Act 1967, s 176(1)"
+`EGM convening deadline months` MEANS 2
+
+-- s 176(3): directors' failure window — 21 days
+@ref "Companies Act 1967, s 176(3)"
+`EGM director failure window days` MEANS 21
+
+-- s 176(3): requisitionists holding > 50% of total requisitionist votes may convene
+@ref "Companies Act 1967, s 176(3)"
+GIVEN `requisitionist voting pct of total requisitionists` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `requisitionists may convene EGM` IF
+    `requisitionist voting pct of total requisitionists` GREATER THAN 50
+
+-- s 176(3): meeting must not be held after 3 months from requisition
+@ref "Companies Act 1967, s 176(3)"
+`EGM maximum months from requisition` MEANS 3
+
+
+§§§ `s 183 — Member requisition to circulate resolutions`
+
+-- s 183(2): threshold for requisition
+@ref "Companies Act 1967, s 183(2)"
+GIVEN `percentage of total voting rights` IS A NUMBER
+    , `number of members`                 IS A NUMBER
+    , `average paid up per member`        IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `may requisition resolution circulation` IF
+    `percentage of total voting rights` AT LEAST 5
+    OR (`number of members` AT LEAST 100
+        AND `average paid up per member` AT LEAST 500)
+
+-- s 183(3): timing requirements
+@ref "Companies Act 1967, s 183(3)"
+`resolution notice lead time weeks` MEANS 6
+`statement circulation lead time weeks` MEANS 1
+
+
+§§§ `s 184 — Special resolution requirements`
+
+-- s 184(1): notice period depends on company type
+@ref "Companies Act 1967, s 184(1)"
+GIVEN c IS A Company
+GIVETH A NUMBER
+DECIDE `special resolution notice days` c IS
+    IF c's `classification` EQUALS `private company`
+    THEN 14
+    ELSE 21
+
+-- s 184(1): majority threshold — 75%
+@ref "Companies Act 1967, s 184(1)"
+`special resolution majority pct` MEANS 75
+
+-- s 184(2): short-notice waiver — 95% of total voting rights must agree
+@ref "Companies Act 1967, s 184(2)"
+`short notice waiver threshold pct` MEANS 95
+
+
+§§§ `s 184DA — Written resolution lapse`
+
+-- s 184DA(1): lapses after 28 days from circulation
+@ref "Companies Act 1967, s 184DA(1)"
+`written resolution lapse days` MEANS 28
+
+
+§§ `Division 5 — Annual return`
+
+
+§§§ `s 197 — Annual return deadline`
+
+-- s 197(1),(2): lodge annual return within 30 days of AGM
+@ref "Companies Act 1967, s 197(1)"
+`annual return lodgement days after AGM` MEANS 30
+
+
+§§§ `s 199 — Accounting records retention`
+
+-- s 199(1): records kept for >= 5 years
+@ref "Companies Act 1967, s 199(1)"
+`accounting records retention years` MEANS 5
+
+
+-- ===========================================================================
+-- TEST CASES
+-- ===========================================================================
+
+§§ `Part 5 — Illustrations`
+
+-- s 145: director requirements
+#ASSERT `meets director requirements` TRUE 25 TRUE
+#ASSERT NOT (`meets director requirements` TRUE 17 TRUE)
+#ASSERT NOT (`meets director requirements` FALSE 30 TRUE)
+#ASSERT NOT (`meets director requirements` TRUE 25 FALSE)
+
+-- s 154: automatic disqualification
+-- Convicted of fraud offence punishable >= 3 months
+#ASSERT `automatically disqualified as director` TRUE 3 FALSE
+#ASSERT `automatically disqualified as director` TRUE 6 FALSE
+-- Not disqualified: offence punishable < 3 months
+#ASSERT NOT (`automatically disqualified as director` TRUE 2 FALSE)
+-- Disqualified by SFA civil penalty alone
+#ASSERT `automatically disqualified as director` FALSE 0 TRUE
+
+-- s 155: persistent default
+#ASSERT `persistently in default` 3 TRUE
+#ASSERT `persistently in default` 5 TRUE
+#ASSERT NOT (`persistently in default` 2 TRUE)
+#ASSERT NOT (`persistently in default` 3 FALSE)
+
+-- s 155A: struck-off disqualification
+#ASSERT `disqualified for struck off companies` 3 TRUE
+#ASSERT NOT (`disqualified for struck off companies` 2 TRUE)
+
+-- s 155A: disqualification period
+#ASSERT (`struck off disqualification period years` TRUE) EQUALS 5
+#ASSERT (`struck off disqualification period years` FALSE) EQUALS 3
+
+-- s 155B: debarment order conditions
+#ASSERT `debarment order conditions met` 3 TRUE 14
+#ASSERT `debarment order conditions met` 6 TRUE 30
+#ASSERT NOT (`debarment order conditions met` 2 TRUE 14)
+#ASSERT NOT (`debarment order conditions met` 3 FALSE 14)
+#ASSERT NOT (`debarment order conditions met` 3 TRUE 10)
+
+-- s 163: connected-company loan
+#ASSERT `connected company loan requires approval` 20 FALSE
+#ASSERT `connected company loan requires approval` 30 FALSE
+#ASSERT NOT (`connected company loan requires approval` 19 FALSE)
+-- Exempt private company — no approval needed even at 20%
+#ASSERT NOT (`connected company loan requires approval` 25 TRUE)
+
+-- s 164A: director emolument disclosure demand
+#ASSERT `may demand director emolument disclosure` 10 0
+#ASSERT `may demand director emolument disclosure` 5 5
+#ASSERT NOT (`may demand director emolument disclosure` 8 3)
+
+-- s 175: AGM deadline
+#ASSERT (`AGM deadline months after financial year end` TRUE) EQUALS 4
+#ASSERT (`AGM deadline months after financial year end` FALSE) EQUALS 6
+
+-- s 176: EGM requisition
+#ASSERT `may requisition EGM` 10
+#ASSERT NOT (`may requisition EGM` 9)
+#ASSERT `requisitionists may convene EGM` 51
+#ASSERT NOT (`requisitionists may convene EGM` 50)
+
+-- s 183: resolution circulation requisition
+#ASSERT `may requisition resolution circulation` 5 10 100
+#ASSERT `may requisition resolution circulation` 1 100 500
+#ASSERT NOT (`may requisition resolution circulation` 3 50 300)
+
+-- s 184: special resolution notice
+`Test Private Co` MEANS Company WITH
+    `name`                     IS "Test Pte Ltd"
+    `company type`             IS `company limited by shares`
+    `classification`           IS `private company`
+    `date of incorporation`    IS YMD 2024 1 1
+    `has constitution`         IS TRUE
+    `has share capital`        IS TRUE
+    `number of members`        IS 5
+    `member limit in constitution` IS 50
+    `restricts share transfer` IS TRUE
+
+`Test Public Co` MEANS Company WITH
+    `name`                     IS "Test Ltd"
+    `company type`             IS `company limited by shares`
+    `classification`           IS `public company`
+    `date of incorporation`    IS YMD 2024 1 1
+    `has constitution`         IS TRUE
+    `has share capital`        IS TRUE
+    `number of members`        IS 200
+    `member limit in constitution` IS 1000
+    `restricts share transfer` IS FALSE
+
+#ASSERT (`special resolution notice days` `Test Private Co`) EQUALS 14
+#ASSERT (`special resolution notice days` `Test Public Co`) EQUALS 21
