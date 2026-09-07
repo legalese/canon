@@ -320,9 +320,15 @@ Measured the whole way, on the real module: putting `@export` on every definitio
 a `GIVEN` — 28 in all, the 27 added to the one already there — emits **43 scopes** (five of
 them fan out into `…EqvAgree` / `…EqvModeA` / `…EqvModeB` triples), `catala typecheck`
 succeeds, and the six worked cases return the same six figures as the single-scope build,
-digit for digit. So the single `@export` is a **choice** —
-one published scope instead of forty-three — and not, as recorded here until today, a
-limitation. Recorded as fork F13, restated.
+digit for digit. So the single `@export` is a **choice** — one published scope instead of
+forty-three — and not, as recorded here until today, a limitation.
+
+The bug worth reporting is therefore the **silence**, not the composition: `l4 catala` already
+refuses the section-`GIVEN` case with a good diagnostic, so the machinery to refuse exists; it
+just does not check whether an exported helper has callers that are not exported. Filed
+upstream as [smucclaw/l4-ide#958](https://github.com/smucclaw/l4-ide/issues/958) (7 September
+2026, by the `Dynamic GM` session, from the reproduction above). Recorded as fork F13,
+restated.
 
 ### 7.4 Reproducing it
 
