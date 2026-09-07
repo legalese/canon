@@ -327,8 +327,8 @@ The bug worth reporting is therefore the **silence**, not the composition: `l4 c
 refuses the section-`GIVEN` case with a good diagnostic, so the machinery to refuse exists; it
 just does not check whether an exported helper has callers that are not exported. Filed
 upstream as [smucclaw/l4-ide#958](https://github.com/smucclaw/l4-ide/issues/958) (7 September
-2026, by the `Dynamic GM` session, from the reproduction above). Recorded as fork F13,
-restated.
+2026, from the reproduction above; both halves of it are since measured independently on two
+machines). Recorded as fork F13, restated.
 
 ### 7.4 Reproducing it
 
@@ -340,6 +340,13 @@ export OFEK_CORPUS=/path/to/ofek-hadash-corpus
 Needs `catala` and `clerk` 1.2.1 on an opam switch named `catala`, and an `l4` binary built
 from the same tree as the prelude it is pointed at. The script builds each stdlib module
 object one at a time, because `clerk build` with no target refuses without a `clerk.toml`.
+
+Two traps if you run `catala` by hand instead of through the script. The switch is a **named**
+one, so the binary is at `~/.opam/catala/bin` and a bare `which catala` finds nothing — reach
+it with `opam exec --switch=catala --`, which is what the script does. And `catala typecheck`
+outside a project directory fails with *"The standard library module Stdlib_en could not be
+found at `_build/libcatala`"* — which looks like a broken install but is not, and the message's
+own hint names the repair: run `clerk start` in the directory first.
 
 ## 8. What review would mean
 
@@ -459,8 +466,8 @@ l4 catala: cannot compile these decisions to Catala:
     a parameter instead
 ```
 
-The refusal has an escape hatch, found by the `Dynamic GM` session on the l4-ide side and
-verified here: marking the **helper** `@export` as well lifts it, because the binder then
+The refusal has an escape hatch, found on the l4-ide side while § 7.3(b) was being written up
+there and verified here: marking the **helper** `@export` as well lifts it, because the binder then
 becomes an `input` on both scopes and the caller threads its own copy through. It typechecks.
 The cost is the one in § 7.3(b) — a published scope per rule that reads the binder, under the
 same all-or-nothing condition, since one non-exported caller anywhere in the chain puts the
