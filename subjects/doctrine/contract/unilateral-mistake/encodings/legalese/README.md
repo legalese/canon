@@ -173,6 +173,10 @@ The Court of Appeal saw the gap and stepped across it deliberately (at [73]):
 **One sentence of divergence, and it decides the case.** Australia asks what you *did*; Singapore
 asks what you *didn't do*.
 
+The two circuits are drawn in [report/figures/](report/figures/): `dm2-sg.screen.svg` closes and
+turns green, `dm2-au.screen.svg` runs three contacts deep and stops at *deliberately set out to
+prevent discovery*.
+
 ### Delta 2 — void against voidable, which only a third party ever feels
 
 Take *Digilandmall*'s **third appellant**, where actual knowledge was found. Singapore says
@@ -219,6 +223,11 @@ $12,000 under the dealer's cost.
 **This is the widest gap in the corpus**, and it is a difference in *kind*, not degree: Singapore's
 doctrine is fundamentally about **the other party's conscience**, and the American rule has a limb
 that is about **the bargain** instead.
+
+Drawn as circuits — `donovan-sg.screen.svg` against `donovan-us.screen.svg` in
+[report/figures/](report/figures/) — Singapore's chain dies at `constructive knowledge` and never
+reaches the impropriety fan at all, while § 153's fan closes on its first rung and the other two
+do not matter. That is the conjunction against the disjunction, on identical facts.
 
 ### Delta 4 — England cannot answer the question Singapore answered
 
@@ -290,6 +299,11 @@ shows it.
 | `us-unilateral-mistake.l4` | Restatement (Second) §§ 153–154 |
 | `mistake-comparison.l4` | verdict naming, divergence, and the third-party consequence |
 | `mistake-cases.l4` | ten fixtures, 69 assertions, and the five deltas asserted |
+
+Four ladder diagrams of the critical logic are in [report/figures/](report/figures/), rendered by
+l4-ide's own visualizer rather than drawn by hand. Read that directory's `README.md` before citing
+them: the renderer's `complete` flag agrees with the L4 verdicts on all four, but the circuits are
+transcribed by hand and nothing re-renders them when a module changes.
 
 Run it:
 
