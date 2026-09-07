@@ -432,10 +432,10 @@ three under `ofek-domain.l4`'s `§§ Reading the record` are three more.
 
 Two measured reasons it is the wrong shape for *this* encoding.
 
-**A rule that reads a section `GIVEN` takes no arguments, so no case can be handed to it.**
-The binder is discharged into the rule's parameters at the *evaluation* entry points only;
-the type checker still sees arity zero, and a call site that passes a teacher is a check
-error:
+**A rule that reads a section `GIVEN` takes no positional argument, and cannot be supplied
+across an `IMPORT`.** The binder is discharged into the rule's parameters at the *evaluation*
+entry points only; the type checker still sees arity zero, and a call site that passes a
+teacher positionally is a check error:
 
 ```
 You are giving 1 input to
@@ -443,15 +443,28 @@ You are giving 1 input to
 but it is not a function, so it takes none.
 ```
 
-The house-style answer (the `writing-l4-rules` phrasebook, entry 11.9) is to keep an ordinary
-`GIVEN`-parameterised twin for testing and let the section's rule delegate to it, exercising
-the twin with `#ASSERT` and the section rule with `#CHECK`. That is a good trade for a
-statute whose Part has one operative test. It is a poor one here: **254 assertions** pass a
-teacher, a seniority or a rank explicitly, and the three rules under `§§ Reading the record`
-are called with an explicit teacher from **five** sites in two other modules
-(`ofek-pay.l4:64,82,94,107`, `ofek-placement.l4:60`). Each would need the twin — more
-repetition than the section `GIVEN` removes, and the twins, not the section rules, would be
-the ones the tables actually test.
+**Corrected 2026-09-07.** An earlier version of this note said the repair was a
+`GIVEN`-parameterised twin per rule, and priced it at the 254 assertions. That was read from
+a stale line in the `writing-l4-rules` skill — supplying a section `GIVEN` with `WITH` is not
+"proposed, not landed"; it landed with the discharge change and works on this binary. Inside
+one module the directives need no twin at all:
+
+```l4
+#ASSERT (`the pay of the teacher` WITH `the teacher` IS `Yael`) EQUALS 8000   -- satisfied
+```
+
+**The parentheses are load-bearing.** `WITH` binds looser than `EQUALS`, so the unparenthesised
+form is a check error — and its diagnostic names the identifier and `__EQUALS__`, never `WITH`,
+which is a poor thing to meet on assertion one of two hundred and fifty-four.
+
+What does not work is the boundary this encoding is built across. `WITH` on an **imported**
+rule is refused — *"You are giving named inputs to …"*, exit 1 — and that is where the cost
+actually sits. `ofek-cases.l4` declares nothing but fixtures, so all **49** of its assertions
+reach a rule in an imported module; and the three rules under `§§ Reading the record` are
+called from **five** further sites in two other modules (`ofek-pay.l4:64,82,94,107`,
+`ofek-placement.l4:60`). A section `GIVEN` in `ofek-pay.l4` or `ofek-domain.l4` puts every one
+of those out of reach, and no twin written inside the declaring module reaches them either,
+because the caller is outside it.
 
 **`l4 catala` refuses a section `GIVEN` read by anything but the exported decision.** The
 backends lower the module the author wrote, not the discharged one; that is deliberate
@@ -474,15 +487,22 @@ same all-or-nothing condition, since one non-exported caller anywhere in the cha
 module back in the shape shown there. For `ofek-pay.l4` that is ten published scopes where ten
 helpers were wanted. That is what R10 buys back: the helpers, not the ability to compile.
 
-Both were probed on the binary this row is built with (`ofek/build`, at `origin/unstable`
-9d6536a9, which contains #344). **When R10 lands, revisit `ofek-pay.l4` first**: it is the
-one module where every rule under one heading reads the same fact, and it is the module a
-reader is most likely to open.
+All of the above was probed on the binary this row is built with (`ofek/build`, at
+`origin/unstable` 9d6536a9, which contains #344).
 
-A third reason is worth stating even though it did not bind. `ofek-domain.l4` declaring a
-section binder and `ofek-pay.l4` importing it is exactly the configuration the props spec
-records as unreached — "no file in `jl4/examples`, `jl4-core/libraries` or `doc/` that
-declares a section binder is `IMPORT`ed by another (measured 2026-09-05)" — and the one
-witness the tree does have for the neighbouring cross-`IMPORT` arity crash needed an
-evaluator-side repair. Being the first reachable case of a construct is a fine thing for a
-compiler test and a poor thing for a corpus row whose job is to be believed.
+**Both blockers are the same fact seen twice**: an eight-module encoding is a pile of
+`IMPORT`s, and a section `GIVEN` does not cross one — not for a value (refused), and not for
+the Catala lowering (which needs the whole chain exported, and this chain spans modules). The
+construct fits a **single-module** encoding of a statute. It does not yet fit a corpus row
+split into a domain, six subject modules and a case file. That is a fair description of the
+feature's present reach and not a complaint: the props spec records the cross-`IMPORT` hole
+as a known defect with a ruled repair order — refusal first, closure second — at
+`OPEN-FINDINGS-2026-09-05.md` **OF-7**, ruled at `IMPLICIT-PROPS-DESIGN.md` §11.19 on
+2026-09-05 and not yet built.
+
+**Revisit when both land** — OF-7's closure for the module boundary, R10 for the Catala one —
+and start with `ofek-pay.l4`: it is the one module where every rule under one heading reads
+the same fact, and the one a reader is most likely to open. Until then, note that this row
+would be the tree's first reachable cross-`IMPORT` section binder; the props spec's
+measurement that no file in `jl4/examples`, `jl4-core/libraries` or `doc/` reaches that
+configuration (2026-09-05) is scoped to `l4-ide` and is still true there.
