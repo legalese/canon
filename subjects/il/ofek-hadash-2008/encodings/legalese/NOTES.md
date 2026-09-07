@@ -466,6 +466,19 @@ called from **five** further sites in two other modules (`ofek-pay.l4:64,82,94,1
 of those out of reach, and no twin written inside the declaring module reaches them either,
 because the caller is outside it.
 
+**What that message is, exactly**, since it matters for anyone reading it as a verdict. It is
+not the props programme's ruled refusal, which is ruled and *not built*
+(`OPEN-FINDINGS-2026-09-05.md` **OF-7**, ruled at `IMPLICIT-PROPS-DESIGN.md` §11.19,
+2026-09-05). It is `IllegalAppNamed`, which predates the whole programme — oldest commit
+touching it in `jl4-core/src/L4/TypeCheck.hs` is `294867c7`, 17 March 2025. What routes to it
+is new: `inferAppNamed` (`TypeCheck.hs:3343-3358`) admits named arguments on a 0-ary
+definition only when every supplied name passes `isSectionBinderSupply`, and that predicate
+reads `sectionBinderNames`, built by `collectSectionBinderNames program` over **this** module
+(`TypeCheck.hs:215`). Across an `IMPORT` the callee's binder is not in the caller's set, the
+guard fails, and control falls through to the old error. So the message is not merely
+unhelpful, it is **wrong about the cause**: the callee *is* a function of that binder in its
+own module, and the caller simply has no way to name it.
+
 **`l4 catala` refuses a section `GIVEN` read by anything but the exported decision.** The
 backends lower the module the author wrote, not the discharged one; that is deliberate
 (l4-ide `specs/todo/IMPLICIT-PROPS-DESIGN.md` §11.10, ruling **R10**, ruled 2026-09-04 and
@@ -490,15 +503,19 @@ helpers were wanted. That is what R10 buys back: the helpers, not the ability to
 All of the above was probed on the binary this row is built with (`ofek/build`, at
 `origin/unstable` 9d6536a9, which contains #344).
 
-**Both blockers are the same fact seen twice**: an eight-module encoding is a pile of
-`IMPORT`s, and a section `GIVEN` does not cross one — not for a value (refused), and not for
-the Catala lowering (which needs the whole chain exported, and this chain spans modules). The
-construct fits a **single-module** encoding of a statute. It does not yet fit a corpus row
-split into a domain, six subject modules and a case file. That is a fair description of the
-feature's present reach and not a complaint: the props spec records the cross-`IMPORT` hole
-as a known defect with a ruled repair order — refusal first, closure second — at
-`OPEN-FINDINGS-2026-09-05.md` **OF-7**, ruled at `IMPLICIT-PROPS-DESIGN.md` §11.19 on
-2026-09-05 and not yet built.
+**The two blockers are not the same one twice**, though they are easy to merge and this note
+did merge them for a day. The `IMPORT` blocker is about the module boundary. The Catala
+refusal is not: it fires in a **single** file, on a section `GIVEN` read by a non-exported
+helper, and the reproduction above is one such file. What the eight-module split defeats is
+the *escape hatch* — exporting the whole chain — because the chain runs across modules. The
+refusal itself would greet a one-file encoding just the same.
+
+What is fair to say once, rather than twice, is about **size**. The repetition a section
+`GIVEN` removes grows with the encoding; a large encoding is also the one most likely to be
+split across files and to have a `@export` boundary partway down it. So the temptation peaks
+where the fit is worst. **Count the callers before hoisting, not the repetitions.** None of
+which is a complaint about the feature: the props spec records the cross-`IMPORT` hole as a
+known defect with a ruled repair order — refusal first, closure second — at OF-7 and §11.19.
 
 **Revisit when both land** — OF-7's closure for the module boundary, R10 for the Catala one —
 and start with `ofek-pay.l4`: it is the one module where every rule under one heading reads
