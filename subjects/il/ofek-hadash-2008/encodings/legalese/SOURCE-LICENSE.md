@@ -47,12 +47,12 @@ act of authorship whatever the status of the thing transcribed. **The corpus rep
 carries no LICENSE file**, which means no permission has been granted and none should be
 inferred. The site does carry a `robots.txt` and an `llms.txt`; neither is a licence.
 
-**Provenance of that repository, measured 2026-09-08.** The repo behind the site —
-`github.com/morimovilimcatala/ofek-hadash-corpus` — holds **one commit** — `f042ee5`, authored by *"ofek-hadash corpus bot
-&lt;noreply@github.com&gt;"*, message *"corpus site, built from b0556fefb418"*. So what was read
-is a **published build artifact**, not the corpus's working repository: the source repo that
-produced `b0556fefb418` is not this one and is not visible from here. Three consequences worth
-having written down.
+**Provenance of that repository, measured 2026-09-08.** The repo behind the site,
+`github.com/morimovilimcatala/ofek-hadash-corpus`, holds **one commit**: `f042ee5`, authored
+by `ofek-hadash corpus bot <noreply@github.com>`, with the message *"corpus site, built from
+b0556fefb418"*. So what this row read is a **published build artifact**, not the corpus's
+working repository — the source repo that produced `b0556fefb418` is not this one, and is not
+visible from here. Three consequences worth having written down.
 
 - There is no `LICENSE` or `COPYING` file anywhere in the first three directory levels, and no
   licence, copyright or rights wording in `index.html` or `llms.txt` either. The absence is
