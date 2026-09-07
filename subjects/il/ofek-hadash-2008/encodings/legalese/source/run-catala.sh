@@ -34,6 +34,12 @@ echo "== l4 catala: emit the Catala module =="
 "$L4" catala ofek-catala.l4 -o catala/ofek_hadash.catala_en 2>&1 \
   | grep -c 'did not become' | sed 's/^/   directives not lowered to #[test]: /'
 
+# A 36-arm BRANCH lowers to one 9,771-character line. Wrapping it at the row
+# boundaries changes no token — wrap-catala.py refuses to write if it does —
+# and the typecheck and the six cases below are run against the WRAPPED file,
+# so the claim is checked rather than asserted.
+python3 source/wrap-catala.py catala/ofek_hadash.catala_en
+
 echo "== catala: typecheck, then run the cases =="
 WORK=$(mktemp -d)
 cp catala/ofek_hadash.catala_en catala/ofek_hadash_cases.catala_en "$WORK/"

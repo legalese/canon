@@ -22,6 +22,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import tables  # noqa: E402
+import _tablefmt  # noqa: E402
 import _fixtures  # noqa: E402
 
 ROOT = tables.corpus_root(sys.argv)
@@ -48,21 +49,15 @@ def branch_over_rank(values, indent, fmt=N):
 
 
 def table_rows(grid, name, label):
-    w('GIVEN `the seniority` IS A NUMBER')
-    w('GIVETH A `a row of the combined salary table`')
-    w(f'`{name}` `the seniority`')
-    w(f'    @nlg the row of the {label} table at the given seniority')
-    w('    MEANS')
-    for v in range(1, 37):
-        lit = ', '.join(f'`at rank {d}` IS {N(grid[(v, d)])}' for d in range(1, 10))
-        lead = '    BRANCH ' if v == 1 else '           '
-        if v == 1:
-            cond = 'IF `the seniority` AT MOST 1  THEN'
-        elif v < 36:
-            cond = f'IF `the seniority` EQUALS {v:<2}   THEN'
-        else:
-            cond = 'OTHERWISE                         '
-        w(f'{lead}{cond} `a row of the combined salary table` WITH {lit}')
+    for line in _tablefmt.signature(name, label):
+        w(line)
+    for line in _tablefmt.rows(grid, N):
+        w(line)
+
+
+def branch_over_rank(values, indent, fmt=N):
+    for line in _tablefmt.branch_over_rank(values, indent, fmt):
+        w(line)
 
 
 w('''IMPORT prelude

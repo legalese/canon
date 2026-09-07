@@ -1,10 +1,11 @@
 # subjects/
 
-One directory per body of law. **Eight are deposited as at 2026-09-07.** Four are Singapore
-statutes; of the other four, one is a synthetic insurance policy, two are commercial standard
-forms, and one is a judge-made doctrine encoded across four jurisdictions. Each of those four is
-flagged below. One subject, `contracts/investment/yc-safe-premoney`, holds source text and no
-encoding at all, which the `what it encodes` column says plainly.
+One directory per body of law. **Nine are deposited as at 2026-09-07.** Four are Singapore
+statutes; of the other five, one is a synthetic insurance policy, two are commercial standard
+forms, one is a judge-made doctrine encoded across four jurisdictions, and one is a body of
+Israeli **collective agreements** rather than enacted law at all. Each of those five is flagged
+below. One subject, `contracts/investment/yc-safe-premoney`, holds source text and no encoding
+at all, which the `what it encodes` column says plainly.
 
 | subject | what it encodes | status |
 | --- | --- | --- |
@@ -15,6 +16,7 @@ encoding at all, which the `what it encodes` column says plainly.
 | [`us/chubb-hospital-cash`](us/chubb-hospital-cash) | a **synthetic** supplemental hospitalization cash policy — never law, never in force — encoded twice, independently, as evidence in a replication study | `experimental` |
 | [`contracts/investment/yc-safe-postmoney`](contracts/investment/yc-safe-postmoney) | the Y Combinator post-money SAFE — six instruments plus four Pro Rata Side Letters, with their User Guide — deposited verbatim, with one encoding row | `draft` |
 | [`contracts/investment/yc-safe-premoney`](contracts/investment/yc-safe-premoney) | nothing, and none planned in this repository — **sources only**: the 2013–2018 "original safe", four US variants, recovered from the Internet Archive | `draft` |
+| [`il/ofek-hadash-2008`](il/ofek-hadash-2008) | the Ofek Hadash reform — the collective agreements, and one budget-law chapter, that determine an Israeli teacher's pay | `draft` |
 | [`doctrine/contract/unilateral-mistake`](doctrine/contract/unilateral-mistake) | the Singapore doctrine of unilateral mistake in contract — *Chwee Kin Keong v Digilandmall.com* [2005] SGCA 2 — encoded beside three comparators (English common law, *Taylor v Johnson*, Restatement (Second) § 153) against one ontology | `draft` |
 
 `sg/child-support` is the odd one and worth knowing about before you read it: its primary
@@ -88,12 +90,37 @@ Read each row's `SOURCE-LICENSE.md` before deriving anything from it. `yc-safe-p
 records an unresolved question: whether an L4 formalisation of a form is an "adaptation" under a
 NoDerivatives licence.
 
+`il/ofek-hadash-2008` is the first row whose subject is **not enacted law**, and the label
+should be read before the row is. Ofek Hadash is a **collective agreement** between the State
+of Israel and the Teachers' Union, layered with later agreements, binding decisions of a joint
+bipartite follow-up committee, and ministry circulars. The one Act in the picture — Chapter 9
+of the 2025 budget law — works by referring back to an *approved collective agreement* rather
+than setting a rate itself, so even the statutory layer routes through the agreements. It is
+filed under `il/` because the State is one of the two parties and the Knesset is the authority
+for the fiscal chapter; `contracts/` would have been wrong, because this is not a commercial
+instrument and it governs a whole profession.
+
+It is also the first row read **entirely from a third-party corpus** rather than from an
+official publisher, and the first whose `SOURCE-LICENSE.md` therefore carries **two** open
+questions instead of one: what may be done with the instruments, and what may be done with the
+compilation that transcribed them. Nothing was fetched from the Ministry of Education or from
+*Reshumot*; the digests are over the corpus's published HTML. Its `/akn/il/…` identifiers,
+which appear throughout that row's document register, are a convention of that corpus and are
+**not citable outside it** — the corpus says so itself, and the row repeats it rather than
+letting the identifiers pass as citations. Two further things distinguish it: all 282 documents
+of the source corpus were read and are deposited as a per-document register, which is what
+surfaced a January 2025 committee decision as the authoritative source for salary tables
+otherwise attributed to an October 2022 agreement; and it is the first row to carry an
+**executed** foreign-notation projection — six worked cases run through `catala interpret`
+against the emitted Catala module, reproducing the figures the L4 asserts.
+
 `regcf` (SEC Regulation Crowdfunding) and the British Nationality Act 1981 are encoded in
 `legalese/l4-ide` and have not been deposited here yet.
 
 *(This paragraph read "Empty at this writing" until 2026-08-25, by which point three
 subjects had landed; a fourth landed on 2026-08-27, a fifth on 2026-08-31, the two
-`contracts/` rows on 2026-09-04, and the first `doctrine/` row on 2026-09-07. A README that
+`contracts/` rows on 2026-09-04, and the first `doctrine/` row and the first `il/` row on
+2026-09-07. A README that
 describes a directory it no longer matches is worse than none, because it is believed.)*
 
 The directory contract (the "class" — see the repository README for the class/instance
