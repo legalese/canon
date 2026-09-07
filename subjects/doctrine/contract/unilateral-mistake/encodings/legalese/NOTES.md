@@ -151,5 +151,15 @@ No projections (`l4 export` to DMN/BPMN was not run), no wizard, no `gates/`, no
 There is no `etc/go` sidecar for this subject in `l4-ide`, so no run journal, no HG1 waiver and no
 `verify` — the same posture as `us/chubb-hospital-cash` and the two `contracts/` rows, and unlike
 `sg/succession`. The registers under `registers/` were written by hand and validated with
-`l4-ide`'s `etc/go/lib/register-validate.mjs`; that validation is recorded in
-`report/register-validation.txt` and is the only mechanical check any of them has had.
+`l4-ide`'s `etc/go/lib/register-validate.mjs`, peer files passed so the cross-file joins actually
+run rather than reporting `skip` and exiting 0. That validation is recorded in
+`report/register-validation.txt`.
+
+**One of its rules cannot run here, and the reason is worth knowing before you read a green
+result.** `digest-matches-local-file` reports *not on this branch* for every document in the source
+bundle. That is not a stale path: the validator is `l4-ide`'s tool and resolves `local_path` inside
+`l4-ide`, while these paths are canon-relative, as they have to be. Any canon row that vendors its
+own sources will hit this. The digests are therefore verified **by hand**, against the same values
+the register asserts, and the output is appended to `report/register-validation.txt` — all five
+verify. A reader who takes `register-validate: ok` as covering the digests would be wrong, which is
+why this paragraph exists and why the manual check is in the same file.
