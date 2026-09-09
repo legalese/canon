@@ -193,10 +193,13 @@ Recorded here rather than by forking the template, per the repository README.
   scaffold.
 - **A per-subject `README.md`**, which the class contract does not list and WA does not
   use. Additive, for FinMont's engineers; nothing reads it.
-- **Not under a jurisdiction directory.** `western-australia` subjects sit at
-  `subjects/<jurisdiction>/<subject-id>/`. This one sits at `subjects/FinMont-demo/`,
-  where it was asked for. If the corpus later regularises on jurisdiction folders it
-  belongs at `subjects/european-union/`, and `git mv` is the whole migration.
+- **Subject id casing.** `western-australia` subject ids are lowercase kebab-case named
+  for the instrument (`adoption-act-1994`). This one is `FinMont-demo`, mixed case and
+  named for the firm, because that is what the encoding job asked for and because the
+  orchestration module and the scenario cases genuinely are firm-specific. The jurisdiction
+  directory it now sits in (`subjects/european-union/`) follows the corpus convention; the
+  id does not. Renaming to something like `psd2-sca-rts-2018-389` is a `git mv` away if the
+  corpus wants ids uniform.
 - **A `FinMont-demo` subject id, not a law id.** Named for the firm rather than the
   instrument because the orchestration module and the scenario cases are firm-specific.
   The five law modules are firm-neutral and could be lifted into a `psd2-sca-rts` subject

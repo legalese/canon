@@ -54,7 +54,7 @@ difference is a defect here to be reported and fixed.
 
 Everything authored in this directory — the `.l4` modules, the scenario cases, the
 ambiguity register, the notes and the conversion report — is licensed under
-[Apache-2.0](../../LICENSE), the repository's licence for authored work.
+[Apache-2.0](../../../LICENSE), the repository's licence for authored work.
 
 The prose artifacts (`NOTES.md`, `registers/ambiguity-register.md`,
 `report/conversion-report.md`) are additionally offered under

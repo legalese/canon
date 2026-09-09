@@ -1,10 +1,11 @@
 # subjects/
 
-One directory per body of law.
+One directory per jurisdiction, then one directory per body of law inside it.
 
-| subject | body of law | status |
-| ------- | ----------- | ------ |
-| [`FinMont-demo`](FinMont-demo/) | Commission Delegated Regulation (EU) 2018/389 — PSD2 strong customer authentication | `draft` |
+| jurisdiction | contents |
+| ------------ | -------- |
+| [`western-australia/`](western-australia/) | Western Australian Acts |
+| [`european-union/`](european-union/) | European Union Regulations and Directives |
 
 `regcf` (SEC Regulation Crowdfunding, 17 CFR Part 227) arrives with the pipeline's G4
 milestone, with the British Nationality Act 1981 to follow.

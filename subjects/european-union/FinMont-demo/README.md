@@ -21,7 +21,7 @@ for cross-border regulatory compliance.
 
 ## Layout
 
-Follows the subject-sidecar shape used by the [`western-australia`](../western-australia/)
+Follows the subject-sidecar shape used by the [`western-australia`](../../western-australia/)
 corpus: `types.l4` for the shared ontology, one module per structural division of the
 instrument, a flat directory, and the source text deposited under `registers/source-bundle/`.
 
