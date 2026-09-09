@@ -12,10 +12,12 @@ authorisation time and with a citation behind every answer:
 Built for FinMont, a Berlin-based payment orchestration platform for the travel industry,
 for cross-border regulatory compliance.
 
-> **Status: `draft`.** The encoding exists; no claim of fidelity is made, and no human gate
-> has been granted. Read [`NOTES.md`](NOTES.md) §3 before relying on the refund or liability
-> answers — the document supplied for this job answers only the first of the three
-> questions.
+> **Status: `draft`.** Machine-evaluated on 2026-09-09: **0 type errors across all 8
+> modules, 80 of 82 assertions satisfied** ([`report/machine-evaluation.md`](report/machine-evaluation.md)).
+> That establishes the encoding is well-formed and self-consistent — not that it is a
+> faithful reading of the law. No claim of fidelity is made and no human gate has been
+> granted. Read [`NOTES.md`](NOTES.md) §3 before relying on the refund or liability
+> answers: the document supplied for this job answers only the first of the three questions.
 
 ## Layout
 
@@ -38,6 +40,7 @@ cases/finmont-travel-cases.l4           17 travel scenarios, machine-asserted
 registers/source-bundle/                the extracted source text and its metadata
 registers/ambiguity-register.md         every interpretive choice, and what turns on it
 report/conversion-report.md             what was encoded, what was not, what to fix first
+report/machine-evaluation.md            the 2026-09-09 run: 0 errors, 80/82 assertions
 ```
 
 ## The three entry points
@@ -106,9 +109,9 @@ rulebook in above this, from its own scheme documentation. (`NOTES.md` §6.)
 In order, from [`report/conversion-report.md`](report/conversion-report.md):
 
 1. Deposit the Directive (EU) 2015/2366 text and discharge the `UNVERIFIED` markers.
-2. Run the toolchain — nothing here has been machine-evaluated; no jl4 CLI was available in
-   the environment this was built in — and raise the `checks` floors in `subject.json` from
-   a real run.
+2. Re-run the 4 law-time directives on a current engine. Everything else is machine-verified
+   — 0 type errors, 80 of 82 assertions satisfied — but `RULES EFFECTIVE DATE` postdates the
+   only binary available here. See [`report/machine-evaluation.md`](report/machine-evaluation.md).
 3. Get local advice on **AR-07** (one leg outside the EEA) per market, and make that gate
    configurable rather than fixed.
 4. Have a domain expert sign HG1 over the content digest.

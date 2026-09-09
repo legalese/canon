@@ -122,23 +122,35 @@ Case 4 asserts that an out-of-scope transaction reports **no** exemptions.
 | Annex table cross-checked | ✅ against the PDF, whose column layout the text extractor mangled; values re-read from the source layout |
 | Citations placed on every rule | ✅ 98 `@ref` |
 | Scenario assertions written | ✅ 82 |
-| **Assertions machine-evaluated** | ❌ **no** |
-| **Modules type-checked** | ❌ **no** |
+| **Modules type-checked** | ✅ 0 errors across all 8 modules |
+| **Assertions machine-evaluated** | ✅ **80 of 82 satisfied**; 2 not runnable — see below |
 | Directive text verified | ❌ not supplied |
 | Human gate signed | ❌ none |
 
-**No jl4 CLI was available in the environment this was built in** — the tree carries
-`jl4-lsp.exe` (a language server, stdio only) and no batch runner, and no Haskell toolchain.
-The L4 was therefore written against the syntax of the existing corpus modules in this
-repository rather than validated by the compiler. **Expect to fix syntax on the first run.**
-`subject.json` follows the `western-australia` descriptor schema, which carries no `checks`
-floors at all — so there is no floor here to set falsely. The counts in §2 are what a first
-run should be reconciled against.
+See [`report/machine-evaluation.md`](machine-evaluation.md) for the full run: method,
+harness validation, the two compensations a stale engine required, and exactly what they
+cost.
+
+**No jl4 CLI was available**, so the language server was driven directly as a batch checker
+— it publishes assertion results as diagnostics. The harness was validated against a
+known-good corpus file first (`sg-companies-part9.l4`: 0 errors, 7 of 7 assertions) before
+its verdict on this subject was trusted.
+
+**One genuine defect was found and fixed**: a `#ASSERT` expression may not break across
+lines at the top level, and four assertions in the cases file did, which is a parse error
+that was suppressing all 52 assertions in that file.
+
+**Two of the 82 assertions remain unverified** — Case 15's law-time pair. The available
+binary predates the rebuild of `RULES EFFECTIVE DATE` from `NUMBER` to `DATE`; the official
+l4-ide tutorial for that feature fails on it identically. Those two, and the two dated-arm
+definitions in `chapter-vi-final-provisions.l4`, are the only part of this subject with no
+machine evidence behind it, and are the first thing to re-run on a current engine.
 
 ## 7. What to fix first
 
-1. **Run the toolchain.** Type-check the eight modules and evaluate the 82 assertions. Fix
-   what breaks, and raise `encoding_version` past 0.1.0 once it does.
+1. **Re-run the 4 law-time directives on a current engine** — Case 15's two `#EVAL` and two
+   `#ASSERT`, and the two dated arms in `chapter-vi-final-provisions.l4`. Everything else
+   is verified; these are not (`report/machine-evaluation.md` §3.2).
 2. **Deposit Directive (EU) 2015/2366** into `registers/source-bundle/` alongside the RTS
    text already there, and discharge every `UNVERIFIED` marker against it — 45
    occurrences, all in `psd2-refunds-and-liability.l4` and in three scope gates in
