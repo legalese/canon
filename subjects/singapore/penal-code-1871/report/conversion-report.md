@@ -85,9 +85,11 @@ subject. Wiring them into the offence wrappers is the next piece of work.
 
 ## 4. What is deliberately absent
 
-Set out in full in `NOTES.md` §2. In summary: Chapters 6 to 16, most of Chapter 17, the
-currency offences, Chapter 4A (private defence, ss 96 to 106), the ten s 499 exceptions as
-individual tests, and any computation of sentence for a particular offence.
+Counted section by section in `registers/coverage-register.md`: **108 of the Act's 525 live
+sections are encoded, about 21%**, and 300 live sections sit in chapters with nothing encoded
+at all. In summary: Chapters 6 to 16, most of Chapter 17, most of Chapter 18, Chapter 4A
+(private defence, ss 96 to 106A), the ten s 499 exceptions as individual tests, and any
+computation of sentence for a particular offence.
 
 Two of these are worth naming here because a caller could be misled:
 
@@ -122,6 +124,9 @@ Two passes, both recorded:
   against the deposited source text. Twelve defects found, two of them high severity
   (s 84 exempting every act of any person of unsound mind; s 505 limb (a) missing
   altogether). All twelve fixed.
+- `registers/coverage-register.md` — a **coverage** pass matching every `@ref` in the
+  encoding against the Act's arrangement of sections, so the gaps are auditable rather than
+  described.
 - `report/machine-evaluation.md` — a **mechanical** pass running every module through the
   `jl4-lsp` language server as a batch checker: **17 modules, 0 type errors, 53 of 53
   assertions satisfied**, no directive skipped or stubbed. The checker was itself validated

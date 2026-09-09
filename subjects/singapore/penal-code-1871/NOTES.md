@@ -37,6 +37,7 @@ agent-compliance.l4           the screen and the Schedule-to-4B classifier
 agent-cases.l4                scenario fixtures, machine-asserted
 registers/source-bundle/      PC1871.txt / .pdf as retrieved 09 Sep 2026
 registers/verification-register.md  the fidelity pass over the pre-existing rules
+registers/coverage-register.md      which sections are modelled, and which are not
 report/machine-evaluation.md  how the encoding was machine-checked, and against what
 ```
 
@@ -49,14 +50,22 @@ to have done.
 
 ## 2. What is deliberately not encoded
 
-The Code has 500+ operative sections. This draft encodes the chapters an AI agent is most likely to walk into when checking its own output or a user's requested act:
+The Code lists 600 sections, of which 75 are repealed. This draft encodes **108 of the 525
+live sections -- about 21%**. `registers/coverage-register.md` records which ones, chapter by
+chapter and section by section; what follows is the policy behind those numbers.
+
+The general parts are close to complete (Chapter 2: 49 of 54; Chapter 3: 10 of 10; Chapter 4:
+20 of 21; Chapter 5A: 2 of 2 -- and every gap there is a section with no factual test to
+decide). The offence chapters are a deliberate thin slice: the provisions an AI agent is most
+likely to walk into when checking its own output or a user's requested act.
 
 - **Not encoded:** Chapters 6-16 (State, armed forces, unlawful assembly, public servants, false evidence, public health, religion, offences affecting the human body including hurt, sexual offences, wrongful confinement), most of Chapter 17 (extortion, robbery, stolen property, criminal trespass), currency offences, and the ten exceptions to s 499 as individual tests.
-- **Chapter 4A (ss 96-106), the right of private defence, is not encoded.** It is a separate chapter from the Chapter 4 general exceptions and none of its rules are here, so `a general exception applies` will not report a private-defence justification.
+- **Chapter 4A (ss 96 to 106A), the right of private defence, is not encoded.** It is a separate chapter from the Chapter 4 general exceptions and none of its rules are here, so `a general exception applies` will not report a private-defence justification.
 - **s 499 exceptions** are a single caller-asserted flag `a section 499 exception applies`.
 - **Punishment** is not computed for any particular offence. `chapter-3-punishments.l4` encodes the Chapter 3 vocabulary -- what a `Punishment` is (s 53, s 54), how to pick the lower of two where it is doubtful which offence was committed (s 72), and the six enhanced-penalty sections that double a maximum (ss 73 to 74E). It does **not** attach a punishment to any offence section: no `the proposed act constitutes ...` wrapper returns one, and the doubling rules take the base maximum as a caller-supplied argument. The encoding still answers whether the constitutive test is met, not what sentence a court would pass.
 - **ss 32 to 38** are encoded as standalone attribution tests. They are not applied automatically to the offence wrappers: an agent that wants s 34 common-intention liability must call `the person is liable under section 34 as if he did the act alone` itself.
 - **The defined terms** in `chapter-2-definitions.l4` (ss 11, 19, 21, 22, 29, 30, 40, 43, 44, 51 and the rest) are likewise callable but not spliced into the offence tests, which continue to take the underlying facts as booleans asserted by the caller.
+- **Chapter 5, ss 111, 113 and 114** are not encoded. The rest of ss 109 to 120 are punishment and concealment provisions, consistent with this subject not computing sentence, but these three are substantive abetment-liability rules and their absence is a real gap. See `registers/coverage-register.md` §6.
 - **Computer Misuse Act 1993** is a different Act and is not in the source bundle.
 
 ## 3. Interpretive choices
