@@ -102,7 +102,7 @@ Two of these are worth naming here because a caller could be misled:
 
 ## 5. Interpretive choices
 
-Fourteen are recorded in `NOTES.md` §3, each tied to the words of the section that provoked
+Sixteen are recorded in `NOTES.md` §3, each tied to the words of the section that provoked
 it. The ones that most affect what the screen returns:
 
 - **s 415** does not gate on "sole or main inducement", because the section says the
@@ -120,15 +120,18 @@ it. The ones that most affect what the screen returns:
 
 Two passes, both recorded:
 
-- `registers/verification-register.md` — a **fidelity** pass reading every pre-existing rule
-  against the deposited source text. Twelve defects found, two of them high severity
-  (s 84 exempting every act of any person of unsound mind; s 505 limb (a) missing
-  altogether). All twelve fixed.
+- `registers/verification-register.md` — a **fidelity** pass over every rule that existed
+  before 09 Sep 2026. Twelve defects, two of them high severity (s 84 exempting every act of
+  any person of unsound mind; s 505 limb (a) missing altogether). All twelve fixed.
+- `registers/verification-register-pass-2.md` — the same treatment for the rules added that
+  day, so that every encoded rule has now been read back against the source. Four defects,
+  two of them medium (s 74B given the wrong excluded-offence list; s 89's "by the guardian"
+  limb rendered as the s 76 test). All four fixed.
 - `registers/coverage-register.md` — a **coverage** pass matching every `@ref` in the
   encoding against the Act's arrangement of sections, so the gaps are auditable rather than
   described.
 - `report/machine-evaluation.md` — a **mechanical** pass running every module through the
-  `jl4-lsp` language server as a batch checker: **17 modules, 0 type errors, 53 of 53
+  `jl4-lsp` language server as a batch checker: **17 modules, 0 type errors, 55 of 55
   assertions satisfied**, no directive skipped or stubbed. The checker was itself validated
   by injecting a type error into `types.l4` and confirming that all nine assertions in
   `agent-cases.l4`, three imports away, collapsed. Limits of the run are in that file.

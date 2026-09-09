@@ -8,9 +8,16 @@ numbers and matched against the Act's own arrangement of sections, as it appears
 citations (`ss 45, 46, 47, 48`) and ranges (`ss 76 to 95`) are expanded; subsection numbers
 in parentheses are stripped so that `s 120A(4) and (5)` does not read as sections 4 and 5.
 
-This register is mechanical. It records that a section **has a rule carrying its citation**,
-not that the rule is a correct or complete reading of it. Fidelity is a separate question,
-answered in part by `registers/verification-register.md`.
+This register is mechanical. It records that a section **is cited by the encoding**, not that
+the rule is a correct or complete reading of it. Fidelity is a separate question, answered by
+`registers/verification-register.md` and `registers/verification-register-pass-2.md`.
+
+One limit of the method is worth stating, because the fidelity pass found it: a citation may
+sit on a `DECLARE` rather than on a rule, in which case this register counts the section as
+covered although nothing decides it. That was true of ss 45 and 46 when this register was
+first generated (defect W4 in pass 2). Both now have rules, so the count below stands -- but
+a future reader should treat any single-citation section as worth checking rather than as
+proven.
 
 ---
 
@@ -361,4 +368,4 @@ script. It is not committed here for the same reason the machine checker is not:
 repository holds law, and tooling belongs in `l4-ide`.
 
 A section acquiring or losing an `@ref` changes these counts, so re-run this whenever modules
-are added or citations edited.
+are added or citations edited. Counts here are current as at the pass-2 fixes.

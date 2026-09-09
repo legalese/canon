@@ -38,6 +38,7 @@ agent-cases.l4                scenario fixtures, machine-asserted
 registers/source-bundle/      PC1871.txt / .pdf as retrieved 09 Sep 2026
 registers/verification-register.md  the fidelity pass over the pre-existing rules
 registers/coverage-register.md      which sections are modelled, and which are not
+registers/verification-register-pass-2.md  the fidelity pass over the rules added 09 Sep
 report/machine-evaluation.md  how the encoding was machine-checked, and against what
 ```
 
@@ -83,16 +84,20 @@ likely to walk into when checking its own output or a user's requested act.
 - **s 72** orders punishments as death > imprisonment for life > the longer maximum term. Fine, caning and forfeiture do not enter the ordering; where two punishments are equal on all three ranked limbs the first is not treated as the lower.
 - **ss 73 to 74E** are encoded on the doubling trigger, the excluded-offence carve-outs and the statutory defence of each section. `the punishment after enhancement of` doubles the maximum imprisonment and the maximum fine **once**, however many of ss 73 to 74D are engaged, which is s 74E(1)(a). s 74E(1)(b) -- which of the engaged sections the court picks -- is not encoded, and does not matter while every section doubles by the same factor.
 - **s 74E(2)** is satisfied structurally rather than by a rule. A prescribed minimum passes through `the punishment after enhancement of` unchanged, so no minimum sentence of imprisonment or caning is ever enhanced (s 74E(2)(a)); and the `Punishment` record carries no maximum number of strokes at all, only a minimum, so no maximum can be enhanced (s 74E(2)(b)).
+- **s 81's Explanation** ("it is a question of fact whether the harm to be prevented was of such a nature and so imminent as to justify or excuse the risk") is encoded as a conjunct, not as commentary, on the view that without it the section does not excuse.
+- **s 27** is given a first limb the section does not state -- `the person has the property physically`. s 27 is a deeming rule about possession through a spouse, clerk or servant; the encoding carries the ordinary case it builds on so the predicate is usable on its own.
 - **s 84** remains encoded on the opening fact plus the s 84(1)(a)-(c) capacity limbs and the s 84(2) both-limbs requirement, as corrected in `registers/verification-register.md` (V1).
 
 ## 4. Status
 
 `draft`. No claim of fidelity. No HG1/HG2 grant.
 
-Machine-checked: 17 modules, 0 type errors, 53 of 53 assertions satisfied
-(`report/machine-evaluation.md`). A fidelity pass over the rules that existed before
-09 Sep 2026 is recorded in `registers/verification-register.md`; the rules added that day
--- ss 26A, 26E to 26H, 77 to 81, 85 to 94, and the whole of `chapter-2-definitions.l4`,
-`chapter-2-participation.l4` and `chapter-3-punishments.l4` -- have not yet been read back
-against the source by a second pass.
+Machine-checked: 17 modules, 0 type errors, 55 of 55 assertions satisfied
+(`report/machine-evaluation.md`).
+
+Every encoded rule has now been read back against the deposited source text, in two passes:
+`registers/verification-register.md` for the rules that existed before 09 Sep 2026 (twelve
+defects, all fixed) and `registers/verification-register-pass-2.md` for the rules added that
+day (four defects, all fixed). Neither pass is an adversarial review, and neither can reach
+the sections `registers/coverage-register.md` records as absent.
 

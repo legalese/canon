@@ -1,7 +1,7 @@
 # Penal Code 1871 — machine evaluation report
 
 **Run date:** 2026-09-09
-**Verdict:** **0 type errors across all 17 modules; 53 of 53 assertions satisfied.**
+**Verdict:** **0 type errors across all 17 modules; 55 of 55 assertions satisfied.**
 No directive was skipped, stubbed or held back.
 
 ---
@@ -88,7 +88,7 @@ so the temporal gap that limited the `FinMont-demo` run does not arise here at a
 | `chapter-2-definitions.l4` | 0 | 8 |
 | `chapter-2-explanations.l4` | 0 | 4 |
 | `chapter-2-participation.l4` | 0 | 5 |
-| `chapter-3-punishments.l4` | 0 | 7 |
+| `chapter-3-punishments.l4` | 0 | 9 |
 | `chapter-4-exceptions.l4` | 0 | — (no directives) |
 | `chapter-5-abetment.l4` | 0 | — (no directives) |
 | `chapter-5a-conspiracy.l4` | 0 | 4 |
@@ -100,7 +100,7 @@ so the temporal gap that limited the `FinMont-demo` run does not arise here at a
 | `chapter-23-attempts.l4` | 0 | 2 |
 | `agent-compliance.l4` | 0 | — (no directives) |
 | `agent-cases.l4` | 0 | 9 |
-| **total** | **0** | **53 of 53** |
+| **total** | **0** | **55 of 55** |
 
 ### 4.1 The six modules with no directives
 
@@ -123,11 +123,18 @@ line 349: `Offence Screen` OF TRUE, TRUE, FALSE, FALSE, … , FALSE
 
 ## 5. Changes made to the repository by this run
 
-**None.** Every rule in this subject type-checked and every assertion held on the first full
-run. The twelve defects listed in `registers/verification-register.md` were fidelity
-defects found by reading the statute, not by running the engine; the note there that the
-pre-existing encoding was "mechanically sound" is confirmed, and remains true after the
-three modules added since.
+**None by the machine run itself.** Every rule type-checked and every assertion held on the
+first full run, before and after the fidelity work described below.
+
+This matters for how the two kinds of defect are told apart. The twelve defects in
+`registers/verification-register.md` and the four in
+`registers/verification-register-pass-2.md` were **all** found by reading the statute, and
+**none** of them by running the engine. A rule that says the wrong thing type-checks
+perfectly. W1 in pass 2 is the sharpest illustration: the s 74B exclusion list shared a
+boolean with ss 73 and 74A, which is well-formed L4 and a misreading of the Code.
+
+The assertion count rose from 53 to 55 because pass 2 added a regression fixture
+(`section 335A offence against a child below 14`) with two assertions, to hold W1 fixed.
 
 ## 6. What machine evaluation does not establish
 
@@ -136,14 +143,14 @@ a faithful reading of the law.
 
 Unchanged by this run:
 
-- the fourteen interpretive choices in `NOTES.md` §3 — a passing assertion about s 38 or
+- the sixteen interpretive choices in `NOTES.md` §3 — a passing assertion about s 38 or
   s 405 confirms only that the encoding does what the encoder intended, not that the
   intention is right;
 - everything named in `NOTES.md` §2 as absent, above all **Chapter 4A** (private defence,
   ss 96 to 106): no assertion can fail for a rule that was never written, so the screen's
   known over-inclusiveness on defences survives a clean run untouched;
 - the three freestanding modules (`chapter-2-definitions`, `chapter-2-participation`,
-  `chapter-3-punishments`) are checked in isolation and their 20 assertions hold, but
+  `chapter-3-punishments`) are checked in isolation and their 22 assertions hold, but
   nothing in this subject calls them, so nothing here exercises them in combination with
   the offence tests;
 - `status` stays `draft`, and no human gate has been granted. Assertions are not HG1.
