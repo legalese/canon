@@ -1,0 +1,346 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `psd2-sca-domain`
+IMPORT `psd2-sca-rts`
+
+§ `FinMont — SCA orchestration entry points`
+
+-- ===========================================================================
+-- THE FIRM-FACING LAYER.
+--
+-- `psd2-sca-rts` says what Commission Delegated Regulation (EU) 2018/389
+-- says, and nothing else. THIS module answers the three questions FinMont's
+-- payment orchestration actually asks at authorisation time:
+--
+--     `is SCA required`          — one boolean, for a gate
+--     `SCA assessment for`       — outcome + every exemption available +
+--                                  a reason string, for a decision log
+--     `exemptions available for` — the candidate set, in Article order, for
+--                                  an exemption-preference policy
+--
+-- THE SCOPE GATES BELOW ARE NOT ALL IN THE SUPPLIED SOURCE. Only two of the
+-- five come from Regulation (EU) 2018/389 itself (recital 8, anonymity; and
+-- Art 38(2), application date). The other three — mail order and telephone
+-- order, merchant-initiated transactions, and one-leg-out — rest on
+-- Directive (EU) 2015/2366 Art 97 and on EBA guidance, neither of which was
+-- supplied with this job. Each is marked UNVERIFIED at its @ref and carries
+-- an entry in registers/ambiguity-register.md. They are here because a travel
+-- orchestrator that omitted them would over-challenge a large share of
+-- FinMont's real traffic, but they are the first thing to re-verify.
+--
+-- WHAT "EXEMPT" MEANS HERE. Chapter III confers POWERS on payment service
+-- providers, not rights on merchants. `SCA exempt` therefore means "an
+-- exemption is available on these facts", never "no authentication will
+-- happen". On a card transaction the exemption FinMont flags travels as an
+-- acquirer request; the issuer decides, and may soft-decline. FinMont must
+-- treat a returned outcome as a request, and must be able to step up.
+-- ===========================================================================
+
+
+§§ `The input bundle`
+
+-- Not a legal noun: an orchestration-layer aggregate, so a decision can be
+-- taken from one call with one audit record behind it.
+DECLARE `Assessment Input` HAS
+    `transaction`    IS A `Payment Transaction`
+    `counters`       IS AN `Exemption Counters`
+    `account access` IS AN `Account Information Access`
+    `risk analysis`  IS A `Real Time Risk Analysis`
+    `provider`       IS A `PSP Profile`
+
+GIVEN i IS AN `Assessment Input`
+GIVETH A BOOLEAN
+`article 2 monitoring is in place for` MEANS
+    (i's `provider`)'s `has transaction monitoring mechanisms under article 2`
+
+
+§§ `Scope gates — is the transaction within the SCA obligation at all?`
+
+-- IN THE SUPPLIED SOURCE. Recital 8: "Due to their very nature, payments made
+-- through the use of an anonymous payment instruments are not subject to the
+-- obligation of strong customer authentication."
+@ref "Regulation (EU) 2018/389, recital 8"
+GIVEN t IS A `Payment Transaction`
+GIVETH A BOOLEAN
+DECIDE `out of scope because the instrument is anonymous` IF
+    t's `uses an anonymous payment instrument`
+
+-- UNVERIFIED — Directive (EU) 2015/2366 Art 97(1) not supplied.
+-- Art 97(1) engages only where the payer accesses its account online,
+-- initiates an ELECTRONIC payment transaction, or acts through a remote
+-- channel implying a risk of fraud. A mail order or telephone order is not
+-- electronically initiated by the payer, so the obligation does not engage.
+-- Directly relevant to FinMont: airline and tour-operator call-centre sales.
+@ref "Directive (EU) 2015/2366, Art 97(1) — UNVERIFIED"
+GIVEN t IS A `Payment Transaction`
+GIVETH A BOOLEAN
+DECIDE `out of scope because the order is mail order or telephone order` IF
+    t's `initiation channel` EQUALS `mail order or telephone order`
+
+-- UNVERIFIED — rests on Art 97(1) PSD2 and on EBA guidance, not supplied.
+-- A charge the merchant raises later under a mandate already set up with SCA
+-- is not an action carried out BY THE PAYER. This is the analysis FinMont
+-- needs for post-ticketing ancillaries: a change fee, a no-show fee, an
+-- excess-baggage charge or a hotel incidental billed after check-out.
+--
+-- Note the boundary carefully. This is NOT the Article 14 recurring-series
+-- exemption. Article 14 requires the SAME amount and the SAME payee and is a
+-- CHAPTER III EXEMPTION; a merchant-initiated variable charge is instead
+-- OUTSIDE the obligation. Conflating the two is the single most common
+-- modelling error in travel orchestration. See AR-06.
+@ref "Directive (EU) 2015/2366, Art 97(1) — UNVERIFIED"
+GIVEN t IS A `Payment Transaction`
+GIVETH A BOOLEAN
+DECIDE `out of scope because the transaction is merchant initiated` IF
+    t's `initiator` EQUALS `merchant initiated under a stored mandate`
+
+-- UNVERIFIED — rests on Art 2 PSD2 and on the EBA Opinion on the elements of
+-- strong customer authentication, neither supplied.
+-- Where either the payer's or the payee's provider is established outside the
+-- EEA, the SCA obligation is not enforceable against the leg outside; the
+-- position taken here is that SCA is not REQUIRED, and the EEA-side provider
+-- applies it on a best-efforts basis. This is the cross-border gate FinMont
+-- asked for: an EEA cardholder buying from a non-EEA airline acquirer, or a
+-- non-EEA cardholder buying from an EEA merchant, lands here.
+--
+-- This is the encoding's most consequential interpretive choice and the one
+-- most likely to move: it is guidance, it is contested, and it is
+-- jurisdiction-sensitive. Do not ship it without local advice. See AR-07.
+@ref "Directive (EU) 2015/2366, Art 2 — UNVERIFIED"
+GIVEN t IS A `Payment Transaction`
+GIVETH A BOOLEAN
+DECIDE `out of scope because only one leg is in the EEA` IF
+        t's `payer PSP location` EQUALS `established outside the EEA`
+    OR  t's `payee PSP location` EQUALS `established outside the EEA`
+
+-- IN THE SUPPLIED SOURCE. Art 38(2): the Regulation applies from
+-- 14 September 2019. Evaluate this module under
+-- `EVAL UNDER RULES EFFECTIVE AT` to ask the question as at any date.
+@ref "Regulation (EU) 2018/389, Art 38(2)"
+GIVEN t IS A `Payment Transaction`
+GIVETH A BOOLEAN
+DECIDE `out of scope because the Regulation was not yet in application` IF
+    NOT `the SCA-RTS is in application`
+
+@ref "Regulation (EU) 2018/389, recital 8; Directive (EU) 2015/2366, Arts 2 and 97 — PARTLY UNVERIFIED"
+GIVEN t IS A `Payment Transaction`
+GIVETH A BOOLEAN
+DECIDE `the transaction is outside the SCA obligation` IF
+        `out of scope because the Regulation was not yet in application` t
+    OR  `out of scope because the instrument is anonymous` t
+    OR  `out of scope because the order is mail order or telephone order` t
+    OR  `out of scope because the transaction is merchant initiated` t
+    OR  `out of scope because only one leg is in the EEA` t
+
+GIVEN t IS A `Payment Transaction`
+GIVETH A STRING
+`the reason the transaction is outside the SCA obligation` MEANS
+    IF   `out of scope because the Regulation was not yet in application` t
+    THEN "Out of scope: Regulation (EU) 2018/389 applies only from 14 September 2019 (Art 38(2))."
+    ELSE IF   `out of scope because the instrument is anonymous` t
+         THEN "Out of scope: anonymous payment instrument (recital 8)."
+         ELSE IF   `out of scope because the order is mail order or telephone order` t
+              THEN "Out of scope: mail order or telephone order is not electronically initiated by the payer (PSD2 Art 97(1)) — UNVERIFIED."
+              ELSE IF   `out of scope because the transaction is merchant initiated` t
+                   THEN "Out of scope: merchant-initiated under a stored mandate, not an action carried out by the payer (PSD2 Art 97(1)) — UNVERIFIED. NOT the Art 14 exemption."
+                   ELSE "Out of scope: one leg outside the EEA; SCA applied on a best-efforts basis (PSD2 Art 2) — UNVERIFIED."
+
+
+§§ `Mandatory authentication — the Chapter III duties that beat every exemption`
+
+-- Arts 13(1) and 14(1) are duties, not exemptions. Setting up a trusted
+-- beneficiary or opening a recurring series is authenticated even where the
+-- transaction would otherwise sit inside an exemption. In FinMont's traffic
+-- this is the moment a traveller stores a card on file with an agency or
+-- starts an instalment plan.
+@ref "Regulation (EU) 2018/389, Arts 13(1) and 14(1)"
+GIVEN t IS A `Payment Transaction`
+GIVETH A BOOLEAN
+DECIDE `strong customer authentication is mandatory on these facts` IF
+        `article 13(1) requires strong customer authentication` t
+    OR  `article 14(1) requires strong customer authentication` t
+
+
+§§ `The exemption sweep`
+
+@ref "Regulation (EU) 2018/389, Chapter III"
+`all chapter III exemptions` MEANS
+    LIST `article 10 payment account information`
+       , `article 11 contactless at point of sale`
+       , `article 12 unattended transport or parking terminal`
+       , `article 13 trusted beneficiary`
+       , `article 14 recurring transaction`
+       , `article 15 credit transfer between accounts of the same person`
+       , `article 16 low value remote payment`
+       , `article 17 secure corporate payment process`
+       , `article 18 transaction risk analysis`
+
+-- Every exemption available on these facts, in Article order. The list is
+-- returned whole rather than reduced to a winner: which one to REQUEST is a
+-- commercial policy decision (an acquirer will usually prefer Art 18 over
+-- Art 16 to preserve the low-value counters), and policy does not belong in
+-- an encoding of the law.
+@ref "Regulation (EU) 2018/389, Arts 10 to 18"
+GIVEN i IS AN `Assessment Input`
+GIVETH A LIST OF `SCA Exemption`
+`exemptions available for` MEANS
+    filter available `all chapter III exemptions`
+    WHERE
+        GIVEN e IS AN `SCA Exemption`
+        GIVETH A BOOLEAN
+        available MEANS
+            CONSIDER e
+            WHEN `article 10 payment account information` THEN
+                `article 10 exemption is available`
+                    (i's `account access`) (`article 2 monitoring is in place for` i)
+            WHEN `article 11 contactless at point of sale` THEN
+                `article 11 exemption is available`
+                    (i's `transaction`) (i's `counters`) (`article 2 monitoring is in place for` i)
+            WHEN `article 12 unattended transport or parking terminal` THEN
+                `article 12 exemption is available`
+                    (i's `transaction`) (`article 2 monitoring is in place for` i)
+            WHEN `article 13 trusted beneficiary` THEN
+                `article 13 exemption is available`
+                    (i's `transaction`) (`article 2 monitoring is in place for` i)
+            WHEN `article 14 recurring transaction` THEN
+                `article 14 exemption is available`
+                    (i's `transaction`) (`article 2 monitoring is in place for` i)
+            WHEN `article 15 credit transfer between accounts of the same person` THEN
+                `article 15 exemption is available`
+                    (i's `transaction`) (`article 2 monitoring is in place for` i)
+            WHEN `article 16 low value remote payment` THEN
+                `article 16 exemption is available`
+                    (i's `transaction`) (i's `counters`)
+            WHEN `article 17 secure corporate payment process` THEN
+                `article 17 exemption is available` (i's `transaction`)
+            WHEN `article 18 transaction risk analysis` THEN
+                `article 18 exemption is available`
+                    (i's `transaction`) (i's `risk analysis`) (i's `provider`)
+
+
+§§ `The entry points`
+
+@ref "Regulation (EU) 2018/389, Chapters I and III"
+GIVEN i IS AN `Assessment Input`
+GIVETH AN `SCA Outcome`
+`SCA outcome for` MEANS
+    IF   `the transaction is outside the SCA obligation` (i's `transaction`)
+    THEN `SCA out of scope`
+    ELSE IF   `strong customer authentication is mandatory on these facts` (i's `transaction`)
+         THEN `SCA required`
+         ELSE IF   null (`exemptions available for` i)
+              THEN `SCA required`
+              ELSE `SCA exempt`
+
+-- The single boolean a payment gateway gates on. Note that it answers FALSE
+-- both when an exemption is available and when the transaction is out of
+-- scope: for a gate those are the same instruction. Anything that has to tell
+-- them apart — reporting under Art 21, or a decision log — must use
+-- `SCA assessment for` instead.
+@ref "Regulation (EU) 2018/389, Chapters I and III"
+GIVEN i IS AN `Assessment Input`
+GIVETH A BOOLEAN
+DECIDE `is SCA required` IF
+    `SCA outcome for` i EQUALS `SCA required`
+
+@ref "Regulation (EU) 2018/389, Chapters I and III"
+GIVEN i IS AN `Assessment Input`
+GIVETH A STRING
+`the reason for the SCA outcome` MEANS
+    IF   `the transaction is outside the SCA obligation` (i's `transaction`)
+    THEN `the reason the transaction is outside the SCA obligation` (i's `transaction`)
+    ELSE IF   `strong customer authentication is mandatory on these facts` (i's `transaction`)
+         THEN "SCA required: Art 13(1) or Art 14(1) imposes authentication on the creation or amendment of a trusted beneficiary list or a recurring series."
+         ELSE IF   null (`exemptions available for` i)
+              THEN "SCA required: no Chapter III exemption is available on these facts."
+              ELSE "SCA exempt: at least one Chapter III exemption is available. The exemption is a power of the payment service provider; on a card transaction the issuer may still decline it."
+
+-- An out-of-scope transaction reports NO exemptions: nothing was exempted,
+-- because nothing was required. For an authorisation gate the two are the same
+-- instruction, but Art 21(1)(c) requires the number of transactions on which
+-- each exemption was APPLIED, and a log that cannot tell them apart will
+-- misreport.
+@ref "Regulation (EU) 2018/389, Art 21(1)(c)"
+GIVEN i IS AN `Assessment Input`
+GIVETH A LIST OF `SCA Exemption`
+`exemptions to report for` MEANS
+    IF   `the transaction is outside the SCA obligation` (i's `transaction`)
+    THEN EMPTY
+    ELSE `exemptions available for` i
+
+-- The full record: what to write to the decision log.
+@ref "Regulation (EU) 2018/389, Chapters I and III"
+GIVEN i IS AN `Assessment Input`
+GIVETH AN `SCA Assessment`
+`SCA assessment for` MEANS
+    `SCA Assessment` WITH
+        `outcome`              IS `SCA outcome for` i
+        `exemptions available` IS `exemptions to report for` i
+        `reason`               IS `the reason for the SCA outcome` i
+
+
+§§ `Travel-sector readings — how FinMont's own traffic maps onto Chapter III`
+
+-- These are not new rules. Each is a named, citable pointer from a shape that
+-- recurs in travel orchestration to the Article that governs it, so that a
+-- reviewer can check the mapping instead of re-deriving it per integration.
+
+-- Art 12 is the strongest exemption in the Regulation for a transport
+-- business: no amount ceiling, no counter, no fraud-rate condition. A rail
+-- ticket machine, a metro gate and an airport car park all sit inside it.
+@ref "Regulation (EU) 2018/389, Art 12"
+GIVEN t IS A `Payment Transaction`
+GIVETH A BOOLEAN
+DECIDE `is an unattended transport or parking sale` IF
+        t's `initiation channel` EQUALS `unattended terminal`
+    AND t's `purpose is a transport fare or a parking fee`
+
+-- Art 5(3)(b): a consented batch of remote electronic transactions to one or
+-- several payees authenticates against the TOTAL of the batch and the
+-- specified payees. This is the multi-supplier travel basket — flight plus
+-- hotel plus transfer, settled to three different payees off one consent.
+-- The consequence to design for: change any leg of the basket and Art 5(1)(d)
+-- invalidates the authentication code. A basket that can be re-priced after
+-- authentication must be re-authenticated.
+@ref "Regulation (EU) 2018/389, Art 5(1)(d) and Art 5(3)(b)"
+GIVEN `the batch was re-priced after authentication` IS A BOOLEAN
+    , `a payee was added or changed after authentication` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the basket must be re-authenticated` IF
+        `the batch was re-priced after authentication`
+    OR  `a payee was added or changed after authentication`
+
+-- Art 5(3)(a): consent to an exact amount to be BLOCKED under Art 75(1) PSD2.
+-- The hotel and car-hire pre-authorisation. The code is specific to the
+-- blocked amount, not to the amount finally captured — so a final bill above
+-- the blocked figure is not covered by that authentication.
+@ref "Regulation (EU) 2018/389, Art 5(3)(a)"
+GIVEN `amount blocked with consent` IS A NUMBER
+    , `amount finally captured`     IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the capture exceeds the consented blocked amount` IF
+    `amount finally captured` GREATER THAN `amount blocked with consent`
+
+-- Art 17: corporate travel. A travel management company running lodge cards
+-- or virtual card numbers through a dedicated corporate protocol, for
+-- non-consumer payers, with the competent authority satisfied. Note the third
+-- condition: authority satisfaction is a supervisory fact FinMont must hold
+-- evidence of per market, not a property of the transaction.
+@ref "Regulation (EU) 2018/389, Art 17"
+GIVEN t IS A `Payment Transaction`
+GIVETH A BOOLEAN
+DECIDE `is a corporate travel payment capable of the article 17 exemption` IF
+    `article 17 exemption is available` t
+
+-- Art 14 and travel instalments. A deposit-then-balance booking is NOT an
+-- Art 14 series unless both charges are the SAME amount to the SAME payee —
+-- which a deposit and a balance are, by construction, not. Nor is a plan
+-- whose instalments move with an exchange rate. Those fall to be analysed as
+-- merchant-initiated instead. See AR-05.
+@ref "Regulation (EU) 2018/389, Art 14(1)"
+GIVEN `every instalment is the same amount` IS A BOOLEAN
+    , `every instalment is to the same payee` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the instalment plan can be an article 14 series` IF
+        `every instalment is the same amount`
+    AND `every instalment is to the same payee`

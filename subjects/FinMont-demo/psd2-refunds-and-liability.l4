@@ -1,0 +1,371 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `psd2-sca-domain`
+
+§ `Directive (EU) 2015/2366 — refund deadlines and liability allocation`
+
+-- ===========================================================================
+-- ⚠  SECONDARY SOURCE — READ NOTES.md §3 BEFORE RELYING ON THIS MODULE.
+--
+-- FinMont asked for three things: the SCA eligibility check, refund
+-- obligation deadlines, and the chargeback liability shift. Only the FIRST is
+-- in the document supplied with this job. Commission Delegated Regulation
+-- (EU) 2018/389 contains no refund deadline and no liability rule at all: it
+-- is a regulatory technical standard on authentication and communication.
+--
+-- The refund deadlines and the liability shift are in the PARENT INSTRUMENT,
+-- Directive (EU) 2015/2366 (PSD2), Title IV, Chapter 4 (Arts 71 to 77) and
+-- Chapter 5 (Arts 88 to 93). That text was NOT supplied. This module is
+-- therefore encoded from the Directive as the encoder understands it, and
+-- every rule in it is marked
+--
+--     UNVERIFIED — no source text supplied for this Article
+--
+-- The subject's status in subject.json is "draft" for exactly this reason.
+-- Deposit the Directive's text in the source bundle and re-verify each @ref
+-- before this module goes near a production decision.
+--
+-- A note on the word "chargeback". Chargeback is a CARD SCHEME mechanism —
+-- Visa and Mastercard rulebooks — not an EU-law one. EU law supplies the
+-- liability ALLOCATION that the scheme rules then operationalise: PSD2
+-- Art 74(2) is the SCA liability shift. Scheme chargeback reason codes and
+-- their presentment windows (including the long delayed-delivery windows the
+-- travel industry lives on) are contractual and vary by scheme, region and
+-- release. They are NOT encoded here and MUST NOT be invented: FinMont
+-- supplies them from its own scheme rulebooks. NOTES.md §6 sets out the seam.
+-- ===========================================================================
+
+
+§§ `Business days — PSD2 Article 4(37)`
+
+-- UNVERIFIED — no source text supplied for this Article
+-- Art 4(37) defines a business day by reference to whether the relevant
+-- provider "is open for business as required for the execution of a payment
+-- transaction". That is provider-specific and calendar-specific.
+--
+-- MODELLED HERE as Monday to Friday only. Public holidays are NOT modelled;
+-- see register entry AR-09. A deadline computed here is therefore the
+-- EARLIEST possible one, and a real calendar can only push it later.
+@ref "Directive (EU) 2015/2366, Art 4(37) — UNVERIFIED"
+GIVEN `start date` IS A DATE
+    , `business days` IS A NUMBER
+GIVETH A DATE
+`business days after` MEANS
+    IF   `business days` AT MOST 0
+    THEN `start date`
+    ELSE IF   `is weekend` next
+         THEN `business days after` next `business days`
+         ELSE `business days after` next (`business days` MINUS 1)
+    WHERE
+        next MEANS `start date` PLUS 1
+
+GIVEN `start date` IS A DATE
+GIVETH A DATE
+`the end of the following business day after` MEANS
+    `business days after` `start date` 1
+
+
+§§ `Article 71 — Notification and rectification of unauthorised transactions`
+
+-- UNVERIFIED — no source text supplied for this Article
+-- Art 71(1): the user obtains rectification only if it notifies without undue
+-- delay on becoming aware, and in any event no later than 13 months after the
+-- debit date.
+@ref "Directive (EU) 2015/2366, Art 71(1) — UNVERIFIED"
+`months to notify an unauthorised transaction` MEANS 13
+
+@ref "Directive (EU) 2015/2366, Art 71(1) — UNVERIFIED"
+GIVEN `date the amount was debited` IS A DATE
+GIVETH A DATE
+`deadline to notify an unauthorised transaction` MEANS
+    `add months` `date the amount was debited` `months to notify an unauthorised transaction`
+
+@ref "Directive (EU) 2015/2366, Art 71(1) — UNVERIFIED"
+GIVEN c IS AN `Unauthorised Transaction Claim`
+GIVETH A BOOLEAN
+DECIDE `the claim was notified in time` IF
+    (DATE_SERIAL (c's `date the payer notified the payment service provider`))
+        AT MOST (DATE_SERIAL (`deadline to notify an unauthorised transaction`
+                                 (c's `date the amount was debited`)))
+
+
+§§ `Article 73 — Refund of an unauthorised payment transaction`
+
+-- UNVERIFIED — no source text supplied for this Article
+-- Art 73(1): the payer's provider refunds the amount "immediately, and in any
+-- event no later than by the end of the following business day" after noting
+-- or being notified of the transaction, restores the account to the state it
+-- would have been in, and gives a credit value date no later than the debit
+-- date.
+--
+-- Second subparagraph: that deadline is suspended where the provider has
+-- reasonable grounds to suspect fraud AND communicates those grounds in
+-- writing to the relevant national authority.
+@ref "Directive (EU) 2015/2366, Art 73(1) — UNVERIFIED"
+GIVEN c IS AN `Unauthorised Transaction Claim`
+GIVETH A DATE
+`deadline to refund an unauthorised transaction` MEANS
+    `the end of the following business day after`
+        (c's `date the payment service provider became aware or was notified`)
+
+@ref "Directive (EU) 2015/2366, Art 73(1) — UNVERIFIED"
+GIVEN c IS AN `Unauthorised Transaction Claim`
+GIVETH A BOOLEAN
+DECIDE `the immediate refund obligation is engaged` IF
+        `the claim was notified in time` c
+    AND NOT c's `the payer acted fraudulently`
+    AND NOT c's `the provider has reasonable grounds to suspect fraud and has notified the national authority in writing`
+
+-- Art 73(1) third subparagraph: the credit value date is no later than the
+-- date on which the amount was debited.
+@ref "Directive (EU) 2015/2366, Art 73(1) — UNVERIFIED"
+GIVEN c IS AN `Unauthorised Transaction Claim`
+GIVETH A DATE
+`latest permitted value date for the refund credit` MEANS
+    c's `date the amount was debited`
+
+
+§§ `Article 74 — Payer liability, and the strong customer authentication shift`
+
+-- UNVERIFIED — no source text supplied for this Article
+-- Art 74(1): by way of derogation from Art 73 the payer may be obliged to
+-- bear losses from a lost, stolen or misappropriated instrument up to EUR 50.
+@ref "Directive (EU) 2015/2366, Art 74(1) — UNVERIFIED"
+`article 74 payer liability cap in euro` MEANS 50
+
+-- Art 74(1) second subparagraph: the cap does not apply at all where
+-- (a) the loss was not detectable to the payer before the payment (except
+--     where the payer acted fraudulently); or
+-- (b) the loss was caused by an act or omission of an employee, agent or
+--     branch of a provider, or of an outsourcee.
+@ref "Directive (EU) 2015/2366, Art 74(1) — UNVERIFIED"
+GIVEN c IS AN `Unauthorised Transaction Claim`
+GIVETH A BOOLEAN
+DECIDE `the article 74(1) cap is disapplied in the payer favour` IF
+        (    c's `the loss was not detectable to the payer before the payment`
+         AND NOT c's `the payer acted fraudulently` )
+    OR  c's `the loss was caused by an act or omission of the provider or its agent or outsourcee`
+
+-- Art 74(1) third subparagraph: the payer bears ALL of the losses where it
+-- acted fraudulently, or failed its Art 69 obligations with intent or gross
+-- negligence. The EUR 50 cap then falls away.
+@ref "Directive (EU) 2015/2366, Art 74(1) — UNVERIFIED"
+GIVEN c IS AN `Unauthorised Transaction Claim`
+GIVETH A BOOLEAN
+DECIDE `the payer bears the whole loss under article 74(1)` IF
+        c's `the payer acted fraudulently`
+    OR  c's `the payer failed article 69 obligations with intent or gross negligence`
+
+-- Art 74(3): no financial consequences for the payer after it has notified
+-- the loss under Art 69(1)(b), nor at all where the provider failed to
+-- provide means of notification at all times — in each case unless the payer
+-- acted fraudulently.
+@ref "Directive (EU) 2015/2366, Art 74(3) — UNVERIFIED"
+GIVEN c IS AN `Unauthorised Transaction Claim`
+GIVETH A BOOLEAN
+DECIDE `article 74(3) relieves the payer entirely` IF
+        NOT c's `the payer acted fraudulently`
+    AND (    c's `the transaction occurred after the payer notified loss under article 69(1)(b)`
+          OR c's `the provider failed to supply means of notification at all times` )
+
+-- ------------------------------------------------------------------------
+-- Art 74(2) — THE LIABILITY SHIFT. This is the provision FinMont means when
+-- it says "chargeback liability shift", and the only one EU law supplies.
+--
+--   "Where the payer's payment service provider does not require strong
+--    customer authentication, the payer shall not bear any financial losses
+--    unless the payer has acted fraudulently. Where the payee or the payee's
+--    payment service provider fails to accept strong customer authentication,
+--    it shall refund the financial damage caused to the payer's payment
+--    service provider."
+--
+-- Two distinct movements, and they are often conflated:
+--   (i)  issuer side — no SCA required by the payer's provider: the payer
+--        bears nothing (absent payer fraud);
+--   (ii) acceptance side — the payee or its provider did not accept SCA: that
+--        party refunds the payer's provider.
+-- Limb (ii) can bite even where limb (i) does not.
+-- ------------------------------------------------------------------------
+@ref "Directive (EU) 2015/2366, Art 74(2) first sentence — UNVERIFIED"
+GIVEN c IS AN `Unauthorised Transaction Claim`
+GIVETH A BOOLEAN
+DECIDE `the payer bears no loss because SCA was not required` IF
+        NOT c's `strong customer authentication was required by the payer payment service provider`
+    AND NOT c's `the payer acted fraudulently`
+
+@ref "Directive (EU) 2015/2366, Art 74(2) second sentence — UNVERIFIED"
+GIVEN c IS AN `Unauthorised Transaction Claim`
+GIVETH A BOOLEAN
+DECIDE `the payee side must refund the payer payment service provider` IF
+    c's `the payee or the payee payment service provider failed to accept strong customer authentication`
+
+-- The allocation, taken in the Directive's own order of precedence: total
+-- payer fault first (Art 74(1) third subparagraph), then the reliefs, then
+-- the capped residue.
+@ref "Directive (EU) 2015/2366, Art 74 — UNVERIFIED"
+GIVEN c IS AN `Unauthorised Transaction Claim`
+GIVETH A `Liability Bearer`
+`who bears the loss` MEANS
+    IF   `the payer bears the whole loss under article 74(1)` c
+    THEN `the payer bears the whole loss`
+    ELSE IF   `the payee side must refund the payer payment service provider` c
+         THEN `the payee or the payment service provider of the payee bears the loss`
+         ELSE IF      `the payer bears no loss because SCA was not required` c
+                   OR `article 74(3) relieves the payer entirely` c
+                   OR `the article 74(1) cap is disapplied in the payer favour` c
+                   OR NOT c's `arose from a lost stolen or misappropriated payment instrument`
+              THEN `the payment service provider of the payer bears the loss`
+              ELSE `the payer bears up to the article 74 cap`
+
+-- The euro figure the payer actually bears, given that allocation.
+@ref "Directive (EU) 2015/2366, Art 74 — UNVERIFIED"
+GIVEN c IS AN `Unauthorised Transaction Claim`
+GIVETH A NUMBER
+`amount the payer bears in euro` MEANS
+    CONSIDER `who bears the loss` c
+    WHEN `the payer bears the whole loss`      THEN c's `amount in euro`
+    WHEN `the payer bears up to the article 74 cap` THEN
+        min (c's `amount in euro`) `article 74 payer liability cap in euro`
+    WHEN `the payment service provider of the payer bears the loss`       THEN 0
+    WHEN `the payee or the payment service provider of the payee bears the loss` THEN 0
+
+
+§§ `Articles 76 and 77 — Refunds for transactions initiated by or through a payee`
+
+-- UNVERIFIED — no source text supplied for these Articles
+-- Art 77(1): the payer may request the refund for 8 weeks from the date on
+-- which the funds were debited.
+@ref "Directive (EU) 2015/2366, Art 77(1) — UNVERIFIED"
+`weeks to request a payee initiated refund` MEANS 8
+
+@ref "Directive (EU) 2015/2366, Art 77(1) — UNVERIFIED"
+GIVEN `date the funds were debited` IS A DATE
+GIVETH A DATE
+`deadline for the payer to request a payee initiated refund` MEANS
+    `date the funds were debited`
+        PLUS (`weeks to request a payee initiated refund` TIMES `Days in a week`)
+
+-- Art 77(2): within 10 business days of receiving the request the provider
+-- must either refund in full or give a justification for refusing and name
+-- the redress bodies.
+@ref "Directive (EU) 2015/2366, Art 77(2) — UNVERIFIED"
+`business days to refund or justify refusal` MEANS 10
+
+@ref "Directive (EU) 2015/2366, Art 77(2) — UNVERIFIED"
+GIVEN `date the payer requested the refund` IS A DATE
+GIVETH A DATE
+`deadline to refund or justify refusal` MEANS
+    `business days after` `date the payer requested the refund`
+                          `business days to refund or justify refusal`
+
+-- Art 76(3)(b): the framework contract may exclude the refund right only
+-- where consent was given directly to the provider AND, where applicable,
+-- information was made available at least 4 weeks before the due date.
+@ref "Directive (EU) 2015/2366, Art 76(3) — UNVERIFIED"
+`weeks of advance information required for the article 76(3) exclusion` MEANS 4
+
+@ref "Directive (EU) 2015/2366, Art 76(3) — UNVERIFIED"
+GIVEN r IS A `Payee Initiated Refund Claim`
+GIVETH A BOOLEAN
+DECIDE `the framework contract validly excludes the refund right` IF
+        r's `the framework contract excludes the refund right on those grounds`
+    AND r's `consent was given directly to the payment service provider`
+    AND r's `information on the transaction was made available at least 4 weeks before the due date`
+
+@ref "Directive (EU) 2015/2366, Art 77(1) — UNVERIFIED"
+GIVEN r IS A `Payee Initiated Refund Claim`
+GIVETH A BOOLEAN
+DECIDE `the refund was requested within the eight week window` IF
+        (DATE_SERIAL (r's `date the payer requested the refund`))
+            AT LEAST (DATE_SERIAL (r's `date the funds were debited`))
+    AND (DATE_SERIAL (r's `date the payer requested the refund`))
+            AT MOST (DATE_SERIAL (`deadline for the payer to request a payee initiated refund`
+                                     (r's `date the funds were debited`)))
+
+-- Art 76(1): the conditional right. Both (a) and (b) must hold, and the payer
+-- bears the burden of proving them at the provider's request.
+-- Art 76(1) fourth subparagraph: for a SEPA direct debit the right is
+-- UNCONDITIONAL, and Art 77(2) second subparagraph removes the provider's
+-- power to refuse it.
+-- Art 76(2): currency-exchange movement at the agreed reference rate cannot
+-- support condition (b).
+@ref "Directive (EU) 2015/2366, Art 76(1)–(3) — UNVERIFIED"
+GIVEN r IS A `Payee Initiated Refund Claim`
+GIVETH A BOOLEAN
+DECIDE `the payer is entitled to a refund under article 76` IF
+        r's `the transaction was authorised`
+    AND r's `initiated by or through the payee`
+    AND `the refund was requested within the eight week window` r
+    AND IF   r's `is a SEPA direct debit within Regulation (EU) No 260/2012`
+        THEN TRUE
+        ELSE     NOT `the framework contract validly excludes the refund right` r
+             AND r's `the authorisation did not specify the exact amount`
+             AND r's `the amount exceeded what the payer could reasonably have expected`
+             AND NOT r's `the payer relies only on currency exchange reasons at the agreed reference rate`
+
+-- Art 77(2) second subparagraph: the power to refuse does not exist for the
+-- unconditional SEPA direct debit right.
+@ref "Directive (EU) 2015/2366, Art 77(2) — UNVERIFIED"
+GIVEN r IS A `Payee Initiated Refund Claim`
+GIVETH A BOOLEAN
+DECIDE `the provider may refuse and justify instead of refunding` IF
+    NOT r's `is a SEPA direct debit within Regulation (EU) No 260/2012`
+
+
+§§ `Articles 89, 90 and 92 — Non-execution, payment initiation services, recourse`
+
+-- UNVERIFIED — no source text supplied for these Articles
+-- Art 89(1): where the payer's provider is liable for a non-executed,
+-- defectively executed or late executed transaction it refunds "without undue
+-- delay" and restores the account; and regardless of liability it must, on
+-- request, immediately trace the transaction free of charge. "Without undue
+-- delay" is not a countable period and is deliberately left unquantified
+-- here; see register entry AR-10.
+@ref "Directive (EU) 2015/2366, Art 89(1) — UNVERIFIED"
+GIVEN `the payer provider can prove the payee provider received the amount` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the payer payment service provider is liable for correct execution` IF
+    NOT `the payer provider can prove the payee provider received the amount`
+
+-- Art 90(2): in the payment-initiation case the account servicing provider
+-- refunds on the SAME clock as Art 73(1) — immediately, and in any event no
+-- later than by the end of the following business day.
+@ref "Directive (EU) 2015/2366, Art 90(2) — UNVERIFIED"
+GIVEN `date the account servicing provider was notified` IS A DATE
+GIVETH A DATE
+`deadline for the account servicing provider to refund a PIS transaction` MEANS
+    `the end of the following business day after` `date the account servicing provider was notified`
+
+-- Art 92(1): where a provider's liability under Art 73 or Art 89 is
+-- attributable to another provider or to an intermediary, that party
+-- compensates the first for losses incurred or sums paid. This is the recourse
+-- leg FinMont needs when it sits between the acquirer and the airline.
+@ref "Directive (EU) 2015/2366, Art 92(1) — UNVERIFIED"
+GIVEN `liability arose under article 73 or article 89`      IS A BOOLEAN
+    , `attributable to another provider or an intermediary` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a right of recourse arises under article 92` IF
+        `liability arose under article 73 or article 89`
+    AND `attributable to another provider or an intermediary`
+
+
+-- ===========================================================================
+-- ILLUSTRATIONS
+-- ===========================================================================
+
+§§ `Refunds and liability — Illustrations`
+
+§§§ `Business-day arithmetic`
+
+-- 2026-09-09 is a Wednesday; one business day later is Thursday the 10th.
+#ASSERT `the end of the following business day after` (Date 9 9 2026) EQUALS Date 10 9 2026
+-- 2026-09-11 is a Friday; one business day later skips the weekend to Monday.
+#ASSERT `the end of the following business day after` (Date 11 9 2026) EQUALS Date 14 9 2026
+-- Ten business days from Wednesday 2026-09-09 is Wednesday 2026-09-23.
+#ASSERT `business days after` (Date 9 9 2026) 10 EQUALS Date 23 9 2026
+
+§§§ `Article 71 and Article 77 windows`
+
+#ASSERT `deadline to notify an unauthorised transaction` (Date 9 9 2026) EQUALS Date 9 10 2027
+#ASSERT `deadline for the payer to request a payee initiated refund` (Date 9 9 2026) EQUALS Date 4 11 2026
+#ASSERT `deadline to refund or justify refusal` (Date 9 9 2026) EQUALS Date 23 9 2026

@@ -1,8 +1,13 @@
 # subjects/
 
-One directory per body of law. Empty at this writing — the first subject (`regcf`,
-SEC Regulation Crowdfunding, 17 CFR Part 227) arrives with the pipeline's G4 milestone,
-with the British Nationality Act 1981 to follow.
+One directory per body of law.
+
+| subject | body of law | status |
+| ------- | ----------- | ------ |
+| [`FinMont-demo`](FinMont-demo/) | Commission Delegated Regulation (EU) 2018/389 — PSD2 strong customer authentication | `draft` |
+
+`regcf` (SEC Regulation Crowdfunding, 17 CFR Part 227) arrives with the pipeline's G4
+milestone, with the British Nationality Act 1981 to follow.
 
 The directory contract (the "class" — see the repository README for the class/instance
 design) is the subject-sidecar shape defined by the l4-ide orchestrator:
