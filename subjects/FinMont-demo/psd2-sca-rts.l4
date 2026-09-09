@@ -1,0 +1,628 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `psd2-sca-domain`
+
+§ `Commission Delegated Regulation (EU) 2018/389 — the SCA-RTS`
+
+-- ===========================================================================
+-- Commission Delegated Regulation (EU) 2018/389 of 27 November 2017,
+-- OJ L 69, 13.3.2018, p. 23.
+--
+-- Chapter I    General provisions                    (Arts 1 to 3)
+-- Chapter II   Security measures for the application of SCA  (Arts 4 to 9)
+-- Chapter III  Exemptions from SCA                   (Arts 10 to 21)
+-- Chapter VI   Final provisions                      (Arts 37 to 38)
+-- Annex        Reference fraud rates by exemption threshold value
+--
+-- Chapters IV (confidentiality of credentials, Arts 22 to 27) and V (common
+-- and secure open standards of communication, Arts 28 to 36) are DELIBERATELY
+-- NOT ENCODED: they impose narrative security and interface obligations with
+-- no computable eligibility test, and FinMont's three questions do not reach
+-- them. NOTES.md §2 records the boundary.
+--
+-- Every rule below is stated in the Regulation's own terms. The FinMont-facing
+-- entry points are in `finmont-sca-orchestration`; nothing here knows about
+-- travel, airlines or FinMont.
+-- ===========================================================================
+
+
+§§ `Article 38 — Entry into force and application`
+
+-- The law-time axis. Art 38(2): the Regulation applies from 14 September 2019.
+-- Art 38(3): Art 30(3) and (5) applied earlier, from 14 March 2019 — recorded
+-- here for completeness although Chapter V is not otherwise encoded.
+@ref "Regulation (EU) 2018/389, Art 38(2)"
+`date this Regulation applies from` MEANS Date 14 9 2019
+
+@ref "Regulation (EU) 2018/389, Art 38(3)"
+`date article 30(3) and (5) apply from` MEANS Date 14 3 2019
+
+-- A dated arm: before 14 September 2019 the SCA-RTS imposed nothing, so an
+-- assessment made under the rules effective at an earlier date must not
+-- report an exemption — there was no obligation to be exempted from.
+@ref "Regulation (EU) 2018/389, Art 38(2)"
+GIVETH A BOOLEAN
+`the SCA-RTS is in application` MEANS
+    (DATE_SERIAL `RULES EFFECTIVE DATE`)
+        AT LEAST (DATE_SERIAL `date this Regulation applies from`)
+
+@ref "Regulation (EU) 2018/389, Art 38(3)"
+GIVETH A BOOLEAN
+`the article 30(3) and (5) obligations are in application` MEANS
+    (DATE_SERIAL `RULES EFFECTIVE DATE`)
+        AT LEAST (DATE_SERIAL `date article 30(3) and (5) apply from`)
+
+
+§§ `Article 2 — General authentication requirements`
+
+-- Art 2(2): the five risk-based factors the monitoring mechanisms must take
+-- into account "at a minimum". Encoded as a checklist because the exemptions
+-- in Arts 10, 11, 12 and 15 are each conditioned on Article 2 compliance.
+@ref "Regulation (EU) 2018/389, Art 2(2)"
+GIVEN `lists of compromised or stolen authentication elements are used` IS A BOOLEAN
+    , `the amount of each payment transaction is taken into account`    IS A BOOLEAN
+    , `known fraud scenarios are taken into account`                    IS A BOOLEAN
+    , `signs of malware infection in authentication sessions are taken into account` IS A BOOLEAN
+    , `a log of provider-supplied access device or software use is kept` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the article 2(2) monitoring factors are all taken into account` IF
+        `lists of compromised or stolen authentication elements are used`
+    AND `the amount of each payment transaction is taken into account`
+    AND `known fraud scenarios are taken into account`
+    AND `signs of malware infection in authentication sessions are taken into account`
+    AND `a log of provider-supplied access device or software use is kept`
+
+
+§§ `Article 3 — Review of the security measures`
+
+-- Art 3(2) second subparagraph: providers using the Article 18 exemption face
+-- a yearly audit of the methodology, the model and the reported fraud rates.
+@ref "Regulation (EU) 2018/389, Art 3(2)"
+`minimum audit frequency in years for article 18 users` MEANS 1
+
+-- Art 3(2): external independent auditor in the first year of use and at
+-- least every 3 years thereafter.
+@ref "Regulation (EU) 2018/389, Art 3(2)"
+`maximum years between external audits for article 18 users` MEANS 3
+
+@ref "Regulation (EU) 2018/389, Art 3(2)"
+GIVEN `years since the external audit` IS A NUMBER
+    , `first year of using the article 18 exemption` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `an external independent audit is due` IF
+        `first year of using the article 18 exemption`
+    OR  `years since the external audit`
+            AT LEAST `maximum years between external audits for article 18 users`
+
+
+§§ `Article 4 — Authentication code`
+
+-- Art 4(1): two or more elements from distinct categories.
+@ref "Regulation (EU) 2018/389, Art 4(1)"
+`minimum number of authentication element categories` MEANS 2
+
+@ref "Regulation (EU) 2018/389, Art 4(1)"
+GIVEN `categories used` IS A LIST OF `Authentication Element Category`
+GIVETH A BOOLEAN
+DECIDE `the authentication is based on enough distinct categories` IF
+    count `categories used` AT LEAST `minimum number of authentication element categories`
+
+-- Art 4(3)(b): consecutive failed attempts before the action is blocked
+-- "shall not exceed five within a given period of time".
+@ref "Regulation (EU) 2018/389, Art 4(3)(b)"
+`maximum consecutive failed authentication attempts` MEANS 5
+
+@ref "Regulation (EU) 2018/389, Art 4(3)(b)"
+GIVEN `consecutive failed attempts` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the action must be blocked` IF
+    `consecutive failed attempts` AT LEAST `maximum consecutive failed authentication attempts`
+
+-- Art 4(3)(d): inactivity timeout for online payment account access.
+@ref "Regulation (EU) 2018/389, Art 4(3)(d)"
+`maximum minutes without payer activity after authentication` MEANS 5
+
+@ref "Regulation (EU) 2018/389, Art 4(3)(d)"
+GIVEN `minutes without activity` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the authenticated session has timed out` IF
+    `minutes without activity` GREATER THAN `maximum minutes without payer activity after authentication`
+
+
+§§ `Article 5 — Dynamic linking`
+
+-- Art 5(1): where SCA applies under Art 97(2) PSD2 — remote electronic
+-- payment transactions — the code must be dynamically linked to amount and
+-- payee, and any change to either invalidates it.
+@ref "Regulation (EU) 2018/389, Art 5(1)"
+GIVEN `payer is made aware of the amount and the payee`             IS A BOOLEAN
+    , `the code is specific to the amount and the payee`            IS A BOOLEAN
+    , `the accepted code corresponds to the original amount and payee identity` IS A BOOLEAN
+    , `any change to the amount or the payee invalidates the code`  IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `dynamic linking requirements are met` IF
+        `payer is made aware of the amount and the payee`
+    AND `the code is specific to the amount and the payee`
+    AND `the accepted code corresponds to the original amount and payee identity`
+    AND `any change to the amount or the payee invalidates the code`
+
+-- Art 5(3)(a): where the payer consented to an exact amount to be blocked
+-- under Art 75(1) PSD2, the code is specific to THAT blocked amount. This is
+-- the pre-authorisation case a hotel or a car-hire desk uses.
+-- Art 5(3)(b): for a consented batch, the code is specific to the TOTAL of
+-- the batch and to the specified payees. This is the multi-payee travel
+-- basket case.
+@ref "Regulation (EU) 2018/389, Art 5(3)"
+GIVEN `is a card-based transaction with consent to an exact blocked amount` IS A BOOLEAN
+    , `is a consented batch of remote electronic transactions`               IS A BOOLEAN
+    , `blocked amount consented to`                                          IS A NUMBER
+    , `total amount of the batch`                                            IS A NUMBER
+    , `amount the code is specific to`                                       IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the authentication code is specific to the right amount` IF
+    IF   `is a card-based transaction with consent to an exact blocked amount`
+    THEN `amount the code is specific to` EQUALS `blocked amount consented to`
+    ELSE IF   `is a consented batch of remote electronic transactions`
+         THEN `amount the code is specific to` EQUALS `total amount of the batch`
+         ELSE TRUE
+
+
+-- ===========================================================================
+-- CHAPTER III — EXEMPTIONS FROM STRONG CUSTOMER AUTHENTICATION
+--
+-- Every Article below states a POWER, not a duty: "payment service providers
+-- shall be allowed not to apply strong customer authentication". Each
+-- predicate therefore answers "is the exemption AVAILABLE", never "is SCA
+-- disapplied" — the decision to take an available exemption stays with the
+-- provider, and for a card transaction the issuer may decline an exemption
+-- the acquirer requested. See NOTES.md §5.
+-- ===========================================================================
+
+
+§§ `Article 10 — Payment account information`
+
+@ref "Regulation (EU) 2018/389, Art 10(2)(b)"
+`article 10 lookback days` MEANS 90
+
+@ref "Regulation (EU) 2018/389, Art 10(1)(b)"
+`article 10 transaction history window days` MEANS 90
+
+-- Art 10(1): available where the user is limited to the balance and/or the
+-- transactions of the last 90 days, online, without disclosure of sensitive
+-- payment data, and subject to Article 2.
+-- Art 10(2): NOT available where (a) it is the first online access, or (b)
+-- more than 90 days have elapsed since the last SCA-authenticated access.
+@ref "Regulation (EU) 2018/389, Art 10"
+GIVEN a IS AN `Account Information Access`
+    , `article 2 monitoring is in place` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `article 10 exemption is available` IF
+        `article 2 monitoring is in place`
+    AND a's `access is limited to the balance or the last 90 days of transactions`
+    AND NOT a's `sensitive payment data is disclosed`
+    AND NOT a's `this is the first online access to that information`
+    AND a's `days elapsed since that information was last accessed with SCA applied`
+            AT MOST `article 10 lookback days`
+
+
+§§ `Article 11 — Contactless payments at point of sale`
+
+@ref "Regulation (EU) 2018/389, Art 11(a)"
+`article 11 individual amount ceiling in euro` MEANS 50
+
+@ref "Regulation (EU) 2018/389, Art 11(b)"
+`article 11 cumulative amount ceiling in euro` MEANS 150
+
+@ref "Regulation (EU) 2018/389, Art 11(c)"
+`article 11 consecutive transaction ceiling` MEANS 5
+
+-- READING TAKEN (register entry AR-01): the Regulation writes
+--   "(a) ... does not exceed EUR 50; and (b) ... does not exceed EUR 150;
+--    or (c) ... does not exceed five."
+-- read here as  (a) AND ( (b) OR (c) ) — the individual ceiling is always
+-- required and the provider may run either counter. The competing reading,
+-- ( (a) AND (b) ) OR (c), would let a EUR 900 contactless tap ride the count
+-- limb with no amount cap at all, which Art 11's heading and recital 9 do
+-- not support.
+@ref "Regulation (EU) 2018/389, Art 11"
+GIVEN t IS A `Payment Transaction`
+    , c IS AN `Exemption Counters`
+    , `article 2 monitoring is in place` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `article 11 exemption is available` IF
+        `article 2 monitoring is in place`
+    AND t's `initiation channel` EQUALS `contactless at point of sale`
+    AND t's `amount in euro` AT MOST `article 11 individual amount ceiling in euro`
+    AND (    c's `cumulative amount in euro of previous transactions since SCA was last applied`
+                 AT MOST `article 11 cumulative amount ceiling in euro`
+          OR c's `number of previous transactions since SCA was last applied`
+                 AT MOST `article 11 consecutive transaction ceiling` )
+
+
+§§ `Article 12 — Unattended terminals for transport fares and parking fees`
+
+-- Art 12 carries NO amount ceiling and NO counter. The only conditions are
+-- the unattended terminal, the transport-fare-or-parking-fee purpose, and
+-- Article 2 compliance.
+@ref "Regulation (EU) 2018/389, Art 12"
+GIVEN t IS A `Payment Transaction`
+    , `article 2 monitoring is in place` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `article 12 exemption is available` IF
+        `article 2 monitoring is in place`
+    AND t's `initiation channel` EQUALS `unattended terminal`
+    AND t's `purpose is a transport fare or a parking fee`
+
+
+§§ `Article 13 — Trusted beneficiaries`
+
+-- Art 13(1) is a DUTY, not an exemption: SCA SHALL be applied where the payer
+-- creates or amends the list.
+@ref "Regulation (EU) 2018/389, Art 13(1)"
+GIVEN t IS A `Payment Transaction`
+GIVETH A BOOLEAN
+DECIDE `article 13(1) requires strong customer authentication` IF
+    t's `creates or amends a list of trusted beneficiaries`
+
+-- Art 13(2) is the exemption, conditioned on "the general authentication
+-- requirements" — Article 2 — rather than on a cross-reference to Art 2 by
+-- number. Treated as the same condition; see AR-02.
+@ref "Regulation (EU) 2018/389, Art 13(2)"
+GIVEN t IS A `Payment Transaction`
+    , `article 2 monitoring is in place` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `article 13 exemption is available` IF
+        `article 2 monitoring is in place`
+    AND t's `payee is on a list of trusted beneficiaries previously created by the payer`
+    AND NOT t's `creates or amends a list of trusted beneficiaries`
+
+
+§§ `Article 14 — Recurring transactions`
+
+-- Art 14(1) is a DUTY: SCA SHALL be applied when the payer creates, amends,
+-- or initiates for the first time a series of recurring transactions WITH THE
+-- SAME AMOUNT and WITH THE SAME PAYEE.
+@ref "Regulation (EU) 2018/389, Art 14(1)"
+GIVEN t IS A `Payment Transaction`
+GIVETH A BOOLEAN
+DECIDE `article 14(1) requires strong customer authentication` IF
+    t's `creates amends or first initiates a recurring series`
+
+-- Art 14(2): the exemption reaches only the SUBSEQUENT transactions in that
+-- series. A varying amount takes the series outside Art 14 entirely; see
+-- AR-05, which matters for travel instalment plans priced in a currency other
+-- than the billing currency.
+@ref "Regulation (EU) 2018/389, Art 14(2)"
+GIVEN t IS A `Payment Transaction`
+    , `article 2 monitoring is in place` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `article 14 exemption is available` IF
+        `article 2 monitoring is in place`
+    AND t's `is a subsequent transaction in a series of the same amount to the same payee`
+    AND NOT t's `creates amends or first initiates a recurring series`
+
+
+§§ `Article 15 — Credit transfers between accounts held by the same person`
+
+@ref "Regulation (EU) 2018/389, Art 15"
+GIVEN t IS A `Payment Transaction`
+    , `article 2 monitoring is in place` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `article 15 exemption is available` IF
+        `article 2 monitoring is in place`
+    AND t's `transaction type` EQUALS `credit transfer`
+    AND t's `payer and payee are the same natural or legal person`
+    AND t's `both payment accounts held by the same account servicing PSP`
+
+
+§§ `Article 16 — Low-value transactions`
+
+@ref "Regulation (EU) 2018/389, Art 16(a)"
+`article 16 individual amount ceiling in euro` MEANS 30
+
+@ref "Regulation (EU) 2018/389, Art 16(b)"
+`article 16 cumulative amount ceiling in euro` MEANS 100
+
+@ref "Regulation (EU) 2018/389, Art 16(c)"
+`article 16 consecutive transaction ceiling` MEANS 5
+
+-- Same "(a) and (b); or (c)" drafting as Art 11, read the same way: AR-01.
+-- Note that Art 16, unlike Arts 10 to 12 and 15, is NOT expressed as subject
+-- to Article 2. That silence is preserved here rather than repaired: see
+-- AR-02.
+@ref "Regulation (EU) 2018/389, Art 16"
+GIVEN t IS A `Payment Transaction`
+    , c IS AN `Exemption Counters`
+GIVETH A BOOLEAN
+DECIDE `article 16 exemption is available` IF
+        t's `initiation channel` EQUALS `remote electronic`
+    AND t's `amount in euro` AT MOST `article 16 individual amount ceiling in euro`
+    AND (    c's `cumulative amount in euro of previous transactions since SCA was last applied`
+                 AT MOST `article 16 cumulative amount ceiling in euro`
+          OR c's `number of previous transactions since SCA was last applied`
+                 AT MOST `article 16 consecutive transaction ceiling` )
+
+
+§§ `Article 17 — Secure corporate payment processes and protocols`
+
+@ref "Regulation (EU) 2018/389, Art 17"
+GIVEN t IS A `Payment Transaction`
+GIVETH A BOOLEAN
+DECIDE `article 17 exemption is available` IF
+        t's `payer kind` EQUALS `legal person who is not a consumer`
+    AND t's `initiated through a dedicated corporate payment process or protocol`
+    AND t's `that process is made available only to payers who are not consumers`
+    AND t's `competent authorities are satisfied with that process`
+
+
+§§ `Annex — Exemption threshold values and reference fraud rates`
+
+-- ANNEX (OJ L 69, 13.3.2018, p. 43)
+--
+--   ETV        remote electronic         remote electronic
+--              card-based payments       credit transfers
+--   EUR 500    0,01 %                    0,005 %
+--   EUR 250    0,06 %                    0,01 %
+--   EUR 100    0,13 %                    0,015 %
+--
+-- The table reads downwards from the tightest fraud requirement: to exempt a
+-- transaction up to EUR 500 the provider needs a fraud rate at or below
+-- 0.01 % on cards; the same provider at 0.13 % may still exempt up to EUR 100.
+@ref "Regulation (EU) 2018/389, Annex"
+`article 18 exemption threshold values in euro` MEANS LIST 100, 250, 500
+
+@ref "Regulation (EU) 2018/389, Annex"
+`highest exemption threshold value in euro` MEANS 500
+
+-- The band a given amount falls into. Above EUR 500 there is no band, and
+-- Article 18 is unavailable at any fraud rate; 0 is the "no band" marker and
+-- is never a real ETV, since the Annex's lowest is EUR 100.
+@ref "Regulation (EU) 2018/389, Art 18(2)(b) and Annex"
+GIVEN `amount in euro` IS A NUMBER
+GIVETH A NUMBER
+`applicable exemption threshold value in euro` MEANS
+    IF   `amount in euro` AT MOST 100
+    THEN 100
+    ELSE IF   `amount in euro` AT MOST 250
+         THEN 250
+         ELSE IF   `amount in euro` AT MOST 500
+              THEN 500
+              ELSE 0
+
+@ref "Regulation (EU) 2018/389, Annex"
+GIVEN `transaction type` IS A `Transaction Type`
+    , `exemption threshold value in euro` IS A NUMBER
+GIVETH A NUMBER
+`reference fraud rate pct` MEANS
+    CONSIDER `transaction type`
+    WHEN `card based payment` THEN
+        IF   `exemption threshold value in euro` EQUALS 500
+        THEN 0.01
+        ELSE IF   `exemption threshold value in euro` EQUALS 250
+             THEN 0.06
+             ELSE IF   `exemption threshold value in euro` EQUALS 100
+                  THEN 0.13
+                  ELSE 0
+    WHEN `credit transfer` THEN
+        IF   `exemption threshold value in euro` EQUALS 500
+        THEN 0.005
+        ELSE IF   `exemption threshold value in euro` EQUALS 250
+             THEN 0.01
+             ELSE IF   `exemption threshold value in euro` EQUALS 100
+                  THEN 0.015
+                  ELSE 0
+    WHEN `other payment transaction` THEN 0
+
+-- The Annex has exactly two rows. A transaction of any other type has no
+-- reference fraud rate, so Art 18(2)(a) can never be satisfied for it.
+@ref "Regulation (EU) 2018/389, Annex"
+GIVEN `transaction type` IS A `Transaction Type`
+GIVETH A BOOLEAN
+DECIDE `the annex prices this transaction type` IF
+        `transaction type` EQUALS `card based payment`
+    OR  `transaction type` EQUALS `credit transfer`
+
+@ref "Regulation (EU) 2018/389, Annex"
+GIVEN `transaction type` IS A `Transaction Type`
+    , f IS A `Fraud Rate Report`
+GIVETH A NUMBER
+`monitored fraud rate pct` MEANS
+    CONSIDER `transaction type`
+    WHEN `card based payment`        THEN f's `remote card based payment fraud rate pct`
+    WHEN `credit transfer`           THEN f's `remote credit transfer fraud rate pct`
+    WHEN `other payment transaction` THEN 100
+
+
+§§ `Article 18 — Transaction risk analysis`
+
+-- Art 18(2)(c): the exemption fails if the real-time analysis identified ANY
+-- of the six listed signals.
+@ref "Regulation (EU) 2018/389, Art 18(2)(c)"
+GIVEN r IS A `Real Time Risk Analysis`
+GIVETH A BOOLEAN
+DECIDE `the real time risk analysis identified no listed signal` IF
+        NOT r's `abnormal spending or behavioural pattern of the payer`
+    AND NOT r's `unusual information about the device or software access of the payer`
+    AND NOT r's `malware infection in any session of the authentication procedure`
+    AND NOT r's `known fraud scenario in the provision of payment services`
+    AND NOT r's `abnormal location of the payer`
+    AND NOT r's `high risk location of the payee`
+
+-- Art 18(1) and (2): all three conditions, plus the Art 2 / 18(2)(c)
+-- monitoring mechanisms the paragraph expressly relies on, plus the Art 20
+-- cessation state, which is what actually decides whether this provider may
+-- use the exemption at all today.
+@ref "Regulation (EU) 2018/389, Art 18"
+GIVEN t IS A `Payment Transaction`
+    , r IS A `Real Time Risk Analysis`
+    , p IS A `PSP Profile`
+GIVETH A BOOLEAN
+DECIDE `article 18 exemption is available` IF
+        p's `has transaction monitoring mechanisms under article 2`
+    AND t's `initiation channel` EQUALS `remote electronic`
+    AND `the annex prices this transaction type` (t's `transaction type`)
+    AND `the article 18 exemption is not in cessation` p
+    AND t's `amount in euro` AT MOST `highest exemption threshold value in euro`
+    AND `monitored fraud rate pct` (t's `transaction type`) (p's `fraud rates`)
+            AT MOST `reference fraud rate pct` (t's `transaction type`) band
+    AND `the real time risk analysis identified no listed signal` r
+    WHERE
+        band MEANS `applicable exemption threshold value in euro` (t's `amount in euro`)
+
+-- The highest amount this provider may exempt under Art 18 for a given
+-- transaction type: the largest Annex band whose reference rate its monitored
+-- fraud rate still meets. 0 means no band is open to it.
+@ref "Regulation (EU) 2018/389, Art 18(2) and Annex"
+GIVEN `transaction type` IS A `Transaction Type`
+    , p IS A `PSP Profile`
+GIVETH A NUMBER
+`highest amount exemptible under article 18 in euro` MEANS
+    IF   NOT `the annex prices this transaction type` `transaction type`
+    THEN 0
+    ELSE IF   rate AT MOST (`reference fraud rate pct` `transaction type` 500)
+         THEN 500
+         ELSE IF   rate AT MOST (`reference fraud rate pct` `transaction type` 250)
+              THEN 250
+              ELSE IF   rate AT MOST (`reference fraud rate pct` `transaction type` 100)
+                   THEN 100
+                   ELSE 0
+    WHERE
+        rate MEANS `monitored fraud rate pct` `transaction type` (p's `fraud rates`)
+
+
+§§ `Article 19 — Calculation of fraud rates`
+
+-- Art 19(1) second subparagraph: the overall fraud rate is the total VALUE of
+-- unauthorised or fraudulent remote transactions, whether or not the funds
+-- were recovered, divided by the total value of all remote transactions of
+-- that type, on a rolling quarterly basis (90 days).
+@ref "Regulation (EU) 2018/389, Art 19(1)"
+`fraud rate rolling window days` MEANS 90
+
+@ref "Regulation (EU) 2018/389, Art 19(1)"
+GIVEN `total value of unauthorised or fraudulent remote transactions` IS A NUMBER
+    , `total value of all remote transactions of that type`            IS A NUMBER
+GIVETH A NUMBER
+`overall fraud rate pct` MEANS
+    IF   `total value of all remote transactions of that type` EQUALS 0
+    THEN 0
+    ELSE 100 TIMES (   `total value of unauthorised or fraudulent remote transactions`
+                DIVIDED BY `total value of all remote transactions of that type` )
+
+
+§§ `Article 20 — Cessation of exemptions based on transaction risk analysis`
+
+@ref "Regulation (EU) 2018/389, Art 20(2)"
+`consecutive quarters above reference rate that force cessation` MEANS 2
+
+@ref "Regulation (EU) 2018/389, Art 20(3)"
+`quarters at or below reference rate required before re-use` MEANS 1
+
+-- Art 20(1): an immediate report to the competent authorities the moment a
+-- monitored rate exceeds the applicable reference rate — one quarter is
+-- enough to trigger the report, two are needed for cessation.
+@ref "Regulation (EU) 2018/389, Art 20(1)"
+GIVEN `transaction type` IS A `Transaction Type`
+    , `exemption threshold value in euro` IS A NUMBER
+    , p IS A `PSP Profile`
+GIVETH A BOOLEAN
+DECIDE `an immediate report to the competent authorities is due` IF
+    `monitored fraud rate pct` `transaction type` (p's `fraud rates`)
+        GREATER THAN `reference fraud rate pct` `transaction type` `exemption threshold value in euro`
+
+-- Art 20(2) and (3) combined: the exemption is closed to this provider while
+-- it has been above for two consecutive quarters, and stays closed after a
+-- cessation until one quarter at or below has been achieved AND — Art 20(4) —
+-- the competent authorities have been notified.
+@ref "Regulation (EU) 2018/389, Art 20(2)–(4)"
+GIVEN p IS A `PSP Profile`
+GIVETH A BOOLEAN
+DECIDE `the article 18 exemption is not in cessation` IF
+        f's `consecutive quarters above the reference rate`
+            LESS THAN `consecutive quarters above reference rate that force cessation`
+    AND (    NOT f's `exemption previously ceased under article 20`
+          OR (    f's `quarters at or below the reference rate since cessation`
+                      AT LEAST `quarters at or below reference rate required before re-use`
+              AND f's `competent authorities notified of the intention to use the exemption again` ) )
+    WHERE
+        f MEANS p's `fraud rates`
+
+
+§§ `Article 21 — Monitoring`
+
+-- Art 21(1): to use ANY of the Arts 10 to 18 exemptions the provider must
+-- record and monitor the listed data at least quarterly, broken down between
+-- remote and non-remote transactions.
+@ref "Regulation (EU) 2018/389, Art 21(1)"
+`maximum months between exemption monitoring reports` MEANS 3
+
+@ref "Regulation (EU) 2018/389, Art 21(1)"
+GIVEN `fraud rate and totals recorded per transaction type`   IS A BOOLEAN
+    , `average transaction value recorded per exemption`      IS A BOOLEAN
+    , `number and percentage of transactions per exemption recorded` IS A BOOLEAN
+    , `months since the last monitoring report`               IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the article 21 monitoring conditions are met` IF
+        `fraud rate and totals recorded per transaction type`
+    AND `average transaction value recorded per exemption`
+    AND `number and percentage of transactions per exemption recorded`
+    AND `months since the last monitoring report`
+            AT MOST `maximum months between exemption monitoring reports`
+
+
+§§ `Article 37 — Review`
+
+@ref "Regulation (EU) 2018/389, Art 37"
+`date EBA was to review the annex fraud rates by` MEANS Date 14 3 2021
+
+
+-- ===========================================================================
+-- ILLUSTRATIONS
+--
+-- Every assertion below is a statement about the SCA-RTS alone, with no
+-- FinMont or travel content. The travel scenarios live in
+-- cases/finmont-travel-cases.l4.
+-- ===========================================================================
+
+§§ `SCA-RTS — Illustrations`
+
+§§§ `Annex bands`
+
+#ASSERT `applicable exemption threshold value in euro` 100 EQUALS 100
+#ASSERT `applicable exemption threshold value in euro` 100.01 EQUALS 250
+#ASSERT `applicable exemption threshold value in euro` 250 EQUALS 250
+#ASSERT `applicable exemption threshold value in euro` 400 EQUALS 500
+#ASSERT `applicable exemption threshold value in euro` 500 EQUALS 500
+-- Above EUR 500 no band applies, so Article 18 is closed at any fraud rate.
+#ASSERT `applicable exemption threshold value in euro` 500.01 EQUALS 0
+
+#ASSERT `reference fraud rate pct` `card based payment` 500 EQUALS 0.01
+#ASSERT `reference fraud rate pct` `card based payment` 250 EQUALS 0.06
+#ASSERT `reference fraud rate pct` `card based payment` 100 EQUALS 0.13
+#ASSERT `reference fraud rate pct` `credit transfer` 500 EQUALS 0.005
+#ASSERT `reference fraud rate pct` `credit transfer` 250 EQUALS 0.01
+#ASSERT `reference fraud rate pct` `credit transfer` 100 EQUALS 0.015
+
+#ASSERT `the annex prices this transaction type` `card based payment`
+#ASSERT `the annex prices this transaction type` `credit transfer`
+#ASSERT NOT (`the annex prices this transaction type` `other payment transaction`)
+
+§§§ `Article 4 counters`
+
+#ASSERT `the action must be blocked` 5
+#ASSERT NOT (`the action must be blocked` 4)
+#ASSERT `the authenticated session has timed out` 6
+#ASSERT NOT (`the authenticated session has timed out` 5)
+
+§§§ `Article 19 fraud rate arithmetic`
+
+-- EUR 1,300 of fraud in EUR 1,000,000 of remote card volume is 0.13 %, which
+-- is exactly the EUR 100 band's reference rate on cards.
+#ASSERT `overall fraud rate pct` 1300 1000000 EQUALS 0.13
+#ASSERT `overall fraud rate pct` 0 0 EQUALS 0
+
+§§§ `Article 3 audit cadence`
+
+#ASSERT `an external independent audit is due` 0 TRUE
+#ASSERT `an external independent audit is due` 3 FALSE
+#ASSERT NOT (`an external independent audit is due` 2 FALSE)

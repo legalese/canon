@@ -1,0 +1,671 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `psd2-sca-domain`
+IMPORT `psd2-sca-rts`
+IMPORT `finmont-sca-orchestration`
+IMPORT `psd2-refunds-and-liability`
+
+§ `FinMont — travel-industry scenario cases`
+
+-- ===========================================================================
+-- Scenario cases for the FinMont-demo subject. Each is a shape that recurs in
+-- travel payment orchestration, stated as a fixture and asserted against the
+-- encoding. Expected values are MACHINE-EVALUATED by the assertions below,
+-- never hand-typed into a table.
+--
+-- The provider fixtures are the interesting variable: the same transaction
+-- gets a different answer from an acquirer at a 0.008 % card fraud rate than
+-- from one at 0.09 %, and a different answer again from one sitting in an
+-- Article 20 cessation. Article 18 is the only exemption in the Regulation
+-- whose availability depends on the PROVIDER rather than on the transaction,
+-- and it is the one FinMont's economics turn on.
+-- ===========================================================================
+
+
+§§ `Provider fixtures`
+
+-- A well-run acquirer: 0.008 % on remote cards clears the EUR 500 band
+-- (reference 0.01 %), so it may exempt up to EUR 500 under Art 18.
+`FinMont clean acquirer` MEANS `PSP Profile` WITH
+    `name`                                                 IS "FinMont acquiring partner, clean book"
+    `has transaction monitoring mechanisms under article 2` IS TRUE
+    `security measures audited under article 3`            IS TRUE
+    `fraud rates`                                          IS `a clean fraud book`
+
+`a clean fraud book` MEANS `Fraud Rate Report` WITH
+    `remote card based payment fraud rate pct`                IS 0.008
+    `remote credit transfer fraud rate pct`                   IS 0.004
+    `consecutive quarters above the reference rate`           IS 0
+    `quarters at or below the reference rate since cessation` IS 0
+    `exemption previously ceased under article 20`            IS FALSE
+    `competent authorities notified of the intention to use the exemption again` IS FALSE
+
+-- A middling acquirer: 0.09 % clears the EUR 100 band (0.13 %) but not the
+-- EUR 250 band (0.06 %). Its Art 18 ceiling is EUR 100, not EUR 500.
+`FinMont middling acquirer` MEANS `PSP Profile` WITH
+    `name`                                                 IS "FinMont acquiring partner, 0.09 % card book"
+    `has transaction monitoring mechanisms under article 2` IS TRUE
+    `security measures audited under article 3`            IS TRUE
+    `fraud rates`                                          IS `a middling fraud book`
+
+`a middling fraud book` MEANS `Fraud Rate Report` WITH
+    `remote card based payment fraud rate pct`                IS 0.09
+    `remote credit transfer fraud rate pct`                   IS 0.02
+    `consecutive quarters above the reference rate`           IS 0
+    `quarters at or below the reference rate since cessation` IS 0
+    `exemption previously ceased under article 20`            IS FALSE
+    `competent authorities notified of the intention to use the exemption again` IS FALSE
+
+-- An acquirer that has been above the reference rate for two consecutive
+-- quarters. Art 20(2) closes Art 18 to it immediately, whatever the
+-- transaction looks like.
+`FinMont acquirer in cessation` MEANS `PSP Profile` WITH
+    `name`                                                 IS "FinMont acquiring partner, two quarters above"
+    `has transaction monitoring mechanisms under article 2` IS TRUE
+    `security measures audited under article 3`            IS TRUE
+    `fraud rates`                                          IS `a fraud book in cessation`
+
+`a fraud book in cessation` MEANS `Fraud Rate Report` WITH
+    `remote card based payment fraud rate pct`                IS 0.004
+    `remote credit transfer fraud rate pct`                   IS 0.002
+    `consecutive quarters above the reference rate`           IS 2
+    `quarters at or below the reference rate since cessation` IS 0
+    `exemption previously ceased under article 20`            IS TRUE
+    `competent authorities notified of the intention to use the exemption again` IS FALSE
+
+
+§§ `Shared fixtures`
+
+-- No Art 18(2)(c) signal identified.
+`a clean real time risk analysis` MEANS `Real Time Risk Analysis` WITH
+    `abnormal spending or behavioural pattern of the payer`                IS FALSE
+    `unusual information about the device or software access of the payer` IS FALSE
+    `malware infection in any session of the authentication procedure`     IS FALSE
+    `known fraud scenario in the provision of payment services`            IS FALSE
+    `abnormal location of the payer`                                       IS FALSE
+    `high risk location of the payee`                                      IS FALSE
+
+-- One signal identified: an abnormal payer location. Under Art 18(2)(c)(v)
+-- that alone defeats the exemption. Travel is the sector where this fires
+-- hardest — a traveller booking from an airport in another country is
+-- routinely "abnormally located" to a naive model.
+`a risk analysis flagging an abnormal payer location` MEANS `Real Time Risk Analysis` WITH
+    `abnormal spending or behavioural pattern of the payer`                IS FALSE
+    `unusual information about the device or software access of the payer` IS FALSE
+    `malware infection in any session of the authentication procedure`     IS FALSE
+    `known fraud scenario in the provision of payment services`            IS FALSE
+    `abnormal location of the payer`                                       IS TRUE
+    `high risk location of the payee`                                      IS FALSE
+
+`no counters since the last authentication` MEANS `Exemption Counters` WITH
+    `cumulative amount in euro of previous transactions since SCA was last applied` IS 0
+    `number of previous transactions since SCA was last applied`                    IS 0
+
+`counters at forty euro over two transactions` MEANS `Exemption Counters` WITH
+    `cumulative amount in euro of previous transactions since SCA was last applied` IS 40
+    `number of previous transactions since SCA was last applied`                    IS 2
+
+`counters at one hundred and thirty euro over three transactions` MEANS `Exemption Counters` WITH
+    `cumulative amount in euro of previous transactions since SCA was last applied` IS 130
+    `number of previous transactions since SCA was last applied`                    IS 3
+
+`counters at two hundred euro over six transactions` MEANS `Exemption Counters` WITH
+    `cumulative amount in euro of previous transactions since SCA was last applied` IS 200
+    `number of previous transactions since SCA was last applied`                    IS 6
+
+-- Account access is irrelevant to a payment case; this fixture keeps Art 10
+-- switched off so it never contaminates a payment scenario.
+`no account information access` MEANS `Account Information Access` WITH
+    `access is limited to the balance or the last 90 days of transactions`   IS FALSE
+    `sensitive payment data is disclosed`                                    IS FALSE
+    `this is the first online access to that information`                    IS TRUE
+    `days elapsed since that information was last accessed with SCA applied` IS 0
+
+
+§§ `Transaction constructor`
+
+-- Every field the Regulation tests, with the travel-relevant ones as
+-- arguments and the rest set to their inert value. Cases that need an inert
+-- field switched on are written out in full below instead.
+GIVEN ref      IS A STRING
+    , amount   IS A NUMBER
+    , channel  IS AN `Initiation Channel`
+    , who      IS AN `Initiator`
+    , `payer bank`  IS A `PSP Location`
+    , `payee bank`  IS A `PSP Location`
+GIVETH A `Payment Transaction`
+`a travel card sale` MEANS `Payment Transaction` WITH
+    `reference`                                IS ref
+    `date`                                     IS Date 9 9 2026
+    `amount in euro`                           IS amount
+    `transaction type`                         IS `card based payment`
+    `initiation channel`                       IS channel
+    `initiator`                                IS who
+    `payer kind`                               IS `consumer`
+    `payer PSP location`                       IS `payer bank`
+    `payee PSP location`                       IS `payee bank`
+    `uses an anonymous payment instrument`     IS FALSE
+    `purpose is a transport fare or a parking fee`                                 IS FALSE
+    `payee is on a list of trusted beneficiaries previously created by the payer`  IS FALSE
+    `creates or amends a list of trusted beneficiaries`                            IS FALSE
+    `creates amends or first initiates a recurring series`                         IS FALSE
+    `is a subsequent transaction in a series of the same amount to the same payee` IS FALSE
+    `payer and payee are the same natural or legal person`                         IS FALSE
+    `both payment accounts held by the same account servicing PSP`                 IS FALSE
+    `initiated through a dedicated corporate payment process or protocol`          IS FALSE
+    `that process is made available only to payers who are not consumers`          IS FALSE
+    `competent authorities are satisfied with that process`                        IS FALSE
+
+GIVEN t IS A `Payment Transaction`
+    , c IS AN `Exemption Counters`
+    , r IS A `Real Time Risk Analysis`
+    , p IS A `PSP Profile`
+GIVETH AN `Assessment Input`
+`the case of` MEANS `Assessment Input` WITH
+    `transaction`    IS t
+    `counters`       IS c
+    `account access` IS `no account information access`
+    `risk analysis`  IS r
+    `provider`       IS p
+
+
+-- ===========================================================================
+-- CASE 1 — Online flight booking, EUR 480, EEA cardholder, EEA acquirer.
+--
+-- The bread-and-butter case. EUR 480 sits in the EUR 500 Annex band, whose
+-- card reference rate is 0.01 %. The clean acquirer is at 0.008 %, so Art 18
+-- is available and FinMont can request the exemption.
+-- ===========================================================================
+
+§§ `Case 1 — EUR 480 flight, clean acquirer`
+
+`case 1 transaction` MEANS
+    `a travel card sale` "FM-0001 online flight EUR 480" 480
+        `remote electronic` `payer initiated`
+        `established in the EEA` `established in the EEA`
+
+`case 1` MEANS
+    `the case of` `case 1 transaction` `no counters since the last authentication`
+        `a clean real time risk analysis` `FinMont clean acquirer`
+
+#ASSERT `SCA outcome for` `case 1` EQUALS `SCA exempt`
+#ASSERT NOT (`is SCA required` `case 1`)
+#ASSERT elem `article 18 transaction risk analysis` (`exemptions available for` `case 1`)
+#ASSERT count (`exemptions available for` `case 1`) EQUALS 1
+
+
+-- ===========================================================================
+-- CASE 2 — The same booking at EUR 620.
+--
+-- Above the highest Annex threshold value. There is no band, so no reference
+-- fraud rate applies and Art 18 is unavailable at ANY fraud rate, however
+-- clean the book. This is the single most important number for an airline's
+-- authentication rate: EUR 500, not a risk score.
+-- ===========================================================================
+
+§§ `Case 2 — EUR 620 flight, above every Annex band`
+
+`case 2` MEANS
+    `the case of`
+        (`a travel card sale` "FM-0002 online flight EUR 620" 620
+            `remote electronic` `payer initiated`
+            `established in the EEA` `established in the EEA`)
+        `no counters since the last authentication`
+        `a clean real time risk analysis` `FinMont clean acquirer`
+
+#ASSERT `SCA outcome for` `case 2` EQUALS `SCA required`
+#ASSERT `is SCA required` `case 2`
+#ASSERT null (`exemptions available for` `case 2`)
+#ASSERT `highest amount exemptible under article 18 in euro` `card based payment` `FinMont clean acquirer` EQUALS 500
+
+
+-- ===========================================================================
+-- CASE 3 — EUR 25 seat selection, two prior low-value transactions.
+--
+-- Two exemptions are available at once: Art 16 on the low-value counters
+-- (EUR 40 cumulative, under the EUR 100 ceiling) and Art 18 on risk analysis.
+-- The encoding returns both; which to request is FinMont's policy call, and
+-- there is a real commercial difference — requesting Art 18 leaves the
+-- Art 16 counters untouched for later ancillaries.
+-- ===========================================================================
+
+§§ `Case 3 — EUR 25 seat selection, low-value counters intact`
+
+`case 3` MEANS
+    `the case of`
+        (`a travel card sale` "FM-0003 seat selection EUR 25" 25
+            `remote electronic` `payer initiated`
+            `established in the EEA` `established in the EEA`)
+        `counters at forty euro over two transactions`
+        `a clean real time risk analysis` `FinMont clean acquirer`
+
+#ASSERT `SCA outcome for` `case 3` EQUALS `SCA exempt`
+#ASSERT elem `article 16 low value remote payment` (`exemptions available for` `case 3`)
+#ASSERT elem `article 18 transaction risk analysis` (`exemptions available for` `case 3`)
+#ASSERT count (`exemptions available for` `case 3`) EQUALS 2
+
+
+-- ===========================================================================
+-- CASE 4 — Call-centre booking, EUR 1,200.
+--
+-- Mail order and telephone order. Not electronically initiated by the payer,
+-- so Art 97(1) PSD2 does not engage and no exemption is needed. UNVERIFIED:
+-- this rests on the Directive, which was not supplied. See AR-04.
+-- ===========================================================================
+
+§§ `Case 4 — Call-centre booking, out of scope`
+
+`case 4` MEANS
+    `the case of`
+        (`a travel card sale` "FM-0004 call centre booking EUR 1200" 1200
+            `mail order or telephone order` `payer initiated`
+            `established in the EEA` `established in the EEA`)
+        `no counters since the last authentication`
+        `a clean real time risk analysis` `FinMont clean acquirer`
+
+#ASSERT `SCA outcome for` `case 4` EQUALS `SCA out of scope`
+#ASSERT NOT (`is SCA required` `case 4`)
+-- Out of scope reports no exemptions: nothing was exempted, because nothing
+-- was required. A decision log that cannot tell these apart will misreport
+-- under Art 21(1)(c).
+#ASSERT null ((`SCA assessment for` `case 4`)'s `exemptions available`)
+
+
+-- ===========================================================================
+-- CASE 5 — Post-ticketing change fee, EUR 75, merchant initiated.
+--
+-- Raised by the airline under a mandate already authenticated at booking. Not
+-- an action carried out by the payer. NOTE that this is NOT the Art 14
+-- exemption: Art 14 needs the same amount and the same payee every time, and
+-- a change fee is neither. Conflating the two is the commonest modelling
+-- error in this sector. UNVERIFIED — see AR-06.
+-- ===========================================================================
+
+§§ `Case 5 — Merchant-initiated change fee, out of scope`
+
+`case 5` MEANS
+    `the case of`
+        (`a travel card sale` "FM-0005 change fee EUR 75" 75
+            `remote electronic` `merchant initiated under a stored mandate`
+            `established in the EEA` `established in the EEA`)
+        `no counters since the last authentication`
+        `a clean real time risk analysis` `FinMont clean acquirer`
+
+#ASSERT `SCA outcome for` `case 5` EQUALS `SCA out of scope`
+-- And to make the distinction explicit: on these facts Art 14 is NOT available.
+#ASSERT NOT (`article 14 exemption is available` (`case 5`'s `transaction`) TRUE)
+
+
+-- ===========================================================================
+-- CASE 6 — Rail ticket vending machine, EUR 220.
+--
+-- Art 12 has no amount ceiling, no counter and no fraud-rate condition. A
+-- EUR 220 rail fare at an unattended machine is exempt where a EUR 220 online
+-- fare from the same operator would not be.
+-- ===========================================================================
+
+§§ `Case 6 — Unattended rail ticket machine`
+
+`case 6 transaction` MEANS `Payment Transaction` WITH
+    `reference`                                IS "FM-0006 rail ticket machine EUR 220"
+    `date`                                     IS Date 9 9 2026
+    `amount in euro`                           IS 220
+    `transaction type`                         IS `card based payment`
+    `initiation channel`                       IS `unattended terminal`
+    `initiator`                                IS `payer initiated`
+    `payer kind`                               IS `consumer`
+    `payer PSP location`                       IS `established in the EEA`
+    `payee PSP location`                       IS `established in the EEA`
+    `uses an anonymous payment instrument`     IS FALSE
+    `purpose is a transport fare or a parking fee`                                 IS TRUE
+    `payee is on a list of trusted beneficiaries previously created by the payer`  IS FALSE
+    `creates or amends a list of trusted beneficiaries`                            IS FALSE
+    `creates amends or first initiates a recurring series`                         IS FALSE
+    `is a subsequent transaction in a series of the same amount to the same payee` IS FALSE
+    `payer and payee are the same natural or legal person`                         IS FALSE
+    `both payment accounts held by the same account servicing PSP`                 IS FALSE
+    `initiated through a dedicated corporate payment process or protocol`          IS FALSE
+    `that process is made available only to payers who are not consumers`          IS FALSE
+    `competent authorities are satisfied with that process`                        IS FALSE
+
+`case 6` MEANS
+    `the case of` `case 6 transaction` `no counters since the last authentication`
+        `a clean real time risk analysis` `FinMont clean acquirer`
+
+#ASSERT `SCA outcome for` `case 6` EQUALS `SCA exempt`
+#ASSERT elem `article 12 unattended transport or parking terminal` (`exemptions available for` `case 6`)
+#ASSERT `is an unattended transport or parking sale` `case 6 transaction`
+-- Art 12 carries no ceiling: the same facts at EUR 5,000 are still exempt.
+#ASSERT `article 12 exemption is available` `case 6 transaction` TRUE
+
+
+-- ===========================================================================
+-- CASE 7 — Contactless boarding-gate purchase, EUR 35.
+--
+-- Art 11(a) individual ceiling EUR 50 is met. The cumulative counter is at
+-- EUR 130, under the EUR 150 ceiling, so limb (b) carries it — the count
+-- limb (c) is not needed. Reading AR-01 applies: (a) AND ((b) OR (c)).
+-- ===========================================================================
+
+§§ `Case 7 — Contactless at the gate, cumulative counter intact`
+
+`case 7` MEANS
+    `the case of`
+        (`a travel card sale` "FM-0007 contactless gate purchase EUR 35" 35
+            `contactless at point of sale` `payer initiated`
+            `established in the EEA` `established in the EEA`)
+        `counters at one hundred and thirty euro over three transactions`
+        `a clean real time risk analysis` `FinMont clean acquirer`
+
+#ASSERT `SCA outcome for` `case 7` EQUALS `SCA exempt`
+#ASSERT elem `article 11 contactless at point of sale` (`exemptions available for` `case 7`)
+
+
+-- ===========================================================================
+-- CASE 8 — The same tap with both counters exhausted.
+--
+-- EUR 200 cumulative is over the EUR 150 ceiling and six transactions is over
+-- the five-transaction ceiling, so neither limb (b) nor limb (c) is satisfied
+-- and Art 11 closes. Art 18 cannot rescue it either: Art 18 reaches only
+-- REMOTE electronic transactions, and this one is at the point of sale.
+-- ===========================================================================
+
+§§ `Case 8 — Contactless with both counters exhausted`
+
+`case 8` MEANS
+    `the case of`
+        (`a travel card sale` "FM-0008 contactless gate purchase EUR 35" 35
+            `contactless at point of sale` `payer initiated`
+            `established in the EEA` `established in the EEA`)
+        `counters at two hundred euro over six transactions`
+        `a clean real time risk analysis` `FinMont clean acquirer`
+
+#ASSERT `SCA outcome for` `case 8` EQUALS `SCA required`
+#ASSERT null (`exemptions available for` `case 8`)
+
+
+-- ===========================================================================
+-- CASE 9 — EEA cardholder, non-EEA airline acquirer, EUR 900.
+--
+-- The cross-border case FinMont asked about. One leg outside the EEA, so on
+-- the reading taken here SCA is not required and the EEA-side provider
+-- applies it on a best-efforts basis. THIS IS THE ENCODING'S MOST
+-- CONSEQUENTIAL INTERPRETIVE CHOICE — guidance-based, contested, and
+-- jurisdiction-sensitive. See AR-07 before relying on it.
+-- ===========================================================================
+
+§§ `Case 9 — One leg outside the EEA`
+
+`case 9` MEANS
+    `the case of`
+        (`a travel card sale` "FM-0009 non-EEA airline acquirer EUR 900" 900
+            `remote electronic` `payer initiated`
+            `established in the EEA` `established outside the EEA`)
+        `no counters since the last authentication`
+        `a clean real time risk analysis` `FinMont clean acquirer`
+
+#ASSERT `SCA outcome for` `case 9` EQUALS `SCA out of scope`
+#ASSERT `out of scope because only one leg is in the EEA` (`case 9`'s `transaction`)
+
+
+-- ===========================================================================
+-- CASE 10 — Corporate travel, EUR 4,000 on a lodge card.
+--
+-- A travel management company, a non-consumer payer, a dedicated corporate
+-- protocol, and a competent authority satisfied with it. Art 17 has no amount
+-- ceiling, which is why corporate travel books through it rather than
+-- through Art 18.
+-- ===========================================================================
+
+§§ `Case 10 — Corporate lodge card under Article 17`
+
+`case 10 transaction` MEANS `Payment Transaction` WITH
+    `reference`                                IS "FM-0010 TMC lodge card EUR 4000"
+    `date`                                     IS Date 9 9 2026
+    `amount in euro`                           IS 4000
+    `transaction type`                         IS `card based payment`
+    `initiation channel`                       IS `remote electronic`
+    `initiator`                                IS `payer initiated`
+    `payer kind`                               IS `legal person who is not a consumer`
+    `payer PSP location`                       IS `established in the EEA`
+    `payee PSP location`                       IS `established in the EEA`
+    `uses an anonymous payment instrument`     IS FALSE
+    `purpose is a transport fare or a parking fee`                                 IS FALSE
+    `payee is on a list of trusted beneficiaries previously created by the payer`  IS FALSE
+    `creates or amends a list of trusted beneficiaries`                            IS FALSE
+    `creates amends or first initiates a recurring series`                         IS FALSE
+    `is a subsequent transaction in a series of the same amount to the same payee` IS FALSE
+    `payer and payee are the same natural or legal person`                         IS FALSE
+    `both payment accounts held by the same account servicing PSP`                 IS FALSE
+    `initiated through a dedicated corporate payment process or protocol`          IS TRUE
+    `that process is made available only to payers who are not consumers`          IS TRUE
+    `competent authorities are satisfied with that process`                        IS TRUE
+
+`case 10` MEANS
+    `the case of` `case 10 transaction` `no counters since the last authentication`
+        `a clean real time risk analysis` `FinMont clean acquirer`
+
+#ASSERT `SCA outcome for` `case 10` EQUALS `SCA exempt`
+#ASSERT elem `article 17 secure corporate payment process` (`exemptions available for` `case 10`)
+-- Art 17 alone: EUR 4,000 is far above every Annex band, so Art 18 is closed.
+#ASSERT count (`exemptions available for` `case 10`) EQUALS 1
+
+
+-- ===========================================================================
+-- CASE 11 — Traveller stores a card with the agency, paying EUR 480.
+--
+-- Art 13(1) makes authentication MANDATORY when the payer creates or amends
+-- a trusted-beneficiary list, and that duty beats an otherwise available
+-- Art 18 exemption on the very same transaction. Case 1 with one flag flipped.
+-- ===========================================================================
+
+§§ `Case 11 — Creating a trusted beneficiary overrides an available exemption`
+
+`case 11 transaction` MEANS `Payment Transaction` WITH
+    `reference`                                IS "FM-0011 store card on file EUR 480"
+    `date`                                     IS Date 9 9 2026
+    `amount in euro`                           IS 480
+    `transaction type`                         IS `card based payment`
+    `initiation channel`                       IS `remote electronic`
+    `initiator`                                IS `payer initiated`
+    `payer kind`                               IS `consumer`
+    `payer PSP location`                       IS `established in the EEA`
+    `payee PSP location`                       IS `established in the EEA`
+    `uses an anonymous payment instrument`     IS FALSE
+    `purpose is a transport fare or a parking fee`                                 IS FALSE
+    `payee is on a list of trusted beneficiaries previously created by the payer`  IS FALSE
+    `creates or amends a list of trusted beneficiaries`                            IS TRUE
+    `creates amends or first initiates a recurring series`                         IS FALSE
+    `is a subsequent transaction in a series of the same amount to the same payee` IS FALSE
+    `payer and payee are the same natural or legal person`                         IS FALSE
+    `both payment accounts held by the same account servicing PSP`                 IS FALSE
+    `initiated through a dedicated corporate payment process or protocol`          IS FALSE
+    `that process is made available only to payers who are not consumers`          IS FALSE
+    `competent authorities are satisfied with that process`                        IS FALSE
+
+`case 11` MEANS
+    `the case of` `case 11 transaction` `no counters since the last authentication`
+        `a clean real time risk analysis` `FinMont clean acquirer`
+
+#ASSERT `SCA outcome for` `case 11` EQUALS `SCA required`
+-- The Art 18 exemption is still AVAILABLE on the facts; the Art 13(1) duty
+-- simply outranks it. Keeping both facts visible is what lets FinMont explain
+-- the step-up to a merchant who can see an exemption sitting right there.
+#ASSERT `article 18 exemption is available` `case 11 transaction`
+            `a clean real time risk analysis` `FinMont clean acquirer`
+
+
+-- ===========================================================================
+-- CASE 12 — Case 1, but the acquirer is in an Article 20 cessation.
+--
+-- Two consecutive quarters above the reference rate. Art 20(2) closes Art 18
+-- to this provider immediately, for every transaction, until it has posted a
+-- quarter at or below and notified the competent authorities under Art 20(4).
+-- The transaction is identical to Case 1; only the provider changed.
+-- ===========================================================================
+
+§§ `Case 12 — Article 20 cessation closes Article 18`
+
+`case 12` MEANS
+    `the case of` `case 1 transaction` `no counters since the last authentication`
+        `a clean real time risk analysis` `FinMont acquirer in cessation`
+
+#ASSERT `SCA outcome for` `case 12` EQUALS `SCA required`
+#ASSERT NOT (`the article 18 exemption is not in cessation` `FinMont acquirer in cessation`)
+#ASSERT `the article 18 exemption is not in cessation` `FinMont clean acquirer`
+
+
+-- ===========================================================================
+-- CASE 13 — Case 1 with the middling acquirer.
+--
+-- 0.09 % clears the EUR 100 band (0.13 %) but not the EUR 250 band (0.06 %).
+-- Its Art 18 ceiling is EUR 100, so the EUR 480 flight is not exemptible even
+-- though the transaction is identical to Case 1.
+-- ===========================================================================
+
+§§ `Case 13 — The same booking through a higher-fraud acquirer`
+
+`case 13` MEANS
+    `the case of` `case 1 transaction` `no counters since the last authentication`
+        `a clean real time risk analysis` `FinMont middling acquirer`
+
+#ASSERT `SCA outcome for` `case 13` EQUALS `SCA required`
+#ASSERT `highest amount exemptible under article 18 in euro` `card based payment` `FinMont middling acquirer` EQUALS 100
+
+
+-- ===========================================================================
+-- CASE 14 — Case 1 with one Article 18(2)(c) signal raised.
+--
+-- An abnormal payer location — the traveller is booking from an airport in
+-- another country. Art 18(2)(c)(v) defeats the exemption on its own, however
+-- clean the acquirer's fraud book. This is the failure mode a travel
+-- orchestrator must plan for: the sector's normal behaviour is a risk model's
+-- anomaly.
+-- ===========================================================================
+
+§§ `Case 14 — An abnormal payer location defeats Article 18`
+
+`case 14` MEANS
+    `the case of` `case 1 transaction` `no counters since the last authentication`
+        `a risk analysis flagging an abnormal payer location` `FinMont clean acquirer`
+
+#ASSERT `SCA outcome for` `case 14` EQUALS `SCA required`
+#ASSERT NOT (`the real time risk analysis identified no listed signal`
+                 `a risk analysis flagging an abnormal payer location`)
+
+
+-- ===========================================================================
+-- CASE 15 — Law time. Case 1 asked under the rules effective before
+-- 14 September 2019.
+--
+-- Art 38(2) is a dated arm, so the same fixture answers differently under the
+-- rules of a different day. Before the application date there was no SCA
+-- obligation to be exempted from.
+-- ===========================================================================
+
+§§ `Case 15 — The same booking under the rules effective in June 2019`
+
+#EVAL `EVAL UNDER RULES EFFECTIVE AT` (Date 1 6 2019) (`SCA outcome for` `case 1`)
+#EVAL `EVAL UNDER RULES EFFECTIVE AT` (Date 9 9 2026) (`SCA outcome for` `case 1`)
+
+-- Expected, machine-checked: out of scope before, exempt after.
+#ASSERT (`EVAL UNDER RULES EFFECTIVE AT` (Date 1 6 2019) (`SCA outcome for` `case 1`))
+            EQUALS `SCA out of scope`
+#ASSERT (`EVAL UNDER RULES EFFECTIVE AT` (Date 9 9 2026) (`SCA outcome for` `case 1`))
+            EQUALS `SCA exempt`
+
+
+-- ===========================================================================
+-- CASE 16 — Refund and liability. A disputed EUR 900 booking where the
+-- merchant side did not accept strong customer authentication.
+--
+-- SECONDARY SOURCE — Directive (EU) 2015/2366, not supplied with this job.
+-- Every assertion below is provisional. See NOTES.md §3.
+-- ===========================================================================
+
+§§ `Case 16 — Liability shift where the payee side refused SCA`
+
+`case 16 claim` MEANS `Unauthorised Transaction Claim` WITH
+    `reference`                                            IS "FM-0016 disputed booking EUR 900"
+    `amount in euro`                                       IS 900
+    `date the amount was debited`                          IS Date 3 8 2026
+    `date the payer notified the payment service provider` IS Date 9 9 2026
+    `date the payment service provider became aware or was notified` IS Date 9 9 2026
+    `strong customer authentication was required by the payer payment service provider` IS TRUE
+    `the payee or the payee payment service provider failed to accept strong customer authentication` IS TRUE
+    `the payer acted fraudulently`                         IS FALSE
+    `the payer failed article 69 obligations with intent or gross negligence` IS FALSE
+    `arose from a lost stolen or misappropriated payment instrument`          IS TRUE
+    `the loss was not detectable to the payer before the payment`             IS FALSE
+    `the loss was caused by an act or omission of the provider or its agent or outsourcee` IS FALSE
+    `the transaction occurred after the payer notified loss under article 69(1)(b)`        IS FALSE
+    `the provider failed to supply means of notification at all times`        IS FALSE
+    `the provider has reasonable grounds to suspect fraud and has notified the national authority in writing` IS FALSE
+
+#ASSERT `the claim was notified in time` `case 16 claim`
+#ASSERT `the immediate refund obligation is engaged` `case 16 claim`
+-- Notified Wednesday 9 September 2026; the Art 73(1) refund is due by the end
+-- of Thursday the 10th.
+#ASSERT `deadline to refund an unauthorised transaction` `case 16 claim` EQUALS Date 10 9 2026
+-- Art 74(2) second sentence: the payee side refunds the payer's provider.
+#ASSERT `who bears the loss` `case 16 claim`
+            EQUALS `the payee or the payment service provider of the payee bears the loss`
+#ASSERT `amount the payer bears in euro` `case 16 claim` EQUALS 0
+
+-- The same facts with the payee side having accepted SCA properly, and a
+-- lost-card loss the payer could have detected: the EUR 50 cap bites.
+`case 16 claim with acceptance` MEANS `Unauthorised Transaction Claim` WITH
+    `reference`                                            IS "FM-0016b disputed booking EUR 900"
+    `amount in euro`                                       IS 900
+    `date the amount was debited`                          IS Date 3 8 2026
+    `date the payer notified the payment service provider` IS Date 9 9 2026
+    `date the payment service provider became aware or was notified` IS Date 9 9 2026
+    `strong customer authentication was required by the payer payment service provider` IS TRUE
+    `the payee or the payee payment service provider failed to accept strong customer authentication` IS FALSE
+    `the payer acted fraudulently`                         IS FALSE
+    `the payer failed article 69 obligations with intent or gross negligence` IS FALSE
+    `arose from a lost stolen or misappropriated payment instrument`          IS TRUE
+    `the loss was not detectable to the payer before the payment`             IS FALSE
+    `the loss was caused by an act or omission of the provider or its agent or outsourcee` IS FALSE
+    `the transaction occurred after the payer notified loss under article 69(1)(b)`        IS FALSE
+    `the provider failed to supply means of notification at all times`        IS FALSE
+    `the provider has reasonable grounds to suspect fraud and has notified the national authority in writing` IS FALSE
+
+#ASSERT `who bears the loss` `case 16 claim with acceptance`
+            EQUALS `the payer bears up to the article 74 cap`
+#ASSERT `amount the payer bears in euro` `case 16 claim with acceptance` EQUALS 50
+
+
+-- ===========================================================================
+-- CASE 17 — A tour operator's variable-amount balance payment, disputed
+-- under Article 76 as more than the payer could reasonably have expected.
+--
+-- SECONDARY SOURCE — provisional. The eight-week request window runs from the
+-- debit date; the provider then has ten business days to refund or justify.
+-- ===========================================================================
+
+§§ `Case 17 — Article 76 refund on a variable travel balance`
+
+`case 17 claim` MEANS `Payee Initiated Refund Claim` WITH
+    `reference`                            IS "FM-0017 tour balance EUR 1450"
+    `amount in euro`                       IS 1450
+    `date the funds were debited`          IS Date 3 8 2026
+    `date the payer requested the refund`  IS Date 9 9 2026
+    `the transaction was authorised`       IS TRUE
+    `initiated by or through the payee`    IS TRUE
+    `the authorisation did not specify the exact amount`                IS TRUE
+    `the amount exceeded what the payer could reasonably have expected` IS TRUE
+    `is a SEPA direct debit within Regulation (EU) No 260/2012`         IS FALSE
+    `consent was given directly to the payment service provider`        IS FALSE
+    `information on the transaction was made available at least 4 weeks before the due date` IS FALSE
+    `the framework contract excludes the refund right on those grounds` IS FALSE
+    `the payer relies only on currency exchange reasons at the agreed reference rate` IS FALSE
+
+-- Debited Monday 3 August 2026; eight weeks runs to Monday 28 September 2026,
+-- so a request on 9 September is inside the window.
+#ASSERT `the refund was requested within the eight week window` `case 17 claim`
+#ASSERT `deadline for the payer to request a payee initiated refund` (Date 3 8 2026) EQUALS Date 28 9 2026
+#ASSERT `the payer is entitled to a refund under article 76` `case 17 claim`
+-- Requested Wednesday 9 September; ten business days runs to Wednesday
+-- 23 September.
+#ASSERT `deadline to refund or justify refusal` (Date 9 9 2026) EQUALS Date 23 9 2026
