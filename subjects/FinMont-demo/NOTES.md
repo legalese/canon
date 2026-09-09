@@ -23,12 +23,21 @@ cross-border:
 Modules, in dependency order:
 
 ```
-psd2-sca-domain.l4              the nouns: types and records, no rules
-psd2-sca-rts.l4                 the SCA-RTS itself — Chapters I to III, and the Annex
-psd2-refunds-and-liability.l4   PSD2 Arts 71-77, 89-92  ⚠ secondary source
-finmont-sca-orchestration.l4    the firm-facing entry points and the scope gates
-cases/finmont-travel-cases.l4   17 travel scenarios, machine-asserted
+types.l4                          the nouns: types and records, no rules
+chapter-i-general-provisions.l4   SCA-RTS Arts 2-3
+chapter-ii-authentication.l4      SCA-RTS Arts 4-5
+chapter-iii-exemptions.l4         SCA-RTS Arts 10-21 and the Annex
+chapter-vi-final-provisions.l4    SCA-RTS Arts 37-38 — the law-time axis
+psd2-refunds-and-liability.l4     PSD2 Arts 71-77, 89-92  ⚠ secondary source
+finmont-sca-orchestration.l4      the firm-facing entry points and the scope gates
+cases/finmont-travel-cases.l4     17 travel scenarios, machine-asserted
+registers/source-bundle/          the extracted source text and its metadata
 ```
+
+Module layout follows the convention the `western-australia` corpus uses: `types.l4` for
+the shared ontology, one module per structural division of the instrument (Chapter here,
+Part there), a flat directory, and the source text deposited under
+`registers/source-bundle/`.
 
 ## 2. What is deliberately not encoded
 
@@ -71,10 +80,12 @@ UNVERIFIED — no source text supplied for this Article
 
 in its `@ref`. The same marker appears on three of the five scope gates in
 `finmont-sca-orchestration.l4` (§4). This is why `subject.json` declares `status: "draft"`
-and why `min_dated_arms` and the gates directory are empty: no fidelity claim is made.
+and why the `gates/` directory is absent: no fidelity claim is made.
 
-**To close this:** deposit the Directive text in `registers/` as a source bundle, then
-re-verify each marked `@ref` against it and drop the marker. Until that happens, treat the
+**To close this:** deposit the Directive text into `registers/source-bundle/` alongside the
+RTS text already there, then re-verify each marked `@ref` against it and drop the marker.
+`subject.json` already names the Directive under `secondary_sources` with
+`"state": "not-deposited"`; flip that when it lands. Until that happens, treat the
 refund and liability outputs as a structured hypothesis to check with counsel, not as an
 answer.
 
@@ -169,12 +180,24 @@ Recorded here rather than by forking the template, per the repository README.
 - **Two instruments in one subject.** The class assumes one body of law. This subject
   encodes the SCA-RTS (primary, supplied) and parts of PSD2 (secondary, not supplied),
   because FinMont's three questions straddle both and separating them into two subjects
-  would hide the dependency rather than record it. The provenance split is carried by the
-  `UNVERIFIED` markers and by §3, not by the directory layout.
-- **`projections/` and `gates/` are absent.** No DMN or BPMN projection has been emitted and
-  no human gate has been granted. An absent gate directory is an honest statement that no
-  one has signed; a stub would not be.
-- **A `FinMont-demo` subject id, not a law id.** The subject is named for the firm rather
-  than the instrument because the orchestration module and the scenario cases are
-  firm-specific. The two law modules are firm-neutral and could be lifted into a
-  `psd2-sca-rts` subject unchanged if the corpus ever wants one.
+  would hide the dependency rather than record it. `subject.json` carries the second in a
+  `secondary_sources` key, which the `western-australia` descriptors have no need of and
+  therefore do not define; the provenance split is otherwise carried by the `UNVERIFIED`
+  markers and by §3.
+- **`projections/` and `gates/` are absent**, as they are throughout `western-australia`.
+  No DMN or BPMN projection has been emitted and no human gate has been granted. An absent
+  gate directory is an honest statement that nobody has signed; a stub would not be.
+- **`cases/` and `report/` are present**, where no `western-australia` subject yet has
+  either. Both are in the class contract in `subjects/README.md`; WA simply has not reached
+  them. They hold real content here and were not dropped for the sake of matching a
+  scaffold.
+- **A per-subject `README.md`**, which the class contract does not list and WA does not
+  use. Additive, for FinMont's engineers; nothing reads it.
+- **Not under a jurisdiction directory.** `western-australia` subjects sit at
+  `subjects/<jurisdiction>/<subject-id>/`. This one sits at `subjects/FinMont-demo/`,
+  where it was asked for. If the corpus later regularises on jurisdiction folders it
+  belongs at `subjects/european-union/`, and `git mv` is the whole migration.
+- **A `FinMont-demo` subject id, not a law id.** Named for the firm rather than the
+  instrument because the orchestration module and the scenario cases are firm-specific.
+  The five law modules are firm-neutral and could be lifted into a `psd2-sca-rts` subject
+  of their own unchanged if the corpus ever wants one.

@@ -1,183 +1,40 @@
 IMPORT prelude
 IMPORT daydate
-IMPORT `psd2-sca-domain`
+IMPORT `types`
 
-§ `Commission Delegated Regulation (EU) 2018/389 — the SCA-RTS`
-
--- ===========================================================================
--- Commission Delegated Regulation (EU) 2018/389 of 27 November 2017,
--- OJ L 69, 13.3.2018, p. 23.
---
--- Chapter I    General provisions                    (Arts 1 to 3)
--- Chapter II   Security measures for the application of SCA  (Arts 4 to 9)
--- Chapter III  Exemptions from SCA                   (Arts 10 to 21)
--- Chapter VI   Final provisions                      (Arts 37 to 38)
--- Annex        Reference fraud rates by exemption threshold value
---
--- Chapters IV (confidentiality of credentials, Arts 22 to 27) and V (common
--- and secure open standards of communication, Arts 28 to 36) are DELIBERATELY
--- NOT ENCODED: they impose narrative security and interface obligations with
--- no computable eligibility test, and FinMont's three questions do not reach
--- them. NOTES.md §2 records the boundary.
---
--- Every rule below is stated in the Regulation's own terms. The FinMont-facing
--- entry points are in `finmont-sca-orchestration`; nothing here knows about
--- travel, airlines or FinMont.
--- ===========================================================================
-
-
-§§ `Article 38 — Entry into force and application`
-
--- The law-time axis. Art 38(2): the Regulation applies from 14 September 2019.
--- Art 38(3): Art 30(3) and (5) applied earlier, from 14 March 2019 — recorded
--- here for completeness although Chapter V is not otherwise encoded.
-@ref "Regulation (EU) 2018/389, Art 38(2)"
-`date this Regulation applies from` MEANS Date 14 9 2019
-
-@ref "Regulation (EU) 2018/389, Art 38(3)"
-`date article 30(3) and (5) apply from` MEANS Date 14 3 2019
-
--- A dated arm: before 14 September 2019 the SCA-RTS imposed nothing, so an
--- assessment made under the rules effective at an earlier date must not
--- report an exemption — there was no obligation to be exempted from.
-@ref "Regulation (EU) 2018/389, Art 38(2)"
-GIVETH A BOOLEAN
-`the SCA-RTS is in application` MEANS
-    (DATE_SERIAL `RULES EFFECTIVE DATE`)
-        AT LEAST (DATE_SERIAL `date this Regulation applies from`)
-
-@ref "Regulation (EU) 2018/389, Art 38(3)"
-GIVETH A BOOLEAN
-`the article 30(3) and (5) obligations are in application` MEANS
-    (DATE_SERIAL `RULES EFFECTIVE DATE`)
-        AT LEAST (DATE_SERIAL `date article 30(3) and (5) apply from`)
-
-
-§§ `Article 2 — General authentication requirements`
-
--- Art 2(2): the five risk-based factors the monitoring mechanisms must take
--- into account "at a minimum". Encoded as a checklist because the exemptions
--- in Arts 10, 11, 12 and 15 are each conditioned on Article 2 compliance.
-@ref "Regulation (EU) 2018/389, Art 2(2)"
-GIVEN `lists of compromised or stolen authentication elements are used` IS A BOOLEAN
-    , `the amount of each payment transaction is taken into account`    IS A BOOLEAN
-    , `known fraud scenarios are taken into account`                    IS A BOOLEAN
-    , `signs of malware infection in authentication sessions are taken into account` IS A BOOLEAN
-    , `a log of provider-supplied access device or software use is kept` IS A BOOLEAN
-GIVETH A BOOLEAN
-DECIDE `the article 2(2) monitoring factors are all taken into account` IF
-        `lists of compromised or stolen authentication elements are used`
-    AND `the amount of each payment transaction is taken into account`
-    AND `known fraud scenarios are taken into account`
-    AND `signs of malware infection in authentication sessions are taken into account`
-    AND `a log of provider-supplied access device or software use is kept`
-
-
-§§ `Article 3 — Review of the security measures`
-
--- Art 3(2) second subparagraph: providers using the Article 18 exemption face
--- a yearly audit of the methodology, the model and the reported fraud rates.
-@ref "Regulation (EU) 2018/389, Art 3(2)"
-`minimum audit frequency in years for article 18 users` MEANS 1
-
--- Art 3(2): external independent auditor in the first year of use and at
--- least every 3 years thereafter.
-@ref "Regulation (EU) 2018/389, Art 3(2)"
-`maximum years between external audits for article 18 users` MEANS 3
-
-@ref "Regulation (EU) 2018/389, Art 3(2)"
-GIVEN `years since the external audit` IS A NUMBER
-    , `first year of using the article 18 exemption` IS A BOOLEAN
-GIVETH A BOOLEAN
-DECIDE `an external independent audit is due` IF
-        `first year of using the article 18 exemption`
-    OR  `years since the external audit`
-            AT LEAST `maximum years between external audits for article 18 users`
-
-
-§§ `Article 4 — Authentication code`
-
--- Art 4(1): two or more elements from distinct categories.
-@ref "Regulation (EU) 2018/389, Art 4(1)"
-`minimum number of authentication element categories` MEANS 2
-
-@ref "Regulation (EU) 2018/389, Art 4(1)"
-GIVEN `categories used` IS A LIST OF `Authentication Element Category`
-GIVETH A BOOLEAN
-DECIDE `the authentication is based on enough distinct categories` IF
-    count `categories used` AT LEAST `minimum number of authentication element categories`
-
--- Art 4(3)(b): consecutive failed attempts before the action is blocked
--- "shall not exceed five within a given period of time".
-@ref "Regulation (EU) 2018/389, Art 4(3)(b)"
-`maximum consecutive failed authentication attempts` MEANS 5
-
-@ref "Regulation (EU) 2018/389, Art 4(3)(b)"
-GIVEN `consecutive failed attempts` IS A NUMBER
-GIVETH A BOOLEAN
-DECIDE `the action must be blocked` IF
-    `consecutive failed attempts` AT LEAST `maximum consecutive failed authentication attempts`
-
--- Art 4(3)(d): inactivity timeout for online payment account access.
-@ref "Regulation (EU) 2018/389, Art 4(3)(d)"
-`maximum minutes without payer activity after authentication` MEANS 5
-
-@ref "Regulation (EU) 2018/389, Art 4(3)(d)"
-GIVEN `minutes without activity` IS A NUMBER
-GIVETH A BOOLEAN
-DECIDE `the authenticated session has timed out` IF
-    `minutes without activity` GREATER THAN `maximum minutes without payer activity after authentication`
-
-
-§§ `Article 5 — Dynamic linking`
-
--- Art 5(1): where SCA applies under Art 97(2) PSD2 — remote electronic
--- payment transactions — the code must be dynamically linked to amount and
--- payee, and any change to either invalidates it.
-@ref "Regulation (EU) 2018/389, Art 5(1)"
-GIVEN `payer is made aware of the amount and the payee`             IS A BOOLEAN
-    , `the code is specific to the amount and the payee`            IS A BOOLEAN
-    , `the accepted code corresponds to the original amount and payee identity` IS A BOOLEAN
-    , `any change to the amount or the payee invalidates the code`  IS A BOOLEAN
-GIVETH A BOOLEAN
-DECIDE `dynamic linking requirements are met` IF
-        `payer is made aware of the amount and the payee`
-    AND `the code is specific to the amount and the payee`
-    AND `the accepted code corresponds to the original amount and payee identity`
-    AND `any change to the amount or the payee invalidates the code`
-
--- Art 5(3)(a): where the payer consented to an exact amount to be blocked
--- under Art 75(1) PSD2, the code is specific to THAT blocked amount. This is
--- the pre-authorisation case a hotel or a car-hire desk uses.
--- Art 5(3)(b): for a consented batch, the code is specific to the TOTAL of
--- the batch and to the specified payees. This is the multi-payee travel
--- basket case.
-@ref "Regulation (EU) 2018/389, Art 5(3)"
-GIVEN `is a card-based transaction with consent to an exact blocked amount` IS A BOOLEAN
-    , `is a consented batch of remote electronic transactions`               IS A BOOLEAN
-    , `blocked amount consented to`                                          IS A NUMBER
-    , `total amount of the batch`                                            IS A NUMBER
-    , `amount the code is specific to`                                       IS A NUMBER
-GIVETH A BOOLEAN
-DECIDE `the authentication code is specific to the right amount` IF
-    IF   `is a card-based transaction with consent to an exact blocked amount`
-    THEN `amount the code is specific to` EQUALS `blocked amount consented to`
-    ELSE IF   `is a consented batch of remote electronic transactions`
-         THEN `amount the code is specific to` EQUALS `total amount of the batch`
-         ELSE TRUE
-
+§ `SCA-RTS Chapter III — Exemptions from strong customer authentication`
 
 -- ===========================================================================
--- CHAPTER III — EXEMPTIONS FROM STRONG CUSTOMER AUTHENTICATION
+-- Commission Delegated Regulation (EU) 2018/389, Chapter III, Articles 10 to
+-- 21, together with the ANNEX (OJ L 69, 13.3.2018, p. 43) on which Article 18
+-- depends.  OJ L 69, 13.3.2018, p. 31.
 --
--- Every Article below states a POWER, not a duty: "payment service providers
+-- This is the module that answers "is SCA required, or is an exemption
+-- available". It is the commercially load-bearing part of the instrument.
+--
+-- Every Article here states a POWER, not a duty: "payment service providers
 -- shall be allowed not to apply strong customer authentication". Each
 -- predicate therefore answers "is the exemption AVAILABLE", never "is SCA
--- disapplied" — the decision to take an available exemption stays with the
+-- disapplied" -- the decision to take an available exemption stays with the
 -- provider, and for a card transaction the issuer may decline an exemption
--- the acquirer requested. See NOTES.md §5.
+-- the acquirer requested. See NOTES.md section 5.
+--
+-- The two exceptions are Arts 13(1) and 14(1), which are DUTIES and are
+-- encoded as such: they beat an otherwise available exemption on the same
+-- transaction.
+--
+-- The Annex is encoded twice over -- forward (which band an amount falls in,
+-- and what fraud rate that band demands) and inverted (given an acquirer's
+-- fraud rate, the largest amount it may exempt). The inversion is what an
+-- orchestrator needs at routing time.
+--
+-- Article 18 forward-references Article 20 for the cessation state. That is
+-- deliberate: Art 20 is what actually decides whether a given provider may
+-- use the Art 18 exemption today, and the Articles are kept in the
+-- Regulation's own order rather than reordered to suit the dependency.
+--
+-- Source text: registers/source-bundle/reg-del-2018-389.txt
 -- ===========================================================================
-
 
 §§ `Article 10 — Payment account information`
 
@@ -570,21 +427,16 @@ DECIDE `the article 21 monitoring conditions are met` IF
             AT MOST `maximum months between exemption monitoring reports`
 
 
-§§ `Article 37 — Review`
-
-@ref "Regulation (EU) 2018/389, Art 37"
-`date EBA was to review the annex fraud rates by` MEANS Date 14 3 2021
-
 
 -- ===========================================================================
 -- ILLUSTRATIONS
 --
--- Every assertion below is a statement about the SCA-RTS alone, with no
+-- Every assertion below is a statement about the Regulation alone, with no
 -- FinMont or travel content. The travel scenarios live in
 -- cases/finmont-travel-cases.l4.
 -- ===========================================================================
 
-§§ `SCA-RTS — Illustrations`
+§§ `Chapter III — Illustrations`
 
 §§§ `Annex bands`
 
@@ -607,13 +459,6 @@ DECIDE `the article 21 monitoring conditions are met` IF
 #ASSERT `the annex prices this transaction type` `credit transfer`
 #ASSERT NOT (`the annex prices this transaction type` `other payment transaction`)
 
-§§§ `Article 4 counters`
-
-#ASSERT `the action must be blocked` 5
-#ASSERT NOT (`the action must be blocked` 4)
-#ASSERT `the authenticated session has timed out` 6
-#ASSERT NOT (`the authenticated session has timed out` 5)
-
 §§§ `Article 19 fraud rate arithmetic`
 
 -- EUR 1,300 of fraud in EUR 1,000,000 of remote card volume is 0.13 %, which
@@ -621,8 +466,3 @@ DECIDE `the article 21 monitoring conditions are met` IF
 #ASSERT `overall fraud rate pct` 1300 1000000 EQUALS 0.13
 #ASSERT `overall fraud rate pct` 0 0 EQUALS 0
 
-§§§ `Article 3 audit cadence`
-
-#ASSERT `an external independent audit is due` 0 TRUE
-#ASSERT `an external independent audit is due` 3 FALSE
-#ASSERT NOT (`an external independent audit is due` 2 FALSE)

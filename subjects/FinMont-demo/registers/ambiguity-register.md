@@ -47,7 +47,8 @@ settled market and supervisory understanding.
 
 **What turns on it.** Under reading (2) Art 11 would exempt arbitrarily large contactless
 transactions for the first five taps after each authentication. Encoded in
-`psd2-sca-rts.l4`, `article 11 exemption is available` and `article 16 exemption is available`.
+`chapter-iii-exemptions.l4`, `article 11 exemption is available` and
+`article 16 exemption is available`.
 Tested by Cases 7 and 8.
 
 ---
