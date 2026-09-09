@@ -39,14 +39,23 @@ is `draft` and not `adversarially-reviewed`.
 
 | module | covers | lines |
 | --- | --- | --- |
-| `psd2-sca-domain.l4` | types and records only; no rules | 261 |
-| `psd2-sca-rts.l4` | SCA-RTS Arts 2, 3, 4, 5, 10–21, 37, 38, Annex | 628 |
+| `types.l4` | types and records only; no rules | 261 |
+| `chapter-i-general-provisions.l4` | SCA-RTS Arts 2, 3 | 73 |
+| `chapter-ii-authentication.l4` | SCA-RTS Arts 4, 5 | 122 |
+| `chapter-iii-exemptions.l4` | SCA-RTS Arts 10–21 and the Annex | 468 |
+| `chapter-vi-final-provisions.l4` | SCA-RTS Arts 37, 38 — the law-time axis | 54 |
 | `psd2-refunds-and-liability.l4` | PSD2 Arts 4(37), 71, 73, 74, 76, 77, 89, 90, 92 ⚠ | 371 |
-| `finmont-sca-orchestration.l4` | scope gates, entry points, travel readings | 335 |
-| `cases/finmont-travel-cases.l4` | 17 scenarios | 671 |
+| `finmont-sca-orchestration.l4` | scope gates, entry points, travel readings | 347 |
+| `cases/finmont-travel-cases.l4` | 17 scenarios | 672 |
 
-97 `@ref` citations. 82 `#ASSERT` directives. 2 `#EVAL` directives. 2 dated arms
+98 `@ref` citations. 82 `#ASSERT` directives. 2 `#EVAL` directives. 2 dated arms
 (Art 38(2), Art 38(3)).
+
+The module split follows the convention of the `western-australia` corpus — `types.l4` for
+the shared ontology, one module per structural division of the instrument (a Chapter here,
+a Part there), a flat directory — and the source text is deposited under
+`registers/source-bundle/` as every WA subject deposits its own. Article 1 (subject matter)
+and Chapters IV and V have no module because nothing in them is encoded (§3).
 
 **The Annex table**, which is the commercially load-bearing part of the instrument and the
 part most often got wrong, is encoded as two functions — `applicable exemption threshold
@@ -109,8 +118,9 @@ Case 4 asserts that an out-of-scope transaction reports **no** exemptions.
 | | |
 | --- | --- |
 | Source text read in full | ✅ all 38 Articles and the Annex, from the supplied PDF |
+| Source text deposited | ✅ `registers/source-bundle/reg-del-2018-389.txt` (82,513 chars) with `.meta.json` |
 | Annex table cross-checked | ✅ against the PDF, whose column layout the text extractor mangled; values re-read from the source layout |
-| Citations placed on every rule | ✅ 97 `@ref` |
+| Citations placed on every rule | ✅ 98 `@ref` |
 | Scenario assertions written | ✅ 82 |
 | **Assertions machine-evaluated** | ❌ **no** |
 | **Modules type-checked** | ❌ **no** |
@@ -121,18 +131,19 @@ Case 4 asserts that an out-of-scope transaction reports **no** exemptions.
 `jl4-lsp.exe` (a language server, stdio only) and no batch runner, and no Haskell toolchain.
 The L4 was therefore written against the syntax of the existing corpus modules in this
 repository rather than validated by the compiler. **Expect to fix syntax on the first run.**
-`subject.json` keeps `min_dated_arms` and `min_assertions` at 0 for this reason: a floor
-must be a measured figure from `l4 run --json`, and none has been earned. The counts in §2
-are what a first run should be reconciled against, not floors.
+`subject.json` follows the `western-australia` descriptor schema, which carries no `checks`
+floors at all — so there is no floor here to set falsely. The counts in §2 are what a first
+run should be reconciled against.
 
 ## 7. What to fix first
 
-1. **Run the toolchain.** Type-check the five modules and evaluate the 82 assertions. Fix
-   what breaks; raise the `checks` floors in `subject.json` from the real run.
-2. **Deposit Directive (EU) 2015/2366** as a source bundle in `registers/` and discharge
-   every `UNVERIFIED` marker against it — 45 occurrences, all in
-   `psd2-refunds-and-liability.l4` and in three scope gates in
-   `finmont-sca-orchestration.l4`.
+1. **Run the toolchain.** Type-check the eight modules and evaluate the 82 assertions. Fix
+   what breaks, and raise `encoding_version` past 0.1.0 once it does.
+2. **Deposit Directive (EU) 2015/2366** into `registers/source-bundle/` alongside the RTS
+   text already there, and discharge every `UNVERIFIED` marker against it — 45
+   occurrences, all in `psd2-refunds-and-liability.l4` and in three scope gates in
+   `finmont-sca-orchestration.l4`. `subject.json` already names it under
+   `secondary_sources` with `"state": "not-deposited"`; flip that when it lands.
 3. **Get local advice on AR-07** per market, and make that gate configurable rather than
    fixed in the encoding.
 4. **Decide AR-08** — the euro-conversion convention for a multi-currency book, and record

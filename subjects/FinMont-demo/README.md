@@ -19,17 +19,25 @@ for cross-border regulatory compliance.
 
 ## Layout
 
+Follows the subject-sidecar shape used by the [`western-australia`](../western-australia/)
+corpus: `types.l4` for the shared ontology, one module per structural division of the
+instrument, a flat directory, and the source text deposited under `registers/source-bundle/`.
+
 ```
-subject.json                      the descriptor
-NOTES.md                          idiosyncrasies, scope boundaries, divergences   ← read §3
-SOURCE-LICENSE.md                 the terms the quoted legal text carries
-psd2-sca-domain.l4                the nouns: types and records, no rules
-psd2-sca-rts.l4                   the SCA-RTS — Chapters I to III, and the Annex
-psd2-refunds-and-liability.l4     PSD2 Arts 71-77, 89-92          ⚠ secondary source
-finmont-sca-orchestration.l4      the firm-facing entry points and the scope gates
-cases/finmont-travel-cases.l4     17 travel scenarios, machine-asserted
-registers/ambiguity-register.md   every interpretive choice, and what turns on it
-report/conversion-report.md       what was encoded, what was not, and what to fix first
+subject.json                            the descriptor
+NOTES.md                                idiosyncrasies and divergences        ← read §3
+SOURCE-LICENSE.md                       the terms the quoted legal text carries
+types.l4                                the nouns: types and records, no rules
+chapter-i-general-provisions.l4         SCA-RTS Arts 2-3
+chapter-ii-authentication.l4            SCA-RTS Arts 4-5
+chapter-iii-exemptions.l4               SCA-RTS Arts 10-21 and the Annex
+chapter-vi-final-provisions.l4          SCA-RTS Arts 37-38 — the law-time axis
+psd2-refunds-and-liability.l4           PSD2 Arts 71-77, 89-92       ⚠ secondary source
+finmont-sca-orchestration.l4            the firm-facing entry points and the scope gates
+cases/finmont-travel-cases.l4           17 travel scenarios, machine-asserted
+registers/source-bundle/                the extracted source text and its metadata
+registers/ambiguity-register.md         every interpretive choice, and what turns on it
+report/conversion-report.md             what was encoded, what was not, what to fix first
 ```
 
 ## The three entry points
