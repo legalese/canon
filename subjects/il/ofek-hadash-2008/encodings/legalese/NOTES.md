@@ -388,6 +388,16 @@ A row is now **184 characters**, and what remains on it is what varies: the
 seniority, and nine amounts. Read down a column and you are reading the table
 as the agreement prints it.
 
+**Which of the two bought that, measured, because it is easy to assume wrongly.**
+Written out with `WITH … IS`, one real row is **320** characters. Positional `OF`
+takes it to **184**. Adding ditto takes it to **183** — that is, to nothing, and
+the one character is an artefact of the comparison. Ditto *cannot* narrow a
+line here: the columns are fixed width, so a caret is padded out to exactly the
+width of the token it replaces. **`OF` buys the width; ditto buys the ink.** The
+gain from ditto is that repeated tokens become whitespace and the eye lands only
+on what varies — worth having, but it is a different axis, and a reader who
+reaches for ditto to shorten a line will be disappointed.
+
 Two things learned doing this, recorded so the next person does not rediscover
 them. `AT MOST` is **two** tokens, so one caret under it resolves to `AT` and
 the parser then wants `MOST`; the operator is left written out rather than
@@ -398,6 +408,54 @@ dittoed down from `` `at rank 1` `` — only whole names can.
 The same treatment is applied to the Tosefet Ofek appendices, the rank lookup,
 and the working-week tables in `ofek-worktime.l4`, where `OF` lets § 15's and
 § 17's four bands line up as the four-row tables the articles actually print.
+
+### 9.2 Ditto fails loudly when it hits nothing, and silently when it hits the wrong thing
+
+This asymmetry is the reason the tables are **generated** by `source/_tablefmt.py`
+rather than typed, and it is worth stating on its own because the quiet half is
+the expensive one. Three witnesses, all run on `ofek/build` at `origin/unstable`
+9d6536a9.
+
+**Silent, 1: a caret under a backtick identifier copies the whole name.** The
+§ 9 note above says `` `at rank 2` `` cannot be dittoed down from `` `at rank 1` ``.
+What it did not say is what happens if you try — you do not get an error, you
+get rank 1's money:
+
+```l4
+`r` MEANS `a row` OF 100, 200
+
+    BRANCH IF `the rank` AT MOST 1 THEN `the row`'s `at rank 1`
+           OTHERWISE                    ^        ^  ^
+```
+
+`amount r 1` is 100 and `amount r 2` is **also 100**. Zero errors, exit 0. The
+third caret copied the token `` `at rank 1` `` entire, so the `OTHERWISE` arm
+answers with the first column for every rank there is.
+
+**Silent, 2: editing the line above changes the meaning of the line below.**
+
+```l4
+`c1` MEANS `small` AT MOST 50
+`c2` MEANS ^ AT MOST 50
+```
+
+With `` `small` `` at 10 both are `TRUE`. Change that one subject to `` `big` ``
+at 90 and both are `FALSE` — while `c2`'s own line is character-for-character
+what it was. Zero errors either way. (Found on the l4-ide side by the
+`xpile-catala` session; reproduced here before being written down.)
+
+**Loud: a caret that resolves to nothing, or to half an operator.** `AT MOST` is
+two tokens, so one caret under it yields `AT` and the parse dies at the next
+token. Likewise a caret whose column holds nothing above. These are the *good*
+failures: they stop the build.
+
+**And ditto is line-adjacent, which is easier to forget than it sounds.** A
+`GIVETH` line, a comment, a blank line — anything between the model row and the
+dittoed row — breaks the copy, because "the line above" means the line above and
+not the last interesting line. Writing the three witnesses above, I put a
+`GIVETH A NUMBER` between two rows twice in a row and got a parse error at the
+caret both times. The failure was loud, so it cost minutes; the two silent cases
+above are what cost a corpus its correctness.
 
 ### 9.1 The emitted Catala is wrapped
 
