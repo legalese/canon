@@ -449,13 +449,36 @@ two tokens, so one caret under it yields `AT` and the parse dies at the next
 token. Likewise a caret whose column holds nothing above. These are the *good*
 failures: they stop the build.
 
-**And ditto is line-adjacent, which is easier to forget than it sounds.** A
-`GIVETH` line, a comment, a blank line — anything between the model row and the
-dittoed row — breaks the copy, because "the line above" means the line above and
-not the last interesting line. Writing the three witnesses above, I put a
-`GIVETH A NUMBER` between two rows twice in a row and got a parse error at the
-caret both times. The failure was loud, so it cost minutes; the two silent cases
-above are what cost a corpus its correctness.
+**And a caret copies from the previous _token-bearing_ line.** Blank lines and
+comment-only lines are skipped; any line carrying real tokens becomes the new
+reference. So a `GIVETH` between the model row and the dittoed row breaks the
+copy and a paragraph of commentary does not. Measured, one separator at a time:
+
+| between the two rows | result |
+| --- | --- |
+| nothing | works |
+| a blank line | works |
+| a comment-only line | works |
+| a blank line *and* a comment | works |
+| `GIVETH A BOOLEAN` | `unexpected ^` |
+
+`jl4/examples/ok/ditto.l4` makes the same point from the other side: it separates
+its rows with a blank line *and* a comment reading "we can even have whitespace
+and comments in between", and it lives in `ok/`, so it has been green in CI for
+as long as it has existed.
+
+*(**Corrected 2026-09-11.** This paragraph first said that a comment or a blank
+line breaks the copy too. That was wrong in two of its three parts, and wrong in
+the direction that would have contradicted a corpus example — caught by the
+`xpile-catala` session before it shipped into `skills/writing-l4-rules`, and
+re-measured here. What I had actually hit, three times, was the `GIVETH` case;
+the rest was generalisation on no evidence. The signature is the usual casualty
+precisely **because** the harmless separators are harmless, which is what makes
+it surprising: the natural way to write two related rules puts a type signature
+between them.)*
+
+The failure is loud, so it costs minutes. The two silent cases above are what
+cost a corpus its correctness.
 
 ### 9.1 The emitted Catala is wrapped
 
