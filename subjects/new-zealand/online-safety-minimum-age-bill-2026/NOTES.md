@@ -49,8 +49,13 @@ Recorded here rather than by forking the template, per `subjects/README.md`.
    `#EVAL` / `#ASSERT` directives sit inline in the module they test, and the fixtures they
    run against sit beside them. Expected values are machine-evaluated, never hand-typed.
 
-3. **No `projections/`, `report/` or `gates/` yet.** `status` is `draft`: no claim of
-   fidelity is made, and no human gate has been sought.
+3. **`report/` and `gates/` now exist; `projections/` does not.** `report/` carries the
+   conversion report and the machine evaluation report; `registers/` carries the coverage
+   register alongside the source bundle and the incident register. `gates/` carries a prepared
+   HG1 payload, an empty `allowed_signers`, and no signature -- see `gates/README.md`. This is
+   the first `gates/` directory in the corpus, so the mechanics are written out there in full.
+   `status` stays `draft`: no claim of fidelity is made and no human gate has been granted.
+   No DMN or BPMN projections have been emitted.
 
 4. **`SOURCE-LICENSE.md` grants nothing**, because there is nothing to grant -- see that
    file. This is the corpus's first no-copyright source.
