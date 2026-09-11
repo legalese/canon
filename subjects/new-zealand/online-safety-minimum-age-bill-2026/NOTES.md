@@ -20,7 +20,7 @@ Modules, in dependency order:
 ```
 types.l4                         the nouns: the cl 5 and cl 6-8 fact records, the cl 34(3) act enum, tiers
 part-1-preliminary.l4            cll 1-3, 5-10 encoded; cl 4 definitions taken as facts
-part-2-duties.l4                 cll 11-19     scaffold
+part-2-duties.l4                 cll 11-19 encoded
 part-3-subpart-1-regulator.l4    cll 20-23     scaffold
 part-3-subpart-2-enforcement.l4  cll 24-33     scaffold
 part-3-subpart-3-remedies.l4     cll 34-56     scaffold
@@ -93,9 +93,41 @@ These are why the subject exists. Probe 1 is encoded and machine-evaluated in
    worth testing once cll 61-62 are encoded.
 
 5. **cl 11(2)-(3) define what does *not* discharge the duty** (manual age entry; evidence-of-age
-   documents; a digital identity service; both together) without stating what does. The duty
-   is "reasonable steps", so the residue is open-textured by design -- but the encoding should
-   make the shape of the residue visible rather than hide it behind a boolean.
+   documents; a digital identity service; both together) without stating what does.
+   *Encoded in `part-2-duties.l4`.* The three disqualifiers are modelled as
+   `the steps taken cannot satisfy the duty`, and what survives them is a single irreducible
+   field, `the steps taken are otherwise reasonable`. That is the honest shape: an operator
+   reading the Bill can learn with certainty only which methods will fail. The
+   `identity documents only` fixture is the cl 11(3)(c) case -- an operator that does both
+   formal identity checks and nothing else -- and evaluates FALSE.
+
+6. **cl 16(5) imposes a duty with no time for performance, and Tier 2 liability for
+   breaching it.** cl 15(1) gives 12 months (or an earlier notified date). cl 17(3) requires
+   a copy as soon as practicable after the assessment and before the change is made. cl 16(5)
+   says only that "on completion of a review, the operator must provide the regulator with a
+   copy" -- no period, no notified date, no "as soon as practicable". Yet cl 34(3)(f) makes
+   failure to provide "in accordance with section 15(1), 16(5), 17(3), or 19(3)(b)" a
+   specified liability act, and cl 46 routes cl 34(3)(f) to Tier 2: up to $250,000 for an
+   individual, or for anyone else the greater of $12 million and 3% of relevant global
+   turnover. A penalty of that size for a duty whose time for performance is unstated is
+   worth putting to the drafter. Contrast cl 19(3)(b), which requires the regulator's notice
+   to specify the date -- the same drafting problem solved two clauses later.
+
+7. **The only duty on the regulator carries no consequence.** cl 13(3) requires the regulator
+   to notify the Privacy Commissioner before applying to the High Court for a remedy in
+   respect of a cl 12(1) contravention. Every one of the nine specified liability acts in
+   cl 34(3) is an operator failure, and the four offences in cll 57 to 60 do not reach it
+   either, so nothing in the Act attaches to a breach of cl 13(3). Judicial review is the
+   only route. This may be deliberate -- it usually is -- but it is the one asymmetry in a
+   Part otherwise built on enforceable duties, and the encoding makes it visible by giving
+   the regulator its own `duty actor` arm.
+
+8. **cl 17(4) is inclusive, so the trigger for the change-related duty is open-ended.**
+   "significant change ... includes a significant change to (a) the design, features, or
+   functionality of the platform: (b) the terms of use". The encoding follows the text:
+   the two limbs are sufficient, not necessary, so a change outside both may still be
+   significant and still trigger cl 17(1). An operator cannot determine in advance whether a
+   given change is caught.
 
 ## 4. What is deliberately not encoded
 
