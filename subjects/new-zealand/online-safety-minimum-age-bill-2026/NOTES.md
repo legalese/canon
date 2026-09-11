@@ -263,6 +263,35 @@ yet been reduced to a directive, usually because its module is still a scaffold.
 
     This is a design question rather than a drafting defect, and is filed as Structural.
 
+16. **A broadcast-only feed carrying every risky feature falls outside cl 5.** *Encoded and
+    machine-evaluated in `part-1-preliminary.l4`.* cl 5(1)(a)(ii) requires the exchange of
+    digital content between 2 or more users. A service that publishes operator-generated or
+    licensed content into a personalised, endless, time-limited feed -- and lets nobody post,
+    comment or message -- meets every other element of limb (a) and fails that one. Limb (b)
+    does not reach it either: its AI recommends content, it does not simulate a personal
+    connection. `the service has 1 or more specified features` evaluates TRUE and `the service
+    is an age-restricted platform` evaluates FALSE on the same fixture. The exchange
+    requirement is serving as a proxy for risk and no longer tracks it; as AI-generated feeds
+    displace user-generated ones this becomes the ordinary case.
+
+17. **The excluded-service carve-out is available by restructuring, and is indifferent to
+    features.** cl 5(2) excludes a service that solely or primarily enables a listed activity
+    "regardless of whether it meets the criteria in subsection (1)(a)(ii) and (iii)". Primary
+    character is a matter of degree the operator largely controls. A social feed restructured
+    so that gaming predominates leaves limb (a) with its recommender, endless feed and
+    disappearing posts intact. Note the calibration against limb (b), which has no carve-out at
+    all (OS-001): the two limbs are tuned in opposite directions.
+
+18. **One engagement-metric feature pulls ordinary publishing and repository services into
+    scope.** cl 5(2)(c) makes it a specified feature to display "information to a user about
+    how others have viewed or engaged with the user's digital content or account". A scholarly
+    repository that shows authors their download counts has it, enables exchange between users,
+    and is accessible in New Zealand. Whether it escapes turns entirely on whether it is
+    characterised as solely or primarily an education service -- a question the Bill does not
+    settle and which flips the result. The same fixture evaluates TRUE and FALSE on that
+    characterisation alone. The reach extends to preprint servers, code hosting with stars and
+    view counts, and photo or writing communities.
+
 ## 4. What is deliberately not encoded
 
 Within Subpart 3, the following are left out because they state no test an encoding can
