@@ -26,7 +26,7 @@ part-3-subpart-2-enforcement.l4  cll 24-33 encoded
 part-3-subpart-3-remedies.l4     cll 34-56 encoded in part (see section 4)
 part-3-subpart-4-offences.l4     cll 57-60 encoded
 part-3-subpart-5-other.l4        cll 61-64 encoded
-schedule-1-transitional.l4       Sch 1         scaffold
+schedule-1-transitional.l4       Sch 1 encoded
 registers/source-bundle/         LMS1592864 .xml / .txt / .pdf as retrieved 11 Sep 2026
 ```
 
@@ -213,6 +213,24 @@ yet been reduced to a directive, usually because its module is still a scaffold.
     instrument and enforced by none. `part-2-duties.l4` decides the contravention; nothing
     consumes it.
 
+14. **The transitional relief is given to the paperwork duty, not to the duty that affects
+    users.** Sch 1 cl 3(2) reads cl 15 as allowing an operator already trading at the start of
+    the commencement date 6 months to provide its first child safety risk assessment. Sch 1
+    cl 2 gives no equivalent grace on cl 11: the minimum age duty "applies regardless of
+    whether the account was created before, on, or after the commencement date", so from the
+    commencement date an operator must be taking reasonable steps against its entire existing
+    under-16 user base, with Tier 1 exposure under cl 34(3)(a) and cl 45 -- the greater of $40
+    million and 10% of relevant global turnover. The filing duty, whose breach is Tier 2, gets
+    six months. The account duty, whose breach is Tier 1 and which requires re-verifying a
+    live user base, gets none. Two `#ASSERT` directives in `schedule-1-transitional.l4` show
+    cl 11 applying identically to an account created two years before commencement and one
+    created the day after.
+
+    A second comparison falls out of the same encoding: an operator trading at commencement
+    has 6 months to file, while a service brought into scope later by cl 62 regulations gets
+    cl 15(1)(a)'s full 12 months from the date it meets the definition. The operator with the
+    longest notice of the regime gets the shortest period.
+
 ## 4. What is deliberately not encoded
 
 Within Subpart 3, the following are left out because they state no test an encoding can
@@ -235,7 +253,29 @@ the omission is a decision rather than an oversight.
 Still to be scoped once their modules land: cll 20-23 regulator functions and
 information-gathering, which are administrative rather than determinative.
 
-## 5. Provenance
+## 5. Machine evaluation
+
+Every module typechecks and every directive holds. Full sweep with the `l4` CLI
+(`check` then `run`, binary at `AppData/Local/Programs/l4/l4`) on 2026-09-11:
+
+```
+part-1-preliminary.l4                sat=14   fail=0   err=0
+part-2-duties.l4                     sat=6    fail=0   err=0
+part-3-subpart-1-regulator.l4        sat=6    fail=0   err=0
+part-3-subpart-2-enforcement.l4      sat=6    fail=0   err=0
+part-3-subpart-3-remedies.l4         sat=17   fail=0   err=0
+part-3-subpart-4-offences.l4         sat=6    fail=0   err=0
+part-3-subpart-5-other.l4            sat=5    fail=0   err=0
+schedule-1-transitional.l4           sat=4    fail=0   err=0
+types.l4                             sat=0    fail=0   err=0
+TOTAL satisfied=64 failed=0 errors=0
+```
+
+Note for the corpus: the Penal Code 1871 machine-evaluation report records that no `jl4` CLI
+was available in that environment and drives `jl4-lsp.exe` as a batch checker instead. A real
+`l4` binary with `check` and `run` subcommands is present on this machine and was used here.
+
+## 6. Provenance
 
 Source XML is the PCO drafting-system source, not a scrape: 134 provisions, 102,551
 characters of extracted text, `bill.no="339"`, `stage="1"`, `year="2026"`. Fetched by
