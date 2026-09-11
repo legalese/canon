@@ -24,8 +24,8 @@ part-2-duties.l4                 cll 11-19 encoded
 part-3-subpart-1-regulator.l4    cll 20-23 encoded
 part-3-subpart-2-enforcement.l4  cll 24-33 encoded
 part-3-subpart-3-remedies.l4     cll 34-56 encoded in part (see section 4)
-part-3-subpart-4-offences.l4     cll 57-60     scaffold
-part-3-subpart-5-other.l4        cll 61-64     scaffold
+part-3-subpart-4-offences.l4     cll 57-60 encoded
+part-3-subpart-5-other.l4        cll 61-64 encoded
 schedule-1-transitional.l4       Sch 1         scaffold
 registers/source-bundle/         LMS1592864 .xml / .txt / .pdf as retrieved 11 Sep 2026
 ```
@@ -108,10 +108,14 @@ yet been reduced to a directive, usually because its module is still a scaffold.
    a cl 6(1) operator nor an interconnected body corporate of one (cl 7(1) says it cannot,
    so a platform whose controller is outside both limbs cannot be designated at all).
 
-4. **Three routes into scope, one route out.** Regulations under cl 62 add platforms
-   (cl 5(1)(c)), the regulator designates operators (cl 7), and exemption orders under cl 61
-   remove obligations. Whether an exemption can reach a platform brought in by regulation is
-   worth testing once cll 61-62 are encoded.
+4. **Three routes into scope, one route out -- no defect.** *Encoded in
+   `part-3-subpart-5-other.l4`.* cl 61(1)(a) exempts "an operator of an age-restricted
+   platform", and a service specified by cl 62(1)(a) regulations is an age-restricted platform
+   by force of cl 5(1)(c). The exemption route therefore reaches a regulation-added platform,
+   and the two do not conflict. Encoding cl 62 did surface a distinction worth keeping in
+   view: each limb of cl 62(1) carries its own satisfaction test -- cl 62(4) for limbs (a) and
+   (b), cl 62(6) for limb (c) -- and the tests are not interchangeable. A `#ASSERT` shows a
+   limb (c) recommendation failing when only the cl 62(4) test is satisfied.
 
 5. **cl 11(2)-(3) define what does *not* discharge the duty** (manual age entry; evidence-of-age
    documents; a digital identity service; both together) without stating what does.
@@ -173,6 +177,41 @@ yet been reduced to a directive, usually because its module is still a scaffold.
     corrective notice. So public naming attracts no process, republishing the naming attracts
     5 days and a hearing, and requiring remedial steps attracts 10 days and a hearing. The
     order of intrusion and the order of procedural protection do not match.
+
+11. **The only imprisonable offence can be switched off by committing a lesser civil breach.**
+    cl 57 makes it an offence to confirm the accuracy of a risk assessment knowing it to be
+    false or misleading, but the offence is committed only by "an individual designated under
+    section 18". If the operator never designates anyone, no individual is capable of
+    committing it. Failing to designate is itself a breach -- cl 34(3)(g), routed by cl 46 to
+    Tier 2 -- but it is a civil penalty, and it extinguishes the criminal exposure of every
+    officer of the operator. `#ASSERT` in `part-3-subpart-4-offences.l4` runs identical
+    conduct through both fixtures: designated, offence committed; undesignated, no offence.
+    cl 57 is the only provision in the Bill carrying imprisonment alongside a fine on an
+    individual for conduct about risk assessments.
+
+12. **cl 61 permits exemption from any or all requirements of the Act by Order in Council.**
+    cl 61(1)(a) is not limited to particular duties: an exemption may relieve a named
+    operator of "any or all requirements under this Act", the cl 11 minimum age duty
+    included. The controls are procedural (cl 61(2)) plus a single satisfaction test
+    (cl 61(3)) that the benefits outweigh the risk to children. There is no limit on
+    duration, no requirement to publish reasons beyond the secondary-legislation publication
+    rules in cl 61(4), and no parliamentary confirmation requirement on the face of the Bill.
+    Worth raising alongside the Regulatory Standards Act 2025 material the Department of
+    Internal Affairs filed with the Bill.
+
+13. **cl 11(4) creates a prohibition with no consequence, defined by the weakest
+    regulation-making power.** cl 11(4) forbids an operator to collect personal information
+    of a class specified in cl 63 regulations for the purpose of complying with the minimum
+    age duty. Two observations. First, cl 34(3)(a) reaches only a failure "to take reasonable
+    steps to prevent a New Zealand person under the age of 16 years from having an account
+    ... in accordance with section 11" -- that is cl 11(1). Breach of the cl 11(4) prohibition
+    is not a specified liability act, is not an offence under cll 57 to 60, and so attracts
+    nothing. Second, the class of forbidden information is set by regulations under cl 63,
+    which is the only regulation-making power in the Bill carrying no satisfaction test at
+    all: cl 63(2) requires the Minister to seek the regulator's advice and consult, and
+    nothing more. A substantive privacy prohibition is created by the least-constrained
+    instrument and enforced by none. `part-2-duties.l4` decides the contravention; nothing
+    consumes it.
 
 ## 4. What is deliberately not encoded
 
