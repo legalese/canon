@@ -1,6 +1,6 @@
 # Penal Code 1871 — coverage register
 
-**Run date:** 2026-09-09
+**Run date:** 2026-09-11 (first run 2026-09-09)
 **Question answered:** which sections of the Act are modelled, and which are not.
 **Method:** every `@ref` citation in the seventeen `.l4` modules was parsed for section
 numbers and matched against the Act's own arrangement of sections, as it appears in
@@ -28,11 +28,14 @@ proven.
 | listed in the Act's arrangement of sections | 600 |
 | repealed — nothing to encode | 75 |
 | **live** | **525** |
-| **encoded** | **108** |
-| **live but not encoded** | **417** |
+| **encoded** | **126** |
+| **live but not encoded** | **399** |
 
-**About 21% of the live sections.** There is no Chapter 19; Chapters 13 and 20 are wholly
-repealed.
+**About 24% of the live sections.** The 11 Sep pass added 18: the whole of Chapter 4A
+(ss 96 to 106A), ss 111, 113 and 114 of Chapter 5, and ss 3, 4A and 5 of Chapter 1 —
+which were the three gaps §6 of this register called more than scope choices.
+
+There is no Chapter 19; Chapters 13 and 20 are wholly repealed.
 
 The distribution is the point. The Code's **general parts are close to complete**, and its
 **offence chapters are a deliberate thin slice** — the provisions an AI agent is most likely
@@ -43,12 +46,12 @@ policy; this register states its consequences section by section.
 
 | chapter | ss | repealed | live | encoded | not encoded |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| **Chapter 1** — PRELIMINARY | 7 | 0 | 7 | 3 | 4 |
+| **Chapter 1** — PRELIMINARY | 7 | 0 | 7 | 6 | 1 |
 | **Chapter 2** — GENERAL EXPLANATIONS | 56 | 2 | 54 | 49 | 5 |
 | **Chapter 3** — Punishments | 13 | 3 | 10 | 10 | 0 |
 | **Chapter 4** — General Exceptions | 21 | 0 | 21 | 20 | 1 |
-| **Chapter 4A** — Right of private defence | 12 | 0 | 12 | 0 | 12 |
-| **Chapter 5** — Abetment | 16 | 0 | 16 | 4 | 12 |
+| **Chapter 4A** — Right of private defence | 12 | 0 | 12 | 12 | 0 |
+| **Chapter 5** — Abetment | 16 | 0 | 16 | 7 | 9 |
 | **Chapter 5A** — Criminal Conspiracy | 2 | 0 | 2 | 2 | 0 |
 | **Chapter 6** — Offences against the State | 15 | 0 | 15 | 0 | 15 |
 | **Chapter 6A** — Piracy | 2 | 0 | 2 | 0 | 2 |
@@ -69,25 +72,28 @@ policy; this register states its consequences section by section.
 | **Chapter 21** — Defamation | 4 | 0 | 4 | 1 | 3 |
 | **Chapter 22** — Criminal intimidation, insult and annoyance | 8 | 3 | 5 | 4 | 1 |
 | **Chapter 23** — Attempts to commit offences | 2 | 0 | 2 | 1 | 1 |
-| **total** | **600** | **75** | **525** | **108** | **417** |
+| **total** | **600** | **75** | **525** | **126** | **399** |
 
 ## 3. The general parts
 
-Four chapters decide whether an offence test is reached at all, and these are the ones the
+Six chapters decide whether an offence test is reached at all, and these are the ones the
 encoding treats as load-bearing:
 
 | chapter | live | encoded |
 | --- | ---: | ---: |
+| Chapter 1 — Preliminary | 7 | 6 |
 | Chapter 2 — General explanations | 54 | 49 |
 | Chapter 3 — Punishments | 10 | 10 |
 | Chapter 4 — General exceptions | 21 | 20 |
+| Chapter 4A — Right of private defence | 12 | 12 |
 | Chapter 5A — Criminal conspiracy | 2 | 2 |
 
-**The six apparent gaps there are deliberate, and each is documented in the module itself
+**The seven apparent gaps there are deliberate, and each is documented in the module itself
 under its own `§§` heading.** They are sections with no factual test to decide:
 
 | s | why nothing is decided |
 | --- | --- |
+| 1 | "This Act is the Penal Code 1871." A short title states no test. |
 | 7 | Rule of construction addressed to the reader: an expression explained in one part is used in the same sense throughout. Honoured by the encoding's own discipline — one definition module per term, imported rather than restated. |
 | 8 | "He" and its derivatives are used of any person. A drafting convention; this encoding writes gender-neutrally throughout. |
 | 9 | Singular includes plural and plural singular unless the contrary appears. A drafting convention. |
@@ -95,23 +101,27 @@ under its own `§§` heading.** They are sections with no factual test to decide
 | 50 | "Section" denotes a numbered portion of a Chapter. |
 | 79A | A **closure** rule, not an exception: mistake or ignorance of law is never a defence unless another written law so provides. It therefore contributes no limb to `a general exception applies`, which is the correct encoding of it. |
 
-So Chapters 2, 3, 4 and 5A are complete in substance: every section that states a testable
-rule has one.
+So Chapters 1, 2, 3, 4, 4A and 5A are complete in substance: every section that states a
+testable rule has one. Note that s 5, the other Chapter 1 closure provision, **is** decided,
+where s 79A is not — `NOTES.md` §3 gives the reason.
 
 ## 4. Chapters partially encoded, section by section
 
 
 ### Chapter 1 — PRELIMINARY
 
-3 of 7 live sections encoded.
+6 of 7 live sections encoded.
 
 | s | title | module |
 | --- | --- | --- |
-| 2 | Punishment of offences committed within Singapore | `agent-compliance.l4` |
-| 4 | Jurisdiction over public servants for offences committed outside | `agent-compliance.l4` |
-| 4B | Punishment of specified offences with elements occurring in | `agent-compliance.l4` |
+| 2 | Punishment of offences committed within Singapore | `chapter-1-preliminary.l4` |
+| 3 | Punishment of offences committed beyond, but which by law may be tried within Singapore | `chapter-1-preliminary.l4` |
+| 4 | Jurisdiction over public servants for offences committed outside Singapore | `chapter-1-preliminary.l4` |
+| 4A | Offences against State and genocide committed outside Singapore by citizen or permanent resident | `chapter-1-preliminary.l4` |
+| 4B | Punishment of specified offences with elements occurring in Singapore but others occurring outside Singapore | `chapter-1-preliminary.l4` |
+| 5 | Certain laws not to be affected by this Code | `chapter-1-preliminary.l4` |
 
-**Not encoded:** s 1, s 3, s 4A, s 5.
+**Not encoded:** s 1 (short title — no test to decide).
 
 ### Chapter 2 — GENERAL EXPLANATIONS
 
@@ -221,9 +231,31 @@ Repealed, nothing to encode: s 57, s 71, s 75.
 
 **Not encoded:** s 79A.
 
+### Chapter 4A — Right of private defence
+
+12 of 12 live sections encoded — the whole Chapter.
+
+| s | title | module |
+| --- | --- | --- |
+| 96 | Nothing done in private defence is an offence | `chapter-4a-private-defence.l4` |
+| 97 | Right of private defence of the body and of property | `chapter-4a-private-defence.l4` |
+| 98 | Extent to which right may be exercised | `chapter-4a-private-defence.l4` |
+| 99 | Right of private defence against act of person of unsound mind, etc. | `chapter-4a-private-defence.l4` |
+| 100 | Right of private defence against deadly assault when there is risk of harm to innocent person | `chapter-4a-private-defence.l4` |
+| 101 | Start and continuance of right of private defence of body | `chapter-4a-private-defence.l4` |
+| 102 | When right of private defence of body extends to causing death | `chapter-4a-private-defence.l4` |
+| 103 | When such right extends to causing any harm other than death | `chapter-4a-private-defence.l4` |
+| 104 | Commencement and continuance of right of private defence of property | `chapter-4a-private-defence.l4` |
+| 105 | When right of private defence of property extends to causing death | `chapter-4a-private-defence.l4` |
+| 106 | When such right extends to causing any harm other than death | `chapter-4a-private-defence.l4` |
+| 106A | Acts against which there is no right of private defence | `chapter-4a-private-defence.l4` |
+
+**Nothing not encoded.** The Chapter's own structure is recorded in `NOTES.md` §3 and in the
+module header.
+
 ### Chapter 5 — Abetment
 
-4 of 16 live sections encoded.
+7 of 16 live sections encoded.
 
 | s | title | module |
 | --- | --- | --- |
@@ -231,8 +263,12 @@ Repealed, nothing to encode: s 57, s 71, s 75.
 | 108 | Abettor | `chapter-5-abetment.l4` |
 | 108A | Abetment in Singapore of an offence outside Singapore | `chapter-5-abetment.l4` |
 | 108B | Abetment outside Singapore of an offence in Singapore | `chapter-5-abetment.l4` |
+| 111 | Liability of abettor when one act is abetted and a different act is done | `chapter-5-abetment.l4` |
+| 113 | Liability of abettor for an offence caused by the act abetted different from that intended by the abettor | `chapter-5-abetment.l4` |
+| 114 | Abettor present when offence committed | `chapter-5-abetment.l4` |
 
-**Not encoded:** s 109, s 110, s 111, s 112, s 113, s 114, s 115, s 116, s 117, s 118, s 119, s 120.
+**Not encoded:** s 109, s 110, s 112, s 115, s 116, s 117, s 118, s 119, s 120 — all of them
+punishment or concealment provisions, consistent with this subject not computing sentence.
 
 ### Chapter 5A — Criminal Conspiracy
 
@@ -316,7 +352,6 @@ Repealed, nothing to encode: s 508, s 509, s 510.
 
 | chapter | live sections | range |
 | --- | ---: | --- |
-| **Chapter 4A** — Right of private defence | 12 | ss 96–106A |
 | **Chapter 6** — Offences against the State | 15 | ss 121–130A |
 | **Chapter 6A** — Piracy | 2 | ss 130B–130C |
 | **Chapter 6B** — Genocide | 2 | ss 130D–130E |
@@ -330,34 +365,60 @@ Repealed, nothing to encode: s 508, s 509, s 510.
 | **Chapter 15** — Offences relating to race | 2 | ss 295–298A |
 | **Chapter 16** — Offences affecting the human body | 120 | ss 299–377D |
 
-**300 live sections, none of them modelled** — 57% of the live Code. Chapters 13 and 20 are
+**288 live sections, none of them modelled** — 55% of the live Code. Chapters 13 and 20 are
 omitted from this table: both are wholly repealed and contribute no live section.
 
-## 6. The three gaps that are more than scope choices
+This table gives ranges. `missing-sections.md` names each of these 288 sections individually,
+with the Act's own marginal heading, alongside the 111 missing from the partially encoded
+chapters above.
+
+## 6. The three gaps that were more than scope choices — closed 11 Sep 2026
 
 Most of §5 is honest scoping: an agent has no occasion to ask whether its output is piracy or
-an offence relating to government stamps. Three absences are different, because a caller
-could reasonably expect them to be there and be misled by their silence.
+an offence relating to government stamps. Three absences were different, because a caller
+could reasonably expect them to be there and be misled by their silence. All three are now
+encoded. What follows is what each one was, and what closing it changed.
 
-**6.1 Chapter 4A — the right of private defence (ss 96 to 106A).** This is the one that
-distorts the screen's answers. The encoding models twenty Chapter 4 general exceptions and
-**zero** private-defence rules, so `a general exception applies` cannot report a
-private-defence justification. An act a court would hold justified under s 96 still comes back
-from the screen as an indicated offence. The screen is therefore **over-inclusive on offences
-and under-inclusive on defences**: a FALSE from `any screened offence is indicated` is more
-trustworthy than a TRUE.
+**6.1 Chapter 4A — the right of private defence (ss 96 to 106A).** This was the one that
+distorted the screen's answers. The encoding modelled twenty Chapter 4 general exceptions and
+**zero** private-defence rules, so `a general exception applies` could not report a
+private-defence justification, and an act a court would hold justified under s 96 still came
+back from the screen as an indicated offence.
 
-**6.2 Chapter 5, ss 109 to 120 — the rest of abetment.** ss 109, 110, 112, 115 to 120 are
-punishment and concealment provisions, consistent with this subject not computing sentence.
-But **ss 111, 113 and 114 are substantive liability rules** — the abettor's liability when a
-*different* act from the one abetted results, when the act abetted causes a different effect,
-and when the abettor is present at the commission. An agent reasoning about abetment from
-ss 107 and 108 alone will not reach them.
+All twelve sections are now encoded in `chapter-4a-private-defence.l4`, and — this is the
+part that mattered — they are **wired into the offence wrappers**. s 6 subjects every offence
+definition to the Chapter entitled "Right of Private Defence" as well as to the General
+Exceptions, so all nineteen `the proposed act constitutes ...` wrappers now call
+`the act is taken outside offence by Chapter 4 or Chapter 4A` in place of
+`a general exception applies`. The screen reports the two routes in separate fields, so a
+caller can still tell which one fired.
 
-**6.3 Chapter 1, ss 3, 4A and 5.** Further extraterritorial reach beyond the ss 2, 4 and 4B
-that are encoded, including offences against the State and genocide committed outside
-Singapore (s 4A) and the saving for other laws (s 5). The territorial screen is narrower than
-the Code's actual reach.
+The asymmetry §6.1 used to warn about — over-inclusive on offences, under-inclusive on
+defences, so a FALSE was more trustworthy than a TRUE — is narrowed but not gone. It now
+rests on the remaining unencoded defences and on the 399 unencoded sections, not on a whole
+missing Chapter.
+
+**6.2 Chapter 5, ss 111, 113 and 114.** ss 109, 110, 112, 115 to 120 are punishment and
+concealment provisions, consistent with this subject not computing sentence, and stay
+unencoded. But ss 111, 113 and 114 are substantive liability rules — the abettor's liability
+when a *different act* from the one abetted results (s 111), when the act abetted causes a
+*different effect* (s 113), and when the abettor is *present* at the commission (s 114). An
+agent reasoning about abetment from ss 107 and 108 alone could not reach them. All three are
+now encoded, each with its Illustrations carried into `agent-cases.l4` as assertions.
+
+**6.3 Chapter 1, ss 3, 4A and 5.** The territorial screen was narrower than the Code's actual
+reach. ss 3 and 4A now feed `Singapore has territorial reach over the proposed act` alongside
+ss 2, 4 and 4B. s 5 is decided too, though it adds no limb to any offence test: it is the
+reason a FALSE from the screen is not a clearance, and the screen now says so in its own
+field. `NOTES.md` §3 explains why s 5 is decided where s 79A is not.
+
+### What is still missing, and still matters
+
+Closing these three does not make the screen complete. The largest remaining absence is
+**Chapter 16 (ss 299 to 377D, 120 live sections)** — the whole of the offences affecting the
+human body. Chapter 4A now decides when the right of private defence justifies an act, but
+the offence that act would otherwise be is not encoded, so the justification cannot be
+reported against a hurt or homicide charge. `missing-sections.md` names every one.
 
 ## 7. How to regenerate this register
 

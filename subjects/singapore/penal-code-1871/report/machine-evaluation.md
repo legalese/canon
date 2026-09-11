@@ -1,7 +1,7 @@
 # Penal Code 1871 — machine evaluation report
 
-**Run date:** 2026-09-09
-**Verdict:** **0 type errors across all 17 modules; 55 of 55 assertions satisfied.**
+**Run date:** 2026-09-11 (first run 2026-09-09)
+**Verdict:** **0 type errors across all 18 modules; 88 of 88 assertions satisfied.**
 No directive was skipped, stubbed or held back.
 
 ---
@@ -57,6 +57,11 @@ All nine assertions collapsed. So an error anywhere in the import graph does sur
 importing file, and a clean run of `agent-cases.l4` is real evidence about the whole graph
 beneath it.
 
+> **Retracted 11 Sep 2026.** This does not reproduce. A syntax error appended to `types.l4`
+> is reported against `types.l4` and nothing else, and `agent-cases.l4` comes back clean.
+> Do not rely on the conclusion in this paragraph: every module must be opened and checked
+> in its own right. See §7.2.
+
 ## 3. One compensation for a stale engine, and exactly what it costs
 
 The available binary predates the `jl4-core` worktree beside it. The current `prelude.l4`
@@ -79,7 +84,7 @@ one are indistinguishable from where this encoding sits.
 There is **no law-time axis** in this subject — nothing dated, no `RULES EFFECTIVE DATE` —
 so the temporal gap that limited the `FinMont-demo` run does not arise here at all.
 
-## 4. Results
+## 4. Results — first run, 09 Sep 2026
 
 | module | errors | assertions satisfied |
 | --- | ---: | --- |
@@ -146,11 +151,103 @@ Unchanged by this run:
 - the sixteen interpretive choices in `NOTES.md` §3 — a passing assertion about s 38 or
   s 405 confirms only that the encoding does what the encoder intended, not that the
   intention is right;
-- everything named in `NOTES.md` §2 as absent, above all **Chapter 4A** (private defence,
-  ss 96 to 106): no assertion can fail for a rule that was never written, so the screen's
-  known over-inclusiveness on defences survives a clean run untouched;
+- everything named in `NOTES.md` §2 as absent — no assertion can fail for a rule that was
+  never written, so the screen's remaining over-inclusiveness on defences survives a clean
+  run untouched. Chapter 4A was the largest instance of this until 11 Sep and is now
+  encoded; **Chapter 16**, the whole of the offences affecting the human body, is now the
+  largest;
 - the three freestanding modules (`chapter-2-definitions`, `chapter-2-participation`,
   `chapter-3-punishments`) are checked in isolation and their 22 assertions hold, but
   nothing in this subject calls them, so nothing here exercises them in combination with
   the offence tests;
 - `status` stays `draft`, and no human gate has been granted. Assertions are not HG1.
+
+
+---
+
+## 7. Second run — 11 Sep 2026
+
+**Verdict: 18 modules, 0 type errors, 88 of 88 assertions satisfied.** 55 of those assertions
+are the ones that existed before this pass, all still holding unchanged; 33 are new.
+
+| module | errors | assertions satisfied |
+| --- | ---: | --- |
+| `types.l4` | 0 | — (declarations only) |
+| `chapter-1-preliminary.l4` | 0 | — (no directives) |
+| `chapter-2-definitions.l4` | 0 | 8 |
+| `chapter-2-explanations.l4` | 0 | 4 |
+| `chapter-2-participation.l4` | 0 | 5 |
+| `chapter-3-punishments.l4` | 0 | 9 |
+| `chapter-4-exceptions.l4` | 0 | — (no directives) |
+| `chapter-4a-private-defence.l4` | 0 | — (no directives) |
+| `chapter-5-abetment.l4` | 0 | — (no directives) |
+| `chapter-5a-conspiracy.l4` | 0 | 4 |
+| `chapter-17-cheating.l4` | 0 | 6 |
+| `chapter-17-property.l4` | 0 | 2 |
+| `chapter-17-fraud.l4` | 0 | 4 |
+| `chapter-18-forgery.l4` | 0 | — (no directives) |
+| `chapter-21-22-speech.l4` | 0 | 2 |
+| `chapter-23-attempts.l4` | 0 | 2 |
+| `agent-compliance.l4` | 0 | — (no directives) |
+| `agent-cases.l4` | 0 | **42** |
+| **total** | **0** | **88 of 88** |
+
+The harness is the one described in §1, rebuilt from this description — the same
+`jl4-lsp.exe`, the same patched library copy, the same one-process-per-file discipline. It
+was revalidated before it was trusted: a deliberately false assertion (`1 PLUS 1 EQUALS 3`)
+appended to `agent-cases.l4` was reported as `[ERROR] assertion failed`, and a bogus record
+selector inserted into `chapter-4-exceptions.l4` was reported as "I could not find a
+definition for the identifier".
+
+Directive-free modules still publish nothing at all, so as in §4.1 each was run in a scratch
+copy with a single `#EVAL TRUE` appended to force a publish. All eight returned `errors 0`
+and `TRUE`.
+
+### 7.1 The screen, end to end
+
+The `#EVAL` added by this pass is the wiring test for Chapter 4A. On `disarming an assailant`
+— a taking that satisfies every element of s 378, done by a person fending off an assault —
+the screen reduces to:
+
+```
+`Offence Screen` OF TRUE, FALSE, TRUE, FALSE, FALSE, … , FALSE
+                 │      │      │      │                   └ any screened offence indicated
+                 │      │      │      └ another written law may still apply (s 5)
+                 │      │      └ a private defence justification applies (s 96)
+                 │      └ a general exception applies (Chapter 4)
+                 └ Singapore has territorial reach
+```
+
+Territorial reach yes; no Chapter 4 exception; private defence yes; `theft s 378` FALSE. On
+the same facts before this pass the screen returned theft.
+
+### 7.2 Two blind spots in this engine that the run does not cover
+
+§2.2 of this report recorded that an error injected into `types.l4` collapsed every assertion
+in `agent-cases.l4`, and concluded that a clean run of the importing file was evidence about
+the whole import graph beneath it. **That does not reproduce.** Re-probing it on 11 Sep:
+
+1. **Dependency errors do not propagate to importers.** A syntax error appended to `types.l4`
+   is reported against `types.l4` and against nothing else; `chapter-4-exceptions.l4` and
+   `agent-cases.l4` both come back clean. Errors *within* an opened module are caught
+   normally, including through a forced `#EVAL TRUE`. The practical consequence is that
+   **every module must be opened and checked in its own right**, which is what the run above
+   does — rather than relying on `agent-cases.l4` as a proxy. The §2.2 conclusion should not
+   be relied on.
+
+2. **A record literal that omits a declared field is not flagged.** Adding a field to a
+   `DECLARE ... HAS` without updating the `X MEANS T WITH` fixtures produces no error and no
+   failing assertion. Since record construction appears to be positional, a fixture whose
+   fields are in a different order from the declaration is a silent wrong answer rather than
+   an error.
+
+   Blind spot 2 is not something the engine can be made to catch here, so it is covered by a
+   separate check written for this pass: for every `X MEANS T WITH` block in the subject,
+   compare the fields set against the fields `T` declares, in order, and fail on any
+   difference. It found all five fixtures that this pass put out of step, and it detects a
+   deliberate reordering. Like the batch checker, it is not committed here; it is about 100
+   lines and belongs in `l4-ide`.
+
+Neither blind spot affects the verdict above, because the run opens and checks all eighteen
+modules individually and the fixture check passes on all of them. Both affect how a *future*
+run should be read.

@@ -85,25 +85,33 @@ subject. Wiring them into the offence wrappers is the next piece of work.
 
 ## 4. What is deliberately absent
 
-Counted section by section in `registers/coverage-register.md`: **108 of the Act's 525 live
-sections are encoded, about 21%**, and 300 live sections sit in chapters with nothing encoded
-at all. In summary: Chapters 6 to 16, most of Chapter 17, most of Chapter 18, Chapter 4A
-(private defence, ss 96 to 106A), the ten s 499 exceptions as individual tests, and any
-computation of sentence for a particular offence.
+Counted section by section in `registers/coverage-register.md`: **126 of the Act's 525 live
+sections are encoded, about 24%**, and 288 live sections sit in chapters with nothing encoded
+at all. `registers/missing-sections.md` names every one of the 399 unencoded sections
+individually. In summary: Chapters 6 to 16, most of Chapter 17, most of Chapter 18, the ten
+s 499 exceptions as individual tests, and any computation of sentence for a particular
+offence.
 
 Two of these are worth naming here because a caller could be misled:
 
-- **Chapter 4A is not encoded.** `a general exception applies` will not report a
-  private-defence justification. An act that a court would hold justified under s 96 will
-  still come back from the screen as an indicated offence.
+- **Chapter 16 is not encoded** — ss 299 to 377D, the whole of the offences affecting the
+  human body, and the largest single absence at 120 live sections. Chapter 4A now decides
+  when the right of private defence justifies an act, but the offence that act would
+  otherwise be is not encoded, so the justification cannot be reported against a hurt or
+  homicide charge.
 - **The s 499 exceptions** collapse into one caller-asserted flag,
   `a section 499 exception applies`. The encoding does not decide whether the imputation was
   for the public good; it asks the caller.
 
+**Changed 11 Sep 2026.** Chapter 4A (the right of private defence, ss 96 to 106A) *was* the
+absence named here, and is now encoded in full and wired into every offence wrapper through
+s 6. So is the rest of what `coverage-register.md` §6 called more than a scope choice:
+ss 111, 113 and 114 of Chapter 5, and ss 3, 4A and 5 of Chapter 1.
+
 ## 5. Interpretive choices
 
-Sixteen are recorded in `NOTES.md` §3, each tied to the words of the section that provoked
-it. The ones that most affect what the screen returns:
+Thirty are recorded in `NOTES.md` §3, each tied to the words of the section that
+provoked it. The ones that most affect what the screen returns:
 
 - **s 415** does not gate on "sole or main inducement", because the section says the
   deception need not be either.
@@ -118,7 +126,7 @@ it. The ones that most affect what the screen returns:
 
 ## 6. Verification and machine evaluation
 
-Two passes, both recorded:
+Three fidelity passes, a coverage pass and a mechanical pass, all recorded:
 
 - `registers/verification-register.md` — a **fidelity** pass over every rule that existed
   before 09 Sep 2026. Twelve defects, two of them high severity (s 84 exempting every act of
@@ -127,14 +135,18 @@ Two passes, both recorded:
   day, so that every encoded rule has now been read back against the source. Four defects,
   two of them medium (s 74B given the wrong excluded-offence list; s 89's "by the guardian"
   limb rendered as the s 76 test). All four fixed.
+- `registers/verification-register-pass-3.md` — the same treatment for the eighteen sections
+  added on 11 Sep. No defect found in read-back; three traps in the Act's drafting and two
+  caller traps recorded. That pass read back rules written the same day, which is a weaker
+  check than the first two, and says so on its own first page.
 - `registers/coverage-register.md` — a **coverage** pass matching every `@ref` in the
   encoding against the Act's arrangement of sections, so the gaps are auditable rather than
-  described.
+  described. `registers/missing-sections.md` names each gap with the Act's own heading.
 - `report/machine-evaluation.md` — a **mechanical** pass running every module through the
-  `jl4-lsp` language server as a batch checker: **17 modules, 0 type errors, 55 of 55
-  assertions satisfied**, no directive skipped or stubbed. The checker was itself validated
-  by injecting a type error into `types.l4` and confirming that all nine assertions in
-  `agent-cases.l4`, three imports away, collapsed. Limits of the run are in that file.
+  `jl4-lsp` language server as a batch checker: **18 modules, 0 type errors, 88 of 88
+  assertions satisfied**, no directive skipped or stubbed. §7.2 of that report records two
+  blind spots in the available engine, one of which retracts a claim the first run made
+  about how far a clean result reaches. Limits of the run are in that file.
 
 Neither establishes fidelity. A passing assertion confirms the encoding does what the encoder
 intended; it says nothing about whether the intention is a correct reading of the Code.
