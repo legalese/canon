@@ -55,10 +55,26 @@ Recorded here rather than by forking the template, per `subjects/README.md`.
 4. **`SOURCE-LICENSE.md` grants nothing**, because there is nothing to grant -- see that
    file. This is the corpus's first no-copyright source.
 
+5. **`registers/incident-register.xlsx` is a spreadsheet, not markdown or JSON.** Every other
+   register in the corpus is `.md` (coverage, verification) or `.json` (fork,
+   external-modification, source-bundle), and the class expects registers to validate against
+   the l4-ide schemas. This one is a working defect tracker, kept in the form the reviewer
+   asked for so that rows can be filtered, sorted and assigned. It carries three sheets: a
+   terminology and method note, the incidents themselves, and a coverage summary whose counts
+   are formulas over the incidents sheet. Section 3 below remains the prose record; the
+   spreadsheet is the tracked view of it, and the two must be updated together.
+
 ## 3. Open questions -- the LQA probes
 
-These are why the subject exists. Probe 1 is encoded and machine-evaluated in
-`part-1-preliminary.l4`; the rest are stated here and become cases as their modules land.
+These are why the subject exists.
+
+**Terminology.** An *incident* is a defect, gap or open question in the Bill as drafted. A
+*probe* is a machine-evaluated test in the encoding that demonstrates one: the probe is the
+evidence, the incident is the finding. The numbered list below is the prose record, and each
+entry maps to a row in `registers/incident-register.xlsx` (OS-001 to OS-010). Where an entry
+is marked *Encoded*, a directive in the named module produces the stated result under
+`l4 run`; where it is not, the finding follows from reading provisions together and has not
+yet been reduced to a directive, usually because its module is still a scaffold.
 
 1. **The excluded-service carve-out attaches only to limb (a) of cl 5(1).** An internet
    service that solely or primarily enables healthcare or education is an "excluded service"
