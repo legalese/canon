@@ -30,6 +30,11 @@ chapter-4-exceptions.l4       ss 6, 76-95 (the whole of Chapter 4)
 chapter-4a-private-defence.l4 ss 96-106A (the whole of Chapter 4A), and s 6 combined
 chapter-5-abetment.l4         ss 107, 108, 108A, 108B, 111, 113, 114
 chapter-5a-conspiracy.l4      ss 120A, 120B
+chapter-16-life.l4            ss 299-301, 304A-304C, 305-308B, 310 (offences affecting life)
+chapter-16-hurt.l4            ss 319-322, 323A, 324-338 (hurt and grievous hurt)
+chapter-16-restraint-and-force.l4  ss 339-358 (restraint, confinement, force, assault)
+chapter-16-unborn-and-infants.l4   ss 312-318 (miscarriage, unborn children, infants)
+chapter-16-kidnapping.l4      ss 359-374 (kidnapping, abduction, slavery, forced labour)
 chapter-17-cheating.l4        ss 415, 416, 416B, 418, 420, 420A
 chapter-17-property.l4        ss 378, 403, 405
 chapter-17-fraud.l4           ss 416A, 424A, 424B
@@ -43,6 +48,7 @@ registers/verification-register.md  the fidelity pass over the pre-existing rule
 registers/coverage-register.md      which sections are modelled, and which are not
 registers/verification-register-pass-2.md  the fidelity pass over the rules added 09 Sep
 registers/verification-register-pass-3.md  the fidelity pass over the rules added 11 Sep
+registers/verification-register-pass-4.md  the fidelity pass over the Chapter 16 rules
 registers/missing-sections.md       every live section with no rule, named one by one
 report/machine-evaluation.md  how the encoding was machine-checked, and against what
 ```
@@ -56,17 +62,24 @@ to have done.
 
 ## 2. What is deliberately not encoded
 
-The Code lists 600 sections, of which 75 are repealed. This draft encodes **126 of the 525
-live sections -- about 24%**. `registers/coverage-register.md` records which ones, chapter by
+The Code lists 600 sections, of which 75 are repealed. This draft encodes **200 of the 525
+live sections -- about 38%**. `registers/coverage-register.md` records which ones, chapter by
 chapter and section by section; what follows is the policy behind those numbers.
 
 The general parts are close to complete (Chapter 1: 6 of 7; Chapter 2: 49 of 54; Chapter 3:
 10 of 10; Chapter 4: 20 of 21; **Chapter 4A: 12 of 12**; Chapter 5A: 2 of 2 -- and every gap
-there is a section with no factual test to decide). The offence chapters remain a deliberate
-thin slice: the provisions an AI agent is most likely to walk into when checking its own
-output or a user's requested act.
+there is a section with no factual test to decide).
 
-- **Not encoded:** Chapters 6 to 16 (State, armed forces, unlawful assembly, public servants, false evidence, public health, religion, offences affecting the human body including hurt, sexual offences, wrongful confinement), most of Chapter 17 (extortion, robbery, stolen property, criminal trespass), currency offences, and the ten exceptions to s 499 as individual tests.
+**Chapter 16 is now the largest encoded offence chapter** -- 74 of its 120 live sections,
+being six of its seven groups: life, hurt, restraint and force, unborn children and infants,
+and kidnapping, abduction, slavery and forced labour. It was opened because Chapter 4A had
+nothing to report a private-defence justification against: "an offence affecting the human
+body" in s 97(a) is Chapter 16's subject matter. The other offence chapters remain a
+deliberate thin slice: the provisions an AI agent is most likely to walk into when checking
+its own output or a user's requested act.
+
+- **Not encoded:** Chapters 6 to 15 (State, armed forces, unlawful assembly, public servants, false evidence, public health, religion), one of Chapter 16's seven groups (below), most of Chapter 17 (extortion, robbery, stolen property, criminal trespass), currency offences, and the ten exceptions to s 499 as individual tests.
+- **Chapter 16, ss 375 to 377D** -- the sexual offences -- are not encoded. They are the last group of the chapter and the next piece of work in it, not a policy exclusion. Nine pure punishment sections in the encoded groups -- ss 302, 304, 311, 323, 325, 341, 342, 363, 363A -- are excluded on the same ground as ss 109 to 120, that this subject does not compute sentence.
 - **s 499 exceptions** are a single caller-asserted flag `a section 499 exception applies`.
 - **Punishment** is not computed for any particular offence. `chapter-3-punishments.l4` encodes the Chapter 3 vocabulary -- what a `Punishment` is (s 53, s 54), how to pick the lower of two where it is doubtful which offence was committed (s 72), and the six enhanced-penalty sections that double a maximum (ss 73 to 74E). It does **not** attach a punishment to any offence section: no `the proposed act constitutes ...` wrapper returns one, and the doubling rules take the base maximum as a caller-supplied argument. The encoding still answers whether the constitutive test is met, not what sentence a court would pass.
 - **ss 32 to 38** are encoded as standalone attribution tests. They are not applied automatically to the offence wrappers: an agent that wants s 34 common-intention liability must call `the person is liable under section 34 as if he did the act alone` itself.
@@ -110,20 +123,54 @@ output or a user's requested act.
 - **s 114 disjoins the s 108 abettor and the s 111 abettor**, because its opening words -- "who, if absent, would be liable to be punished as an abettor" -- reach both.
 - **s 112 is not encoded.** It is a rule about cumulative punishment, and this subject does not compute sentence.
 
+### Added 11 Sep 2026 -- Chapter 16
+
+- **Murder is a conjunction with a subtraction.** s 300 makes culpable homicide murder on any of four limbs "except in the cases hereinafter excepted", so `constitutes murder` is s 299, plus a s 300 limb, minus all seven Exceptions. `constitutes culpable homicide not amounting to murder` is the complement, and is decided here because it is a classification and not a sentence.
+- **s 299 Explanations 1 and 2 are routes to causation, not conjuncts.** Accelerating the death of a person already diseased is causing it, and so is inflicting an injury from which treatment might have saved the victim. Each supplies causation where it might be doubted, so they are disjoined with the plain "causes death by doing an act".
+- **s 299 Explanation 3 is a limit and is encoded as one.** Causing the death of a child in the womb is excluded from homicide unless some part of the child had been brought forth.
+- **s 300 Exception 2 is where Chapter 4A runs out.** If the right of private defence is not exceeded, s 96 makes the act no offence at all and no question of murder arises. Exception 2 governs the case where the right existed and was exceeded, and can only reduce murder to culpable homicide. The two are kept separate: the wrapper tests `a private defence justification applies`, the murder rule tests the Exception.
+- **s 300 Exception 7's middle limb carries s 84(2)'s two-limb structure.** The impairment of the capacity to know the acts are wrong counts only if it extended to knowing both that they are wrong by the ordinary standards of reasonable and honest persons and wrong as contrary to law.
+- **s 320 conjoins s 319.** "The following kinds of hurt only are designated as grievous" is a closed list of kinds of *hurt*, so grievous hurt requires hurt. Limb (aa) is the one that makes this worth saying: death is grievous hurt for Chapter 16 purposes.
+- **s 322 does not require the intended kind and the caused kind to match**, because its Explanation says so expressly. `the hurt intended or known to be likely is grievous hurt` is one fact about gravity, not about which limb of s 320.
+- **s 328 does not build on s 321.** It is complete on administering the substance with one of three fault states, whether or not hurt follows -- the only section in the hurt group that needs no hurt in fact. ss 335B and 336 are the same in that respect.
+- **ss 335A(3) and 304C(5) gather their five exculpated cases into one caller-asserted fact.** Each defines the third party's "unlawful act" as one that would be an offence but for the actor being within s 82 or s 83, or entitled to rely on unsoundness of mind, intoxication or mistake of fact. Those are Chapter 4 tests already encoded, but applying them here would need the third party's own facts, which these records do not carry.
+- **s 304C(3) is a defence to the second alternative only.** An accused whose own act caused the death cannot be heard to say he could not have protected the victim from himself, so the "could not have been expected to take any such step" fact is a negated conjunct inside the failure-to-protect branch, not on the whole section.
+- **s 349's proviso is a requirement, not a gloss.** Force is used only if the motion was caused by the actor's own bodily power, by disposing a substance, or by inducing an animal. So the rule conjoins the two effects with the three ways.
+- **s 351 needs no force and no contact.** An assault is complete on the apprehension. Its Explanation excludes only the case resting on words with no gesture or preparation at all.
+- **The s 352 Explanation is encoded as three disqualifiers of the provocation**, shared by ss 352, 355 and 358, so that a disqualified provocation leaves the case in s 352 rather than s 358.
+- **ss 347 and 348 do not share facts with ss 327 and 330**, though they are close neighbours. s 347 says "to do anything illegal or to give any information which may facilitate the commission of an offence"; s 327 says "to do anything which is illegal or which may facilitate the commission of an offence". The facts are kept separate so neither section is read through the other's words.
+- **`an encoded hurt offence is made out` is deliberately not wired into s 97(a).** The private-defence right continues to take "an offence affecting the human body" as a caller-asserted fact. The facts that would have to be asserted are the assailant's, not the defender's, and the `Proposed Act` bundle carries one actor's facts only; and one of Chapter 16's seven groups is still unencoded, so a FALSE is not yet a statement that no such offence is in play. Wiring it in would make the right look computed when it is not.
+
+### Added 11 Sep 2026 -- Chapter 16, second part
+
+- **"Subject to the Termination of Pregnancy Act 1974" is a negated conjunct.** ss 312, 314 and 315 each open with it. That Act is not in this source bundle, so whether the act falls within it is caller-asserted, and it is encoded the same way as the Electronic Transactions Act 2010 in s 29B and the Organised Crime Act 2015 in s 308A -- the cross-referenced Act's own test is not re-derived here.
+- **s 313 does not conjoin the 16-week duration.** s 312 punishes more heavily where the pregnancy is of more than 16 weeks, but s 313 applies "whether the woman's pregnancy is of more than 16 weeks' duration or not", so the duration is expressly immaterial to it.
+- **s 314's Explanation removes a fault element rather than adding one.** It is not essential that the offender knew the act was likely to cause death, so nothing is conjoined for it.
+- **s 315(2) is evidence, not an element.** Pregnancy of 28 weeks or more is *prima facie evidence* that the child was capable of being born alive. The fact is carried so a caller can assert it, and it is not conjoined.
+- **s 316's culpable-homicide circumstance is carried, not computed.** It is a counterfactual about the offender's state of mind -- what would have been true had the act killed a person -- and no death of a person has occurred to test s 299 against.
+- **s 318 needs no separate attempt analysis.** "intentionally conceals **or endeavours to conceal**" makes the offence complete on the attempt.
+- **Abduction is not a kind of kidnapping.** s 359 says kidnapping is of two kinds and ss 360 and 361 define them; s 362 defines abduction separately. It needs no minority, no guardian and no crossing of the border. ss 364 to 367 open "kidnaps or abducts", so that disjunction is gathered once and each section adds its own purpose.
+- **The Exception to s 361 is defeated by an immoral or unlawful purpose.** The section does not extend to a person who in good faith believes himself the father of an illegitimate child or entitled to its custody, *unless* the act is for an immoral or unlawful purpose -- so the good-faith belief is encoded as a protection that the purpose removes.
+- **s 368 does not conjoin the kidnapping.** It attaches to a kidnapping or abduction committed by someone else; knowledge of it is the element. Its "punished in the same manner as if he had kidnapped" is a punishment direction, so only the conduct is decided.
+- **The ss 372 and 373 presumptions are not encoded.** Each section presumes, until the contrary is proved, that one who disposes of or obtains a female below 21 to or from a prostitute or brothel-keeper did so for prostitution. Those are rebuttable presumptions of fact, not elements.
+
 ## 4. Status
 
 `draft`. No claim of fidelity. No HG1/HG2 grant.
 
-Machine-checked: 18 modules, 0 type errors, 88 of 88 assertions satisfied
+Machine-checked: 23 modules, 0 type errors, 154 of 154 assertions satisfied
 (`report/machine-evaluation.md`). §7.2 of that report records two blind spots in the
 available engine which a future run should read it subject to.
 
-Every encoded rule has now been read back against the deposited source text, in three passes:
+Every encoded rule has now been read back against the deposited source text, in four passes:
 `registers/verification-register.md` for the rules that existed before 09 Sep 2026 (twelve
 defects, all fixed), `registers/verification-register-pass-2.md` for the rules added that day
-(four defects, all fixed), and `registers/verification-register-pass-3.md` for the eighteen
+(four defects, all fixed), `registers/verification-register-pass-3.md` for the eighteen
 sections added on 11 Sep (no defect found; three drafting traps and two caller traps
-recorded). No pass is an adversarial review, none can reach the sections
-`registers/coverage-register.md` records as absent, and pass 3 read back rules written the
-same day, which is a weaker check than passes 1 and 2 -- it says so on its own first page.
+recorded), and `registers/verification-register-pass-4.md` for the 74 Chapter 16 sections
+added the same day (no defect found; six drafting traps and one structural limit recorded).
+No pass is an adversarial review, and none can reach the sections
+`registers/coverage-register.md` records as absent. Passes 3 and 4 read back rules written
+the same day, which is a weaker check than passes 1 and 2 -- each says so on its own first
+page.
 

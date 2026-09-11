@@ -1,24 +1,25 @@
 # Penal Code 1871 — missing-section register
 
-**Run date:** 2026-09-11 (regenerated after the Chapter 4A / ss 111-114 / ss 3-5 pass)
+**Run date:** 2026-09-11 (regenerated after the Chapter 16 pass, part 2)
 **Question answered:** which live sections of the Act have no `@ref` in any `.l4` module,
 named one by one with the Act's own marginal heading.
 
 This is the companion to `coverage-register.md`. That register counts coverage and
 enumerates the gaps only for the chapters that are partially encoded; for the thirteen
 chapters where nothing is encoded it gives a section *range* and a total. This register
-names all 399 missing sections, so that a reader deciding what to encode next is choosing
+names all 325 missing sections, so that a reader deciding what to encode next is choosing
 from a list rather than from a range.
 
 **Method.** The arrangement of sections at the head of `registers/source-bundle/PC1871.txt`
 (SSO current version as at 09 Sep 2026) was parsed for all 600 listed sections; the Act's
 body was parsed independently for the same 600 and supplied the marginal headings. The two
 passes agree on the section set exactly, which is the check that the parse is sound. Every
-`@ref` in the seventeen `.l4` modules was expanded (`ss X, Y, Z` lists, `ss X to Y` ranges,
-parenthesised subsections and `Explanation N` tails stripped) and matched against that set.
+`@ref` in the twenty-three `.l4` modules was expanded (`ss X, Y, Z` lists, `ss X to Y` ranges,
+parenthesised subsections and `Explanation N` / `Exception N` tails stripped) and matched
+against that set.
 
 Counts reproduce `coverage-register.md` exactly: **600 listed, 75 repealed, 525 live,**
-**126 encoded, 399 not encoded.** Repealed sections are listed below for completeness but
+**200 encoded, 325 not encoded.** Repealed sections are listed below for completeness but
 are struck from every count.
 
 As in the coverage register, this is a mechanical record of citation, not of fidelity.
@@ -27,9 +28,9 @@ by `verification-register.md` and `verification-register-pass-2.md`.
 
 ---
 
-Seven of the 399 are **deliberate** and documented in the module itself under their own
+Seven of the 325 are **deliberate** and documented in the module itself under their own
 `§§` heading -- sections that state no factual test to decide. They are marked *deliberate*
-in the tables below and explained in `coverage-register.md` §3. Discounting them, **392**
+in the tables below and explained in `coverage-register.md` §3. Discounting them, **318**
 live sections are unencoded for reasons of scope rather than of drafting.
 
 ## 1. Missing sections by chapter
@@ -55,14 +56,14 @@ live sections are unencoded for reasons of scope rather than of drafting.
 | **Chapter 13** — *(wholly repealed)* | 0 | 0 | 0 |
 | **Chapter 14** — Offences affecting the public tranquility, public health, safety, convenience, decency and morals | 35 | 0 | 35 |
 | **Chapter 15** — Offences relating to race | 2 | 0 | 2 |
-| **Chapter 16** — Offences affecting the human body | 120 | 0 | 120 |
+| **Chapter 16** — Offences affecting the human body | 120 | 74 | 46 |
 | **Chapter 17** — Offences against property | 76 | 12 | 64 |
 | **Chapter 18** — Offences relating to documents or electronic records, false instruments, and to currency and bank notes | 28 | 2 | 26 |
 | **Chapter 20** — *(wholly repealed)* | 0 | 0 | 0 |
 | **Chapter 21** — Defamation | 4 | 1 | 3 |
 | **Chapter 22** — Criminal intimidation, insult and annoyance | 5 | 4 | 1 |
 | **Chapter 23** — Attempts to commit offences | 2 | 1 | 1 |
-| **total** | **525** | **126** | **399** |
+| **total** | **525** | **200** | **325** |
 
 ---
 
@@ -414,95 +415,21 @@ All 4 sections repealed. Nothing to encode.
 
 ### Chapter 16 — Offences affecting the human body
 
-0 of 120 live sections encoded; 6 repealed and excluded.
+74 of 120 live sections encoded; 6 repealed and excluded.
 
-**120 missing:**
+**46 missing:**
 
 | s | heading | |
 | --- | --- | --- |
-| 299 | Culpable homicide |  |
-| 300 | Murder |  |
-| 301 | Culpable homicide by causing the death of a person other than the person whose death was intended |  |
 | 302 | Punishment for murder |  |
 | 304 | Punishment for culpable homicide not amounting to murder |  |
-| 304A | Causing death by rash or negligent act |  |
-| 304B | Causing death of child below 14 years of age, domestic worker or vulnerable person by sustained abuse |  |
-| 304C | Causing or allowing death of child below 14 years of age, domestic worker or vulnerable person in same household |  |
-| 305 | Abetment of suicide or attempted suicide of minor or person who lacks mental capacity |  |
-| 306 | Abetment of suicide or attempted suicide |  |
-| 307 | Attempt to murder |  |
-| 308 | Attempt to commit culpable homicide |  |
-| 308A | Causing death in furtherance of group's object |  |
-| 308B | Concealment, desecration or disposal of corpse that impedes discovery, identification, criminal investigations or prosecutions |  |
-| 310 | Infanticide |  |
 | 311 | Punishment for infanticide |  |
-| 312 | Causing miscarriage |  |
-| 313 | Causing miscarriage without woman's consent |  |
-| 314 | Death caused by act done with intent to cause miscarriage |  |
-| 315 | Child destruction before, at or immediately after birth |  |
-| 316 | Causing death of a quick unborn child by an act amounting to culpable homicide |  |
-| 317 | Exposure and abandonment of a child below 12 years of age by parent or person having care of it |  |
-| 318 | Concealment of birth by secret disposal of dead body |  |
-| 319 | Hurt |  |
-| 320 | Grievous hurt |  |
-| 321 | Voluntarily causing hurt |  |
-| 322 | Voluntarily causing grievous hurt |  |
 | 323 | Punishment for voluntarily causing hurt |  |
-| 323A | Punishment for voluntarily causing hurt which causes grievous hurt |  |
-| 324 | Voluntarily causing hurt by dangerous weapons or means |  |
 | 325 | Punishment for voluntarily causing grievous hurt |  |
-| 326 | Voluntarily causing grievous hurt by dangerous weapons or means |  |
-| 327 | Voluntarily causing hurt to extort property or to constrain to an illegal act |  |
-| 328 | Causing hurt by means of poison, etc., with intent to commit an offence |  |
-| 329 | Voluntarily causing grievous hurt to extort property, or to constrain to an illegal act |  |
-| 330 | Voluntarily causing hurt to extort confession or to compel restoration of property |  |
-| 331 | Voluntarily causing grievous hurt to extort confession or to compel restoration of property |  |
-| 332 | Voluntarily causing hurt to deter public servant from his duty |  |
-| 333 | Voluntarily causing grievous hurt to deter public servant from his duty |  |
-| 334 | Voluntarily causing hurt on provocation |  |
-| 334A | Punishment for voluntarily causing hurt on provocation which causes grievous hurt |  |
-| 335 | Causing grievous hurt on provocation |  |
-| 335A | Allowing neglect, physical or sexual abuse of domestic worker or vulnerable person |  |
-| 335B | Punishment for act which endangers life or personal safety of others with knowledge or belief that it is likely to cause death |  |
-| 336 | Punishment for act which endangers life or the personal safety of others |  |
-| 337 | Causing hurt by an act which endangers life or the personal safety of others |  |
-| 338 | Causing grievous hurt by an act which endangers life or the personal safety of others |  |
-| 339 | Wrongful restraint |  |
-| 340 | Wrongful confinement |  |
 | 341 | Punishment for wrongful restraint |  |
 | 342 | Punishment for wrongful confinement |  |
-| 345 | Wrongful confinement of person for whose liberation a writ has been issued |  |
-| 346 | Wrongful confinement in secret |  |
-| 347 | Wrongful confinement for the purpose of extorting property or constraining to an illegal act |  |
-| 348 | Wrongful confinement for the purpose of extorting confession or of compelling restoration of property |  |
-| 349 | Force |  |
-| 350 | Criminal force |  |
-| 351 | Assault |  |
-| 352 | Punishment for using criminal force otherwise than on grave and sudden provocation |  |
-| 353 | Using criminal force to deter a public servant from discharge of his duty |  |
-| 354 | Assault or use of criminal force to a person with intent to outrage modesty |  |
-| 354A | Outraging modesty in certain circumstances |  |
-| 355 | Assault or criminal force with intent to dishonour otherwise than on grave and sudden provocation |  |
-| 356 | Assault or criminal force in committing or attempting to commit theft of property carried by a person |  |
-| 357 | Assault or criminal force in attempting wrongfully to confine a person |  |
-| 358 | Assaulting or using criminal force on grave and sudden provocation |  |
-| 359 | Kidnapping |  |
-| 360 | Kidnapping from Singapore |  |
-| 361 | Kidnapping from lawful guardianship |  |
-| 362 | Abduction |  |
 | 363 | Punishment for kidnapping |  |
 | 363A | Punishment for abduction |  |
-| 364 | Kidnapping or abducting in order to murder |  |
-| 365 | Kidnapping or abducting with intent secretly and wrongfully to confine a person |  |
-| 366 | Kidnapping or abducting a woman to compel her marriage, etc. |  |
-| 367 | Kidnapping or abducting in order to subject a person to grievous hurt, slavery, etc. |  |
-| 368 | Wrongfully concealing or keeping in confinement a kidnapped person |  |
-| 370 | Buying or disposing of any person as a slave |  |
-| 371 | Habitual dealing in slaves |  |
-| 372 | Selling minor for purposes of prostitution, etc. |  |
-| 373 | Buying minor for purposes of prostitution, etc. |  |
-| 373A | Importing woman for purposes of prostitution, etc. |  |
-| 374 | Unlawful compulsory labour |  |
 | 375 | Rape |  |
 | 376 | Sexual assault involving penetration |  |
 | 376A | Sexual penetration of minor below 16 years of age |  |
@@ -735,4 +662,7 @@ each one silently changed the counts when it was missing:
 
 A citation of the form `s 120A(4) and (5)` must have **every** parenthesised group stripped,
 not only the one adjoining the section number, or the trailing `(5)` reads as section 5.
-`s 28 Explanation 2` needs the same treatment.
+`s 28 Explanation 2` needs the same treatment, and so does `s 300 Exception 1` and
+`s 300 Exceptions 1 to 7` -- these number sub-provisions, not sections, and every one of
+them reads as a low section number if left in. That trap cost a wrong count twice: once on
+`Explanation`, and again on `Exception` when Chapter 16 was added.

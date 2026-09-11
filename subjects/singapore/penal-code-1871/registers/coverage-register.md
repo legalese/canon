@@ -1,6 +1,6 @@
 # Penal Code 1871 — coverage register
 
-**Run date:** 2026-09-11 (first run 2026-09-09)
+**Run date:** 2026-09-11 (Chapter 16 pass; first run 2026-09-09)
 **Question answered:** which sections of the Act are modelled, and which are not.
 **Method:** every `@ref` citation in the seventeen `.l4` modules was parsed for section
 numbers and matched against the Act's own arrangement of sections, as it appears in
@@ -28,12 +28,16 @@ proven.
 | listed in the Act's arrangement of sections | 600 |
 | repealed — nothing to encode | 75 |
 | **live** | **525** |
-| **encoded** | **126** |
-| **live but not encoded** | **399** |
+| **encoded** | **200** |
+| **live but not encoded** | **325** |
 
-**About 24% of the live sections.** The 11 Sep pass added 18: the whole of Chapter 4A
-(ss 96 to 106A), ss 111, 113 and 114 of Chapter 5, and ss 3, 4A and 5 of Chapter 1 —
-which were the three gaps §6 of this register called more than scope choices.
+**About 38% of the live sections.** Two passes on 11 Sep. The first added 18 — the whole of
+Chapter 4A (ss 96 to 106A), ss 111, 113 and 114 of Chapter 5, and ss 3, 4A and 5 of
+Chapter 1 — which were the three gaps §6 of this register called more than scope choices.
+The second opened **Chapter 16**, the offences affecting the human body, and added 74: six of
+its seven groups — life, hurt, restraint, force and assault, unborn children and infants, and
+kidnapping, abduction, slavery and forced labour. Only the sexual offences (ss 375 to 377D)
+remain, with the nine pure punishment sections the policy excludes.
 
 There is no Chapter 19; Chapters 13 and 20 are wholly repealed.
 
@@ -65,14 +69,14 @@ policy; this register states its consequences section by section.
 | **Chapter 13** — *(wholly repealed)* | 4 | 4 | 0 | 0 | 0 |
 | **Chapter 14** — Offences affecting public tranquility, health, safety and decency | 35 | 0 | 35 | 0 | 35 |
 | **Chapter 15** — Offences relating to race | 5 | 3 | 2 | 0 | 2 |
-| **Chapter 16** — Offences affecting the human body | 126 | 6 | 120 | 0 | 120 |
+| **Chapter 16** — Offences affecting the human body | 126 | 6 | 120 | 74 | 46 |
 | **Chapter 17** — Offences against property | 93 | 17 | 76 | 12 | 64 |
 | **Chapter 18** — Offences relating to documents, electronic records and marks | 28 | 0 | 28 | 2 | 26 |
 | **Chapter 20** — *(wholly repealed)* | 5 | 5 | 0 | 0 | 0 |
 | **Chapter 21** — Defamation | 4 | 0 | 4 | 1 | 3 |
 | **Chapter 22** — Criminal intimidation, insult and annoyance | 8 | 3 | 5 | 4 | 1 |
 | **Chapter 23** — Attempts to commit offences | 2 | 0 | 2 | 1 | 1 |
-| **total** | **600** | **75** | **525** | **126** | **399** |
+| **total** | **600** | **75** | **525** | **200** | **325** |
 
 ## 3. The general parts
 
@@ -279,6 +283,95 @@ punishment or concealment provisions, consistent with this subject not computing
 | 120A | Definition of criminal conspiracy | `chapter-5a-conspiracy.l4` |
 | 120B | Punishment of criminal conspiracy | `chapter-5a-conspiracy.l4` |
 
+### Chapter 16 — Offences affecting the human body
+
+74 of 120 live sections encoded; 6 repealed and excluded.
+
+| s | title | module |
+| --- | --- | --- |
+| 299 | Culpable homicide | `chapter-16-life.l4` |
+| 300 | Murder | `chapter-16-life.l4` |
+| 301 | Culpable homicide by causing the death of a person other than the person whose death was intended | `chapter-16-life.l4` |
+| 304A | Causing death by rash or negligent act | `chapter-16-life.l4` |
+| 304B | Causing death of child below 14 years of age, domestic worker or vulnerable person by sustained abuse | `chapter-16-life.l4` |
+| 304C | Causing or allowing death of child below 14 years of age, domestic worker or vulnerable person in same household | `chapter-16-life.l4` |
+| 305 | Abetment of suicide or attempted suicide of minor or person who lacks mental capacity | `chapter-16-life.l4` |
+| 306 | Abetment of suicide or attempted suicide | `chapter-16-life.l4` |
+| 307 | Attempt to murder | `chapter-16-life.l4` |
+| 308 | Attempt to commit culpable homicide | `chapter-16-life.l4` |
+| 308A | Causing death in furtherance of group's object | `chapter-16-life.l4` |
+| 308B | Concealment, desecration or disposal of corpse that impedes discovery, identification, criminal investigations or prosecutions | `chapter-16-life.l4` |
+| 310 | Infanticide | `chapter-16-life.l4` |
+| 312 | Causing miscarriage | `chapter-16-unborn-and-infants.l4` |
+| 313 | Causing miscarriage without woman's consent | `chapter-16-unborn-and-infants.l4` |
+| 314 | Death caused by act done with intent to cause miscarriage | `chapter-16-unborn-and-infants.l4` |
+| 315 | Child destruction before, at or immediately after birth | `chapter-16-unborn-and-infants.l4` |
+| 316 | Causing death of a quick unborn child by an act amounting to culpable homicide | `chapter-16-unborn-and-infants.l4` |
+| 317 | Exposure and abandonment of a child below 12 years of age by parent or person having care of it | `chapter-16-unborn-and-infants.l4` |
+| 318 | Concealment of birth by secret disposal of dead body | `chapter-16-unborn-and-infants.l4` |
+| 319 | Hurt | `chapter-16-hurt.l4` |
+| 320 | Grievous hurt | `chapter-16-hurt.l4` |
+| 321 | Voluntarily causing hurt | `chapter-16-hurt.l4` |
+| 322 | Voluntarily causing grievous hurt | `chapter-16-hurt.l4` |
+| 323A | Punishment for voluntarily causing hurt which causes grievous hurt | `chapter-16-hurt.l4` |
+| 324 | Voluntarily causing hurt by dangerous weapons or means | `chapter-16-hurt.l4` |
+| 326 | Voluntarily causing grievous hurt by dangerous weapons or means | `chapter-16-hurt.l4` |
+| 327 | Voluntarily causing hurt to extort property or to constrain to an illegal act | `chapter-16-hurt.l4` |
+| 328 | Causing hurt by means of poison, etc., with intent to commit an offence | `chapter-16-hurt.l4` |
+| 329 | Voluntarily causing grievous hurt to extort property, or to constrain to an illegal act | `chapter-16-hurt.l4` |
+| 330 | Voluntarily causing hurt to extort confession or to compel restoration of property | `chapter-16-hurt.l4` |
+| 331 | Voluntarily causing grievous hurt to extort confession or to compel restoration of property | `chapter-16-hurt.l4` |
+| 332 | Voluntarily causing hurt to deter public servant from his duty | `chapter-16-hurt.l4` |
+| 333 | Voluntarily causing grievous hurt to deter public servant from his duty | `chapter-16-hurt.l4` |
+| 334 | Voluntarily causing hurt on provocation | `chapter-16-hurt.l4` |
+| 334A | Punishment for voluntarily causing hurt on provocation which causes grievous hurt | `chapter-16-hurt.l4` |
+| 335 | Causing grievous hurt on provocation | `chapter-16-hurt.l4` |
+| 335A | Allowing neglect, physical or sexual abuse of domestic worker or vulnerable person | `chapter-16-hurt.l4` |
+| 335B | Punishment for act which endangers life or personal safety of others with knowledge or belief that it is likely to cause death | `chapter-16-hurt.l4` |
+| 336 | Punishment for act which endangers life or the personal safety of others | `chapter-16-hurt.l4` |
+| 337 | Causing hurt by an act which endangers life or the personal safety of others | `chapter-16-hurt.l4` |
+| 338 | Causing grievous hurt by an act which endangers life or the personal safety of others | `chapter-16-hurt.l4` |
+| 339 | Wrongful restraint | `chapter-16-restraint-and-force.l4` |
+| 340 | Wrongful confinement | `chapter-16-restraint-and-force.l4` |
+| 345 | Wrongful confinement of person for whose liberation a writ has been issued | `chapter-16-restraint-and-force.l4` |
+| 346 | Wrongful confinement in secret | `chapter-16-restraint-and-force.l4` |
+| 347 | Wrongful confinement for the purpose of extorting property or constraining to an illegal act | `chapter-16-restraint-and-force.l4` |
+| 348 | Wrongful confinement for the purpose of extorting confession or of compelling restoration of property | `chapter-16-restraint-and-force.l4` |
+| 349 | Force | `chapter-16-restraint-and-force.l4` |
+| 350 | Criminal force | `chapter-16-restraint-and-force.l4` |
+| 351 | Assault | `chapter-16-restraint-and-force.l4` |
+| 352 | Punishment for using criminal force otherwise than on grave and sudden provocation | `chapter-16-restraint-and-force.l4` |
+| 353 | Using criminal force to deter a public servant from discharge of his duty | `chapter-16-restraint-and-force.l4` |
+| 354 | Assault or use of criminal force to a person with intent to outrage modesty | `chapter-16-restraint-and-force.l4` |
+| 354A | Outraging modesty in certain circumstances | `chapter-16-restraint-and-force.l4` |
+| 355 | Assault or criminal force with intent to dishonour otherwise than on grave and sudden provocation | `chapter-16-restraint-and-force.l4` |
+| 356 | Assault or criminal force in committing or attempting to commit theft of property carried by a person | `chapter-16-restraint-and-force.l4` |
+| 357 | Assault or criminal force in attempting wrongfully to confine a person | `chapter-16-restraint-and-force.l4` |
+| 358 | Assaulting or using criminal force on grave and sudden provocation | `chapter-16-restraint-and-force.l4` |
+| 359 | Kidnapping | `chapter-16-kidnapping.l4` |
+| 360 | Kidnapping from Singapore | `chapter-16-kidnapping.l4` |
+| 361 | Kidnapping from lawful guardianship | `chapter-16-kidnapping.l4` |
+| 362 | Abduction | `chapter-16-kidnapping.l4` |
+| 364 | Kidnapping or abducting in order to murder | `chapter-16-kidnapping.l4` |
+| 365 | Kidnapping or abducting with intent secretly and wrongfully to confine a person | `chapter-16-kidnapping.l4` |
+| 366 | Kidnapping or abducting a woman to compel her marriage, etc. | `chapter-16-kidnapping.l4` |
+| 367 | Kidnapping or abducting in order to subject a person to grievous hurt, slavery, etc. | `chapter-16-kidnapping.l4` |
+| 368 | Wrongfully concealing or keeping in confinement a kidnapped person | `chapter-16-kidnapping.l4` |
+| 370 | Buying or disposing of any person as a slave | `chapter-16-kidnapping.l4` |
+| 371 | Habitual dealing in slaves | `chapter-16-kidnapping.l4` |
+| 372 | Selling minor for purposes of prostitution, etc. | `chapter-16-kidnapping.l4` |
+| 373 | Buying minor for purposes of prostitution, etc. | `chapter-16-kidnapping.l4` |
+| 373A | Importing woman for purposes of prostitution, etc. | `chapter-16-kidnapping.l4` |
+| 374 | Unlawful compulsory labour | `chapter-16-kidnapping.l4` |
+
+**Not encoded:** s 302, s 304, s 311, s 323, s 325, s 341, s 342, s 363, s 363A, s 375, s 376, s 376A, s 376AA, s 376B, s 376C, s 376D, s 376E, s 376EA, s 376EB, s 376EC, s 376ED, s 376EE, s 376F, s 376G, s 376H, s 377, s 377B, s 377BA, s 377BB, s 377BC, s 377BD, s 377BE, s 377BF, s 377BG, s 377BH, s 377BI, s 377BJ, s 377BK, s 377BL, s 377BM, s 377BN, s 377BO, s 377C, s 377CA, s 377CB, s 377D.
+
+Nine of those are pure punishment sections — ss 302, 304, 311, 323, 325, 341, 342, 363
+and 363A — which this subject does not encode because it does not compute sentence. The
+remaining 37 are the Chapter's last group, the sexual offences (ss 375 to 377D), which
+includes its own interpretation section (s 377C) and three provisions that govern the
+whole group (ss 377CA, 377CB and 377D).
+
 ### Chapter 17 — Offences against property
 
 12 of 76 live sections encoded.
@@ -363,13 +456,12 @@ Repealed, nothing to encode: s 508, s 509, s 510.
 | **Chapter 12** — Offences relating to government stamps | 9 | ss 230–263 |
 | **Chapter 14** — Offences affecting public tranquility, health, safety and decency | 35 | ss 267A–294 |
 | **Chapter 15** — Offences relating to race | 2 | ss 295–298A |
-| **Chapter 16** — Offences affecting the human body | 120 | ss 299–377D |
 
-**288 live sections, none of them modelled** — 55% of the live Code. Chapters 13 and 20 are
+**168 live sections, none of them modelled** — 32% of the live Code. Chapters 13 and 20 are
 omitted from this table: both are wholly repealed and contribute no live section.
 
-This table gives ranges. `missing-sections.md` names each of these 288 sections individually,
-with the Act's own marginal heading, alongside the 111 missing from the partially encoded
+This table gives ranges. `missing-sections.md` names each of these 168 sections individually,
+with the Act's own marginal heading, alongside the 157 missing from the partially encoded
 chapters above.
 
 ## 6. The three gaps that were more than scope choices — closed 11 Sep 2026
@@ -395,7 +487,7 @@ caller can still tell which one fired.
 
 The asymmetry §6.1 used to warn about — over-inclusive on offences, under-inclusive on
 defences, so a FALSE was more trustworthy than a TRUE — is narrowed but not gone. It now
-rests on the remaining unencoded defences and on the 399 unencoded sections, not on a whole
+rests on the remaining unencoded defences and on the 325 unencoded sections, not on a whole
 missing Chapter.
 
 **6.2 Chapter 5, ss 111, 113 and 114.** ss 109, 110, 112, 115 to 120 are punishment and
@@ -414,11 +506,22 @@ field. `NOTES.md` §3 explains why s 5 is decided where s 79A is not.
 
 ### What is still missing, and still matters
 
-Closing these three does not make the screen complete. The largest remaining absence is
-**Chapter 16 (ss 299 to 377D, 120 live sections)** — the whole of the offences affecting the
-human body. Chapter 4A now decides when the right of private defence justifies an act, but
-the offence that act would otherwise be is not encoded, so the justification cannot be
-reported against a hurt or homicide charge. `missing-sections.md` names every one.
+**Updated later the same day.** The absence named here was Chapter 16, and it is now half
+closed: 74 of its 120 live sections are encoded — six of its seven groups — so the screen
+reports murder, culpable homicide, hurt, grievous hurt, wrongful restraint, wrongful
+confinement, assault, criminal force, outraging modesty, causing miscarriage, child
+destruction, abandonment of a child, kidnapping, abduction, slavery and forced labour, each
+subject to s 6. One group remains: the sexual offences (ss 375 to 377D), 37 live sections.
+
+One thing the Chapter 16 pass did **not** do, and it is recorded in
+`verification-register-pass-4.md` §T3: `there is a section 97(a) right to defend the body`
+still takes "an offence affecting the human body" as a caller-asserted fact rather than
+computing it from the new hurt rules. The offence in question is the *assailant's*, and the
+`Proposed Act` bundle carries one actor's facts; and with three groups still absent, a FALSE
+from the hurt predicate would not mean no such offence was in play. Closing that needs a
+two-actor bundle, which is a change to the shape of the subject.
+
+`missing-sections.md` names all 325 sections that remain.
 
 ## 7. How to regenerate this register
 

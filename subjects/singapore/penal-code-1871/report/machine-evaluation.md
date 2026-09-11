@@ -1,7 +1,7 @@
 # Penal Code 1871 — machine evaluation report
 
 **Run date:** 2026-09-11 (first run 2026-09-09)
-**Verdict:** **0 type errors across all 18 modules; 88 of 88 assertions satisfied.**
+**Verdict:** **0 type errors across all 23 modules; 154 of 154 assertions satisfied.**
 No directive was skipped, stubbed or held back.
 
 ---
@@ -251,3 +251,61 @@ the whole import graph beneath it. **That does not reproduce.** Re-probing it on
 Neither blind spot affects the verdict above, because the run opens and checks all eighteen
 modules individually and the fixture check passes on all of them. Both affect how a *future*
 run should be read.
+
+
+---
+
+## 8. Third run — 11 Sep 2026, after the Chapter 16 pass
+
+**Verdict: 21 modules, 0 type errors, 133 of 133 assertions satisfied.** 88 of those are the
+assertions that existed after the Chapter 4A pass, all still holding; 45 are new.
+
+The three new modules -- `chapter-16-life.l4`, `chapter-16-hurt.l4` and
+`chapter-16-restraint-and-force.l4` -- carry no directives of their own and were run in a
+scratch copy with `#EVAL TRUE` appended, as in §4.1. All three returned `errors 0` and `TRUE`.
+All 45 new assertions live in `agent-cases.l4`, which now carries 87.
+
+The fixture-completeness check described in §7.2 was run after every change to `types.l4` in
+this pass. It caught all four `Proposed Act` fixtures when `homicide`, `bodily harm` and
+`personal liberty` were added, which is precisely the blind spot it exists for: the engine
+reported those same fixtures as clean.
+
+### 8.1 A third trap, in the coverage tooling rather than the engine
+
+`missing-sections.md` §4 already warned that a citation like `s 28 Explanation 2` must have
+its "Explanation N" tail stripped or the 2 reads as a section number. Chapter 16 brought the
+same trap in a new form: `s 300 Exception 1`, and `s 300 Exceptions 1 to 7`. Before it was
+caught it inflated Chapter 1 to 7 of 7 and Chapter 2 to 50 of 54 -- both wrong, and both
+wrong in the flattering direction. The stripping rule now covers `Explanation`, `Exception`
+and their plurals, with or without a `to` range.
+
+This is the second time the same class of bug has produced a wrong coverage count. Any future
+regeneration should treat a coverage number that *improves* without new rules as a defect in
+the tooling until proved otherwise.
+
+
+---
+
+## 9. Fourth run — 11 Sep 2026, after the second Chapter 16 pass
+
+**Verdict: 23 modules, 0 type errors, 154 of 154 assertions satisfied.** 133 of those are the
+assertions that existed after the first Chapter 16 pass, all still holding; 21 are new.
+
+The two new modules -- `chapter-16-unborn-and-infants.l4` and `chapter-16-kidnapping.l4` --
+carry no directives of their own and were run with `#EVAL TRUE` appended, as in §4.1. Both
+returned `errors 0` and `TRUE`. All 21 new assertions live in `agent-cases.l4`, which now
+carries 108.
+
+### 9.1 The harness needed a longer settle time, and said so misleadingly
+
+`agent-cases.l4` is now about 3,500 lines and its first run at the old timeout returned
+**"NO DIAGNOSTICS PUBLISHED"** -- which the harness treats as a failure, and which looks
+exactly like a module that cannot be parsed. It was neither: the server had simply not
+finished within the 180-second hard limit. Re-run with a 540-second limit and an 8-second
+settle, the same file returned `errors 0, satisfied 108`.
+
+Worth recording because the failure mode is silent and misleading in the *safe* direction
+only by luck. A reader who saw that line and concluded the file was broken would have been
+wrong; a reader who ignored it would have missed a real parse failure on another day. The
+harness distinguishes "no diagnostics" from "clean" and exits non-zero on it, which is the
+right default -- but the timeout must scale with the file.
