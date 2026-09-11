@@ -1,7 +1,7 @@
 # Penal Code 1871 — machine evaluation report
 
 **Run date:** 2026-09-11 (first run 2026-09-09)
-**Verdict:** **0 type errors across all 23 modules; 154 of 154 assertions satisfied.**
+**Verdict:** **0 type errors across all 26 modules; 192 of 192 assertions satisfied.**
 No directive was skipped, stubbed or held back.
 
 ---
@@ -309,3 +309,39 @@ only by luck. A reader who saw that line and concluded the file was broken would
 wrong; a reader who ignored it would have missed a real parse failure on another day. The
 harness distinguishes "no diagnostics" from "clean" and exits non-zero on it, which is the
 right default -- but the timeout must scale with the file.
+
+
+---
+
+## 10. Fifth run — 11 Sep 2026, after the sexual offences pass
+
+**Verdict: 26 modules, 0 type errors, 192 of 192 assertions satisfied.** 154 of those are the
+assertions that existed after the second Chapter 16 pass, all still holding; 38 are new.
+
+The three new modules — `chapter-16-sexual-general.l4`, `chapter-16-sexual-penetration.l4`
+and `chapter-16-sexual-images.l4` — carry no directives of their own and were run with
+`#EVAL TRUE` appended, as in §4.1. All three returned `errors 0` and `TRUE`. All 38 new
+assertions live in `agent-cases.l4`, which now carries 146 across about 5,500 lines.
+
+The settle time was raised again, to a 900-second hard limit and a 10-second settle. §9.1
+explains why that matters and how its failure mode reads.
+
+### 10.1 A fourth trap in the coverage tooling, and the last of that family
+
+`missing-sections.md` §4 records that `Explanation N` and `Exception N` tails must be
+stripped from a citation or they read as section numbers. This pass found the third variant:
+a **range with lettered endpoints**. `ss 377BH to 377BK` expands to nothing useful, because
+the range logic matches `(\d+)([A-Z]?)` and the suffixes here are two letters; the numeric
+range 377 to 377 yields one section, and ss 377BI and 377BJ silently disappeared from the
+count even though both were encoded.
+
+It was caught because Chapter 16 came back as 109 of 120 when every group had been written,
+and the two missing sections were ones known to be in the file. The fix was to make the
+citation explicit — `ss 377BH, 377BI, 377BJ and 377BK` — rather than to teach the extractor
+about lettered ranges, because the explicit form is also better for a human reader.
+
+That is now **three separate occasions** on which this class of bug has produced a wrong
+coverage number. The rule stated in §8.1 held again: a coverage figure that moves without a
+corresponding change in the rules is a defect in the tooling until proved otherwise. It is
+worth adding the converse — a figure that fails to move when rules *were* added is the same
+defect wearing the other face.

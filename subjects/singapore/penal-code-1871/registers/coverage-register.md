@@ -28,16 +28,16 @@ proven.
 | listed in the Act's arrangement of sections | 600 |
 | repealed — nothing to encode | 75 |
 | **live** | **525** |
-| **encoded** | **200** |
-| **live but not encoded** | **325** |
+| **encoded** | **237** |
+| **live but not encoded** | **288** |
 
-**About 38% of the live sections.** Two passes on 11 Sep. The first added 18 — the whole of
+**About 45% of the live sections.** Two passes on 11 Sep. The first added 18 — the whole of
 Chapter 4A (ss 96 to 106A), ss 111, 113 and 114 of Chapter 5, and ss 3, 4A and 5 of
 Chapter 1 — which were the three gaps §6 of this register called more than scope choices.
-The second opened **Chapter 16**, the offences affecting the human body, and added 74: six of
-its seven groups — life, hurt, restraint, force and assault, unborn children and infants, and
-kidnapping, abduction, slavery and forced labour. Only the sexual offences (ss 375 to 377D)
-remain, with the nine pure punishment sections the policy excludes.
+The second opened **Chapter 16**, the offences affecting the human body, and completed it:
+111 of its 120 live sections, all seven groups. The nine not encoded are pure punishment
+sections, excluded by the policy that this subject does not compute sentence, so **Chapter 16
+is now complete in substance** — every section of it that states a testable rule has one.
 
 There is no Chapter 19; Chapters 13 and 20 are wholly repealed.
 
@@ -69,19 +69,19 @@ policy; this register states its consequences section by section.
 | **Chapter 13** — *(wholly repealed)* | 4 | 4 | 0 | 0 | 0 |
 | **Chapter 14** — Offences affecting public tranquility, health, safety and decency | 35 | 0 | 35 | 0 | 35 |
 | **Chapter 15** — Offences relating to race | 5 | 3 | 2 | 0 | 2 |
-| **Chapter 16** — Offences affecting the human body | 126 | 6 | 120 | 74 | 46 |
+| **Chapter 16** — Offences affecting the human body | 126 | 6 | 120 | 111 | 9 |
 | **Chapter 17** — Offences against property | 93 | 17 | 76 | 12 | 64 |
 | **Chapter 18** — Offences relating to documents, electronic records and marks | 28 | 0 | 28 | 2 | 26 |
 | **Chapter 20** — *(wholly repealed)* | 5 | 5 | 0 | 0 | 0 |
 | **Chapter 21** — Defamation | 4 | 0 | 4 | 1 | 3 |
 | **Chapter 22** — Criminal intimidation, insult and annoyance | 8 | 3 | 5 | 4 | 1 |
 | **Chapter 23** — Attempts to commit offences | 2 | 0 | 2 | 1 | 1 |
-| **total** | **600** | **75** | **525** | **200** | **325** |
+| **total** | **600** | **75** | **525** | **237** | **288** |
 
 ## 3. The general parts
 
-Six chapters decide whether an offence test is reached at all, and these are the ones the
-encoding treats as load-bearing:
+Six chapters decide whether an offence test is reached at all, and one offence chapter is now
+encoded to the same standard. These are the ones the encoding treats as load-bearing:
 
 | chapter | live | encoded |
 | --- | ---: | ---: |
@@ -91,9 +91,11 @@ encoding treats as load-bearing:
 | Chapter 4 — General exceptions | 21 | 20 |
 | Chapter 4A — Right of private defence | 12 | 12 |
 | Chapter 5A — Criminal conspiracy | 2 | 2 |
+| Chapter 16 — Offences affecting the human body | 120 | 111 |
 
-**The seven apparent gaps there are deliberate, and each is documented in the module itself
-under its own `§§` heading.** They are sections with no factual test to decide:
+**The seven apparent gaps in the general parts are deliberate, and each is documented in the
+module itself under its own `§§` heading.** They are sections with no factual test to decide.
+(Chapter 16's nine are different: they are punishment sections, listed in §4.)
 
 | s | why nothing is decided |
 | --- | --- |
@@ -105,7 +107,7 @@ under its own `§§` heading.** They are sections with no factual test to decide
 | 50 | "Section" denotes a numbered portion of a Chapter. |
 | 79A | A **closure** rule, not an exception: mistake or ignorance of law is never a defence unless another written law so provides. It therefore contributes no limb to `a general exception applies`, which is the correct encoding of it. |
 
-So Chapters 1, 2, 3, 4, 4A and 5A are complete in substance: every section that states a
+So Chapters 1, 2, 3, 4, 4A, 5A and 16 are complete in substance: every section that states a
 testable rule has one. Note that s 5, the other Chapter 1 closure provision, **is** decided,
 where s 79A is not — `NOTES.md` §3 gives the reason.
 
@@ -285,7 +287,11 @@ punishment or concealment provisions, consistent with this subject not computing
 
 ### Chapter 16 — Offences affecting the human body
 
-74 of 120 live sections encoded; 6 repealed and excluded.
+**111 of 120 live sections encoded; 6 repealed and excluded.**
+
+Complete in substance: the nine not encoded are pure punishment sections, and this
+subject does not compute sentence. Every section of Chapter 16 that states a testable
+rule has one.
 
 | s | title | module |
 | --- | --- | --- |
@@ -363,14 +369,47 @@ punishment or concealment provisions, consistent with this subject not computing
 | 373 | Buying minor for purposes of prostitution, etc. | `chapter-16-kidnapping.l4` |
 | 373A | Importing woman for purposes of prostitution, etc. | `chapter-16-kidnapping.l4` |
 | 374 | Unlawful compulsory labour | `chapter-16-kidnapping.l4` |
+| 375 | Rape | `chapter-16-sexual-general.l4` |
+| 376 | Sexual assault involving penetration | `chapter-16-sexual-general.l4` |
+| 376A | Sexual penetration of minor below 16 years of age | `chapter-16-sexual-general.l4` |
+| 376AA | Exploitative sexual penetration of minor of or above 16 but below 18 years of age | `chapter-16-sexual-penetration.l4` |
+| 376B | Commercial sex with minor below 18 years of age | `chapter-16-sexual-general.l4` |
+| 376C | Commercial sex with minor below 18 years of age outside Singapore | `chapter-16-sexual-penetration.l4` |
+| 376D | Tour outside Singapore for commercial sex with minor below 18 years of age | `chapter-16-sexual-penetration.l4` |
+| 376E | Sexual grooming of minor below 16 years of age | `chapter-16-sexual-penetration.l4` |
+| 376EA | Exploitative sexual grooming of minor of or above 16 but below 18 years of age | `chapter-16-sexual-penetration.l4` |
+| 376EB | Sexual communication with minor below 16 years of age | `chapter-16-sexual-general.l4` |
+| 376EC | Exploitative sexual communication with minor of or above 16 but below 18 years of age | `chapter-16-sexual-penetration.l4` |
+| 376ED | Sexual activity or image in presence of minor below 16 years of age | `chapter-16-sexual-general.l4` |
+| 376EE | Exploitative sexual activity or image in presence of minor of or above 16 but below 18 years of age | `chapter-16-sexual-penetration.l4` |
+| 376F | Procurement of sexual activity with person with mental disability | `chapter-16-sexual-penetration.l4` |
+| 376G | Incest | `chapter-16-sexual-penetration.l4` |
+| 376H | Procurement of sexual activity by deception or false representation | `chapter-16-sexual-penetration.l4` |
+| 377 | Sexual penetration, etc., of a corpse | `chapter-16-sexual-penetration.l4` |
+| 377B | Sexual penetration with living animal | `chapter-16-sexual-penetration.l4` |
+| 377BA | Word or gesture intended to insult modesty of any person | `chapter-16-sexual-images.l4` |
+| 377BB | Voyeurism | `chapter-16-sexual-images.l4` |
+| 377BC | Distribution of voyeuristic image or recording | `chapter-16-sexual-images.l4` |
+| 377BD | Possession of or gaining access to voyeuristic or intimate image or recording and production of intimate image or recording | `chapter-16-sexual-images.l4` |
+| 377BE | Distributing or threatening to distribute intimate image or recording | `chapter-16-sexual-images.l4` |
+| 377BF | Sexual exposure | `chapter-16-sexual-images.l4` |
+| 377BG | Using or involving child in production of child abuse material | `chapter-16-sexual-images.l4` |
+| 377BH | Producing child abuse material | `chapter-16-sexual-images.l4` |
+| 377BI | Distributing or selling child abuse material | `chapter-16-sexual-images.l4` |
+| 377BJ | Advertising or seeking child abuse material | `chapter-16-sexual-images.l4` |
+| 377BK | Possession of or gaining access to child abuse material | `chapter-16-sexual-images.l4` |
+| 377BL | Exploitation by abusive material of minor of or above 16 but below 18 years of age | `chapter-16-sexual-images.l4` |
+| 377BM | Defences to offences relating to intimate image or recording and voyeurism | `chapter-16-sexual-images.l4` |
+| 377BN | Defences to child abuse material offences | `chapter-16-sexual-images.l4` |
+| 377BO | Child abuse material offences outside or partially outside Singapore | `chapter-16-sexual-images.l4` |
+| 377C | Interpretation of sections 375 to 377BO (sexual offences) | `chapter-16-sexual-general.l4` |
+| 377CA | Meaning of exploitative relationship | `chapter-16-sexual-general.l4` |
+| 377CB | Consent given under misconception in sexual offences | `chapter-16-sexual-general.l4` |
+| 377D | Mistake as to age in sexual offences | `chapter-16-sexual-general.l4` |
 
-**Not encoded:** s 302, s 304, s 311, s 323, s 325, s 341, s 342, s 363, s 363A, s 375, s 376, s 376A, s 376AA, s 376B, s 376C, s 376D, s 376E, s 376EA, s 376EB, s 376EC, s 376ED, s 376EE, s 376F, s 376G, s 376H, s 377, s 377B, s 377BA, s 377BB, s 377BC, s 377BD, s 377BE, s 377BF, s 377BG, s 377BH, s 377BI, s 377BJ, s 377BK, s 377BL, s 377BM, s 377BN, s 377BO, s 377C, s 377CA, s 377CB, s 377D.
-
-Nine of those are pure punishment sections — ss 302, 304, 311, 323, 325, 341, 342, 363
-and 363A — which this subject does not encode because it does not compute sentence. The
-remaining 37 are the Chapter's last group, the sexual offences (ss 375 to 377D), which
-includes its own interpretation section (s 377C) and three provisions that govern the
-whole group (ss 377CA, 377CB and 377D).
+**Not encoded:** s 302, s 304, s 311, s 323, s 325, s 341, s 342, s 363, s 363A —
+all of them punishment provisions for offences whose constitutive tests are encoded
+above, on the same ground as ss 109 to 120 of Chapter 5.
 
 ### Chapter 17 — Offences against property
 
@@ -461,7 +500,7 @@ Repealed, nothing to encode: s 508, s 509, s 510.
 omitted from this table: both are wholly repealed and contribute no live section.
 
 This table gives ranges. `missing-sections.md` names each of these 168 sections individually,
-with the Act's own marginal heading, alongside the 157 missing from the partially encoded
+with the Act's own marginal heading, alongside the 120 missing from the partially encoded
 chapters above.
 
 ## 6. The three gaps that were more than scope choices — closed 11 Sep 2026
@@ -487,7 +526,7 @@ caller can still tell which one fired.
 
 The asymmetry §6.1 used to warn about — over-inclusive on offences, under-inclusive on
 defences, so a FALSE was more trustworthy than a TRUE — is narrowed but not gone. It now
-rests on the remaining unencoded defences and on the 325 unencoded sections, not on a whole
+rests on the remaining unencoded defences and on the 288 unencoded sections, not on a whole
 missing Chapter.
 
 **6.2 Chapter 5, ss 111, 113 and 114.** ss 109, 110, 112, 115 to 120 are punishment and
@@ -507,11 +546,13 @@ field. `NOTES.md` §3 explains why s 5 is decided where s 79A is not.
 ### What is still missing, and still matters
 
 **Updated later the same day.** The absence named here was Chapter 16, and it is now half
-closed: 74 of its 120 live sections are encoded — six of its seven groups — so the screen
-reports murder, culpable homicide, hurt, grievous hurt, wrongful restraint, wrongful
-confinement, assault, criminal force, outraging modesty, causing miscarriage, child
-destruction, abandonment of a child, kidnapping, abduction, slavery and forced labour, each
-subject to s 6. One group remains: the sexual offences (ss 375 to 377D), 37 live sections.
+closed. 111 of its 120 live sections are encoded — all seven groups — and the nine that are
+not are punishment sections this subject never encodes. The screen now reports murder,
+culpable homicide, hurt, grievous hurt, wrongful restraint, wrongful confinement, assault,
+criminal force, outraging modesty, causing miscarriage, child destruction, abandonment of a
+child, kidnapping, abduction, slavery, forced labour, rape, sexual assault by penetration,
+the offences against minors, incest, voyeurism, the intimate image offences and the child
+abuse material offences, each subject to s 6.
 
 One thing the Chapter 16 pass did **not** do, and it is recorded in
 `verification-register-pass-4.md` §T3: `there is a section 97(a) right to defend the body`
@@ -521,7 +562,10 @@ computing it from the new hurt rules. The offence in question is the *assailant'
 from the hurt predicate would not mean no such offence was in play. Closing that needs a
 two-actor bundle, which is a change to the shape of the subject.
 
-`missing-sections.md` names all 325 sections that remain.
+`missing-sections.md` names all 288 sections that remain. The largest single absence is now
+**Chapter 11** (ss 191 to 229, 43 live sections), false evidence and offences against public
+justice, followed by **Chapter 14** (ss 267A to 294, 35 sections) and the 64 unencoded
+sections of **Chapter 17**.
 
 ## 7. How to regenerate this register
 

@@ -85,18 +85,18 @@ subject. Wiring them into the offence wrappers is the next piece of work.
 
 ## 4. What is deliberately absent
 
-Counted section by section in `registers/coverage-register.md`: **200 of the Act's 525 live
-sections are encoded, about 38%**, and 168 live sections sit in chapters with nothing encoded
-at all. `registers/missing-sections.md` names every one of the 325 unencoded sections
-individually. In summary: Chapters 6 to 15, one of Chapter 16's seven groups, most of
-Chapter 17, most of Chapter 18, the ten s 499 exceptions as individual tests, and any
-computation of sentence for a particular offence.
+Counted section by section in `registers/coverage-register.md`: **237 of the Act's 525 live
+sections are encoded, about 45%**, and 168 live sections sit in chapters with nothing encoded
+at all. `registers/missing-sections.md` names every one of the 288 unencoded sections
+individually. In summary: Chapters 6 to 15, most of Chapter 17, most of Chapter 18, the ten
+s 499 exceptions as individual tests, and any computation of sentence for a particular
+offence.
 
 Two of these are worth naming here because a caller could be misled:
 
-- **Chapter 16 is encoded but for its last group** — 74 of its 120 live sections. The sexual
-  offences (ss 375 to 377D, 37 sections) remain, and a caller screening conduct in that area
-  gets silence, not a clearance.
+- **Chapter 11 is not encoded** — ss 191 to 229, false evidence and offences against public
+  justice, and now the largest single absence at 43 live sections. Chapter 14 (35 sections)
+  and the 64 unencoded sections of Chapter 17 follow it.
 - **The s 499 exceptions** collapse into one caller-asserted flag,
   `a section 499 exception applies`. The encoding does not decide whether the imputation was
   for the public good; it asks the caller.
@@ -105,12 +105,13 @@ Two of these are worth naming here because a caller could be misled:
 106A) *was* the first absence named here, and is now encoded in full and wired into every
 offence wrapper through s 6. So is the rest of what `coverage-register.md` §6 called more
 than a scope choice: ss 111, 113 and 114 of Chapter 5, and ss 3, 4A and 5 of Chapter 1. The
-second pass opened Chapter 16, which was the next absence named, and encoded 74 of its 120
-live sections -- six of its seven groups.
+second pass opened Chapter 16, which was the next absence named, and **completed** it: 111 of
+its 120 live sections, all seven groups. The nine not encoded are pure punishment sections,
+so Chapter 16 is complete in substance.
 
 ## 5. Interpretive choices
 
-Forty-five are recorded in `NOTES.md` §3, each tied to the words of the section that
+Sixty-seven are recorded in `NOTES.md` §3, each tied to the words of the section that
 provoked it. The ones that most affect what the screen returns:
 
 - **s 415** does not gate on "sole or main inducement", because the section says the
@@ -142,11 +143,11 @@ Three fidelity passes, a coverage pass and a mechanical pass, all recorded:
 - `registers/coverage-register.md` — a **coverage** pass matching every `@ref` in the
   encoding against the Act's arrangement of sections, so the gaps are auditable rather than
   described. `registers/missing-sections.md` names each gap with the Act's own heading.
-- `registers/verification-register-pass-4.md` — the same treatment for the 74 Chapter 16
-  sections. No defect found in read-back; six traps in the Act's drafting and one structural
-  limit of this subject recorded. Like pass 3, it read back rules written the same day.
+- `registers/verification-register-pass-4.md` — the same treatment for the 111 Chapter 16
+  sections. No defect found in read-back; nine traps in the Act's drafting and two structural
+  limits of this subject recorded. Like pass 3, it read back rules written the same day.
 - `report/machine-evaluation.md` — a **mechanical** pass running every module through the
-  `jl4-lsp` language server as a batch checker: **23 modules, 0 type errors, 154 of 154
+  `jl4-lsp` language server as a batch checker: **26 modules, 0 type errors, 192 of 192
   assertions satisfied**, no directive skipped or stubbed. §7.2 of that report records two
   blind spots in the available engine, one of which retracts a claim the first run made
   about how far a clean result reaches; §8.1 records a third, in the coverage tooling.

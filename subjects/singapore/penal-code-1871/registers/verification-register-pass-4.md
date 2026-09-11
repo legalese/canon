@@ -1,23 +1,24 @@
 # Penal Code 1871 — verification register, pass 4
 
 **Run date:** 2026-09-11
-**Scope:** the 74 Chapter 16 sections added on 11 Sep 2026 — the offences affecting life
-(ss 299 to 310), causing miscarriage and injuries to unborn children (ss 312 to 318), hurt
-(ss 319 to 338), wrongful restraint, wrongful confinement, criminal force and assault
-(ss 339 to 358), and kidnapping, abduction, slavery and forced labour (ss 359 to 374). Six of
-the Chapter's seven groups; only the sexual offences (ss 375 to 377D) are outstanding.
+**Scope:** the 111 Chapter 16 sections added on 11 Sep 2026 — all seven of the Chapter's
+groups: offences affecting life (ss 299 to 310), causing miscarriage and injuries to unborn
+children (ss 312 to 318), hurt (ss 319 to 338), wrongful restraint, wrongful confinement,
+criminal force and assault (ss 339 to 358), kidnapping, abduction, slavery and forced labour
+(ss 359 to 374), and the sexual offences (ss 375 to 377D). The nine sections of the Chapter
+not encoded are pure punishment provisions, so Chapter 16 is complete in substance.
 **Method:** every rule read back against the deposited source text in
 `registers/source-bundle/PC1871.txt`, clause by clause, after it was written and
 machine-checked. Same method as passes 1 to 3. Not an adversarial review.
 
-**Result: no defect found in read-back. 6 traps in the Act's drafting recorded; 1 structural
-limit of this subject recorded.**
+**Result: no defect found in read-back. 9 traps in the Act's drafting recorded; 2 structural
+limits of this subject recorded.**
 
 ---
 
 ## 1. What this pass covers, and the limit of it
 
-The same limit as pass 3, and it bears repeating because this pass is six times the size:
+The same limit as pass 3, and it bears repeating because this pass is nine times the size:
 these rules were read back on the day they were written, so **a misreading shared by the
 rule and the read-back is invisible here**. No count below is evidence against that.
 
@@ -41,8 +42,11 @@ weight:
 | s 350 Ill (d) | a push in the street, without consent, intending annoyance | `pushing someone in the street` |
 | s 351 Ill (a) and Expl | a shaken fist is assault; words alone are not | `shaking a fist`, `a threat in words alone` |
 | s 361 Exc | the father in good faith, and the same belief defeated by an unlawful purpose | `a father taking his own child in good faith`, `... for an unlawful purpose` |
+| s 377CB Ill (a) and (d) | a misconception as to the nature of the act vitiates; one as to the actor's attributes does not | `a misconception as to the nature of the act`, `a misconception as to the actor's attributes` |
+| s 377BM(2) Ill (b) | keeping an upskirt photograph to hand to the police is no offence | `recording to report an offence` |
+| s 377BN(3) Ill (a) | possession by a researcher has a legitimate purpose | `possessing child abuse material for research` |
 
-## 2. Six traps in the drafting
+## 2. Nine traps in the drafting
 
 Each is recorded in the module as well as here.
 
@@ -120,7 +124,62 @@ The "unless" restores the section. Encoded as a bare good-faith carve-out, a fat
 his child for an unlawful purpose would escape. The Exception is therefore encoded as a
 protection that the immoral-or-unlawful purpose removes, and both cases are asserted.
 
-## 3. A structural limit, recorded rather than fixed
+### N10 — section 377CB narrows section 90 and must not be read as adding to it
+
+s 377CB(1) reads "a consent for the purposes of an act which is the physical element of a
+sexual offence is **not** a consent given by a person under a misconception of fact **only
+if** it is directly related to" the nature of the act, its purpose, or the identity of the
+actor.
+
+Read as a list of misconceptions that vitiate, it would sit alongside s 90(a)(ii) and add
+three more. It does the opposite: it is an "only if", and for sexual offences it *replaces*
+s 90's open-ended misconception limb with a closed list of three. Illustration (d) is the
+case the narrowing decides — a woman who consents because she believes the man is an
+influential movie director has given a valid consent, because the misconception is as to his
+attributes and not his identity. Under s 90 alone the answer would be the other way.
+
+The consequence for the encoding is that `the consent is not a consent within section 90` in
+`chapter-4-exceptions.l4` must **not** be used for a sexual offence. The two rules are kept
+apart deliberately, and the sexual offence sections use this one.
+
+### N11 — section 377D's default is that the defence is unavailable
+
+s 377D(1): "a reasonable mistake as to the age of a person **cannot** be a defence to any
+charge for a sexual offence", subject to subsections (2) and (3).
+
+So the section is a prohibition with a narrow exception, not a defence with conditions. The
+rule therefore decides when the defence *is* available: only where the fact that the minor is
+of or above 16 but below 18 is a physical element of the offence, and then only if the
+accused has no prior charge for a listed offence and did not fail to take all reasonable
+steps to verify the age. Encoded the other way round — as a defence that the two defeaters
+remove — it would have been available on every offence in the group, including those whose
+element is that the victim was below 14.
+
+`a mistake as to age is a defence` is therefore conjoined, negated, to exactly five sections:
+ss 376AA, 376EA, 376EC, 376EE and 377BL. It appears nowhere else.
+
+### N12 — the image defences each name their own sections, and they differ
+
+ss 377BM and 377BN are not general exceptions. Each names the sections it answers, and no two
+lists are the same:
+
+| defence | answers | does not answer |
+| --- | --- | --- |
+| s 377BM(1) inadvertent possession | s 377BD | ss 377BB, 377BC, 377BE |
+| s 377BM(2) legitimate purpose | ss 377BB, 377BC, 377BD, 377BE(1) | **s 377BE(2)**, the threat limb |
+| s 377BN(1) inadvertent possession | s 377BK | ss 377BG to 377BJ |
+| s 377BN(2) to (4) legitimate purpose, art or science, own image | ss 377BH to 377BK | **s 377BG** |
+
+Gathered into one "a defence applies" predicate — the obvious simplification — the encoding
+would have exculpated a person who used a child to produce the material (s 377BG) on the
+ground that the material had a legitimate artistic purpose, which s 377BN(2) to (4) pointedly
+does not allow; and it would have given the threat limb of s 377BE a defence the section
+withholds.
+
+Each offence therefore conjoins only the defences its own section names, and there is
+deliberately no aggregate.
+
+## 3. Two structural limits, recorded rather than fixed
 
 ### T3 — "an offence affecting the human body" is still asserted, not computed
 
@@ -136,14 +195,34 @@ It is not wired in, for two reasons.
 own `Bodily Harm` record into the s 97(a) test would ask whether the defender committed an
 offence, which is the opposite question.
 
-**The chapter is not complete.** One of Chapter 16's seven groups is still absent -- the
-sexual offences -- so a FALSE from the hurt predicate is not a statement that no offence
-affecting the human body is in play. Wiring it in would make the private-defence right look computed when it is not — which
-is the failure mode `coverage-register.md` §6.1 was written about.
+**The predicate covers one group, not the chapter.** `an encoded hurt offence is made out`
+aggregates the hurt group alone. Chapter 16 is now complete in substance, but an offence
+affecting the human body may equally be a homicide, a wrongful confinement, an assault or a
+sexual offence, each decided in a different module against a different record. A FALSE from
+the hurt predicate is therefore not a statement that no offence affecting the human body is
+in play, and wiring it into s 97(a) would make the private-defence right look computed when
+it is not — which is the failure mode `coverage-register.md` §6.1 was written about.
 
 `an encoded hurt offence is made out` is exported so a caller who *does* hold the assailant's
 facts can use it. Closing this properly needs a two-actor bundle, which is a change to the
 shape of the subject and not a defect in these rules.
+
+### T4 — section 377BN(6), the marriage defence, is not encoded
+
+s 377BN(6) gives a defence to ss 377BG(1), 377BH(1), 377BI, 377BJ(2) and 377BK(1) where the
+accused and the person below 16 are married, on conditions that differ for each section and
+turn on **who is depicted in the material** — B only, A and B only, or A only if A is below
+16 — and on whose consent was given to what.
+
+Those are facts about the content of the material and about a particular consent, and the
+`Sexual Image` record carries neither. Encoding the defence on the facts available would have
+meant inventing a single "the marriage defence applies" flag collapsing five different
+condition sets into one, which is exactly the simplification N12 shows to be dangerous here.
+
+The gap is **under-inclusive on the defence**: an accused entitled to s 377BN(6) is reported
+by the screen as within the offence. That is the direction this encoding errs in throughout,
+but it is a real gap rather than a scope choice, and it is the one thing outstanding in
+Chapter 16 that a later pass should close.
 
 ## 4. Clause-by-clause read-back
 
@@ -233,9 +312,57 @@ polarity.
 | 354, 354A | outraging modesty | s 354(1) as written; s 354(2)'s age fact is punishment and is carried, not an element. s 354A(1) does not require the s 354 offence to be committed, only the purpose; s 354A(2)'s lift and age facts are punishment. |
 | 355, 356, 357 | dishonour, theft from the person, attempted confinement | Each is the common assault-or-criminal-force opening plus its own circumstance. s 357 needs only the attempt at confinement, not a completed s 340. |
 
+### The sexual offences: general provisions
+
+| s | provision | reading |
+| --- | --- | --- |
+| 377C(1) | the defined terms | Not decided. Each is a term of art used inside an offence element, and is carried as part of the fact the offence section asks for, in the module where that section lives. |
+| 377C(3)(d) | when an act is sexual | Two limbs disjoined. Limb (ii)'s own conjunction is inside the fact. |
+| 377C(3)(f) | doing a private act | The reasonable expectation of privacy is a conjunct on all three states, not a fourth alternative. The Illustration turns on precisely that. |
+| 377CA(1) | the court's determination | Carried as the court's conclusion. It is a judgment on four listed considerations, not a test with limbs. |
+| 377CA(2), (3) | the seven presumed relationships | Disjoined, with two independent defeaters: the contrary proved, and lawful marriage (N-note in §2). Disjoined in turn with the s 377CA(1) determination, since a relationship may be found exploitative without being one of the seven. |
+| 377CB | consent under misconception | An **only if** — a closed list of three that replaces s 90's open limb for sexual offences (N10). |
+| 377D | mistake as to age | A prohibition with a narrow exception; the rule decides when the defence is available (N11). |
+
+### The sexual offences: penetration and related conduct
+
+| s | provision | reading |
+| --- | --- | --- |
+| 375(1), (1A) | penile penetration without consent, or of a person below 14 | The two limbs are built separately because their defences differ: s 375(5) answers the non-consent limb only, s 375(4) the below-14 limb only. |
+| 375(3) | the aggravated form | Four limbs disjoined, conjoined with the s 375 offence itself. |
+| 376(2) | non-penile and caused penetration | Three limbs disjoined. s 376(5)(b)'s defence requires the belief to extend both to consent and to the person not being below 14 — encoded as a conjunction inside the negation. |
+| 376A | penetration of a person below 16 | All five limbs; consent appears nowhere (s 376A(1B)). s 376A(1A) is a displacement proviso and a negated conjunct. |
+| 376AA | exploitative penetration, 16 to 18 | As s 376A, plus the exploitative relationship, minus the s 377D defence. |
+| 376B | commercial sex with a minor | Two limbs disjoined; s 376B(4)'s definition of "sexual services" is carried inside them. |
+| 376C | the same outside Singapore | Three limbs; only the first is confined to citizens and permanent residents. |
+| 376D | tours for it | Three limbs, each complete "whether or not such an offence is actually committed". |
+| 376E, 376EA | grooming | The five acts of paragraph (a) are gathered into one fact — alternatives of a single idea that no rule distinguishes between. "Relevant offence" is caller-asserted: two of the three sources are outside this bundle. |
+| 376EB, 376EC | sexual communication | As written. s 376EB has a spouse carve-out; s 376EC does not. |
+| 376ED, 376EE | sexual activity or image in a minor's presence | Two subsections each, built as separate limbs and disjoined. s 376ED has a spouse carve-out; s 376EE does not. |
+| 376F | procurement, mental disability | The other person **consents**; the offence is in how the consent was procured. The spouse case is narrower — an inducement is not enough, only a threat or deception. |
+| 376G | incest | Five limbs, the relationship, the knowledge, and two negated conjuncts: the s 376G(4) displacement proviso and the s 376G(6) carve-out for a minor who is himself a s 376AA victim. |
+| 376H | procurement by deception | The deception must relate to a protective measure or to disease risk — the same kind of narrowing s 377CB performs. |
+| 377, 377B | a corpse, a living animal | Consent appears only on the causing limbs, where it is another *person* who is made to act. |
+
+### The sexual offences: images, voyeurism and abuse material
+
+| s | provision | reading |
+| --- | --- | --- |
+| 377BA | insulting modesty | The intrusion-on-privacy limb is a true alternative to the intended-perception limb. |
+| 377BB | voyeurism | Five limbs conjoined with the knowledge element; s 377BB(6) disjoined outside it, since installing equipment needs only the intention. s 377BB(9)'s presumption is not encoded. |
+| 377BC | distributing a voyeuristic image | Two conduct limbs disjoined, with both knowledge paragraphs conjoined. |
+| 377BD | possession and production | s 377BD(1)(b)'s three sub-paragraphs are conjoined, as the section's "and" requires, and that conjunction is disjoined with limb (a). s 377BD(5) is a separate offence. Both answered by s 377BM. |
+| 377BE | distributing or threatening | (1) and (2) built separately: only (1) has a defence, and (2) needs neither the image to exist nor it to be intimate (s 377BE(6)). |
+| 377BF | sexual exposure | Two conduct limbs disjoined, with the intention and absence of consent conjoined. |
+| 377BG | using a child in production | Three limbs disjoined with the knowledge conjoined. **No s 377BN defence answers this section.** |
+| 377BH–377BK | producing, distributing, advertising, possessing | One conduct disjunction, with the s 377BN defences applied — and s 377BN(1) applied only to the possession limb, which is the only one it answers. |
+| 377BL | abusive material, 16 to 18 | The exploitative relationship conjoined twice — once as the section's own opening and once through s 377CA — plus the s 377D defence. |
+| 377BM, 377BN | the defences | Section-specific and not gathered (N12). s 377BN(5) contributes to no rule, which is the correct encoding of a provision closing a defence off. s 377BN(6) is not encoded (T4). |
+| 377BO | outside Singapore | As written. The section deems the underlying offence rather than creating a new one. |
+
 ## 5. Machine check
 
-23 modules, **0 type errors, 154 of 154 assertions satisfied** — 88 pre-existing and 66 added
+26 modules, **0 type errors, 192 of 192 assertions satisfied** — 88 pre-existing and 104 added
 by this pass. `report/machine-evaluation.md` §7.2 records two blind spots in the available
 engine that the run does not cover; the fixture-completeness check described there was run on
 every fixture in this pass and passes.

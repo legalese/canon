@@ -1,25 +1,25 @@
 # Penal Code 1871 — missing-section register
 
-**Run date:** 2026-09-11 (regenerated after the Chapter 16 pass, part 2)
+**Run date:** 2026-09-11 (regenerated after the Chapter 16 pass, part 3 -- the chapter complete)
 **Question answered:** which live sections of the Act have no `@ref` in any `.l4` module,
 named one by one with the Act's own marginal heading.
 
 This is the companion to `coverage-register.md`. That register counts coverage and
 enumerates the gaps only for the chapters that are partially encoded; for the thirteen
 chapters where nothing is encoded it gives a section *range* and a total. This register
-names all 325 missing sections, so that a reader deciding what to encode next is choosing
+names all 288 missing sections, so that a reader deciding what to encode next is choosing
 from a list rather than from a range.
 
 **Method.** The arrangement of sections at the head of `registers/source-bundle/PC1871.txt`
 (SSO current version as at 09 Sep 2026) was parsed for all 600 listed sections; the Act's
 body was parsed independently for the same 600 and supplied the marginal headings. The two
 passes agree on the section set exactly, which is the check that the parse is sound. Every
-`@ref` in the twenty-three `.l4` modules was expanded (`ss X, Y, Z` lists, `ss X to Y` ranges,
+`@ref` in the twenty-six `.l4` modules was expanded (`ss X, Y, Z` lists, `ss X to Y` ranges,
 parenthesised subsections and `Explanation N` / `Exception N` tails stripped) and matched
 against that set.
 
 Counts reproduce `coverage-register.md` exactly: **600 listed, 75 repealed, 525 live,**
-**200 encoded, 325 not encoded.** Repealed sections are listed below for completeness but
+**237 encoded, 288 not encoded.** Repealed sections are listed below for completeness but
 are struck from every count.
 
 As in the coverage register, this is a mechanical record of citation, not of fidelity.
@@ -28,9 +28,9 @@ by `verification-register.md` and `verification-register-pass-2.md`.
 
 ---
 
-Seven of the 325 are **deliberate** and documented in the module itself under their own
+Seven of the 288 are **deliberate** and documented in the module itself under their own
 `§§` heading -- sections that state no factual test to decide. They are marked *deliberate*
-in the tables below and explained in `coverage-register.md` §3. Discounting them, **318**
+in the tables below and explained in `coverage-register.md` §3. Discounting them, **281**
 live sections are unencoded for reasons of scope rather than of drafting.
 
 ## 1. Missing sections by chapter
@@ -56,14 +56,14 @@ live sections are unencoded for reasons of scope rather than of drafting.
 | **Chapter 13** — *(wholly repealed)* | 0 | 0 | 0 |
 | **Chapter 14** — Offences affecting the public tranquility, public health, safety, convenience, decency and morals | 35 | 0 | 35 |
 | **Chapter 15** — Offences relating to race | 2 | 0 | 2 |
-| **Chapter 16** — Offences affecting the human body | 120 | 74 | 46 |
+| **Chapter 16** — Offences affecting the human body | 120 | 111 | 9 |
 | **Chapter 17** — Offences against property | 76 | 12 | 64 |
 | **Chapter 18** — Offences relating to documents or electronic records, false instruments, and to currency and bank notes | 28 | 2 | 26 |
 | **Chapter 20** — *(wholly repealed)* | 0 | 0 | 0 |
 | **Chapter 21** — Defamation | 4 | 1 | 3 |
 | **Chapter 22** — Criminal intimidation, insult and annoyance | 5 | 4 | 1 |
 | **Chapter 23** — Attempts to commit offences | 2 | 1 | 1 |
-| **total** | **525** | **200** | **325** |
+| **total** | **525** | **237** | **288** |
 
 ---
 
@@ -415,9 +415,9 @@ All 4 sections repealed. Nothing to encode.
 
 ### Chapter 16 — Offences affecting the human body
 
-74 of 120 live sections encoded; 6 repealed and excluded.
+111 of 120 live sections encoded; 6 repealed and excluded.
 
-**46 missing:**
+**9 missing:**
 
 | s | heading | |
 | --- | --- | --- |
@@ -430,43 +430,6 @@ All 4 sections repealed. Nothing to encode.
 | 342 | Punishment for wrongful confinement |  |
 | 363 | Punishment for kidnapping |  |
 | 363A | Punishment for abduction |  |
-| 375 | Rape |  |
-| 376 | Sexual assault involving penetration |  |
-| 376A | Sexual penetration of minor below 16 years of age |  |
-| 376AA | Exploitative sexual penetration of minor of or above 16 but below 18 years of age |  |
-| 376B | Commercial sex with minor below 18 years of age |  |
-| 376C | Commercial sex with minor below 18 years of age outside Singapore |  |
-| 376D | Tour outside Singapore for commercial sex with minor below 18 years of age |  |
-| 376E | Sexual grooming of minor below 16 years of age |  |
-| 376EA | Exploitative sexual grooming of minor of or above 16 but below 18 years of age |  |
-| 376EB | Sexual communication with minor below 16 years of age |  |
-| 376EC | Exploitative sexual communication with minor of or above 16 but below 18 years of age |  |
-| 376ED | Sexual activity or image in presence of minor below 16 years of age |  |
-| 376EE | Exploitative sexual activity or image in presence of minor of or above 16 but below 18 years of age |  |
-| 376F | Procurement of sexual activity with person with mental disability |  |
-| 376G | Incest |  |
-| 376H | Procurement of sexual activity by deception or false representation |  |
-| 377 | Sexual penetration, etc., of a corpse |  |
-| 377B | Sexual penetration with living animal |  |
-| 377BA | Word or gesture intended to insult modesty of any person |  |
-| 377BB | Voyeurism |  |
-| 377BC | Distribution of voyeuristic image or recording |  |
-| 377BD | Possession of or gaining access to voyeuristic or intimate image or recording and production of intimate image or recording |  |
-| 377BE | Distributing or threatening to distribute intimate image or recording |  |
-| 377BF | Sexual exposure |  |
-| 377BG | Using or involving child in production of child abuse material |  |
-| 377BH | Producing child abuse material |  |
-| 377BI | Distributing or selling child abuse material |  |
-| 377BJ | Advertising or seeking child abuse material |  |
-| 377BK | Possession of or gaining access to child abuse material |  |
-| 377BL | Exploitation by abusive material of minor of or above 16 but below 18 years of age |  |
-| 377BM | Defences to offences relating to intimate image or recording and voyeurism |  |
-| 377BN | Defences to child abuse material offences |  |
-| 377BO | Child abuse material offences outside or partially outside Singapore |  |
-| 377C | Interpretation of sections 375 to 377BO (sexual offences) |  |
-| 377CA | Meaning of exploitative relationship |  |
-| 377CB | Consent given under misconception in sexual offences |  |
-| 377D | Mistake as to age in sexual offences |  |
 
 ### Chapter 17 — Offences against property
 
