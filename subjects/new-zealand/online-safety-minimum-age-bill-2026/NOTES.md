@@ -23,7 +23,7 @@ part-1-preliminary.l4            cll 1-3, 5-10 encoded; cl 4 definitions taken a
 part-2-duties.l4                 cll 11-19 encoded
 part-3-subpart-1-regulator.l4    cll 20-23     scaffold
 part-3-subpart-2-enforcement.l4  cll 24-33     scaffold
-part-3-subpart-3-remedies.l4     cll 34-56     scaffold
+part-3-subpart-3-remedies.l4     cll 34-56 encoded in part (see section 4)
 part-3-subpart-4-offences.l4     cll 57-60     scaffold
 part-3-subpart-5-other.l4        cll 61-64     scaffold
 schedule-1-transitional.l4       Sch 1         scaffold
@@ -85,10 +85,15 @@ yet been reduced to a directive, usually because its module is still a scaffold.
    Whether that is intended is a question for the drafter. If intended, it is under-signposted;
    if not, it is a gap.
 
-2. **Does cl 34(3)(a) to (i) partition cleanly across the three tiers?** cll 45 to 47 route
-   paragraphs (a)-(c) to Tier 1, (d)-(g) to Tier 2, and (h)-(i) to Tier 3. The partition
-   looks total and disjoint on its face; encoding it makes that checkable, and keeps it
-   checkable after amendment, which is when such partitions break.
+2. **Does cl 34(3)(a) to (i) partition cleanly across the three tiers? Yes -- no defect.**
+   *Encoded and machine-evaluated in `part-3-subpart-3-remedies.l4`.* cll 45 to 47 route
+   paragraphs (a)-(c) to Tier 1, (d)-(g) to Tier 2, and (h)-(i) to Tier 3. `the tier for` is
+   a total function over the `specified liability act` enum, so an unrouted act is a type
+   error rather than a silent gap, and nine `#ASSERT` directives pin each act to the tier the
+   Bill assigns it. All nine hold. This is a negative result and is recorded as one: the
+   partition is total and disjoint on the text as drafted. Its value is prospective -- if a
+   select committee adds a paragraph to cl 34(3) without amending cll 45 to 47, the encoding
+   fails to typecheck rather than quietly leaving the new act unpenalised.
 
 3. **A cl 6(1) operator stops being the operator when someone else is designated.**
    *Encoded and machine-evaluated in `part-1-preliminary.l4`.* cl 6(2) makes a designated
@@ -147,10 +152,25 @@ yet been reduced to a directive, usually because its module is still a scaffold.
 
 ## 4. What is deliberately not encoded
 
-Nothing yet, beyond the scaffold boundary. Candidates for exclusion once the operative
-modules land: cll 20-23 regulator functions and information-gathering (administrative rather
-than determinative), cll 41-43 procedural requirements for restriction orders, and cll 49-53
-injunction machinery and civil procedure.
+Within Subpart 3, the following are left out because they state no test an encoding can
+decide. Each is marked in the module with a heading and a reason, so a reader can see that
+the omission is a decision rather than an oversight.
+
+| Provision | Why not encoded |
+| --- | --- |
+| cll 36, 39 | Interim orders, granted where the court is "of the opinion" that it is desirable |
+| cll 37, 40 | Prescribe what an order must contain; no condition on the outcome |
+| cl 41(1) | Requires the court to consider named persons' rights without conditioning the result on them |
+| cl 41(2) | A notification duty on the regulator, owed to the Minister |
+| cl 42 | Renewal procedure |
+| cl 43 | Appeal to the Court of Appeal on a question of law |
+| cl 48 | Matters the court must have regard to in fixing a penalty within the maximum; constrains reasoning, not outcome |
+| cll 49-51 | Injunction powers turning on the court's satisfaction or opinion |
+| cl 52 | Removes the requirement for an undertaking as to damages |
+| cl 53 | Applies the ordinary civil rules and standard of proof |
+
+Still to be scoped once their modules land: cll 20-23 regulator functions and
+information-gathering, which are administrative rather than determinative.
 
 ## 5. Provenance
 
