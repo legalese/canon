@@ -236,6 +236,33 @@ yet been reduced to a directive, usually because its module is still a scaffold.
     cl 15(1)(a)'s full 12 months from the date it meets the definition. The operator with the
     longest notice of the regime gets the shortest period.
 
+15. **The scope test is self-executing and there is no register of age-restricted platforms.**
+    cl 5 makes a service an age-restricted platform because it meets the test, not because
+    anyone has said so. No provision requires the regulator to publish which services are in
+    scope: the only list duty in the Bill is cl 7(3), a list of the regulator's *operator
+    designations*, and cl 62 regulations can add named services but cannot enumerate the
+    existing population. The encoding shows the shape plainly -- `the service is an
+    age-restricted platform` in `part-1-preliminary.l4` takes only facts about the service and
+    consults no register, because there is none to consult.
+
+    Three features compound. cl 5(1)(b) is unbounded: any service accessible in New Zealand
+    that displays digital content and uses AI to simulate a personal connection is caught,
+    with no specified-feature requirement and no excluded-service carve-out (OS-001). cl 8
+    makes the operator's location irrelevant, so the regulated population is overwhelmingly
+    offshore and largely unaware of the Act. And the penalty for getting the self-assessment
+    wrong is Tier 1 -- cl 34(3)(a) routed by cl 45 to the greater of $40 million and 10% of
+    relevant global turnover.
+
+    The comparator is instructive. Australia's scheme under the Online Safety Amendment
+    (Social Media Minimum Age) Act 2024 has the eSafety Commissioner publish which platforms
+    are age-restricted; ten were formally identified and a tail of others self-assessed in.
+    New Zealand's Bill creates the same obligation with no equivalent mechanism, and extends
+    it to a category Australia does not regulate at all. Neither the regulator nor any
+    operator can state the size of the regulated population, and nothing in the Bill would let
+    them.
+
+    This is a design question rather than a drafting defect, and is filed as Structural.
+
 ## 4. What is deliberately not encoded
 
 Within Subpart 3, the following are left out because they state no test an encoding can
