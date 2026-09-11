@@ -18,8 +18,8 @@ each demonstrated by a machine-evaluated case rather than asserted in prose.
 Modules, in dependency order:
 
 ```
-types.l4                         the nouns: the cl 5 fact record, the cl 34(3) act enum, tiers
-part-1-preliminary.l4            cll 1, 2, 5 (encoded); cll 3, 4, 6-10 (to do)
+types.l4                         the nouns: the cl 5 and cl 6-8 fact records, the cl 34(3) act enum, tiers
+part-1-preliminary.l4            cll 1-3, 5-10 encoded; cl 4 definitions taken as facts
 part-2-duties.l4                 cll 11-19     scaffold
 part-3-subpart-1-regulator.l4    cll 20-23     scaffold
 part-3-subpart-2-enforcement.l4  cll 24-33     scaffold
@@ -74,9 +74,18 @@ These are why the subject exists. Probe 1 is encoded and machine-evaluated in
    looks total and disjoint on its face; encoding it makes that checkable, and keeps it
    checkable after amendment, which is when such partitions break.
 
-3. **Can a person be an operator under cl 6(1) and simultaneously not the operator under
-   cl 6(2)?** cl 6(2) makes a designated person "the only operator ... while the designation
-   is in place". The interaction with duties that accrued before designation is not stated.
+3. **A cl 6(1) operator stops being the operator when someone else is designated.**
+   *Encoded and machine-evaluated in `part-1-preliminary.l4`.* cl 6(2) makes a designated
+   person "the only operator ... while the designation is in place". On the `a displaced
+   controller` fixture -- a company that manages and controls the platform in New Zealand,
+   with its overseas parent designated under cl 7 -- `the person is an operator under
+   section 6(1)` evaluates TRUE while `the person is the operator of the platform`
+   evaluates FALSE. Every Part 2 duty attaches to "an operator of an age-restricted
+   platform", so the displaced controller owes none while the designation stands. Two
+   questions follow, neither answered by the text: what happens to duties that accrued
+   before the designation, and whether the regulator can designate a person who is neither
+   a cl 6(1) operator nor an interconnected body corporate of one (cl 7(1) says it cannot,
+   so a platform whose controller is outside both limbs cannot be designated at all).
 
 4. **Three routes into scope, one route out.** Regulations under cl 62 add platforms
    (cl 5(1)(c)), the regulator designates operators (cl 7), and exemption orders under cl 61
