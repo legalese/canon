@@ -21,8 +21,8 @@ Modules, in dependency order:
 types.l4                         the nouns: the cl 5 and cl 6-8 fact records, the cl 34(3) act enum, tiers
 part-1-preliminary.l4            cll 1-3, 5-10 encoded; cl 4 definitions taken as facts
 part-2-duties.l4                 cll 11-19 encoded
-part-3-subpart-1-regulator.l4    cll 20-23     scaffold
-part-3-subpart-2-enforcement.l4  cll 24-33     scaffold
+part-3-subpart-1-regulator.l4    cll 20-23 encoded
+part-3-subpart-2-enforcement.l4  cll 24-33 encoded
 part-3-subpart-3-remedies.l4     cll 34-56 encoded in part (see section 4)
 part-3-subpart-4-offences.l4     cll 57-60     scaffold
 part-3-subpart-5-other.l4        cll 61-64     scaffold
@@ -149,6 +149,30 @@ yet been reduced to a directive, usually because its module is still a scaffold.
    the two limbs are sufficient, not necessary, so a change outside both may still be
    significant and still trigger cl 17(1). An operator cannot determine in advance whether a
    given change is caught.
+
+9. **Breach of an enforceable undertaking is not a specified liability act.** cl 29(2)
+   provides that an operator "must not breach an undertaking given by that operator that is
+   in force". None of the nine acts in cl 34(3) is that breach, so no pecuniary penalty is
+   available for it under cll 44 to 47. What is available is a cl 30(2) order directing the
+   operator to comply with the undertaking or discharging it, plus costs under cl 30(3), and
+   -- where the underlying act is still ongoing -- a service restriction order, because
+   cl 35(2)(c)(i)(B) makes breach of an accepted undertaking a route to one. The gap is
+   narrower than it first appears: cl 29(3)(a) bars proceedings only while the undertaking is
+   in force AND unbreached, so breach lifts the bar and the underlying act can still be
+   pursued. What cannot be penalised is the breach itself. On the drafted text the sanction
+   for breaking a statutory promise to the regulator is an order to keep it. `#ASSERT` in
+   `part-3-subpart-2-enforcement.l4` shows the bar lifting on breach.
+
+10. **The enforcement measure with the least process is the one with immediate public
+    effect.** cl 24(2) requires the regulator to give public notice of a warning as soon as
+    reasonably practicable, and nothing in cl 24 requires prior notice to the operator, a
+    statement of the case, or an opportunity to be heard. By contrast cl 25(3) requires at
+    least 5 working days' written notice plus an opportunity to make written submissions and
+    be heard before the regulator may require the operator to *republish* that same warning,
+    and cl 33 requires at least 10 working days and the same hearing right before a
+    corrective notice. So public naming attracts no process, republishing the naming attracts
+    5 days and a hearing, and requiring remedial steps attracts 10 days and a hearing. The
+    order of intrusion and the order of procedural protection do not match.
 
 ## 4. What is deliberately not encoded
 
