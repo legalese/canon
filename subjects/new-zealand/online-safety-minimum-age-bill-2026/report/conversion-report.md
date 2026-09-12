@@ -54,7 +54,7 @@ top-level goals — the questions an operator, the regulator or a court actually
 other `DECIDE` is an intermediary reachable from one. Dated duties use the `DEONTIC` form
 (`PARTY` / `MUST` / `WITHIN` / `HENCE` / `LEST`).
 
-Findings are recorded twice: in prose in `NOTES.md` section 3, and as rows OS-001 to OS-016 in
+Findings are recorded twice: in prose in `NOTES.md` section 3, and as rows #1 to #19 in
 `registers/incident-register.xlsx`. The two must be updated together.
 
 ## 3. Coverage
@@ -77,7 +77,7 @@ Recorded here and in the modules, for the reviewer to accept or reject.
    Nothing currently turns on the rounding, but a rule comparing two such periods would inherit
    it.
 2. **cl 17(4) read as inclusive.** "significant change ... includes" — the two named limbs are
-   encoded as sufficient, not necessary, following the text. This is also incident OS-009.
+   encoded as sufficient, not necessary, following the text. This is also #12.
 3. **Evaluative standards left irreducible.** "reasonable steps" (cl 11), "adequately assesses"
    (cll 14, 19), "appropriate and proportionate" (cl 38(2)(e)) are single fields rather than
    decomposed tests. Decomposing them would invent law.
@@ -91,23 +91,23 @@ Recorded here and in the modules, for the reviewer to accept or reject.
 ## 5. Findings
 
 16 incidents, 8 of them machine-evaluated. Two were investigated and closed as **no defect**
-(OS-002, the tier partition; OS-005, the exemption route reaching regulation-added platforms),
+(#5, the tier partition; #8, the exemption route reaching regulation-added platforms),
 and both are retained in the register as evidence of coverage rather than deleted.
 
 The five marked High:
 
 | ID | Clauses | Finding |
 | --- | --- | --- |
-| OS-001 | cl 5(1)(b), 5(2) | The excluded-service carve-out attaches only to limb (a), so a healthcare or education service that is also an AI companion falls out of scope and back in under limb (b) |
-| OS-003 | cl 6(1), 6(2) | A cl 7 designation makes the designated person the only operator, so the company that actually runs the platform in New Zealand owes no Part 2 duty while it stands |
-| OS-007 | cl 16(5), 34(3)(f), 46 | A duty with no stated time for performance carries Tier 2 liability — up to $12m or 3% of relevant global turnover |
-| OS-013 | cl 57, 18, 34(3)(g) | The only imprisonable offence is committed only by an individual designated under cl 18, so an operator that never designates extinguishes the criminal exposure of every officer by committing a Tier 2 civil breach |
-| OS-014 | cl 61(1)(a) | Exemption from any or all requirements of the Act by Order in Council, with no subject-matter limit, no duration limit and no confirmation requirement on the face of the Bill |
+| #1 | cl 5(1)(b), 5(2) | The excluded-service carve-out attaches only to limb (a), so a healthcare or education service that is also an AI companion falls out of scope and back in under limb (b) |
+| #6 | cl 6(1), 6(2) | A cl 7 designation makes the designated person the only operator, so the company that actually runs the platform in New Zealand owes no Part 2 duty while it stands |
+| #10 | cl 16(5), 34(3)(f), 46 | A duty with no stated time for performance carries Tier 2 liability — up to $12m or 3% of relevant global turnover |
+| #16 | cl 57, 18, 34(3)(g) | The only imprisonable offence is committed only by an individual designated under cl 18, so an operator that never designates extinguishes the criminal exposure of every officer by committing a Tier 2 civil breach |
+| #17 | cl 61(1)(a) | Exemption from any or all requirements of the Act by Order in Council, with no subject-matter limit, no duration limit and no confirmation requirement on the face of the Bill |
 
-Three of the five were found by encoding rather than by reading. OS-007 surfaced because the
+Three of the five were found by encoding rather than by reading. #10 surfaced because the
 `DEONTIC` form demanded a `WITHIN` value and cl 16(5) had none to give, where cll 15 and 17
-both did. OS-013 surfaced from running identical conduct through a designated and an
-undesignated fixture. OS-016 surfaced from the Schedule 1 rule that carries the account
+both did. #16 surfaced from running identical conduct through a designated and an
+undesignated fixture. #19 surfaced from the Schedule 1 rule that carries the account
 creation date and then never consults it.
 
 ## 6. Limitations
