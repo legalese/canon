@@ -3,7 +3,7 @@
 **Date:** 2026-09-11
 **Subject:** `new-zealand/online-safety-minimum-age-bill-2026`
 **Source:** Online Safety (Minimum Age and Child Safety Risk Assessment) Bill, 2026 No 339-1
-**Related incidents:** OS-001, OS-018, OS-020
+**Related incidents:** #1, #2, #4
 
 ---
 
@@ -25,7 +25,7 @@ own account of harm is not caught.
 ---
 
 ## Scenario 1 — The AI tutor
-### Over-breadth. Incident OS-001.
+### Over-breadth. Incident #1.
 
 **Real example: [Buddy.ai](https://buddy.ai/)** — a voice-based AI English tutor for children
 aged 3 to 8. The child talks to an animated character called Buddy, which uses speech
@@ -85,7 +85,7 @@ carve-out that limb (a) already has.
 ---
 
 ## Scenario 2 — The scholarly repository
-### Over-breadth. Incident OS-020.
+### Over-breadth. Incident #4.
 
 **Real example: [SSRN](https://www.ssrn.com/)** — the Social Science Research Network, owned by
 Elsevier. Authors upload working papers; readers browse and download them. SSRN reports, at
@@ -145,7 +145,7 @@ response is to refuse the account, which is the first-year law student, the acce
 ---
 
 ## Scenario 3 — The AI-generated feed
-### Under-inclusion. Incident OS-018. The loophole.
+### Under-inclusion. Incident #2. The loophole.
 
 **Real example: [Meta's Vibes](https://about.fb.com/news/2025/09/introducing-vibes-ai-videos/)**
 — a TikTok-style vertical feed inside the Meta AI app, launched September 2025, where nothing in
