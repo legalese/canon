@@ -1,8 +1,8 @@
 # Penal Code 1871 — coverage register
 
-**Run date:** 2026-09-12 (Chapter 17 pass; first run 2026-09-09)
+**Run date:** 2026-09-14 (Chapter 18 pass; first run 2026-09-09)
 **Question answered:** which sections of the Act are modelled, and which are not.
-**Method:** every `@ref` citation in the seventeen `.l4` modules was parsed for section
+**Method:** every `@ref` citation in the thirty-one `.l4` modules was parsed for section
 numbers and matched against the Act's own arrangement of sections, as it appears in
 `registers/source-bundle/PC1871.txt` (SSO current version as at 09 Sep 2026). Multi-section
 citations (`ss 45, 46, 47, 48`) and ranges (`ss 76 to 95`) are expanded; subsection numbers
@@ -28,8 +28,8 @@ proven.
 | listed in the Act's arrangement of sections | 600 |
 | repealed — nothing to encode | 75 |
 | **live** | **525** |
-| **encoded** | **289** |
-| **live but not encoded** | **236** |
+| **encoded** | **314** |
+| **live but not encoded** | **211** |
 
 **About 55% of the live sections.** Three passes. The first, on 11 Sep, added 18 — the whole
 of Chapter 4A (ss 96 to 106A), ss 111, 113 and 114 of Chapter 5, and ss 3, 4A and 5 of
@@ -75,12 +75,12 @@ policy; this register states its consequences section by section.
 | **Chapter 15** — Offences relating to race | 5 | 3 | 2 | 0 | 2 |
 | **Chapter 16** — Offences affecting the human body | 126 | 6 | 120 | 111 | 9 |
 | **Chapter 17** — Offences against property | 93 | 17 | 76 | 64 | 12 |
-| **Chapter 18** — Offences relating to documents, electronic records and marks | 28 | 0 | 28 | 2 | 26 |
+| **Chapter 18** — Offences relating to documents or electronic records, false instruments, and to currency and bank notes | 28 | 0 | 28 | 27 | 1 |
 | **Chapter 20** — *(wholly repealed)* | 5 | 5 | 0 | 0 | 0 |
 | **Chapter 21** — Defamation | 4 | 0 | 4 | 1 | 3 |
 | **Chapter 22** — Criminal intimidation, insult and annoyance | 8 | 3 | 5 | 4 | 1 |
 | **Chapter 23** — Attempts to commit offences | 2 | 0 | 2 | 1 | 1 |
-| **total** | **600** | **75** | **525** | **289** | **236** |
+| **total** | **600** | **75** | **525** | **314** | **211** |
 
 ## 3. The general parts
 
@@ -495,16 +495,42 @@ subject does not compute sentence.
 **Not encoded:** s 379, s 379A, s 384, s 392, s 395, s 406, s 417, s 419, s 426, s 447, s 448, s 458A —
 all punishment provisions for offences whose constitutive tests are encoded above.
 
-### Chapter 18 — Offences relating to documents, electronic records and marks
+### Chapter 18 — Offences relating to documents or electronic records, false instruments, and to currency and bank notes
 
-2 of 28 live sections encoded.
+27 of 28 live sections encoded.
 
 | s | title | module |
 | --- | --- | --- |
 | 463 | Forgery | `chapter-18-forgery.l4` |
 | 464 | Making a false document or false electronic record | `chapter-18-forgery.l4` |
+| 466 | Forgery of a record of a court of justice, or a public register of births, etc. | `chapter-18-forged-documents.l4` |
+| 467 | Forgery of a valuable security or will | `chapter-18-forged-documents.l4` |
+| 468 | Forgery for the purpose of cheating | `chapter-18-forged-documents.l4` |
+| 469 | Forgery for the purpose of harming the reputation of any person | `chapter-18-forged-documents.l4` |
+| 470 | "A forged document" or "a forged electronic record" | `chapter-18-forged-documents.l4` |
+| 471 | Using as genuine a forged document or forged electronic record | `chapter-18-forged-documents.l4` |
+| 472 | Making or possessing a counterfeit seal, plate, etc., with intent to commit a forgery punishable under section 467 | `chapter-18-forged-documents.l4` |
+| 473 | Making or possessing a counterfeit seal, plate, etc., with intent to commit a forgery punishable otherwise | `chapter-18-forged-documents.l4` |
+| 473A | Making or possessing equipment for making a false instrument | `chapter-18-forged-documents.l4` |
+| 473B | Making or possessing equipment for making a false instrument with intent to induce prejudice | `chapter-18-forged-documents.l4` |
+| 473C | Meaning of "prejudice" and "induce" | `chapter-18-forged-documents.l4` |
+| 474 | Having possession of certain document or electronic record known to be forged, with intent to use it as genuine | `chapter-18-forged-documents.l4` |
+| 475 | Counterfeiting a device or mark used for authenticating documents described in section 467, or possessing counterfeit marked material | `chapter-18-forged-documents.l4` |
+| 476 | Counterfeiting a device or mark used for authenticating documents or electronic records other than those described in section 467, or possessing counterfeit marked material | `chapter-18-forged-documents.l4` |
+| 477 | Fraudulent cancellation, destruction, etc., of a will | `chapter-18-forged-documents.l4` |
+| 477A | Falsification of accounts | `chapter-18-forged-documents.l4` |
+| 489A | Forging or counterfeiting currency or bank notes | `chapter-18-currency.l4` |
+| 489B | Using as genuine forged or counterfeit currency or bank notes | `chapter-18-currency.l4` |
+| 489C | Possession of forged or counterfeit currency or bank notes | `chapter-18-currency.l4` |
+| 489D | Making or possessing instruments or materials for forging or counterfeiting currency or bank notes | `chapter-18-currency.l4` |
+| 489E | Abetting in Singapore counterfeiting of currency out of Singapore | `chapter-18-currency.l4` |
+| 489F | Fraudulently or dishonestly diminishing weight or altering composition of any coin | `chapter-18-currency.l4` |
+| 489G | Altering appearance of currency with intent that it shall pass as currency of different description | `chapter-18-currency.l4` |
+| 489H | Delivery to another of altered currency | `chapter-18-currency.l4` |
+| 489I | Possession of altered currency | `chapter-18-currency.l4` |
 
-**Not encoded:** s 465, s 466, s 467, s 468, s 469, s 470, s 471, s 472, s 473, s 473A, s 473B, s 473C, s 474, s 475, s 476, s 477, s 477A, s 489A, s 489B, s 489C, s 489D, s 489E, s 489F, s 489G, s 489H, s 489I.
+**Not encoded:** s 465 — the punishment for forgery, excluded on the same ground as ss 109 to
+120 and the Chapter 16 and 17 punishment sections.
 
 ### Chapter 21 — Defamation
 
@@ -587,7 +613,7 @@ caller can still tell which one fired.
 
 The asymmetry §6.1 used to warn about — over-inclusive on offences, under-inclusive on
 defences, so a FALSE was more trustworthy than a TRUE — is narrowed but not gone. It now
-rests on the remaining unencoded defences and on the 236 unencoded sections, not on a whole
+rests on the remaining unencoded defences and on the 211 unencoded sections, not on a whole
 missing Chapter.
 
 **6.2 Chapter 5, ss 111, 113 and 114.** ss 109, 110, 112, 115 to 120 are punishment and
@@ -623,10 +649,19 @@ computing it from the new hurt rules. The offence in question is the *assailant'
 from the hurt predicate would not mean no such offence was in play. Closing that needs a
 two-actor bundle, which is a change to the shape of the subject.
 
-`missing-sections.md` names all 236 sections that remain. The largest single absence is
+**Updated 14 Sep 2026.** Chapter 18 is now complete in substance too — 27 of its 28 live
+sections, the one absent being s 465, the punishment for forgery. The screen now reports
+aggravated forgery, the forged-document offences, the false-instrument equipment offences,
+fraudulent cancellation of a will, falsification of accounts, and the counterfeit and altered
+currency offences, each subject to s 6. With Chapters 17 and 18 done, items 3 to 14 of the
+Schedule to s 4B — every specified offence except the two Chapter 14 offences in items 1
+and 2 (ss 268A to 268C) and the open-ended item 15 — are now classified from encoded tests
+rather than from caller-asserted facts.
+
+`missing-sections.md` names all 211 sections that remain. The largest single absence is
 **Chapter 11** (ss 191 to 229, 43 live sections), false evidence and offences against public
-justice, followed by **Chapter 14** (ss 267A to 294, 35 sections) and the 26 unencoded
-sections of **Chapter 18**.
+justice, followed by **Chapter 14** (ss 267A to 294, 35 sections) and **Chapter 10**
+(ss 172 to 190, 19 sections).
 
 ## 7. How to regenerate this register
 
@@ -637,4 +672,4 @@ script. It is not committed here for the same reason the machine checker is not:
 repository holds law, and tooling belongs in `l4-ide`.
 
 A section acquiring or losing an `@ref` changes these counts, so re-run this whenever modules
-are added or citations edited. Counts here are current as at the pass-2 fixes.
+are added or citations edited. Counts here are current as at the Chapter 18 pass of 14 Sep 2026.

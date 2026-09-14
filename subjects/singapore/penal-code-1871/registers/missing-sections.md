@@ -1,25 +1,25 @@
 # Penal Code 1871 — missing-section register
 
-**Run date:** 2026-09-11 (regenerated after the Chapter 17 pass)
+**Run date:** 2026-09-14 (regenerated after the Chapter 18 pass)
 **Question answered:** which live sections of the Act have no `@ref` in any `.l4` module,
 named one by one with the Act's own marginal heading.
 
 This is the companion to `coverage-register.md`. That register counts coverage and
 enumerates the gaps only for the chapters that are partially encoded; for the thirteen
 chapters where nothing is encoded it gives a section *range* and a total. This register
-names all 236 missing sections, so that a reader deciding what to encode next is choosing
+names all 211 missing sections, so that a reader deciding what to encode next is choosing
 from a list rather than from a range.
 
 **Method.** The arrangement of sections at the head of `registers/source-bundle/PC1871.txt`
 (SSO current version as at 09 Sep 2026) was parsed for all 600 listed sections; the Act's
 body was parsed independently for the same 600 and supplied the marginal headings. The two
 passes agree on the section set exactly, which is the check that the parse is sound. Every
-`@ref` in the twenty-nine `.l4` modules was expanded (`ss X, Y, Z` lists, `ss X to Y` ranges,
+`@ref` in the thirty-one `.l4` modules was expanded (`ss X, Y, Z` lists, `ss X to Y` ranges,
 parenthesised subsections and `Explanation N` / `Exception N` tails stripped) and matched
 against that set.
 
 Counts reproduce `coverage-register.md` exactly: **600 listed, 75 repealed, 525 live,**
-**289 encoded, 236 not encoded.** Repealed sections are listed below for completeness but
+**314 encoded, 211 not encoded.** Repealed sections are listed below for completeness but
 are struck from every count.
 
 As in the coverage register, this is a mechanical record of citation, not of fidelity.
@@ -28,9 +28,9 @@ by `verification-register.md` and `verification-register-pass-2.md`.
 
 ---
 
-Seven of the 236 are **deliberate** and documented in the module itself under their own
+Seven of the 211 are **deliberate** and documented in the module itself under their own
 `§§` heading -- sections that state no factual test to decide. They are marked *deliberate*
-in the tables below and explained in `coverage-register.md` §3. Discounting them, **229**
+in the tables below and explained in `coverage-register.md` §3. Discounting them, **204**
 live sections are unencoded for reasons of scope rather than of drafting.
 
 ## 1. Missing sections by chapter
@@ -58,12 +58,12 @@ live sections are unencoded for reasons of scope rather than of drafting.
 | **Chapter 15** — Offences relating to race | 2 | 0 | 2 |
 | **Chapter 16** — Offences affecting the human body | 120 | 111 | 9 |
 | **Chapter 17** — Offences against property | 76 | 64 | 12 |
-| **Chapter 18** — Offences relating to documents or electronic records, false instruments, and to currency and bank notes | 28 | 2 | 26 |
+| **Chapter 18** — Offences relating to documents or electronic records, false instruments, and to currency and bank notes | 28 | 27 | 1 |
 | **Chapter 20** — *(wholly repealed)* | 0 | 0 | 0 |
 | **Chapter 21** — Defamation | 4 | 1 | 3 |
 | **Chapter 22** — Criminal intimidation, insult and annoyance | 5 | 4 | 1 |
 | **Chapter 23** — Attempts to commit offences | 2 | 1 | 1 |
-| **total** | **525** | **289** | **236** |
+| **total** | **525** | **314** | **211** |
 
 ---
 
@@ -454,38 +454,13 @@ All 4 sections repealed. Nothing to encode.
 
 ### Chapter 18 — Offences relating to documents or electronic records, false instruments, and to currency and bank notes
 
-2 of 28 live sections encoded.
+27 of 28 live sections encoded.
 
-**26 missing:**
+**1 missing:**
 
 | s | heading | |
 | --- | --- | --- |
 | 465 | Punishment for forgery |  |
-| 466 | Forgery of a record of a court of justice, or a public register of births, etc. |  |
-| 467 | Forgery of a valuable security or will |  |
-| 468 | Forgery for the purpose of cheating |  |
-| 469 | Forgery for the purpose of harming the reputation of any person |  |
-| 470 | "A forged document" or "a forged electronic record" |  |
-| 471 | Using as genuine a forged document or forged electronic record |  |
-| 472 | Making or possessing a counterfeit seal, plate, etc., with intent to commit a forgery punishable under section 467 |  |
-| 473 | Making or possessing a counterfeit seal, plate, etc., with intent to commit a forgery punishable otherwise |  |
-| 473A | Making or possessing equipment for making a false instrument |  |
-| 473B | Making or possessing equipment for making a false instrument with intent to induce prejudice |  |
-| 473C | Meaning of "prejudice" and "induce" |  |
-| 474 | Having possession of certain document or electronic record known to be forged, with intent to use it as genuine |  |
-| 475 | Counterfeiting a device or mark used for authenticating documents described in section 467, or possessing counterfeit marked material |  |
-| 476 | Counterfeiting a device or mark used for authenticating documents or electronic records other than those described in section 467, or possessing counterfeit marked material |  |
-| 477 | Fraudulent cancellation, destruction, etc., of a will |  |
-| 477A | Falsification of accounts |  |
-| 489A | Forging or counterfeiting currency or bank notes |  |
-| 489B | Using as genuine forged or counterfeit currency or bank notes |  |
-| 489C | Possession of forged or counterfeit currency or bank notes |  |
-| 489D | Making or possessing instruments or materials for forging or counterfeiting currency or bank notes |  |
-| 489E | Abetting in Singapore counterfeiting of currency out of Singapore |  |
-| 489F | Fraudulently or dishonestly diminishing weight or altering composition of any coin |  |
-| 489G | Altering appearance of currency with intent that it shall pass as currency of different description |  |
-| 489H | Delivery to another of altered currency |  |
-| 489I | Possession of altered currency |  |
 
 ### Chapter 20 — *(wholly repealed)*
 

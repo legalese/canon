@@ -1,7 +1,7 @@
 # Penal Code 1871 — machine evaluation report
 
-**Run date:** 2026-09-14 (`l4` CLI re-check of the 12 Sep Chapter 17 pass; first run 2026-09-09)
-**Verdict:** **0 type errors across all 29 modules; 230 of 230 assertions satisfied.**
+**Run date:** 2026-09-14 (`l4` CLI check of the Chapter 18 pass; first run 2026-09-09)
+**Verdict:** **0 type errors across all 31 modules; 277 of 277 assertions satisfied.**
 No directive was skipped, stubbed or held back.
 
 ---
@@ -437,3 +437,40 @@ Two things this run establishes that the sixth could not:
 
 One defect was found outside the rules: `NOTES.md` §1 listed the three new Chapter 17
 modules twice in the module table. Fixed. Nothing else was changed.
+
+
+---
+
+## 13. Eighth run — 14 Sep 2026, the Chapter 18 pass with the `l4` CLI
+
+**Verdict: 31 modules, 0 type errors, 277 of 277 assertions satisfied.** Two modules were
+added since the seventh run — `chapter-18-forged-documents.l4` (ss 466 to 477A) and
+`chapter-18-currency.l4` (ss 489A to 489I) — and three were extended: two records and two
+`Proposed Act` fields in `types.l4`; seven fields in the `Offence Screen` and seven
+`the proposed act constitutes ...` disjuncts in `agent-compliance.l4`, bringing the screen
+to 79 fields; and 29 fixtures (two of them blanks) with 47 assertions in `agent-cases.l4`.
+
+Same method as §12: the CLI at `%LOCALAPPDATA%\Programs\l4\l4.exe`, run directly.
+
+| step | result |
+| --- | --- |
+| `l4 check` on each of the 31 modules | 31 × `Check succeeded.` |
+| `l4 run` on the 10 modules with their own `#ASSERT`s | 46 of 46 satisfied, 0 errors |
+| `l4 run agent-cases.l4` | 231 of 231 satisfied, 0 errors; 3 `#EVAL`s reduced |
+
+Every diagnostic published carried `Severity: Information` and the message `assertion
+satisfied`; no `Error` or `Warning` severity appeared anywhere in the run.
+
+**One thing to record against §12 and against pass 5 §T5.** §12 measured
+`l4 run agent-cases.l4` at about 35 minutes and ~1.9 GB resident, and T5 concluded from that
+cost that the screen record would need splitting before the next large chapter. This run,
+with the same binary, the same machine, the file ~1,000 lines longer, the screen 7 fields
+wider and 47 assertions more, completed `l4 run agent-cases.l4` in **61 seconds** wall clock
+(08:16:40 to 08:17:41). Nothing in the subject accounts for the difference. It is possible
+the seventh run was measuring something other than the evaluator — a cold start, a
+contended machine — but that is a guess, and this report records only what was observed.
+The practical consequence is that T5's recommendation should be re-measured before it is
+acted on; it is not withdrawn on one run.
+
+Nothing was changed as a result of this run. `registers/verification-register-pass-6.md`
+records the read-back of the new rules; §5 of that register carries the same verdict.

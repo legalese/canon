@@ -45,6 +45,8 @@ chapter-17-extortion-and-robbery.l4  ss 380-382, 383-389, 390-402
 chapter-17-stolen-property.l4 ss 404, 407-409, 410-414
 chapter-17-mischief-and-trespass.l4  ss 421-424, 425-440, 441-462
 chapter-18-forgery.l4         ss 463, 464
+chapter-18-forged-documents.l4  ss 466-477A (aggravated forgery, forged documents, false instruments, accounts)
+chapter-18-currency.l4        ss 489A-489I (counterfeit and altered currency and bank notes)
 chapter-21-22-speech.l4       ss 499, 503, 504, 505
 chapter-23-attempts.l4        s 511
 agent-compliance.l4           the screen and the Schedule-to-4B classifier
@@ -55,6 +57,8 @@ registers/coverage-register.md      which sections are modelled, and which are n
 registers/verification-register-pass-2.md  the fidelity pass over the rules added 09 Sep
 registers/verification-register-pass-3.md  the fidelity pass over the rules added 11 Sep
 registers/verification-register-pass-4.md  the fidelity pass over the Chapter 16 rules
+registers/verification-register-pass-5.md  the fidelity pass over the Chapter 17 rules
+registers/verification-register-pass-6.md  the fidelity pass over the Chapter 18 rules
 registers/missing-sections.md       every live section with no rule, named one by one
 report/machine-evaluation.md  how the encoding was machine-checked, and against what
 ```
@@ -68,23 +72,25 @@ to have done.
 
 ## 2. What is deliberately not encoded
 
-The Code lists 600 sections, of which 75 are repealed. This draft encodes **289 of the 525
-live sections -- about 55%**. `registers/coverage-register.md` records which ones, chapter by
+The Code lists 600 sections, of which 75 are repealed. This draft encodes **314 of the 525
+live sections -- about 60%**. `registers/coverage-register.md` records which ones, chapter by
 chapter and section by section; what follows is the policy behind those numbers.
 
 The general parts are close to complete (Chapter 1: 6 of 7; Chapter 2: 49 of 54; Chapter 3:
 10 of 10; Chapter 4: 20 of 21; **Chapter 4A: 12 of 12**; Chapter 5A: 2 of 2 -- and every gap
 there is a section with no factual test to decide).
 
-**Chapters 16 and 17 are complete in substance** -- 111 of Chapter 16's 120 live sections and
-64 of Chapter 17's 76. The sections not encoded in either are pure punishment provisions, so
-every section of either chapter that states a testable rule has one. Between them they are
-the two largest offence chapters in the Code, and they are the two an AI agent is most likely
-to walk into when checking its own output or a user's requested act. The remaining offence
-chapters are still a deliberate thin slice.
+**Chapters 16, 17 and 18 are complete in substance** -- 111 of Chapter 16's 120 live sections,
+64 of Chapter 17's 76, and 27 of Chapter 18's 28. The sections not encoded in any of the three
+are pure punishment provisions, so every section of those chapters that states a testable
+rule has one. Chapters 16 and 17 are the two largest offence chapters in the Code, and they
+are the two an AI agent is most likely to walk into when checking its own output or a user's
+requested act; Chapter 18 is where forged documents, false instruments and counterfeit
+currency live, which is the next most likely. The remaining offence chapters are still a
+deliberate thin slice.
 
-- **Not encoded:** Chapters 6 to 15 (State, armed forces, unlawful assembly, public servants, false evidence, public health, religion), most of Chapter 18 (the forgery offences built on ss 463 and 464, and the currency and bank note offences), and the ten exceptions to s 499 as individual tests.
-- **The punishment sections of Chapters 16 and 17** -- ss 302, 304, 311, 323, 325, 341, 342, 363 and 363A; and ss 379, 379A, 384, 392, 395, 406, 417, 419, 426, 447, 448 and 458A -- are the only parts of those chapters not encoded, and are excluded on the same ground as ss 109 to 120, that this subject does not compute sentence.
+- **Not encoded:** Chapters 6 to 15 (State, armed forces, unlawful assembly, public servants, false evidence, public health, religion), ss 500 to 502 of Chapter 21, s 507 of Chapter 22, and the ten exceptions to s 499 as individual tests.
+- **The punishment sections of Chapters 16, 17 and 18** -- ss 302, 304, 311, 323, 325, 341, 342, 363 and 363A; ss 379, 379A, 384, 392, 395, 406, 417, 419, 426, 447, 448 and 458A; and s 465 -- are the only parts of those chapters not encoded, and are excluded on the same ground as ss 109 to 120, that this subject does not compute sentence.
 - **s 377BN(6)**, the marriage defence to the child abuse material offences, is **not encoded**. Its conditions turn on who is depicted in the material and who consented to what, which the `Sexual Image` record does not carry. `registers/verification-register-pass-4.md` records the gap rather than leaving it silent.
 - **s 499 exceptions** are a single caller-asserted flag `a section 499 exception applies`.
 - **Punishment** is not computed for any particular offence. `chapter-3-punishments.l4` encodes the Chapter 3 vocabulary -- what a `Punishment` is (s 53, s 54), how to pick the lower of two where it is doubtful which offence was committed (s 72), and the six enhanced-penalty sections that double a maximum (ss 73 to 74E). It does **not** attach a punishment to any offence section: no `the proposed act constitutes ...` wrapper returns one, and the doubling rules take the base maximum as a caller-supplied argument. The encoding still answers whether the constitutive test is met, not what sentence a court would pass.
@@ -191,25 +197,41 @@ chapters are still a deliberate thin slice.
 - **s 453 requires no trespass.** Being found armed, disguised or equipped is complete in itself, which is why it is not built on s 441 or s 442.
 - **s 442 closes the Chapter 4A dependency.** `registers/verification-register-pass-4.md` §T2 recorded that s 104(5) continues the right of private defence of property against house-breaking, which was defined nowhere in this encoding. It is s 442, and it is now here.
 
+### Added 14 Sep 2026 -- Chapter 18
+
+- **ss 466 to 469 are s 463 forgery plus one thing.** Each opens "whoever forges" or "whoever commits forgery", so each conjoins `constitutes forgery` (s 463 on s 464) with either a description of the document (ss 466, 467) or a purpose of the forger (ss 468, 469). The fault is s 464's, inherited, and is not re-tested.
+- **s 470 is a designation and is caller-asserted.** Whether a document was made by forgery is a fact about the maker, who is usually not the accused. ss 471 and 474 turn on it, and so do ss 489B, 489C, 489H and 489I on their counterfeit or altered currency; none is computed from the maker's rule, for the reason s 410 gave in Chapter 17.
+- **s 474 takes both the s 466 and the s 467 description as elements, disjoined.** The section applies only "if the document or electronic record is one of the descriptions mentioned in section 466" or "in section 467"; which of the two governs is punishment only. The two description facts are the ones ss 466 and 467 use, shared rather than re-declared.
+- **s 474's "fraudulently or dishonestly" is inside the intention, not in `Fault`.** It qualifies the intended future use of the document, not the act of possessing it. s 471, by contrast, makes the *use* fraudulent or dishonest, and takes s 24 or s 25 from the `Fault` record. s 477A's "with intent to defraud" is not the s 25 term at all -- s 25 requires an intended advantage or detriment -- and stays inside each conduct fact.
+- **s 477 has three routes to fault, and the third needs no s 24 or s 25.** "fraudulently or dishonestly, or with intent to cause damage or injury to the public or to any person" -- the first two come from `Fault`, the third is a fact on the record. Its conduct fact carries the attempts and the mischief limb, so no s 511 analysis is needed.
+- **s 473C(2)'s disregard reaches the s 473C(4) machine case.** s 473C(1) is "subject to subsections (2) and (4)", but (2) is expressed "for the purpose of this section", and (4) is in the section. So the disregard -- an act the person has an enforceable duty to do, or an omission of an act he is not entitled to do -- is a negated conjunct over the whole disjunction, the six results and the machine case alike. s 473C(3)'s extension of "induce a person" to inducing a machine is written into the s 473B(b)(i) fact; s 473C(5)'s wider "loss" into the (a) fact.
+- **s 473A and s 473B are not a pair.** s 473A is complete on knowledge that the equipment is designed or adapted for making a *false* instrument, with no further intent. s 473B drops that knowledge -- the equipment need only be for making *any* instrument -- and substitutes the two-part intent plus prejudice. A fixture that satisfies one fails the other.
+- **ss 475 and 476 split on one fact and cannot both fire.** s 475 is the mark that authenticates a document described in s 467; s 476 is every other document or electronic record, encoded as the negation of that fact. ss 472 and 473 split the same way on which forgery the seal is for.
+- **A coin is currency, but the encoding does not derive it.** s 489A(2)'s "currency" *includes* any coin which is legal tender; "coin" is metal stamped and issued by a government, legal tender or not. They are different sets, so both are caller-asserted. s 489F tests the coin fact; ss 489G to 489I test the currency fact; a caller with a legal-tender coin under the latter must assert the currency fact.
+- **s 489H asks whether an *operation* was performed; s 489I whether an *offence* was committed.** The first is satisfied by an innocent alteration, the second is not. Two facts, not merged.
+- **s 489E conjoins s 107 but not s 108**, as s 111 does: the section supplies the criminality of the thing abetted itself, so the abetment need not pass the capable-person test.
+
 ## 4. Status
 
 `draft`. No claim of fidelity. No HG1/HG2 grant.
 
-Machine-checked: 29 modules, 0 type errors, 230 of 230 assertions satisfied
+Machine-checked: 31 modules, 0 type errors, 277 of 277 assertions satisfied
 (`report/machine-evaluation.md`). §7.2 of that report records two blind spots in the
 available engine which a future run should read it subject to.
 
-Every encoded rule has now been read back against the deposited source text, in four passes:
+Every encoded rule has now been read back against the deposited source text, in six passes:
 `registers/verification-register.md` for the rules that existed before 09 Sep 2026 (twelve
 defects, all fixed), `registers/verification-register-pass-2.md` for the rules added that day
 (four defects, all fixed), `registers/verification-register-pass-3.md` for the eighteen
 sections added on 11 Sep (no defect found; three drafting traps and two caller traps
 recorded), `registers/verification-register-pass-4.md` for the 111 Chapter 16 sections
 added the same day (no defect found; nine drafting traps and two structural limits recorded),
-and `registers/verification-register-pass-5.md` for the 52 Chapter 17 sections added on
-12 Sep (no defect found; five drafting traps and one limit of the toolchain).
+`registers/verification-register-pass-5.md` for the 52 Chapter 17 sections added on
+12 Sep (no defect found; five drafting traps and one limit of the toolchain), and
+`registers/verification-register-pass-6.md` for the 25 Chapter 18 sections added on 14 Sep
+(no defect found; five drafting traps and one observation on the toolchain).
 No pass is an adversarial review, and none can reach the sections
-`registers/coverage-register.md` records as absent. Passes 3 and 4 read back rules written
+`registers/coverage-register.md` records as absent. Passes 3 to 6 read back rules written
 the same day, which is a weaker check than passes 1 and 2 -- each says so on its own first
 page.
 
