@@ -1,6 +1,6 @@
 # Penal Code 1871 — coverage register
 
-**Run date:** 2026-09-11 (Chapter 16 pass; first run 2026-09-09)
+**Run date:** 2026-09-12 (Chapter 17 pass; first run 2026-09-09)
 **Question answered:** which sections of the Act are modelled, and which are not.
 **Method:** every `@ref` citation in the seventeen `.l4` modules was parsed for section
 numbers and matched against the Act's own arrangement of sections, as it appears in
@@ -28,16 +28,20 @@ proven.
 | listed in the Act's arrangement of sections | 600 |
 | repealed — nothing to encode | 75 |
 | **live** | **525** |
-| **encoded** | **237** |
-| **live but not encoded** | **288** |
+| **encoded** | **289** |
+| **live but not encoded** | **236** |
 
-**About 45% of the live sections.** Two passes on 11 Sep. The first added 18 — the whole of
-Chapter 4A (ss 96 to 106A), ss 111, 113 and 114 of Chapter 5, and ss 3, 4A and 5 of
+**About 55% of the live sections.** Three passes. The first, on 11 Sep, added 18 — the whole
+of Chapter 4A (ss 96 to 106A), ss 111, 113 and 114 of Chapter 5, and ss 3, 4A and 5 of
 Chapter 1 — which were the three gaps §6 of this register called more than scope choices.
 The second opened **Chapter 16**, the offences affecting the human body, and completed it:
-111 of its 120 live sections, all seven groups. The nine not encoded are pure punishment
-sections, excluded by the policy that this subject does not compute sentence, so **Chapter 16
-is now complete in substance** — every section of it that states a testable rule has one.
+111 of its 120 live sections, all seven groups. The third, on 12 Sep, completed **Chapter
+17**, the offences against property: 64 of its 76 live sections.
+
+In both chapters the sections not encoded are pure punishment provisions, excluded by the
+policy that this subject does not compute sentence. **Chapters 16 and 17 are therefore
+complete in substance** — every section of either that states a testable rule has one — and
+between them they are the two largest offence chapters in the Code.
 
 There is no Chapter 19; Chapters 13 and 20 are wholly repealed.
 
@@ -70,18 +74,19 @@ policy; this register states its consequences section by section.
 | **Chapter 14** — Offences affecting public tranquility, health, safety and decency | 35 | 0 | 35 | 0 | 35 |
 | **Chapter 15** — Offences relating to race | 5 | 3 | 2 | 0 | 2 |
 | **Chapter 16** — Offences affecting the human body | 126 | 6 | 120 | 111 | 9 |
-| **Chapter 17** — Offences against property | 93 | 17 | 76 | 12 | 64 |
+| **Chapter 17** — Offences against property | 93 | 17 | 76 | 64 | 12 |
 | **Chapter 18** — Offences relating to documents, electronic records and marks | 28 | 0 | 28 | 2 | 26 |
 | **Chapter 20** — *(wholly repealed)* | 5 | 5 | 0 | 0 | 0 |
 | **Chapter 21** — Defamation | 4 | 0 | 4 | 1 | 3 |
 | **Chapter 22** — Criminal intimidation, insult and annoyance | 8 | 3 | 5 | 4 | 1 |
 | **Chapter 23** — Attempts to commit offences | 2 | 0 | 2 | 1 | 1 |
-| **total** | **600** | **75** | **525** | **237** | **288** |
+| **total** | **600** | **75** | **525** | **289** | **236** |
 
 ## 3. The general parts
 
-Six chapters decide whether an offence test is reached at all, and one offence chapter is now
-encoded to the same standard. These are the ones the encoding treats as load-bearing:
+Six chapters decide whether an offence test is reached at all, and the two largest offence
+chapters are now encoded to the same standard. These are the ones the encoding treats as
+load-bearing:
 
 | chapter | live | encoded |
 | --- | ---: | ---: |
@@ -92,10 +97,12 @@ encoded to the same standard. These are the ones the encoding treats as load-bea
 | Chapter 4A — Right of private defence | 12 | 12 |
 | Chapter 5A — Criminal conspiracy | 2 | 2 |
 | Chapter 16 — Offences affecting the human body | 120 | 111 |
+| Chapter 17 — Offences against property | 76 | 64 |
 
 **The seven apparent gaps in the general parts are deliberate, and each is documented in the
 module itself under its own `§§` heading.** They are sections with no factual test to decide.
-(Chapter 16's nine are different: they are punishment sections, listed in §4.)
+(The nine in Chapter 16 and the twelve in Chapter 17 are different: they are punishment
+sections, listed in §4.)
 
 | s | why nothing is decided |
 | --- | --- |
@@ -107,8 +114,8 @@ module itself under its own `§§` heading.** They are sections with no factual 
 | 50 | "Section" denotes a numbered portion of a Chapter. |
 | 79A | A **closure** rule, not an exception: mistake or ignorance of law is never a defence unless another written law so provides. It therefore contributes no limb to `a general exception applies`, which is the correct encoding of it. |
 
-So Chapters 1, 2, 3, 4, 4A, 5A and 16 are complete in substance: every section that states a
-testable rule has one. Note that s 5, the other Chapter 1 closure provision, **is** decided,
+So Chapters 1, 2, 3, 4, 4A, 5A, 16 and 17 are complete in substance: every section that
+states a testable rule has one. Note that s 5, the other Chapter 1 closure provision, **is** decided,
 where s 79A is not — `NOTES.md` §3 gives the reason.
 
 ## 4. Chapters partially encoded, section by section
@@ -413,26 +420,80 @@ above, on the same ground as ss 109 to 120 of Chapter 5.
 
 ### Chapter 17 — Offences against property
 
-12 of 76 live sections encoded.
+**64 of 76 live sections encoded; 17 repealed and excluded.**
+
+Complete in substance: the twelve not encoded are pure punishment sections, and this
+subject does not compute sentence.
 
 | s | title | module |
 | --- | --- | --- |
 | 378 | Theft | `chapter-17-property.l4` |
+| 380 | Theft in dwelling house, etc. | `chapter-17-extortion-and-robbery.l4` |
+| 381 | Theft by clerk or servant of property in possession of master | `chapter-17-extortion-and-robbery.l4` |
+| 382 | Theft after preparation made for causing death or hurt in order to commit theft | `chapter-17-extortion-and-robbery.l4` |
+| 383 | Extortion | `chapter-17-extortion-and-robbery.l4` |
+| 385 | Putting person in fear of harm in order to commit extortion | `chapter-17-extortion-and-robbery.l4` |
+| 386 | Extortion by putting a person in fear of death or grievous hurt | `chapter-17-extortion-and-robbery.l4` |
+| 387 | Putting person in fear of death or of grievous hurt in order to commit extortion | `chapter-17-extortion-and-robbery.l4` |
+| 388 | Extortion by threat of accusation of an offence punishable with death, or imprisonment, etc. | `chapter-17-extortion-and-robbery.l4` |
+| 389 | Putting person in fear of accusation of offence, in order to commit extortion | `chapter-17-extortion-and-robbery.l4` |
+| 390 | Robbery | `chapter-17-extortion-and-robbery.l4` |
+| 391 | Gang-robbery | `chapter-17-extortion-and-robbery.l4` |
+| 393 | Attempt to commit robbery | `chapter-17-extortion-and-robbery.l4` |
+| 394 | Voluntarily causing hurt in committing robbery | `chapter-17-extortion-and-robbery.l4` |
+| 396 | Gang-robbery with murder | `chapter-17-extortion-and-robbery.l4` |
+| 397 | Robbery when armed or with attempt to cause death or grievous hurt | `chapter-17-extortion-and-robbery.l4` |
+| 399 | Making preparation to commit gang-robbery | `chapter-17-extortion-and-robbery.l4` |
+| 400 | Punishment for belonging to gang-robbers | `chapter-17-extortion-and-robbery.l4` |
+| 401 | Punishment for belonging to gang of thieves | `chapter-17-extortion-and-robbery.l4` |
+| 402 | Assembling for purpose of committing gang-robbery | `chapter-17-extortion-and-robbery.l4` |
 | 403 | Dishonest misappropriation of property | `chapter-17-property.l4` |
+| 404 | Dishonest misappropriation of property possessed by a deceased person at the time of his death | `chapter-17-stolen-property.l4` |
 | 405 | Criminal breach of trust | `chapter-17-property.l4` |
+| 407 | Criminal breach of trust of property entrusted for purposes of transportation or storage | `chapter-17-stolen-property.l4` |
+| 408 | Criminal breach of trust by employees | `chapter-17-stolen-property.l4` |
+| 409 | Criminal breach of trust by public servant, or by banker, merchant, agent, director, officer, partner, key executive or fiduciary | `chapter-17-stolen-property.l4` |
+| 410 | Stolen property | `chapter-17-stolen-property.l4` |
+| 411 | Receiving stolen property | `chapter-17-stolen-property.l4` |
+| 412 | Receiving property stolen in the commission of a gang-robbery | `chapter-17-stolen-property.l4` |
+| 413 | Habitually dealing in stolen property | `chapter-17-stolen-property.l4` |
+| 414 | Assisting in concealment or disposal of stolen property | `chapter-17-stolen-property.l4` |
 | 415 | Cheating | `chapter-17-cheating.l4` |
 | 416 | Cheating by personation | `chapter-17-cheating.l4` |
 | 416A | Illegally obtained personal information | `chapter-17-fraud.l4` |
 | 416B | Cheating by remote communication | `chapter-17-cheating.l4` |
-| 418 | Cheating with knowledge that wrongful loss may be thereby | `chapter-17-cheating.l4` |
+| 418 | Cheating with knowledge that wrongful loss may be thereby caused to a person whose interest the offender is bound to protect | `chapter-17-cheating.l4` |
 | 420 | Cheating and dishonestly inducing a delivery of property | `chapter-17-cheating.l4` |
 | 420A | Obtaining services dishonestly or fraudulently | `chapter-17-cheating.l4` |
-| 424A | Fraud by false representation, non-disclosure or abuse of | `chapter-17-fraud.l4` |
-| 424B | Fraud by false representation, non-disclosure or abuse of | `chapter-17-fraud.l4` |
+| 421 | Dishonest or fraudulent removal or concealment of property to prevent distribution among creditors | `chapter-17-mischief-and-trespass.l4` |
+| 422 | Dishonestly or fraudulently preventing a debt or demand due to the offender from being made available for his creditors | `chapter-17-mischief-and-trespass.l4` |
+| 423 | Dishonest or fraudulent execution of deed of transfer containing a false statement of consideration | `chapter-17-mischief-and-trespass.l4` |
+| 424 | Dishonest or fraudulent removal or concealment of property or release of claim | `chapter-17-mischief-and-trespass.l4` |
+| 424A | Fraud by false representation, non-disclosure or abuse of position not connected with contracts for goods or services | `chapter-17-fraud.l4` |
+| 424B | Fraud by false representation, non-disclosure or abuse of position | `chapter-17-fraud.l4` |
+| 425 | Mischief | `chapter-17-mischief-and-trespass.l4` |
+| 427 | Punishment for committing mischief causing disruption to key service, etc. | `chapter-17-mischief-and-trespass.l4` |
+| 428 | Mischief by killing or maiming any animal | `chapter-17-mischief-and-trespass.l4` |
+| 435 | Mischief by fire or explosive substance with intent to cause damage | `chapter-17-mischief-and-trespass.l4` |
+| 436 | Mischief by fire or explosive substance with intent to destroy a house, etc. | `chapter-17-mischief-and-trespass.l4` |
+| 437 | Mischief with intent to destroy or make unsafe a decked vessel or a vessel of 20 tons burden | `chapter-17-mischief-and-trespass.l4` |
+| 438 | Punishment for the mischief described in section 437 when committed by fire or any explosive substance | `chapter-17-mischief-and-trespass.l4` |
+| 439 | Punishment for intentionally running vessel aground or ashore with intent to commit theft, etc. | `chapter-17-mischief-and-trespass.l4` |
+| 440 | Mischief committed after preparation made for causing death or hurt | `chapter-17-mischief-and-trespass.l4` |
+| 441 | Criminal trespass | `chapter-17-mischief-and-trespass.l4` |
+| 442 | House-breaking | `chapter-17-mischief-and-trespass.l4` |
+| 449 | House-breaking in order to commit an offence punishable with death | `chapter-17-mischief-and-trespass.l4` |
+| 450 | House-breaking in order to commit an offence punishable with imprisonment for life | `chapter-17-mischief-and-trespass.l4` |
+| 451 | House-breaking in order to commit an offence punishable with imprisonment | `chapter-17-mischief-and-trespass.l4` |
+| 452 | House-breaking after preparation made for causing hurt, etc. | `chapter-17-mischief-and-trespass.l4` |
+| 453 | Possession of house-breaking implements or offensive weapons | `chapter-17-mischief-and-trespass.l4` |
+| 459 | Grievous hurt caused while committing house-breaking | `chapter-17-mischief-and-trespass.l4` |
+| 460 | House-breaking when death or grievous hurt caused | `chapter-17-mischief-and-trespass.l4` |
+| 461 | Dishonestly breaking open any closed receptacle containing or supposed to contain property | `chapter-17-mischief-and-trespass.l4` |
+| 462 | Punishment for same offence when committed by person entrusted with custody | `chapter-17-mischief-and-trespass.l4` |
 
-**Not encoded:** s 379, s 379A, s 380, s 381, s 382, s 383, s 384, s 385, s 386, s 387, s 388, s 389, s 390, s 391, s 392, s 393, s 394, s 395, s 396, s 397, s 399, s 400, s 401, s 402, s 404, s 406, s 407, s 408, s 409, s 410, s 411, s 412, s 413, s 414, s 417, s 419, s 421, s 422, s 423, s 424, s 425, s 426, s 427, s 428, s 435, s 436, s 437, s 438, s 439, s 440, s 441, s 442, s 447, s 448, s 449, s 450, s 451, s 452, s 453, s 458A, s 459, s 460, s 461, s 462.
-
-Repealed, nothing to encode: s 429, s 430, s 430A, s 431, s 431A, s 432, s 433, s 434, s 443, s 444, s 445, s 446, s 454, s 455, s 456, s 457, s 458.
+**Not encoded:** s 379, s 379A, s 384, s 392, s 395, s 406, s 417, s 419, s 426, s 447, s 448, s 458A —
+all punishment provisions for offences whose constitutive tests are encoded above.
 
 ### Chapter 18 — Offences relating to documents, electronic records and marks
 
@@ -500,7 +561,7 @@ Repealed, nothing to encode: s 508, s 509, s 510.
 omitted from this table: both are wholly repealed and contribute no live section.
 
 This table gives ranges. `missing-sections.md` names each of these 168 sections individually,
-with the Act's own marginal heading, alongside the 120 missing from the partially encoded
+with the Act's own marginal heading, alongside the 68 missing from the partially encoded
 chapters above.
 
 ## 6. The three gaps that were more than scope choices — closed 11 Sep 2026
@@ -526,7 +587,7 @@ caller can still tell which one fired.
 
 The asymmetry §6.1 used to warn about — over-inclusive on offences, under-inclusive on
 defences, so a FALSE was more trustworthy than a TRUE — is narrowed but not gone. It now
-rests on the remaining unencoded defences and on the 288 unencoded sections, not on a whole
+rests on the remaining unencoded defences and on the 236 unencoded sections, not on a whole
 missing Chapter.
 
 **6.2 Chapter 5, ss 111, 113 and 114.** ss 109, 110, 112, 115 to 120 are punishment and
@@ -562,10 +623,10 @@ computing it from the new hurt rules. The offence in question is the *assailant'
 from the hurt predicate would not mean no such offence was in play. Closing that needs a
 two-actor bundle, which is a change to the shape of the subject.
 
-`missing-sections.md` names all 288 sections that remain. The largest single absence is now
+`missing-sections.md` names all 236 sections that remain. The largest single absence is
 **Chapter 11** (ss 191 to 229, 43 live sections), false evidence and offences against public
-justice, followed by **Chapter 14** (ss 267A to 294, 35 sections) and the 64 unencoded
-sections of **Chapter 17**.
+justice, followed by **Chapter 14** (ss 267A to 294, 35 sections) and the 26 unencoded
+sections of **Chapter 18**.
 
 ## 7. How to regenerate this register
 

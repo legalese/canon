@@ -1,7 +1,7 @@
 # Penal Code 1871 — machine evaluation report
 
-**Run date:** 2026-09-11 (first run 2026-09-09)
-**Verdict:** **0 type errors across all 26 modules; 192 of 192 assertions satisfied.**
+**Run date:** 2026-09-14 (`l4` CLI re-check of the 12 Sep Chapter 17 pass; first run 2026-09-09)
+**Verdict:** **0 type errors across all 29 modules; 230 of 230 assertions satisfied.**
 No directive was skipped, stubbed or held back.
 
 ---
@@ -345,3 +345,95 @@ coverage number. The rule stated in §8.1 held again: a coverage figure that mov
 corresponding change in the rules is a defect in the tooling until proved otherwise. It is
 worth adding the converse — a figure that fails to move when rules *were* added is the same
 defect wearing the other face.
+
+
+---
+
+## 11. Sixth run — 12 Sep 2026, after the Chapter 17 pass
+
+**Verdict: 29 modules, 0 type errors, 230 of 230 assertions satisfied.** 192 of those are the
+assertions that existed after the Chapter 16 work, all still holding; 38 are new.
+
+The three new modules — `chapter-17-extortion-and-robbery.l4`,
+`chapter-17-stolen-property.l4` and `chapter-17-mischief-and-trespass.l4` — carry no
+directives of their own and were run with `#EVAL TRUE` appended, as in §4.1. All three
+returned `errors 0` and `TRUE`. The 38 new assertions live in `agent-cases.l4`, which now
+carries 184 across about 6,200 lines.
+
+### 11.1 The run is now the binding constraint, not the encoding
+
+Settle and hard limits had to be raised again, to a 2,400-second hard limit and a 15-second
+settle. The two costly modules:
+
+| module | size | time |
+| --- | --- | --- |
+| `agent-compliance.l4` | 298 lines, but a 72-field `Offence Screen` built in one constructor | ~20 min |
+| `agent-cases.l4` | ~6,200 lines, 184 assertions | ~25 min |
+
+A full 29-module run is now over an hour.
+
+**The "NO DIAGNOSTICS PUBLISHED" line appeared twice more in this pass**, both times for
+`agent-compliance.l4` — once at the 180-second limit and once at 900. Both times the module
+was clean. §9.1 recorded that failure mode when it first appeared and warned that it is
+indistinguishable from a parse failure; this pass is the second and third occurrence, and the
+warning should now be read as a standing one. The server's own log is the way to tell the two
+apart: a module still emitting `[Import Resolution]` lines is working, not stuck.
+
+### 11.2 What actually costs, and what to do about it
+
+It is the **screen record, not the rule count**. `agent-compliance.l4` is 298 lines; what
+makes it expensive is that `the offence screen of` assembles 72 fields in a single
+constructor, each field a call into a predicate chain that reaches most of the subject.
+
+That is recorded as T5 in `registers/verification-register-pass-5.md` because it bears on how
+the subject should grow rather than on whether it is correct. If the screen keeps growing one
+field per offence, it will need splitting — by chapter, or into a record of records — before
+the next large chapter is added. Nothing was changed in this pass to address it: the screen
+still reports every encoded offence, which is what it is for.
+
+### 11.3 A note on how the harness resolves imports
+
+The server log shows that when the opened file is a scratch copy, its imports resolve
+**against the real project directory**, not the scratch one — a `VFS MISS` on the scratch
+path followed by `Found on filesystem` in `subjects/singapore/penal-code-1871`. So the
+`#EVAL TRUE` trick from §4.1 isolates only the file being opened; everything it imports is
+the committed source. That is the behaviour this report wants, but it was not stated before
+and is worth recording: the scratch copy is a publish trigger, not a sandbox.
+
+
+---
+
+## 12. Seventh run — 14 Sep 2026, re-check of the Chapter 17 pass with the `l4` CLI
+
+**Verdict: 29 modules, 0 type errors, 230 of 230 assertions satisfied.** No rule was
+changed between the sixth run and this one; this run re-checks the same tree before it was
+committed, with a different engine.
+
+§1 opens "No `jl4` CLI exists in this environment." That is no longer true. An `l4` CLI
+(April 2026 build, at `%LOCALAPPDATA%\Programs\l4\l4.exe`) is now installed, with `check`
+(typecheck only) and `run` (typecheck, evaluate, print each `#ASSERT` and `#EVAL` result)
+subcommands. This run used it directly and needed none of the harness in §1, none of the
+prelude patching in §3, and no `#EVAL TRUE` scratch copies for the directive-free modules —
+`l4 check` reports on the file it is given whether or not it carries a directive.
+
+| step | result |
+| --- | --- |
+| `l4 check` on each of the 29 modules | 29 × `Check succeeded.` |
+| `l4 run` on the 10 modules with their own `#ASSERT`s | 46 of 46 satisfied |
+| `l4 run agent-cases.l4` | 184 of 184 satisfied, 0 errors |
+
+`agent-cases.l4` took about 35 minutes and ~1.9 GB resident, so §11.1 stands: the run, not
+the encoding, is the binding constraint, and the cost is in the 72-field screen record.
+
+Two things this run establishes that the sixth could not:
+
+- **The prelude compensation in §3 is no longer needed and its cost-to-confidence claim is
+  now tested.** The CLI parses the current `prelude.l4` unmodified, and every result matches
+  the run made against the patched prelude. So the patch changed nothing, which is what §3
+  argued and could not then show.
+- **Directive-free modules are checked in their own right.** §7.2 retracted the claim that an
+  error in a dependency surfaces on the importer; `l4 check` closes the gap directly, because
+  it does not need a directive to publish a result.
+
+One defect was found outside the rules: `NOTES.md` §1 listed the three new Chapter 17
+modules twice in the module table. Fixed. Nothing else was changed.

@@ -1,25 +1,25 @@
 # Penal Code 1871 — missing-section register
 
-**Run date:** 2026-09-11 (regenerated after the Chapter 16 pass, part 3 -- the chapter complete)
+**Run date:** 2026-09-11 (regenerated after the Chapter 17 pass)
 **Question answered:** which live sections of the Act have no `@ref` in any `.l4` module,
 named one by one with the Act's own marginal heading.
 
 This is the companion to `coverage-register.md`. That register counts coverage and
 enumerates the gaps only for the chapters that are partially encoded; for the thirteen
 chapters where nothing is encoded it gives a section *range* and a total. This register
-names all 288 missing sections, so that a reader deciding what to encode next is choosing
+names all 236 missing sections, so that a reader deciding what to encode next is choosing
 from a list rather than from a range.
 
 **Method.** The arrangement of sections at the head of `registers/source-bundle/PC1871.txt`
 (SSO current version as at 09 Sep 2026) was parsed for all 600 listed sections; the Act's
 body was parsed independently for the same 600 and supplied the marginal headings. The two
 passes agree on the section set exactly, which is the check that the parse is sound. Every
-`@ref` in the twenty-six `.l4` modules was expanded (`ss X, Y, Z` lists, `ss X to Y` ranges,
+`@ref` in the twenty-nine `.l4` modules was expanded (`ss X, Y, Z` lists, `ss X to Y` ranges,
 parenthesised subsections and `Explanation N` / `Exception N` tails stripped) and matched
 against that set.
 
 Counts reproduce `coverage-register.md` exactly: **600 listed, 75 repealed, 525 live,**
-**237 encoded, 288 not encoded.** Repealed sections are listed below for completeness but
+**289 encoded, 236 not encoded.** Repealed sections are listed below for completeness but
 are struck from every count.
 
 As in the coverage register, this is a mechanical record of citation, not of fidelity.
@@ -28,9 +28,9 @@ by `verification-register.md` and `verification-register-pass-2.md`.
 
 ---
 
-Seven of the 288 are **deliberate** and documented in the module itself under their own
+Seven of the 236 are **deliberate** and documented in the module itself under their own
 `§§` heading -- sections that state no factual test to decide. They are marked *deliberate*
-in the tables below and explained in `coverage-register.md` §3. Discounting them, **281**
+in the tables below and explained in `coverage-register.md` §3. Discounting them, **229**
 live sections are unencoded for reasons of scope rather than of drafting.
 
 ## 1. Missing sections by chapter
@@ -57,13 +57,13 @@ live sections are unencoded for reasons of scope rather than of drafting.
 | **Chapter 14** — Offences affecting the public tranquility, public health, safety, convenience, decency and morals | 35 | 0 | 35 |
 | **Chapter 15** — Offences relating to race | 2 | 0 | 2 |
 | **Chapter 16** — Offences affecting the human body | 120 | 111 | 9 |
-| **Chapter 17** — Offences against property | 76 | 12 | 64 |
+| **Chapter 17** — Offences against property | 76 | 64 | 12 |
 | **Chapter 18** — Offences relating to documents or electronic records, false instruments, and to currency and bank notes | 28 | 2 | 26 |
 | **Chapter 20** — *(wholly repealed)* | 0 | 0 | 0 |
 | **Chapter 21** — Defamation | 4 | 1 | 3 |
 | **Chapter 22** — Criminal intimidation, insult and annoyance | 5 | 4 | 1 |
 | **Chapter 23** — Attempts to commit offences | 2 | 1 | 1 |
-| **total** | **525** | **237** | **288** |
+| **total** | **525** | **289** | **236** |
 
 ---
 
@@ -433,76 +433,24 @@ All 4 sections repealed. Nothing to encode.
 
 ### Chapter 17 — Offences against property
 
-12 of 76 live sections encoded; 17 repealed and excluded.
+64 of 76 live sections encoded; 17 repealed and excluded.
 
-**64 missing:**
+**12 missing:**
 
 | s | heading | |
 | --- | --- | --- |
 | 379 | Punishment for theft |  |
 | 379A | Punishment for theft of a motor vehicle |  |
-| 380 | Theft in dwelling house, etc. |  |
-| 381 | Theft by clerk or servant of property in possession of master |  |
-| 382 | Theft after preparation made for causing death or hurt in order to commit theft |  |
-| 383 | Extortion |  |
 | 384 | Punishment for extortion |  |
-| 385 | Putting person in fear of harm in order to commit extortion |  |
-| 386 | Extortion by putting a person in fear of death or grievous hurt |  |
-| 387 | Putting person in fear of death or of grievous hurt in order to commit extortion |  |
-| 388 | Extortion by threat of accusation of an offence punishable with death, or imprisonment, etc. |  |
-| 389 | Putting person in fear of accusation of offence, in order to commit extortion |  |
-| 390 | Robbery |  |
-| 391 | Gang-robbery |  |
 | 392 | Punishment for robbery |  |
-| 393 | Attempt to commit robbery |  |
-| 394 | Voluntarily causing hurt in committing robbery |  |
 | 395 | Punishment for gang-robbery |  |
-| 396 | Gang-robbery with murder |  |
-| 397 | Robbery when armed or with attempt to cause death or grievous hurt |  |
-| 399 | Making preparation to commit gang-robbery |  |
-| 400 | Punishment for belonging to gang-robbers |  |
-| 401 | Punishment for belonging to gang of thieves |  |
-| 402 | Assembling for purpose of committing gang-robbery |  |
-| 404 | Dishonest misappropriation of property possessed by a deceased person at the time of his death |  |
 | 406 | Punishment of criminal breach of trust |  |
-| 407 | Criminal breach of trust of property entrusted for purposes of transportation or storage |  |
-| 408 | Criminal breach of trust by employees |  |
-| 409 | Criminal breach of trust by public servant, or by banker, merchant, agent, director, officer, partner, key executive or fiduciary |  |
-| 410 | Stolen property |  |
-| 411 | Receiving stolen property |  |
-| 412 | Receiving property stolen in the commission of a gang-robbery |  |
-| 413 | Habitually dealing in stolen property |  |
-| 414 | Assisting in concealment or disposal of stolen property |  |
 | 417 | Punishment for cheating |  |
 | 419 | Punishment for cheating by personation |  |
-| 421 | Dishonest or fraudulent removal or concealment of property to prevent distribution among creditors |  |
-| 422 | Dishonestly or fraudulently preventing a debt or demand due to the offender from being made available for his creditors |  |
-| 423 | Dishonest or fraudulent execution of deed of transfer containing a false statement of consideration |  |
-| 424 | Dishonest or fraudulent removal or concealment of property or release of claim |  |
-| 425 | Mischief |  |
 | 426 | Punishment for committing mischief |  |
-| 427 | Punishment for committing mischief causing disruption to key service, etc. |  |
-| 428 | Mischief by killing or maiming any animal |  |
-| 435 | Mischief by fire or explosive substance with intent to cause damage |  |
-| 436 | Mischief by fire or explosive substance with intent to destroy a house, etc. |  |
-| 437 | Mischief with intent to destroy or make unsafe a decked vessel or a vessel of 20 tons burden |  |
-| 438 | Punishment for the mischief described in section 437 when committed by fire or any explosive substance |  |
-| 439 | Punishment for intentionally running vessel aground or ashore with intent to commit theft, etc. |  |
-| 440 | Mischief committed after preparation made for causing death or hurt |  |
-| 441 | Criminal trespass |  |
-| 442 | House-breaking |  |
 | 447 | Punishment for criminal trespass |  |
 | 448 | Punishment for house-breaking |  |
-| 449 | House-breaking in order to commit an offence punishable with death |  |
-| 450 | House-breaking in order to commit an offence punishable with imprisonment for life |  |
-| 451 | House-breaking in order to commit an offence punishable with imprisonment |  |
-| 452 | House-breaking after preparation made for causing hurt, etc. |  |
-| 453 | Possession of house-breaking implements or offensive weapons |  |
 | 458A | Punishment for subsequent offence under section 449, 450, 451 or 452 |  |
-| 459 | Grievous hurt caused while committing house-breaking |  |
-| 460 | House-breaking when death or grievous hurt caused |  |
-| 461 | Dishonestly breaking open any closed receptacle containing or supposed to contain property |  |
-| 462 | Punishment for same offence when committed by person entrusted with custody |  |
 
 ### Chapter 18 — Offences relating to documents or electronic records, false instruments, and to currency and bank notes
 

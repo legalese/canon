@@ -41,6 +41,9 @@ chapter-16-sexual-images.l4   ss 377BA-377BO (voyeurism, images, abuse material)
 chapter-17-cheating.l4        ss 415, 416, 416B, 418, 420, 420A
 chapter-17-property.l4        ss 378, 403, 405
 chapter-17-fraud.l4           ss 416A, 424A, 424B
+chapter-17-extortion-and-robbery.l4  ss 380-382, 383-389, 390-402
+chapter-17-stolen-property.l4 ss 404, 407-409, 410-414
+chapter-17-mischief-and-trespass.l4  ss 421-424, 425-440, 441-462
 chapter-18-forgery.l4         ss 463, 464
 chapter-21-22-speech.l4       ss 499, 503, 504, 505
 chapter-23-attempts.l4        s 511
@@ -65,24 +68,23 @@ to have done.
 
 ## 2. What is deliberately not encoded
 
-The Code lists 600 sections, of which 75 are repealed. This draft encodes **237 of the 525
-live sections -- about 45%**. `registers/coverage-register.md` records which ones, chapter by
+The Code lists 600 sections, of which 75 are repealed. This draft encodes **289 of the 525
+live sections -- about 55%**. `registers/coverage-register.md` records which ones, chapter by
 chapter and section by section; what follows is the policy behind those numbers.
 
 The general parts are close to complete (Chapter 1: 6 of 7; Chapter 2: 49 of 54; Chapter 3:
 10 of 10; Chapter 4: 20 of 21; **Chapter 4A: 12 of 12**; Chapter 5A: 2 of 2 -- and every gap
 there is a section with no factual test to decide).
 
-**Chapter 16 is complete in substance** -- 111 of its 120 live sections, all seven groups.
-The nine not encoded are pure punishment sections, so every section of the chapter that
-states a testable rule has one. It was opened because Chapter 4A had nothing to report a
-private-defence justification against: "an offence affecting the human body" in s 97(a) is
-Chapter 16's subject matter. The other offence chapters remain a deliberate thin slice: the
-provisions an AI agent is most likely to walk into when checking its own output or a user's
-requested act.
+**Chapters 16 and 17 are complete in substance** -- 111 of Chapter 16's 120 live sections and
+64 of Chapter 17's 76. The sections not encoded in either are pure punishment provisions, so
+every section of either chapter that states a testable rule has one. Between them they are
+the two largest offence chapters in the Code, and they are the two an AI agent is most likely
+to walk into when checking its own output or a user's requested act. The remaining offence
+chapters are still a deliberate thin slice.
 
-- **Not encoded:** Chapters 6 to 15 (State, armed forces, unlawful assembly, public servants, false evidence, public health, religion), one of Chapter 16's seven groups (below), most of Chapter 17 (extortion, robbery, stolen property, criminal trespass), currency offences, and the ten exceptions to s 499 as individual tests.
-- **Chapter 16's nine punishment sections** -- ss 302, 304, 311, 323, 325, 341, 342, 363 and 363A -- are the only part of that chapter not encoded, and are excluded on the same ground as ss 109 to 120, that this subject does not compute sentence.
+- **Not encoded:** Chapters 6 to 15 (State, armed forces, unlawful assembly, public servants, false evidence, public health, religion), most of Chapter 18 (the forgery offences built on ss 463 and 464, and the currency and bank note offences), and the ten exceptions to s 499 as individual tests.
+- **The punishment sections of Chapters 16 and 17** -- ss 302, 304, 311, 323, 325, 341, 342, 363 and 363A; and ss 379, 379A, 384, 392, 395, 406, 417, 419, 426, 447, 448 and 458A -- are the only parts of those chapters not encoded, and are excluded on the same ground as ss 109 to 120, that this subject does not compute sentence.
 - **s 377BN(6)**, the marriage defence to the child abuse material offences, is **not encoded**. Its conditions turn on who is depicted in the material and who consented to what, which the `Sexual Image` record does not carry. `registers/verification-register-pass-4.md` records the gap rather than leaving it silent.
 - **s 499 exceptions** are a single caller-asserted flag `a section 499 exception applies`.
 - **Punishment** is not computed for any particular offence. `chapter-3-punishments.l4` encodes the Chapter 3 vocabulary -- what a `Punishment` is (s 53, s 54), how to pick the lower of two where it is doubtful which offence was committed (s 72), and the six enhanced-penalty sections that double a maximum (ss 73 to 74E). It does **not** attach a punishment to any offence section: no `the proposed act constitutes ...` wrapper returns one, and the doubling rules take the base maximum as a caller-supplied argument. The encoding still answers whether the constitutive test is met, not what sentence a court would pass.
@@ -173,11 +175,27 @@ requested act.
 - **s 377BB(6) stands outside the knowledge element.** Installing equipment or adapting a structure to enable a voyeurism offence is complete on the intention; it does not need the accused to know the victim does not consent, so it is disjoined outside that conjunction.
 - **s 377BN(5) is encoded as nothing.** A mistaken belief that reasonable persons would not regard the material as offensive is expressly *not* a defence. The fact is carried so a caller can assert it, and it contributes to no rule -- which is the correct encoding of a provision that closes a defence off, and the same treatment s 79A gets.
 
+### Added 12 Sep 2026 -- Chapter 17
+
+- **s 390 gives robbery two separate tests, and the encoding keeps them separate.** "In all robbery there is either theft or extortion." s 390(2) makes theft robbery where harm or fear of instant harm is caused *for that end*; s 390(3) makes extortion robbery only where the offender is **present**, the fear is of **instant** harm, and delivery is **then and there**. Illustration (d) is the case that fails all three: a threat to kill a child held elsewhere by the offender's gang is extortion and is not robbery.
+- **s 383 extortion turns on inducement, not on the legality of the threat.** "whether such harm is to be caused legally or illegally" -- so threatening to do something one is entitled to do is extortion if it dishonestly induces the delivery. Illustration (c), a threat to report a real offence, is extortion.
+- **ss 385, 387 and 389 need no delivery.** They punish putting or attempting to put a person in fear *in order to* commit extortion, so they do not build on s 383. s 388 has a limb s 389 lacks -- fear of an accusation of having attempted to induce another to commit an offence -- and it is encoded on s 388 only.
+- **s 391 gang-robbery does not require a completed robbery.** It reaches those who "commit **or attempt to commit**" a robbery, and counts those "present and aiding" towards the five. So the rule disjoins robbery with the attempt rather than conjoining robbery.
+- **ss 394, 397 and 460 reach persons jointly concerned.** Each extends to "any other person jointly concerned", which is an alternative route into the section, not a further requirement on the person who did the act.
+- **s 410's cessation clause is a negated conjunct.** Property "ceases to be stolen property" once a person legally entitled to it has possession. s 410(2) runs the other way and is disjoined: anything into or for which stolen property has been converted or exchanged is itself stolen property.
+- **ss 411 to 414 are wider than s 410 and do not conjoin it.** Their knowledge element reaches "stolen property **or property obtained in whole or in part through an offence involving fraud or dishonesty**", so a person may be guilty under s 411 in respect of property that is not stolen property at all.
+- **The reasonable-excuse defence is given to ss 411 and 412 only.** ss 413 and 414 have no such defence and the encoding does not extend it to them -- the same section-by-section discipline the Chapter 16 image defences needed.
+- **s 410's Explanation removes a burden rather than adding an element.** The prosecution need not prove the elements of the offence that made the property stolen, so the underlying offence is a caller-asserted fact and is not computed from the theft, extortion or cheating rules.
+- **s 439 requires no mischief.** It stands on its own conduct and intent -- intentionally running a vessel aground intending theft of what is in it -- and so does not build on s 425, unlike every other section in that group.
+- **s 438 carries its own attempt.** "commits **or attempts to commit** by fire or any explosive substance such mischief as is described in section 437", so no separate s 511 analysis is needed for it.
+- **s 453 requires no trespass.** Being found armed, disguised or equipped is complete in itself, which is why it is not built on s 441 or s 442.
+- **s 442 closes the Chapter 4A dependency.** `registers/verification-register-pass-4.md` §T2 recorded that s 104(5) continues the right of private defence of property against house-breaking, which was defined nowhere in this encoding. It is s 442, and it is now here.
+
 ## 4. Status
 
 `draft`. No claim of fidelity. No HG1/HG2 grant.
 
-Machine-checked: 26 modules, 0 type errors, 192 of 192 assertions satisfied
+Machine-checked: 29 modules, 0 type errors, 230 of 230 assertions satisfied
 (`report/machine-evaluation.md`). §7.2 of that report records two blind spots in the
 available engine which a future run should read it subject to.
 
@@ -186,8 +204,10 @@ Every encoded rule has now been read back against the deposited source text, in 
 defects, all fixed), `registers/verification-register-pass-2.md` for the rules added that day
 (four defects, all fixed), `registers/verification-register-pass-3.md` for the eighteen
 sections added on 11 Sep (no defect found; three drafting traps and two caller traps
-recorded), and `registers/verification-register-pass-4.md` for the 111 Chapter 16 sections
-added the same day (no defect found; nine drafting traps and two structural limits recorded).
+recorded), `registers/verification-register-pass-4.md` for the 111 Chapter 16 sections
+added the same day (no defect found; nine drafting traps and two structural limits recorded),
+and `registers/verification-register-pass-5.md` for the 52 Chapter 17 sections added on
+12 Sep (no defect found; five drafting traps and one limit of the toolchain).
 No pass is an adversarial review, and none can reach the sections
 `registers/coverage-register.md` records as absent. Passes 3 and 4 read back rules written
 the same day, which is a weaker check than passes 1 and 2 -- each says so on its own first
