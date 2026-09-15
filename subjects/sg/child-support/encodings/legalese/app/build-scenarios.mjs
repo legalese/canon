@@ -87,7 +87,7 @@ const childL4 = (c, i) => `
 \`child ${i}\` MEANS Child WITH
     \`name\` IS "child ${i}"
     \`date of birth\` IS ${ymd(c.dob)}
-    \`is a Singapore citizen\` IS TRUE
+    \`a Singapore citizen\` IS TRUE
     \`birth order\` IS ${c.order}
     \`parents lawfully married\` IS TRUE`;
 
@@ -115,7 +115,7 @@ const COMPARISON_PER = 3;
 const windowL4 = (w, i) => `
 \`window ${i}\` MEANS ChildFacts WITH
     \`date of birth\` IS ${ymd(w.dob)}
-    \`is a Singapore citizen\` IS TRUE
+    \`a Singapore citizen\` IS TRUE
     \`birth order\` IS ${w.order}
     \`co-matching already received\` IS ${w.got}
 
