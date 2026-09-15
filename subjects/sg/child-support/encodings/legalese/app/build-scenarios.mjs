@@ -130,7 +130,7 @@ const leaveL4 = (v, i) => `
     \`children aged seven to twelve\` IS 0
     \`months served this period\` IS ${v.months}
     \`gross daily rate\` IS ${v.rate}
-    \`is the natural father\` IS FALSE
+    \`the natural father\` IS FALSE
 
 #EVAL (\`childcare leave under the rules effective on\` (YMD 2026 1 1) \`leave ${i}\`)'s \`days under the Act as it stands\`
 #EVAL (\`childcare leave under the rules effective on\` (YMD 2027 4 1) \`leave ${i}\`)'s \`days under the announced scheme\`
