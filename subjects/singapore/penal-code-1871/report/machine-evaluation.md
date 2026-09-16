@@ -1,8 +1,9 @@
 # Penal Code 1871 — machine evaluation report
 
-**Run date:** 2026-09-14 (`l4` CLI check of the Chapter 18 pass; first run 2026-09-09)
-**Verdict:** **0 type errors across all 31 modules; 277 of 277 assertions satisfied.**
-No directive was skipped, stubbed or held back.
+**Run date:** 2026-09-16 (`l4` CLI check of the 15 Sep and 16 Sep passes; first run 2026-09-09)
+**Verdict:** **0 type errors across all 45 modules; 108 of 108 assertions evaluated were satisfied;**
+**the 535 assertions of `agent-cases.l4` were not evaluated in this run, and §14 says why.**
+The verdicts of the earlier runs stand for the trees they were run against (§4 to §13).
 
 ---
 
@@ -474,3 +475,88 @@ acted on; it is not withdrawn on one run.
 
 Nothing was changed as a result of this run. `registers/verification-register-pass-6.md`
 records the read-back of the new rules; §5 of that register carries the same verdict.
+
+
+---
+
+## 14. Ninth run — 16 Sep 2026, the 15 Sep completion pass and the 16 Sep closing pass
+
+**Verdict: 45 modules, 0 type errors; 108 of 108 assertions evaluated were satisfied; the
+535 assertions of `agent-cases.l4` as it stood on 15 Sep were not evaluated, and the
+evidence below is that they cannot be, in one run, with this build of the CLI.**
+
+Two passes are covered. The 15 Sep pass added fourteen modules and 204 sections
+(`verification-register-pass-7.md`) and cited this §14 for its run; the section was not
+written and no record of that run exists, so this is the first machine record of the
+45-module tree. The 16 Sep pass added the last seven sections (ss 1, 7, 8, 9, 49, 50, 79A;
+`verification-register-pass-8.md`), three fields to `Exception Facts`, one field to
+`Definition Reach Facts`, one field to the `Offence Screen` (now 115), and 40 assertions --
+25 in `chapter-2-definitions.l4` and 15 in `agent-cases.l4`.
+
+Same method as §12 and §13: the CLI at `%LOCALAPPDATA%\Programs\l4\l4.exe`, run directly.
+
+### 14.1 Type-check
+
+| step | result |
+| --- | --- |
+| `l4 check` on each of the 45 modules, before the 16 Sep edits | 45 × `Check succeeded.` |
+| `l4 check` on each of the 45 modules, after them | 45 × `Check succeeded.` |
+
+`agent-cases.l4` (17,000 lines, 40 imports) type-checks in under two minutes on an idle
+machine and took 10 min 53 s when an evaluation run was sharing the machine.
+
+### 14.2 Evaluation, where it completed
+
+| step | result | time |
+| --- | --- | --- |
+| `l4 run` on the 11 modules with their own `#ASSERT`s | **93 of 93 satisfied**, 0 errors | seconds each |
+| scratch module: the 9 section-level s 1 and s 79A assertions from `agent-cases.l4`, importing `types`, `chapter-1-preliminary`, `chapter-4-exceptions` | **9 of 9 satisfied** | 10 s |
+| scratch module: the 4 proposed-act-level s 79A assertions, with all 48 fixtures they reach, importing 7 modules | **4 of 4 satisfied** | 6 s |
+| scratch module: the 2 screen-level s 79A assertions, the same 48 fixtures, importing `agent-compliance.l4` (42 modules in the graph) | **2 of 2 satisfied** | **20 min 9 s**, ~3.5 GB resident |
+
+The 93 are: 46 from the runs of §12 and §13 (unchanged), 22 in `punishment-provisions.l4`
+from 15 Sep, and 25 new in `chapter-2-definitions.l4`. The 15 scratch results are the 15
+assertions added to `agent-cases.l4` on 16 Sep, evaluated verbatim -- same fixtures, same
+directives -- in three modules, two of them with a smaller import graph and the third with
+the full one.
+
+### 14.3 Evaluation, where it did not
+
+| step | result |
+| --- | --- |
+| scratch: `agent-cases.l4` with every directive but the 15 new ones commented out (42 modules in the graph) | killed after 48 min at ~6 GB resident, no output |
+| scratch: the 48 fixtures and 15 new assertions alone, with `agent-cases.l4`'s 40 imports (42 modules) | killed after 33 min at ~3 GB, no output |
+| `l4 run agent-cases.l4` in full, 550 assertions | not attempted, on the evidence of the three rows above |
+
+The same 48 fixtures, the same three full `Proposed Act`s and four of the same assertions
+evaluate in 6 seconds when the module imports seven modules; two assertions take 20 minutes
+when it imports forty-two, and fifteen do not finish in 33. So the cost has two parts, and
+both grow with the import graph: a fixed cost of elaborating the graph, and a per-directive
+cost of the order of a minute or more on the full graph -- which puts a 550-directive run of
+`agent-cases.l4` somewhere between ten hours and never, on this machine and this build. It
+is not in the fixtures, not in the assertions, and not in the screen: §13 measured the
+31-module tree at 61 seconds for 231 assertions, and pass 7 §T7 recorded the first run on
+the 45-module tree killed at 40 minutes. Nothing in the encoding changed between those two
+observations except the number of modules. `verification-register-pass-8.md` §T8 tabulates
+the measurements.
+
+### 14.4 What this run establishes, and what it does not
+
+- Every module type-checks. That is a statement about all 45, each opened in its own right
+  (§7.2).
+- Every assertion added on 16 Sep is satisfied -- all 40, 25 in place and 15 in scratch
+  copies, the two that need the screen included. With the 93 in the chapter modules that is
+  108 of 108 evaluated.
+- **The 535 assertions of `agent-cases.l4` as it stood on 15 Sep have no machine record on
+  the 45-module tree.** 231 of them were satisfied on the 31-module tree (§13); the 304
+  added on 15 Sep have been type-checked and never evaluated. The pass 7 register's "the run
+  that was finally accepted" has no corresponding record and this report does not supply
+  one.
+
+The remedy is not in this repository. Either the CLI's per-import cost is fixed in `l4-ide`,
+or the screen is split so that a chapter's fixtures can be evaluated against a graph the
+size of §14.2's -- which is a design change to `agent-compliance.l4`, and is the next piece
+of work if the fixtures are to be evidence again. Until one of those happens, a change to
+any rule reached only through the screen is verified by `l4 check` and by read-back, and
+not by evaluation.
+

@@ -6,7 +6,7 @@ This subject's idiosyncrasies, in prose, for humans. No script reads this file.
 
 ## 1. What this subject is
 
-An L4 encoding of **Penal Code 1871** (2020 Revised Edition, SSO current version as at 09 Sep 2026) built so an AI agent can screen a proposed act against the constitutive tests of selected offences and ask whether s 6 takes the act outside "offence" -- by a Chapter 4 general exception, or by the Chapter 4A right of private defence.
+An L4 encoding of **Penal Code 1871** (2020 Revised Edition, SSO current version as at 09 Sep 2026) built so an AI agent can screen a proposed act against the constitutive tests of the Code's offences and ask whether s 6 takes the act outside "offence" -- by a Chapter 4 general exception, or by the Chapter 4A right of private defence. Since 16 Sep 2026 it covers every live section of the Act.
 
 The agent-facing entry points are in `agent-compliance.l4`:
 
@@ -21,15 +21,28 @@ Modules, in dependency order:
 
 ```
 types.l4                      the nouns: records and enums, no rules
-chapter-1-preliminary.l4      ss 2, 3, 4, 4A, 4B location facts, and the s 5 saving
-chapter-2-definitions.l4      ss 6A-12, 17, 19-22A, 27-31A, 40-51 (the defined terms)
+chapter-1-preliminary.l4      s 1 short title, ss 2, 3, 4, 4A, 4B location facts, and the s 5 saving
+chapter-2-definitions.l4      ss 6A-12, 17, 19-22A, 27-31A, 40-51 (the defined terms, and the ss 7-9, 49, 50 conventions)
 chapter-2-explanations.l4     ss 23-26, 26A-26H (dishonestly, fraudulently, rashly, ...)
 chapter-2-participation.l4    ss 32-38 (common intention, cooperation, attribution)
 chapter-3-punishments.l4      ss 53, 54, 72, 73, 74, 74A-74E (the punishment vocabulary)
 chapter-4-exceptions.l4       ss 6, 76-95 (the whole of Chapter 4)
 chapter-4a-private-defence.l4 ss 96-106A (the whole of Chapter 4A), and s 6 combined
-chapter-5-abetment.l4         ss 107, 108, 108A, 108B, 111, 113, 114
+chapter-5-abetment.l4         ss 107-120 (the whole of Chapter 5, punishments included)
 chapter-5a-conspiracy.l4      ss 120A, 120B
+chapter-6-state.l4            ss 121-130A (the whole of Chapter 6)
+chapter-6a-6b-piracy-and-genocide.l4  ss 130B-130E (Chapters 6A and 6B)
+chapter-7-armed-forces.l4     ss 131-140B (the whole of Chapter 7)
+chapter-8-unlawful-assembly.l4  ss 141-158 (the whole of Chapter 8)
+chapter-9-public-servants.l4  ss 161-171 (the whole of Chapter 9)
+chapter-10-contempts.l4       ss 172-190 (the whole of Chapter 10)
+chapter-11-false-evidence.l4  ss 191-200 (false evidence)
+chapter-11-public-justice.l4  ss 201-229 (offences against public justice)
+chapter-12-government-stamps.l4  ss 255-263 (the live sections of Chapter 12)
+chapter-14-public-tranquility.l4  ss 267A-268C, 290, 291 (affray, incitement, nuisance, hoaxes)
+chapter-14-public-health-and-safety.l4  ss 269-289 (infection, food, drugs, ways, rash conduct)
+chapter-14-obscenity.l4       ss 292-294 (obscene objects and acts)
+chapter-15-race.l4            ss 298, 298A (the live sections of Chapter 15)
 chapter-16-life.l4            ss 299-301, 304A-304C, 305-308B, 310 (offences affecting life)
 chapter-16-hurt.l4            ss 319-322, 323A, 324-338 (hurt and grievous hurt)
 chapter-16-restraint-and-force.l4  ss 339-358 (restraint, confinement, force, assault)
@@ -47,8 +60,11 @@ chapter-17-mischief-and-trespass.l4  ss 421-424, 425-440, 441-462
 chapter-18-forgery.l4         ss 463, 464
 chapter-18-forged-documents.l4  ss 466-477A (aggravated forgery, forged documents, false instruments, accounts)
 chapter-18-currency.l4        ss 489A-489I (counterfeit and altered currency and bank notes)
-chapter-21-22-speech.l4       ss 499, 503, 504, 505
+chapter-21-22-speech.l4       ss 499, 501, 502, 503, 504, 505, 507
 chapter-23-attempts.l4        s 511
+punishment-provisions.l4      ss 302, 304, 311, 323, 325, 341, 342, 363, 363A, 379, 379A, 384, 392,
+                              395, 406, 417, 419, 426, 447, 448, 458A, 465, 500, 512 (the standalone
+                              punishment sections, as Chapter 3 Punishment values)
 agent-compliance.l4           the screen and the Schedule-to-4B classifier
 agent-cases.l4                scenario fixtures, machine-asserted
 registers/source-bundle/      PC1871.txt / .pdf as retrieved 09 Sep 2026
@@ -59,44 +75,42 @@ registers/verification-register-pass-3.md  the fidelity pass over the rules adde
 registers/verification-register-pass-4.md  the fidelity pass over the Chapter 16 rules
 registers/verification-register-pass-5.md  the fidelity pass over the Chapter 17 rules
 registers/verification-register-pass-6.md  the fidelity pass over the Chapter 18 rules
-registers/missing-sections.md       every live section with no rule, named one by one
+registers/verification-register-pass-7.md  the fidelity pass over the completion-pass rules
+registers/verification-register-pass-8.md  the fidelity pass over the last seven sections
+registers/missing-sections.md       every live section with no rule, named one by one (none since 16 Sep)
 report/machine-evaluation.md  how the encoding was machine-checked, and against what
 ```
 
-The three Chapter 2 and Chapter 3 modules are **freestanding**: they define terms,
-attribution rules and punishment records that the Code's own offence sections rely on, but
-no offence module encoded here imports them yet, and `agent-compliance.l4` does not call
-them. They are directly callable by an agent through their `@export` entry points. Wiring
-them into the offence wrappers is the next piece of work, not something this draft claims
-to have done.
+The Chapter 2 definition and participation modules are **freestanding**: they define terms
+and attribution rules that the Code's own offence sections rely on, but no offence module
+imports them, and `agent-compliance.l4` does not call them. They are directly callable by an
+agent through their `@export` entry points. `chapter-2-explanations.l4` (dishonestly,
+fraudulently) is imported by the offence modules that use those terms, and
+`chapter-3-punishments.l4` is imported since 15 Sep by every module that computes a
+punishment section. Wiring the definitions into the offence tests is the next piece of work,
+not something this draft claims to have done.
 
 ## 2. What is deliberately not encoded
 
-The Code lists 600 sections, of which 75 are repealed. This draft encodes **314 of the 525
-live sections -- about 60%**. `registers/coverage-register.md` records which ones, chapter by
-chapter and section by section; what follows is the policy behind those numbers.
+The Code lists 600 sections, of which 75 are repealed. This draft encodes **all 525 live
+sections**. `registers/coverage-register.md` records which module carries each, chapter by
+chapter and section by section; `registers/missing-sections.md` is kept, and is empty.
 
-The general parts are close to complete (Chapter 1: 6 of 7; Chapter 2: 49 of 54; Chapter 3:
-10 of 10; Chapter 4: 20 of 21; **Chapter 4A: 12 of 12**; Chapter 5A: 2 of 2 -- and every gap
-there is a section with no factual test to decide).
+**Every live section has a rule.** Until 16 Sep 2026 seven did not -- ss 1, 7, 8, 9, 49, 50
+and 79A, the short title, four drafting conventions, the definition of "section", and the
+s 79A closure rule -- on the view that none states a factual test. That view was given up
+on 16 Sep, and §3 records what each now decides; `coverage-register.md` §3 records how much
+of it is substance, which for five of the seven is little. What remains deliberately absent
+is not a section but a way of using one:
 
-**Chapters 16, 17 and 18 are complete in substance** -- 111 of Chapter 16's 120 live sections,
-64 of Chapter 17's 76, and 27 of Chapter 18's 28. The sections not encoded in any of the three
-are pure punishment provisions, so every section of those chapters that states a testable
-rule has one. Chapters 16 and 17 are the two largest offence chapters in the Code, and they
-are the two an AI agent is most likely to walk into when checking its own output or a user's
-requested act; Chapter 18 is where forged documents, false instruments and counterfeit
-currency live, which is the next most likely. The remaining offence chapters are still a
-deliberate thin slice.
-
-- **Not encoded:** Chapters 6 to 15 (State, armed forces, unlawful assembly, public servants, false evidence, public health, religion), ss 500 to 502 of Chapter 21, s 507 of Chapter 22, and the ten exceptions to s 499 as individual tests.
-- **The punishment sections of Chapters 16, 17 and 18** -- ss 302, 304, 311, 323, 325, 341, 342, 363 and 363A; ss 379, 379A, 384, 392, 395, 406, 417, 419, 426, 447, 448 and 458A; and s 465 -- are the only parts of those chapters not encoded, and are excluded on the same ground as ss 109 to 120, that this subject does not compute sentence.
+- **The s 499 exceptions** are a single caller-asserted flag `a section 499 exception applies`, not ten tests.
 - **s 377BN(6)**, the marriage defence to the child abuse material offences, is **not encoded**. Its conditions turn on who is depicted in the material and who consented to what, which the `Sexual Image` record does not carry. `registers/verification-register-pass-4.md` records the gap rather than leaving it silent.
-- **s 499 exceptions** are a single caller-asserted flag `a section 499 exception applies`.
-- **Punishment** is not computed for any particular offence. `chapter-3-punishments.l4` encodes the Chapter 3 vocabulary -- what a `Punishment` is (s 53, s 54), how to pick the lower of two where it is doubtful which offence was committed (s 72), and the six enhanced-penalty sections that double a maximum (ss 73 to 74E). It does **not** attach a punishment to any offence section: no `the proposed act constitutes ...` wrapper returns one, and the doubling rules take the base maximum as a caller-supplied argument. The encoding still answers whether the constitutive test is met, not what sentence a court would pass.
+- **Punishment is not computed for any offence by the offence wrappers.** Since 15 Sep 2026 every standalone punishment section has a rule (`punishment-provisions.l4`, and the chapter modules for ss 109 to 120, 130E, 143, 147, 193, 267B and 290), each returning a Chapter 3 `Punishment` -- the ceiling, and where the Code fixes one the floor, that the section makes available. That reverses the policy under which the passes of 11 to 14 Sep left ss 302, 379, 465 and the rest out. What has not changed: no `the proposed act constitutes ...` wrapper returns a punishment, the screen carries none, the enhanced-penalty sections still take the base maximum as an argument, and nothing here is a sentence. An agent that wants the prescribed punishment for theft calls `the punishment for theft`; the screen will not volunteer it.
+- **The internal punishment splits of offence sections** -- s 153's "if rioting is committed", s 173's "in the case of an individual", s 201's three gravity tiers, s 292(1A)'s "10 or more individuals" and their like -- are carried as facts on the record and not decided, as they were in Chapters 16 to 18. A section whose whole content is a punishment is computed; a punishment clause inside an offence section is not.
 - **ss 32 to 38** are encoded as standalone attribution tests. They are not applied automatically to the offence wrappers: an agent that wants s 34 common-intention liability must call `the person is liable under section 34 as if he did the act alone` itself.
-- **The defined terms** in `chapter-2-definitions.l4` (ss 11, 19, 21, 22, 29, 30, 40, 43, 44, 51 and the rest) are likewise callable but not spliced into the offence tests, which continue to take the underlying facts as booleans asserted by the caller.
-- **Chapter 5, ss 109, 110, 112 and 115 to 120** are not encoded. They are punishment and concealment provisions, consistent with this subject not computing sentence. The three substantive liability rules in that range -- ss 111, 113 and 114 -- are now encoded.
+- **The defined terms** in `chapter-2-definitions.l4` (ss 11, 19, 21, 22, 29, 30, 40, 43, 44, 51 and the rest) are likewise callable but not spliced into the offence tests, which continue to take the underlying facts as booleans asserted by the caller. "Public servant" (s 21) is the clearest case: Chapters 9, 10 and 11 carry `is a public servant` as a fact on their own records, as the `Actor` record does, and neither is derived from s 21.
+- **The ss 372 and 373 presumptions** are not encoded (pass 4); the s 286 presumption is (pass 7, §N27). The inconsistency is recorded there.
+- **s 97(a)'s "offence affecting the human body"** is still caller-asserted, for the two-actor reason `verification-register-pass-4.md` §T3 gives.
 - **Computer Misuse Act 1993** is a different Act and is not in the source bundle.
 
 ## 3. Interpretive choices
@@ -211,15 +225,52 @@ deliberate thin slice.
 - **s 489H asks whether an *operation* was performed; s 489I whether an *offence* was committed.** The first is satisfied by an innocent alteration, the second is not. Two facts, not merged.
 - **s 489E conjoins s 107 but not s 108**, as s 111 does: the section supplies the criminality of the thing abetted itself, so the abetment need not pass the capable-person test.
 
+### Added 15 Sep 2026 -- Chapters 6 to 15, the rest of Chapter 5, and the punishment sections
+
+- **The abetments inside Chapters 6 and 7 are facts, not the s 107 record.** ss 121, 121C, 125, 131 to 135 and 138 each name what is abetted and make the abetment a principal offence; they are encoded as one fact each, the way ss 111 and 489E were built on s 107 without s 108, but a step further -- the section supplies the whole of the criminality, so nothing of Chapter 5 is conjoined.
+- **Chapter 7's s 140B is one rule.** Every Chapter 7 section but s 140 names "an officer or any serviceman in the Singapore Armed Forces or any visiting forces lawfully present in Singapore", and s 140B extends the Chapter to the police. `the person concerned is within Chapter 7` is that disjunction, conjoined by each section.
+- **s 139 bites in the wrapper.** The saving says a person subject to service discipline law is not *punishable* under the Code, not that the act is no offence. The section tests ignore it; the Chapter 7 wrapper conjoins its negation.
+- **s 154 is read as written**, with its three omissions -- no notice to the police, no prevention, no suppression -- conjoined. The distributive reading, on which any one omission suffices, is the alternative, and `verification-register-pass-7.md` §N23 records both.
+- **s 149 builds on s 142, not s 141.** "Member" is defined, and constructive guilt for an offence committed in prosecution of the common object attaches to members in that sense.
+- **s 151 is not narrowed by its Explanation.** The Explanation routes a s 141 case to s 145's punishment; it does not remove it from s 151's words. A s 145 case satisfies both.
+- **"Harbour" is a rule three times over.** ss 130A, 140A and 216B define it identically for Chapter 6, Chapter 7 and ss 212, 216 and 216A; each is a rule disjoining the harbouring fact with the supply-of-shelter fact, so the definition reaches every limb that uses the word -- and does not reach s 157, which no definition names.
+- **The ss 261 to 263 and ss 206 to 210 "fraudulently" is s 25.** Both groups take `the act is done fraudulently` from the `Fault` record, as ss 471 and 489F do. ss 261 to 263 disjoin it with "with intent to cause loss to the Government", which is a fact on the stamp record. s 477A's "with intent to defraud" remains the one place the word stays inside the fact.
+- **s 255(2)'s stamp certificate reaches ss 255 to 262 and not s 263**, so the revenue stamp and the certificate are two facts, gathered by one rule for the eight sections and tested singly by the ninth.
+- **s 286 is encoded as a route into s 285.** The presumption -- a cigarette dropped where a fire occurs within 60 minutes -- stands in for the contribution element until the contrary is proved, which is a negated conjunct. Pass 4 left the ss 372 and 373 presumptions out; §N27 of pass 7 records why this one is in and does not claim the two are consistent.
+- **ss 284 to 289 share one ladder of consequences.** Each section disjoins the rungs it lists, so the shared facts do not widen any section: s 288 has two rungs, s 289 has "likely to cause grievous hurt", s 285 alone has property damage.
+- **s 292(3) reaches s 293; the s 292 Exception does not.** The authorised-dealing deeming is conjoined, negated, wherever the s 292(2) object is used; the religious Exception only on ss 292, 292(1C) and 292B.
+- **s 225A's fault is taken from its punishment paragraphs.** The offence clause has no fault word; paragraphs (a) and (b) punish the intentional and the negligent omission. An omission that is neither is outside both, so `intentionally or negligently omits` is conjoined as an element.
+- **s 4A is now decided twice.** `chapter-1-preliminary.l4` still takes the Chapter 6 / Chapter 6B classification as a caller-asserted fact. `agent-compliance.l4` adds a second route from the encoded tests -- `a Chapter 6 offence is made out` or `constitutes genocide` -- and the reach rule disjoins them.
+- **The Schedule to s 4B is complete but for item 15.** Items 1 and 2 (ss 268A to 268C) were the last specified offences the classifier could not compute; `the proposed act constitutes a hoax of a harmful thing` closes them.
+- **The punishment sections are computed, and the policy is recorded in §2.** Three carry a test: s 302 on the s 300(a) fact already on the `Homicide` record, s 304 on the two s 299 intention facts, s 512 on whether the offence attempted carries death or life and whether express provision is made. s 116(2) and s 512(3), under which a minimum sentence does not bind the abettor or attempter, are one transformation, `with no minimum sentence`; s 458A's added caning is another; ss 119 and 120's fractions of the longest term, with the offence's own fine, a third.
+- **s 379A(2), disqualification from driving, is not carried.** It is an order the court makes on conviction, not a punishment within s 53.
+
+### Added 16 Sep 2026 -- the last seven sections
+
+- **s 79A is decided the way s 5 is, and for the same reason.** Both are closure provisions that add no limb to any offence test, and until 16 Sep the first was decided and the second was not. The asymmetry is gone: `a mistake of law or ignorance of the law is a defence to the charge` is TRUE only where written law provides that it is, which is s 79A(1) read as the question an agent asks; and `the prosecution must prove the fault element notwithstanding the alleged mistake of law` is s 79A(2), TRUE where the alleged mistake may negate the fault element. Neither is a limb of `a general exception applies`, and neither feeds the wrappers: a TRUE from the first is another written law's defence, reported by the screen beside s 5, while the theft, or whatever the offence is, stays indicated. The fixtures `taking a knife in ignorance of the law` and `taking a knife under a mistake of law that written law excuses` are the two halves of that.
+- **s 79A(2) is decided; ss 79(2) and 80(2) still are not.** All three are burden rules of the same shape. s 79A(2) is decided because it is the one thing the s 79A(1) FALSE needs said beside it, and because s 79A has no exception limb of its own to carry its coverage. ss 79(2) and 80(2) sit beside decided exceptions and add nothing to them. That is a reason, not a principle; `verification-register-pass-8.md` §N32 records it so a later pass can make the three consistent either way.
+- **s 49 is an arithmetic rule, not a calendar.** `the period in calendar months of` years months is 12 × years + months, which is what Gregorian reckoning says a period stated in years and months amounts to, and is the conversion between the `Punishment` record's years and s 40(3)'s months. No date is carried anywhere in this subject, so no day is counted and no particular month's length is computed. A caller who needs the day on which a term ends is outside this encoding.
+- **ss 8 and 10 are one rule.** Separately, each is a definition; together they decide something: "he" reaches a person of either sex, "man" and "woman" one each. s 375 -- rape by "any man" -- is the section that turns on it. `the word reaches a person of that sex` is total over `Sex` for the pronoun, which is exactly what s 8 provides and is why the rule is not vacuous.
+- **s 7 is the within-Code half of s 6A.** s 6A already had a rule carrying the ss 22A to 26H explanations out to other written laws, with the s 24 and s 25 carve-outs. s 7 says that within the Code every explanation governs every use. The two are disjoined into `the Code explanation governs the expression as used`. The s 6A record's `the offence is in this Code` is read as "the use is a use in this Code", and one field was added to it for whether the expression is explained anywhere in the Code, since s 7 is not confined to ss 22A to 26H.
+- **s 9 is two rules.** The singular reaching the plural and the plural reaching the singular are stated separately, each with "unless the contrary appears from the context" as a negated conjunct, so that "5 or more persons" in s 141 -- plural, context contrary -- does not reach one person, and "any person" in s 415 reaches several.
+- **ss 1 and 50 are nominal, and are named as such.** s 1 is a string constant and an equality test on a citation; s 50 is the facts-record-and-predicate shape of ss 48 and 51. They are decided so that the count of 525 is a count of rules and not of `§§` headings, and nothing more is claimed for them.
+- **The screen has a 115th field.** `a mistake of law is a defence s 79A` sits beside `another written law may still apply s 5`, and is computed from the `Exception Facts` record's three new s 79A facts. No existing fixture had to change but `blank exception facts`, which gained the three as FALSE.
+
 ## 4. Status
 
 `draft`. No claim of fidelity. No HG1/HG2 grant.
 
-Machine-checked: 31 modules, 0 type errors, 277 of 277 assertions satisfied
-(`report/machine-evaluation.md`). §7.2 of that report records two blind spots in the
-available engine which a future run should read it subject to.
+Machine-checked: 45 modules, 0 type errors. `report/machine-evaluation.md` §14 is the run
+of 16 Sep 2026, and it is not a clean bill: 108 of 108 assertions evaluated are
+satisfied, including all 40 added on 16 Sep, but the 535
+assertions of `agent-cases.l4` as it stood on 15 Sep **have not been evaluated on the
+45-module tree** -- the `l4` CLI's evaluation cost grows with the import graph to the point
+where a 42-module graph does not finish in an hour, and the 15 Sep pass cited a §14 for a
+run it never recorded. §7.2 of that report records two blind spots in the earlier engine,
+and §14.4 says what the fixtures are and are not evidence of until either the CLI or the
+screen's import graph is changed.
 
-Every encoded rule has now been read back against the deposited source text, in six passes:
+Every encoded rule has been read back against the deposited source text, in eight passes:
 `registers/verification-register.md` for the rules that existed before 09 Sep 2026 (twelve
 defects, all fixed), `registers/verification-register-pass-2.md` for the rules added that day
 (four defects, all fixed), `registers/verification-register-pass-3.md` for the eighteen
@@ -227,11 +278,14 @@ sections added on 11 Sep (no defect found; three drafting traps and two caller t
 recorded), `registers/verification-register-pass-4.md` for the 111 Chapter 16 sections
 added the same day (no defect found; nine drafting traps and two structural limits recorded),
 `registers/verification-register-pass-5.md` for the 52 Chapter 17 sections added on
-12 Sep (no defect found; five drafting traps and one limit of the toolchain), and
+12 Sep (no defect found; five drafting traps and one limit of the toolchain),
 `registers/verification-register-pass-6.md` for the 25 Chapter 18 sections added on 14 Sep
-(no defect found; five drafting traps and one observation on the toolchain).
-No pass is an adversarial review, and none can reach the sections
-`registers/coverage-register.md` records as absent. Passes 3 to 6 read back rules written
-the same day, which is a weaker check than passes 1 and 2 -- each says so on its own first
-page.
-
+(no defect found; five drafting traps and one observation on the toolchain), and
+`registers/verification-register-pass-7.md` for the 204 sections added on 15 Sep (five
+defects found in read-back and fixed before the machine check; nine drafting traps, one
+policy change and one observation on the toolchain recorded), and
+`registers/verification-register-pass-8.md` for the seven sections added on 16 Sep (no
+defect found; one policy change and one drafting note recorded).
+No pass is an adversarial review. Passes 3 to 8 read back rules written the same day, which
+is a weaker check than passes 1 and 2 -- each says so on its own first page, and pass 7,
+which read back 204 sections in one day, says so most loudly.

@@ -1,100 +1,95 @@
 # Penal Code 1871 — missing-section register
 
-**Run date:** 2026-09-14 (regenerated after the Chapter 18 pass)
+**Run date:** 2026-09-16 (regenerated after the closing pass)
 **Question answered:** which live sections of the Act have no `@ref` in any `.l4` module,
 named one by one with the Act's own marginal heading.
 
-This is the companion to `coverage-register.md`. That register counts coverage and
-enumerates the gaps only for the chapters that are partially encoded; for the thirteen
-chapters where nothing is encoded it gives a section *range* and a total. This register
-names all 211 missing sections, so that a reader deciding what to encode next is choosing
-from a list rather than from a range.
+This is the companion to `coverage-register.md`. That register counts coverage; this one
+names every gap, so that a reader deciding what to encode next is choosing from a list
+rather than from a range. As at 16 Sep 2026 **the list is empty**: the seven sections that
+stood outside the count from 09 to 15 Sep (ss 1, 7, 8, 9, 49, 50, 79A) were encoded on
+16 Sep, and `coverage-register.md` §3 records what each rule decides and how much weight it
+carries. This file is kept so that the next reader who asks "what is missing?" finds the
+answer, and the method by which it was reached, rather than an absent file.
 
 **Method.** The arrangement of sections at the head of `registers/source-bundle/PC1871.txt`
 (SSO current version as at 09 Sep 2026) was parsed for all 600 listed sections; the Act's
 body was parsed independently for the same 600 and supplied the marginal headings. The two
 passes agree on the section set exactly, which is the check that the parse is sound. Every
-`@ref` in the thirty-one `.l4` modules was expanded (`ss X, Y, Z` lists, `ss X to Y` ranges,
+`@ref` in the 45 `.l4` modules was expanded (`ss X, Y, Z` lists, `ss X to Y` ranges,
 parenthesised subsections and `Explanation N` / `Exception N` tails stripped) and matched
 against that set.
 
 Counts reproduce `coverage-register.md` exactly: **600 listed, 75 repealed, 525 live,**
-**314 encoded, 211 not encoded.** Repealed sections are listed below for completeness but
+**525 encoded, 0 not encoded.** Repealed sections are listed below for completeness but
 are struck from every count.
 
 As in the coverage register, this is a mechanical record of citation, not of fidelity.
-A section counted as encoded has an `@ref`; whether the rule reads it correctly is answered
-by `verification-register.md` and `verification-register-pass-2.md`.
 
 ---
 
-Seven of the 211 are **deliberate** and documented in the module itself under their own
-`§§` heading -- sections that state no factual test to decide. They are marked *deliberate*
-in the tables below and explained in `coverage-register.md` §3. Discounting them, **204**
-live sections are unencoded for reasons of scope rather than of drafting.
+**No live section is unencoded**, for reasons of scope or otherwise. The seven that were
+listed here until 15 Sep as deliberate -- sections thought to state no factual test -- each
+have a rule since 16 Sep, under their own `§§` heading in `chapter-1-preliminary.l4` (s 1),
+`chapter-2-definitions.l4` (ss 7, 8, 9, 49, 50) and `chapter-4-exceptions.l4` (s 79A).
 
 ## 1. Missing sections by chapter
 
 | chapter | live | encoded | **missing** |
 | --- | ---: | ---: | ---: |
-| **Chapter 1** — PRELIMINARY | 7 | 6 | 1 |
-| **Chapter 2** — GENERAL EXPLANATIONS | 54 | 49 | 5 |
+| **Chapter 1** — PRELIMINARY | 7 | 7 | 0 |
+| **Chapter 2** — GENERAL EXPLANATIONS | 54 | 54 | 0 |
 | **Chapter 3** — Punishments | 10 | 10 | 0 |
-| **Chapter 4** — General Exceptions | 21 | 20 | 1 |
+| **Chapter 4** — General Exceptions | 21 | 21 | 0 |
 | **Chapter 4A** — Right of private defence | 12 | 12 | 0 |
-| **Chapter 5** — Abetment | 16 | 7 | 9 |
+| **Chapter 5** — Abetment | 16 | 16 | 0 |
 | **Chapter 5A** — Criminal Conspiracy | 2 | 2 | 0 |
-| **Chapter 6** — Offences against the State | 15 | 0 | 15 |
-| **Chapter 6A** — Piracy | 2 | 0 | 2 |
-| **Chapter 6B** — Genocide | 2 | 0 | 2 |
-| **Chapter 7** — Offences relating to the armed forces | 12 | 0 | 12 |
-| **Chapter 8** — Offences relating to unlawful assembly | 18 | 0 | 18 |
-| **Chapter 9** — Offences by or relating to public servants | 11 | 0 | 11 |
-| **Chapter 10** — Contempts of the lawful authority of public servants | 19 | 0 | 19 |
-| **Chapter 11** — False evidence and offences against public justice | 43 | 0 | 43 |
-| **Chapter 12** — Offences relating to government stamps | 9 | 0 | 9 |
+| **Chapter 6** — Offences against the State | 15 | 15 | 0 |
+| **Chapter 6A** — Piracy | 2 | 2 | 0 |
+| **Chapter 6B** — Genocide | 2 | 2 | 0 |
+| **Chapter 7** — Offences relating to the armed forces | 12 | 12 | 0 |
+| **Chapter 8** — Offences relating to unlawful assembly | 18 | 18 | 0 |
+| **Chapter 9** — Offences by or relating to public servants | 11 | 11 | 0 |
+| **Chapter 10** — Contempts of the lawful authority of public servants | 19 | 19 | 0 |
+| **Chapter 11** — False evidence and offences against public justice | 43 | 43 | 0 |
+| **Chapter 12** — Offences relating to government stamps | 9 | 9 | 0 |
 | **Chapter 13** — *(wholly repealed)* | 0 | 0 | 0 |
-| **Chapter 14** — Offences affecting the public tranquility, public health, safety, convenience, decency and morals | 35 | 0 | 35 |
-| **Chapter 15** — Offences relating to race | 2 | 0 | 2 |
-| **Chapter 16** — Offences affecting the human body | 120 | 111 | 9 |
-| **Chapter 17** — Offences against property | 76 | 64 | 12 |
-| **Chapter 18** — Offences relating to documents or electronic records, false instruments, and to currency and bank notes | 28 | 27 | 1 |
+| **Chapter 14** — Offences affecting the public tranquility, public health, safety, convenience, decency and morals | 35 | 35 | 0 |
+| **Chapter 15** — Offences relating to race | 2 | 2 | 0 |
+| **Chapter 16** — Offences affecting the human body | 120 | 120 | 0 |
+| **Chapter 17** — Offences against property | 76 | 76 | 0 |
+| **Chapter 18** — Offences relating to documents or electronic records, false instruments, and to currency and bank notes | 28 | 28 | 0 |
 | **Chapter 20** — *(wholly repealed)* | 0 | 0 | 0 |
-| **Chapter 21** — Defamation | 4 | 1 | 3 |
-| **Chapter 22** — Criminal intimidation, insult and annoyance | 5 | 4 | 1 |
-| **Chapter 23** — Attempts to commit offences | 2 | 1 | 1 |
-| **total** | **525** | **314** | **211** |
+| **Chapter 21** — Defamation | 4 | 4 | 0 |
+| **Chapter 22** — Criminal intimidation, insult and annoyance | 5 | 5 | 0 |
+| **Chapter 23** — Attempts to commit offences | 2 | 2 | 0 |
+| **total** | **525** | **525** | **0** |
+
+For the record, the same table on 15 Sep 2026, after the completion pass and before the
+closing pass, read 518 encoded and 7 missing: Chapter 1 at 6 of 7 (s 1), Chapter 2 at 49 of
+54 (ss 7, 8, 9, 49, 50) and Chapter 4 at 20 of 21 (s 79A). On 14 Sep 2026, before the
+completion pass, it read 314 encoded and 211 missing, with eleven chapters at zero: 6 (15), 6A (2), 6B (2), 7 (12), 8 (18), 9 (11),
+10 (19), 11 (43), 12 (9), 14 (35) and 15 (2); Chapter 5 at 7 of 16; Chapters 16, 17 and 18
+short by their 9, 12 and 1 punishment sections; Chapters 21, 22 and 23 short by ss 500 to
+502, 507 and 512.
 
 ---
 
 ## 2. The missing sections, named
 
-Each table lists every live section of the chapter that no module cites. Sections already
-encoded are omitted; repealed sections are omitted and noted in the chapter's preamble.
-
 ### Chapter 1 — PRELIMINARY
 
-6 of 7 live sections encoded.
+7 of 7 live sections encoded.
 
-**1 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 1 | Short title | *deliberate* -- short title; no test to decide |
+**Nothing missing — every live section in this chapter is cited.** s 1 was the last to be,
+on 16 Sep 2026.
 
 ### Chapter 2 — GENERAL EXPLANATIONS
 
-49 of 54 live sections encoded; 2 repealed and excluded.
+54 of 54 live sections encoded; 2 repealed and excluded.
 
-**5 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 7 | Expression once explained is used in the same sense throughout this Code | *deliberate* -- rule of construction, no factual test |
-| 8 | "Gender" | *deliberate* -- drafting convention; encoding is gender-neutral |
-| 9 | "Number" | *deliberate* -- drafting convention (singular/plural) |
-| 49 | "Year" and "month" | *deliberate* -- every period here is Gregorian by construction |
-| 50 | "Section" | *deliberate* -- names a portion of a Chapter; no test |
+**Nothing missing — every live section in this chapter is cited.** ss 7, 8, 9, 49 and 50
+were the last to be, on 16 Sep 2026.
 
 ### Chapter 3 — Punishments
 
@@ -104,13 +99,11 @@ encoded are omitted; repealed sections are omitted and noted in the chapter's pr
 
 ### Chapter 4 — General Exceptions
 
-20 of 21 live sections encoded.
+21 of 21 live sections encoded.
 
-**1 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 79A | Mistake of law or ignorance of law not defence | *deliberate* -- closure rule, contributes no limb to the exceptions |
+**Nothing missing — every live section in this chapter is cited.** s 79A was the last to
+be, on 16 Sep 2026; it had until then been the one section a range citation swallowed
+without a rule (see §4, item 3).
 
 ### Chapter 4A — Right of private defence
 
@@ -120,21 +113,9 @@ encoded are omitted; repealed sections are omitted and noted in the chapter's pr
 
 ### Chapter 5 — Abetment
 
-7 of 16 live sections encoded.
+16 of 16 live sections encoded.
 
-**9 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 109 | Punishment of abetment if the act abetted is committed in consequence, and where no express provision is made for its punishment |  |
-| 110 | Punishment of abetment if the person abetted does the act with a different intention from that of the abettor |  |
-| 112 | Abettor, when liable to cumulative punishment for act abetted and for act done |  |
-| 115 | Abetment of offence punishable with death or imprisonment for life |  |
-| 116 | Abetment of offence punishable with imprisonment |  |
-| 117 | Abetting the commission of an offence by the public or by more than 10 persons |  |
-| 118 | Concealing a design to commit an offence punishable with death or imprisonment for life |  |
-| 119 | A public servant concealing a design to commit an offence which it is his duty to prevent |  |
-| 120 | Concealing a design to commit an offence punishable with imprisonment |  |
+**Nothing missing — every live section in this chapter is cited.**
 
 ### Chapter 5A — Criminal Conspiracy
 
@@ -144,359 +125,105 @@ encoded are omitted; repealed sections are omitted and noted in the chapter's pr
 
 ### Chapter 6 — Offences against the State
 
-0 of 15 live sections encoded.
+15 of 15 live sections encoded.
 
-**15 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 121 | Waging or attempting to wage war or abetting the waging of war against the Government |  |
-| 121A | Offences against the President's person |  |
-| 121B | Offences against authority |  |
-| 121C | Abetting offences under section 121A or 121B |  |
-| 121D | Intentional omission to give information of offences against section 121, 121A, 121B or 121C by a person bound to inform |  |
-| 122 | Collecting arms, etc., with the intention of waging war against the Government |  |
-| 123 | Concealing with intent to facilitate a design to wage war |  |
-| 124 | Assaulting President, etc., with intent to compel or restrain the exercise of any lawful power |  |
-| 125 | Waging war against any power in alliance or at peace with Singapore |  |
-| 126 | Committing depredation on the territories of any power in alliance or at peace with Singapore |  |
-| 127 | Receiving property taken by war or depredation mentioned in sections 125 and 126 |  |
-| 128 | Public servant voluntarily allowing prisoner of State or war in his custody to escape |  |
-| 129 | Public servant negligently suffering prisoner of State or war in his custody to escape |  |
-| 130 | Aiding escape of, rescuing, or harbouring such prisoner |  |
-| 130A | "Harbour" |  |
+**Nothing missing — every live section in this chapter is cited.**
 
 ### Chapter 6A — Piracy
 
-0 of 2 live sections encoded.
+2 of 2 live sections encoded.
 
-**2 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 130B | Piracy by law of nations. Cf. 12 and 13 Victoria c. 96 (Admiralty Offences (Colonial) Act 1849) |  |
-| 130C | Piratical acts |  |
+**Nothing missing — every live section in this chapter is cited.**
 
 ### Chapter 6B — Genocide
 
-0 of 2 live sections encoded.
+2 of 2 live sections encoded.
 
-**2 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 130D | Genocide |  |
-| 130E | Punishment for genocide |  |
+**Nothing missing — every live section in this chapter is cited.**
 
 ### Chapter 7 — Offences relating to the armed forces
 
-0 of 12 live sections encoded.
+12 of 12 live sections encoded.
 
-**12 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 131 | Abetting mutiny, or attempting to seduce an officer or a serviceman from his duty |  |
-| 132 | Abetment of mutiny, if mutiny is committed in consequence thereof |  |
-| 133 | Abetment of an assault by an officer or a serviceman on his superior officer, when in the execution of his office |  |
-| 134 | Abetment of such assault, if the assault is committed |  |
-| 135 | Abetment of the desertion of an officer or a serviceman |  |
-| 136 | Harbouring a deserter |  |
-| 137 | Deserter concealed on board merchant vessel through negligence of master |  |
-| 138 | Abetment of act of insubordination by an officer or a serviceman |  |
-| 139 | Saving |  |
-| 140 | Wearing the dress of a serviceman |  |
-| 140A | "Harbour" |  |
-| 140B | Application of Chapter 7 to Singapore Police Force |  |
+**Nothing missing — every live section in this chapter is cited.**
 
 ### Chapter 8 — Offences relating to unlawful assembly
 
-0 of 18 live sections encoded; 3 repealed and excluded.
+18 of 18 live sections encoded; 3 repealed and excluded.
 
-**18 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 141 | Unlawful assembly |  |
-| 142 | Being a member of an unlawful assembly |  |
-| 143 | Punishment |  |
-| 144 | Joining an unlawful assembly armed with any deadly weapon |  |
-| 145 | Joining or continuing in an unlawful assembly, knowing that it has been commanded to disperse |  |
-| 146 | Force used by one member in prosecution of common object |  |
-| 147 | Punishment for rioting |  |
-| 148 | Rioting, armed with a deadly weapon |  |
-| 149 | Every member of an unlawful assembly to be deemed guilty of any offence committed in prosecution of common object |  |
-| 150 | Hiring, or conniving at hiring, of persons to join an unlawful assembly |  |
-| 151 | Knowingly joining or continuing in any assembly of 5 or more persons after it has been commanded to disperse |  |
-| 152 | Assaulting or obstructing public servant when suppressing riot, etc. |  |
-| 153 | Intentionally or rashly giving provocation, with intent to cause riot |  |
-| 154 | Owner or occupier of land on which an unlawful assembly is held |  |
-| 155 | Liability of person for whose benefit a riot is committed |  |
-| 156 | Liability of agent of owner or occupier for whose benefit a riot is committed |  |
-| 157 | Harbouring persons hired for an unlawful assembly |  |
-| 158 | Being hired to take part in an unlawful assembly or riot |  |
+**Nothing missing — every live section in this chapter is cited.**
 
 ### Chapter 9 — Offences by or relating to public servants
 
-0 of 11 live sections encoded.
+11 of 11 live sections encoded.
 
-**11 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 161 | Public servant taking a gratification, other than legal remuneration, in respect of an official act |  |
-| 162 | Taking a gratification in order, by corrupt or illegal means, to influence a public servant |  |
-| 163 | Taking a gratification, for the exercise of personal influence with a public servant |  |
-| 164 | Punishment for abetment by public servant of the offences above defined |  |
-| 165 | Public servant obtaining any valuable thing, without consideration, from person concerned in any proceeding or business transacted by such public servant |  |
-| 166 | Public servant disobeying a direction of the law, with intent to cause injury to any person |  |
-| 167 | Public servant framing an incorrect document or electronic record with intent to cause injury |  |
-| 168 | Public servant unlawfully engaging in trade |  |
-| 169 | Public servant unlawfully buying or bidding for property |  |
-| 170 | Personating a public servant |  |
-| 171 | Wearing garb or carrying token used by public servant, with fraudulent intent |  |
+**Nothing missing — every live section in this chapter is cited.**
 
 ### Chapter 10 — Contempts of the lawful authority of public servants
 
-0 of 19 live sections encoded.
+19 of 19 live sections encoded.
 
-**19 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 172 | Absconding to avoid arrest on warrant or service of summons, etc., proceeding from a public servant |  |
-| 173 | Preventing service of summons, etc., or preventing publication thereof |  |
-| 174 | Failure to attend in obedience to order from public servant |  |
-| 175 | Omission to produce document or electronic record to public servant by person legally bound to produce such document or electronic record |  |
-| 176 | Omission to give notice or information to public servant by person legally bound to give such notice or information |  |
-| 177 | Furnishing false information |  |
-| 178 | Refusing oath when duly required to take oath by a public servant |  |
-| 179 | Refusing to answer public servant authorised to question |  |
-| 180 | Refusing to sign statement |  |
-| 181 | False statement on oath to public servant or person authorised to administer an oath |  |
-| 182 | False information, with intent to cause a public servant to use his lawful power to the injury of another person |  |
-| 183 | Resistance to taking of property by lawful authority of public servant |  |
-| 184 | Obstructing sale of property offered for sale by authority of public servant |  |
-| 185 | Illegal purchase or bid for property offered for sale by authority of public servant |  |
-| 186 | Obstructing public servant in discharge of his public functions |  |
-| 187 | Omission to assist public servant when bound by law to give assistance |  |
-| 188 | Disobedience to order duly promulgated by public servant |  |
-| 189 | Threat of injury to a public servant |  |
-| 190 | Threat of injury to induce any person to refrain from applying for protection to a public servant |  |
+**Nothing missing — every live section in this chapter is cited.**
 
 ### Chapter 11 — False evidence and offences against public justice
 
-0 of 43 live sections encoded; 3 repealed and excluded.
+43 of 43 live sections encoded; 3 repealed and excluded.
 
-**43 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 191 | Giving false evidence |  |
-| 192 | Fabricating false evidence |  |
-| 193 | Punishment for false evidence |  |
-| 194 | Giving or fabricating false evidence with intent to procure conviction of a capital offence |  |
-| 195 | Giving or fabricating false evidence with intent to procure conviction of an offence punishable with imprisonment |  |
-| 196 | Using evidence known to be false |  |
-| 197 | Issuing or signing a false certificate |  |
-| 198 | Using as a true certificate one known to be false in a material point |  |
-| 199 | False statement made in any declaration which is by law receivable as evidence |  |
-| 200 | Using as true any such declaration known to be false |  |
-| 201 | Causing disappearance of evidence of an offence committed, or giving false information touching it, to screen the offender |  |
-| 202 | Intentional omission to give information of an offence, by person bound to inform |  |
-| 203 | Giving false information respecting an offence committed |  |
-| 204 | Destruction of document or electronic record to prevent its production as evidence |  |
-| 204A | Obstructing, preventing, perverting or defeating course of justice |  |
-| 204B | Bribery of witnesses |  |
-| 205 | False personation for the purpose of any act or proceeding in a suit |  |
-| 206 | Fraudulent removal or concealment of property to prevent its seizure as a forfeiture, in execution of a decree or under or pursuant to an enforcement order |  |
-| 207 | Fraudulent claim to property to prevent its seizure as a forfeiture, in execution of a decree or under or pursuant to an enforcement order |  |
-| 208 | Fraudulently suffering a decree for a sum not due |  |
-| 210 | Fraudulently obtaining a decree for a sum not due |  |
-| 211 | False charge of offence made with intent to injure |  |
-| 212 | Harbouring an offender |  |
-| 213 | Taking gifts, etc., to screen an offender from punishment |  |
-| 214 | Offering gift or restoration of property in consideration of screening offender |  |
-| 215 | Taking gift to help to recover stolen property, etc. |  |
-| 216 | Harbouring an offender who has escaped from custody, or whose apprehension has been ordered |  |
-| 216A | Harbouring robbers or gang-robbers, etc. |  |
-| 216B | "Harbour" |  |
-| 217 | Public servant disobeying a direction of law with intent to save person from punishment or property from forfeiture |  |
-| 218 | Public servant framing an incorrect record or writing with intent to save person from punishment, or property from forfeiture |  |
-| 219 | Public servant in a judicial proceeding making an order, etc., which he knows to be contrary to law |  |
-| 220 | Commitment for trial or confinement by person having authority who knows he is acting contrary to law |  |
-| 221 | Intentional omission to apprehend on the part of a public servant bound by law to apprehend |  |
-| 222 | Intentional omission to apprehend on the part of a public servant bound by law to apprehend person under sentence of a court of justice |  |
-| 223 | Escape from confinement negligently suffered by a public servant |  |
-| 224 | Resistance or obstruction by a person to his lawful apprehension |  |
-| 225 | Resistance or obstruction to the lawful apprehension of another person |  |
-| 225A | Public servant omitting to apprehend or suffering other persons to escape in cases not already provided for |  |
-| 225B | Resistance or obstruction to lawful apprehension, or escape, or rescue, in cases not otherwise provided for |  |
-| 225C | Offences against laws of Singapore where no special punishment is provided |  |
-| 228 | Intentional insult or interruption to a public servant sitting in any stage of a judicial proceeding or mediation or other alternative dispute resolution process |  |
-| 229 | Personation of an assessor |  |
+**Nothing missing — every live section in this chapter is cited.**
 
 ### Chapter 12 — Offences relating to government stamps
 
-0 of 9 live sections encoded; 26 repealed and excluded.
+9 of 9 live sections encoded; 26 repealed and excluded.
 
-**9 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 255 | Counterfeiting a Government stamp |  |
-| 256 | Having possession of an instrument or material for the purpose of counterfeiting a Government stamp |  |
-| 257 | Making or selling an instrument for the purpose of counterfeiting a Government stamp |  |
-| 258 | Sale of counterfeit Government stamp |  |
-| 259 | Having possession of a counterfeit Government stamp |  |
-| 260 | Using as genuine a Government stamp known to be counterfeit |  |
-| 261 | Effacing any writing from a substance bearing a Government stamp, or removing from a document a stamp used for it, with intent to cause loss to Government |  |
-| 262 | Using a Government stamp known to have been before used |  |
-| 263 | Erasure of mark denoting that stamp has been used |  |
-
-### Chapter 13 — *(wholly repealed)*
-
-All 4 sections repealed. Nothing to encode.
+**Nothing missing — every live section in this chapter is cited.**
 
 ### Chapter 14 — Offences affecting the public tranquility, public health, safety, convenience, decency and morals
 
-0 of 35 live sections encoded.
+35 of 35 live sections encoded.
 
-**35 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 267A | Affray |  |
-| 267B | Punishment for committing affray |  |
-| 267C | Uttering words, making document, etc., containing incitement to violence, etc. |  |
-| 268 | Public nuisance |  |
-| 268A | Communicating false information of harmful thing |  |
-| 268B | Placing or sending thing with intent to cause fear of harm |  |
-| 268C | Placing or sending thing causing fear of harm |  |
-| 269 | Negligent act likely to spread infection of any disease dangerous to life |  |
-| 270 | Intentional or rash act likely to spread infection of any disease dangerous to life |  |
-| 271 | Disobedience to a quarantine rule |  |
-| 272 | Adulteration of food or drink which is intended for sale |  |
-| 273 | Sale of noxious food or drink |  |
-| 274 | Adulteration of drugs |  |
-| 275 | Sale of adulterated drugs |  |
-| 276 | Sale of any drug as a different drug or preparation |  |
-| 277 | Fouling the water of a public spring or reservoir |  |
-| 278 | Making atmosphere noxious to health |  |
-| 279 | Rash driving or riding on a public way |  |
-| 280 | Rash navigation of a vessel |  |
-| 281 | Exhibition of a false light, mark or buoy |  |
-| 282 | Conveying person by water for hire in a vessel overloaded or unsafe |  |
-| 283 | Danger or obstruction in a public way or navigation |  |
-| 284 | Rash or negligent conduct with respect to dangerous or harmful substance |  |
-| 285 | Causing or contributing to risk of dangerous fire |  |
-| 286 | Presumption of cause of fire |  |
-| 287 | Rash or negligent conduct with respect to any machinery in possession or under charge of offender |  |
-| 288 | Negligence in pulling down or repairing buildings |  |
-| 289 | Negligence with respect to any animal |  |
-| 290 | Punishment for public nuisance |  |
-| 291 | Continuance of nuisance after injunction to discontinue |  |
-| 292 | Sale of obscene objects, etc. |  |
-| 292A | Possession, distribution, etc., of child sex-doll |  |
-| 292B | Obscene object on online location |  |
-| 293 | Sale, etc., of obscene objects to young person |  |
-| 294 | Obscene acts |  |
+**Nothing missing — every live section in this chapter is cited.**
 
 ### Chapter 15 — Offences relating to race
 
-0 of 2 live sections encoded; 3 repealed and excluded.
+2 of 2 live sections encoded; 3 repealed and excluded.
 
-**2 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 298 | Uttering words, etc., with deliberate intent to wound the racial feelings of any person |  |
-| 298A | Promoting enmity between different groups on grounds of race and doing acts prejudicial to maintenance of harmony |  |
+**Nothing missing — every live section in this chapter is cited.**
 
 ### Chapter 16 — Offences affecting the human body
 
-111 of 120 live sections encoded; 6 repealed and excluded.
+120 of 120 live sections encoded; 6 repealed and excluded.
 
-**9 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 302 | Punishment for murder |  |
-| 304 | Punishment for culpable homicide not amounting to murder |  |
-| 311 | Punishment for infanticide |  |
-| 323 | Punishment for voluntarily causing hurt |  |
-| 325 | Punishment for voluntarily causing grievous hurt |  |
-| 341 | Punishment for wrongful restraint |  |
-| 342 | Punishment for wrongful confinement |  |
-| 363 | Punishment for kidnapping |  |
-| 363A | Punishment for abduction |  |
+**Nothing missing — every live section in this chapter is cited.**
 
 ### Chapter 17 — Offences against property
 
-64 of 76 live sections encoded; 17 repealed and excluded.
+76 of 76 live sections encoded; 17 repealed and excluded.
 
-**12 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 379 | Punishment for theft |  |
-| 379A | Punishment for theft of a motor vehicle |  |
-| 384 | Punishment for extortion |  |
-| 392 | Punishment for robbery |  |
-| 395 | Punishment for gang-robbery |  |
-| 406 | Punishment of criminal breach of trust |  |
-| 417 | Punishment for cheating |  |
-| 419 | Punishment for cheating by personation |  |
-| 426 | Punishment for committing mischief |  |
-| 447 | Punishment for criminal trespass |  |
-| 448 | Punishment for house-breaking |  |
-| 458A | Punishment for subsequent offence under section 449, 450, 451 or 452 |  |
+**Nothing missing — every live section in this chapter is cited.**
 
 ### Chapter 18 — Offences relating to documents or electronic records, false instruments, and to currency and bank notes
 
-27 of 28 live sections encoded.
+28 of 28 live sections encoded.
 
-**1 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 465 | Punishment for forgery |  |
-
-### Chapter 20 — *(wholly repealed)*
-
-All 5 sections repealed. Nothing to encode.
+**Nothing missing — every live section in this chapter is cited.**
 
 ### Chapter 21 — Defamation
 
-1 of 4 live sections encoded.
+4 of 4 live sections encoded.
 
-**3 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 500 | Punishment for defamation |  |
-| 501 | Printing or engraving matter known to be defamatory |  |
-| 502 | Sale of printed or engraved substance containing defamatory matter |  |
+**Nothing missing — every live section in this chapter is cited.**
 
 ### Chapter 22 — Criminal intimidation, insult and annoyance
 
-4 of 5 live sections encoded; 3 repealed and excluded.
+5 of 5 live sections encoded; 3 repealed and excluded.
 
-**1 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 507 | Criminal intimidation by an anonymous communication |  |
+**Nothing missing — every live section in this chapter is cited.**
 
 ### Chapter 23 — Attempts to commit offences
 
-1 of 2 live sections encoded.
+2 of 2 live sections encoded.
 
-**1 missing:**
-
-| s | heading | |
-| --- | --- | --- |
-| 512 | Punishment for attempting to commit offences |  |
+**Nothing missing — every live section in this chapter is cited.**
 
 ---
 
@@ -504,7 +231,6 @@ All 5 sections repealed. Nothing to encode.
 
 These 75 are listed in the Act's arrangement but have no content. They are excluded from
 every count above, and nothing about them is a gap.
-
 
 **Chapter 2** — 39, 52
 
@@ -536,7 +262,7 @@ ss 13–16, 18, 55–56, 58–70, 244–245, 303, 398, 478–489 and 497.
 
 ## 4. How to regenerate
 
-Same method as `coverage-register.md` §7, with two refinements worth carrying over because
+Same method as `coverage-register.md` §7, with three refinements worth carrying over because
 each one silently changed the counts when it was missing:
 
 1. **Section numbers can carry up to three letters** (`377BM`, `377BN`, `377BO`). A
@@ -545,6 +271,12 @@ each one silently changed the counts when it was missing:
    number (`376D Tour ... minor below` / `18 years of age`) and read as a section. Section
    numbers ascend monotonically through the Act; rejecting any candidate that sorts below
    the previous one removes these without a hand-maintained exception list.
+3. **A range citation can sweep in a section no rule decides.** `ss 6 and 76 to 95` on the
+   Chapter 4 gathering rule contains s 79A, which until 16 Sep 2026 had no rule; every run
+   to 15 Sep discarded s 79A from the cited set by name so that the count told the truth.
+   s 79A now has two `@ref`s of its own and the exclusion is gone. The trap is still worth
+   knowing: a future range citation that swallows a section with no rule will overcount by
+   one, silently, unless the script names it.
 
 A citation of the form `s 120A(4) and (5)` must have **every** parenthesised group stripped,
 not only the one adjoining the section number, or the trailing `(5)` reads as section 5.
