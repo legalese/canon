@@ -12,7 +12,7 @@ at all, which the `what it encodes` column says plainly.
 | [`sg/succession`](sg/succession) | Wills Act 1838, Intestate Succession Act 1967, Probate and Administration Act 1934 — three Acts against one ontology | `draft` |
 | [`sg/child-support`](sg/child-support) | the SG Child Support Package announced at the National Day Rally on 23 August 2026, and childcare leave under the Child Development Co-Savings Act 2001 | `draft` |
 | [`sg/pdpa-2012`](sg/pdpa-2012) | Personal Data Protection Act 2012, Part VIA (data breach notification) | `draft` |
-| [`sg/penal-code-1871`](sg/penal-code-1871) | Penal Code 1871, s 301 (transferred malice), as substituted by Act 15 of 2019 | `draft` |
+| [`sg/penal-code-1871`](sg/penal-code-1871) | Penal Code 1871 — cheating, theft, extortion, robbery, criminal breach of trust, criminal intimidation, hurt (ss 22–25, 321, 323A, 378–384, 390–394, 405–406, 415–420, 503–506) with the form of a charge under CPC 2010 ss 123–126, and s 301 (transferred malice) | `draft` |
 | [`us/chubb-hospital-cash`](us/chubb-hospital-cash) | a **synthetic** supplemental hospitalization cash policy — never law, never in force — encoded twice, independently, as evidence in a replication study | `experimental` |
 | [`contracts/investment/yc-safe-postmoney`](contracts/investment/yc-safe-postmoney) | the Y Combinator post-money SAFE — six instruments plus four Pro Rata Side Letters, with their User Guide — deposited verbatim, with one encoding row | `draft` |
 | [`contracts/investment/yc-safe-premoney`](contracts/investment/yc-safe-premoney) | nothing, and none planned in this repository — **sources only**: the 2013–2018 "original safe", four US variants, recovered from the Internet Archive | `draft` |
@@ -24,8 +24,10 @@ source is an **announcement, not an enactment**. No Bill has been introduced, so
 rule-version axis carries *administered today* against *announced*, and the statute the
 announcement would amend is recorded as the source bundle's `instrument`.
 
-`sg/penal-code-1871` is the smallest row here — one section, hand-encoded in inert style,
-with no `cases/`, `projections/`, `registers/`, `report/` or `gates/`. It is filed as a
+`sg/penal-code-1871` grew on 2026-09-17 from one section to ten modules, encoded in inert style
+for the charge-generator demo, with a seven-case bench of reported judgments asserted inside the
+modules rather than a `cases/` directory; it still has no `projections/`, `registers/`, `report/`
+or `gates/`. It is filed as a
 subject rather than an l4-ide example because it is a body of law, and this is where bodies
 of law live; its `NOTES.md` states what the sidecar does not carry. It is also the row whose
 **source terms bite hardest**: inert style works by quoting the statute inline, so unlike
