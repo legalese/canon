@@ -25,13 +25,14 @@ corpus straight into a Hebrew-canonical encoding. That run is owed and not yet m
 the 254 assertions for the numbers, and the 321 instrument-cited names in `GLOSSARY.md` for the
 words. If the direct run agrees on both, this directory retires.
 
-The 56 `@nlg` heralds are tagged `@nlg:he` as of today. `specs/todo/MULTILINGUAL-NLG-SPEC.md` § 3
-(R-M2) makes an untagged annotation mean English, so the untagged Hebrew here would have declared
-itself English the moment selection lands. Nothing selects on the tag yet (l4-ide PR #423 recognises
-and preserves it), and the bare inline `[…]` form cannot carry one. When a module-level `@lang`
-declaration lands, which Meng prefers, the 56 tags collapse to one line per module. Re-checked on
+Every module opens with `@lang he`, and its `@nlg` heralds are untagged. `specs/todo/MULTILINGUAL-NLG-SPEC.md`
+§ 3 (R-M2) makes an untagged annotation mean English unless the module declares otherwise, so
+without the declaration the Hebrew here would have been labelled English. The declaration means
+exactly what tagging every herald `:he` means (l4-ide PR #431, merged 2026-09-19); an earlier
+revision of this directory carried the 56 per-herald tags, from before `@lang` existed, and they
+were collapsed the same day. The bare inline `[…]` form carries no tag either way. Re-checked on
 19 September 2026 with `check.sh` against an `l4` built at l4-ide `origin/unstable`
-`ae74ae717` (2026-09-19): all nine modules `ok`, and `l4 nlg` renders no `:he` into prose, so the tag is consumed rather than leaked.
+`7af775364` (2026-09-19): all nine modules `ok`. Measured the same day: `l4 render --lang he` and `--lang en` produce identical output for these modules with or without the declaration, and no fallback is reported, so today the label changes nothing observable; it will when fidelity reporting asks which rules lack a rendering.
 
 **This file is in English on purpose, and it is a choice that could go the other way.** Its
 sibling `GLOSSARY.md` is in English, and its job is to be read *beside* `../legalese/NOTES.md`
