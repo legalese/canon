@@ -1,9 +1,9 @@
 # projections/ — robbery as pictures and as prose
 
-Six decisions out of `../robbery-390-392.l4`, four carriers each, plus one hand-drawn page figure
+Eight decisions out of `../robbery-390-392.l4`, four carriers each, plus one hand-drawn page figure
 that is **not** in that set and is flagged below.
 
-## The generated set — 24 files, single-sourced
+## The generated set — 32 files, single-sourced
 
 | file | carrier | made by |
 | --- | --- | --- |
@@ -11,6 +11,12 @@ that is **not** in that set and is flagged below.
 | `.txt` | monospace grid — pasteable and **diffable** | `@repo/ladder-core` `sceneToAscii` |
 | `.mmd` | Mermaid `railroad-beta` | `@repo/ladder-core` `toMermaidRailroad` |
 | `.sentences` | **readable prose** — one line per way to satisfy the rule | `@repo/ladder-core` `expandSentences` |
+
+**One carrier is wrong for one of the eight, and it is wrong quietly.**
+`robbery-392-implies.sentences` reads "0 ways this can be satisfied", which is false about the rule and true about the tool: `expandSentences` (`ts-shared/ladder-core/src/sentences.ts`) has cases for `And`, `Or` and `Not` and none for `Implies`, so an implication body falls to the `default` arm, `leafLabel` returns `""` for it, and the enumeration comes back empty.
+No warning, exit 0.
+The other three carriers of that figure are correct.
+`robbery-392-liability.sentences` is unaffected — its body is an `Or`.
 
 | slug | decision in the L4 | what it is for |
 | --- | --- | --- |
@@ -20,6 +26,8 @@ that is **not** in that set and is flagged below.
 | `robbery-392` | `offence under s 392` | the punishing section: one rung over the definition |
 | `robbery-393` | `offence under s 393` | the attempt: one leaf, deliberately |
 | `robbery-394` | `offence under s 394` | not s 392 plus a leaf — its own first limb, and its own second question |
+| `robbery-392-implies` | `whoever commits robbery shall be so punished` | the same s 392 as an `IMPLIES`: scope, seam, **consequent on the right**, two lamps. Woon's shape, and the only figure here that has one |
+| `robbery-392-liability` | `liable under s 392` | what that consequent contains — the ordinary punishment and the night one, as the statute splits them |
 
 **Nothing here is retyped.** The generator reads the corpus through `jl4-lsp`
 (`textDocument/codeLens` → `l4.visualize` → `RenderAsLadderInfo.funDecl` → `fromVizFunDecl` →
@@ -27,8 +35,8 @@ that is **not** in that set and is flagged below.
 a human transcribed is a second source, and this set is not one.
 
 The cost of that is **untrimmed labels**: a leaf reads `f's \`in order to commit theft\`` because
-that is what the module says, and `robbery-390-2.svg` is 2894 px wide as a result. Two of the six
-are too wide for a page. That is the same trade the Reg CF figures in l4-ide make, and it is
+that is what the module says, and `robbery-390-2.svg` is 2894 px wide as a result. Two of the eight
+are too wide for a page; `robbery-392-implies.svg` is not one of them, at 969 px. That is the same trade the Reg CF figures in l4-ide make, and it is
 recorded in their README.
 
 **The four carriers are not interchangeable.** Read `robbery-390-2.sentences` and the size of the
@@ -50,6 +58,17 @@ The generator is `ts-shared/ladder-svg/demo/robbery.ts` in `legalese/l4-ide`, re
 `npm run demo:robbery`. It **fails loudly** (exit 1) if a named decision is not found, so renaming
 a decision in the module breaks the run rather than silently dropping a figure. It **skips cleanly**
 (exit 0) when `CANON_DIR` has no checkout, because l4-ide must never depend on canon.
+
+> **Its `SUBJECTS` list still has only six entries, and that is the one thing here that can go
+> stale without saying so.** `robbery-392-implies` and `robbery-392-liability` were generated on
+> 2026-09-21 by a scratch runner that is a copy of `robbery.ts` with the two slugs added and the
+> workspace imports resolved by absolute path, so that no l4-ide branch had to be touched to
+> produce them. The runner regenerated the other six in the same pass and they came out
+> **byte-identical to what was already committed**, which is the evidence that it is equivalent
+> to the real generator. But `robbery.ts` cannot fail on a subject it does not list, so running
+> `npm run demo:robbery` today refreshes six of the eight and leaves the other two untouched and
+> unmentioned. **Adding the two `SUBJECTS` entries in l4-ide is the fix**, and until it lands
+> these two files are the only ones in this directory that a regeneration will not keep honest.
 
 **…but only if someone runs it.** It needs a live `jl4-lsp`, so it is not in `turbo.json` and no CI
 runs it. Canon has no CI at all. These files can sit stale beside an edited module indefinitely;
