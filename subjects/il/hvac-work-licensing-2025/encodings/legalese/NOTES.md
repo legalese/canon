@@ -98,7 +98,8 @@ The module body is English (`@lang en`), because English is the working language
 Two limits of the current tooling, observed on the l4-ide `unstable` binary of 2026-09-19:
 
 - `%name%` placeholders in a herald are rendered as the bare parameter name followed by "with <arguments>", not substituted inline. `ok/nlg-module-lang.l4`'s own golden shows the same, so the heralds here are written to read acceptably either way.
-- `§` section titles are not language-tagged, so the Hebrew rendering carries English headings. A Hebrew-canonical twin row (Hebrew identifiers and headings, English `@nlg:en` heralds, the same test files) would fix that and is cheap, since identifiers take Hebrew directly; it is not deposited.
+- `§` section titles are not language-tagged, so the Hebrew rendering of THIS row carries English headings. The Hebrew-canonical twin row `encodings/legalese-he/` fixes that: it is generated from this row by `source/revoice.py` through a 173-entry name map (`encodings/legalese-he/glossary.json`, 125 entries in the instruments' own words), with Hebrew identifiers, headings and default heralds and English under `--lang en`; its `check.sh` runs the same five modules and compares every `Result:` block with this row's after unmapping the names, with a positive control. Regenerate with `python3 source/revoice.py`; edit this row, never the twin.
+- An `IMPORT` of a Hebrew-named module resolves to nothing, silently: no import diagnostic, only `could not find a definition` for each imported name. The twin therefore uses Latin basenames with a `-he` suffix; see its NOTES.md for the probes.
 
 ## 7. What is not here
 

@@ -6,6 +6,10 @@
 #
 # Defaults point at the worktree the encoding was built against on 2026-09-21.
 # The binary must carry `l4 nlg --lang` (l4-ide unstable at or after PR #432).
+# There is a HEBREW-CANONICAL twin of this row at ../legalese-he, generated from these
+# five modules by ../../source/revoice.py. Run ../legalese-he/check.sh too: its section 4
+# compares the two rows' answers directly, so it fails when this row moves and that one
+# has not been regenerated.
 WT=${HVAC_L4_WORKTREE:-/Users/mengwong/src/legalese/l4wt/smart-quotes}
 L4=${HVAC_L4:-$WT/dist-newstyle/build/aarch64-osx/ghc-9.10.3/jl4-0.1/x/l4/build/l4/l4}
 export JL4_LIBRARY_PATH=${HVAC_LIBS:-$WT/jl4-core/libraries}
