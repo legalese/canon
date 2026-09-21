@@ -13,9 +13,9 @@ A row marked `composed` has no counterpart in either instrument and the note say
 | --- | --- |
 | `law` | 72 |
 | `schedule` | 24 |
-| `regulations` | 29 |
-| `composed` | 48 |
-| **total** | **173** |
+| `regulations` | 32 |
+| `composed` | 50 |
+| **total** | **178** |
 
 Two names are deliberately **not** renamed, because they are not ours: `add years` and `add months`, which the `daydate` library defines.
 
@@ -41,6 +41,7 @@ Two names are deliberately **not** renamed, because they are not ours: `add year
 | `appeal against a practical examination score` | `השגה על ציון הבחינה המעשית` | regulations | reg. 2(b) as made says only ‘ציון הבחינה’; the adjective is the encoding's reading, which is the whole point of the as-made vintage |
 | `appeal against a theoretical examination score` | `השגה על ציון הבחינה העיונית` | regulations | reg. 2(b) as amended, verbatim |
 | `appeal under review` | `הערעור נבדק` | composed | the SimpLEX screen's phrase. Note it says ערעור where reg. 2(b) says השגה; the screen's word is kept because this enum transcribes the screen |
+| `application for a licence` | `בקשה לקבלת רישיון או לחידושו` | regulations | the draft's reg. 2(d), verbatim: the fee is charged on the application (fork F5) |
 | `Division completion certificate, grade 1` | `תעודת גמר בלימודי קירור ומיזוג אוויר דרגה 1 מהאגף להכשרה מקצועית` | schedule | Part B item 3(2), verbatim |
 | `Division completion certificate, grade 2` | `תעודת גמר בלימודי קירור ומיזוג אוויר דרגה 2 מהאגף להכשרה מקצועית` | schedule | Part C item 4(2), verbatim |
 | `Division completion certificate, refrigeration and air conditioning` | `תעודת גמר בלימודי קירור ומיזוג אוויר מהאגף להכשרה מקצועית` | schedule | Part A item 3, verbatim |
@@ -50,7 +51,6 @@ Two names are deliberately **not** renamed, because they are not ours: `add year
 | `Grade 3` | `דרגה 3` | law | as for דרגה 1 |
 | `holds a Grade 1 licence` | `בעל רישיון דרגה 1` | schedule | Part B item 3(1) ‘רישיון דרגה 1’, with s.2's בעל רישיון |
 | `holds a Grade 2 licence` | `בעל רישיון דרגה 2` | schedule | Part C item 4(1) |
-| `issue or renewal of a licence` | `קבלת רישיון או חידושו` | regulations | reg. 2(c), verbatim |
 | `Ministry of Education climate-control certificate, 3 units` | `תעודת גמר בלימודי בקרת אקלים ברמה של 3 יחידות לימוד ממשרד החינוך` | schedule | Part A item 1(2) and Part B item 3(3) |
 | `Ministry of Education climate-control certificate, 5 units` | `תעודת גמר בלימודי בקרת אקלים ברמה של 5 יחידות לימוד ממשרד החינוך` | schedule | Part B item 1(2) and Part C item 4(3) |
 | `no further requirements` | `בלא דרישות נוספות` | schedule | Part B item 2 and Part C item 2, verbatim |
@@ -59,6 +59,7 @@ Two names are deliberately **not** renamed, because they are not ours: `add year
 | `notify the registrar of the change` | `להודיע לרשם על השינוי` | law | s.16 ‘יודיע לרשם על כל שינוי’, put in the infinitive because it is the object of a duty |
 | `practical examination` | `בחינה מעשית` | regulations | reg. 1, verbatim |
 | `qualifying experience` | `ניסיון מזכה` | composed | the Schedule spells the row out (שנת ניסיון במצטבר מתוך שלוש שנים / שלוש שנות ניסיון מתוך שבע) and gives it no short name |
+| `receipt or renewal of a licence` | `קבלת רישיון או חידושו` | regulations | reg. 2(c) as made, verbatim: the fee is charged on receipt (fork F5) |
 | `registered certified technician, having completed a study programme with the completion course` | `טכנאי מוסמך מיזוג אוויר שסיים תוכנית לימודים הכוללת את קורס ההשלמה` | schedule | Part B item 2, verbatim |
 | `registered certified technician, refrigeration and air conditioning` | `טכנאי מוסמך מיזוג אוויר` | schedule | Part B item 2 names it itself: (להלן – טכנאי מוסמך מיזוג אוויר) |
 | `registered engineer, mechanical branch` | `מהנדס רשום בפנקס המהנדסים והאדריכלים בענף מכונות` | schedule | Part C item 8, verbatim |
@@ -106,6 +107,7 @@ Two names are deliberately **not** renamed, because they are not ours: `add year
 | `Part B -- Grade 2` | `חלק ב׳ — רישיון דרגה 2` | schedule | part heading, verbatim |
 | `Part C -- Grade 3` | `חלק ג׳ — רישיון דרגה 3` | schedule | part heading, verbatim |
 | `rounded to the nearest whole shekel` | `מעוגל לשקל החדש השלם הקרוב` | regulations | reg. 3(a) ‘ויעוגל לשקל החדש השלם הקרוב’ |
+| `the appeal fee plus its base under` | `אגרת ההשגה בתוספת אגרת הבחינה לפי` | composed | helper for the aggregate |
 | `the applicant qualifies through the Schedule row for` | `המבקש עומד בשורת התוספת לדרגה` | composed | ‘שורה’ for a row of the Schedule's table is ours; the Schedule numbers its rows פרט |
 | `the applicant satisfies the personal conditions` | `המבקש עומד בתנאים האישיים` | composed | s.6(a)(1)-(3) have no collective name; ‘תנאים’ is s.6's heading word |
 | `the applicant satisfies the training condition` | `המבקש עומד בתנאי ההכשרה` | composed | s.6(a)(4); הכשרה is the Schedule's word |
@@ -113,6 +115,7 @@ Two names are deliberately **not** renamed, because they are not ours: `add year
 | `the commencement day` | `יום התחילה של החוק` | law | s.63(a)(1)'s יום התחילה. Deliberately NOT the bare יום התחילה, which is the parameter of the same idea elsewhere; two identifiers may not share a name |
 | `the continuing-education duty is met` | `חובת ההשתתפות בהשתלמויות מתקיימת` | law | s.17 heading חובת השתתפות בהשתלמויות |
 | `the duty to report a change of registered details` | `חובת עדכון פרטים` | law | s.16 heading, verbatim |
+| `the examination fee the appeal fee is added to under` | `אגרת הבחינה שאגרת ההשגה נוספת עליה לפי` | regulations | reg. 2(b)/(c): ‘נוסף על התשלום בעד האגרה כאמור בתקנת משנה (א)’ |
 | `the fee prescribed by the draft for` | `האגרה שקבעה הטיוטה בעד` | regulations | reg. 2's frame is ‘בעד X … אגרה בסכום של N שקלים חדשים’ |
 | `the fee prescribed by the Regulations as amended for` | `האגרה שקבעו התקנות כפי שתוקנו בעד` | regulations | as above |
 | `the fee prescribed by the Regulations as made for` | `האגרה שקבעו התקנות כפי שהותקנו בעד` | regulations | as above |
@@ -133,6 +136,7 @@ Two names are deliberately **not** renamed, because they are not ours: `add year
 | `the Second Schedule requires, for the grade, of an applicant with` | `מה שהתוספת השנייה דורשת, לדרגה, ממבקש שהכשרתו או ניסיונו הקודמים הם` | schedule | the two column headings joined |
 | `the service may be provided` | `ניתן לספק את השירות` | regulations | reg. 4 is a prohibition (לא ייתן … לא יאפשר); this is its positive form |
 | `the SimpLEX outcome under` | `תוצאת SimpLEX לפי` | composed | the encoding's own; the tool's name stays Latin |
+| `the total to be tendered under` | `הסכום הכולל שיש לשלם לפי` | composed | the aggregate reg. 2 never names; composed from reg. 4's ‘שילם את האגרה במלואה’ |
 | `the updated fee` | `האגרה המעודכנת` | regulations | reg. 3 heading עדכון אגרות |
 | `three months from publication` | `שלושה חודשים מיום הפרסום` | law | s.63(a)(1), verbatim |
 
@@ -199,6 +203,7 @@ Two names are deliberately **not** renamed, because they are not ours: `add year
 | `Chapter G -- Miscellaneous` | `פרק ז׳ — שונות` | composed | s.63 sits in the Law's last chapter |
 | `Illustrations` | `דוגמאות` | composed | the encoding's own section, in both modules |
 | `reg. 1 Definitions` | `תקנה 1 הגדרות` | regulations | reg. 1 heading; the gazette prints הגדרה with an erratum note [צ״ל: הגדרות] |
+| `reg. 2 -- what an appellant must tender in all` | `תקנה 2 -- הסכום הכולל שעל מגיש ההשגה לשלם` | regulations | section title, composed; reg. 2(b)/(c) ‘נוסף על התשלום’ |
 | `reg. 2 Fees -- as amended, Kovetz HaTakanot 5786 p. 2062` | `תקנה 2 אגרות — כפי שתוקנו, ק״ת התשפ״ו עמ׳ 2062` | composed | as above |
 | `reg. 2 Fees -- as made, Kovetz HaTakanot 5785 p. 2116` | `תקנה 2 אגרות — כפי שהותקנו, ק״ת התשפ״ה עמ׳ 2116` | composed | reg. 2 heading plus the gazette reference as the gazette prints it |
 | `reg. 2 Fees -- the draft as shown in SimpLEX` | `תקנה 2 אגרות — הטיוטה כפי שהוצגה ב־SimpLEX` | composed | reg. 2 heading plus the vintage |
@@ -242,7 +247,7 @@ See `NOTES.md` § 4 for the measurement. The Hebrew row therefore keeps Latin fi
 
 ## Prose that is translated, not renamed
 
-`@export` and `@desc` carry sentences, not identifiers, so they are translated whole from the glossary's `prose` map rather than composed out of renamed parts. There are 16 of them.
+`@export` and `@desc` carry sentences, not identifiers, so they are translated whole from the glossary's `prose` map rather than composed out of renamed parts. There are 17 of them.
 
 ## Comments
 
