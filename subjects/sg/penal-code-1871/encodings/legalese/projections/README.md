@@ -45,6 +45,20 @@ timing limbs × two of causes-or-attempts × six harms. That number is the secti
 It read 36 until 2026-09-21, when the timing group went from three limbs to four — see NOTES.md,
 “s 390(2) at Woon’s granularity”.
 
+## There are no THEFT figures here, and s 380 is now the reason to want one
+
+Every slug above is `robbery-*`.
+Nothing in this directory draws `commits theft` (s 378), `offence under s 379`, or — since 2026-09-21 — `offence under s 380`.
+So Woon's two theft diagrams (*Essential Criminal Law* ch. 8, R02 at p. 181 and R05 at p. 185) have no artefact of ours to be laid beside, and the s 380 ladder is the first in this row with **two OR-groups in series**, which is exactly the shape a figure shows better than prose.
+
+**The obvious fix does not work, and the shape of the real one is worth recording before anyone files it.**
+`ts-shared/ladder-svg/demo/robbery.ts` in `legalese/l4-ide` sets ONE module-level `const CORPUS = resolve(ROW, "robbery-390-392.l4")`, and its `SUBJECTS` entries carry only `{decision, slug, why}` — there is no per-subject corpus path.
+The three theft decisions are declared in `theft-378-379.l4`, and the script asks `jl4-lsp` for codeLenses on a single document, so adding three slugs would hit the script's own guard: `FAILED: N decision(s) not found in robbery-390-392.l4 — has one been renamed?`.
+What is needed is a `corpus` field on `SUBJECTS` (or a sibling demo keyed to the theft module), not three slug entries.
+
+That is an l4-ide change, not a canon one, and it has not been made.
+**Nothing here is stale as a result** — these eight files are generated from `robbery-390-392.l4`, which the s 380 work did not touch. This section records an absence, not a drift.
+
 ## Regenerating
 
 ```sh

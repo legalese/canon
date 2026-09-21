@@ -15,7 +15,7 @@ The row now encodes the offences a demo charge generator needs, and the **form o
 | --- | --- | --- | --- |
 | `penal-code-general.l4` | ss 22–25; CPC 2010 ss 123–126 (`Particulars`, `Charge`, the opening/closing words) | — | Lewis Christine (the header), Sarjit Singh (the s 34 rider) |
 | `cheating-415-417-420.l4` | s 415 | ss 417, 420 | Lewis Christine v PP [2001] SGHC 113 — s 420, price-tag switch |
-| `theft-378-379.l4` | s 378 | s 379 | (none quoted) — s 378 Illustration (q), the bank transfer |
+| `theft-378-379.l4` | s 378 | ss 379, 380 | (none quoted) — s 378 Illustration (q), the bank transfer; s 380 Illustration none, and no reported charge |
 | `extortion-383-384.l4` | s 383 | s 384 | Sarjit Singh Rapati v PP [2005] SGHC 28 — s 384 r/w s 34 |
 | `robbery-390-392.l4` | s 390 (over theft and extortion) | ss 392, 393, 394 | Chen Weixiong Jerriek v PP [2003] SGHC 103 — s 392 r/w s 34; s 394 |
 | `cbt-405-406.l4` | s 405 | s 406 | Carl Elias Moses v PP [1995] 3 SLR 748, as quoted in Viswanathan Ramachandran v PP [2003] SGHC 183 — **refused as laid** |
@@ -66,6 +66,13 @@ finds the call next to the facts it decides. The ones worth knowing before relyi
   exported, for drill-down. They are not nested into the offence records because a call to
   another rule draws as ONE box on the caller's ladder, and the ladders exist to be clicked leaf
   by leaf (`penal-code-general.l4`, "A design call").
+- **s 380 nests** `theft IS A Theft Facts` inside `Theft in Dwelling Facts`, for the same reason
+  robbery does, and because extending `Theft Facts` would have meant editing all six
+  `Theft Facts WITH` literals in the row. Woon treats s 380 as *defining* an offence ("theft in
+  dwelling is defined in section 380 PC", ch. 8 p. 185); this row treats it as a punishing section
+  carrying extra elements, so his `Commits Theft in dwelling` node maps to `offence under s 380`
+  and **no `commits theft in dwelling` ladder exists**. The two readings agree on what must be
+  proved. See the module header.
 - **Robbery nests** `theft IS A Theft Facts` and `extortion IS AN Extortion Facts` (s 390(1): "in
   all robbery there is either theft or extortion"); the unused limb is an all-FALSE record. The
   s 390(2) harms for Chen Weixiong are classified in the module header (three calls).
@@ -84,7 +91,23 @@ finds the call next to the facts it decides. The ones worth knowing before relyi
 No s 109 abetment, no general attempt under s 511 (s 393, the attempt at robbery specifically, IS encoded since 2026-09-21), no CPC s 124(4) amalgamation (Song Hauming Oskar [2021]
 SGHC 169, the 103-occasion Diners Club case, was on the bench for it and is not encoded), no
 s 320 definition of grievous hurt (a leaf on `Hurt Facts`), no ss 299–300 (an ontology in the
-s 301 module). The evidence layer — what a fact rests on — is not encoded; it lives in the app.
+s 301 module).
+
+**Of the theft family's five punishing sections, three are still not here**, and every one of them
+is heavier than s 379. The filename `theft-378-379.l4` should not be read as the whole family:
+
+| section | what it adds to theft | punishment, verbatim |
+| --- | --- | --- |
+| **s 379A** | theft of a motor vehicle **or** any component part of one | 7 years, "and shall also be liable to fine"; on conviction the court **shall** disqualify from holding or obtaining a driving licence, "unless the court for special reasons thinks fit to order otherwise" — discretionary to excuse, not discretionary to impose. s 379A(3) defines "motor vehicle" and "component part" |
+| **s 381** | being a clerk or servant, **or** employed in that capacity, theft of property in the possession of the master or employer | 7 years, "and shall also be liable to fine" |
+| **s 382** | having made preparation for causing death **or** hurt **or** restraint, **or** fear of any of those, to any person, in order to commit the theft **or** to escape after it **or** to retain what was taken | 10 years, "and shall also be punished with caning with not less than 3 strokes" — the caning is **mandatory**, not "liable to" |
+
+None was encoded with s 380 because none is cheap in the way s 380 was. s 379A needs the
+definitional subsection and a disqualification that is a sentencing order rather than an element;
+s 381 needs the clerk-or-servant relation, which s 27 already touches; and s 382 is a
+**two-disjunction** section of the same family as s 380 — preparation for one of six harms, for one
+of three purposes — so whoever encodes it should read "The shape of s 380" in
+`theft-378-379.l4` first. The evidence layer — what a fact rests on — is not encoded; it lives in the app.
 
 ## Provenance and what has been checked
 
@@ -100,20 +123,21 @@ Checked against the l4-ide `l4` binary built 2026-09-15 from `unstable` (`388f86
 | --- | --- | --- |
 | penal-code-general | 12 | all satisfied |
 | cheating-415-417-420 | 11 | all satisfied |
-| theft-378-379 | 12 | all satisfied |
+| theft-378-379 | 31 | all satisfied |
 | extortion-383-384 | 12 | all satisfied |
 | robbery-390-392 | 50 | all satisfied |
 | cbt-405-406 | 17 | all satisfied |
 | criminal-intimidation-503-506 | 15 | all satisfied |
 | hurt-321-323A | 17 | all satisfied |
-| charge-sheet | 3 | all satisfied |
+| charge-sheet | 5 | all satisfied |
 | culpable-homicide-301 | 8 | all satisfied |
 
-**157 in total**, re-counted on 2026-09-21 with `grep -ch '^#ASSERT' *.l4`.
+**178 in total**, re-counted on 2026-09-21 with `grep -ch '^#ASSERT' *.l4` after s 380 added 21
+(19 in `theft-378-379.l4`, 2 in `charge-sheet.l4`). It read **157** immediately before that.
 The figure of 133 this file and `encoding.json` both carried before that date was wrong by one even for the row as it then stood: the same count gives **132**; it then read **149** until the s 392 implication below added eight.
 Nothing in the row had moved when the 132/133 discrepancy was found; the number had simply never been re-derived.
 
-**Anchor the grep.** The unanchored `grep -c '#ASSERT' *.l4` this line carried until 2026-09-21 gave the same answer for as long as no comment in the row named the directive. Two now do, so it returns **159** for 157 assertions. The anchored form above is the one to use.
+**Anchor the grep.** The unanchored `grep -c '#ASSERT' *.l4` this line carried until 2026-09-21 gave the same answer for as long as no comment in the row named the directive. **One** comment now does — `robbery-390-392.l4:367` — so the unanchored form returns **179** for 178 assertions. The anchored form above is the one to use.
 
 Every module round-trips `l4 format` byte-identically, re-checked on 2026-09-21 including the s 392 implication below. The whole row deploys to `jl4-service`
 as one bundle (`sg-penal-code`, 10 files, 37 exports) and all 38 fixtures evaluate over HTTP to
@@ -126,9 +150,10 @@ thing and this one should not be used to "correct" that one.)
 `tests/` holds jl4-test goldens generated by copying the row under `jl4/examples/legal/` in an
 l4-ide worktree; they are a **point-in-time record**, not a live gate — canon has no CI and the
 row is not in l4-ide's corpus globs. Regenerate the same way. **The goldens were NOT regenerated
-for any of the three 2026-09-21 changes below** — the s 393 addition, the s 390(2)
-re-granularisation, or s 392 as an implication — so `tests/robbery-390-392.*.golden` and
-`tests/charge-sheet.*.golden` predate all three and will not match until someone re-blesses them.
+for any of the four 2026-09-21 changes below** — the s 393 addition, the s 390(2)
+re-granularisation, s 392 as an implication, or s 380 — so `tests/robbery-390-392.*.golden`,
+`tests/theft-378-379.*.golden` and `tests/charge-sheet.*.golden` predate them and will not match
+until someone re-blesses them.
 The robbery goldens cite line numbers (`robbery-390-392.l4:671:1-48:`), and every one of the
 three changes moved them, so the mismatch is total rather than local.
 
@@ -292,6 +317,80 @@ It **fails silently** — no warning, exit 0, and a file whose text reads as a f
 The `.svg`, `.txt` and `.mmd` carriers are all fine; only this one is wrong, and only for a rule whose body is an implication, which until now no figure in this row had.
 Worth an l4-ide issue.
 `.mmd` is a separate matter and is **not** a defect: it flattens the seam to `sequence(scope, terminal("IMPLIES"), requirement)` on purpose, and `mermaid.ts` argues the case at the site.
+
+## 2026-09-21 — section 380, theft in dwelling
+
+Woon, *Essential Criminal Law* ch. 8 §8.1.1 (p. 185), gives theft in dwelling its own heading, its
+own diagram and its own consequent node, and calls it "by far the most common version" of theft —
+expressly covering shop theft, "because shops are generally buildings used for the custody of
+property".
+The row had nothing: a grep for `380` across every `.l4`, `.md` and `.json` here returned zero hits,
+and `Theft Facts` had no locus field, so the offence could not even be expressed on the record.
+
+Added, in `theft-378-379.l4` (the filename is kept, as `robbery-390-392.l4`'s was when it grew ss 393 and 394):
+
+- the verbatim text of s 380 in the module header, two new header sections ("The shape of s 380"
+  and "Why s 380 nests a theft"), and the s 380 recital note;
+- `Theft in Dwelling Facts` — a `theft IS A Theft Facts` plus five booleans, `building` / `tent` /
+  `vessel` / `as a human dwelling` / `for the custody of property`;
+- `offence under s 380`, `the place the theft was committed in`,
+  `what that place was used for`, `the recital of the theft in dwelling`,
+  `elements of theft in dwelling not made out` and `charge under s 380`, exported;
+- three new `Theft Facts` and seven `Theft in Dwelling Facts` fixtures, all **constructed** — the
+  bench has no reported s 380 case;
+- nineteen `#ASSERT`s (12 → 31).
+
+And in `charge-sheet.l4`: a `theft in dwelling` field on `Complaint`, a `380` row in
+`applicable charges` **above** the `379` row, three locus records for the existing complaints, two
+new complaints, and two more asserts (3 → 5).
+
+**Two OR-groups in series, not a flat conjunction.**
+s 380 is the first section this module encodes with any disjunctive limb, and it has two:
+`(building OR tent OR vessel) AND (used as a human dwelling OR used for the custody of property)`,
+both conjoined with the theft.
+Encoding it as a flat five-leaf conjunction would be a **wrong answer**, not a different factoring:
+it would demand a building that was at once a dwelling and a store, and would refuse every shop
+theft. That is measured rather than argued — rewriting the rule as a flat conjunction in a scratch
+copy fails **6** of the module's assertions, `Tan Mei Ling, in the supermarket` among them.
+
+**Every limb is pinned by an assertion that can fail.** Two further scratch mutants: fusing the
+whole locus into one inert string (so s 380 becomes s 379) fails **4**; dropping the nested
+`commits theft` conjunct fails **2**. The two rarest disjuncts, `tent` and `vessel`, have
+constructed fixtures of their own for exactly this reason — without them an encoding that dropped
+either would still have run green.
+
+**s 380 is a punishing section here, and Woon calls it a defining one.**
+p. 185 says in terms that "theft in dwelling is defined in section 380 PC", and his figure's
+rightmost node reads `Commits Theft in dwelling`. This row keeps its defining/punishing split
+(CPC s 123(4)): s 378 is the only section in the group that says "is said to commit", s 380 says
+only "shall be punished", so `offence under s 380` is the name and **no `commits theft in dwelling`
+ladder was created**. The difference is one of characterisation; nothing about what must be proved
+turns on it. The module header says so in those words rather than explaining Woon's label away as
+shorthand — it is not shorthand, it is his reading.
+
+**A divergence the type does not prevent, ruled rather than fixed.**
+`Complaint` now carries both `theft` and `theft in dwelling`, and the second nests a `Theft Facts`
+of its own. Nothing ties the two together, so a hand-built `Complaint` whose two theft records
+disagree could return s 380 without s 379 — which s 380 itself forbids, theft being an element of
+theft in dwelling. The row **already** has that shape for robbery, whose `Robbery Facts` nests its
+own `Theft Facts` beside the `theft` field, and it is handled the same way: every fixture supplies
+the SAME named theft record to both. The alternative — five locus booleans loose on `Complaint` —
+was rejected because it breaks the router's one rule, one nested facts record per offence family.
+The comment on `DECLARE Complaint` records the call.
+
+**No projection was regenerated**, and none needed to be: all eight figures come from
+`robbery-390-392.l4`, which this change did not touch. There is no theft ladder in `projections/`
+at all — see that README, which now says so and records why adding one is not a three-line change
+to l4-ide's demo.
+
+**Re-run over the whole row: 178 satisfied, zero failed, zero `DiagnosticSeverity_Error`**, and all
+ten modules still round-trip `l4 format` byte-identically.
+The binary was a snapshot taken on 2026-09-21 from a build in the `legalese/l4-ide` worktree
+`l4wt/robbery-demo`, with `JL4_LIBRARY_PATH` pinned to that worktree's `jl4-core/libraries`.
+It is **not** demonstrably the same build as the `3effdaaad` one named under s 390(2) above — that
+worktree's HEAD had moved to `7f4eb74ca` by the time this ran, and a copied binary carries no
+version string to check it against. Both runs were green; that is all the two have in common on the
+record.
 
 ## projections/
 
