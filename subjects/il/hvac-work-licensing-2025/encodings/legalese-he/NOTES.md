@@ -87,12 +87,47 @@ The five modules carry **Latin basenames with a `-he` suffix**. That is a fallba
 | a module importing `` `חוק-קירור` `` | 3 errors |
 | a module importing `` `קירור` `` (no hyphen) | 3 errors |
 | a module importing bare `קירור` | 3 errors |
+| a module importing `` `קירור` `` and referencing **nothing** from it | **green**, 0 errors |
 
 So Hebrew is fine in a filename and fine in an importing module; it is the **import target** that cannot be Hebrew. Hyphen or no hyphen, backticked or bare, it fails the same way.
 
+**Read the error counts in that table as a symptom, not as a measure.** The last row is why: an import that resolved to nothing produces no diagnostic of its own, so the count tracks how many imported names the importing module happens to mention. Three is a property of these probes, not of the defect.
+
 **The failure is silent, which is the part worth remembering.** There is no import diagnostic at all. What you get is `could not find a definition for the identifier` once for every name the import was supposed to supply, plus the `multiple definitions for __EQUALS__` that follows from the missing types — so it reads as a broken module, not as an unresolved import. The file URI is percent-encoded (`%D7%97%D7%95%D7%A7-…`) in every diagnostic, which is the only visible hint that the resolver and the filesystem are not looking at the same string.
 
-Worth filing upstream. It is the same family as the silent `GraphException` on a self-import that `l4-ide/CLAUDE.md` § 5 records: an import that cannot resolve should say so.
+**To reproduce.** This recipe was run verbatim, in an empty directory, on the binary `check.sh` names:
+
+```sh
+cat > 'קירור.l4' <<'EOF'
+@lang he
+IMPORT prelude
+DECLARE דרגה IS ONE OF `דרגה 1`, `דרגה 2`
+GIVEN קוט IS A NUMBER
+GIVETH A דרגה
+DECIDE `הדרגה הנמוכה ביותר` IS IF קוט AT MOST 18 THEN `דרגה 1` ELSE `דרגה 2`
+EOF
+cp 'קירור.l4' latin.l4
+
+# control: Latin import target, Hebrew everything else
+printf '@lang he\nIMPORT prelude\nIMPORT `latin`\n#ASSERT `הדרגה הנמוכה ביותר` 19 EQUALS `דרגה 2`\n' > control.l4
+# probe: the SAME module under its Hebrew name
+printf '@lang he\nIMPORT prelude\nIMPORT `קירור`\n#ASSERT `הדרגה הנמוכה ביותר` 19 EQUALS `דרגה 2`\n' > probe.l4
+# the same probe with nothing referencing the import
+printf '@lang he\nIMPORT prelude\nIMPORT `קירור`\n' > silent.l4
+
+l4 run 'קירור.l4'   # 0 errors -- a Hebrew FILENAME is fine
+l4 run control.l4    # 0 errors -- a Hebrew IMPORTER is fine
+l4 run probe.l4      # 3 errors, none of them about the import
+l4 run silent.l4     # 0 errors
+```
+
+The control is what makes this a finding rather than an observation: it isolates the Hebrew basename from the hyphen, from `@lang he`, and from the Hebrew content of the imported module, all of which are fine on their own. Only the Hebrew basename *as an import target* fails.
+
+`silent.l4` is the sharper half, and it was found by running this recipe rather than by reasoning about it. **A module that imports a Hebrew basename and does not use anything from it is GREEN.** The import brought in nothing and nothing complained. So the error count is not a measure of the defect at all — it is a measure of how many imported names the importing module happens to mention, which is why a count quoted from one probe should not be carried to another.
+
+Worth filing upstream. It is the same family as the silent `GraphException` on a self-import that `l4-ide/CLAUDE.md` § 5 records: an import that cannot resolve should say so. Until it does, a Hebrew-canonical row cannot use Hebrew filenames, and the workaround has to be written down wherever the next one is built, because the symptom points at the wrong file.
+
+The probe files are in this session's scratchpad, not in canon: canon holds no non-ASCII filename, by design.
 
 ## 5. What the glossary could not take from the instruments
 
