@@ -1,6 +1,6 @@
 # NOTES — sg/penal-code-1871, encoding row `legalese`
 
-**Status: `draft`.** Eleven modules. Section 301 was hand-encoded on 2026-08-26 (see the end of this
+**Status: `draft`.** Twelve modules. Section 301 was hand-encoded on 2026-08-26 (see the end of this
 file); the rest was encoded on 2026-09-17 for the **charge generator** proof of concept, by one
 Claude Fable session and three Opus encoder agents working to one brief, against verbatim
 statutory text from the lawplain corpus. No claim of fidelity is made, and **no human has read
@@ -169,7 +169,20 @@ below were integrated, and the table is that run:
 | charge-sheet | 10 | all satisfied |
 | culpable-homicide-301 | 8 | all satisfied |
 
-**PLACEHOLDER-COUNT-PARA**
+**264 in total**, counted on 2026-09-21 with `grep -ch '^#ASSERT' *.l4` after the five changes of
+that day were integrated onto one branch: s 380 (+21), s 403 (+23), ss 407–409 (+35), the s 405
+third-limb recital (+6) and the getaway fixtures (+22), over a row that read **157** before any of
+them.
+The figure of 133 this file and `encoding.json` both carried before that date was wrong by one even for the row as it then stood: the same count gives **132**; it then read **149** until the s 392 implication below added eight.
+Nothing in the row had moved when the 132/133 discrepancy was found; the number had simply never been re-derived.
+
+**Each of the five sections below states the row total ITS branch measured** — 178, 180, 192, 163,
+179 — and every one of those is a true figure for that branch alone and a false one for the row.
+264 is the integrated count.
+
+**Anchor the grep.** The unanchored `grep -c '#ASSERT' *.l4` returns **265** for 264 assertions,
+because exactly one comment line names the directive in prose (`robbery-390-392.l4:375`). The
+anchored form above is the one to use.
 
 Every module round-trips `l4 format` byte-identically, re-checked on 2026-09-21 across all twelve
 modules, including `misappropriation-403.l4` and `cbt-407-409.l4`. The whole row deploys to
@@ -178,7 +191,7 @@ over HTTP to the verdict the asserts state. **That deploy predates the s 392 imp
 getaway fixtures, s 380, s 403, the s 405 third-limb recital and ss 407–409** and has not been
 re-run since; it is a ten-file bundle and the row now has twelve modules, so it does not have the
 right number of FILES either and cannot answer about s 403 or ss 407–409 at all. (For what it is
-worth, `grep -ch '^@export' *.l4` gives PLACEHOLDER-EXPORTS now and gave 34 before the s 392
+worth, `grep -ch '^@export' *.l4` gives **48** now and gave 34 before the s 392
 implication — which is not 37 at any point, so the two numbers are not
 measuring the same thing and this one should not be used to "correct" that one.)
 
@@ -524,7 +537,8 @@ Added, in `theft-378-379.l4` (the filename is kept, as `robbery-390-392.l4`'s wa
 
 And in `charge-sheet.l4`: a `theft in dwelling` field on `Complaint`, a `380` row in
 `applicable charges` **above** the `379` row, three locus records for the existing complaints, two
-new complaints, and two more asserts (3 → 5).
+new complaints, and two more asserts (3 → 5 on the branch this landed on; see the row total below,
+which is the figure after all five 2026-09-21 changes were integrated).
 
 **Two OR-groups in series, not a flat conjunction.**
 s 380 is the first section this module encodes with any disjunctive limb, and it has two:
@@ -565,8 +579,10 @@ The comment on `DECLARE Complaint` records the call.
 at all — see that README, which now says so and records why adding one is not a three-line change
 to l4-ide's demo.
 
-**Re-run over the whole row: 178 satisfied, zero failed, zero `DiagnosticSeverity_Error`**, and all
-ten modules still round-trip `l4 format` byte-identically.
+**Re-run over the row as it then stood: 178 satisfied, zero failed, zero
+`DiagnosticSeverity_Error`**, and all ten modules round-tripped `l4 format` byte-identically.
+That was this change alone; the row total after integrating all five 2026-09-21 changes is the one
+in the table above.
 The binary was a snapshot taken on 2026-09-21 from a build in the `legalese/l4-ide` worktree
 `l4wt/robbery-demo`, with `JL4_LIBRARY_PATH` pinned to that worktree's `jl4-core/libraries`.
 It is **not** demonstrably the same build as the `3effdaaad` one named under s 390(2) above — that
@@ -632,14 +648,14 @@ The capacities on the Carl Elias Moses fixtures are supposed too: the charge act
 
 **Six fixtures, 32 assertions, and what they can and cannot catch.**
 The fixtures are the Carl Elias Moses entrustment as an employee (s 408), as a director (s 409(1)(d)), and as an employee NOT entrusted in that capacity (the negative); Illustration (b) to s 405, the warehouse operator, for s 407's storage limb; Illustration (c), the Penang agent, for s 409(1)(b); and the same agent with the trade-profession-business column removed.
-`charge-sheet.l4` gains three complaints and three assertions (3 → 6): an employee's complaint answers `LIST "408", "406"`, a director's `LIST "409", "406"`, and the employee not entrusted as one `LIST "406"`.
+`charge-sheet.l4` gains three complaints and three assertions (3 → 6 on the branch this landed on): an employee's complaint answers `LIST "408", "406"`, a director's `LIST "409", "406"`, and the employee not entrusted as one `LIST "406"`.
 **No assertion in the module is a tautology, and two are weaker than they look.**
 The all-dark control (`Carl Elias Moses, as charged, no aggravating capacity`) is FALSE under all three sections for two independent reasons — no capacity AND no s 405 case — so the three boolean asserts on it would not flip if only one half broke; the refusal-text assert beside them is the one that discriminates, because it requires the refusal to name BOTH rows.
 And `#ASSERT `offence under s 406` (… 's `breach of trust`)` restates a fact `cbt-405-406.l4` already asserts; it is there to show that the CAPACITY is what the aggravated section adds, not to probe s 405 again.
 Measured positive control, twice, on copies in the scratchpad: setting `entrusted in such capacity` TRUE on the negative fixture fails **4** of the 32, and setting `his business` TRUE on the Penang agent fixture that lacks it fails **2**.
 So the s 408 second leaf and the paragraph (b) conjunction are both load-bearing.
 
-Run with the `l4` binary built from `legalese/l4-ide` branch `robbery-demo`, `JL4_LIBRARY_PATH` pinned: **192 satisfied across the row, zero failed, zero `DiagnosticSeverity_Error`**, and all eleven modules still round-trip `l4 format` byte-identically.
+Run with the `l4` binary built from `legalese/l4-ide` branch `robbery-demo`, `JL4_LIBRARY_PATH` pinned: **192 satisfied across the row as it then stood, zero failed, zero `DiagnosticSeverity_Error`**, and all eleven modules round-tripped `l4 format` byte-identically. That was this change alone; the integrated row total is in the table above.
 
 ## 2026-09-21 — s 405, the third limb recited
 
@@ -683,12 +699,12 @@ No illustration to s 405 turns on the third limb and no charge on this row's ben
 The second is the only arrangement of facts on which the two adverbs can collide.
 The recital of the third limb had **no fixture at all** before this, which is why two defects of form lived there undisturbed.
 
-**Six new `#ASSERT`s (17 → 23; the row goes 157 → 163), and every one of them can fail.**
+**Six new `#ASSERT`s (17 → 23; on the branch this landed on the row went 157 → 163), and every one of them can fail.**
 Two pin the ladder's verdict on the new fixtures — it is unchanged — and four pin the recital.
 Positive control, run on scratch copies with canon untouched: restoring the pre-fix `what the accused suffered another to do` fails three of the six, and restoring the whole pre-fix flat construction fails the same three, while **all seventeen pre-existing assertions stay satisfied in both controls** — which is the evidence that no existing charge text moved.
 The Carl Elias Moses refusal, both its `made out` and its verbatim refusal string, is among those seventeen.
 
-Re-run with the `l4` binary on branch `robbery-demo`, `JL4_LIBRARY_PATH` pinned: **163 satisfied across the row, zero failed, zero `DiagnosticSeverity_Error`**, and every module still round-trips `l4 format` byte-identically.
+Re-run with the `l4` binary on branch `robbery-demo`, `JL4_LIBRARY_PATH` pinned: **163 satisfied across the row as it then stood, zero failed, zero `DiagnosticSeverity_Error`**, and every module round-tripped `l4 format` byte-identically. That was this change alone; the integrated row total is in the table above.
 
 **What this does NOT fix.**
 “in violation of” still rides at the end of the accused's own limb whenever either violation leaf is TRUE, including where the verb relied on is a misappropriation rather than a use or a disposal; s 405 attaches it to the use-or-disposal alternative alone.
@@ -711,7 +727,7 @@ Three fixtures in `robbery-390-392.l4`, all CONSTRUCTED and none reported, built
 
 Each of the two positive fixtures leaves exactly ONE of the four occasions TRUE and exactly one of the six harms (`hurt`), so whichever satisfies `theft is robbery` satisfies it alone.
 
-**Twenty-two assertions**, 50 → 72 in the module and 157 → 179 in the row; all satisfied, zero `DiagnosticSeverity_Error`, and every module in the row still round-trips `l4 format` byte-identically.
+**Twenty-two assertions**, 50 → 72 in the module and 157 → 179 in the row as it then stood; all satisfied, zero `DiagnosticSeverity_Error`, and every module in the row round-tripped `l4 format` byte-identically. That was this change alone; the integrated row total is in the table above.
 Run with a snapshot `l4` taken from the `legalese/l4-ide` worktree on branch `robbery-demo` (HEAD `3effdaaad`), `JL4_LIBRARY_PATH` pinned to that worktree's `jl4-core/libraries` — the same rig the s 390(2) re-granularisation above was checked on, and not the `unstable` binary named under "Provenance".
 
 **Positive control, because a green run on new fixtures proves nothing by itself.**
