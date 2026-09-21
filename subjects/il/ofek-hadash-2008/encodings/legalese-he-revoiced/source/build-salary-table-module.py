@@ -82,7 +82,9 @@ def rank_reader():
     return out
 
 
-w('''IMPORT prelude
+w('''@lang he
+
+IMPORT prelude
 IMPORT `ofek-domain`
 
 § `טבלאות השכר המשולב`
