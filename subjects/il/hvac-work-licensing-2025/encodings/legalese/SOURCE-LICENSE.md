@@ -11,7 +11,7 @@ It must be settled before this row moves off the drafts shelf.
 ## What this encoding actually reproduces
 
 - `source/law.wiki` and `source/regulations-fees.wiki` are the Wikisource wikitext of both instruments, deposited verbatim, with their revision ids in `source/revisions.json`.
-- `source/sefer-hachukim-3349-pp182-209.pdf` is the gazette issue as served by gov.il; `source/knesset-bill-25_ls2_5256851.pdf` is the bill as served by the Knesset.
+- `source/sefer-hachukim-3349-pp182-209.pdf` is the gazette issue as served by gov.il; `source/kovetz-hatakanot-11951-p2116.pdf` is the Regulations' gazette issue as served by olaw.org.il; `source/knesset-bill-25_ls2_5256851.pdf` is the bill as served by the Knesset.
 - The `.l4` modules quote short Hebrew phrases of the statute in comments (section titles, defined terms, the s.8 validity sentence) and paraphrase the rest in English. No substantial passage is reproduced in the modules themselves.
 - The DRAFT vintage of regulation 2 is transcribed from Figure 4 of Schwartz, Bar-Siman-Tov & Gelbard (2025), a screen capture published in an academic journal. The figure itself is **not** deposited; the transcription is five numbered lines of comment in `hvac-fees.l4`, cited to the paper.
 

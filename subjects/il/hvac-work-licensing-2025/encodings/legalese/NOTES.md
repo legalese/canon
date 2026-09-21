@@ -10,7 +10,7 @@ Two instruments, one encoding row:
 - **The Law.** חוק הסדרת העיסוק בעבודה במערכת קירור או מיזוג אוויר, התשפ״ה–2025, Sefer HaChukim 3349 p. 182, published 14 January 2025.
   A licensing statute: three licence grades by cooling output, a registrar, exam-and-training conditions, five-year licences, temporary licences for foreign experts, inspectors, and administrative sanctions.
   `hvac-law.l4` encodes the parts the Fees Regulations lean on: ss.2, 3, 6 (with the whole Second Schedule), 7, 8, 9, 16, 17, 63.
-- **The Fees Regulations.** תקנות הסדרת העיסוק בעבודה במערכת קירור או מיזוג אוויר (אגרות), התשפ״ה–2025, Kovetz HaTakanot 2116, signed 6 July 2025, published 9 July, in force 16 July 2025, amended by Kovetz HaTakanot 2062 (5786).
+- **The Fees Regulations.** תקנות הסדרת העיסוק בעבודה במערכת קירור או מיזוג אוויר (אגרות), התשפ״ה–2025, Kovetz HaTakanot 5785 p. 2116, signed 6 July 2025, published 9 July, in force 16 July 2025, amended by Kovetz HaTakanot 5786 p. 2062.
   `hvac-fees.l4` encodes regs 1-5 in full, with reg. 2 in **three vintages** (section 3 below).
 
 ## 2. Why: Figure 4 of *When Computers Speak Laws*
@@ -33,11 +33,11 @@ This row takes the paper at its word: `hvac-tests-simplex.l4` transcribes that t
 
 ## 3. Draft, as made, as amended
 
-| item | the SimpLEX draft (Fig. 4) | as made, KT 2116 (16 Jul 2025) | as amended, KT 2062 (5786) |
+| item | the SimpLEX draft (Fig. 4) | as made, KT 5785 p. 2116 (16 Jul 2025) | as amended, KT 5786 p. 2062 |
 | --- | --- | --- | --- |
 | theoretical examination | 273 | **no fee** | 158 (new reg. 2(a1)) |
 | practical examination | 194 | 194 | 194 |
-| appeal, 40 NIS per appeal | theoretical **or practical** | theoretical only, "in addition to the fee under (a1)" | same |
+| appeal, 40 NIS per appeal | theoretical **or practical** | "the examination score", in addition to the fee under (a): the **practical** one, the only examination the text as made defines | **theoretical** only, in addition to the fee under (a1): the appeal fee moved |
 | licence issue or renewal, s.5 | 284 | 284 | 284 |
 | temporary licence for a foreign expert | 398, citing **"s.8 of the Law"** | 398, citing s.9 | same |
 | preamble | after consulting the Finance Minister, s.39 Budget Foundations Law | with the Finance Minister's approval, s.39B; ss.59 **and 60** | same |
@@ -46,10 +46,10 @@ This row takes the paper at its word: `hvac-tests-simplex.l4` transcribes that t
 Three consequences the encoding makes explicit:
 
 1. Under the Regulations as made, the theoretical examination had no fee, so reg. 4 had nothing to withhold and scenario 8's candidate is admitted to it. `#ASSERT the service may be provided the Regulations as made theoretical examination 0` is satisfied.
-2. As made, reg. 2(b) charged an appeal fee "in addition to the fee under subregulation (a1)" while no (a1) existed. The cross-reference dangled for ten months until the amendment supplied it.
+2. The appeal fee moved. As made, reg. 2(b) attached it to "the examination score" in addition to the fee under (a), and reg. 1 defined only the practical examination, so the practical one it was. The amendment defined the theoretical examination, inserted (a1) for it, and rewrote (b) to attach the appeal fee to the theoretical score and to (a1). An earlier draft of these notes said (b) as made pointed at a non-existent (a1); that was read off Wikisource's amended text and is wrong, which is why the gazette issue is now deposited in `source/`.
 3. The draft's "s.8 of the Law" for the foreign-expert licence is wrong against both the bill as tabled for second and third reading and the Act; s.8 is validity and renewal. The screenshot's worked example likewise cites "s.9 of the Law" for eligibility to sit the examination, which no section of the Act provides. Both would be caught by a check that resolves citations against the parent Act, which is the "legality check" panel SimpLEX itself shows.
 
-`hvac-tests-simplex-red.l4` is **meant to fail** on exactly three of five rows (5, 7 practical, 8 theoretical); `check.sh` counts them and reports a wrong count as a failure. It is also the positive control: proof that this harness can go red.
+`hvac-tests-simplex-red.l4` is **meant to fail** on exactly three of six rows (5, 7 theoretical, 8 theoretical); `check.sh` counts them and reports a wrong count as a failure. It is also the positive control: proof that this harness can go red.
 
 ## 4. Forks (interpretive choices)
 

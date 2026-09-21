@@ -3,7 +3,7 @@
 **Israel's Refrigeration or Air-Conditioning Systems Work Licensing Law 5785-2025, and its Fees Regulations, in L4 — with the test table from a published screenshot of the Ministry of Justice's SimpLEX tool run against three vintages of the fee text.**
 
 Figure 4 of Schwartz, Bar-Siman-Tov & Gelbard, *When Computers Speak Laws* (2025) shows SimpLEX editing the *draft* Fees Regulations beside four test scenarios.
-The Regulations were made in July 2025 and amended in 5786, and the text moved: the theoretical-examination fee was dropped and later restored at a lower rate, the appeal fee was narrowed, and a cross-reference to the parent Act was wrong in the draft.
+The Regulations were made in July 2025 and amended in 5786, and the text moved: the theoretical-examination fee was dropped and later restored at a lower rate, the appeal fee moved from the practical examination to the theoretical one, and a cross-reference to the parent Act was wrong in the draft.
 Run the draft's four expectations against the text as made and three of them fail.
 That is what a test suite that survives redrafting is for, and this row shows it on the paper's own example.
 
@@ -26,7 +26,7 @@ Every rule carries an English and a Hebrew herald; the source is English.
 **חוק הסדרת העיסוק בעבודה במערכת קירור או מיזוג אוויר, התשפ״ה–2025, ותקנות האגרות שלפיו, בשפת L4 — עם טבלת תרחישי הבדיקה שבצילום המסך של SimpLEX, כפי שפורסם במאמר, מורצת על שלוש גרסאות של נוסח האגרות.**
 
 איור 4 במאמרם של שוורץ, בר־סימן־טוב וגלברד, *כשמחשבים מדברים חוקים* (2025), מציג את SimpLEX עורך את *טיוטת* תקנות האגרות, ולצידה ארבעה תרחישי בדיקה.
-התקנות הותקנו ביולי 2025 ותוקנו בתשפ״ו, והנוסח השתנה: אגרת הבחינה העיונית הושמטה ולאחר מכן הוחזרה בשיעור נמוך יותר, אגרת ההשגה צומצמה, והפניה לחוק העיקרי בטיוטה הייתה שגויה.
+התקנות הותקנו ביולי 2025 ותוקנו בתשפ״ו, והנוסח השתנה: אגרת הבחינה העיונית הושמטה ולאחר מכן הוחזרה בשיעור נמוך יותר, אגרת ההשגה עברה מהבחינה המעשית לבחינה העיונית, והפניה לחוק העיקרי בטיוטה הייתה שגויה.
 הרצת ארבע הציפיות של הטיוטה על הנוסח שהותקן — שלוש מהן נכשלות.
 לכך נועדה חבילת בדיקות ששורדת ניסוחים חוזרים, וכאן זה מודגם על הדוגמה של המאמר עצמו.
 
