@@ -1,10 +1,10 @@
 # subjects/
 
-One directory per body of law. **Nine are deposited as at 2026-09-07.** Four are Singapore
-statutes; of the other five, one is a synthetic insurance policy, two are commercial standard
-forms, one is a judge-made doctrine encoded across four jurisdictions, and one is a body of
-Israeli **collective agreements** rather than enacted law at all. Each of those five is flagged
-below. One subject, `contracts/investment/yc-safe-premoney`, holds source text and no encoding
+One directory per body of law. **Ten are listed as at 2026-09-21.** Four are Singapore
+statutes and one is an Act of the Knesset; of the other five, one is a synthetic insurance
+policy, two are commercial standard forms, one is a judge-made doctrine encoded across four
+jurisdictions, and one is a body of Israeli **collective agreements** rather than enacted law at
+all. Each of those five is flagged below. One subject, `contracts/investment/yc-safe-premoney`, holds source text and no encoding
 at all, which the `what it encodes` column says plainly.
 
 | subject | what it encodes | status |
@@ -17,6 +17,7 @@ at all, which the `what it encodes` column says plainly.
 | [`contracts/investment/yc-safe-postmoney`](contracts/investment/yc-safe-postmoney) | the Y Combinator post-money SAFE — six instruments plus four Pro Rata Side Letters, with their User Guide — deposited verbatim, with one encoding row | `draft` |
 | [`contracts/investment/yc-safe-premoney`](contracts/investment/yc-safe-premoney) | nothing, and none planned in this repository — **sources only**: the 2013–2018 "original safe", four US variants, recovered from the Internet Archive | `draft` |
 | [`il/ofek-hadash-2008`](il/ofek-hadash-2008) | the Ofek Hadash reform — the collective agreements, and one budget-law chapter, that determine an Israeli teacher's pay | `draft` |
+| [`il/penal-law-1977`](il/penal-law-1977) | Penal Law 5737-1977 — theft and robbery (ss 383, 384, 402, 403, 404), encoded in Hebrew with English renderings beside every rule | `draft` |
 | [`doctrine/contract/unilateral-mistake`](doctrine/contract/unilateral-mistake) | the Singapore doctrine of unilateral mistake in contract — *Chwee Kin Keong v Digilandmall.com* [2005] SGCA 2 — encoded beside three comparators (English common law, *Taylor v Johnson*, Restatement (Second) § 153) against one ontology | `draft` |
 
 `sg/child-support` is the odd one and worth knowing about before you read it: its primary
@@ -91,6 +92,20 @@ terms at all**, because the licence footer was added in 2018 and those captures 
 Read each row's `SOURCE-LICENSE.md` before deriving anything from it. `yc-safe-postmoney`'s also
 records an unresolved question: whether an L4 formalisation of a form is an "adaptation" under a
 NoDerivatives licence.
+
+`il/penal-law-1977` is the second Israeli row and the first that is enacted law. Its source --
+the consolidated text of the Penal Law, 651 sections, deposited 2026-09-16 -- had sat in the tree
+with no encoding beside it until 2026-09-21, when five of those sections were encoded: theft, and
+the robbery sub-chapter that builds on it. The row exists to be read **beside**
+`sg/penal-code-1871`, whose robbery module encodes the same crime from the other colonial code,
+and its `NOTES.md` carries an element-by-element comparison of the two. Two things about it are
+unlike every other row here. It is written in **Hebrew** -- identifiers, section titles and the
+default natural-language rendering of every rule -- with an English rendering tagged beside each
+one, so the same source produces a whole document in either language. And it carries the same two
+open source-terms questions as `il/ofek-hadash-2008`, for the same reason: the consolidated text
+was read from a Wikisource volunteer project rather than from *Reshumot*, which is geo-blocked and
+publishes no consolidation. Its `SOURCE-LICENSE.md` sits beside `source/` at the subject level
+rather than inside the encoding row.
 
 `il/ofek-hadash-2008` is the first row whose subject is **not enacted law**, and the label
 should be read before the row is. Ofek Hadash is a **collective agreement** between the State

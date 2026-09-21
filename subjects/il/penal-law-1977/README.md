@@ -1,14 +1,21 @@
 # Penal Law 5737-1977 — חוק העונשין, תשל״ז–1977
 
-**Status 2026-09-16: source deposited, nothing encoded.** This row exists so that a `go` run on
-the Israeli Penal Law can start from a text that is already on disk, hashed and dated, and so
-that the Singapore Penal Code subject (`sg/penal-code-1871`) has a sibling to pace against.
+**Status 2026-09-21: source deposited, five of 651 sections encoded.** The deposit landed on
+2026-09-16 so that a `go` run on the Israeli Penal Law could start from a text already on disk,
+hashed and dated, and so that the Singapore Penal Code subject (`sg/penal-code-1871`) had a
+sibling to pace against. On 2026-09-21 the first encoding row landed:
+`encodings/legalese/robbery.l4` covers theft and the robbery sub-chapter -- sections 383, 384,
+402, 403 and 404 -- written in Hebrew with an English rendering tagged beside every rule. Read
+that row's `NOTES.md` first; it carries the interpretive choices and an element-by-element
+comparison against Singapore's section 390. The `go` pipeline has still never been run on this
+subject.
 
 ## What is here
 
 | file | what it is |
 | --- | --- |
 | `subject.json` | descriptor — citation, authority, source note, pacing note |
+| `encodings/legalese/` | the robbery encoding — `robbery.l4`, its `NOTES.md`, and four projections |
 | `source/penal-law-1977.wikitext` | the Open Book of Laws page, raw wikitext (614 KB), revision 3023424 — **the structured form**; keep parsers on this, not on the `.txt` |
 | `source/penal-law-1977.txt` | the same revision rendered to plain text (8,139 lines) — for reading, grepping and the pipeline's natural-language stages |
 | `source/revision.json` | the Wikisource revision record the deposit was taken from |
