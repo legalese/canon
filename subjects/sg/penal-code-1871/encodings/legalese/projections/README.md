@@ -29,6 +29,17 @@ The other three carriers of that figure are correct.
 | `robbery-392-implies` | `whoever commits robbery shall be so punished` | the same s 392 as an `IMPLIES`: scope, seam, **consequent on the right**, two lamps. Woon's shape, and the only figure here that has one |
 | `robbery-392-liability` | `liable under s 392` | what that consequent contains — the ordinary punishment and the night one, as the statute splits them |
 
+## The head-as-sink twins — 14 files, the Woon reading
+
+`<slug>-head.svg` and `<slug>-head.txt` beside seven of the eight figures draw the decision's own name as the **rightmost box**, so the ladder reads as a Layman Allen normalised diagram: subject at the left margin, consequent at the right, which is how Woon draws every element diagram in *Essential Criminal Law* ch 8 (`Offender` … `Commits Robbery`, p 187).
+They are a second variant, not a replacement, so the 32 files above and NOTES.md's references to them do not move.
+Made by the same generator with `LADDER_HEAD_AS_SINK=1`, via `@repo/ladder-core`'s opt-in `headAsSink` (l4-ide branch `headlamp`, PR legalese/l4-ide#445).
+
+Only `.svg` and `.txt` get a twin: `.mmd` and `.sentences` are emitted from the `FunDecl`, never the `Scene`, so the option cannot reach them.
+`robbery-392-implies` has no twin at all, and that is right: an implication body already ends in the two named lamps, which *are* its consequent, so a third terminal would draw a sink the rule does not have.
+The generator refuses to write a twin that is byte-identical to its original and logs why, because the first dry run produced sixteen such twins against a stale build of `ladder-core` with exit 0 and nothing said.
+
+
 **Nothing here is retyped.** The generator reads the corpus through `jl4-lsp`
 (`textDocument/codeLens` → `l4.visualize` → `RenderAsLadderInfo.funDecl` → `fromVizFunDecl` →
 `layout`), so every label, every ordering and every inert chapeau comes out of the `.l4`. A figure
