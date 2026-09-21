@@ -133,6 +133,15 @@ s 381 needs the clerk-or-servant relation, which s 27 already touches; and s 382
 of three purposes — so whoever encodes it should read "The shape of s 380" in
 `theft-378-379.l4` first. The evidence layer — what a fact rests on — is not encoded; it lives in the app.
 
+**Leaves no fixture reaches.** Encoded, evaluated, and TRUE in no fixture in the row, so no
+assertion defends them: on `Robbery Facts`, `attempts to cause` (the other half of the same
+2026-09-21 split that left the carrying-away leaves undefended until the getaway fixtures),
+and four of the six s 390(2) harms — `death`, `fear of instant death`,
+`fear of instant wrongful restraint`, and on the s 390(3) side `instant death`,
+`instant wrongful restraint` and `to some other person`. Counted on 2026-09-21 with
+`grep -F '    <leaf>' robbery-390-392.l4 | grep -c 'IS TRUE'`. They are a list of fixtures to
+write, not a list of defects; but an all-green run says nothing about any of them.
+
 ## Provenance and what has been checked
 
 Statutory text **verbatim from the lawplain `statutes` corpus** (`PC1871`, current in-force
@@ -140,9 +149,10 @@ text as at 2026-09-17, carrying the Act 21 of 2025 and Act 15 of 2019 amendment 
 the CPC 2010 text from the same corpus. Judgments from lawplain `judgments`; the charges are
 quoted in each module's header exactly as the judgment prints them.
 
-Checked on 2026-09-21 against the l4-ide `l4` binary built from the `robbery-demo` branch (the
-same binary the s 403 work used, not one built from `unstable`), with `JL4_LIBRARY_PATH` pinned
-to `jl4-core/libraries`:
+Checked on 2026-09-21 against the l4-ide `l4` binary built from the `robbery-demo` branch (a
+snapshot copy, not one built from `unstable`), with `JL4_LIBRARY_PATH` pinned to
+`jl4-core/libraries`; the whole row was re-run module by module after the five 2026-09-21 changes
+below were integrated, and the table is that run:
 
 | module | `#ASSERT` | result |
 | --- | --- | --- |
@@ -150,7 +160,7 @@ to `jl4-core/libraries`:
 | cheating-415-417-420 | 11 | all satisfied |
 | theft-378-379 | 31 | all satisfied |
 | extortion-383-384 | 12 | all satisfied |
-| robbery-390-392 | 50 | all satisfied |
+| robbery-390-392 | 72 | all satisfied |
 | misappropriation-403 | 21 | all satisfied |
 | cbt-405-406 | 23 | all satisfied |
 | cbt-407-409 | 32 | all satisfied |
@@ -164,11 +174,11 @@ to `jl4-core/libraries`:
 Every module round-trips `l4 format` byte-identically, re-checked on 2026-09-21 across all twelve
 modules, including `misappropriation-403.l4` and `cbt-407-409.l4`. The whole row deploys to
 `jl4-service` as one bundle (`sg-penal-code`, 10 files, 37 exports) and all 38 fixtures evaluate
-over HTTP to the verdict the asserts state. **That deploy predates the s 392 implication, s 380,
-s 403, the s 405 third-limb recital and ss 407–409** and has not been re-run since; it is a
-ten-file bundle and the row now has twelve modules, so it does not have the right number of FILES
-either and cannot answer about s 403 or ss 407–409 at all. (For what it is worth,
-`grep -ch '^@export' *.l4` gives PLACEHOLDER-EXPORTS now and gave 34 before the s 392
+over HTTP to the verdict the asserts state. **That deploy predates the s 392 implication, the
+getaway fixtures, s 380, s 403, the s 405 third-limb recital and ss 407–409** and has not been
+re-run since; it is a ten-file bundle and the row now has twelve modules, so it does not have the
+right number of FILES either and cannot answer about s 403 or ss 407–409 at all. (For what it is
+worth, `grep -ch '^@export' *.l4` gives PLACEHOLDER-EXPORTS now and gave 34 before the s 392
 implication — which is not 37 at any point, so the two numbers are not
 measuring the same thing and this one should not be used to "correct" that one.)
 
@@ -176,10 +186,10 @@ measuring the same thing and this one should not be used to "correct" that one.)
 l4-ide worktree; they are a **point-in-time record**, not a live gate — canon has no CI and the
 row is not in l4-ide's corpus globs. Regenerate the same way. **The goldens were NOT regenerated
 for any of the four 2026-09-21 changes below** — the s 393 addition, the s 390(2)
-re-granularisation, s 392 as an implication, s 380, s 403, the s 405 third-limb recital, or
-ss 407–409 — so `tests/robbery-390-392.*.golden`, `tests/theft-378-379.*.golden`,
-`tests/charge-sheet.*.golden` and `tests/cbt-405-406.*.golden` predate them and will not match
-until someone re-blesses them.
+re-granularisation, s 392 as an implication, the getaway fixtures, s 380, s 403, the s 405
+third-limb recital, or ss 407–409 — so `tests/robbery-390-392.*.golden`,
+`tests/theft-378-379.*.golden`, `tests/charge-sheet.*.golden` and `tests/cbt-405-406.*.golden`
+predate them and will not match until someone re-blesses them.
 The robbery goldens cite line numbers (`robbery-390-392.l4:671:1-48:`), and every one of the
 first three changes moved them, so the mismatch is total rather than local.
 `misappropriation-403.l4` and `cbt-407-409.l4` have **no goldens at all** — four files each are
@@ -391,10 +401,13 @@ parallel limbs rather than three.
 timing limbs × two of causes-or-attempts × six harms — and `robbery-390-2.svg` widens from 2846
 to 2894 px.
 The other five figures are byte-identical, because only s 390(2) changed.
-**No answer on the bench changes, and the row still has 149 `#ASSERT`s, all satisfied.**
-Every fixture has both carrying-away leaves FALSE, so splitting a FALSE OR-limb in two changes
+**No answer on the bench changed, and the row still had 149 `#ASSERT`s, all satisfied.**
+Every fixture then had both carrying-away leaves FALSE, so splitting a FALSE OR-limb in two changed
 nothing; and wherever the old fused `voluntarily causes` was TRUE, both `voluntarily` and `causes`
 are TRUE, so the new series conjunct is satisfied too.
+That the split changed no answer is also what left it undefended: no fixture in this row set either
+carrying-away leaf TRUE until the getaway fixtures added later the same day — see
+"the getaway" below.
 Re-run with the `l4` binary built from `legalese/l4-ide` `3effdaaad`
 (branch `robbery-demo`, not `unstable`), `JL4_LIBRARY_PATH` pinned:
 149 satisfied, zero failed, zero `DiagnosticSeverity_Error`, and `robbery-390-392.l4` still
@@ -680,6 +693,43 @@ Re-run with the `l4` binary on branch `robbery-demo`, `JL4_LIBRARY_PATH` pinned:
 **What this does NOT fix.**
 “in violation of” still rides at the end of the accused's own limb whenever either violation leaf is TRUE, including where the verb relied on is a misappropriation rather than a use or a disposal; s 405 attaches it to the use-or-disposal alternative alone.
 That is a pre-existing defect, out of this change's scope, and it is recorded here rather than left to be rediscovered.
+
+## 2026-09-21 — the getaway: s 390(2)'s third and fourth occasions
+
+s 390(2) names four occasions on which the violence may be done, and until this change the bench answered for two of them.
+Measured before writing anything: every `Robbery Facts` fixture in the row had both `in carrying away property obtained by the theft` and `in attempting to carry away property obtained by the theft` FALSE.
+So the two leaves had never been TRUE in any assertion, before or after the split that made them two leaves earlier the same day — and the split's own note, that it changed no answer on the bench, is a restatement of the same fact rather than reassurance about it.
+
+Three fixtures in `robbery-390-392.l4`, all CONSTRUCTED and none reported, built from the Chen Weixiong Jerriek facts with the violence moved from during the taking to after it:
+
+- `Chen Weixiong Jerriek, the getaway` — the theft complete, `in order to commit theft` and `in committing the theft` both FALSE, and the victim punched while the group made off with the handphone.
+  The third occasion alone carries s 390(2).
+- `Chen Weixiong Jerriek, the getaway attempted` — the same with the fourth leaf in place of the third: the handphone taken, the group still trying to get clear with it.
+  The theft is complete either way, so this is s 392 and not s 393, and the module asserts that too.
+- `Chen Weixiong Jerriek, the getaway, no occasion` — the control, identical to the first but with all four occasions FALSE.
+  Not robbery; the theft still stands, so the refusal names the aggravation and nothing else, and s 394 falls with it for want of a robbery to be committing.
+
+Each of the two positive fixtures leaves exactly ONE of the four occasions TRUE and exactly one of the six harms (`hurt`), so whichever satisfies `theft is robbery` satisfies it alone.
+
+**Twenty-two assertions**, 50 → 72 in the module and 157 → 179 in the row; all satisfied, zero `DiagnosticSeverity_Error`, and every module in the row still round-trips `l4 format` byte-identically.
+Run with a snapshot `l4` taken from the `legalese/l4-ide` worktree on branch `robbery-demo` (HEAD `3effdaaad`), `JL4_LIBRARY_PATH` pinned to that worktree's `jl4-core/libraries` — the same rig the s 390(2) re-granularisation above was checked on, and not the `unstable` binary named under "Provenance".
+
+**Positive control, because a green run on new fixtures proves nothing by itself.**
+Flipping the one occasion leaf in `Chen Weixiong Jerriek, the getaway` from TRUE to FALSE turns six of the new assertions red; doing the same to `…, the getaway attempted` turns five red.
+So the leaves are load-bearing and the assertions are tests.
+
+**Interpretation calls**, recorded in the module beside the fixtures: `for that end` is TRUE on a getaway, because violence done to keep what has just been taken is done for the end of the theft — and it is the leaf that does the work, since violence during a carrying away done for some unrelated reason fails s 390(2) there rather than on the occasion.
+`moves that property` stays TRUE in the nested theft for both, s 378 being complete on the moving, which is what lets a person be carrying away property already "obtained by the theft".
+
+**The recital does not name the occasion, and the brief for this change assumed it would.**
+`the recital of the robbery` is `CONCAT "did rob ", person, " of ", thing` and says nothing about manner, by the call this row records under CPC s 125 illustration (a) — the same call that makes s 392's night limb change the punishment and not a word of the charge.
+On the getaway facts the charge comes out word for word the charge Chen Weixiong Jerriek faced.
+Making the recital name the carrying-away limb would have contradicted that call, invented wording no judgment supports, and broken the verbatim reported charge this module is pinned to, so it was not done.
+What is asserted instead is the true and checkable thing: the two charge texts are equal in full, which is the form that breaks if anyone later makes the recital name the limb.
+
+**Not regenerated, deliberately.**
+No `DECIDE` changed, so no ladder changed: `projections/` is untouched and `robbery-390-2.sentences` still reads 48 ways.
+`tests/*.golden` were already stale for the three earlier 2026-09-21 changes and are staler now.
 
 ## projections/
 
