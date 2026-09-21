@@ -81,7 +81,7 @@ finds the call next to the facts it decides. The ones worth knowing before relyi
 
 ## What is not here
 
-No s 109 abetment, no s 511 attempt, no CPC s 124(4) amalgamation (Song Hauming Oskar [2021]
+No s 109 abetment, no general attempt under s 511 (s 393, the attempt at robbery specifically, IS encoded since 2026-09-21), no CPC s 124(4) amalgamation (Song Hauming Oskar [2021]
 SGHC 169, the 103-occasion Diners Club case, was on the bench for it and is not encoded), no
 s 320 definition of grievous hurt (a leaf on `Hurt Facts`), no ss 299–300 (an ontology in the
 s 301 module). The evidence layer — what a fact rests on — is not encoded; it lives in the app.
@@ -161,27 +161,67 @@ the s 394 recital already carried.
 
 ## projections/
 
-`projections/robbery-390-ladder.{py,svg,png}` — s 390 drawn as a ladder diagram, the two
-subsections as two parallel series chains, with each leaf coloured by its value on the Chen
-Weixiong Jerriek facts as encoded.
+Six decisions out of `robbery-390-392.l4`, four carriers each, **generated from the module
+through `jl4-lsp`** and so incapable of drifting from it; plus one hand-drawn page figure that
+is a second source and says so. The full account, including how to regenerate and what each
+carrier drops, is [`projections/README.md`](projections/README.md).
 
-**There is no ladder verb in the `l4` CLI**, and no committed path from an L4 module to an SVG.
-`jl4-core/src/L4/Viz/Ladder.hs` emits a topology-only IR that the LSP serves to the browser, and
-every renderer in l4-ide is TypeScript running in a webview. So this figure is **drawn by hand**
-by a dependency-free Python script, after
-`paper/formal-methods-in-law/the-letter-and-the-spirit/cheating-415-ladder.py` in l4-ide, which
-is the same repository's own precedent for the same problem. The consequence to know: **nothing
-checks the figure against the module**, so a change to the s 390 ladder in `.l4` will not move
-the drawing. Re-run `python3 robbery-390-ladder.py` and read it.
+The carrier to read first is `projections/robbery-390-2.sentences`: **36 ways to satisfy
+s 390(2)**, one per line. Three timing limbs, times two of causes-or-attempts, times six harms.
+That number is the section, not the encoding.
 
-## Section 301 (2026-08-26)
+## Section 390 stated as elements, in plain English
 
-`culpable-homicide-301.l4` encodes **section 301** — transferred malice — as substituted by the
-Criminal Law Reform Act 2019. The section is a pair of counterfactual substitutions, on the
-description channel (subsection (1)) and the defence channel (subsection (2)); each channel
-needs two fields on the `Killing` record, what the law says apart from the section and what it
-would have said in the counterfactual. `the description apart from this section` is a `MAYBE`
-on purpose. Two rules are marked NOT part of s 301 (the `ELSE` limb of the description
-transfer, and the disjunction that adds the ordinary defences). Its eight asserts follow the
-illustrations in the file. Checked originally at `unstable` `81f0f752` (2026-08-27) and again
-with the row above.
+Written out here so a criminal-law textbook's list can be laid beside it line by line.
+
+**This list is a TRANSCRIPTION and therefore a second source.** The module is the authority and
+`projections/robbery-390-2.sentences` is its generated prose; if this list and those disagree,
+this list is wrong. It exists because the generated prose carries the L4's own leaf names
+(`f's \`in order to commit theft\``), which is exact but is not what a reader compares against a
+textbook.
+
+**Robbery, s 390(1).** Robbery is not a third offence beside theft and extortion. It is either
+of those two, with something added. So:
+
+1. There was a theft, and s 390(2) upgrades it; **or**
+2. There was an extortion, and s 390(3) upgrades it.
+
+**When theft is robbery, s 390(2).** Every one of these must hold:
+
+1. The accused committed theft (s 378).
+2. The violence was done at one of three times — before the theft, in order to bring it about;
+   or while the theft was being committed; or afterwards, while carrying away or trying to carry
+   away what had been taken.
+3. The violence was done **for that end**, that is, for the purpose of the theft. Violence that
+   merely happened to accompany a theft is not enough.
+4. The accused either actually caused the harm, or attempted to cause it.
+5. The harm was one of six — death; hurt; wrongful restraint; fear of instant death; fear of
+   instant hurt; fear of instant wrongful restraint.
+6. It was caused to **any person**, not necessarily the person robbed.
+
+**When extortion is robbery, s 390(3).** Every one of these must hold:
+
+1. The accused committed extortion (s 383).
+2. At the time of the extortion the accused was **present** — near enough to put the other person
+   in fear of instant death, instant hurt or instant wrongful restraint (the Explanation).
+3. The extortion was committed **by** putting that person in fear of one of three things —
+   instant death, instant hurt, or instant wrongful restraint.
+4. That feared harm was to the person put in fear, **or** to some other person.
+5. By being so put in fear, that person delivered up the thing extorted **then and there**.
+
+**Punishment and the related offences.**
+
+- **s 392** punishes robbery: 2 to 10 years and at least 6 strokes; 3 to 14 years and at least
+  12 strokes if committed after 7 p.m. and before 7 a.m. The night limb is a sentencing
+  provision, **not an element** — the charge is made out and recites identical words either way.
+- **s 393** punishes an attempt at robbery: 2 to 7 years and at least 6 strokes. One element,
+  "attempts to commit robbery".
+- **s 394** punishes hurt voluntarily caused in committing **or in attempting to commit**
+  robbery: 5 to 20 years and at least 12 strokes. It reaches every person jointly concerned,
+  not only the one who caused the hurt.
+
+**Not encoded, and a textbook will have them:** s 391 gang-robbery and s 395 its punishment,
+s 396 gang-robbery with murder, s 397 (deadly weapon), and ss 398–402. The row stops at the
+four sections above.
+
+The row now has a `projections/` directory; it still has no `registers/`, `report/` or `gates/`.

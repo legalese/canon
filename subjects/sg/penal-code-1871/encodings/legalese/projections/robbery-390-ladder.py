@@ -2,6 +2,13 @@
 """
 Render section 390 of the Penal Code 1871 as a ladder diagram (SVG, no deps).
 
+SECOND SOURCE. THIS FIGURE IS DRAWN, NOT GENERATED, AND IT CAN DRIFT.
+The authority for the ladder is the generated set beside it -- robbery-390*.{svg,txt,mmd,
+sentences}, read out of robbery-390-392.l4 through jl4-lsp by l4-ide's
+ts-shared/ladder-svg/demo/robbery.ts. Nothing checks THIS script against the module, so if the
+two disagree, the generated files are right. It is kept for one reason the generated set cannot
+serve: both subsections on one printable page, with the leaves valued. See README.md.
+
 s 390(1) says robbery is EITHER a theft that has been upgraded by s 390(2) OR an
 extortion that has been upgraded by s 390(3). So the whole section is one OR of
 two series chains, and the two panels below are those chains.
