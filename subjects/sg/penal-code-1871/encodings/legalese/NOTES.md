@@ -1,6 +1,6 @@
 # NOTES — sg/penal-code-1871, encoding row `legalese`
 
-**Status: `draft`.** Ten modules. Section 301 was hand-encoded on 2026-08-26 (see the end of this
+**Status: `draft`.** Eleven modules. Section 301 was hand-encoded on 2026-08-26 (see the end of this
 file); the rest was encoded on 2026-09-17 for the **charge generator** proof of concept, by one
 Claude Fable session and three Opus encoder agents working to one brief, against verbatim
 statutory text from the lawplain corpus. No claim of fidelity is made, and **no human has read
@@ -18,6 +18,7 @@ The row now encodes the offences a demo charge generator needs, and the **form o
 | `theft-378-379.l4` | s 378 | s 379 | (none quoted) — s 378 Illustration (q), the bank transfer |
 | `extortion-383-384.l4` | s 383 | s 384 | Sarjit Singh Rapati v PP [2005] SGHC 28 — s 384 r/w s 34 |
 | `robbery-390-392.l4` | s 390 (over theft and extortion) | ss 392, 393, 394 | Chen Weixiong Jerriek v PP [2003] SGHC 103 — s 392 r/w s 34; s 394 |
+| `misappropriation-403.l4` | s 403 (it defines and punishes in one) | s 403 | (none quoted) — s 403 Illustrations (a) and (c), Explanation 2 Illustrations (a) and (f) |
 | `cbt-405-406.l4` | s 405 | s 406 | Carl Elias Moses v PP [1995] 3 SLR 748, as quoted in Viswanathan Ramachandran v PP [2003] SGHC 183 — **refused as laid** |
 | `criminal-intimidation-503-506.l4` | s 503 | s 506 | Chan Yok Tuang v PP [2008] SGHC 137 — **refused** |
 | `hurt-321-323A.l4` | s 321 | s 323A | Ang Boon Han v PP [2024] SGHC 221 |
@@ -28,6 +29,14 @@ Every punishing section exports three things: a boolean `offence under s N` (the
 `charge under s N` returning a `Charge` record (the recital, or a refusal), and the defining
 section's own ladder (`cheats`, `commits theft`, …). A charge is laid under the punishing section
 (CPC s 123(4)), and its elements are the defining section's — the two are kept apart on purpose.
+
+**s 403 is the one exception, and it is the statute's doing, not a shortcut.** It defines and
+punishes in a single sentence, and — unlike s 378 ("is said to commit theft") and s 405 ("commits
+'criminal breach of trust'") — it never names an offence for a separate section to reach. So
+`misappropriation-403.l4` exports TWO things: `offence under s 403`, which IS the defining ladder,
+and `charge under s 403`. There is deliberately no `commits dishonest misappropriation` wrapper;
+a wrapper would draw as one box and would be named after the section's heading rather than its
+enacting words.
 
 ## The charge is a statutory form, and s 123(5) is the whole point
 
@@ -75,13 +84,22 @@ finds the call next to the facts it decides. The ones worth knowing before relyi
   same words and only `punishment` changes. **s 394** is framed on the same `Robbery Facts`.
 - **Pronouns** are an enum on each facts record (`he`/`she`/`they`) because the charges say
   "by deceiving *her*", "which *she* would not have done".
+- **s 403 takes `movable property`, which is NARROWER than the `property` of ss 404 and 405.**
+  s 22 defines the two separately, and 2019 widened "property" (things in action, other intangible
+  or incorporeal property, virtual currency) without touching "movable property". Do not build
+  `Misappropriation Facts` by copying `CBT Facts`: it would import the wide gloss AND the two
+  entrustment leaves, which s 403 does not have. An entrustment leaf carried across would be FALSE
+  in every finder case in Explanation 2 and would silently refuse charges that ought to frame.
 - **Illustrations and Explanations are not rules.** They ride as comments and in `@desc` text
   (e.g. s 415 Explanation 1, "a dishonest concealment of facts is a deception", is the `@desc` of
   `deceived the victim`).
 
 ## What is not here
 
-No s 109 abetment, no general attempt under s 511 (s 393, the attempt at robbery specifically, IS encoded since 2026-09-21), no CPC s 124(4) amalgamation (Song Hauming Oskar [2021]
+No s 404 (dishonest misappropriation of property possessed by a deceased person), no ss 407–409
+(criminal breach of trust of property entrusted for transportation or storage; by employees; and by a
+public servant, banker, merchant, agent, director, officer, partner, key executive or fiduciary),
+no s 109 abetment, no general attempt under s 511 (s 393, the attempt at robbery specifically, IS encoded since 2026-09-21), no CPC s 124(4) amalgamation (Song Hauming Oskar [2021]
 SGHC 169, the 103-occasion Diners Club case, was on the bench for it and is not encoded), no
 s 320 definition of grievous hurt (a leaf on `Hurt Facts`), no ss 299–300 (an ontology in the
 s 301 module). The evidence layer — what a fact rests on — is not encoded; it lives in the app.
@@ -93,8 +111,9 @@ text as at 2026-09-17, carrying the Act 21 of 2025 and Act 15 of 2019 amendment 
 the CPC 2010 text from the same corpus. Judgments from lawplain `judgments`; the charges are
 quoted in each module's header exactly as the judgment prints them.
 
-Checked against the l4-ide `l4` binary built 2026-09-15 from `unstable` (`388f86059`), with
-`JL4_LIBRARY_PATH` pinned to `jl4-core/libraries`:
+Checked on 2026-09-21 against the l4-ide `l4` binary built from the `robbery-demo` branch (the
+same binary the s 403 work used, not one built from `unstable`), with `JL4_LIBRARY_PATH` pinned
+to `jl4-core/libraries`:
 
 | module | `#ASSERT` | result |
 | --- | --- | --- |
@@ -103,34 +122,179 @@ Checked against the l4-ide `l4` binary built 2026-09-15 from `unstable` (`388f86
 | theft-378-379 | 12 | all satisfied |
 | extortion-383-384 | 12 | all satisfied |
 | robbery-390-392 | 50 | all satisfied |
+| misappropriation-403 | 21 | all satisfied |
 | cbt-405-406 | 17 | all satisfied |
 | criminal-intimidation-503-506 | 15 | all satisfied |
 | hurt-321-323A | 17 | all satisfied |
-| charge-sheet | 3 | all satisfied |
+| charge-sheet | 5 | all satisfied |
 | culpable-homicide-301 | 8 | all satisfied |
 
-**157 in total**, re-counted on 2026-09-21 with `grep -ch '^#ASSERT' *.l4`.
-The figure of 133 this file and `encoding.json` both carried before that date was wrong by one even for the row as it then stood: the same count gives **132**; it then read **149** until the s 392 implication below added eight.
+**180 in total**, counted on 2026-09-21 with `grep -ch '^#ASSERT' *.l4`.
+The figure of 133 this file and `encoding.json` both carried before that date was wrong by one even for the row as it then stood: the same count gives **132**; it then read **149** until the s 392 implication added eight, and **157** until s 403 added twenty-one and the s 403 router rows added two.
 Nothing in the row had moved when the 132/133 discrepancy was found; the number had simply never been re-derived.
 
-**Anchor the grep.** The unanchored `grep -c '#ASSERT' *.l4` this line carried until 2026-09-21 gave the same answer for as long as no comment in the row named the directive. Two now do, so it returns **159** for 157 assertions. The anchored form above is the one to use.
+**Anchor the grep.** The unanchored `grep -c '#ASSERT' *.l4` gives **181** for 180 assertions, because exactly one comment line names the directive in prose (`robbery-390-392.l4:367`). The anchored form above is the one to use.
 
-Every module round-trips `l4 format` byte-identically, re-checked on 2026-09-21 including the s 392 implication below. The whole row deploys to `jl4-service`
+Every module round-trips `l4 format` byte-identically, re-checked on 2026-09-21 across all eleven modules including `misappropriation-403.l4`. The whole row deploys to `jl4-service`
 as one bundle (`sg-penal-code`, 10 files, 37 exports) and all 38 fixtures evaluate over HTTP to
-the verdict the asserts state. **That deploy predates the s 392 implication** and has not been
-re-run since; the four decisions it added are `@export`ed, so the bundle's export count is no
-longer whatever 37 was counting. (For what it is worth, `grep -ch '^@export' *.l4` gives 38 now
-and gave 34 before — which is not 37 either way, so the two numbers are not measuring the same
-thing and this one should not be used to "correct" that one.)
+the verdict the asserts state. **That deploy predates the s 392 implication AND s 403** and has not been
+re-run since; it is a ten-file bundle and the row now has eleven modules, so it cannot answer about
+s 403 at all. (For what it is worth, `grep -ch '^@export' *.l4` gives 40 now, gave 38 before s 403
+and 34 before the s 392 implication — which is not 37 at any point, so the two numbers are not
+measuring the same thing and this one should not be used to "correct" that one.)
 
 `tests/` holds jl4-test goldens generated by copying the row under `jl4/examples/legal/` in an
 l4-ide worktree; they are a **point-in-time record**, not a live gate — canon has no CI and the
 row is not in l4-ide's corpus globs. Regenerate the same way. **The goldens were NOT regenerated
-for any of the three 2026-09-21 changes below** — the s 393 addition, the s 390(2)
-re-granularisation, or s 392 as an implication — so `tests/robbery-390-392.*.golden` and
-`tests/charge-sheet.*.golden` predate all three and will not match until someone re-blesses them.
+for any of the four 2026-09-21 changes below** — the s 393 addition, the s 390(2)
+re-granularisation, s 392 as an implication, or s 403 — so `tests/robbery-390-392.*.golden` and
+`tests/charge-sheet.*.golden` predate all four and will not match until someone re-blesses them.
 The robbery goldens cite line numbers (`robbery-390-392.l4:671:1-48:`), and every one of the
-three changes moved them, so the mismatch is total rather than local.
+first three changes moved them, so the mismatch is total rather than local.
+`misappropriation-403.l4` has **no goldens at all** — four files are owed under `tests/` when the
+row is next re-blessed, on the four-per-module pattern.
+
+## 2026-09-21 — section 403, criminal misappropriation
+
+Added `misappropriation-403.l4`, from Woon, *Essential Criminal Law* ch 8 p 189, where s 403 is
+drawn as four boxes: `Dishonestly` in series into a parallel pair `Misappropriates` /
+`Converts to own use`, rejoining into `Movable property`, feeding the consequent.
+That is exactly the section's operative words with nothing invented and nothing dropped, so the
+ladder is his diagram: `dishonestly AND (misappropriates OR converts to his own use) AND movable
+property`, three elements and one disjunction.
+Twenty-one `#ASSERT`s, nine fixtures, and two exports.
+
+**Why two exports and not three.**
+s 403 defines and punishes in one sentence and never says "is said to commit", so there is no
+named offence for a wrapper rule to carry — see the exception recorded under "What it is" above.
+Woon's rightmost box reads "Commits Dishonest misappropriation", but that wording is the section's
+heading rather than its enacting words, and it is there to keep his chapter's diagrams uniform.
+
+**The adverb is in SERIES, and one fixture exists to prove it.**
+"Whoever dishonestly misappropriates or converts to his own use" puts the adverb in front of both
+verbs, so it governs the conversion branch too.
+The tempting alternative — dishonesty attached to `misappropriates`, `converts to his own use` left
+bare — is a wrong-answer defect, not a factoring preference.
+`the umbrella sold before the mistake was discovered` is the record that catches it: both act
+leaves TRUE, the adverb FALSE, offence FALSE.
+Measured by mutation on 2026-09-21: re-factoring the ladder that way turns two of the twenty-one
+assertions red, and no other fixture in the module notices.
+
+**Two traps, both recorded in the module header.**
+The object is `movable property` (s 22, the NARROW term — everything except land, benefits to arise
+out of land, and things attached to or permanently fastened to the earth), not the `property` of
+ss 404 and 405.
+And there is **no entrustment element**: s 403 is s 405's first limb minus entrustment, with "that
+property" relaxed to "movable property", which makes `cbt-405-406.l4` the obvious template and the
+wrong one.
+Carrying an entrustment leaf across would be FALSE in every finder case in Explanation 2 — the
+bulk of this section's illustrations — and would silently refuse charges that ought to frame.
+
+**Explanation 2 hides a bracketing fork, and it is not settled.**
+The guilt clause reads "…if he appropriates it to his own use, when he knows or has the means of
+discovering the owner, or before he has used reasonable means to discover and give notice to the
+owner, and has kept the property a reasonable time to enable the owner to claim it."
+
+| reading | bracketing |
+| --- | --- |
+| 1 | `(knows or has the means) OR before (reasonable means AND reasonable time)` |
+| 2 | `((knows or has the means) OR before-reasonable-means) AND before-reasonable-time` |
+
+| the finder | reading 1 | reading 2 |
+| --- | --- | --- |
+| knows the owner; appropriates the same afternoon, having kept the property no reasonable time | guilty | guilty |
+| knows the owner; HAS kept the property a reasonable time; then appropriates it | guilty | **not guilty** |
+
+**Reading 1 is preferred, and the argument is from Illustrations (d), (e) and (g) only.**
+Each states guilt FLATLY although the finder may well have held the property a while — (d) "but
+afterwards appropriates it", (e) "afterwards discovers that it belongs to Z", (g) "retains the
+money and appropriates it".
+On reading 1 the knows-or-has-the-means limb decides all three by itself and timing never arises;
+on reading 2 each turns on a timing fact the illustration does not supply.
+An illustration that states guilt flatly is poor evidence for a construction that makes guilt
+conditional on something it is silent about.
+
+**Illustrations (b) and (f) are NOT the argument**, although they are the vivid pair and the
+obvious ones to reach for.
+Work reading 2 through them: in (b) the finder knows the owner from the letter and appropriates at
+once, so both conjuncts hold and he is guilty; in (f) the ring is sold immediately without any
+attempt to find the owner, so both conjuncts hold and he is guilty.
+Reading 2 convicts in both and agrees with reading 1 in both — they discriminate nothing.
+Every timing-bearing illustration to Explanation 2 has the finder appropriating quickly, which is
+why the preference has to rest on (d), (e) and (g).
+
+**Where the reading lives.**
+The row's convention keeps Explanations in `@desc` text rather than in rules, so the fork is **not
+mechanically encoded**: it is carried in the `dishonestly` input of one fixture,
+`the purse kept a reasonable time`, and in the assertion over it.
+A ruling for reading 2 flips that one boolean and nothing else — not the ladder, not another
+fixture, not the charge builder.
+**OPEN FOR MENG.**
+
+**Also open for Meng: the recital depth.**
+CPC s 125 makes it section-dependent and s 403 sits between the row's two groups — no manner limbs
+of the s 405 kind (which argues for the bare theft treatment, s 125 Illustration (a)), but two
+distinct named acts, and a charge that does not say which is alleged leaves the accused guessing.
+The module takes the middle and recites the verb or verbs that are TRUE:
+`did dishonestly misappropriate movable property, to wit, <the property>`.
+**CONSTRUCTED, NOT REPORTED** — no s 403 charge is on this row's bench, so it is a fixture of the
+encoding and not an oracle.
+
+**Misappropriation and conversion are not equals, and the ladder does not say so.**
+In *Wong Seng Kwan v PP* [2012] SGHC 81 at [42]–[46] the High Court took the view that the two
+terms mean different things; Chong J at [46] put conversion as a **subset** of misappropriation,
+since conversion additionally requires acting in a manner inconsistent with the rights of the true
+owner.
+Both leaves are kept, because both words are in the section; the entailment is doctrine, not
+statutory words, and hard-wiring it would over-constrain a fact-finder the section leaves free.
+Two consequences: the OR is doctrinally redundant (an OR is indifferent to a subset relation among
+its disjuncts, so no answer moves either way), and `converts` TRUE with `misappropriates` FALSE is
+a combination the doctrine says should not arise.
+The ladder admits it, and `the horse, on the conversion limb alone` probes it on purpose — labelled
+in the module as a probe of the encoding rather than as a case.
+
+**`charge-sheet.l4` gained three things.**
+A `misappropriation IS A \`Misappropriation Facts\`` field on `Complaint` (placed beside
+`breach of trust`, the family it belongs to); an `IMPORT`; and a `"403"` row in `applicable charges`
+**after `"406"`**.
+That placement is the router's stated rule, most serious first within each family — s 406 carries
+up to 7 years and s 403 up to 2 — and NOT a section-number rule, which would put 403 first.
+The list has never been in section order anyway: `"394"` precedes `"392"` and `"420"` precedes
+`"417"`.
+**No implication row is owed between `"379"` and `"403"`.**
+The 394/392/379 rows overlap because s 390(1) says in terms that in all robbery there is either
+theft or extortion; nothing of the kind ties theft to misappropriation.
+They are alternatives, not a hierarchy.
+
+**The dangling forward reference is now discharged.**
+`theft-378-379.l4:151` has always told the reader that a ring lying on the high road "is in
+nobody's possession, so there is nothing to take it out of — that is misappropriation, not theft",
+pointing at a section the row did not encode.
+Two new router fixtures make the boundary executable: `the ring found on the high road`
+(s 378 Illustration (g) beside s 403 Explanation 2 Illustration (f) — the statute's own pairing,
+since s 378 Illustration (g) cross-refers to criminal misappropriation in terms) returns exactly
+`LIST "403"`, and `the dollar found on the high road` (Explanation 2 Illustration (a), the finder
+who merely picks it up) returns **`EMPTY`**.
+That second one is the router's first vacuity control: until now every assertion over
+`applicable charges` named at least one section, so a router that over-reported would have been
+caught and one that reported spuriously on empty facts would not.
+
+**What this did NOT change.**
+Every pre-existing assertion in the row still passes, and no answer on the bench moves.
+The three existing `Complaint` fixtures each gained `misappropriation IS \`no misappropriation\``,
+an all-FALSE record, so their charge lists are unchanged.
+Nothing under `ts-apps/charge-generator/src` in `legalese/l4-ide` constructs a `Complaint`
+field-by-field — checked on 2026-09-21, the only two occurrences of the word there are inside
+prose strings in the Carl Elias Moses preloads — so the new field breaks no preload.
+
+**What is not encoded.**
+s 404 (dishonest misappropriation of property possessed by a deceased person at the time of his
+death), which is s 403's sibling and reaches `property` of any kind; and ss 407–409, the aggravated
+criminal breach of trust sections.
+Explanation 2's good-faith limb ("it is sufficient if, at the time of appropriating it, he does not
+believe it to be his own property, or in good faith believe that the real owner cannot be found")
+rides in the `dishonestly` `@desc` and is not a leaf, on the same convention that keeps the rest of
+Explanation 2 out of the ladder.
 
 ## 2026-09-21 — section 393, attempt to commit robbery
 
