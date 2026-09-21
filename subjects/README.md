@@ -1,11 +1,12 @@
 # subjects/
 
-One directory per body of law. **Ten are listed as at 2026-09-21.** Four are Singapore
-statutes and one is an Act of the Knesset; of the other five, one is a synthetic insurance
-policy, two are commercial standard forms, one is a judge-made doctrine encoded across four
-jurisdictions, and one is a body of Israeli **collective agreements** rather than enacted law at
-all. Each of those five is flagged below. One subject, `contracts/investment/yc-safe-premoney`, holds source text and no encoding
-at all, which the `what it encodes` column says plainly.
+One directory per body of law. **Eleven are listed as at 2026-09-21.** Four are Singapore
+statutes and one is an Act of the Knesset; of the other six, one is a synthetic insurance
+policy, two are commercial standard forms, one is eight private issuers' card T&Cs bundled as
+one comparison subject, one is a judge-made doctrine encoded across four jurisdictions, and one
+is a body of Israeli **collective agreements** rather than enacted law at all. Each of those six
+is flagged below. One subject, `contracts/investment/yc-safe-premoney`, holds source text and no
+encoding at all, which the `what it encodes` column says plainly.
 
 | subject | what it encodes | status |
 | --- | --- | --- |
@@ -16,6 +17,7 @@ at all, which the `what it encodes` column says plainly.
 | [`us/chubb-hospital-cash`](us/chubb-hospital-cash) | a **synthetic** supplemental hospitalization cash policy — never law, never in force — encoded twice, independently, as evidence in a replication study | `experimental` |
 | [`contracts/investment/yc-safe-postmoney`](contracts/investment/yc-safe-postmoney) | the Y Combinator post-money SAFE — six instruments plus four Pro Rata Side Letters, with their User Guide — deposited verbatim, with one encoding row | `draft` |
 | [`contracts/investment/yc-safe-premoney`](contracts/investment/yc-safe-premoney) | nothing, and none planned in this repository — **sources only**: the 2013–2018 "original safe", four US variants, recovered from the Internet Archive | `draft` |
+| [`contracts/payments/sg-miles-card`](contracts/payments/sg-miles-card) | eight Singapore card issuers' reward-programme T&Cs — DBS yuu, DBS Woman's World, Citi Rewards, HSBC Revolution, UOB Lady's Solitaire, POSB PAssion, plus two flat-rate cards with no held T&C — against one shared ontology, so "which card earns the most on this purchase" can be asked across all eight at once | `draft` |
 | [`il/ofek-hadash-2008`](il/ofek-hadash-2008) | the Ofek Hadash reform — the collective agreements, and one budget-law chapter, that determine an Israeli teacher's pay | `draft` |
 | [`il/hvac-work-licensing-2025`](il/hvac-work-licensing-2025) | the Refrigeration or Air-Conditioning Systems Work Licensing Law 5785-2025 (licence grades, eligibility with the Second Schedule, validity, foreign experts, commencement) and its Fees Regulations in THREE vintages — the SimpLEX draft shown in Schwartz, Bar-Siman-Tov & Gelbard (2025), as made, as amended — with the paper's own test table run against all three | `draft` |
 | [`il/penal-law-1977`](il/penal-law-1977) | Penal Law 5737-1977 — theft and robbery (ss 383, 384, 402, 403, 404), encoded in Hebrew with English renderings beside every rule | `draft` |
@@ -70,6 +72,18 @@ the law of any State. And it is the first row whose registers had to be **bent t
 has no in-force banner and no amendment markers, so the source bundle declares no annotations and
 the sweep register has nothing to dispose of; both say so in their own notes, and both record the
 schema vocabulary gaps as upstream candidates rather than papering over them.
+
+`contracts/payments/sg-miles-card` is the first subject under a **new genre**, `payments/`,
+seeded in the same change (`contracts/GENRES.md` records why). It is also the first `contracts/`
+row that is a **bundle**: eight instruments by five different issuers, filed as one leaf against
+one shared domain module and composer, because the point of the encoding is a comparison across
+all eight (Meng ruled this shape on 2026-09-21, the day it was deposited) — the same reason
+`sg/succession` bundles four Acts and `il/ofek-hadash-2008` bundles several collective agreements.
+Its `subject.json.encodings_note` and its row's `NOTES.md` §0 both state the argument in full.
+**HG1 was waived, not signed** — `status: draft` is not a weaker claim about the encoding's
+correctness than usual; it specifically reflects that nobody has checked its isomorphism to the
+eight source texts yet, notwithstanding that every machine gate (848 scenario assertions, a
+Catala projection with zero refusals) passed. See `encodings/legalese/gates/HG1.waiver.md`.
 
 The two `contracts/` rows are the first entries under a **second grammar**. Everything above them
 is enacted law, filed by the authority that enacted it — `sg/`, `us/`, an ISO 3166-1 code. A

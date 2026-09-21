@@ -21,6 +21,7 @@ with `git show docs/directory-conventions:docs/directory-conventions.md`.
 | `investment/`| Instruments by which capital is put into an enterprise for a return in equity or its equivalent: subscription and shareholders' agreements, convertible instruments, SAFEs, term sheets, side letters that vary them.      |
 | `leasing/`   | Instruments conveying the use of an asset for a term against rent: real-property leases and licences, equipment and vehicle leases, charterparties.                                                                        |
 | `lending/`   | Instruments creating an obligation to repay money advanced, and the security for it: facility and loan agreements, notes, guarantees, debentures, intercreditor and security documents.                                    |
+| `payments/`  | Instruments governing a payment method's own terms, distinct from the credit or debt they may ride on: card, wallet and payment-network agreements, and the reward or loyalty programmes issued alongside them.          |
 
 A genre says what the instrument **does**, not who wrote it and not whether it is a published
 standard form or a one-off. Standard forms and bespoke instruments share the tree and are
@@ -54,7 +55,21 @@ Reserved names may not be used as a genre: `encodings`, `cases`, `projections`, 
 | `investment/` | [`yc-safe-postmoney`](investment/yc-safe-postmoney), [`yc-safe-premoney`](investment/yc-safe-premoney) |
 | `leasing/`    | none yet                                                                                          |
 | `lending/`    | none yet                                                                                          |
+| `payments/`   | [`sg-miles-card`](payments/sg-miles-card)                                                        |
 
-The three empty genres are kept because they are the ruled seed vocabulary, not because a
-row is expected imminently. An empty genre directory is not created until it has a row; the
-vocabulary lives in this table.
+The three empty genres (`insurance`, `leasing`, `lending`) are kept because they are the
+ruled seed vocabulary, not because a row is expected imminently. An empty genre directory is
+not created until it has a row; the vocabulary lives in this table.
+
+**`payments/` added 2026-09-21**, in the same change as its first subject,
+`payments/sg-miles-card`: eight Singapore credit/debit cards' reward-programme terms. None
+of the four seed genres holds it — the cards are not priced against a contingency
+(`insurance/`), no capital changes hands (`investment/`), no asset is conveyed for a term
+(`leasing/`), and while a credit card *is* a line of credit, the operative content encoded
+here is the rewards programme riding on the card, not the credit facility itself (per this
+document's own "file where the operative obligation sits" rule, the encoded obligation is
+"how many miles does this transaction earn", not "must this balance be repaid"). This
+decision has not been reviewed by anyone but the session that made it and Meng, who chose
+the bundling shape (see the subject's own `NOTES.md` §1 for the one-subject-per-instrument
+departure this genre choice sits beside); a maintainer who disagrees should feel free to
+rename or fold it.
