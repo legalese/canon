@@ -27,13 +27,15 @@ that is **not** in that set and is flagged below.
 a human transcribed is a second source, and this set is not one.
 
 The cost of that is **untrimmed labels**: a leaf reads `f's \`in order to commit theft\`` because
-that is what the module says, and `robbery-390-2.svg` is 2846 px wide as a result. Two of the six
+that is what the module says, and `robbery-390-2.svg` is 2894 px wide as a result. Two of the six
 are too wide for a page. That is the same trade the Reg CF figures in l4-ide make, and it is
 recorded in their README.
 
 **The four carriers are not interchangeable.** Read `robbery-390-2.sentences` and the size of the
-rule becomes obvious in a way no diagram shows: **36 ways** to satisfy s 390(2), which is three
+rule becomes obvious in a way no diagram shows: **48 ways** to satisfy s 390(2), which is four
 timing limbs × two of causes-or-attempts × six harms. That number is the section, not the encoding.
+It read 36 until 2026-09-21, when the timing group went from three limbs to four — see NOTES.md,
+“s 390(2) at Woon’s granularity”.
 
 ## Regenerating
 
