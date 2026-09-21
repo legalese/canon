@@ -464,7 +464,7 @@ def family_commencement(e: Emitter):
         ["s.63(a)(1): for systems using a flammable refrigerant, the Law commences three",
          "months from its publication or on the commencement of the fee regulations under",
          "s.59, whichever is the later -- and that day is 'the commencement day'.",
-         "s.63(a)(2): for every other system, eighteen months from the commencement day.",
+         "s.63(a)(2): for a system on a refrigerant outside the Fourth Schedule, eighteen months from the commencement day.",
          "Both periods are month arithmetic, so both clamp to the length of the month",
          "they land in."])
     e.comment("s.63(a)(1): the later of three months from publication and the fee")
@@ -480,7 +480,7 @@ def family_commencement(e: Emitter):
         answer = non_flammable_from(day)
         e.blank()
         e.comment(f"{note.capitalize()}.")
-        e.assert_(f"`the Law applies to non-flammable-refrigerant systems from` {bracketed(day)} EQUALS {ymd(answer)}")
+        e.assert_(f"`the Law applies to systems on refrigerants outside the Fourth Schedule from` {bracketed(day)} EQUALS {ymd(answer)}")
 
 
 KW_VALUES = (Fraction(0), Fraction(1), Fraction("17.99"), Fraction(18),
