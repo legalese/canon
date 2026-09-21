@@ -1,6 +1,6 @@
 # NOTES — sg/penal-code-1871, encoding row `legalese`
 
-**Status: `draft`.** Ten modules. Section 301 was hand-encoded on 2026-08-26 (see the end of this
+**Status: `draft`.** Eleven modules. Section 301 was hand-encoded on 2026-08-26 (see the end of this
 file); the rest was encoded on 2026-09-17 for the **charge generator** proof of concept, by one
 Claude Fable session and three Opus encoder agents working to one brief, against verbatim
 statutory text from the lawplain corpus. No claim of fidelity is made, and **no human has read
@@ -19,6 +19,7 @@ The row now encodes the offences a demo charge generator needs, and the **form o
 | `extortion-383-384.l4` | s 383 | s 384 | Sarjit Singh Rapati v PP [2005] SGHC 28 — s 384 r/w s 34 |
 | `robbery-390-392.l4` | s 390 (over theft and extortion) | ss 392, 393, 394 | Chen Weixiong Jerriek v PP [2003] SGHC 103 — s 392 r/w s 34; s 394 |
 | `cbt-405-406.l4` | s 405 | s 406 | Carl Elias Moses v PP [1995] 3 SLR 748, as quoted in Viswanathan Ramachandran v PP [2003] SGHC 183 — **refused as laid** |
+| `cbt-407-409.l4` | — (it uses s 405) | ss 407, 408, 409 | (none quoted) — the Carl Elias Moses entrustment in three supposed capacities; s 405 Illustrations (b) and (c) |
 | `criminal-intimidation-503-506.l4` | s 503 | s 506 | Chan Yok Tuang v PP [2008] SGHC 137 — **refused** |
 | `hurt-321-323A.l4` | s 321 | s 323A | Ang Boon Han v PP [2024] SGHC 221 |
 | `charge-sheet.l4` | — | — | the router: `applicable charges` over one `Complaint` |
@@ -84,7 +85,10 @@ finds the call next to the facts it decides. The ones worth knowing before relyi
 No s 109 abetment, no general attempt under s 511 (s 393, the attempt at robbery specifically, IS encoded since 2026-09-21), no CPC s 124(4) amalgamation (Song Hauming Oskar [2021]
 SGHC 169, the 103-occasion Diners Club case, was on the bench for it and is not encoded), no
 s 320 definition of grievous hurt (a leaf on `Hurt Facts`), no ss 299–300 (an ontology in the
-s 301 module). The evidence layer — what a fact rests on — is not encoded; it lives in the app.
+s 301 module). **The criminal breach of trust family no longer belongs on this list**: ss 407, 408
+and 409 were added on 2026-09-21 (see below), so the row now covers ss 405–409 entire. What is
+still absent beside them is ss 403–404, dishonest misappropriation of property, which is a
+different offence and not an aggravation of s 405. The evidence layer — what a fact rests on — is not encoded; it lives in the app.
 
 ## Provenance and what has been checked
 
@@ -104,33 +108,37 @@ Checked against the l4-ide `l4` binary built 2026-09-15 from `unstable` (`388f86
 | extortion-383-384 | 12 | all satisfied |
 | robbery-390-392 | 50 | all satisfied |
 | cbt-405-406 | 17 | all satisfied |
+| cbt-407-409 | 32 | all satisfied |
 | criminal-intimidation-503-506 | 15 | all satisfied |
 | hurt-321-323A | 17 | all satisfied |
-| charge-sheet | 3 | all satisfied |
+| charge-sheet | 6 | all satisfied |
 | culpable-homicide-301 | 8 | all satisfied |
 
-**157 in total**, re-counted on 2026-09-21 with `grep -ch '^#ASSERT' *.l4`.
+**192 in total**, re-counted on 2026-09-21 with `grep -ch '^#ASSERT' *.l4` after ss 407–409
+landed; it read **157** for the row as it stood immediately before that.
 The figure of 133 this file and `encoding.json` both carried before that date was wrong by one even for the row as it then stood: the same count gives **132**; it then read **149** until the s 392 implication below added eight.
 Nothing in the row had moved when the 132/133 discrepancy was found; the number had simply never been re-derived.
 
-**Anchor the grep.** The unanchored `grep -c '#ASSERT' *.l4` this line carried until 2026-09-21 gave the same answer for as long as no comment in the row named the directive. Two now do, so it returns **159** for 157 assertions. The anchored form above is the one to use.
+**Anchor the grep.** The unanchored `grep -c '#ASSERT' *.l4` this line carried until 2026-09-21 gave the same answer for as long as no comment in the row named the directive. Two comments in `robbery-390-392.l4` do, so it over-counts. The anchored form above is the one to use.
 
-Every module round-trips `l4 format` byte-identically, re-checked on 2026-09-21 including the s 392 implication below. The whole row deploys to `jl4-service`
+Every module round-trips `l4 format` byte-identically, re-checked on 2026-09-21 across all
+eleven, including `cbt-407-409.l4`. The whole row deploys to `jl4-service`
 as one bundle (`sg-penal-code`, 10 files, 37 exports) and all 38 fixtures evaluate over HTTP to
-the verdict the asserts state. **That deploy predates the s 392 implication** and has not been
-re-run since; the four decisions it added are `@export`ed, so the bundle's export count is no
-longer whatever 37 was counting. (For what it is worth, `grep -ch '^@export' *.l4` gives 38 now
-and gave 34 before — which is not 37 either way, so the two numbers are not measuring the same
-thing and this one should not be used to "correct" that one.)
+the verdict the asserts state. **That deploy predates both the s 392 implication and ss 407–409**
+and has not been re-run since; it does not even have the right number of FILES any more, the row
+now being eleven. (For what it is worth, `grep -ch '^@export' *.l4` gives 44 now, gave 38 after
+the s 392 implication and 34 before it — which is not 37 at any point, so the two numbers are not
+measuring the same thing and this one should not be used to "correct" that one.)
 
 `tests/` holds jl4-test goldens generated by copying the row under `jl4/examples/legal/` in an
 l4-ide worktree; they are a **point-in-time record**, not a live gate — canon has no CI and the
 row is not in l4-ide's corpus globs. Regenerate the same way. **The goldens were NOT regenerated
-for any of the three 2026-09-21 changes below** — the s 393 addition, the s 390(2)
-re-granularisation, or s 392 as an implication — so `tests/robbery-390-392.*.golden` and
-`tests/charge-sheet.*.golden` predate all three and will not match until someone re-blesses them.
+for any of the four 2026-09-21 changes below** — the s 393 addition, the s 390(2)
+re-granularisation, s 392 as an implication, or ss 407–409 — so `tests/robbery-390-392.*.golden`
+and `tests/charge-sheet.*.golden` predate all four and will not match until someone re-blesses
+them, and there is no `tests/cbt-407-409.*.golden` at all.
 The robbery goldens cite line numbers (`robbery-390-392.l4:671:1-48:`), and every one of the
-three changes moved them, so the mismatch is total rather than local.
+first three changes moved them, so the mismatch is total rather than local.
 
 ## 2026-09-21 — section 393, attempt to commit robbery
 
@@ -292,6 +300,73 @@ It **fails silently** — no warning, exit 0, and a file whose text reads as a f
 The `.svg`, `.txt` and `.mmd` carriers are all fine; only this one is wrong, and only for a rule whose body is an implication, which until now no figure in this row had.
 Worth an l4-ide issue.
 `.mmd` is a separate matter and is **not** a defect: it flattens the seam to `sequence(scope, terminal("IMPLIES"), requirement)` on purpose, and `mermaid.ts` argues the case at the site.
+
+## 2026-09-21 — sections 407, 408 and 409, the aggravated breach-of-trust sections
+
+The row encoded s 405 and s 406 and stopped there.
+That was a declared scope limit, but a silent one in the deployed surface: for an employee's criminal breach of trust — Woon's "very common form", and the modal real charge — `applicable charges` answered "406" and understated the maximum by eight years, with nothing in the output saying a more serious section had never been considered.
+Added in a new module, `cbt-407-409.l4`.
+
+**A sibling module, not more of `cbt-405-406.l4`.**
+That file is the row's negative exhibit: its header is one long argument about one flawed charge, and its bench walks three states of that single file.
+The aggravated sections ask a different question over a different record, and folding them in would bury the exhibit.
+The row's filenames name their sections, so a file named for its own three is what a reader will look for.
+(`robbery-390-392.l4` kept its name when ss 393 and 394 arrived because those punish the SAME facts record it already declared; these three do not.)
+
+**Built on the s 405 node exactly as Woon draws it.**
+*Essential Criminal Law* p. 196 (s 408) and p. 198 (s 409) both put a single box, "Criminal breach of trust in respect of that property", immediately before the consequent, with the capacity elements in series to its left.
+`Aggravated CBT Facts` nests `breach of trust IS A CBT Facts` and every rule ends in `commits criminal breach of trust` (c's `breach of trust`) — which draws as ONE box on the caller's ladder, so the picture matches.
+It is the same nesting `Robbery Facts` uses for its theft and extortion, and it means the one `property` field the Carl Elias Moses design turns on is still the one property all the way up: s 407's "in respect of SUCH property" and ss 408 and 409's "in respect of THAT property" cannot come apart from the entrustment, because there is nowhere to write a second property down.
+
+**s 407 is encoded on the IN-FORCE text, which names no occupation.**
+Before Act 15 of 2019 the section read "being entrusted with property as a carrier, wharfinger or keeper of a warehouse".
+It now asks what the property was entrusted FOR — transportation for hire, or storage for rent or charge — and the carrier and the warehouse operator survive only as the section's Illustration.
+The two leaves are the two purposes; the occupations ride in their `@desc`.
+A ladder built on the old occupations would put the wrong question to an investigating officer.
+
+**s 408's capacity is two leaves, because the section is two conditions.**
+"Being an employee, AND being in any manner entrusted IN SUCH CAPACITY" — it is not enough that a person who happens to be an employee was entrusted.
+Woon draws it as two boxes in series, and the bench separates them: `Carl Elias Moses, an employee but not entrusted as one` fails s 408 on that leaf alone and still makes out s 406.
+
+**s 409(1)(c) carries the statutory carve-out, which Woon's figure drops.**
+On p. 198 the residual limb is a bare box, "In other professional capacity", in parallel with the other two groups.
+The statute writes it "in his professional capacity (**other than** by way of a trade, profession or business mentioned in paragraph (b))", and that parenthesis is what makes (c) residual rather than an overlap with (b).
+The leaf is named with the exclusion and its `@desc` spells it out; a comment at the site says the encoding follows the statute and not the box.
+A figure of parallel branches cannot show an exclusion without an extra node, so this is a limit of the drawing rather than a mistake in the book.
+
+**s 409(2) and s 409(3) are definitions and avoidance of doubt, not elements.**
+They ride in the `@desc` of the leaf each governs, as Illustrations do elsewhere in this row.
+The two that change an answer rather than describe one are both in s 409(3): an unpaid office-holder still holds the office, and a contractual recital that no fiduciary relationship arises does not stop one arising.
+s 408(2)'s extensions of "employee" work the same way.
+
+**Woon's sub-boxes are kept.**
+Paragraph (b) is two columns in series — {trade | profession | business} then {banker | merchant | factor | broker | attorney | agent} — and paragraph (g) is "key executive of a" then {corporation | unincorporated association | partnership}.
+Both are inlined at that granularity rather than hidden behind a named sub-rule, so the ladder shows what the page shows.
+
+**One breaking change to `Complaint`.**
+`charge-sheet.l4`'s `breach of trust` field keeps its name and changes TYPE, from `CBT Facts` to `Aggravated CBT Facts`.
+The s 406 row now reaches through two records; the three new rows read the outer one.
+`applicable charges` lists **"409", "408", "407"** above **"406"** — most serious first within the family, as the header already promises — and s 406 always accompanies whichever aggravated section is made out, because every one of them is built on it.
+Anything that supplies a `Complaint` by name has to follow.
+Measured, the charge generator app in `legalese/l4-ide` does **not**: `grep -rn 'applicable charges\|Complaint' ts-apps/charge-generator/src/` on the `robbery-demo` worktree returns two hits, both the prose title "Complaint by Trans-Pacific Credit Pte Ltd" on an evidence card, and the app drives `charge under s 406` over a `CBT Facts` directly — a record this change does not touch.
+So unlike the s 390(2) field renames, this one does not reach the app.
+That repository is not this row's to edit and was again left alone.
+
+**The recitals are constructed, not reported.**
+No s 407, s 408 or s 409 charge is quoted verbatim in any judgment on this row's bench, so the three bodies are derived from the s 406 recital — capacity words, then that recital unchanged — and are fixtures of this module, NOT oracles.
+The same caveat the s 393 and s 394 recitals already carry.
+The capacities on the Carl Elias Moses fixtures are supposed too: the charge actually laid against him was under s 406, and nothing in the judgment says in what capacity Trans-Pacific Credit Pte Ltd entrusted him.
+
+**Six fixtures, 32 assertions, and what they can and cannot catch.**
+The fixtures are the Carl Elias Moses entrustment as an employee (s 408), as a director (s 409(1)(d)), and as an employee NOT entrusted in that capacity (the negative); Illustration (b) to s 405, the warehouse operator, for s 407's storage limb; Illustration (c), the Penang agent, for s 409(1)(b); and the same agent with the trade-profession-business column removed.
+`charge-sheet.l4` gains three complaints and three assertions (3 → 6): an employee's complaint answers `LIST "408", "406"`, a director's `LIST "409", "406"`, and the employee not entrusted as one `LIST "406"`.
+**No assertion in the module is a tautology, and two are weaker than they look.**
+The all-dark control (`Carl Elias Moses, as charged, no aggravating capacity`) is FALSE under all three sections for two independent reasons — no capacity AND no s 405 case — so the three boolean asserts on it would not flip if only one half broke; the refusal-text assert beside them is the one that discriminates, because it requires the refusal to name BOTH rows.
+And `#ASSERT `offence under s 406` (… 's `breach of trust`)` restates a fact `cbt-405-406.l4` already asserts; it is there to show that the CAPACITY is what the aggravated section adds, not to probe s 405 again.
+Measured positive control, twice, on copies in the scratchpad: setting `entrusted in such capacity` TRUE on the negative fixture fails **4** of the 32, and setting `his business` TRUE on the Penang agent fixture that lacks it fails **2**.
+So the s 408 second leaf and the paragraph (b) conjunction are both load-bearing.
+
+Run with the `l4` binary built from `legalese/l4-ide` branch `robbery-demo`, `JL4_LIBRARY_PATH` pinned: **192 satisfied across the row, zero failed, zero `DiagnosticSeverity_Error`**, and all eleven modules still round-trip `l4 format` byte-identically.
 
 ## projections/
 
