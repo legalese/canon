@@ -40,7 +40,7 @@ on exactly half a shekel are exactly half a shekel, not a float that is nearly o
 
 | § | rule | assertions | what it is looking for |
 |---|------|-----------:|------------------------|
-| a | reg. 3, annual indexation | 40 | five fee amounts against six index movements, and fifteen pairs engineered so the exact product is a half shekel — where half-up, half-even and truncation part company |
+| a | reg. 3, annual indexation | 40 | five fee amounts against five ordinary index movements, and fifteen pairs engineered so the exact product is a half shekel — where half-up, half-even and truncation part company |
 | b | s.8, period of validity | 33 | the race between five years and the 31 March cap, across four grant years and both sides of 31 March, plus a leap-day grant |
 | c | s.63, commencement | 16 | the later of two days, and month arithmetic that clamps to the length of the month it lands in, including into February of a leap year |
 | d | ss.2 and 3, the grades | 66 | both sides of each kilowatt ceiling a hundredth apart, every grade against every output, the unlicensed person, and the system exempted by order |

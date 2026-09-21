@@ -58,12 +58,29 @@ Three consequences the encoding makes explicit:
   The alternative, counting the grant year as the first, gives grant year + 4 (2029-03-31 for the September grant), which would make the "five years" limb nearly dead letter. The adopted reading keeps both limbs live. A drafter or the registrar's practice would settle it in a sentence.
 - **F2, reg. 3 rounding.** "יעוגל לשקל החדש השלם הקרוב" says nearest and is silent at exactly one half. Half-up adopted (`FLOOR (x PLUS 0.5)`). Only matters when fee × index ratio lands on .5 exactly; the generated tests include such cases so the choice is visible.
 - **F3, the draft vintage.** Transcribed from a published screenshot, not from a deposited draft. Fee amounts and the appeal wording are legible; the preamble is legible; item lettering (a)-(e) is as shown. The tazkirim.gov.il consultation page for the draft exists but is a JavaScript application that could not be fetched headlessly, so the transcription was not cross-checked against it.
+- **F4, Second Schedule Part B, the Ministry of Education five-unit certificate.** Item 1 (column A: no prior training) lists the certificate in column B as one of two things that satisfy the requirement; item 5 lists the same certificate in column A and asks 50 hours of training in column B. The two rows conflict for a holder of that certificate. The encoding follows item 5, the row whose column A names the holder, so the applicant owes 50 hours; the reading under item 1(2) would owe nothing. Recorded here rather than resolved silently; a drafter would fix the table.
+- **s.6(a)(4)(b), the registry limb.** The chapeau subjects all three limbs to the Second Schedule ("והכול בהתאם לתנאים שבתוספת השנייה"), so registry membership is encoded as a column A entry and not as a free-standing route: a registered technician reaches Grade 2 through Part B item 2 (with the completion course) or item 6 (50 hours without it), a registered practical engineer reaches Grade 3 through Part C items 2 and 7, and Part A has no registry row at all.
 - **s.6(a)(3)** (unfit by reason of a conviction "in the registrar's opinion") and **s.9(a)(3)** (recognised by the registrar as of repute) are discretionary; both are inputs, not decided.
 - **s.3(b)** exemptions by ministerial order are an input; no order has been located.
 
 ## 5. Review findings
 
-_Filled in after the adversarial review; see the commit that lands it._
+An adversarial review against the Hebrew text (model review, 2026-09-21, before deposit) found seven fidelity defects and one point on fork F1. All seven were fixed in the same session; the state of the tree is post-fix.
+
+| # | finding | severity | what changed |
+| --- | --- | --- | --- |
+| 1 | s.6(a)(4)(b) encoded as a free-standing route, so a registered technician was granted Grade 3; the chapeau subjects every limb to the Second Schedule, whose Part C admits only a practical engineer and whose Part A has no registry row | wrong answer | registry membership became two `Prior qualification` entries routed through the Schedule; the free-standing field was removed |
+| 2 | Part B item 2 and Part C item 2 require registration **and** completion of a study programme with the completion course; a registrant without it falls under Part B item 6 / Part C item 7 (50 hours), neither of which was encoded | wrong answer | compound constructors added for item 2; plain registration now maps to items 6 and 7 |
+| 3 | Part B: the five-unit certificate returned "no further requirements" citing items 1(2) and 5(3); item 5(3) asks 50 hours | wrong answer, and a genuine conflict in the Schedule | follows item 5; recorded as fork F4 |
+| 4 | s.3 encoded on cooling output alone while s.3(a) is about works listed in the First Schedule; the rule's name promised more than it answered | narrower question than named | renamed `the licence grade reaches the system`, with the limit stated in its comment |
+| 5 | one prior qualification per applicant; an applicant holding two could not be represented and no best-route search happened | missing case | `prior qualifications` is a list; any open row satisfies s.6(a)(4) |
+| 6 | s.17(a) counted hours only; the field-of-the-licence limb and "met the requirements of those courses" were dropped, and s.17(d) (the duty is a licence condition) was absent | missing limbs | two inputs added; s.17(d) noted in the comment |
+| 7 | s.17(c) tested only "at most three months", satisfied by zero and by negative months, and dropped its preconditions (duty unmet, council consulted, special and justified circumstances) | missing limbs | four conditions added |
+| 8 | fork F1 (s.8): ordinary Hebrew usage of "השנה החמישית מ־X" counts X as the first year, which favours grant + 4; the reviewer's own arithmetic favours the adopted grant + 5 | open | recorded under F1; unchanged |
+
+The reviewer also confirmed, from Kovetz HaTakanot 11951 and 12383 fetched independently, the as-made appeal-fee correction in the previous commit, and had no other finding on the fees module.
+
+The Hebrew-herald review (Part 2) and the reviewer's list of what a knowledge engineer would add next (Part 3) are recorded in section 5.1 when received.
 
 ## 6. Multilingual design
 
@@ -78,7 +95,7 @@ Two limits of the current tooling, observed on the l4-ide `unstable` binary of 2
 ## 7. What is not here
 
 - Chapter F (administrative enforcement) and the Third Schedule (sanction amounts): out of scope by decision.
-- The First Schedule (which works each grade may do) and the Fourth Schedule (flammable refrigerants): the grade thresholds are encoded, the work lists are not.
+- The First Schedule (which works each grade may do) and the Fourth Schedule (flammable refrigerants): the grade thresholds are encoded, the work lists are not. That is why the s.3 rule is named `the licence grade reaches the system` and not "may perform the work": it answers the cooling-output half of s.3(a) only.
 - ss.10-15 (refusal, cancellation, suspension; registry; non-transfer; standards; presenting the licence; reporting) and s.18 (operators).
 - No `EVAL UNDER RULES EFFECTIVE AT` law-time axis: the three vintages are an explicit enum, because the draft was never in force and has no effective date.
 - No `cases/`, `report/` or `gates/`; no fork register file beyond section 4 here.

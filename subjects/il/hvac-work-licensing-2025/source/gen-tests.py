@@ -162,8 +162,9 @@ PART_A = {  # Grade 1
 
 PART_B = {  # Grade 2
     "no prior training or experience": training(480),
-    "Ministry of Education climate-control certificate, 5 units": NO_FURTHER,
-    "registered certified technician, refrigeration and air conditioning": NO_FURTHER,
+    "Ministry of Education climate-control certificate, 5 units": training(50),   # item 5(3); fork F4
+    "registered certified technician, having completed a study programme with the completion course": NO_FURTHER,  # item 2
+    "registered certified technician, refrigeration and air conditioning": training(50),  # item 6
     "holds a Grade 1 licence": training(100),
     "Division completion certificate, grade 1": training(100),
     "Ministry of Education climate-control certificate, 3 units": training(100),
@@ -174,7 +175,8 @@ PART_B = {  # Grade 2
 
 PART_C = {  # Grade 3
     "no prior training or experience": training(720),
-    "registered practical engineer, refrigeration and air conditioning": NO_FURTHER,
+    "registered practical engineer, having completed a study programme with the completion course": NO_FURTHER,  # item 2
+    "registered practical engineer, refrigeration and air conditioning": training(50),  # item 7
     "holds a Grade 1 licence": training(290),
     "Division completion certificate, grade 1": training(290),
     "Ministry of Education climate-control certificate, 3 units": training(290),
@@ -209,14 +211,13 @@ def route_open(prior: str, commencement: datetime.date,
 
 class Applicant:
     def __init__(self, name, adult, citizen, unfit, holds_certificate,
-                 registered, prior, completed_studies):
+                 priors, completed_studies):
         self.name = name
         self.adult = adult
         self.citizen = citizen
         self.unfit = unfit
         self.holds_certificate = holds_certificate
-        self.registered = registered
-        self.prior = prior
+        self.priors = tuple(priors)      # column A of the Second Schedule; registry membership is one of them
         self.completed_studies = completed_studies
 
 
@@ -227,18 +228,20 @@ def personal_conditions(a: Applicant) -> bool:
 
 def training_condition(a: Applicant, grade: str, commencement: datetime.date,
                        application: datetime.date) -> bool:
-    """s.6(a)(4): the completion certificate (a), OR registration in the
-    technicians and engineers registry (b), OR a route through the Second
-    Schedule that is still open, whose column B is satisfied (c)."""
-    if a.holds_certificate or a.registered:
+    """s.6(a)(4): the completion certificate (a), OR -- limbs (b) and (c), both
+    "in accordance with the conditions in the Second Schedule" -- any row of the
+    Schedule that one of the applicant's prior qualifications opens, still open
+    on the application date, whose column B is satisfied."""
+    if a.holds_certificate:
         return True
-    if not route_open(a.prior, commencement, application):
-        return False
-    kind, _hours = schedule_requires(grade, a.prior)
-    if kind == "no further requirements":
-        return True
-    if kind == "training of up to":
-        return a.completed_studies
+    for prior in a.priors:
+        if not route_open(prior, commencement, application):
+            continue
+        kind, _hours = schedule_requires(grade, prior)
+        if kind == "no further requirements":
+            return True
+        if kind == "training of up to" and a.completed_studies:
+            return True
     return False
 
 
@@ -506,18 +509,18 @@ def family_grades(e: Emitter):
         e.comment(f"A {grade} licence.")
         for kw in KW_VALUES:
             expected = may_perform_work(grade, kw, False)
-            e.assert_bool(f"`the person may perform the work` (JUST {grade_lit(grade)}) {num(kw)} FALSE", expected)
+            e.assert_bool(f"`the licence grade reaches the system` (JUST {grade_lit(grade)}) {num(kw)} FALSE", expected)
     e.blank()
     e.comment("No licence at all, on a system that has not been exempted: never permitted,")
     e.comment("however small the system.")
     for kw in KW_VALUES:
-        e.assert_bool(f"`the person may perform the work` NOTHING {num(kw)} FALSE",
+        e.assert_bool(f"`the licence grade reaches the system` NOTHING {num(kw)} FALSE",
                       may_perform_work(None, kw, False))
     e.blank()
     e.comment("No licence, on a system the Minister has exempted under s.3(b): always")
     e.comment("permitted, however large the system.")
     for kw in KW_VALUES:
-        e.assert_bool(f"`the person may perform the work` NOTHING {num(kw)} TRUE",
+        e.assert_bool(f"`the licence grade reaches the system` NOTHING {num(kw)} TRUE",
                       may_perform_work(None, kw, True))
 
 
@@ -561,21 +564,21 @@ APPLICATION_DATES = (
 DANA = Applicant(
     name="Dana, who relies on her experience",
     adult=True, citizen=True, unfit=False,
-    holds_certificate=False, registered=False,
-    prior="qualifying experience", completed_studies=True)
+    holds_certificate=False,
+    priors=["qualifying experience"], completed_studies=True)
 
 NOA = Applicant(
     name="Noa, with the five-unit certificate",
     adult=True, citizen=True, unfit=False,
-    holds_certificate=False, registered=False,
-    prior="Ministry of Education climate-control certificate, 5 units",
+    holds_certificate=False,
+    priors=["Ministry of Education climate-control certificate, 5 units"],
     completed_studies=True)
 
 NOA_WITH_CERTIFICATE = Applicant(
     name="Noa, once she holds the completion certificate",
     adult=True, citizen=True, unfit=False,
-    holds_certificate=True, registered=False,
-    prior="Ministry of Education climate-control certificate, 5 units",
+    holds_certificate=True,
+    priors=["Ministry of Education climate-control certificate, 5 units"],
     completed_studies=True)
 
 FIXTURES = (DANA, NOA, NOA_WITH_CERTIFICATE)
@@ -588,14 +591,14 @@ def emit_fixture(e: Emitter, a: Applicant):
         ("is an Israeli citizen or resident", a.citizen),
         ("is unfit by reason of a conviction or pending indictment", a.unfit),
         ("holds a completion certificate for the grade", a.holds_certificate),
-        ("is registered in the technicians and engineers registry", a.registered),
     )
     width = max(len(f"`{n}`") for n, _ in fields)
-    width = max(width, len("`prior qualification`"),
+    width = max(width, len("`prior qualifications`"),
                 len("`completed the supplementary studies the Schedule requires`"))
     for name, value in fields:
         e.raw(f"    {('`' + name + '`').ljust(width)} IS {'TRUE' if value else 'FALSE'}")
-    e.raw(f"    {'`prior qualification`'.ljust(width)} IS `{a.prior}`")
+    priors = ", ".join(f"`{p}`" for p in a.priors)
+    e.raw(f"    {'`prior qualifications`'.ljust(width)} IS LIST {priors}")
     e.raw(f"    {'`completed the supplementary studies the Schedule requires`'.ljust(width)}"
           f" IS {'TRUE' if a.completed_studies else 'FALSE'}")
 
@@ -606,8 +609,9 @@ def family_schedule(e: Emitter):
         "s.6 with the Second Schedule -- the sunset on the experience route",
         ["s.6(a): the registrar shall grant the licence to an applicant who is an adult,",
          "an Israeli citizen or resident, not unfit by reason of a conviction, and who",
-         "satisfies s.6(a)(4) -- the completion certificate, or registration in the",
-         "technicians and engineers registry, or a route through the Second Schedule.",
+         "satisfies s.6(a)(4) -- the completion certificate, or a row of the Second",
+         "Schedule (where registration in the technicians and engineers registry also",
+         "lives) that one of the applicant's prior qualifications opens.",
          "",
          "The experience-only rows of the Schedule (Part A item 2, Part B item 4, Part C",
          "item 5) each stand for three years from the commencement day and no longer.",
@@ -624,7 +628,7 @@ def family_schedule(e: Emitter):
     for grade in GRADES:
         e.blank()
         e.comment(f"{grade}: Part {'ABC'[rank(grade) - 1]} of the Schedule asks her for supplementary")
-        kind, hours = schedule_requires(grade, DANA.prior)
+        kind, hours = schedule_requires(grade, DANA.priors[0])
         e.comment(f"studies of up to {hours} hours, which she has completed.")
         for application, note in APPLICATION_DATES:
             expected = registrar_shall_grant(DANA, grade, COMMENCEMENT, application)
@@ -632,9 +636,9 @@ def family_schedule(e: Emitter):
                           f"{bracketed(COMMENCEMENT)} {bracketed(application)}", expected)
     e.blank()
     e.comment("Noa's route is the five-unit certificate, which the Schedule does not")
-    e.comment("time-limit. Part B asks nothing further of her, so a Grade 2 licence is")
-    e.comment("hers on every one of those dates, including the ones on which Dana's")
-    e.comment("route has closed.")
+    e.comment("time-limit. Part B item 5 asks 50 hours of her (item 1(2) would ask nothing,")
+    e.comment("fork F4), which she has done, so a Grade 2 licence is hers on every one of")
+    e.comment("those dates, including the ones on which Dana's route has closed.")
     for application, note in APPLICATION_DATES:
         e.assert_bool(f"`the registrar shall grant the licence` `{NOA.name}` `Grade 2` "
                       f"{bracketed(COMMENCEMENT)} {bracketed(application)}",
