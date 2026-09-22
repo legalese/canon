@@ -4,7 +4,11 @@
 #
 #   HVAC_L4=/path/to/l4 HVAC_LIBS=/path/to/jl4-core/libraries sh check.sh
 #
-# Defaults point at the worktree the encoding was built against on 2026-09-21.
+# With neither variable set, JL4_LIBRARY_PATH is left UNSET and the binary uses its own
+# EMBEDDED standard library, which is always the one that matches it. Set HVAC_LIBS only
+# when you are running a binary built from a worktree and want that worktree's libraries.
+# Pointing an l4 at a prelude newer than itself does not report a version mismatch; it
+# fails as a cascade of `could not find a definition`.
 # The binary must carry `l4 nlg --lang` (l4-ide unstable at or after PR #432).
 #
 # This row is GENERATED from ../legalese by ../../source/revoice.py. Nothing here is
@@ -13,7 +17,7 @@
 # The twin of this file is ../legalese/check.sh; run both.
 WT=${HVAC_L4_WORKTREE:-/Users/mengwong/src/legalese/l4wt/smart-quotes}
 L4=${HVAC_L4:-$WT/dist-newstyle/build/aarch64-osx/ghc-9.10.3/jl4-0.1/x/l4/build/l4/l4}
-export JL4_LIBRARY_PATH=${HVAC_LIBS:-$WT/jl4-core/libraries}
+if [ -n "${HVAC_LIBS:-}" ]; then export JL4_LIBRARY_PATH="$HVAC_LIBS"; else unset JL4_LIBRARY_PATH; fi
 cd "$(dirname "$0")" || exit 1
 status=0
 

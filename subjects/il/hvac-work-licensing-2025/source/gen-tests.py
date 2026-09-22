@@ -295,6 +295,115 @@ def grade_lit(g: str) -> str:
     return f"`{g}`"
 
 
+# --- reg. 2 on the rule-effective-time axis ---------------------------------
+#
+# An independent reading of WHICH TEXT of reg. 2 governs on a given day, and of
+# what that text then says.  Read from the two gazette issues, not from the L4.
+#
+# The principal Regulations, Kovetz HaTakanot 11951, were published on
+# 9 July 2025 and reg. 5 gives them a commencement of "7 ימים מיום פרסומן",
+# seven days from publication: 16 July 2025.  That arithmetic is redone here
+# rather than copied, so that the encoding's reg. 5 and this reading can
+# disagree.
+#
+# The amending regulations, Kovetz HaTakanot 12383, were published on
+# 4 May 2026 and contain NO commencement provision at all -- the whole
+# instrument is two amending regulations, a signature and three footnotes.
+# Section 17 of the Interpretation Ordinance [New Version] supplies the
+# default for a legislative regulation that is silent: commencement on the day
+# of publication.  So 4 May 2026, and the alternative that it rides reg. 5's
+# seven days (11 May 2026) is fork F6 in NOTES.md and is NOT the reading taken
+# here.  If F6 is ever resolved the other way, this constant moves and the
+# boundary assertions below go red, which is the point of computing it here.
+
+REGS_PUBLISHED = datetime.date(2025, 7, 9)
+REGS_IN_FORCE = REGS_PUBLISHED + datetime.timedelta(days=7)      # reg. 5
+AMENDMENT_PUBLISHED = datetime.date(2026, 5, 4)
+AMENDMENT_IN_FORCE = AMENDMENT_PUBLISHED                          # Interp. Ord. s.17
+
+SERVICES = (
+    "theoretical examination",
+    "practical examination",
+    "appeal against a theoretical examination score",
+    "appeal against a practical examination score",
+    "application for a licence",
+    "receipt or renewal of a licence",
+    "temporary licence for a foreign expert",
+)
+
+# The fee each enacted text prescribes, or None where it prescribes none.
+AS_MADE = {
+    "theoretical examination": None,                              # no such item
+    "practical examination": 194,                                 # 2(a)
+    "appeal against a theoretical examination score": None,       # no such examination
+    "appeal against a practical examination score": 40,           # 2(b)
+    "application for a licence": None,                            # the head as made is the receipt
+    "receipt or renewal of a licence": 284,                       # 2(c)
+    "temporary licence for a foreign expert": 398,                # 2(d)
+}
+AS_AMENDED = dict(AS_MADE, **{
+    "theoretical examination": 158,                               # 2(a1), inserted
+    "appeal against a theoretical examination score": 40,         # 2(b) as amended
+    "appeal against a practical examination score": None,         # (b) now reaches the theoretical score only
+})
+
+
+def fee_prescribed(service: str, on: datetime.date):
+    """What reg. 2 prescribes for a service, under the text in force on `on`."""
+    if on >= AMENDMENT_IN_FORCE:
+        return AS_AMENDED[service]
+    if on >= REGS_IN_FORCE:
+        return AS_MADE[service]
+    return None          # the Regulations did not yet exist: nothing is prescribed
+
+
+def appeal_base(on: datetime.date):
+    """The examination fee the appeal fee is charged in addition to."""
+    if on >= AMENDMENT_IN_FORCE:
+        return fee_prescribed("theoretical examination", on)      # (b) points at (a1)
+    return fee_prescribed("practical examination", on)            # (b) points at (a)
+
+
+def total_to_tender(service: str, on: datetime.date):
+    fee = fee_prescribed(service, on)
+    if service not in ("appeal against a theoretical examination score",
+                       "appeal against a practical examination score"):
+        return fee
+    if fee is None:
+        return None
+    base = appeal_base(on)
+    return fee if base is None else fee + base
+
+
+def reg4_allows(service: str, on: datetime.date, paid: int) -> bool:
+    fee = fee_prescribed(service, on)
+    return True if fee is None else paid >= fee
+
+
+# Days to ask on: both sides of each boundary one day apart, the boundary days
+# themselves, and a day well inside each regime.
+AXIS_DAYS = (
+    (datetime.date(2025, 1, 14), "the day the Law was published, long before the Regulations"),
+    (datetime.date(2025, 7, 9), "the day the Regulations were published -- still not in force"),
+    (datetime.date(2025, 7, 15), "the day before commencement"),
+    (datetime.date(2025, 7, 16), "the commencement day itself: the boundary is inclusive"),
+    (datetime.date(2025, 12, 31), "well inside the text as made"),
+    (datetime.date(2026, 4, 28), "the day the amendment was signed -- signature is not commencement"),
+    (datetime.date(2026, 5, 3), "the day before the amendment commenced"),
+    (datetime.date(2026, 5, 4), "the day the amendment was published, and so commenced"),
+    (datetime.date(2026, 5, 11), "seven days after publication -- what fork F6 would have chosen"),
+    (datetime.date(2026, 9, 21), "well inside the text as amended"),
+)
+
+
+def maybe(x) -> str:
+    return "NOTHING" if x is None else f"JUST {x}"
+
+
+def under(day: datetime.date, expr: str) -> str:
+    return f"`EVAL UNDER RULES EFFECTIVE AT` ({ymd(day)}) ({expr})"
+
+
 class Emitter:
     def __init__(self):
         self.lines: list[str] = []
@@ -376,7 +485,8 @@ def family_indexation(e: Emitter):
          "rate of change of the new index against the base index, and rounded to the",
          "nearest whole new shekel. The rounding of an exact half is not settled by the",
          "text; half-up is the reading adopted. The fees are the five distinct amounts",
-         "that appear across the three vintages of reg. 2: 40, 158, 194, 284 and 398."])
+         "that appear across the texts of reg. 2 -- the two enacted vintages and the",
+         "never-enacted draft: 40, 158, 194, 284 and 398."])
     e.comment("Ordinary movements of the index, across all five fee amounts.")
     for new, base, note in COMMON_INDEX_PAIRS:
         e.blank()
@@ -669,6 +779,57 @@ def family_schedule(e: Emitter):
                       registrar_shall_grant(NOA_WITH_CERTIFICATE, "Grade 1", COMMENCEMENT, application))
 
 
+def family_rule_effective_time(e: Emitter):
+    e.family_section(
+        "g",
+        "reg. 2 on the rule-effective-time axis",
+        ["There is ONE rule for reg. 2, `the fee prescribed for`, and it reads",
+         "`RULES EFFECTIVE DATE` to decide which text it is reading. These assertions",
+         "pin that axis with `EVAL UNDER RULES EFFECTIVE AT` and check the answer",
+         "against an independent Python reading of the two gazette issues -- including",
+         "the two commencement dates, which are recomputed here rather than copied:",
+         "16 July 2025 from reg. 5's seven days, and 4 May 2026 from the amending",
+         "instrument's SILENCE plus s.17 of the Interpretation Ordinance [New Version].",
+         "",
+         "The SimpLEX draft is deliberately absent from this family. It was never in",
+         "force, so no date selects it and none is offered; it is tested by name in",
+         "hvac-tests-simplex.l4 instead."])
+    e.comment("The fee prescribed for every service, on every day in the sample.")
+    for day, note in AXIS_DAYS:
+        e.blank()
+        e.comment(f"{day.isoformat()} -- {note}.")
+        for service in SERVICES:
+            e.assert_(f"{under(day, f'`the fee prescribed for` `{service}`')} "
+                      f"EQUALS {maybe(fee_prescribed(service, day))}")
+    e.blank()
+    e.comment("What an appellant must tender in all. The appeal fee is charged \"in")
+    e.comment("addition to\" an examination fee, and the two enacted texts disagree about")
+    e.comment("which: as made, reg. 2(b) points at (a), the practical fee; as amended it")
+    e.comment("points at (a1), the theoretical one. So the aggregate moves between the")
+    e.comment("two examinations on 4 May 2026.")
+    for day, note in AXIS_DAYS:
+        e.blank()
+        e.comment(f"{day.isoformat()} -- {note}.")
+        for service in ("appeal against a theoretical examination score",
+                        "appeal against a practical examination score"):
+            e.assert_(f"{under(day, f'`the total to be tendered for` `{service}`')} "
+                      f"EQUALS {maybe(total_to_tender(service, day))}")
+    e.blank()
+    e.comment("reg. 4: the service may be provided only where the fee prescribed has been")
+    e.comment("paid in full -- and where NO fee is prescribed, reg. 4 has nothing to")
+    e.comment("withhold, so nothing paid is enough. That is why a candidate sitting the")
+    e.comment("theoretical examination on a day under the text as made is admitted having")
+    e.comment("paid nothing, and refused on the very next vintage.")
+    for day, note in AXIS_DAYS:
+        e.blank()
+        e.comment(f"{day.isoformat()} -- {note}.")
+        for service in ("theoretical examination", "practical examination"):
+            for paid in (0, 158, 194):
+                e.assert_bool(
+                    under(day, f"`the service may be provided` `{service}` {paid}"),
+                    reg4_allows(service, day, paid))
+
+
 FAMILY_TITLES = {
     "a": "reg. 3 indexation",
     "b": "s.8 validity",
@@ -676,6 +837,7 @@ FAMILY_TITLES = {
     "d": "ss.2-3 grades",
     "e": "s.9 foreign expert",
     "f": "s.6 Second Schedule",
+    "g": "reg. 2 on the rule-effective-time axis",
 }
 
 
@@ -703,6 +865,9 @@ HEADER = """\
 --   e. s.9, the foreign expert -- two renewals and no more.
 --   f. s.6 with the Second Schedule -- the three-year sunset on the
 --      experience route, against a route that never sunsets.
+--   g. reg. 2 on the rule-effective-time axis -- which of the two enacted
+--      texts governs on a given day, read off the commencement dates rather
+--      than off an enum, and both sides of each boundary one day apart.
 @lang en
 
 IMPORT prelude
@@ -724,6 +889,7 @@ def main():
     family_grades(e)
     family_foreign_expert(e)
     family_schedule(e)
+    family_rule_effective_time(e)
 
     out_path.write_text(e.text(), encoding="utf-8")
 

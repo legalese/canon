@@ -4,9 +4,26 @@ The PDFs and wiki dumps here are the primary sources the encodings in
 `../encodings/legalese/` were made from; `revisions.json` records which revision of each
 was taken.
 
+| file | what it is |
+|---|---|
+| `sefer-hachukim-3349-pp182-209.pdf` | the Law as published, Sefer HaChukim 3349, 14 January 2025 |
+| `knesset-bill-25_ls2_5256851.pdf` | the bill as tabled for second and third reading |
+| `kovetz-hatakanot-11951-p2116.pdf` | the Fees Regulations **as made**, KT 11951 of 9 July 2025, 5785 p. 2116 |
+| `kovetz-hatakanot-12383-p2062.pdf` | the **amending** regulations, KT 12383 of 4 May 2026, 5786 p. 2062 |
+| `law.wiki`, `regulations-fees.wiki` | the Hebrew Wikisource consolidated texts |
+
+`kovetz-hatakanot-12383-p2062.pdf` was deposited on 2026-09-22, when the two enacted texts
+of reg. 2 were moved onto L4's rule-effective-time axis and the amendment's commencement
+became a boundary the answers turn on. It is deposited for what it **does not** contain:
+the whole instrument is two amending regulations, a signature dated 28 April 2026 and three
+footnotes, with **no תחילה (commencement) provision**. That silence is what sends the
+question to s.17 of the Interpretation Ordinance [New Version] and fixes commencement at the
+day of publication, 4 May 2026. See fork F6 in `../encodings/legalese/NOTES.md`. Wikisource's
+consolidated text carries only the principal Regulations' own reg. 5 and does not answer it.
+
 ## `gen-tests.py` — the tier-3 test generator
 
-`gen-tests.py` writes `../encodings/legalese/hvac-tests-generated.l4`, which holds **193
+`gen-tests.py` writes `../encodings/legalese/hvac-tests-generated.l4`, which holds **343
 assertions** over `hvac-law.l4` and `hvac-fees.l4`.
 
 Regenerate it from the repository root of this subject:
@@ -36,7 +53,7 @@ could not do that.
 The generator computes on `fractions.Fraction` throughout, so the indexation cases that land
 on exactly half a shekel are exactly half a shekel, not a float that is nearly one.
 
-### The six families
+### The seven families
 
 | § | rule | assertions | what it is looking for |
 |---|------|-----------:|------------------------|
@@ -46,6 +63,7 @@ on exactly half a shekel are exactly half a shekel, not a float that is nearly o
 | d | ss.2 and 3, the grades | 66 | both sides of each kilowatt ceiling a hundredth apart, every grade against every output, the unlicensed person, and the system exempted by order |
 | e | s.9, the foreign expert | 9 | two renewals and no more, and the three-year outside date |
 | f | s.6 with the Second Schedule | 29 | the three-year sunset on the experience route, against a route that never sunsets and a certificate that bypasses the Schedule entirely |
+| g | reg. 2 on the rule-effective-time axis | 150 | which of the two enacted texts governs on each of ten sample days, both sides of each commencement boundary one day apart -- and the commencement dates themselves, recomputed here from reg. 5's seven days and from the amending instrument's SILENCE plus s.17 of the Interpretation Ordinance [New Version] (fork F6), not copied from the L4 |
 
 **Do not edit the generated file.** It says so on its first line. Change the rule in
 `gen-tests.py` and regenerate.

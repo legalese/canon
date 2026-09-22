@@ -1,5 +1,7 @@
 # הערות — `legalese-he`, הקידוד העברי
 
+**אימות, 22 בספטמבר 2026 — חלקי.** הורץ עם `l4` מהדורת `unstable-20260907-9d6536a` (linux-x64), בלי `JL4_LIBRARY_PATH`, כך שהבינארי משתמש בספריית התקן המוטמעת בו. **אומת:** כל חמשת המודולים — 27, 18, 63 ו־343 קביעות מתקיימות, אפס שגיאות, והקובץ האדום נכשל בדיוק בשלוש; וסעיף 4 של `check.sh`, ההשוואה לשורה האנגלית, עובר — כל בלוקי ה־`Result:` זהים, ו־`check.sh` מסתיים ב־0. **לא אומת:** הבינארי קודם ל־PR #432 של l4-ide (19 בספטמבר 2026), ולכן אינו מכיר `@lang` ו־`@nlg:en`; ההרצה נעשתה על עותק חד־פעמי שבו ההערות הללו סומנו כהערה. לפיכך התרגומים (`projections/`) ובדיקת הלשון שבסעיף 3 של `check.sh` **לא אומתו**. ראו את הבאנר בראש [`../legalese/NOTES.md`](../legalese/NOTES.md).
+
 **מצב: טיוטה. לא נבדק.**
 זהו התאום העברי של [`../legalese`](../legalese): אותם חמישה מודולים, אותם כללים, אותן קביעות (assertions), כשכל מזהה, כל כותרת `§` וכל תרגום ברירת־המחדל הם בעברית.
 **האורקל הוא הקידוד האנגלי.** דבר לא נגזר כאן מחדש: אף מספר לא חושב שוב, אף כלל לא שונה, אף קביעה לא נוספה ולא נגרעה. אם נתון כלשהו כאן חולק על הקידוד האנגלי — הטעות כאן, לא שם.
@@ -38,10 +40,15 @@ Why bother, given that `../legalese` already renders Hebrew on demand. Because a
 ## 2. How to run it
 
 ```
-sh check.sh                      # binary and prelude from the worktree named inside it
-HVAC_L4=/path/to/l4 HVAC_LIBS=/path/to/jl4-core/libraries sh check.sh
+HVAC_L4=/path/to/l4 sh check.sh  # the binary's OWN embedded stdlib -- the usual case
+HVAC_L4=/path/to/l4 HVAC_LIBS=/path/to/jl4-core/libraries sh check.sh   # a worktree build
 python3 ../../source/revoice.py  # regenerate the five modules and GLOSSARY.md
 ```
+
+With neither `HVAC_LIBS` nor `HVAC_L4_WORKTREE` set, `check.sh` leaves `JL4_LIBRARY_PATH`
+**unset** and the binary uses the standard library embedded in it, which is always the one
+that matches.
+
 
 `check.sh` does four things, and the fourth is the one that matters:
 
@@ -50,14 +57,21 @@ python3 ../../source/revoice.py  # regenerate the five modules and GLOSSARY.md
 3. The renderings are checked **in both directions**. The default rendering must contain no English herald word, and the `--lang en` rendering no Hebrew herald text, once backticked identifiers are struck out. Identifiers are Hebrew in both and are not a finding.
 4. **Cross-row agreement.** For each of the four comparable modules it runs the English row and this one, maps this row's output back through the inverse of `glossary.json`, and requires the `Result:` blocks to be **identical line for line** — not merely equal in count. That compares every `#EVAL`'s answer, in order, including enum constructors, `MAYBE` wrappers and dates.
 
-Measured 2026-09-21, both rows on the same binary:
+Measured 2026-09-22, both rows on `l4 unstable-20260907-9d6536a` (see the banner at the top
+for what that binary could and could not check):
 
 | module | assertions, `../legalese` | assertions, here | `Result:` blocks |
 | --- | --- | --- | --- |
 | law | 27 | 27 | 31, identical |
-| fees | 4 | 4 | 5, identical |
-| tests-simplex | 39 | 39 | 51, identical |
-| tests-generated | 193 | 193 | 193, identical |
+| fees | 18 | 18 | 26, identical |
+| tests-simplex | 63 | 63 | 75, identical |
+| tests-generated | 343 | 343 | 343, identical |
+
+The counts rose on 2026-09-22 when the two enacted texts of regulation 2 moved onto the
+rule-effective-time axis: `hvac-fees.l4` gained the boundary assertions, `hvac-tests-simplex.l4`
+gained a whole tier for the days before the Regulations commenced and for the day the
+amendment did, and `gen-tests.py` gained family (g), which re-derives from the two gazette
+issues which text governs on each of ten sample days. See `../legalese/NOTES.md` section 3.1.
 | tests-simplex-red | 3 failed | 3 failed | — |
 
 The agreement check was given a positive control before being believed: changing one licence fee from 284 to 285 in `hvac-fees-he.l4` alone turns `hvac-tests-simplex-he.l4` red and `check.sh` exits 1. Restoring it returns exit 0.
@@ -134,7 +148,19 @@ The probe files are in this session's scratchpad, not in canon: canon holds no n
 `GLOSSARY.md` carries the full table with a note per entry. The entries marked `composed` are the ones no instrument supplied, and they are where a Hebrew reviewer should start. The ones a reviewer is most likely to want to change:
 
 - **`ניסיון מזכה`** for the experience route. The Second Schedule spells the row out — a year's cumulative experience out of three, or three out of seven — and never names it.
-- **`נוסח`** for a *vintage* of regulation 2. Taken from reg. 3(b)'s `נוסח תקנה 2 כפי שהשתנתה`, but the Regulations never contemplate three texts side by side, so the word is doing work the drafter did not ask of it.
+- **`נוסח` (`Vintage`) is gone, and what replaced it.** Until 2026-09-22 the three texts of
+  regulation 2 were an enum whose type was `נוסח`, taken from reg. 3(b)'s `נוסח תקנה 2 כפי
+  שהשתנתה` — a word doing work the drafter did not ask of it, since the Regulations never
+  contemplate three texts side by side. The two *enacted* texts now sit on L4's
+  rule-effective-time axis and are selected by date, not by tag, so the type is retired; the
+  word survives only inside `האגרה שקובע נוסח תקנה 2 כפי שהותקן בעד` and its amended twin,
+  where it is reg. 3(b)'s word used for reg. 3(b)'s purpose. The never-enacted draft is named
+  rather than dated (`האגרה שקובעת טיוטת SimpLEX בעד`), and `טיוטה` is the ordinary Hebrew
+  word for a draft. The new `composed` entries a Hebrew reviewer should weigh are
+  **`ציר תחילת הדין`** (the rule-effective-time axis, built on reg. 5's own `תחילה`),
+  **`יום תחילתו של תיקון התשפ״ו`** (fork F6), and the subjunctive forms
+  **`הייתה דורשת` / `הייתה מתירה`**, which carry in the verb the fact that the draft never
+  bound anyone.
 - **`תוצאה`** and its three constructors, and **`הערעור נבדק`** in particular. Those are the SimpLEX screen's own phrases, transcribed from Figure 4. Note the screen says **ערעור** where reg. 2(b) says **השגה**; the screen's word is kept, because that enum transcribes the screen rather than the Regulations.
 - **`דרגה 1/2/3`** rather than the Law's full defined term `רישיון דרגה 1`. The full term would make the herald read `רישיון רישיון דרגה 1`; the word `רישיון` is carried by the heralds instead.
 - **`יום התחילה של החוק`** for the rule, against bare **`יום התחילה`** for the parameter. Both are s.63(a)(1)'s `יום התחילה`, and L4 will not let two identifiers share a name, so one had to be lengthened.
@@ -153,12 +179,12 @@ Inside backticks both would have been fine: `isPrint` accepts the maqaf and the 
 
 **But the statute quotes are not.** Fifteen comment blocks in the English row quote the Law or the Regulations *in English translation*; each is replaced here with the Hebrew original from `../../source/law.wiki` or `../../source/regulations-fees.wiki`. Those are the sentences a reviewer checks the encoding against, so a translation of them would be a translation of the wrong thing.
 
-**One block could not be:** the **SimpLEX draft** vintage of regulation 2. Its only witness is a screen capture in a published paper, so there is no deposited Hebrew to restore; those comments keep the English row's transcription and say so. That is fork F3 showing up in a second place.
+**One block could not be:** the **SimpLEX draft** of regulation 2 — which is no longer called a vintage anywhere, for the reason in `../legalese/NOTES.md` section 3.1. Its only witness is a screen capture in a published paper, so there is no deposited Hebrew to restore; those comments keep the English row's transcription and say so. That is fork F3 showing up in a second place.
 
 **`@desc` and `@export` are translated whole**, from the glossary's `prose` map rather than composed out of renamed parts, because they carry sentences rather than identifiers. There are sixteen.
 
 ## 7. Known drift, and one claim in a sibling file that is now false
 
-`../legalese/encoding.json` still says, in `language.note`, that *"A Hebrew-canonical twin row (Hebrew identifiers, English heralds) is NOT deposited; see NOTES.md section 6"*, and `../legalese/NOTES.md` § 6 says the same. **Both are false as of this deposit.** They were not corrected here because this row may edit nothing in the English row except the pointer appended to its `check.sh`. Whoever next touches the English row should fix them; the sentence to replace them with is that the twin is at `../legalese-he`, is generated from the English row, and is checked against it.
+*Resolved 2026-09-22.* `../legalese/encoding.json`'s `language.note` and `../legalese/NOTES.md` § 6 used to say that a Hebrew-canonical twin was **not** deposited. Both were false from the day this row was deposited, and both now name this row, say it is generated by `revoice.py` from `glossary.json`, and say it is checked against the English row. Nothing in this paragraph is outstanding any more; it is kept because the shape of the failure is worth remembering. The English row's own `projections/` and this row's are a live instance of the same thing, and are labelled stale rather than silently left to rot.
 
 The two rows are edited on different clocks, so drift is the standing risk. Three things guard against it, in ascending order of strength: the revoicer **fails** on an uncovered identifier; it **warns** on a glossary entry nothing uses and on a quoted comment that no longer matches; and `check.sh` § 4 **compares the answers themselves**. The first two catch a change in the vocabulary, the third catches a change in the law.

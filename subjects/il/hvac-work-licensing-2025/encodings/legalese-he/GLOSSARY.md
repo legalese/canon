@@ -13,9 +13,9 @@ A row marked `composed` has no counterpart in either instrument and the note say
 | --- | --- |
 | `law` | 72 |
 | `schedule` | 24 |
-| `regulations` | 32 |
-| `composed` | 50 |
-| **total** | **178** |
+| `regulations` | 36 |
+| `composed` | 63 |
+| **total** | **195** |
 
 Two names are deliberately **not** renamed, because they are not ours: `add years` and `add months`, which the `daydate` library defines.
 
@@ -32,7 +32,6 @@ Two names are deliberately **not** renamed, because they are not ours: `add year
 | `Prior qualification` | `הכשרה או ניסיון קודמים` | schedule | column A heading, טור א׳ הכשרה או ניסיון קודמים |
 | `Requirement` | `דרישה` | schedule | column B heading, טור ב׳ דרישות לקבלת הרישיון המבוקש |
 | `Service` | `שירות` | regulations | reg. 4 ‘מבקש הרישיון או השירות’ |
-| `Vintage` | `נוסח` | regulations | reg. 3(b) ‘נוסח תקנה 2 כפי שהשתנתה’ |
 
 ## Constructors
 
@@ -70,9 +69,6 @@ Two names are deliberately **not** renamed, because they are not ours: `add year
 | `temporary licence for a foreign expert` | `רישיון זמני למומחה זר` | regulations | reg. 2(d) and the s.9 heading, verbatim |
 | `the licence holder` | `בעל הרישיון` | law | s.2 defines בעל רישיון; ss.16 and 17 use it with the article |
 | `the registrar` | `הרשם` | law | s.2, verbatim |
-| `the Regulations as amended` | `התקנות כפי שתוקנו` | composed | the gazette marks the amendment תיקון: תשפ״ו |
-| `the Regulations as made` | `התקנות כפי שהותקנו` | composed | built on reg. 3(b)'s כפי שהשתנתה |
-| `the SimpLEX draft` | `טיוטת SimpLEX` | composed | the draft is a screen capture in a paper, not a deposited Hebrew text; the tool's name stays Latin |
 | `theoretical examination` | `בחינה עיונית` | regulations | reg. 1 as amended, verbatim |
 | `training of up to` | `הכשרה של עד` | schedule | every column B cell opens with הכשרה של עד N שעות |
 
@@ -106,37 +102,46 @@ Two names are deliberately **not** renamed, because they are not ours: `add year
 | `Part A -- Grade 1` | `חלק א׳ — רישיון דרגה 1` | schedule | part heading, verbatim |
 | `Part B -- Grade 2` | `חלק ב׳ — רישיון דרגה 2` | schedule | part heading, verbatim |
 | `Part C -- Grade 3` | `חלק ג׳ — רישיון דרגה 3` | schedule | part heading, verbatim |
+| `regulation 4 is satisfied` | `תקנה 4 מתקיימת` | regulations | reg. 4 encoded once, as a function of whatever fee is prescribed |
 | `rounded to the nearest whole shekel` | `מעוגל לשקל החדש השלם הקרוב` | regulations | reg. 3(a) ‘ויעוגל לשקל החדש השלם הקרוב’ |
-| `the appeal fee plus its base under` | `אגרת ההשגה בתוספת אגרת הבחינה לפי` | composed | helper for the aggregate |
+| `the 5786 amendment is in force` | `תיקון התשפ״ו בתוקף` | composed | true for a rule-effective date on or after יום תחילתו של תיקון התשפ״ו |
+| `the appeal fee plus its base` | `אגרת ההשגה בתוספת אגרת הבחינה` | regulations | shared by the enacted rule and the draft: "נוסף על" in both |
 | `the applicant qualifies through the Schedule row for` | `המבקש עומד בשורת התוספת לדרגה` | composed | ‘שורה’ for a row of the Schedule's table is ours; the Schedule numbers its rows פרט |
 | `the applicant satisfies the personal conditions` | `המבקש עומד בתנאים האישיים` | composed | s.6(a)(1)-(3) have no collective name; ‘תנאים’ is s.6's heading word |
 | `the applicant satisfies the training condition` | `המבקש עומד בתנאי ההכשרה` | composed | s.6(a)(4); הכשרה is the Schedule's word |
 | `the chapters the Division director may exempt the applicant from` | `הפרקים שמנהל האגף להכשרה מקצועית רשאי לפטור מהם` | law | s.7 ‘מנהל האגף להכשרה מקצועית רשאי לתת … פטור מלימודי פרק החשמל’ |
 | `the commencement day` | `יום התחילה של החוק` | law | s.63(a)(1)'s יום התחילה. Deliberately NOT the bare יום התחילה, which is the parameter of the same idea elsewhere; two identifiers may not share a name |
 | `the continuing-education duty is met` | `חובת ההשתתפות בהשתלמויות מתקיימת` | law | s.17 heading חובת השתתפות בהשתלמויות |
+| `the day the 5786 amendment came into force` | `יום תחילתו של תיקון התשפ״ו` | composed | the amending regulations state no תחילה; the day of publication under s.17 of פקודת הפרשנות [נוסח חדש] (fork F6) |
+| `the day the Regulations came into force` | `יום תחילתן של התקנות` | regulations | reg. 5: "תחילתן של תקנות אלה 7 ימים מיום פרסומן"; computed, not asserted |
 | `the duty to report a change of registered details` | `חובת עדכון פרטים` | law | s.16 heading, verbatim |
-| `the examination fee the appeal fee is added to under` | `אגרת הבחינה שאגרת ההשגה נוספת עליה לפי` | regulations | reg. 2(b)/(c): ‘נוסף על התשלום בעד האגרה כאמור בתקנת משנה (א)’ |
-| `the fee prescribed by the draft for` | `האגרה שקבעה הטיוטה בעד` | regulations | reg. 2's frame is ‘בעד X … אגרה בסכום של N שקלים חדשים’ |
-| `the fee prescribed by the Regulations as amended for` | `האגרה שקבעו התקנות כפי שתוקנו בעד` | regulations | as above |
-| `the fee prescribed by the Regulations as made for` | `האגרה שקבעו התקנות כפי שהותקנו בעד` | regulations | as above |
-| `the fee under` | `האגרה לפי` | regulations | אגרה is reg. 2's word |
+| `the examination fee the appeal fee is added to` | `אגרת הבחינה שאגרת ההשגה נוספת עליה` | regulations | reg. 2(b): "נוסף על התשלום בעד האגרה כאמור בתקנת משנה (א1)" |
+| `the examination fee the draft's appeal fee is added to` | `אגרת הבחינה שאגרת ההשגה שבטיוטה נוספת עליה` | composed | the draft's 2(c) adds the 40 to "the fee under (a)", the theoretical fee (fork F5) |
+| `the fee prescribed by reg. 2 as amended for` | `האגרה שקובע נוסח תקנה 2 כפי שתוקן בעד` | regulations | the text after KT 12383, 5786 p. 2062 |
+| `the fee prescribed by reg. 2 as made for` | `האגרה שקובע נוסח תקנה 2 כפי שהותקן בעד` | regulations | the text at KT 11951, 5785 p. 2116; "בעד" is reg. 2's own preposition |
+| `the fee prescribed for` | `האגרה הקבועה בעד` | regulations | the ONE rule for reg. 2; reg. 4's own words are "שנקבעה בעדו אגרה" |
+| `the fee the SimpLEX draft prescribes for` | `האגרה שקובעת טיוטת SimpLEX בעד` | composed | the draft in Figure 4; no date, because it was never in force |
 | `the latest day a temporary licence can run to` | `היום המאוחר ביותר שאליו יכול להימשך רישיון זמני` | composed | the arithmetic consequence of s.9(a) plus s.9(b) |
 | `the Law applies to systems on refrigerants outside the Fourth Schedule from` | `החוק חל על מערכות בקרר שאינו מנוי בתוספת הרביעית החל מיום` | law | s.63(a)(2) ‘קרר שאינו כאמור בפסקה (1)’, and (1) points at the Fourth Schedule |
 | `the licence expires on` | `הרישיון פוקע ביום` | composed | s.8 says תוקפו של רישיון יהיה ל…; the expiry day is the encoding's framing |
 | `the licence grade reaches the system` | `דרגת הרישיון מגיעה למערכת` | composed | s.3(a) is a prohibition and speaks of רישיון מהסוג המתאים; ‘reaches’ is the encoding's, because only the cooling-output half of s.3(a) is modelled |
 | `the licence may be renewed` | `ניתן לחדש את הרישיון` | law | s.8 ‘וניתן לחדשו’ |
 | `the lowest grade permitted to work on a system of` | `הדרגה הנמוכה ביותר המתירה עבודה במערכת של` | composed | reads s.2's three grade definitions backwards, from kilowatts to grade |
+| `the outcome the SimpLEX draft would show for` | `התוצאה שהייתה טיוטת SimpLEX מציגה בעד` | composed | Figure 4's table, run against the draft it was written for |
 | `the rank of` | `דירוג הדרגה` | composed | an ordering the Law does not state; it follows from the 18/70/any nesting |
 | `the registrar may extend validity by` | `הרשם רשאי להאריך את תקופת התוקף` | law | s.17(c) ‘רשאי … להאריך את תקופת תוקף רישיונו’; s.8 defines תקופת תוקף |
 | `the registrar may grant a temporary Grade 3 licence` | `הרשם רשאי לתת רישיון דרגה 3 זמני` | law | s.9(a), verbatim |
 | `the registrar shall grant the licence` | `הרשם ייתן את הרישיון` | law | s.6(a) ‘הרשם ייתן רישיון למבקש’ |
+| `the Regulations are in force` | `התקנות בתוקף` | composed | true for a rule-effective date on or after יום תחילתן של התקנות |
 | `the Regulations commence on` | `תחילתן של התקנות ביום` | regulations | reg. 5, verbatim |
 | `the route is open on the application date` | `המסלול פתוח במועד הגשת הבקשה` | composed | as above; מועד הגשת הבקשה is the Law's phrase (s.9(a)(2)) |
 | `the route is time-limited` | `המסלול מוגבל בזמן` | composed | column C says הוראה זו תעמוד בתוקף לתקופה של שלוש שנים; ‘מסלול’ is ours |
 | `the Second Schedule requires, for the grade, of an applicant with` | `מה שהתוספת השנייה דורשת, לדרגה, ממבקש שהכשרתו או ניסיונו הקודמים הם` | schedule | the two column headings joined |
 | `the service may be provided` | `ניתן לספק את השירות` | regulations | reg. 4 is a prohibition (לא ייתן … לא יאפשר); this is its positive form |
-| `the SimpLEX outcome under` | `תוצאת SimpLEX לפי` | composed | the encoding's own; the tool's name stays Latin |
-| `the total to be tendered under` | `הסכום הכולל שיש לשלם לפי` | composed | the aggregate reg. 2 never names; composed from reg. 4's ‘שילם את האגרה במלואה’ |
+| `the SimpLEX draft would have allowed` | `טיוטת SimpLEX הייתה מתירה` | composed | reg. 4 applied to the draft's fees; מתירה echoes reg. 4's "לא יאפשר" |
+| `the SimpLEX outcome for` | `תוצאת SimpLEX בעד` | composed | Figure 4's table, run against the law as it stood on the rule-effective date |
+| `the total the SimpLEX draft would have required for` | `הסכום הכולל שהייתה דורשת טיוטת SimpLEX בעד` | composed | subjunctive throughout: the draft never required anything of anyone |
+| `the total to be tendered for` | `הסכום הכולל שיש לשלם בעד` | composed | the aggregate reg. 2 never names; לשלם and בעד are the Regulations' words |
 | `the updated fee` | `האגרה המעודכנת` | regulations | reg. 3 heading עדכון אגרות |
 | `three months from publication` | `שלושה חודשים מיום הפרסום` | law | s.63(a)(1), verbatim |
 
@@ -151,6 +156,7 @@ Two names are deliberately **not** renamed, because they are not ours: `add year
 | `e` | `המומחה` | law | s.9's מומחה זר |
 | `eighteen` | `שמונהעשר` | law | s.63(b) ‘18 חודשים’. A BARE name, so it is written solid: a space or a maqaf would split it |
 | `fee` | `אגרה` | regulations | reg. 2's word |
+| `fee prescribed` | `האגרה הקבועה` | regulations | reg. 4: "שנקבעה בעדו אגרה" |
 | `fee regulations in force` | `תחילת תקנות האגרות` | law | s.63(a)(1) ‘מועד כניסתן לתוקף של תקנות לפי סעיף 59’ |
 | `first granted` | `יום מתן הרישיון הראשון` | composed | s.9 does not name the first grant day |
 | `grade` | `הדרגה` | law | the definite form keeps it apart from the type דרגה |
@@ -174,13 +180,15 @@ Two names are deliberately **not** renamed, because they are not ours: `add year
 | `the council has been consulted` | `לאחר התייעצות עם המועצה` | law | s.17(c), verbatim |
 | `the duty under s.17(a) or (b) is unmet` | `לא מילא את חובתו לפי סעיף 17(א) או (ב)` | law | s.17(c) ‘שלא מילא את חובתו להשתתף בהשתלמות לפי סעיף קטן (א) או (ב)’ |
 | `the system type is exempted by order under s.3(b)` | `סוג המערכת פטור בצו לפי סעיף 3(ב)` | law | s.3(b) ‘פטור מקבלת רישיון’ by ministerial order; an input, no order located |
-| `vintage` | `הנוסח` | regulations | the definite form keeps it apart from the type נוסח |
 | `x` | `סכום` | regulations | reg. 2 ‘אגרה בסכום של’ |
 
 ## Fixtures
 
 | English | Hebrew | source | note |
 | --- | --- | --- | --- |
+| `a day before the Regulations commenced` | `יום שלפני תחילתן של התקנות` | composed | 1 July 2025: the Regulations did not yet exist |
+| `a day under the Regulations as amended` | `יום שבו התקנות כנוסחן המתוקן` | composed | the amendment's commencement day, 4 May 2026 |
+| `a day under the Regulations as made` | `יום שבו התקנות כנוסחן המקורי` | composed | the commencement day itself, 16 July 2025 |
 | `Dana` | `דנה` | composed | an invented applicant |
 | `Dana, who relies on her experience` | `דנה, הנסמכת על ניסיונה` | composed | an invented applicant |
 | `Noa, once she holds the completion certificate` | `נועה, משהיא בעלת תעודת גמר` | composed | an invented applicant |
@@ -199,14 +207,17 @@ Two names are deliberately **not** renamed, because they are not ours: `add year
 | `Chapter A -- Purpose and definitions` | `פרק א׳ — מטרה והגדרות` | law | chapter heading, verbatim |
 | `Chapter B -- Fees` | `פרק ב׳ — אגרות` | regulations | chapter heading, verbatim |
 | `Chapter B -- Licensing` | `פרק ב׳ — רישוי` | law | chapter heading, verbatim |
+| `Chapter B continued -- the provisions that did not change` | `פרק ב׳ המשך — ההוראות שלא שונו` | regulations | פרק ב׳ is the Regulations' own chapter heading; regs 3-5 did not move |
 | `Chapter C -- Duties of a licence holder` | `פרק ג׳ — חובות בעל רישיון` | composed | the Law's chapter ג׳ has no printed subtitle in the wikitext deposited |
 | `Chapter G -- Miscellaneous` | `פרק ז׳ — שונות` | composed | s.63 sits in the Law's last chapter |
 | `Illustrations` | `דוגמאות` | composed | the encoding's own section, in both modules |
+| `Illustrations -- one rule, three vintages of the law` | `דוגמאות — כלל אחד, שלושה נוסחים של הדין` | composed | the demonstration: same question, three dates, three answers |
 | `reg. 1 Definitions` | `תקנה 1 הגדרות` | regulations | reg. 1 heading; the gazette prints הגדרה with an erratum note [צ״ל: הגדרות] |
 | `reg. 2 -- what an appellant must tender in all` | `תקנה 2 -- הסכום הכולל שעל מגיש ההשגה לשלם` | regulations | section title, composed; reg. 2(b)/(c) ‘נוסף על התשלום’ |
-| `reg. 2 Fees -- as amended, Kovetz HaTakanot 5786 p. 2062` | `תקנה 2 אגרות — כפי שתוקנו, ק״ת התשפ״ו עמ׳ 2062` | composed | as above |
-| `reg. 2 Fees -- as made, Kovetz HaTakanot 5785 p. 2116` | `תקנה 2 אגרות — כפי שהותקנו, ק״ת התשפ״ה עמ׳ 2116` | composed | reg. 2 heading plus the gazette reference as the gazette prints it |
-| `reg. 2 Fees -- the draft as shown in SimpLEX` | `תקנה 2 אגרות — הטיוטה כפי שהוצגה ב־SimpLEX` | composed | reg. 2 heading plus the vintage |
+| `reg. 2 Fees -- the one rule, on the rule-effective-time axis` | `תקנה 2 אגרות — הכלל האחד, על ציר תחילת הדין` | composed | names the design: one rule for reg. 2, selecting its text off the axis |
+| `reg. 2 Fees -- the text as amended, Kovetz HaTakanot 5786 p. 2062` | `תקנה 2 אגרות — הנוסח כפי שתוקן, ק״ת התשפ״ו עמ׳ 2062` | regulations | the gazette reference is the issue's own |
+| `reg. 2 Fees -- the text as made, Kovetz HaTakanot 5785 p. 2116` | `תקנה 2 אגרות — הנוסח כפי שהותקן, ק״ת התשפ״ה עמ׳ 2116` | regulations | the gazette reference is the issue's own |
+| `reg. 2 on the rule-effective-time axis` | `תקנה 2 על ציר תחילת הדין` | composed | family g of the generated suite |
 | `reg. 3 -- the annual indexation of the fees` | `תקנה 3 — עדכון האגרות השנתי` | composed | the encoding's own |
 | `reg. 3 Updating of fees` | `תקנה 3 עדכון אגרות` | regulations | reg. 3 heading, verbatim |
 | `reg. 4 Payment of the fee as a condition of a licence or an examination` | `תקנה 4 תשלום אגרה כתנאי למתן רישיון או ביצוע בחינות` | regulations | reg. 4 heading, verbatim |
@@ -226,11 +237,17 @@ Two names are deliberately **not** renamed, because they are not ours: `add year
 | `s.9 Temporary licence for a foreign expert` | `סעיף 9 רישיון זמני למומחה זר` | law | s.9 heading, verbatim |
 | `ss.2 and 3 -- the grades and the duty to hold a licence` | `סעיפים 2 ו־3 — הדרגות וחובת הרישוי` | law | s.3 heading חובת רישוי |
 | `The draft's expectations, against the Regulations as made` | `ציפיות הטיוטה, כנגד התקנות כפי שהותקנו` | composed | the encoding's own |
+| `The same, as assertions` | `אותו הדבר, כטענות` | composed | the illustrations restated as checkable assertions |
+| `The SimpLEX draft -- a counterfactual, OFF the time axis` | `טיוטת SimpLEX — תרחיש נגדי, מחוץ לציר הזמן` | composed | the draft was never in force and has no יום תחילה, so it is not a point on the axis |
+| `The two points on the rule-effective-time axis` | `שתי נקודות הזמן שעל ציר תחילת הדין` | composed | the two commencement days that divide the axis; no counterpart in either instrument |
+| `Three days to ask the same question on` | `שלושה ימים שבהם נשאלת אותה שאלה` | composed | the three sample dates the tier 2 tests pin the axis to |
 | `Tier 1 -- the SimpLEX test table, against the draft it was written for` | `שכבה 1 — טבלת הבדיקות של SimpLEX, כנגד הטיוטה שלמענה נכתבה` | composed | the encoding's own |
 | `Tier 1 -- the SimpLEX test table, in its own words` | `שכבה 1 — טבלת הבדיקות של SimpLEX, בלשונה שלה` | composed | the encoding's own |
+| `Tier 2 -- before the Regulations commenced` | `שכבה 2 — לפני תחילתן של התקנות` | composed | תחילתן is reg. 5's own word |
+| `Tier 2 -- the day the amendment commenced` | `שכבה 2 — יום תחילתו של התיקון` | composed | the boundary fork F6 turns on |
 | `Tier 2 -- the same scenarios against the Regulations as amended` | `שכבה 2 — אותם תרחישים כנגד התקנות כפי שתוקנו` | composed | the encoding's own |
 | `Tier 2 -- the same scenarios against the Regulations as made` | `שכבה 2 — אותם תרחישים כנגד התקנות כפי שהותקנו` | composed | the encoding's own |
-| `Tier 2 -- what the three texts say, side by side` | `שכבה 2 — מה אומרים שלושת הנוסחים, זה לצד זה` | composed | the encoding's own |
+| `Tier 2 -- what the texts say, side by side` | `שכבה 2 — מה אומרים הנוסחים, זה לצד זה` | composed | replaces the old "three texts" heading: two are vintages, one is a draft |
 
 ## Modules
 
@@ -247,7 +264,7 @@ See `NOTES.md` § 4 for the measurement. The Hebrew row therefore keeps Latin fi
 
 ## Prose that is translated, not renamed
 
-`@export` and `@desc` carry sentences, not identifiers, so they are translated whole from the glossary's `prose` map rather than composed out of renamed parts. There are 17 of them.
+`@export` and `@desc` carry sentences, not identifiers, so they are translated whole from the glossary's `prose` map rather than composed out of renamed parts. There are 25 of them.
 
 ## Comments
 
