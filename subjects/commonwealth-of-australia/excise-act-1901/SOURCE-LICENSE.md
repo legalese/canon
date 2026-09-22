@@ -20,5 +20,6 @@ terms.
 
 ## Status of this deposit
 
-No statute text has been deposited yet. This file records the terms that will govern the
-text when it is harvested.
+Statute text deposited 2026-09-22: `registers/source-bundle/C1901A00009.txt`, converted to plain text from
+https://api.prod.legislation.gov.au/v1/Documents/Find(titleid='C1901A00009',asatspecification='Current',type='Primary',format='Word',uniquetypenumber=0,volumenumber=0,rectificationspecification='Latest')
+(compilation register id: C2026C00380). sha256 of the download: `9d057b3288602046af6b3b95a5d7af3dea41a024966e51208df6b15aa1f802d1`.
