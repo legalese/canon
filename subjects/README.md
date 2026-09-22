@@ -6,6 +6,15 @@ One directory per jurisdiction, then one directory per body of law inside it.
 | ------------ | -------- |
 | [`western-australia/`](western-australia/) | Western Australian Acts |
 | [`european-union/`](european-union/) | European Union Regulations and Directives |
+| [`singapore/`](singapore/) | Singapore Acts |
+| [`commonwealth-of-australia/`](commonwealth-of-australia/) | Commonwealth of Australia Acts |
+| [`new-south-wales/`](new-south-wales/) | New South Wales Acts |
+| [`victoria/`](victoria/) | Victorian Acts -- **not openly licensed; metadata only** until permission is obtained |
+| [`queensland/`](queensland/) | Queensland Acts |
+| [`south-australia/`](south-australia/) | South Australian Acts |
+| [`tasmania/`](tasmania/) | Tasmanian Acts |
+| [`new-zealand/`](new-zealand/) | New Zealand Acts and Bills |
+| [`united-kingdom/`](united-kingdom/) | United Kingdom Acts (Westminster) |
 
 `regcf` (SEC Regulation Crowdfunding, 17 CFR Part 227) arrives with the pipeline's G4
 milestone, with the British Nationality Act 1981 to follow.
