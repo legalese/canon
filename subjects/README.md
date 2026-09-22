@@ -24,6 +24,7 @@ One directory per jurisdiction, then one directory per body of law inside it.
 | [`canada/`](canada/) | Canadian federal Acts -- English and French equally authoritative; conditional permission |
 | [`ontario/`](ontario/) | Ontario statutes -- English and French equally authoritative; conditional permission |
 | [`british-columbia/`](british-columbia/) | British Columbia statutes (King's Printer Licence) |
+| [`india/`](india/) | Indian central Acts -- no reuse licence; not independently spot-checked |
 | [`ireland/`](ireland/) | Irish Acts (Oireachtas PSI Licence, CC BY 4.0) |
 | [`south-africa/`](south-africa/) | South African Acts -- **licence unclear; metadata only** until resolved |
 | [`hong-kong/`](hong-kong/) | Hong Kong ordinances -- **not openly licensed; metadata only**; English and Chinese equally authentic |
