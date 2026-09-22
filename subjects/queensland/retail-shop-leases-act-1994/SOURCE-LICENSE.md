@@ -20,5 +20,6 @@ terms.
 
 ## Status of this deposit
 
-No statute text has been deposited yet. This file records the terms that will govern the
-text when it is harvested.
+Statute text deposited 2026-09-22: `registers/source-bundle/act-1994-047.txt`, converted to plain text from
+https://www.legislation.qld.gov.au/view/whole/html/inforce/current/act-1994-047
+(current in-force version on the retrieval date: 2026-09-22). sha256 of the download: `fec677ecdc28e2824f69830df68e7634a08af33bc1537121002d0f1e9c8bb414`.

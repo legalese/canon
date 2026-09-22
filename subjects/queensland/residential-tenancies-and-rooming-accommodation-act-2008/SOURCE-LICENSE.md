@@ -20,5 +20,6 @@ terms.
 
 ## Status of this deposit
 
-No statute text has been deposited yet. This file records the terms that will govern the
-text when it is harvested.
+Statute text deposited 2026-09-22: `registers/source-bundle/act-2008-073.txt`, converted to plain text from
+https://www.legislation.qld.gov.au/view/whole/html/inforce/current/act-2008-073
+(current in-force version on the retrieval date: 2026-09-22). sha256 of the download: `81c8bf0bfbdee524164510d0ce42e90a139182241a99114ccad3212f1c3eb8c2`.

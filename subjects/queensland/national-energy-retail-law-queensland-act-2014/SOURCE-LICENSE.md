@@ -20,5 +20,6 @@ terms.
 
 ## Status of this deposit
 
-No statute text has been deposited yet. This file records the terms that will govern the
-text when it is harvested.
+Statute text deposited 2026-09-22: `registers/source-bundle/act-2014-049.txt`, converted to plain text from
+https://www.legislation.qld.gov.au/view/whole/html/inforce/current/act-2014-049
+(current in-force version on the retrieval date: 2026-09-22). sha256 of the download: `06f2e318870006cfbd44a655479de8c9d3c606f643135bd26ccab7070d35f569`.
