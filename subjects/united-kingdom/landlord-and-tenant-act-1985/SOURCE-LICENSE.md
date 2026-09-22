@@ -14,4 +14,6 @@ Contains public sector information licensed under the Open Government Licence v3
 
 ## Status of this deposit
 
-No statute text has been deposited yet.
+Statute text deposited 2026-09-22: `registers/source-bundle/ukpga-1985-70.txt`, converted to plain text from
+https://www.legislation.gov.uk/ukpga/1985/70/data.xml
+(point in time (dct:valid) of the latest revised version: 2026-06-29). sha256 of the download: `98a9d6b92398817905d507772a7c4bfdc00d5d93891e16cc9841485f1337fe13`.
