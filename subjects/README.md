@@ -28,6 +28,7 @@ One directory per jurisdiction, then one directory per body of law inside it.
 | [`ireland/`](ireland/) | Irish Acts (Oireachtas PSI Licence, CC BY 4.0) |
 | [`south-africa/`](south-africa/) | South African Acts -- **licence unclear; metadata only** until resolved |
 | [`hong-kong/`](hong-kong/) | Hong Kong ordinances -- **not openly licensed; metadata only**; English and Chinese equally authentic |
+| [`israel/`](israel/) | Israeli Laws (no copyright in statutes, Copyright Act 2007 s 6) -- Hebrew authoritative |
 
 `regcf` (SEC Regulation Crowdfunding, 17 CFR Part 227) arrives with the pipeline's G4
 milestone, with the British Nationality Act 1981 to follow.
