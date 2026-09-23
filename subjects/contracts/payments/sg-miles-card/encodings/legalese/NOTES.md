@@ -293,3 +293,20 @@ corrected two claims this file's own text used to carry (a stale "goldens are st
 `ACCEPTANCE-TRIAGE.md`, and four sentences confusing Meng's app fork with Alexis's
 original) and recorded the HG1 waiver. Both corrections are already folded into this
 deposit's copies of those files.
+
+## 9. Refreshed from l4-ide, 2026-09-23
+
+On 2026-09-23 Meng ruled (LODGER) that l4-ide's copy of this row retires in favour of this one, and that l4-ide vendors it back through its canon pin.
+By then the two copies had drifted on four files.
+They are reconciled here to l4-ide's bytes at `7df7a3ca6`:
+
+- **`tests/{citi-rewards,flat-cards,posb-passion}.nlg.golden`** — re-blessed in l4-ide by #458 (a heralded call in a directive reads as its sentence). The copies here predated it and would have failed l4-ide's harness.
+- **`registers/source-bundle.json`** — l4-ide's bytes, which give every document an `integrity.local_path` into l4-ide, with this repository's `CANON NOTE` appended to its `note`. The PDFs and their text extractions stay in l4-ide at `jl4/examples/legal/miles-card/source/` (ruled 2026-09-23, M2), together with the two table generators `gen-hsbc-mcc.py` and `gen-womans-tables.py`. So the digest checks run there.
+
+Three files that were only in l4-ide are added:
+
+- `README.md`, byte-identical. Its status line, "being encoded", is as it stood on 2026-09-21, and this section is its correction.
+- `report/COMPLETION.md` — the coverage report rendered from the encoding roadmap.
+- `registers/roadmap.json` — that roadmap.
+
+Everything else of l4-ide's `jl4/examples/legal/miles-card/` was already here and byte-identical: all 14 modules, 53 of 56 goldens, `ACCEPTANCE-TRIAGE.md`, `DEFEASIBILITY-SITES.md`, `categorize.dmn.md`, `projections/app/` (l4-ide's `app/`) and two of the three registers.
