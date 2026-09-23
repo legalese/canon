@@ -1,0 +1,19 @@
+# alabama/
+
+Alabama (US state) legislation, one subject-id per body of law, following the subject-sidecar shape described in [`subjects/README.md`](../README.md).
+
+The subjects here were laid out on 2026-09-23 for the legislation governing twelve everyday topics. Each was checked against the ALISON - Alabama Legislature Official Information System, Code of Alabama 1975; the check is recorded in each subject's `registers/source-bundle/*.meta.json`. No statute text has been deposited and nothing is encoded yet.
+
+**Licence category: unclear.** **Metadata only until resolved.** No human has recorded a licence decision for this jurisdiction in `tools/topics/round3/licence-decisions.json`. The register's own terms, quoted above, are the evidence to decide on.
+
+## Register access
+
+The code browser is a JavaScript single-page app (Next.js + a GraphQL endpoint with introspection disabled); a plain HTTP fetch returns only the page shell, and the legacy host alisondb.legislature.state.al.us no longer resolves (DNS failure). I therefore loaded the site in a real browser (Claude's browser pane, ordinary Chrome, no user-agent spoofing) and used its own navigation. Section pages load from https://alison.legislature.state.al.us/code-of-alabama?section=<n>-<n>-<n> and render a breadcrumb (Title / Chapter / Article / Section + catchline) plus the section text and source credits; the left table of contents shows chapter captions with section ranges when a title is expanded. About 12 page loads plus a handful of in-page clicks, spaced by seconds. No block, no bot challenge, no rate limiting. The site shows no 'as at' or 'current through' date anywhere, and no statement of which version is official.
+
+## Topics with no legislation here
+
+- **Payroll/wages**: No general state wage-payment or minimum-wage statute. The register's Title 25 table of contents lists no wages chapter (chapters run: Department of Labor, Unemployment Compensation, Workers' Compensation, Employer's Liability, Labor Unions and Labor Relations, Child Labor, Small Business Assistance, Directory of New Hires, boilers, elevators, PEOs, workforce boards). Private-sector minimum wage, overtime and recordkeeping are governed by the federal Fair Labor Standards Act, 29 U.S.C. s 201 et seq. Ala. Code 1975 s 25-7-41 (verified: 'Definitions; Limitations on Compensation and Employment Benefits Not Required by State or Federal Laws', Title 25, ch. 7, art. 2A - the Alabama Uniform Minimum Wage and Right-to-Work Act) works the other way: it bars local governments from imposing wage or benefit mandates.
+- **Leave/holiday pay**: No state statute for private employers: Alabama mandates neither paid nor unpaid annual leave, holiday pay nor sick leave, and s 25-7-41 et seq. preempts local mandates. Job-protected family and medical leave comes from the federal FMLA, 29 U.S.C. s 2601 et seq. Leave for state merit-system employees is dealt with under Title 36 (Public Officers and Employees).
+- **Termination/severance**: Employment is at will by common law and there is no statutory notice, severance or mass-layoff regime; plant-closing notice comes from the federal WARN Act, 29 U.S.C. s 2101 et seq. Alabama has no mini-WARN Act and no final-pay statute (compare the wage-payment statutes other states have). Statutory protection is issue-specific only, e.g. retaliatory discharge for workers' compensation claims in Title 25, ch. 5.
+- **Passenger compensation**: Federal. Air passenger rights come from US DOT rules (14 C.F.R. Parts 250, 259) and state regulation of airline prices, routes and services is preempted by the Airline Deregulation Act, 49 U.S.C. s 41713. Alabama has no passenger compensation statute.
+- **Customs/duties**: Federal and exclusive: U.S. Const. art. I, ss 8 and 10; Tariff Act of 1930, 19 U.S.C. States levy no customs duties.

@@ -29,6 +29,44 @@ One directory per jurisdiction, then one directory per body of law inside it.
 | [`south-africa/`](south-africa/) | South African Acts -- **licence unclear; metadata only** until resolved |
 | [`hong-kong/`](hong-kong/) | Hong Kong ordinances -- **not openly licensed; metadata only**; English and Chinese equally authentic |
 | [`israel/`](israel/) | Israeli Laws (no copyright in statutes, Copyright Act 2007 s 6) -- Hebrew authoritative |
+| [`alabama/`](alabama/) | Alabama (US state) -- **metadata only**; licence decision pending |
+| [`alaska/`](alaska/) | Alaska (US state) -- **metadata only**; licence decision pending |
+| [`arizona/`](arizona/) | Arizona (US state) -- **metadata only**; licence decision pending |
+| [`arkansas/`](arkansas/) | Arkansas (US state) -- **metadata only**; licence decision pending |
+| [`colorado/`](colorado/) | Colorado (US state) -- **metadata only**; licence decision pending |
+| [`connecticut/`](connecticut/) | Connecticut (US state) -- **metadata only**; licence decision pending |
+| [`delaware/`](delaware/) | Delaware (US state) -- **metadata only**; licence decision pending |
+| [`district-of-columbia/`](district-of-columbia/) | District of Columbia (US federal district) -- **metadata only**; licence decision pending |
+| [`florida/`](florida/) | Florida (US state) -- **metadata only**; licence decision pending |
+| [`georgia/`](georgia/) | Georgia (US state) -- **metadata only**; licence decision pending |
+| [`hawaii/`](hawaii/) | Hawaii (US state) -- **metadata only**; licence decision pending |
+| [`indiana/`](indiana/) | Indiana (US state) -- **metadata only**; licence decision pending |
+| [`iowa/`](iowa/) | Iowa (US state) -- **metadata only**; licence decision pending |
+| [`kansas/`](kansas/) | Kansas (US state) -- **metadata only**; licence decision pending |
+| [`kentucky/`](kentucky/) | Kentucky (US state) -- **metadata only**; licence decision pending |
+| [`maine/`](maine/) | Maine (US state) -- **metadata only**; licence decision pending |
+| [`maryland/`](maryland/) | Maryland (US state) -- **metadata only**; licence decision pending |
+| [`minnesota/`](minnesota/) | Minnesota (US state) -- **metadata only**; licence decision pending |
+| [`mississippi/`](mississippi/) | Mississippi (US state) -- **metadata only**; licence decision pending |
+| [`montana/`](montana/) | Montana (US state) -- **metadata only**; licence decision pending |
+| [`new-mexico/`](new-mexico/) | New Mexico (US state) -- **metadata only**; licence decision pending |
+| [`north-dakota/`](north-dakota/) | North Dakota (US state) -- **metadata only**; licence decision pending |
+| [`oklahoma/`](oklahoma/) | Oklahoma (US state) -- **metadata only**; licence decision pending |
+| [`south-carolina/`](south-carolina/) | South Carolina (US state) -- **metadata only**; licence decision pending |
+| [`south-dakota/`](south-dakota/) | South Dakota (US state) -- **metadata only**; licence decision pending |
+| [`tennessee/`](tennessee/) | Tennessee (US state) -- **metadata only**; licence decision pending |
+| [`vermont/`](vermont/) | Vermont (US state) -- **metadata only**; licence decision pending |
+| [`virginia/`](virginia/) | Virginia (US state) -- **metadata only**; licence decision pending |
+| [`washington/`](washington/) | Washington (US state) -- **metadata only**; licence decision pending |
+| [`wyoming/`](wyoming/) | Wyoming (US state) -- **metadata only**; licence decision pending |
+| [`alberta/`](alberta/) | Alberta (Canadian province or territory) -- **metadata only**; licence decision pending |
+| [`manitoba/`](manitoba/) | Manitoba (Canadian province or territory) -- **metadata only**; licence decision pending |
+| [`newfoundland-and-labrador/`](newfoundland-and-labrador/) | Newfoundland and Labrador (Canadian province or territory) -- **metadata only**; licence decision pending |
+| [`northwest-territories/`](northwest-territories/) | Northwest Territories (Canadian province or territory) -- **metadata only**; licence decision pending |
+| [`nova-scotia/`](nova-scotia/) | Nova Scotia (Canadian province or territory) -- **metadata only**; licence decision pending |
+| [`nunavut/`](nunavut/) | Nunavut (Canadian province or territory) -- **metadata only**; licence decision pending |
+| [`quebec/`](quebec/) | Quebec (Canadian province or territory) -- **metadata only**; licence decision pending |
+| [`saskatchewan/`](saskatchewan/) | Saskatchewan (Canadian province or territory) -- **metadata only**; licence decision pending |
 
 `regcf` (SEC Regulation Crowdfunding, 17 CFR Part 227) arrives with the pipeline's G4
 milestone, with the British Nationality Act 1981 to follow.
