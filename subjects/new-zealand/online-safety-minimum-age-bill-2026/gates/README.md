@@ -14,8 +14,10 @@ encoding is isomorphic to its source."* The statement the signer makes is writte
 `HG1.payload.txt` itself, so that what was signed is not a matter of recollection. It covers
 fidelity of the encoding to the Bill, and explicitly not the merits of the Bill.
 
-HG2 is referenced in the repository README and in `subjects/README.md` but is not defined
-anywhere in this repository. No HG2 artifact is prepared here.
+HG2 is defined in l4-ide, not here: SPEC.md §7.3 and the `running-the-l4-pipeline` skill's
+`references/gates.md`. It certifies that Meng has agreed to a specific outward-facing act, uses the
+separate namespace `l4-go-gate-hg2`, blocks `p10-publish`, and **cannot be waived**. No HG2 artifact
+is prepared here. (Corrected 2026-09-23: this file previously said HG2 was defined nowhere.)
 
 ## Why there is no signature
 
