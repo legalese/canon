@@ -43,7 +43,7 @@ gives the clause-to-module map, and `report/conversion-report.md` section 4 list
 interpretation calls that need accepting or rejecting. Then, from the subject directory:
 
 ```bash
-sha256sum -c <(sed -n '/^files (sha256):$/,/^$/p' gates/HG1.payload.txt | tail -n +2)
+sha256sum -c <(sed -n '/^files (sha256):$/,/^$/p' gates/HG1.payload.txt | tail -n +2 | sed '/^$/d')
 ```
 
 to confirm the payload still describes the files on disk, and then:

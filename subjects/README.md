@@ -88,3 +88,6 @@ design) is the subject-sidecar shape defined by the l4-ide orchestrator:
 
 An instance is expected to veer from the class; its divergences are recorded in its own
 `NOTES.md`, never by forking the template.
+
+The stages an encoding passes through, and what the HG1 and HG2 gates certify, are in
+[`PIPELINE.md`](../PIPELINE.md).
