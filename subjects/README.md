@@ -1,7 +1,8 @@
 # subjects/
 
-One directory per body of law. **Eleven are listed as at 2026-09-21.** Four are Singapore
-statutes and one is an Act of the Knesset; of the other six, one is a synthetic insurance
+One directory per body of law. **Fourteen are listed as at 2026-09-23.** Eight are enacted
+law, or announced as law: four Singapore subjects, three pieces of Israeli legislation, and one
+US federal regulation. Of the other six, one is a synthetic insurance
 policy, two are commercial standard forms, one is eight private issuers' card T&Cs bundled as
 one comparison subject, one is a judge-made doctrine encoded across four jurisdictions, and one
 is a body of Israeli **collective agreements** rather than enacted law at all. Each of those six
@@ -15,12 +16,14 @@ encoding at all, which the `what it encodes` column says plainly.
 | [`sg/pdpa-2012`](sg/pdpa-2012) | Personal Data Protection Act 2012, Part VIA (data breach notification) | `draft` |
 | [`sg/penal-code-1871`](sg/penal-code-1871) | Penal Code 1871 — cheating, theft, extortion, robbery, criminal breach of trust, criminal intimidation, hurt (ss 22–25, 321, 323A, 378–384, 390–394, 405–406, 415–420, 503–506) with the form of a charge under CPC 2010 ss 123–126, and s 301 (transferred malice) | `draft` |
 | [`us/chubb-hospital-cash`](us/chubb-hospital-cash) | a **synthetic** supplemental hospitalization cash policy — never law, never in force — encoded twice, independently, as evidence in a replication study | `experimental` |
+| [`us/regcf`](us/regcf) | SEC Regulation Crowdfunding, 17 CFR Part 227, encoded twice and independently: the eight requirement groups one wiki page presents, with a rule-version axis back to commencement in 2016, and all 22 sections de novo from the eCFR | `draft` |
 | [`contracts/investment/yc-safe-postmoney`](contracts/investment/yc-safe-postmoney) | the Y Combinator post-money SAFE — six instruments plus four Pro Rata Side Letters, with their User Guide — deposited verbatim, with one encoding row | `draft` |
 | [`contracts/investment/yc-safe-premoney`](contracts/investment/yc-safe-premoney) | nothing, and none planned in this repository — **sources only**: the 2013–2018 "original safe", four US variants, recovered from the Internet Archive | `draft` |
 | [`contracts/payments/sg-miles-card`](contracts/payments/sg-miles-card) | eight Singapore card issuers' reward-programme T&Cs — DBS yuu, DBS Woman's World, Citi Rewards, HSBC Revolution, UOB Lady's Solitaire, POSB PAssion, plus two flat-rate cards with no held T&C — against one shared ontology, so "which card earns the most on this purchase" can be asked across all eight at once | `draft` |
 | [`il/ofek-hadash-2008`](il/ofek-hadash-2008) | the Ofek Hadash reform — the collective agreements, and one budget-law chapter, that determine an Israeli teacher's pay | `draft` |
 | [`il/hvac-work-licensing-2025`](il/hvac-work-licensing-2025) | the Refrigeration or Air-Conditioning Systems Work Licensing Law 5785-2025 (licence grades, eligibility with the Second Schedule, validity, foreign experts, commencement) and its Fees Regulations in THREE vintages — the SimpLEX draft shown in Schwartz, Bar-Siman-Tov & Gelbard (2025), as made, as amended — with the paper's own test table run against all three | `draft` |
 | [`il/penal-law-1977`](il/penal-law-1977) | Penal Law 5737-1977 — theft and robbery (ss 383, 384, 402, 403, 404), encoded in Hebrew with English renderings beside every rule | `draft` |
+| [`il/traffic-ordinance-bac`](il/traffic-ordinance-bac) | Traffic Ordinance [New Version] 5721-1961, s 64B(a) "intoxicated" — the drink-driving alcohol thresholds, with reg. 169A of the Traffic Regulations — on the rule-effective axis either side of the 2010 amendment that lowered the threshold for new, young and professional drivers | `draft` |
 | [`doctrine/contract/unilateral-mistake`](doctrine/contract/unilateral-mistake) | the Singapore doctrine of unilateral mistake in contract — *Chwee Kin Keong v Digilandmall.com* [2005] SGCA 2 — encoded beside three comparators (English common law, *Taylor v Johnson*, Restatement (Second) § 153) against one ontology | `draft` |
 
 `sg/child-support` is the odd one and worth knowing about before you read it: its primary
@@ -149,8 +152,12 @@ otherwise attributed to an October 2022 agreement; and it is the first row to ca
 **executed** foreign-notation projection — six worked cases run through `catala interpret`
 against the emitted Catala module, reproducing the figures the L4 asserts.
 
-`regcf` (SEC Regulation Crowdfunding) and the British Nationality Act 1981 are encoded in
-`legalese/l4-ide` and have not been deposited here yet.
+`us/regcf` was encoded in `legalese/l4-ide` and deposited here on 2026-09-23, byte-identical, with
+its history left in l4-ide, which vendors it back into its regression corpus once its
+`etc/canon-pin.json` names a commit that contains it. Its `README.md`, `PROJECTIONS.md`
+and ladder figures stayed in l4-ide, because they describe l4-ide's own projections of the
+corpus, and each row's `NOTES.md` says where they are. The British Nationality Act 1981 is
+encoded in `legalese/l4-ide` and has not been deposited here yet.
 
 *(This paragraph read "Empty at this writing" until 2026-08-25, by which point three
 subjects had landed; a fourth landed on 2026-08-27, a fifth on 2026-08-31, the two
