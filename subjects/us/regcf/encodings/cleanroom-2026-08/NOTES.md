@@ -25,6 +25,12 @@ Two encodings that agree because one was copied from the other would make that a
 That file is `subjects/us/regcf/source/part227.txt` here, and it is byte-identical: the `sha256` on the next line of the module still matches it.
 The comment is left as deposited, because editing it would change the module's exactprint golden, and the point of this deposit was that nothing changed.
 Paths in `registers/` are likewise l4-ide paths.
+Two kinds of them are resolved by a program, relative to l4-ide's root.
+
+- **The surface map's two `sides.*.module` paths** are read by l4-ide's `denovo-diff.mjs`. They point at l4-ide's vendored mirror, `jl4/examples/canon/us/regcf/` and `jl4/examples/canon/us/regcf/cleanroom/`.
+- **The source bundle's `integrity.local_path` and `assembled.local_path`** are read by l4-ide's register validator, which re-hashes each file. They still name `jl4/examples/legal/regcf/denovo/source/`, which does not survive the move: the text is here, at `subjects/us/regcf/source/`, and l4-ide's mirror does not carry `source/`. So in l4-ide those digest checks report *skip*, not *pass*. The `sha256` values themselves still match the files here.
+
+The fork register's `site.file` values record where each fork's site was when the register was written, and nothing resolves them.
 
 ## 3. Not reviewed
 
