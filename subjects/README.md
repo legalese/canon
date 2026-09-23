@@ -1,8 +1,8 @@
 # subjects/
 
-One directory per body of law. **Fifteen are listed as at 2026-09-23.** Nine are enacted
+One directory per body of law. **Sixteen are listed as at 2026-09-23.** Ten are enacted
 law, or announced as law: four Singapore subjects, three pieces of Israeli legislation, one
-US federal regulation and one Act of the UK Parliament. Of the other six, one is a synthetic insurance
+US federal regulation, one Act of the UK Parliament and one Law of Jersey. Of the other six, one is a synthetic insurance
 policy, two are commercial standard forms, one is eight private issuers' card T&Cs bundled as
 one comparison subject, one is a judge-made doctrine encoded across four jurisdictions, and one
 is a body of Israeli **collective agreements** rather than enacted law at all. Each of those six
@@ -18,6 +18,7 @@ encoding at all, which the `what it encodes` column says plainly.
 | [`us/chubb-hospital-cash`](us/chubb-hospital-cash) | a **synthetic** supplemental hospitalization cash policy — never law, never in force — encoded twice, independently, as evidence in a replication study | `experimental` |
 | [`us/regcf`](us/regcf) | SEC Regulation Crowdfunding, 17 CFR Part 227, encoded twice and independently: the eight requirement groups one wiki page presents, with a rule-version axis back to commencement in 2016, and all 22 sections de novo from the eCFR | `draft` |
 | [`uk/bna-1981`](uk/bna-1981) | British Nationality Act 1981, section 1 — British citizenship by birth or adoption in the United Kingdom, as in force on 4 July 2026; the demo pipeline's smoke-test subject, "as is traditional" (Sergot et al., 1986) | `draft` |
+| [`je/charities-2014`](je/charities-2014) | Charities (Jersey) Law 2014 — the charity test (Articles 5-7, with the definitions it needs), encoded de novo as a cleanroom smoke test, with its DMN/BPMN projections and a three-way comparison against an earlier encoding of the whole Law | `draft` |
 | [`contracts/investment/yc-safe-postmoney`](contracts/investment/yc-safe-postmoney) | the Y Combinator post-money SAFE — six instruments plus four Pro Rata Side Letters, with their User Guide — deposited verbatim, with one encoding row | `draft` |
 | [`contracts/investment/yc-safe-premoney`](contracts/investment/yc-safe-premoney) | nothing, and none planned in this repository — **sources only**: the 2013–2018 "original safe", four US variants, recovered from the Internet Archive | `draft` |
 | [`contracts/payments/sg-miles-card`](contracts/payments/sg-miles-card) | eight Singapore card issuers' reward-programme T&Cs — DBS yuu, DBS Woman's World, Citi Rewards, HSBC Revolution, UOB Lady's Solitaire, POSB PAssion, plus two flat-rate cards with no held T&C — against one shared ontology, so "which card earns the most on this purchase" can be asked across all eight at once | `draft` |
@@ -157,8 +158,11 @@ against the emitted Catala module, reproducing the figures the L4 asserts.
 its history left in l4-ide, which vendors it back into its regression corpus once its
 `etc/canon-pin.json` names a commit that contains it. Its `README.md`, `PROJECTIONS.md`
 and ladder figures stayed in l4-ide, because they describe l4-ide's own projections of the
-corpus, and each row's `NOTES.md` says where they are. `uk/bna-1981` was deposited from l4-ide
-the same day, in the same way, and nothing of it stayed behind.
+corpus, and each row's `NOTES.md` says where they are. `uk/bna-1981` and `je/charities-2014` were
+deposited from l4-ide the same day, in the same way, and nothing of either stayed behind.
+`je/charities-2014` is the first row under a Crown Dependency. Its code, `je`, is Jersey's own
+ISO 3166-1 alpha-2 code: Jersey legislates for itself, so the Law is filed under Jersey and not
+under `uk/`.
 
 *(This paragraph read "Empty at this writing" until 2026-08-25, by which point three
 subjects had landed; a fourth landed on 2026-08-27, a fifth on 2026-08-31, the two
