@@ -124,3 +124,28 @@ empty matched set. This corpus cannot answer a question about an earlier version
 type and no record carries one, so nothing a downstream consumer builds carries a share from one
 module to another. Inside the case suite the join is computed; outside it, the hand-off does not
 exist yet.
+
+## Refreshed from l4-ide, 2026-09-23
+
+From 2026-08-26 to 2026-09-23 this row had a second copy in `legalese/l4-ide`, at `jl4/examples/legal/sg-succession/cleanroom-2026-08/`.
+l4-ide's regression suite held that copy's goldens, so the sweeps l4-ide ran over its corpus reached the l4-ide copy and never reached this one.
+The first of those was NOT-precedence parenthesisation (l4-ide `106114777`).
+The second was the removal of a doubled verb from field names (`4921d4b6e`, `bea7c4460`), under which `has sold, mortgaged, …` became `sold, mortgaged, …`.
+The third was the NLG change of #458.
+By 2026-09-23 this copy failed `l4 check` on l4-ide's current binary.
+`probate-administration-act.l4:1915:23` raised a NOT-precedence **error**, and `family-cases.l4` failed through its import of that module.
+
+The refresh replaces this row's modules, goldens and four registers with l4-ide's bytes at `7df7a3ca6`, unchanged:
+
+- all 6 `.l4` files;
+- the 11 of 24 goldens that differed;
+- `registers/*` — the fork register's field-name renames in one `rationale` and the surface map's left module path are content changes, and the rest is formatting.
+
+`assertions` stays 1,907, re-measured over `l4 run --json` for all six modules, 0 failed.
+`report/` is unchanged.
+l4-ide's `report/run-2026-08-26-003.md` is the same rendered report as `report/go-run-report.md`, differing only in table padding and emphasis markers, so it was not added a second time.
+
+One thing did not move.
+The source texts this row was encoded from (`source/*.pdf`, `*.html`, `*.txt`) stay in l4-ide at `jl4/examples/legal/sg-succession/cleanroom-2026-08/source/`, because Singapore's source terms are undetermined.
+`registers/source-bundle.json` pins them by `sha256` and names them by those l4-ide paths.
+l4-ide blesses this row into its regression corpus in the change that bumps its canon pin past this commit. Its mirror places the row at `jl4/examples/canon/sg/succession/cleanroom/`.
