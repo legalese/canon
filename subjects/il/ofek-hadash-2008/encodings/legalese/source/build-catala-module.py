@@ -1,6 +1,6 @@
-"""Generate ofek-catala.l4 — the single-module rendering that `l4 catala` compiles.
+"""Generate ofek-catala.l4 — the single-module rendering that `l4 export catala` compiles.
 
-WHY THIS EXISTS. `l4 catala` compiles ONE module: a reference into an imported
+WHY THIS EXISTS. `l4 export catala` compiles ONE module: a reference into an imported
 module is rejected as unbound, and a type declared in an imported module is
 reported as outside the v1 fragment. The eight-module encoding beside this
 script is therefore not compilable as it stands, and flattening it by hand
@@ -71,7 +71,7 @@ IMPORT daydate
 --   source/tables.py. Regenerate with
 --     OFEK_CORPUS=<checkout> python3 source/build-catala-module.py > ofek-catala.l4
 --
--- WHAT IT IS FOR. `l4 catala` compiles a SINGLE module: a reference into an
+-- WHAT IT IS FOR. `l4 export catala` compiles a SINGLE module: a reference into an
 -- imported module is rejected as unbound, and a type declared elsewhere is
 -- reported as outside the v1 fragment. The eight-module encoding beside this
 -- file is therefore not compilable as it stands. This module is that encoding

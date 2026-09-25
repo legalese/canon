@@ -210,7 +210,7 @@ under catala 1.2.1** and computes the same numbers.
 
 ### 7.1 Why there is a generated ninth module
 
-`l4 catala` compiles **one** module: a reference into an imported module is rejected as
+`l4 export catala` compiles **one** module: a reference into an imported module is rejected as
 unbound, and a type declared elsewhere is reported as outside the v1 fragment. The
 eight-module encoding is therefore not compilable as it stands.
 
@@ -279,10 +279,10 @@ Even with both worked around, this module's directives are still dropped, so at 
 further trigger remains unidentified. That is stated as a limit of the investigation, not as
 a diagnosis.
 
-**(b) `l4 catala` can emit a module that `catala typecheck` rejects, and says nothing.**
+**(b) `l4 export catala` can emit a module that `catala typecheck` rejects, and says nothing.**
 Annotating both `the monthly pay of` and the `the full-post percentage base for` it calls made
 the latter lower to a *scope*, and the emitted module then called that scope from inside a
-toplevel definition. `l4 catala` exits 0; `catala typecheck` rejects it outright:
+toplevel definition. `l4 export catala` exits 0; `catala typecheck` rejects it outright:
 
 ```
 Scope calls are not allowed outside of a scope.
@@ -323,7 +323,7 @@ succeeds, and the six worked cases return the same six figures as the single-sco
 digit for digit. So the single `@export` is a **choice** — one published scope instead of
 forty-three — and not, as recorded here until today, a limitation.
 
-The bug worth reporting is therefore the **silence**, not the composition: `l4 catala` already
+The bug worth reporting is therefore the **silence**, not the composition: `l4 export catala` already
 refuses the section-`GIVEN` case with a good diagnostic, so the machinery to refuse exists; it
 just does not check whether an exported helper has callers that are not exported. Filed
 upstream as [smucclaw/l4-ide#958](https://github.com/smucclaw/l4-ide/issues/958) (7 September
@@ -483,7 +483,7 @@ cost a corpus its correctness.
 ### 9.1 The emitted Catala is wrapped
 
 A 36-arm `BRANCH` lowers to a right-nested `if … then … else (if … )` chain, and
-`l4 catala` puts the whole chain on one line: **9,771 characters** for a salary
+`l4 export catala` puts the whole chain on one line: **9,771 characters** for a salary
 table. `source/wrap-catala.py` breaks it before each `else (if (`, which puts
 one seniority row on each line and takes the longest line in the artifact down
 to 659.
@@ -560,14 +560,14 @@ guard fails, and control falls through to the old error. So the message is not m
 unhelpful, it is **wrong about the cause**: the callee *is* a function of that binder in its
 own module, and the caller simply has no way to name it.
 
-**`l4 catala` refuses a section `GIVEN` read by anything but the exported decision.** The
+**`l4 export catala` refuses a section `GIVEN` read by anything but the exported decision.** The
 backends lower the module the author wrote, not the discharged one; that is deliberate
 (l4-ide `specs/todo/IMPLICIT-PROPS-DESIGN.md` §11.10, ruling **R10**, ruled 2026-09-04 and
 not yet built). Minimal reproduction — a section `GIVEN`, one helper that reads it, one
 `@export` decision that calls the helper:
 
 ```
-l4 catala: cannot compile these decisions to Catala:
+l4 export catala: cannot compile these decisions to Catala:
   - in `the rank of the teacher`: ASSUMEd input `the teacher` is only readable inside an
     @export decision's scope (where it becomes a scope `input`); pass it to this helper as
     a parameter instead

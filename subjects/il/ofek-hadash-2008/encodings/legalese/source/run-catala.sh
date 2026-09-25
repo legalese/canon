@@ -28,10 +28,10 @@ python3 source/build-catala-module.py > ofek-catala.l4
 echo "== l4: the generated module evaluates green =="
 "$L4" run ofek-catala.l4 2>&1 | grep -c 'DiagnosticSeverity_Error' | sed 's/^/   errors: /'
 
-echo "== l4 catala: emit the Catala module =="
+echo "== l4 export catala: emit the Catala module =="
 # Catala requires the basename to be a valid module name: letters, digits and
 # underscore only. `ofek-hadash.catala_en` is refused.
-"$L4" catala ofek-catala.l4 -o catala/ofek_hadash.catala_en 2>&1 \
+"$L4" export catala ofek-catala.l4 -o catala/ofek_hadash.catala_en 2>&1 \
   | grep -c 'did not become' | sed 's/^/   directives not lowered to #[test]: /'
 
 # A 36-arm BRANCH lowers to one 9,771-character line. Wrapping it at the row

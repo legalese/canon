@@ -1,7 +1,7 @@
 # The worked cases, emitted into the generated module.
 #
 # WHY EVERY FIXTURE IS INLINED into the helper its directive names, instead of
-# being written once and reused. `l4 catala` collects helpers in a SINGLE pass
+# being written once and reused. `l4 export catala` collects helpers in a SINGLE pass
 # outward from the @export-annotated decision: a helper that calls another
 # helper which is not itself in that closure is dropped, and its directive
 # never becomes a Catala `#[test]` scope. The diagnostic names the head of the
@@ -41,7 +41,7 @@ FIXTURES = [
 
 # (helper prefix, the function in the exported closure it calls, trailing args)
 # Every question goes through the ONE exported decision, and does so because
-# it must: `l4 catala` collects a directive's helper only when that helper
+# it must: `l4 export catala` collects a directive's helper only when that helper
 # calls the FIRST @export-annotated decision directly. Adding a second @export
 # does not widen the closure — it emits a scope call inside a toplevel
 # definition, which `catala typecheck` rejects outright with "Scope calls are
@@ -105,7 +105,7 @@ def emit(w):
     w('-- were derived independently from the corpus, and they must agree here.')
     w('--')
     w('-- Each fixture is written out once per question rather than named and')
-    w('-- reused. That is not redundancy for its own sake: `l4 catala` collects')
+    w('-- reused. That is not redundancy for its own sake: `l4 export catala` collects')
     w('-- helpers in a single pass out from the exported decision, so a helper')
     w('-- that calls an uncollected helper is dropped along with its directive.')
     w('-- Inlining keeps every callee inside the exported closure. See')

@@ -60,7 +60,7 @@ that is the encoding working.** `app/build-scenarios.mjs` handles it by emitting
 
 ## 4. The `rules` pin is empty because the probe cannot see a single-rule module
 
-`etc/go/lib/discover.mjs rules` recovers regulative-rule names from the error `l4 export --to bpmn`
+`etc/go/lib/discover.mjs rules` recovers regulative-rule names from the error `l4 export bpmn`
 emits when it cannot choose between several. `sg-childcare-leave.l4` has exactly **one** rule — the
 CDCSA s 12B(8) obligation to grant and to take the leave before the relevant period ends — so the
 export **succeeds** and emits BPMN, and the probe reports `BROKEN` on a module that is fine.

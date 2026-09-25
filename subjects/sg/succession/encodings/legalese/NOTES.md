@@ -141,7 +141,7 @@ changed and s 14 should be re-read.
 
 Both for the same reason, and it is a fact about the law rather than about the tooling: **this
 corpus is entirely constitutive.** It decides who takes what and when a deadline falls; it states
-no `MUST`, `MAY` or `SHANT`. `l4 export --to bpmn` accordingly answers _"No regulative rules found
+no `MUST`, `MAY` or `SHANT`. `l4 export bpmn` accordingly answers _"No regulative rules found
 in module"_, and the state-graph projection has no transitions to draw.
 
 That also broke `p0-preflight` the first time this subject ran: `etc/go/lib/discover.mjs` treated an

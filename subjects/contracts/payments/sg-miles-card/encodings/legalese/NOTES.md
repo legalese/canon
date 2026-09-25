@@ -94,7 +94,7 @@ commit `5cf5d611f`), L4 rule modules per card over one shared domain module (lay
 provenance on every answer (layer 4). Allocation across the month (layer 3) is out of scope.
 
 **Every rule takes its inputs positionally. No module uses a section `GIVEN`.**
-The corpus must lower to Catala (spec §2) and `l4 catala` refuses a section `GIVEN` read by
+The corpus must lower to Catala (spec §2) and `l4 export catala` refuses a section `GIVEN` read by
 any non-`@export` helper; the escape hatch — export every reader — costs one published Catala
 scope per helper.
 The `ofek` encoding in `legalese/canon` declined the construct for the same reason (its NOTES.md
@@ -103,7 +103,7 @@ The `ofek` encoding in `legalese/canon` declined the construct for the same reas
 **`catala typecheck` is the gate, not the L4 exit code**, and the `p7-catala` leg exists to
 record it.
 The spec's §2.2 premise — that a non-exported helper between two exported rules emits Catala
-`l4 catala` accepts and `catala typecheck` rejects (smucclaw/l4-ide#958) — is stale on this
+`l4 export catala` accepts and `catala typecheck` rejects (smucclaw/l4-ide#958) — is stale on this
 binary (`7af775364`): the refusal ruled in `CATALA-EXPORT-SPEC.md` §8.1.1 is built and the
 emitter now exits 1 on that shape. The leg still gates on the toolchain because the class of
 defect is real: on 2026-09-21 the emitter accepted a record whose every field is STRING and
@@ -145,7 +145,7 @@ as priority-ordered `BRANCH` guards. Every site where a native construct would h
 several rules into one is listed in `DEFEASIBILITY-SITES.md` (beside this file),
 written as the modules were, not reconstructed afterwards.
 
-**Same-named private helpers in two imported modules collide in the composer's emission, and `l4 catala` exits 0 on it.** The exporter flattens every imported module into one Catala module without namespacing, so `dbs-yuu.l4`'s `` `the sources for` card month txn `` and `dbs-womans-world.l4`'s `` `the sources for` txn flag `` became two `declaration the_sources_for` lines in `miles-card.l4`'s emission, and `catala typecheck` refused it with "Conflicting type definitions for `the_sources_for`". Each issuer module lowers clean on its own, so the module-level gates in §6 cannot see this; only the leg's run over the composer can. Fixed by renaming the Woman's World helper. A helper that is private to its module in L4 is global in the emission, so name helpers with the issuer in them.
+**Same-named private helpers in two imported modules collide in the composer's emission, and `l4 export catala` exits 0 on it.** The exporter flattens every imported module into one Catala module without namespacing, so `dbs-yuu.l4`'s `` `the sources for` card month txn `` and `dbs-womans-world.l4`'s `` `the sources for` txn flag `` became two `declaration the_sources_for` lines in `miles-card.l4`'s emission, and `catala typecheck` refused it with "Conflicting type definitions for `the_sources_for`". Each issuer module lowers clean on its own, so the module-level gates in §6 cannot see this; only the leg's run over the composer can. Fixed by renaming the Woman's World helper. A helper that is private to its module in L4 is global in the emission, so name helpers with the issuer in them.
 
 ---
 
@@ -218,7 +218,7 @@ citations.
 Every issuer module is string-free and lowers to Catala with zero refusals on the exporter at
 l4-ide `5f5ff3062` (the four fixes), verified per module by its encoder on the four gates: `l4
 check`, `l4 run` (counting Error-severity diagnostics, not the exit code, which is 0 on a failed
-assertion), `l4 catala`, and `etc/validate-catala.mjs` (typecheck, overlap proof, `clerk test`
+assertion), `l4 export catala`, and `etc/validate-catala.mjs` (typecheck, overlap proof, `clerk test`
 re-running the emitted module against values L4 computed).
 
 | module                                       | assertions | Catala refusals | `clerk` tests agreeing |
