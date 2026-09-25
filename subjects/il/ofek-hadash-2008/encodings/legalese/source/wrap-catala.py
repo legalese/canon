@@ -1,4 +1,4 @@
-"""Wrap the very long lines `l4 catala` emits, without changing a token.
+"""Wrap the very long lines `l4 export catala` emits, without changing a token.
 
 A 36-arm BRANCH lowers to a right-nested `if … then … else (if … )` chain, and
 the emitter puts the whole chain on one line. For the two salary tables that is

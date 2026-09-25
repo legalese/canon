@@ -19,7 +19,7 @@ let the copies disagree.
 | `sg-child-support-domain.l4` | the nouns, the calendar arithmetic, and the two materialised forks |
 | `sg-csp.l4` | the money: the outgoing schemes, the five Package lines, and the transition |
 | `sg-childcare-leave.l4` | CDCSA ss 12B, 12C, 12CA, and the announced merger as a dated arm |
-| `sg-csp-openfisca.l4` | the money projected into the subset `l4 openfisca` accepts |
+| `sg-csp-openfisca.l4` | the money projected into the subset `l4 export openfisca` accepts |
 | `sg-child-support.l4` | the composition and four `@export` decision functions |
 | `cases/` | 71 scenario assertions (79 across the module set) |
 
