@@ -1,0 +1,562 @@
+# Penal Code 1871 — machine evaluation report
+
+**Run date:** 2026-09-16 (`l4` CLI check of the 15 Sep and 16 Sep passes; first run 2026-09-09)
+**Verdict:** **0 type errors across all 45 modules; 108 of 108 assertions evaluated were satisfied;**
+**the 535 assertions of `agent-cases.l4` were not evaluated in this run, and §14 says why.**
+The verdicts of the earlier runs stand for the trees they were run against (§4 to §13).
+
+---
+
+## 1. How it was run
+
+No `jl4` CLI exists in this environment — no Haskell toolchain, no Docker, and the
+`l4-rules` MCP server (`http://127.0.0.1:19415/mcp`, the VS Code extension's proxy) was not
+running. What the tree does carry is `jl4-lsp.exe`, a **March 2026** language-server build,
+at `thailand-cosmetics/tmp-vsix/extension/bin/win32-x64/`.
+
+So the language server was driven directly as a batch checker. This works because
+`jl4-core/src/L4/Diagnostic.hs` publishes directive results as LSP diagnostics:
+
+| directive result | severity |
+| --- | --- |
+| assertion holds | Information — "assertion satisfied" |
+| assertion fails / errors | **Error** — "assertion failed" |
+| `REFUSE`d assertion | Warning |
+| `#EVAL` reduction | Information — the value |
+
+The harness is 118 lines of Node: spawn `jl4-lsp.exe`, LSP `initialize` with the subject
+directory as `rootUri`, `textDocument/didOpen` one file, collect
+`textDocument/publishDiagnostics` for that file's URI, settle 4 s after the last publish,
+classify by severity, exit non-zero on any Error. Files are opened **one per server
+process** — the server sets a single "file of interest" and does not reliably publish for
+the others.
+
+It is not committed here. This repository holds law; `l4-ide` holds tools, and a batch
+checker belongs there (or, better, is made unnecessary by shipping the `l4` CLI). It is
+reproducible from this description in well under an hour.
+
+## 2. The harness was validated twice before it was trusted
+
+A checker that reports silence as success is worse than no checker. Two probes:
+
+**2.1 It sees a satisfied assertion.** A four-line file with two `#ASSERT`s and one `#EVAL`
+returned exactly `errors 0, satisfied 2`.
+
+**2.2 It sees an error injected into a dependency.** The concern is real, because six
+modules in this subject carry no directives at all and were checked only through the
+modules that import them. A deliberate type error — `1 PLUS TRUE` — was appended to a
+scratch copy of `types.l4`, and `agent-cases.l4`, which reaches `types.l4` only
+transitively through `agent-compliance.l4`, was re-run against it:
+
+```
+### agent-cases.l4 — errors 11, satisfied 0, warnings 0
+  [ERROR] line 338-346: assertion failed          (all 9)
+  [ERROR] line 348-349: Internal error: `wholly in Singapore` is not in scope.
+```
+
+All nine assertions collapsed. So an error anywhere in the import graph does surface on the
+importing file, and a clean run of `agent-cases.l4` is real evidence about the whole graph
+beneath it.
+
+> **Retracted 11 Sep 2026.** This does not reproduce. A syntax error appended to `types.l4`
+> is reported against `types.l4` and nothing else, and `agent-cases.l4` comes back clean.
+> Do not rely on the conclusion in this paragraph: every module must be opened and checked
+> in its own right. See §7.2.
+
+## 3. One compensation for a stale engine, and exactly what it costs
+
+The available binary predates the `jl4-core` worktree beside it. The current `prelude.l4`
+uses `@nonexhaustive` (3 sites) and `@infixl` (3 sites), and `prelude.l4` and `daydate.l4`
+each contain a `REFUSE` — all newer than this binary's parser. The parse failed at the first
+of them, so the **entire prelude was silently empty** and every prelude identifier reported
+"could not find a definition".
+
+That looks exactly like an encoding defect and is not one. Worked around by copying
+`l4-ide/jl4-core/libraries/` to scratch, commenting out the six unknown annotations, and
+stubbing the two `REFUSE` sites, then pointing `JL4_LIBRARY_PATH` at the scratch copy. **No
+file in this repository was modified for the run.**
+
+**Cost to confidence: none, and here rather less than none.** This subject uses no prelude
+function at all — no `count`, `filter`, `elem`, `null`, `min`, `max`, no `LIST OF`, no
+`DATE`, no `REFUSE`. It is booleans, records, enums and integer arithmetic throughout. The
+prelude is imported for its operators and nothing else, so the patched library and the real
+one are indistinguishable from where this encoding sits.
+
+There is **no law-time axis** in this subject — nothing dated, no `RULES EFFECTIVE DATE` —
+so the temporal gap that limited the `FinMont-demo` run does not arise here at all.
+
+## 4. Results — first run, 09 Sep 2026
+
+| module | errors | assertions satisfied |
+| --- | ---: | --- |
+| `types.l4` | 0 | — (declarations only) |
+| `chapter-1-preliminary.l4` | 0 | — (no directives) |
+| `chapter-2-definitions.l4` | 0 | 8 |
+| `chapter-2-explanations.l4` | 0 | 4 |
+| `chapter-2-participation.l4` | 0 | 5 |
+| `chapter-3-punishments.l4` | 0 | 9 |
+| `chapter-4-exceptions.l4` | 0 | — (no directives) |
+| `chapter-5-abetment.l4` | 0 | — (no directives) |
+| `chapter-5a-conspiracy.l4` | 0 | 4 |
+| `chapter-17-cheating.l4` | 0 | 6 |
+| `chapter-17-property.l4` | 0 | 2 |
+| `chapter-17-fraud.l4` | 0 | 4 |
+| `chapter-18-forgery.l4` | 0 | — (no directives) |
+| `chapter-21-22-speech.l4` | 0 | 2 |
+| `chapter-23-attempts.l4` | 0 | 2 |
+| `agent-compliance.l4` | 0 | — (no directives) |
+| `agent-cases.l4` | 0 | 9 |
+| **total** | **0** | **55 of 55** |
+
+### 4.1 The six modules with no directives
+
+A module with nothing to report publishes **no diagnostics at all** — not an empty list —
+so the six directive-free modules first came back as "no diagnostics published", which is
+not the same statement as "clean". They were re-run in a scratch copy of the whole subject
+with a single `#EVAL TRUE` appended to each, purely to force a publish. All six returned
+`errors 0` and the expected `TRUE`. That is a direct result for each of them, not an
+inference from their dependents.
+
+### 4.2 What the two `#EVAL`s in `agent-cases.l4` reduce to
+
+Both reduce to a full `Offence Screen` record rather than erroring, which is the point of
+having them:
+
+```
+line 348: `Offence Screen` OF TRUE, FALSE, TRUE, FALSE, … , TRUE
+line 349: `Offence Screen` OF TRUE, TRUE, FALSE, FALSE, … , FALSE
+```
+
+## 5. Changes made to the repository by this run
+
+**None by the machine run itself.** Every rule type-checked and every assertion held on the
+first full run, before and after the fidelity work described below.
+
+This matters for how the two kinds of defect are told apart. The twelve defects in
+`registers/verification-register.md` and the four in
+`registers/verification-register-pass-2.md` were **all** found by reading the statute, and
+**none** of them by running the engine. A rule that says the wrong thing type-checks
+perfectly. W1 in pass 2 is the sharpest illustration: the s 74B exclusion list shared a
+boolean with ss 73 and 74A, which is well-formed L4 and a misreading of the Code.
+
+The assertion count rose from 53 to 55 because pass 2 added a regression fixture
+(`section 335A offence against a child below 14`) with two assertions, to hold W1 fixed.
+
+## 6. What machine evaluation does not establish
+
+It says the encoding is well-formed and self-consistent. It says nothing about whether it is
+a faithful reading of the law.
+
+Unchanged by this run:
+
+- the sixteen interpretive choices in `NOTES.md` §3 — a passing assertion about s 38 or
+  s 405 confirms only that the encoding does what the encoder intended, not that the
+  intention is right;
+- everything named in `NOTES.md` §2 as absent — no assertion can fail for a rule that was
+  never written, so the screen's remaining over-inclusiveness on defences survives a clean
+  run untouched. Chapter 4A was the largest instance of this until 11 Sep and is now
+  encoded; **Chapter 16**, the whole of the offences affecting the human body, is now the
+  largest;
+- the three freestanding modules (`chapter-2-definitions`, `chapter-2-participation`,
+  `chapter-3-punishments`) are checked in isolation and their 22 assertions hold, but
+  nothing in this subject calls them, so nothing here exercises them in combination with
+  the offence tests;
+- `status` stays `draft`, and no human gate has been granted. Assertions are not HG1.
+
+
+---
+
+## 7. Second run — 11 Sep 2026
+
+**Verdict: 18 modules, 0 type errors, 88 of 88 assertions satisfied.** 55 of those assertions
+are the ones that existed before this pass, all still holding unchanged; 33 are new.
+
+| module | errors | assertions satisfied |
+| --- | ---: | --- |
+| `types.l4` | 0 | — (declarations only) |
+| `chapter-1-preliminary.l4` | 0 | — (no directives) |
+| `chapter-2-definitions.l4` | 0 | 8 |
+| `chapter-2-explanations.l4` | 0 | 4 |
+| `chapter-2-participation.l4` | 0 | 5 |
+| `chapter-3-punishments.l4` | 0 | 9 |
+| `chapter-4-exceptions.l4` | 0 | — (no directives) |
+| `chapter-4a-private-defence.l4` | 0 | — (no directives) |
+| `chapter-5-abetment.l4` | 0 | — (no directives) |
+| `chapter-5a-conspiracy.l4` | 0 | 4 |
+| `chapter-17-cheating.l4` | 0 | 6 |
+| `chapter-17-property.l4` | 0 | 2 |
+| `chapter-17-fraud.l4` | 0 | 4 |
+| `chapter-18-forgery.l4` | 0 | — (no directives) |
+| `chapter-21-22-speech.l4` | 0 | 2 |
+| `chapter-23-attempts.l4` | 0 | 2 |
+| `agent-compliance.l4` | 0 | — (no directives) |
+| `agent-cases.l4` | 0 | **42** |
+| **total** | **0** | **88 of 88** |
+
+The harness is the one described in §1, rebuilt from this description — the same
+`jl4-lsp.exe`, the same patched library copy, the same one-process-per-file discipline. It
+was revalidated before it was trusted: a deliberately false assertion (`1 PLUS 1 EQUALS 3`)
+appended to `agent-cases.l4` was reported as `[ERROR] assertion failed`, and a bogus record
+selector inserted into `chapter-4-exceptions.l4` was reported as "I could not find a
+definition for the identifier".
+
+Directive-free modules still publish nothing at all, so as in §4.1 each was run in a scratch
+copy with a single `#EVAL TRUE` appended to force a publish. All eight returned `errors 0`
+and `TRUE`.
+
+### 7.1 The screen, end to end
+
+The `#EVAL` added by this pass is the wiring test for Chapter 4A. On `disarming an assailant`
+— a taking that satisfies every element of s 378, done by a person fending off an assault —
+the screen reduces to:
+
+```
+`Offence Screen` OF TRUE, FALSE, TRUE, FALSE, FALSE, … , FALSE
+                 │      │      │      │                   └ any screened offence indicated
+                 │      │      │      └ another written law may still apply (s 5)
+                 │      │      └ a private defence justification applies (s 96)
+                 │      └ a general exception applies (Chapter 4)
+                 └ Singapore has territorial reach
+```
+
+Territorial reach yes; no Chapter 4 exception; private defence yes; `theft s 378` FALSE. On
+the same facts before this pass the screen returned theft.
+
+### 7.2 Two blind spots in this engine that the run does not cover
+
+§2.2 of this report recorded that an error injected into `types.l4` collapsed every assertion
+in `agent-cases.l4`, and concluded that a clean run of the importing file was evidence about
+the whole import graph beneath it. **That does not reproduce.** Re-probing it on 11 Sep:
+
+1. **Dependency errors do not propagate to importers.** A syntax error appended to `types.l4`
+   is reported against `types.l4` and against nothing else; `chapter-4-exceptions.l4` and
+   `agent-cases.l4` both come back clean. Errors *within* an opened module are caught
+   normally, including through a forced `#EVAL TRUE`. The practical consequence is that
+   **every module must be opened and checked in its own right**, which is what the run above
+   does — rather than relying on `agent-cases.l4` as a proxy. The §2.2 conclusion should not
+   be relied on.
+
+2. **A record literal that omits a declared field is not flagged.** Adding a field to a
+   `DECLARE ... HAS` without updating the `X MEANS T WITH` fixtures produces no error and no
+   failing assertion. Since record construction appears to be positional, a fixture whose
+   fields are in a different order from the declaration is a silent wrong answer rather than
+   an error.
+
+   Blind spot 2 is not something the engine can be made to catch here, so it is covered by a
+   separate check written for this pass: for every `X MEANS T WITH` block in the subject,
+   compare the fields set against the fields `T` declares, in order, and fail on any
+   difference. It found all five fixtures that this pass put out of step, and it detects a
+   deliberate reordering. Like the batch checker, it is not committed here; it is about 100
+   lines and belongs in `l4-ide`.
+
+Neither blind spot affects the verdict above, because the run opens and checks all eighteen
+modules individually and the fixture check passes on all of them. Both affect how a *future*
+run should be read.
+
+
+---
+
+## 8. Third run — 11 Sep 2026, after the Chapter 16 pass
+
+**Verdict: 21 modules, 0 type errors, 133 of 133 assertions satisfied.** 88 of those are the
+assertions that existed after the Chapter 4A pass, all still holding; 45 are new.
+
+The three new modules -- `chapter-16-life.l4`, `chapter-16-hurt.l4` and
+`chapter-16-restraint-and-force.l4` -- carry no directives of their own and were run in a
+scratch copy with `#EVAL TRUE` appended, as in §4.1. All three returned `errors 0` and `TRUE`.
+All 45 new assertions live in `agent-cases.l4`, which now carries 87.
+
+The fixture-completeness check described in §7.2 was run after every change to `types.l4` in
+this pass. It caught all four `Proposed Act` fixtures when `homicide`, `bodily harm` and
+`personal liberty` were added, which is precisely the blind spot it exists for: the engine
+reported those same fixtures as clean.
+
+### 8.1 A third trap, in the coverage tooling rather than the engine
+
+`missing-sections.md` §4 already warned that a citation like `s 28 Explanation 2` must have
+its "Explanation N" tail stripped or the 2 reads as a section number. Chapter 16 brought the
+same trap in a new form: `s 300 Exception 1`, and `s 300 Exceptions 1 to 7`. Before it was
+caught it inflated Chapter 1 to 7 of 7 and Chapter 2 to 50 of 54 -- both wrong, and both
+wrong in the flattering direction. The stripping rule now covers `Explanation`, `Exception`
+and their plurals, with or without a `to` range.
+
+This is the second time the same class of bug has produced a wrong coverage count. Any future
+regeneration should treat a coverage number that *improves* without new rules as a defect in
+the tooling until proved otherwise.
+
+
+---
+
+## 9. Fourth run — 11 Sep 2026, after the second Chapter 16 pass
+
+**Verdict: 23 modules, 0 type errors, 154 of 154 assertions satisfied.** 133 of those are the
+assertions that existed after the first Chapter 16 pass, all still holding; 21 are new.
+
+The two new modules -- `chapter-16-unborn-and-infants.l4` and `chapter-16-kidnapping.l4` --
+carry no directives of their own and were run with `#EVAL TRUE` appended, as in §4.1. Both
+returned `errors 0` and `TRUE`. All 21 new assertions live in `agent-cases.l4`, which now
+carries 108.
+
+### 9.1 The harness needed a longer settle time, and said so misleadingly
+
+`agent-cases.l4` is now about 3,500 lines and its first run at the old timeout returned
+**"NO DIAGNOSTICS PUBLISHED"** -- which the harness treats as a failure, and which looks
+exactly like a module that cannot be parsed. It was neither: the server had simply not
+finished within the 180-second hard limit. Re-run with a 540-second limit and an 8-second
+settle, the same file returned `errors 0, satisfied 108`.
+
+Worth recording because the failure mode is silent and misleading in the *safe* direction
+only by luck. A reader who saw that line and concluded the file was broken would have been
+wrong; a reader who ignored it would have missed a real parse failure on another day. The
+harness distinguishes "no diagnostics" from "clean" and exits non-zero on it, which is the
+right default -- but the timeout must scale with the file.
+
+
+---
+
+## 10. Fifth run — 11 Sep 2026, after the sexual offences pass
+
+**Verdict: 26 modules, 0 type errors, 192 of 192 assertions satisfied.** 154 of those are the
+assertions that existed after the second Chapter 16 pass, all still holding; 38 are new.
+
+The three new modules — `chapter-16-sexual-general.l4`, `chapter-16-sexual-penetration.l4`
+and `chapter-16-sexual-images.l4` — carry no directives of their own and were run with
+`#EVAL TRUE` appended, as in §4.1. All three returned `errors 0` and `TRUE`. All 38 new
+assertions live in `agent-cases.l4`, which now carries 146 across about 5,500 lines.
+
+The settle time was raised again, to a 900-second hard limit and a 10-second settle. §9.1
+explains why that matters and how its failure mode reads.
+
+### 10.1 A fourth trap in the coverage tooling, and the last of that family
+
+`missing-sections.md` §4 records that `Explanation N` and `Exception N` tails must be
+stripped from a citation or they read as section numbers. This pass found the third variant:
+a **range with lettered endpoints**. `ss 377BH to 377BK` expands to nothing useful, because
+the range logic matches `(\d+)([A-Z]?)` and the suffixes here are two letters; the numeric
+range 377 to 377 yields one section, and ss 377BI and 377BJ silently disappeared from the
+count even though both were encoded.
+
+It was caught because Chapter 16 came back as 109 of 120 when every group had been written,
+and the two missing sections were ones known to be in the file. The fix was to make the
+citation explicit — `ss 377BH, 377BI, 377BJ and 377BK` — rather than to teach the extractor
+about lettered ranges, because the explicit form is also better for a human reader.
+
+That is now **three separate occasions** on which this class of bug has produced a wrong
+coverage number. The rule stated in §8.1 held again: a coverage figure that moves without a
+corresponding change in the rules is a defect in the tooling until proved otherwise. It is
+worth adding the converse — a figure that fails to move when rules *were* added is the same
+defect wearing the other face.
+
+
+---
+
+## 11. Sixth run — 12 Sep 2026, after the Chapter 17 pass
+
+**Verdict: 29 modules, 0 type errors, 230 of 230 assertions satisfied.** 192 of those are the
+assertions that existed after the Chapter 16 work, all still holding; 38 are new.
+
+The three new modules — `chapter-17-extortion-and-robbery.l4`,
+`chapter-17-stolen-property.l4` and `chapter-17-mischief-and-trespass.l4` — carry no
+directives of their own and were run with `#EVAL TRUE` appended, as in §4.1. All three
+returned `errors 0` and `TRUE`. The 38 new assertions live in `agent-cases.l4`, which now
+carries 184 across about 6,200 lines.
+
+### 11.1 The run is now the binding constraint, not the encoding
+
+Settle and hard limits had to be raised again, to a 2,400-second hard limit and a 15-second
+settle. The two costly modules:
+
+| module | size | time |
+| --- | --- | --- |
+| `agent-compliance.l4` | 298 lines, but a 72-field `Offence Screen` built in one constructor | ~20 min |
+| `agent-cases.l4` | ~6,200 lines, 184 assertions | ~25 min |
+
+A full 29-module run is now over an hour.
+
+**The "NO DIAGNOSTICS PUBLISHED" line appeared twice more in this pass**, both times for
+`agent-compliance.l4` — once at the 180-second limit and once at 900. Both times the module
+was clean. §9.1 recorded that failure mode when it first appeared and warned that it is
+indistinguishable from a parse failure; this pass is the second and third occurrence, and the
+warning should now be read as a standing one. The server's own log is the way to tell the two
+apart: a module still emitting `[Import Resolution]` lines is working, not stuck.
+
+### 11.2 What actually costs, and what to do about it
+
+It is the **screen record, not the rule count**. `agent-compliance.l4` is 298 lines; what
+makes it expensive is that `the offence screen of` assembles 72 fields in a single
+constructor, each field a call into a predicate chain that reaches most of the subject.
+
+That is recorded as T5 in `registers/verification-register-pass-5.md` because it bears on how
+the subject should grow rather than on whether it is correct. If the screen keeps growing one
+field per offence, it will need splitting — by chapter, or into a record of records — before
+the next large chapter is added. Nothing was changed in this pass to address it: the screen
+still reports every encoded offence, which is what it is for.
+
+### 11.3 A note on how the harness resolves imports
+
+The server log shows that when the opened file is a scratch copy, its imports resolve
+**against the real project directory**, not the scratch one — a `VFS MISS` on the scratch
+path followed by `Found on filesystem` in `subjects/singapore/penal-code-1871`. So the
+`#EVAL TRUE` trick from §4.1 isolates only the file being opened; everything it imports is
+the committed source. That is the behaviour this report wants, but it was not stated before
+and is worth recording: the scratch copy is a publish trigger, not a sandbox.
+
+
+---
+
+## 12. Seventh run — 14 Sep 2026, re-check of the Chapter 17 pass with the `l4` CLI
+
+**Verdict: 29 modules, 0 type errors, 230 of 230 assertions satisfied.** No rule was
+changed between the sixth run and this one; this run re-checks the same tree before it was
+committed, with a different engine.
+
+§1 opens "No `jl4` CLI exists in this environment." That is no longer true. An `l4` CLI
+(April 2026 build, at `%LOCALAPPDATA%\Programs\l4\l4.exe`) is now installed, with `check`
+(typecheck only) and `run` (typecheck, evaluate, print each `#ASSERT` and `#EVAL` result)
+subcommands. This run used it directly and needed none of the harness in §1, none of the
+prelude patching in §3, and no `#EVAL TRUE` scratch copies for the directive-free modules —
+`l4 check` reports on the file it is given whether or not it carries a directive.
+
+| step | result |
+| --- | --- |
+| `l4 check` on each of the 29 modules | 29 × `Check succeeded.` |
+| `l4 run` on the 10 modules with their own `#ASSERT`s | 46 of 46 satisfied |
+| `l4 run agent-cases.l4` | 184 of 184 satisfied, 0 errors |
+
+`agent-cases.l4` took about 35 minutes and ~1.9 GB resident, so §11.1 stands: the run, not
+the encoding, is the binding constraint, and the cost is in the 72-field screen record.
+
+Two things this run establishes that the sixth could not:
+
+- **The prelude compensation in §3 is no longer needed and its cost-to-confidence claim is
+  now tested.** The CLI parses the current `prelude.l4` unmodified, and every result matches
+  the run made against the patched prelude. So the patch changed nothing, which is what §3
+  argued and could not then show.
+- **Directive-free modules are checked in their own right.** §7.2 retracted the claim that an
+  error in a dependency surfaces on the importer; `l4 check` closes the gap directly, because
+  it does not need a directive to publish a result.
+
+One defect was found outside the rules: `NOTES.md` §1 listed the three new Chapter 17
+modules twice in the module table. Fixed. Nothing else was changed.
+
+
+---
+
+## 13. Eighth run — 14 Sep 2026, the Chapter 18 pass with the `l4` CLI
+
+**Verdict: 31 modules, 0 type errors, 277 of 277 assertions satisfied.** Two modules were
+added since the seventh run — `chapter-18-forged-documents.l4` (ss 466 to 477A) and
+`chapter-18-currency.l4` (ss 489A to 489I) — and three were extended: two records and two
+`Proposed Act` fields in `types.l4`; seven fields in the `Offence Screen` and seven
+`the proposed act constitutes ...` disjuncts in `agent-compliance.l4`, bringing the screen
+to 79 fields; and 29 fixtures (two of them blanks) with 47 assertions in `agent-cases.l4`.
+
+Same method as §12: the CLI at `%LOCALAPPDATA%\Programs\l4\l4.exe`, run directly.
+
+| step | result |
+| --- | --- |
+| `l4 check` on each of the 31 modules | 31 × `Check succeeded.` |
+| `l4 run` on the 10 modules with their own `#ASSERT`s | 46 of 46 satisfied, 0 errors |
+| `l4 run agent-cases.l4` | 231 of 231 satisfied, 0 errors; 3 `#EVAL`s reduced |
+
+Every diagnostic published carried `Severity: Information` and the message `assertion
+satisfied`; no `Error` or `Warning` severity appeared anywhere in the run.
+
+**One thing to record against §12 and against pass 5 §T5.** §12 measured
+`l4 run agent-cases.l4` at about 35 minutes and ~1.9 GB resident, and T5 concluded from that
+cost that the screen record would need splitting before the next large chapter. This run,
+with the same binary, the same machine, the file ~1,000 lines longer, the screen 7 fields
+wider and 47 assertions more, completed `l4 run agent-cases.l4` in **61 seconds** wall clock
+(08:16:40 to 08:17:41). Nothing in the subject accounts for the difference. It is possible
+the seventh run was measuring something other than the evaluator — a cold start, a
+contended machine — but that is a guess, and this report records only what was observed.
+The practical consequence is that T5's recommendation should be re-measured before it is
+acted on; it is not withdrawn on one run.
+
+Nothing was changed as a result of this run. `registers/verification-register-pass-6.md`
+records the read-back of the new rules; §5 of that register carries the same verdict.
+
+
+---
+
+## 14. Ninth run — 16 Sep 2026, the 15 Sep completion pass and the 16 Sep closing pass
+
+**Verdict: 45 modules, 0 type errors; 108 of 108 assertions evaluated were satisfied; the
+535 assertions of `agent-cases.l4` as it stood on 15 Sep were not evaluated, and the
+evidence below is that they cannot be, in one run, with this build of the CLI.**
+
+Two passes are covered. The 15 Sep pass added fourteen modules and 204 sections
+(`verification-register-pass-7.md`) and cited this §14 for its run; the section was not
+written and no record of that run exists, so this is the first machine record of the
+45-module tree. The 16 Sep pass added the last seven sections (ss 1, 7, 8, 9, 49, 50, 79A;
+`verification-register-pass-8.md`), three fields to `Exception Facts`, one field to
+`Definition Reach Facts`, one field to the `Offence Screen` (now 115), and 40 assertions --
+25 in `chapter-2-definitions.l4` and 15 in `agent-cases.l4`.
+
+Same method as §12 and §13: the CLI at `%LOCALAPPDATA%\Programs\l4\l4.exe`, run directly.
+
+### 14.1 Type-check
+
+| step | result |
+| --- | --- |
+| `l4 check` on each of the 45 modules, before the 16 Sep edits | 45 × `Check succeeded.` |
+| `l4 check` on each of the 45 modules, after them | 45 × `Check succeeded.` |
+
+`agent-cases.l4` (17,000 lines, 40 imports) type-checks in under two minutes on an idle
+machine and took 10 min 53 s when an evaluation run was sharing the machine.
+
+### 14.2 Evaluation, where it completed
+
+| step | result | time |
+| --- | --- | --- |
+| `l4 run` on the 11 modules with their own `#ASSERT`s | **93 of 93 satisfied**, 0 errors | seconds each |
+| scratch module: the 9 section-level s 1 and s 79A assertions from `agent-cases.l4`, importing `types`, `chapter-1-preliminary`, `chapter-4-exceptions` | **9 of 9 satisfied** | 10 s |
+| scratch module: the 4 proposed-act-level s 79A assertions, with all 48 fixtures they reach, importing 7 modules | **4 of 4 satisfied** | 6 s |
+| scratch module: the 2 screen-level s 79A assertions, the same 48 fixtures, importing `agent-compliance.l4` (42 modules in the graph) | **2 of 2 satisfied** | **20 min 9 s**, ~3.5 GB resident |
+
+The 93 are: 46 from the runs of §12 and §13 (unchanged), 22 in `punishment-provisions.l4`
+from 15 Sep, and 25 new in `chapter-2-definitions.l4`. The 15 scratch results are the 15
+assertions added to `agent-cases.l4` on 16 Sep, evaluated verbatim -- same fixtures, same
+directives -- in three modules, two of them with a smaller import graph and the third with
+the full one.
+
+### 14.3 Evaluation, where it did not
+
+| step | result |
+| --- | --- |
+| scratch: `agent-cases.l4` with every directive but the 15 new ones commented out (42 modules in the graph) | killed after 48 min at ~6 GB resident, no output |
+| scratch: the 48 fixtures and 15 new assertions alone, with `agent-cases.l4`'s 40 imports (42 modules) | killed after 33 min at ~3 GB, no output |
+| `l4 run agent-cases.l4` in full, 550 assertions | not attempted, on the evidence of the three rows above |
+
+The same 48 fixtures, the same three full `Proposed Act`s and four of the same assertions
+evaluate in 6 seconds when the module imports seven modules; two assertions take 20 minutes
+when it imports forty-two, and fifteen do not finish in 33. So the cost has two parts, and
+both grow with the import graph: a fixed cost of elaborating the graph, and a per-directive
+cost of the order of a minute or more on the full graph -- which puts a 550-directive run of
+`agent-cases.l4` somewhere between ten hours and never, on this machine and this build. It
+is not in the fixtures, not in the assertions, and not in the screen: §13 measured the
+31-module tree at 61 seconds for 231 assertions, and pass 7 §T7 recorded the first run on
+the 45-module tree killed at 40 minutes. Nothing in the encoding changed between those two
+observations except the number of modules. `verification-register-pass-8.md` §T8 tabulates
+the measurements.
+
+### 14.4 What this run establishes, and what it does not
+
+- Every module type-checks. That is a statement about all 45, each opened in its own right
+  (§7.2).
+- Every assertion added on 16 Sep is satisfied -- all 40, 25 in place and 15 in scratch
+  copies, the two that need the screen included. With the 93 in the chapter modules that is
+  108 of 108 evaluated.
+- **The 535 assertions of `agent-cases.l4` as it stood on 15 Sep have no machine record on
+  the 45-module tree.** 231 of them were satisfied on the 31-module tree (§13); the 304
+  added on 15 Sep have been type-checked and never evaluated. The pass 7 register's "the run
+  that was finally accepted" has no corresponding record and this report does not supply
+  one.
+
+The remedy is not in this repository. Either the CLI's per-import cost is fixed in `l4-ide`,
+or the screen is split so that a chapter's fixtures can be evaluated against a graph the
+size of §14.2's -- which is a design change to `agent-compliance.l4`, and is the next piece
+of work if the fixtures are to be evidence again. Until one of those happens, a change to
+any rule reached only through the screen is verified by `l4 check` and by read-back, and
+not by evaluation.
+

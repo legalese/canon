@@ -1,0 +1,261 @@
+IMPORT prelude
+IMPORT daydate
+
+§ `PSD2 strong customer authentication — shared domain`
+
+-- ===========================================================================
+-- THE SHARED ONTOLOGY for the FinMont-demo subject.
+--
+-- Primary source (supplied with this job, quoted throughout this encoding):
+--   Commission Delegated Regulation (EU) 2018/389 of 27 November 2017
+--   supplementing Directive (EU) 2015/2366 of the European Parliament and of
+--   the Council with regard to regulatory technical standards for strong
+--   customer authentication and common and secure open standards of
+--   communication.  OJ L 69, 13.3.2018, p. 23.   ("the SCA-RTS")
+--
+-- Secondary source (NOT supplied with this job — see NOTES.md §3):
+--   Directive (EU) 2015/2366 ("PSD2"), for the refund deadlines and the
+--   liability allocation, neither of which appears in the SCA-RTS.
+--
+-- This module owns the nouns. The rule modules own the verbs, import these
+-- types, and never redeclare them.
+--
+-- INERT STYLE. Nothing here is exported. Field names carry the Regulation's
+-- own words wherever the Regulation supplies them, so a compliance reviewer
+-- can read a declaration against the Article it comes from.
+--
+-- No field name contains an apostrophe: `'s` is L4's record-projection
+-- operator, so the Regulation's possessives ("the payer's device") are
+-- rewritten here as "of the payer" or "the payer device".
+-- ===========================================================================
+
+
+§§ `Elements of strong customer authentication — Article 4(1), Articles 6 to 8`
+
+-- Art 4(1): "two or more elements which are categorised as knowledge,
+-- possession and inherence". Art 6 knowledge, Art 7 possession, Art 8
+-- inherence; Art 9 requires their independence.
+DECLARE `Authentication Element Category` IS ONE OF
+    `knowledge element`
+    `possession element`
+    `inherence element`
+
+
+§§ `Channels and transaction types`
+
+-- The channel decides which exemption Articles are even candidates: Art 11
+-- is contactless point-of-sale only, Art 12 unattended terminals only,
+-- Arts 16 and 18 remote electronic only, Art 10 account access only.
+DECLARE `Initiation Channel` IS ONE OF
+    `remote electronic`
+    `contactless at point of sale`
+    `attended point of sale`
+    `unattended terminal`
+    `mail order or telephone order`
+    `online account information access`
+
+-- The two rows of the Annex table, plus a catch-all. The Annex prices
+-- transaction risk analysis for "remote electronic card-based payments" and
+-- "remote electronic credit transfers" ONLY. Nothing else has a reference
+-- fraud rate, so nothing else can carry the Article 18 exemption.
+DECLARE `Transaction Type` IS ONE OF
+    `card based payment`
+    `credit transfer`
+    `other payment transaction`
+
+-- Art 17 is available only "in respect of legal persons ... payers who are
+-- not consumers". Recital 7 confirms the general rule applies to payers
+-- "regardless of whether the payer is a natural person or a legal entity".
+DECLARE `Payer Kind` IS ONE OF
+    `consumer`
+    `legal person who is not a consumer`
+
+-- Territorial reach. See NOTES.md §4 and ambiguity register entry AR-07:
+-- the one-leg-out position is EBA guidance, not SCA-RTS text.
+DECLARE `PSP Location` IS ONE OF
+    `established in the EEA`
+    `established outside the EEA`
+
+-- Who put the transaction on the wire. Art 97(1) PSD2 bites on actions
+-- carried out BY THE PAYER; a charge the merchant raises later under a
+-- stored mandate is not one. See AR-06.
+DECLARE `Initiator` IS ONE OF
+    `payer initiated`
+    `merchant initiated under a stored mandate`
+    `payee initiated direct debit`
+
+
+§§ `The answer shape`
+
+DECLARE `SCA Outcome` IS ONE OF
+    `SCA required`
+    `SCA exempt`
+    `SCA out of scope`
+
+-- One constructor per exemption Article in Chapter III, named by its Article
+-- number so a decision can be logged and audited against the source.
+DECLARE `SCA Exemption` IS ONE OF
+    `article 10 payment account information`
+    `article 11 contactless at point of sale`
+    `article 12 unattended transport or parking terminal`
+    `article 13 trusted beneficiary`
+    `article 14 recurring transaction`
+    `article 15 credit transfer between accounts of the same person`
+    `article 16 low value remote payment`
+    `article 17 secure corporate payment process`
+    `article 18 transaction risk analysis`
+
+DECLARE `SCA Assessment` HAS
+    `outcome`              IS AN `SCA Outcome`
+    `exemptions available` IS A LIST OF `SCA Exemption`
+    `reason`               IS A STRING
+
+
+§§ `The transaction under assessment`
+
+DECLARE `Payment Transaction` HAS
+    `reference`                                IS A STRING
+    `date`                                     IS A DATE
+
+    -- Arts 11(a), 16(a) and 18(2)(b) each test an amount. The SCA-RTS states
+    -- its ceilings in euro; FinMont supplies the euro equivalent. See AR-08.
+    `amount in euro`                           IS A NUMBER
+    `transaction type`                         IS A `Transaction Type`
+    `initiation channel`                       IS AN `Initiation Channel`
+    `initiator`                                IS AN `Initiator`
+    `payer kind`                               IS A `Payer Kind`
+
+    -- Art 2 PSD2 and the EBA one-leg-out position (AR-07).
+    `payer PSP location`                       IS A `PSP Location`
+    `payee PSP location`                       IS A `PSP Location`
+
+    -- Recital 8: anonymous instruments fall outside the SCA obligation.
+    `uses an anonymous payment instrument`     IS A BOOLEAN
+
+    -- Art 12
+    `purpose is a transport fare or a parking fee`                                 IS A BOOLEAN
+
+    -- Art 13
+    `payee is on a list of trusted beneficiaries previously created by the payer`  IS A BOOLEAN
+    `creates or amends a list of trusted beneficiaries`                            IS A BOOLEAN
+
+    -- Art 14
+    `creates amends or first initiates a recurring series`                         IS A BOOLEAN
+    `is a subsequent transaction in a series of the same amount to the same payee` IS A BOOLEAN
+
+    -- Art 15
+    `payer and payee are the same natural or legal person`                         IS A BOOLEAN
+    `both payment accounts held by the same account servicing PSP`                 IS A BOOLEAN
+
+    -- Art 17
+    `initiated through a dedicated corporate payment process or protocol`          IS A BOOLEAN
+    `that process is made available only to payers who are not consumers`          IS A BOOLEAN
+    `competent authorities are satisfied with that process`                        IS A BOOLEAN
+
+
+§§ `Counters — Articles 11(b), 11(c), 16(b), 16(c)`
+
+-- Both Articles count the PREVIOUS transactions since strong customer
+-- authentication was last applied. The transaction now being assessed is NOT
+-- included in these figures. See AR-03.
+DECLARE `Exemption Counters` HAS
+    `cumulative amount in euro of previous transactions since SCA was last applied` IS A NUMBER
+    `number of previous transactions since SCA was last applied`                    IS A NUMBER
+
+
+§§ `Payment account information access — Article 10`
+
+DECLARE `Account Information Access` HAS
+    `access is limited to the balance or the last 90 days of transactions`   IS A BOOLEAN
+    `sensitive payment data is disclosed`                                    IS A BOOLEAN
+    `this is the first online access to that information`                    IS A BOOLEAN
+    `days elapsed since that information was last accessed with SCA applied` IS A NUMBER
+
+
+§§ `Real-time risk analysis — Article 18(2)(c)`
+
+-- The six things the provider must NOT have identified. Each field is TRUE
+-- when the red flag IS present, so the exemption requires all six FALSE.
+DECLARE `Real Time Risk Analysis` HAS
+    `abnormal spending or behavioural pattern of the payer`                IS A BOOLEAN
+    `unusual information about the device or software access of the payer` IS A BOOLEAN
+    `malware infection in any session of the authentication procedure`     IS A BOOLEAN
+    `known fraud scenario in the provision of payment services`            IS A BOOLEAN
+    `abnormal location of the payer`                                       IS A BOOLEAN
+    `high risk location of the payee`                                      IS A BOOLEAN
+
+
+§§ `Fraud rates — Article 19, Article 20, Annex`
+
+-- Rates are held in PERCENTAGE POINTS, the Annex's own unit: the Annex entry
+-- "0,01" is the number 0.01 here, meaning 0.01 %, not 1 %.
+DECLARE `Fraud Rate Report` HAS
+    `remote card based payment fraud rate pct`                IS A NUMBER
+    `remote credit transfer fraud rate pct`                   IS A NUMBER
+    -- Art 20(2): cessation bites at two consecutive quarters above.
+    `consecutive quarters above the reference rate`           IS A NUMBER
+    -- Art 20(3): re-entry needs one quarter at or below.
+    `quarters at or below the reference rate since cessation` IS A NUMBER
+    `exemption previously ceased under article 20`            IS A BOOLEAN
+    -- Art 20(4)
+    `competent authorities notified of the intention to use the exemption again` IS A BOOLEAN
+
+DECLARE `PSP Profile` HAS
+    `name`                                                 IS A STRING
+    -- Arts 10, 11, 12 and 15 are each expressly "subject to compliance with
+    -- the requirements laid down in Article 2".
+    `has transaction monitoring mechanisms under article 2` IS A BOOLEAN
+    -- Art 3: documented, periodically tested, evaluated and audited.
+    `security measures audited under article 3`            IS A BOOLEAN
+    `fraud rates`                                          IS A `Fraud Rate Report`
+
+
+§§ `Liability and refunds — PSD2 Articles 71 to 77 and 88 to 92`
+
+-- SECONDARY SOURCE. None of the following is in the SCA-RTS; it is in the
+-- parent Directive, which was not supplied with this job. Read NOTES.md §3
+-- before relying on any of it.
+
+DECLARE `Liability Bearer` IS ONE OF
+    `the payer bears the whole loss`
+    `the payer bears up to the article 74 cap`
+    `the payment service provider of the payer bears the loss`
+    `the payee or the payment service provider of the payee bears the loss`
+
+DECLARE `Unauthorised Transaction Claim` HAS
+    `reference`                                            IS A STRING
+    `amount in euro`                                       IS A NUMBER
+    `date the amount was debited`                          IS A DATE
+    `date the payer notified the payment service provider` IS A DATE
+    -- Art 73(1): the D+1 clock starts on awareness or notification.
+    `date the payment service provider became aware or was notified`  IS A DATE
+    `strong customer authentication was required by the payer payment service provider` IS A BOOLEAN
+    `the payee or the payee payment service provider failed to accept strong customer authentication` IS A BOOLEAN
+    `the payer acted fraudulently`                         IS A BOOLEAN
+    `the payer failed article 69 obligations with intent or gross negligence` IS A BOOLEAN
+    `arose from a lost stolen or misappropriated payment instrument`          IS A BOOLEAN
+    `the loss was not detectable to the payer before the payment`             IS A BOOLEAN
+    `the loss was caused by an act or omission of the provider or its agent or outsourcee` IS A BOOLEAN
+    `the transaction occurred after the payer notified loss under article 69(1)(b)`        IS A BOOLEAN
+    `the provider failed to supply means of notification at all times`        IS A BOOLEAN
+    -- Art 73(1) second subparagraph: the fraud-suspicion derogation.
+    `the provider has reasonable grounds to suspect fraud and has notified the national authority in writing` IS A BOOLEAN
+
+DECLARE `Payee Initiated Refund Claim` HAS
+    `reference`                            IS A STRING
+    `amount in euro`                       IS A NUMBER
+    `date the funds were debited`          IS A DATE
+    `date the payer requested the refund`  IS A DATE
+    `the transaction was authorised`       IS A BOOLEAN
+    `initiated by or through the payee`    IS A BOOLEAN
+    -- Art 76(1)(a) and (b)
+    `the authorisation did not specify the exact amount`                IS A BOOLEAN
+    `the amount exceeded what the payer could reasonably have expected` IS A BOOLEAN
+    -- Art 76(1) fourth subparagraph: SEPA direct debit, unconditional.
+    `is a SEPA direct debit within Regulation (EU) No 260/2012`         IS A BOOLEAN
+    -- Art 76(3): the framework-contract carve-out.
+    `consent was given directly to the payment service provider`        IS A BOOLEAN
+    `information on the transaction was made available at least 4 weeks before the due date` IS A BOOLEAN
+    `the framework contract excludes the refund right on those grounds` IS A BOOLEAN
+    -- Art 76(2)
+    `the payer relies only on currency exchange reasons at the agreed reference rate` IS A BOOLEAN
