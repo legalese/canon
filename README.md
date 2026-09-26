@@ -37,6 +37,11 @@ The layout is a **class/instance** design: the generic "⟨body of law⟩: go" t
 subject-sidecar shape) is the class; each encoding job is an instance expected to veer, and
 its divergences are recorded in its own `NOTES.md` — never by forking the template.
 
+How the tree **above** these leaves is organised — jurisdictions and their subdivisions,
+commercial-contract genres, and leaves that index an encoding hosted in someone else's
+repository instead of vendoring it here — is proposed, not yet adopted, in
+[docs/directory-conventions.md](docs/directory-conventions.md).
+
 ## Status vocabulary
 
 Every subject declares exactly one of:

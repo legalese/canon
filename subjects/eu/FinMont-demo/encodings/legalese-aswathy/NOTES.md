@@ -193,11 +193,11 @@ Recorded here rather than by forking the template, per the repository README.
   scaffold.
 - **A per-subject `README.md`**, which the class contract does not list and WA does not
   use. Additive, for FinMont's engineers; nothing reads it.
-- **Subject id casing.** `western-australia` subject ids are lowercase kebab-case named
+- **Subject id casing.** `au/wa` subject ids are lowercase kebab-case named
   for the instrument (`adoption-act-1994`). This one is `FinMont-demo`, mixed case and
   named for the firm, because that is what the encoding job asked for and because the
   orchestration module and the scenario cases genuinely are firm-specific. The jurisdiction
-  directory it now sits in (`subjects/european-union/`) follows the corpus convention; the
+  directory it now sits in (`subjects/eu/`) follows the corpus convention; the
   id does not. Renaming to something like `psd2-sca-rts-2018-389` is a `git mv` away if the
   corpus wants ids uniform.
 - **A `FinMont-demo` subject id, not a law id.** Named for the firm rather than the
