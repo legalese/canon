@@ -40,12 +40,12 @@ The `encoding-a-subject` skill's `references/canon-deposit.md` walks through it.
 **`main` does not follow that layout everywhere yet.** Much of it uses full jurisdiction names (`subjects/israel/`, `subjects/western-australia/`) with the `.l4` directly in the subject directory.
 If the law you are about to encode already has a directory under the other spelling, ask before creating a second one.
 
-**Encodings go on your own drafts branch, `<github-username>/drafts`, not `main`.**
-The l4-ide pipeline's publish stage refuses `main` for the same reason: an encoding stays on a drafts shelf until the licence terms of the source text it quotes are settled.
+**Where to commit.** Members of the `legalese` GitHub organisation commit straight to `main` (ruled 2026-09-26).
+**Contributions from outside Legalese are welcome**, by the standard GitHub route: fork this repository, commit to a branch of your fork, and open a pull request against `main`.
 
 ## Worked examples to read first
 
-On the `mengwong/drafts` branch:
+On the `mengwong/drafts` branch until [#2](https://github.com/legalese/canon/pull/2) moves them to `main`:
 
 - `subjects/il/hvac-work-licensing-2025/encodings/legalese/` — a Law and its fee regulations in three vintages, with a scope statement, a fork register, a table of every fee in each vintage, and a test file that is meant to fail and says how many times.
 - `subjects/sg/child-support/` — a subject whose primary source is an announcement rather than a statute, and says so.
