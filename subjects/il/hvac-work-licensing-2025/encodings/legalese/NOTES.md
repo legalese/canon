@@ -1,36 +1,24 @@
 # NOTES — il/hvac-work-licensing-2025, encoding row `legalese`
 
-## Verification status, 2026-09-22 — PARTIAL
+## Verification status, 2026-09-26
 
-Run with **`l4` prerelease `unstable-20260907-9d6536a`, linux-x64** (from
-`legalese/prereleases`, sha256 `cc6895c7…6a8226`, the digest embedded in
-`legalese/l4-plugin`'s `scripts/install-l4.sh`), with `JL4_LIBRARY_PATH` unset so the
-binary used its own embedded stdlib.
+Run with an `l4` built from l4-ide `unstable` at `64c71638b` (macOS arm64), with
+`JL4_LIBRARY_PATH` unset so the binary used its own embedded stdlib, on the deposited files
+as they stand.
 
-**Verified.** Every rule and every assertion in all five modules of this row and of the
-Hebrew twin. `hvac-law.l4` 27, `hvac-fees.l4` 18, `hvac-tests-simplex.l4` 63,
-`hvac-tests-generated.l4` 343 — all satisfied, zero errors; `hvac-tests-simplex-red.l4`
-fails on exactly 3, as `check.sh` requires. The twin's section 4 cross-row comparison
-passes: every `Result:` block identical after unmapping, and `check.sh` exits 0.
+- `check.sh` exits 0 in both rows. All assertions are satisfied: `hvac-law.l4` 27,
+  `hvac-fees.l4` 18, `hvac-tests-simplex.l4` 63, `hvac-tests-generated.l4` 343. As
+  intended, `hvac-tests-simplex-red.l4` fails on exactly 3.
+- Section 3's rendering check passes in both rows. That covers the `@lang` and
+  `@nlg:he` annotations and the English and Hebrew `l4 nlg` output.
+- The twin's section 4 cross-row comparison passes: every `Result:` block is identical
+  after unmapping.
+- `projections/` in both rows was regenerated from these files with the same binary.
 
-**NOT verified.** This binary is dated 2026-09-07 and therefore predates l4-ide PR #432
-(2026-09-19), which introduced `@lang`, `@nlg:he`/`@nlg:en` language-tagged heralds and
-`l4 nlg --lang`. It cannot lex `@lang en` at all. The runs above were therefore made on a
-**throwaway copy** with `@lang` and the language-tagged heralds commented out; the
-deposited files are untouched and still carry them. So:
-
-- the **rules, the numbers, the time axis and every assertion** are verified;
-- the **`@lang` / `@nlg:he` annotations themselves, and both rows' Hebrew and English
-  renderings** (`check.sh` section 3, and `projections/`) are **unverified**. The English
-  row's `check.sh` consequently exits 1 on the rendering check alone.
-- `projections/` in both rows is **STALE**: it was generated from the pre-axis encoding and
-  cannot be regenerated without a binary at or after PR #432. See `projections/README.md`.
-
-No newer prerelease was reachable from the build container: `github.com` and the GitHub API
-refuse anonymous access to `legalese/prereleases` here, only the
-`releases/download/<tag>/<archive>` path resolves, and no tag later than
-`unstable-20260907-9d6536a` is named anywhere in the checkouts available. No Haskell
-toolchain is installed, so building from source was not possible either.
+Mechanical only. No Hebrew speaker has reviewed the Hebrew renderings. Under
+`--lang he` the frame words ("is equal to", "with", "not") are still English, and dates
+print as `` `YMD` with y, m and d ``. Both are l4-ide renderer limits, not encoding
+defects.
 
 ---
 
@@ -219,8 +207,6 @@ Two limits of the current tooling, observed on the l4-ide `unstable` binary of 2
   (since 2026-09-22), for the two enacted texts; the SimpLEX draft is deliberately off it,
   for the reason in section 3.1. No `EVAL UNDER VALID TIME`, no ledger of facts with a
   history, no `EVAL AS OF SYSTEM TIME` audit snapshots.
-- `projections/` is **stale**, and cannot be regenerated with the only binary obtainable
-  here. See the verification banner at the top and `projections/README.md`.
 - No `cases/`, `report/` or `gates/`; no fork register file beyond section 4 here.
 - Goldens: none. The modules are outside l4-ide's corpus globs; `check.sh` is the guard, and it is not run by any CI.
 
