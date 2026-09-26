@@ -1,0 +1,797 @@
+-- Singapore Penal Code 1871 - Chapter 16 (Offences affecting the human body),
+-- the part headed "Kidnapping, abduction, slavery and forced labour",
+-- ss 359-374.
+--
+-- Group body-b, part 1 of 2 (part 2 is pc-body-b-sexual.l4, ss 375-377D).
+-- Source: Penal Code 1871, 2020 Revised Edition, SSO "Current version as at
+-- 09 Sep 2026" (inputs/PC1871.txt lines 7956-8121).
+--
+-- What a reader must know before reading:
+--
+-- * ss 359-362 DEFINE (kidnapping from Singapore, kidnapping from lawful
+--   guardianship, abduction); ss 363-368 PUNISH. A charge is laid under the
+--   punishing section (CPC s 123(4)), so each punishing section has its own
+--   `offence under s N` and `charge under s N`, and the defining predicates
+--   (`kidnaps from Singapore`, `kidnaps from lawful guardianship`, `kidnaps`,
+--   `abducts`) are the drill-down ladders.
+-- * One facts record, `Kidnapping Facts`, serves ss 359-368, because ss 364-368
+--   are "kidnaps or abducts ... with intent ..." over the same act.
+-- * s 367 reads "grievous hurt" (s 320), which is body-a's. It rides here as a
+--   BOOLEAN leaf naming the purpose; joined at integration (edge body-b ->
+--   body-a, listed in notes/PLAN.md s 1).
+-- * The age thresholds used across this group (below 14, 16, 18, 21 years of
+--   age) are exported here as NUMBER helpers (PLAN s 3.5), and
+--   pc-body-b-sexual.l4 imports them from this module.
+-- * ss 370-374 (slavery, sale and purchase of minors, importing women for
+--   prostitution, compulsory labour) are encoded at the end on a second facts
+--   record, `Slavery and Forced Labour Facts`, where time allowed; see
+--   notes/body-b-coverage.md for which.
+
+IMPORT prelude
+IMPORT `pc-domain`
+IMPORT `pc-general`
+
+§ `Chapter 16 - Kidnapping, abduction, slavery and forced labour`
+
+§§ `The ages this group's sections turn on`
+
+@export Whether a person of the given age is "of or above 14 years of age but below 16 years of age" (s 376A(2) of the Penal Code 1871)
+GIVEN years IS A NUMBER @desc The person's age in completed years
+GIVETH A BOOLEAN
+DECIDE `of or above 14 years of age but below 16 years of age` years IF
+        years AT LEAST 14
+    AND years < 16
+
+@export Whether a person of the given age is "of or above 16 years of age but below 18 years of age" (s 376AA of the Penal Code 1871)
+GIVEN years IS A NUMBER @desc The person's age in completed years
+GIVETH A BOOLEAN
+DECIDE `of or above 16 years of age but below 18 years of age` years IF
+        years AT LEAST 16
+    AND years < 18
+
+§§ `The facts of one kidnapping or abduction`
+
+@ref Penal Code 1871 ss 359-368 - the operative atoms, and the particulars CPC s 124 requires
+DECLARE `Kidnapping Facts` HAS
+    particulars           IS A Particulars @desc Who is charged, and when and where the offence was committed
+    victim                IS A Person      @desc The person kidnapped or abducted, as the charge is to name them
+
+    -- s 360
+    `conveys the person beyond the limits of Singapore`
+                          IS A BOOLEAN @desc Did the accused convey the person beyond the limits of Singapore? (s 360)
+    `without the consent of that person`
+                          IS A BOOLEAN @desc Was it done without the consent of the person conveyed? (s 360; consent within s 90)
+    `without the consent of any person legally authorised to consent on behalf of that person`
+                          IS A BOOLEAN @desc Was it done without the consent of anyone legally authorised to consent on the person's behalf? (s 360) - answer TRUE if nobody so authorised consented, including where there is no such person
+    `where the person was conveyed`
+                          IS A STRING  @desc Where the person was conveyed to, as it is to read after "beyond the limits of Singapore, to" - for example "Johor Bahru, Malaysia"; leave blank if not to be recited
+
+    -- s 361
+    takes                 IS A BOOLEAN @desc Did the accused take the person out of the keeping of the lawful guardian? (s 361)
+    entices               IS A BOOLEAN @desc Did the accused entice the person out of the keeping of the lawful guardian? (s 361)
+    `the person is a minor below 16 years of age`
+                          IS A BOOLEAN @desc Was the person below 16 years of age? (s 361) - set from `below 16 years of age` on the person's age
+    `the person is of unsound mind`
+                          IS A BOOLEAN @desc Was the person of unsound mind? (s 361)
+    `out of the keeping of the lawful guardian`
+                          IS A BOOLEAN @desc Was the person taken or enticed out of the keeping of their lawful guardian - which includes anyone lawfully entrusted with the person's care or custody (s 361 Explanation)?
+    `without the consent of such guardian`
+                          IS A BOOLEAN @desc Was it done without the consent of that lawful guardian? (s 361)
+    `the lawful guardian` IS A STRING  @desc The lawful guardian, as the charge is to name them - for example "one Tan Mei Ling, her mother"
+    -- s 361 Exception
+    `in good faith believes himself to be the father of an illegitimate child`
+                          IS A BOOLEAN @desc Did the accused in good faith (s 26B) believe himself to be the father of the child, the child being illegitimate? (s 361 Exception)
+    `in good faith believes himself to be entitled to the lawful custody of such child`
+                          IS A BOOLEAN @desc Did the accused in good faith (s 26B) believe himself entitled to the lawful custody of the child? (s 361 Exception)
+    `the act is committed for an immoral or unlawful purpose`
+                          IS A BOOLEAN @desc Was the act committed for an immoral or unlawful purpose? (s 361 Exception - the proviso that takes the exception away)
+
+    -- s 362
+    `by force compels`    IS A BOOLEAN @desc Did the accused by force compel the person to go from a place? (s 362)
+    `by any deceitful means induces`
+                          IS A BOOLEAN @desc Did the accused by some deceitful means induce the person to go from a place? (s 362)
+    `to go from any place`
+                          IS A BOOLEAN @desc Did the person go (or was the person made to go) from some place as a result? (s 362)
+    `the place from which the person was made to go`
+                          IS A STRING  @desc The place the person was made to go from, as it is to read after "to go from" - for example "the void deck of Block 123 Ang Mo Kio Avenue 3"
+    `the deceitful means` IS A STRING  @desc The deceitful means, as it is to read after "by deceitful means, to wit," - for example "by falsely telling her that her mother had been taken to hospital"; leave blank if force was used
+
+    -- s 364
+    `in order that the person may be murdered`
+                          IS A BOOLEAN @desc Was it done in order that the person may be murdered? Illustration (a) to s 364 treats "intending or knowing it to be likely" that the person may be killed as within these words
+    `in order that the person may be so disposed of as to be put in danger of being murdered`
+                          IS A BOOLEAN @desc Was it done in order that the person may be so disposed of as to be put in danger of being murdered? (s 364)
+
+    -- s 365
+    `with intent to cause the person to be secretly and wrongfully confined`
+                          IS A BOOLEAN @desc Was it done with intent to cause the person to be secretly and wrongfully confined? (s 365; "wrongfully confines" is s 340, body-a's)
+
+    -- s 366
+    `the person is a woman`
+                          IS A BOOLEAN @desc Is the person a woman - a female human being of any age (s 10)? (s 366)
+    `with intent that she may be compelled to marry any person against her will`
+                          IS A BOOLEAN @desc Was it done with intent that she may be compelled to marry any person against her will? (s 366)
+    `knowing it to be likely that she will be compelled to marry any person against her will`
+                          IS A BOOLEAN @desc Did the accused know it to be likely that she would be compelled to marry any person against her will? (s 366)
+    `in order that she may be forced or seduced to illicit intercourse, or to a life of prostitution`
+                          IS A BOOLEAN @desc Was it done in order that she may be forced or seduced to illicit intercourse, or to a life of prostitution? (s 366)
+    `knowing it to be likely that she will be forced or seduced to illicit intercourse, or to a life of prostitution`
+                          IS A BOOLEAN @desc Did the accused know it to be likely that she would be forced or seduced to illicit intercourse, or to a life of prostitution? (s 366)
+
+    -- s 367
+    `in order that the person may be subjected, or so disposed of as to be put in danger of being subjected, to grievous hurt`
+                          IS A BOOLEAN @desc Was it done in order that the person may be subjected, or put in danger of being subjected, to grievous hurt (s 320 - defined in pc-body-a; joined at integration)? (s 367)
+    `in order that the person may be subjected, or so disposed of as to be put in danger of being subjected, to slavery`
+                          IS A BOOLEAN @desc Was it done in order that the person may be subjected, or put in danger of being subjected, to slavery? (s 367)
+    `in order that the person may be subjected, or so disposed of as to be put in danger of being subjected, to non-consensual penile penetration of the anus or mouth`
+                          IS A BOOLEAN @desc Was it done in order that the person may be subjected, or put in danger of being subjected, to non-consensual penile penetration of the anus or mouth? (s 367)
+    `knowing it to be likely that the person will be so subjected or disposed of`
+                          IS A BOOLEAN @desc Did the accused know it to be likely that the person would be so subjected (to grievous hurt, slavery, or non-consensual penile penetration of the anus or mouth) or so disposed of? (s 367)
+    `the harm intended`   IS A STRING  @desc What the person was to be subjected to, as it is to read after "in order that the said person may be subjected to" - for example "grievous hurt"
+
+    -- s 368
+    `knowing that the person has been kidnapped or has been abducted`
+                          IS A BOOLEAN @desc Did the accused know that the person had been kidnapped or abducted? (s 368)
+    `wrongfully conceals such person`
+                          IS A BOOLEAN @desc Did the accused wrongfully conceal the person? (s 368)
+    `wrongfully keeps such person in confinement`
+                          IS A BOOLEAN @desc Did the accused wrongfully keep the person in confinement? (s 368)
+
+§§ `s 359 - kidnapping`
+
+-- 359. Kidnapping is of 2 kinds: kidnapping from Singapore, and kidnapping
+--      from lawful guardianship.
+@export Whether the accused "kidnaps" the person, in either of the 2 kinds of section 359 of the Penal Code 1871
+GIVEN f IS A `Kidnapping Facts` @desc The taking, and from whom and where
+GIVETH A BOOLEAN
+DECIDE kidnaps f IF
+        "Kidnapping is of 2 kinds:"
+   ...  (    `kidnaps from Singapore` f
+        OR   `kidnaps from lawful guardianship` f )
+
+§§ `s 360 - kidnapping from Singapore`
+
+-- 360. Whoever conveys any person beyond the limits of Singapore without the
+--      consent of that person, or of some person legally authorised to consent
+--      on behalf of that person, is said to kidnap that person from Singapore.
+@export Whether the accused "kidnaps" the person "from Singapore" within section 360 of the Penal Code 1871
+GIVEN f IS A `Kidnapping Facts` @desc The conveying, and whose consent was given
+GIVETH A BOOLEAN
+DECIDE `kidnaps from Singapore` f IF
+        "Whoever"
+   ...  f's `conveys the person beyond the limits of Singapore`
+   ...  f's `without the consent of that person`
+   ...  "or of"
+   ...  f's `without the consent of any person legally authorised to consent on behalf of that person`
+
+§§ `s 361 - kidnapping from lawful guardianship`
+
+-- 361. Whoever takes or entices any minor below 16 years of age, or any person
+--      of unsound mind, out of the keeping of the lawful guardian of such minor
+--      or person of unsound mind, without the consent of such guardian, is said
+--      to kidnap such minor or person from lawful guardianship.
+--      Explanation.-The words "lawful guardian" in this section include any
+--      person lawfully entrusted with the care or custody of such minor or
+--      other person.
+--      Exception.-This section does not extend to the act of any person who in
+--      good faith believes himself to be the father of an illegitimate child or
+--      who in good faith believes himself to be entitled to the lawful custody
+--      of such child, unless such act is committed for an immoral or unlawful
+--      purpose.
+--
+-- The Explanation widens the `out of the keeping of the lawful guardian` leaf
+-- (see its @desc). The Exception is part of this section, not a general
+-- exception, so it is in the ladder (notes/PLAN.md s 5).
+@export Whether the accused "kidnaps" the person "from lawful guardianship" within section 361 of the Penal Code 1871
+GIVEN f IS A `Kidnapping Facts` @desc The taking or enticing, the person's age or state of mind, and the guardian's consent
+GIVETH A BOOLEAN
+DECIDE `kidnaps from lawful guardianship` f IF
+        "Whoever"
+   ...  (    f's takes
+        OR   f's entices )
+   ...  (    f's `the person is a minor below 16 years of age`
+        OR   f's `the person is of unsound mind` )
+   ...  f's `out of the keeping of the lawful guardian`
+   ...  f's `without the consent of such guardian`
+   ...  NOT (`the section 361 Exception applies` f)
+
+@export Whether the Exception to section 361 of the Penal Code 1871 takes the act out of that section
+GIVEN f IS A `Kidnapping Facts` @desc What the accused believed in good faith, and for what purpose the act was done
+GIVETH A BOOLEAN
+DECIDE `the section 361 Exception applies` f IF
+        "This section does not extend to the act of any person who"
+   ...  (    f's `in good faith believes himself to be the father of an illegitimate child`
+        OR   f's `in good faith believes himself to be entitled to the lawful custody of such child` )
+   ...  "unless"
+   ...  NOT f's `the act is committed for an immoral or unlawful purpose`
+
+§§ `s 362 - abduction`
+
+-- 362. Whoever by force compels, or by any deceitful means induces any person
+--      to go from any place, is said to abduct that person.
+@export Whether the accused "abducts" the person within section 362 of the Penal Code 1871
+GIVEN f IS A `Kidnapping Facts` @desc The force or deceit, and where the person was made to go from
+GIVETH A BOOLEAN
+DECIDE abducts f IF
+        "Whoever"
+   ...  (    f's `by force compels`
+        OR   f's `by any deceitful means induces` )
+   ...  "any person"
+   ...  f's `to go from any place`
+
+-- ss 364-368 all read "kidnaps or abducts". One place for it.
+@export Whether the accused "kidnaps or abducts" the person (ss 359-362 of the Penal Code 1871, as ss 364-368 use the words)
+GIVEN f IS A `Kidnapping Facts` @desc The kidnapping or abduction
+GIVETH A BOOLEAN
+DECIDE `kidnaps or abducts` f IF
+        kidnaps f
+    OR  abducts f
+
+§§ `s 363 - punishment for kidnapping`
+
+-- 363. Whoever kidnaps any person from Singapore or from lawful guardianship,
+--      shall be punished with imprisonment for a term which may extend to
+--      10 years, and shall also be liable to fine or to caning.
+@ref Penal Code 1871 s 363
+`punishment prescribed by s 363` MEANS Punishment WITH
+    section                  IS "363"
+    words                    IS "imprisonment for a term which may extend to 10 years, and shall also be liable to fine or to caning"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 120
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `shall also be liable to`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall also be liable to`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 363 of the Penal Code 1871 (kidnapping)
+GIVEN f IS A `Kidnapping Facts` @desc The kidnapping
+GIVETH A BOOLEAN
+DECIDE `offence under s 363` f IF
+        "Whoever"
+   ...  kidnaps f
+   ...  "any person from Singapore or from lawful guardianship"
+
+§§ `s 363A - punishment for abduction`
+
+-- 363A. Whoever abducts any person shall be punished with imprisonment for a
+--       term which may extend to 7 years, or with fine, or with caning, or with
+--       any combination of such punishments.
+@ref Penal Code 1871 s 363A - "or with any combination of such punishments" is recorded as `or with both` (FORK B-4)
+`punishment prescribed by s 363A` MEANS Punishment WITH
+    section                  IS "363A"
+    words                    IS "imprisonment for a term which may extend to 7 years, or with fine, or with caning, or with any combination of such punishments"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `or with`
+    `maximum term in months` IS JUST 84
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `or with`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `or with`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS TRUE
+
+@export Whether the accused has committed an offence punishable under section 363A of the Penal Code 1871 (abduction)
+GIVEN f IS A `Kidnapping Facts` @desc The abduction
+GIVETH A BOOLEAN
+DECIDE `offence under s 363A` f IF
+        "Whoever"
+   ...  abducts f
+   ...  "any person"
+
+§§ `s 364 - kidnapping or abducting in order to murder`
+
+-- 364. Whoever kidnaps or abducts any person in order that such person may be
+--      murdered, or may be so disposed of as to be put in danger of being
+--      murdered, shall be punished with death or imprisonment for life and
+--      shall, if he is not sentenced to death, also be liable to caning.
+--      Illustrations
+--      (a) A kidnaps Z from Singapore, intending or knowing it to be likely that
+--      Z may be sacrificed to an idol. A has committed the offence defined in
+--      this section.
+--      (b) A forcibly carries or entices B away from his home in order that B
+--      may be murdered. A has committed the offence defined in this section.
+@ref Penal Code 1871 s 364 - caning only "if he is not sentenced to death"; recorded as `shall also be liable to`
+`punishment prescribed by s 364` MEANS Punishment WITH
+    section                  IS "364"
+    words                    IS "death or imprisonment for life and shall, if he is not sentenced to death, also be liable to caning"
+    death                    IS `or with`
+    `imprisonment for life`  IS `or with`
+    imprisonment             IS `not prescribed`
+    `maximum term in months` IS NOTHING
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `not prescribed`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall also be liable to`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 364 of the Penal Code 1871 (kidnapping or abducting in order to murder)
+GIVEN f IS A `Kidnapping Facts` @desc The kidnapping or abduction, and its purpose
+GIVETH A BOOLEAN
+DECIDE `offence under s 364` f IF
+        "Whoever"
+   ...  `kidnaps or abducts` f
+   ...  "any person"
+   ...  (    f's `in order that the person may be murdered`
+        OR   f's `in order that the person may be so disposed of as to be put in danger of being murdered` )
+
+§§ `s 365 - kidnapping or abducting with intent secretly and wrongfully to confine a person`
+
+-- 365. Whoever kidnaps or abducts any person with intent to cause that person
+--      to be secretly and wrongfully confined, shall be punished with
+--      imprisonment for a term which may extend to 10 years, and shall also be
+--      liable to fine or to caning.
+@ref Penal Code 1871 s 365
+`punishment prescribed by s 365` MEANS Punishment WITH
+    section                  IS "365"
+    words                    IS "imprisonment for a term which may extend to 10 years, and shall also be liable to fine or to caning"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 120
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `shall also be liable to`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall also be liable to`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 365 of the Penal Code 1871 (kidnapping or abducting with intent secretly and wrongfully to confine a person)
+GIVEN f IS A `Kidnapping Facts` @desc The kidnapping or abduction, and its intent
+GIVETH A BOOLEAN
+DECIDE `offence under s 365` f IF
+        "Whoever"
+   ...  `kidnaps or abducts` f
+   ...  "any person"
+   ...  f's `with intent to cause the person to be secretly and wrongfully confined`
+
+§§ `s 366 - kidnapping or abducting a woman to compel her marriage, etc.`
+
+-- 366. Whoever kidnaps or abducts any woman with intent that she may be
+--      compelled, or knowing it to be likely that she will be compelled to
+--      marry any person against her will, or in order that she may be forced
+--      or seduced to illicit intercourse, or to a life of prostitution, or
+--      knowing it to be likely that she will be forced or seduced to illicit
+--      intercourse, or to a life of prostitution, shall be punished with
+--      imprisonment for a term which may extend to 10 years, and shall also be
+--      liable to fine or to caning.
+@ref Penal Code 1871 s 366
+`punishment prescribed by s 366` MEANS Punishment WITH
+    section                  IS "366"
+    words                    IS "imprisonment for a term which may extend to 10 years, and shall also be liable to fine or to caning"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 120
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `shall also be liable to`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall also be liable to`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 366 of the Penal Code 1871 (kidnapping or abducting a woman to compel her marriage, etc.)
+GIVEN f IS A `Kidnapping Facts` @desc The kidnapping or abduction of a woman, and its intent
+GIVETH A BOOLEAN
+DECIDE `offence under s 366` f IF
+        "Whoever"
+   ...  `kidnaps or abducts` f
+   ...  "any"
+   ...  f's `the person is a woman`
+   ...  (    f's `with intent that she may be compelled to marry any person against her will`
+        OR   f's `knowing it to be likely that she will be compelled to marry any person against her will`
+        OR   f's `in order that she may be forced or seduced to illicit intercourse, or to a life of prostitution`
+        OR   f's `knowing it to be likely that she will be forced or seduced to illicit intercourse, or to a life of prostitution` )
+
+§§ `s 367 - kidnapping or abducting in order to subject a person to grievous hurt, slavery, etc.`
+
+-- 367. Whoever kidnaps or abducts any person in order that such person may be
+--      subjected, or may be so disposed of as to be put in danger of being
+--      subjected to grievous hurt or slavery, or to non-consensual penile
+--      penetration of the anus or mouth, or knowing it to be likely that such
+--      person will be so subjected or disposed of, shall be punished with
+--      imprisonment for a term which may extend to 10 years, and shall also be
+--      liable to fine or to caning.
+@ref Penal Code 1871 s 367
+`punishment prescribed by s 367` MEANS Punishment WITH
+    section                  IS "367"
+    words                    IS "imprisonment for a term which may extend to 10 years, and shall also be liable to fine or to caning"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 120
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `shall also be liable to`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall also be liable to`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+-- The "knowing it to be likely" limb reads "so subjected or disposed of", i.e.
+-- to one of the three harms named before it; it is joined here as an
+-- alternative to them, and the charge's recital names the harm
+-- (`the harm intended`). FORK B-5.
+@export Whether the accused has committed an offence punishable under section 367 of the Penal Code 1871 (kidnapping or abducting in order to subject a person to grievous hurt, slavery, etc.)
+GIVEN f IS A `Kidnapping Facts` @desc The kidnapping or abduction, and its purpose
+GIVETH A BOOLEAN
+DECIDE `offence under s 367` f IF
+        "Whoever"
+   ...  `kidnaps or abducts` f
+   ...  "any person"
+   ...  (    f's `in order that the person may be subjected, or so disposed of as to be put in danger of being subjected, to grievous hurt`
+        OR   f's `in order that the person may be subjected, or so disposed of as to be put in danger of being subjected, to slavery`
+        OR   f's `in order that the person may be subjected, or so disposed of as to be put in danger of being subjected, to non-consensual penile penetration of the anus or mouth`
+        OR   f's `knowing it to be likely that the person will be so subjected or disposed of` )
+
+§§ `s 368 - wrongfully concealing or keeping in confinement a kidnapped person`
+
+-- 368. Whoever, knowing that any person has been kidnapped or has been
+--      abducted, wrongfully conceals or keeps such person in confinement, shall
+--      be punished in the same manner as if he had kidnapped or abducted such
+--      person with the same intention or knowledge or for the same purpose as
+--      that with or for which he conceals or detains such person in
+--      confinement.
+--
+-- The punishment is borrowed from whichever of ss 363-367 fits the concealer's
+-- own intention; this section states no term of its own, so there is no
+-- `punishment prescribed by s 368` record (FORK B-6). The charge carries the
+-- section's words.
+@export Whether the accused has committed an offence punishable under section 368 of the Penal Code 1871 (wrongfully concealing or keeping in confinement a kidnapped person)
+GIVEN f IS A `Kidnapping Facts` @desc What the accused knew, and whether the person was concealed or confined
+GIVETH A BOOLEAN
+DECIDE `offence under s 368` f IF
+        "Whoever,"
+   ...  f's `knowing that the person has been kidnapped or has been abducted`
+   ...  (    f's `wrongfully conceals such person`
+        OR   f's `wrongfully keeps such person in confinement` )
+
+-- 364A. [Repealed by Act 19 of 2010]
+-- 369.  [Repealed by Act 15 of 2019]
+
+§§ `The kidnapping and abduction charges`
+
+GIVEN f IS A `Kidnapping Facts`
+GIVETH A STRING
+`the said person` f MEANS CONCAT "the said ", f's victim's name
+
+-- "did kidnap one X from Singapore, to wit, by conveying her beyond the limits
+--  of Singapore, to Y, without her consent"; "did kidnap one X from lawful
+--  guardianship, to wit, by taking the said X, a minor below 16 years of age,
+--  out of the keeping of Y, the lawful guardian of the said X, without the
+--  consent of such guardian"
+GIVEN f IS A `Kidnapping Facts`
+GIVETH A STRING
+`the manner of the kidnapping` f MEANS
+    `joined with` ", and " (concat (LIST
+        (`included if` (`kidnaps from Singapore` f)
+            (CONCAT "did kidnap ", (`one person` (f's victim)), " from Singapore, to wit, by conveying ", (`object pronoun` (f's victim's pronoun)),
+                    " beyond the limits of Singapore",
+                    (IF f's `where the person was conveyed` EQUALS "" THEN "" ELSE CONCAT ", to ", f's `where the person was conveyed`),
+                    " without ", (`possessive pronoun` (f's victim's pronoun)), " consent")),
+        (`included if` (`kidnaps from lawful guardianship` f)
+            (CONCAT "did kidnap ", (`one person` (f's victim)), " from lawful guardianship, to wit, by ",
+                    (IF f's takes THEN "taking " ELSE "enticing "), `the said person` f,
+                    (IF f's `the person is a minor below 16 years of age` THEN ", a minor below 16 years of age," ELSE ", a person of unsound mind,"),
+                    " out of the keeping of ", f's `the lawful guardian`, ", the lawful guardian of ", `the said person` f,
+                    ", without the consent of such guardian"))))
+
+-- "did abduct one X, to wit, by force compelling her to go from Y"
+GIVEN f IS A `Kidnapping Facts`
+GIVETH A STRING
+`the manner of the abduction` f MEANS
+    CONCAT "did abduct ", (`one person` (f's victim)), ", to wit, by ",
+           (IF f's `by force compels`
+            THEN CONCAT "force compelling ", (`object pronoun` (f's victim's pronoun))
+            ELSE CONCAT "deceitful means, to wit, ", f's `the deceitful means`, ", inducing ", (`object pronoun` (f's victim's pronoun))),
+           " to go from ", f's `the place from which the person was made to go`
+
+GIVEN f IS A `Kidnapping Facts`
+GIVETH A STRING
+`the manner of the kidnapping or abduction` f MEANS
+    IF kidnaps f THEN `the manner of the kidnapping` f ELSE `the manner of the abduction` f
+
+GIVEN f IS A `Kidnapping Facts`
+GIVETH A LIST OF STRING
+`elements of kidnapping not made out` f MEANS
+    concat (LIST
+        (`missing unless` (f's `conveys the person beyond the limits of Singapore` OR f's takes OR f's entices) "conveys any person beyond the limits of Singapore, or takes or entices a minor below 16 years of age or a person of unsound mind"),
+        (`missing unless` (`kidnaps from Singapore` f OR (NOT (f's `conveys the person beyond the limits of Singapore`))) "without the consent of that person, or of some person legally authorised to consent on behalf of that person (section 360)"),
+        (`missing unless` (`kidnaps from Singapore` f OR (NOT (f's takes OR f's entices)) OR (f's `out of the keeping of the lawful guardian` AND f's `without the consent of such guardian`)) "out of the keeping of the lawful guardian, without the consent of such guardian (section 361)"),
+        (`missing unless` (NOT (`the section 361 Exception applies` f)) "the act is not within the Exception to section 361"),
+        (`missing unless` (kidnaps f) "the elements of section 360 or section 361 taken together"))
+
+GIVEN f IS A `Kidnapping Facts`
+GIVETH A LIST OF STRING
+`elements of abduction not made out` f MEANS
+    concat (LIST
+        (`missing unless` (f's `by force compels` OR f's `by any deceitful means induces`) "by force compels, or by any deceitful means induces"),
+        (`missing unless` (f's `to go from any place`) "any person to go from any place"),
+        (`missing unless` (abducts f) "the elements of section 362 taken together"))
+
+GIVEN f IS A `Kidnapping Facts`
+GIVETH A LIST OF STRING
+`elements of kidnapping or abduction not made out` f MEANS
+    IF   `kidnaps or abducts` f
+    THEN EMPTY
+    ELSE LIST "kidnaps (sections 359-361) or abducts (section 362) any person"
+
+@export Frame a charge under section 363 of the Penal Code 1871 (kidnapping), or say why none can be framed
+GIVEN f IS A `Kidnapping Facts` @desc The kidnapping, and the particulars of the charge
+GIVETH A Charge
+`charge under s 363` f MEANS
+    `frame the charge` (f's particulars) "363" "kidnapping"
+        (`punishment prescribed by s 363`'s words)
+        (`offence under s 363` f)
+        (`the manner of the kidnapping` f)
+        (`elements of kidnapping not made out` f)
+
+@export Frame a charge under section 363A of the Penal Code 1871 (abduction), or say why none can be framed
+GIVEN f IS A `Kidnapping Facts` @desc The abduction, and the particulars of the charge
+GIVETH A Charge
+`charge under s 363A` f MEANS
+    `frame the charge` (f's particulars) "363A" "abduction"
+        (`punishment prescribed by s 363A`'s words)
+        (`offence under s 363A` f)
+        (`the manner of the abduction` f)
+        (`elements of abduction not made out` f)
+
+@export Frame a charge under section 364 of the Penal Code 1871 (kidnapping or abducting in order to murder), or say why none can be framed
+GIVEN f IS A `Kidnapping Facts` @desc The kidnapping or abduction, its purpose, and the particulars of the charge
+GIVETH A Charge
+`charge under s 364` f MEANS
+    `frame the charge` (f's particulars) "364" "kidnapping or abducting in order to murder"
+        (`punishment prescribed by s 364`'s words)
+        (`offence under s 364` f)
+        (CONCAT (`the manner of the kidnapping or abduction` f), ", in order that ", `the said person` f,
+                (IF f's `in order that the person may be murdered`
+                 THEN " may be murdered"
+                 ELSE " may be so disposed of as to be put in danger of being murdered"))
+        (concat (LIST (`elements of kidnapping or abduction not made out` f),
+                      (`missing unless` (f's `in order that the person may be murdered` OR f's `in order that the person may be so disposed of as to be put in danger of being murdered`)
+                          "in order that such person may be murdered, or may be so disposed of as to be put in danger of being murdered")))
+
+@export Frame a charge under section 365 of the Penal Code 1871 (kidnapping or abducting with intent secretly and wrongfully to confine a person), or say why none can be framed
+GIVEN f IS A `Kidnapping Facts` @desc The kidnapping or abduction, its intent, and the particulars of the charge
+GIVETH A Charge
+`charge under s 365` f MEANS
+    `frame the charge` (f's particulars) "365" "kidnapping or abducting with intent secretly and wrongfully to confine a person"
+        (`punishment prescribed by s 365`'s words)
+        (`offence under s 365` f)
+        (CONCAT (`the manner of the kidnapping or abduction` f), ", with intent to cause ", `the said person` f, " to be secretly and wrongfully confined")
+        (concat (LIST (`elements of kidnapping or abduction not made out` f),
+                      (`missing unless` (f's `with intent to cause the person to be secretly and wrongfully confined`) "with intent to cause that person to be secretly and wrongfully confined")))
+
+@export Frame a charge under section 366 of the Penal Code 1871 (kidnapping or abducting a woman to compel her marriage, etc.), or say why none can be framed
+GIVEN f IS A `Kidnapping Facts` @desc The kidnapping or abduction of a woman, its intent, and the particulars of the charge
+GIVETH A Charge
+`charge under s 366` f MEANS
+    `frame the charge` (f's particulars) "366" "kidnapping or abducting a woman to compel her marriage, etc."
+        (`punishment prescribed by s 366`'s words)
+        (`offence under s 366` f)
+        (CONCAT (`the manner of the kidnapping or abduction` f), ", ",
+                `joined with` ", and " (concat (LIST
+                    (`included if` (f's `with intent that she may be compelled to marry any person against her will`) "with intent that she may be compelled to marry any person against her will"),
+                    (`included if` (f's `knowing it to be likely that she will be compelled to marry any person against her will`) "knowing it to be likely that she will be compelled to marry any person against her will"),
+                    (`included if` (f's `in order that she may be forced or seduced to illicit intercourse, or to a life of prostitution`) "in order that she may be forced or seduced to illicit intercourse, or to a life of prostitution"),
+                    (`included if` (f's `knowing it to be likely that she will be forced or seduced to illicit intercourse, or to a life of prostitution`) "knowing it to be likely that she will be forced or seduced to illicit intercourse, or to a life of prostitution"))))
+        (concat (LIST (`elements of kidnapping or abduction not made out` f),
+                      (`missing unless` (f's `the person is a woman`) "any woman"),
+                      (`missing unless` (f's `with intent that she may be compelled to marry any person against her will`
+                                         OR f's `knowing it to be likely that she will be compelled to marry any person against her will`
+                                         OR f's `in order that she may be forced or seduced to illicit intercourse, or to a life of prostitution`
+                                         OR f's `knowing it to be likely that she will be forced or seduced to illicit intercourse, or to a life of prostitution`)
+                          "with intent that she may be compelled, or knowing it to be likely that she will be compelled, to marry against her will, or in order that (or knowing it to be likely that) she will be forced or seduced to illicit intercourse or to a life of prostitution")))
+
+@export Frame a charge under section 367 of the Penal Code 1871 (kidnapping or abducting in order to subject a person to grievous hurt, slavery, etc.), or say why none can be framed
+GIVEN f IS A `Kidnapping Facts` @desc The kidnapping or abduction, its purpose, and the particulars of the charge
+GIVETH A Charge
+`charge under s 367` f MEANS
+    `frame the charge` (f's particulars) "367" "kidnapping or abducting in order to subject a person to grievous hurt, slavery, etc."
+        (`punishment prescribed by s 367`'s words)
+        (`offence under s 367` f)
+        (CONCAT (`the manner of the kidnapping or abduction` f),
+                (IF f's `knowing it to be likely that the person will be so subjected or disposed of`
+                 THEN CONCAT ", knowing it to be likely that ", `the said person` f, " will be subjected to "
+                 ELSE CONCAT ", in order that ", `the said person` f, " may be subjected to "),
+                f's `the harm intended`)
+        (concat (LIST (`elements of kidnapping or abduction not made out` f),
+                      (`missing unless` (f's `in order that the person may be subjected, or so disposed of as to be put in danger of being subjected, to grievous hurt`
+                                         OR f's `in order that the person may be subjected, or so disposed of as to be put in danger of being subjected, to slavery`
+                                         OR f's `in order that the person may be subjected, or so disposed of as to be put in danger of being subjected, to non-consensual penile penetration of the anus or mouth`
+                                         OR f's `knowing it to be likely that the person will be so subjected or disposed of`)
+                          "in order that (or knowing it to be likely that) such person may be subjected, or put in danger of being subjected, to grievous hurt, slavery, or non-consensual penile penetration of the anus or mouth")))
+
+@ref Penal Code 1871 s 368 - "shall be punished in the same manner as if he had kidnapped or abducted such person with the same intention ..."
+`the punishment of section 368` MEANS
+    "in the same manner as if he had kidnapped or abducted such person with the same intention or knowledge or for the same purpose as that with or for which he conceals or detains such person in confinement"
+
+@export Frame a charge under section 368 of the Penal Code 1871 (wrongfully concealing or keeping in confinement a kidnapped person), or say why none can be framed
+GIVEN f IS A `Kidnapping Facts` @desc What the accused knew, what was done with the person, and the particulars of the charge
+GIVETH A Charge
+`charge under s 368` f MEANS
+    `frame the charge` (f's particulars) "368" "wrongfully concealing or keeping in confinement a kidnapped person"
+        `the punishment of section 368`
+        (`offence under s 368` f)
+        (CONCAT "knowing that ", (`one person` (f's victim)), " had been kidnapped or abducted, did wrongfully ",
+                (IF f's `wrongfully conceals such person` THEN "conceal " ELSE "keep in confinement "), `the said person` f)
+        (concat (LIST
+            (`missing unless` (f's `knowing that the person has been kidnapped or has been abducted`) "knowing that any person has been kidnapped or has been abducted"),
+            (`missing unless` (f's `wrongfully conceals such person` OR f's `wrongfully keeps such person in confinement`) "wrongfully conceals or keeps such person in confinement")))
+
+§ `Chapter 16 - slavery, sale of minors, and forced labour`
+
+§§ `The facts of one dealing in persons, or of compulsory labour`
+
+@ref Penal Code 1871 ss 370-374 - the operative atoms, and the particulars CPC s 124 requires
+DECLARE `Slavery and Forced Labour Facts` HAS
+    particulars           IS A Particulars @desc Who is charged, and when and where the offence was committed
+    victim                IS A Person      @desc The person dealt with, or compelled to labour, as the charge is to name them
+
+    -- s 370
+    `imports, exports, removes, buys, sells or disposes of the person as a slave`
+                          IS A BOOLEAN @desc Did the accused import, export, remove, buy, sell or dispose of the person as a slave? (s 370)
+    `accepts, receives or detains the person against his will as a slave`
+                          IS A BOOLEAN @desc Did the accused accept, receive or detain the person against the person's will as a slave? (s 370)
+    `the dealing`         IS A STRING  @desc What the accused did with the person, as it is to read after "did" - for example "sell one X as a slave to one Y"
+
+    -- s 371
+    `habitually imports, exports, removes, buys, sells, traffics or deals in slaves`
+                          IS A BOOLEAN @desc Did the accused habitually import, export, remove, buy, sell, traffic or deal in slaves? (s 371)
+
+    -- s 374
+    `unlawfully compels the person to labour`
+                          IS A BOOLEAN @desc Did the accused unlawfully (s 43) compel the person to labour? (s 374)
+    `against the will of that person`
+                          IS A BOOLEAN @desc Was the labour against the person's will? (s 374)
+    `the labour`          IS A STRING  @desc The labour compelled, as it is to read after "to labour, to wit," - for example "by working as a domestic helper without rest days"
+
+§§ `s 370 - buying or disposing of any person as a slave`
+
+-- 370. Whoever imports, exports, removes, buys, sells or disposes of any person
+--      as a slave, or accepts, receives or detains against his will any person
+--      as a slave, shall be punished with imprisonment for a term which may
+--      extend to 7 years, and shall also be liable to fine.
+@ref Penal Code 1871 s 370
+`punishment prescribed by s 370` MEANS Punishment WITH
+    section                  IS "370"
+    words                    IS "imprisonment for a term which may extend to 7 years, and shall also be liable to fine"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 84
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `shall also be liable to`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `not prescribed`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 370 of the Penal Code 1871 (buying or disposing of any person as a slave)
+GIVEN f IS A `Slavery and Forced Labour Facts` @desc The dealing in the person as a slave
+GIVETH A BOOLEAN
+DECIDE `offence under s 370` f IF
+        "Whoever"
+   ...  (    f's `imports, exports, removes, buys, sells or disposes of the person as a slave`
+        OR   f's `accepts, receives or detains the person against his will as a slave` )
+
+@export Frame a charge under section 370 of the Penal Code 1871 (buying or disposing of any person as a slave), or say why none can be framed
+GIVEN f IS A `Slavery and Forced Labour Facts` @desc The dealing, and the particulars of the charge
+GIVETH A Charge
+`charge under s 370` f MEANS
+    `frame the charge` (f's particulars) "370" "buying or disposing of any person as a slave"
+        (`punishment prescribed by s 370`'s words)
+        (`offence under s 370` f)
+        (CONCAT "did ", f's `the dealing`)
+        (`missing unless` (`offence under s 370` f) "imports, exports, removes, buys, sells or disposes of any person as a slave, or accepts, receives or detains against his will any person as a slave")
+
+§§ `s 371 - habitual dealing in slaves`
+
+-- 371. Whoever habitually imports, exports, removes, buys, sells, traffics or
+--      deals in slaves, shall be punished with imprisonment for life, or with
+--      imprisonment for a term not exceeding 10 years, and shall also be liable
+--      to fine.
+@ref Penal Code 1871 s 371
+`punishment prescribed by s 371` MEANS Punishment WITH
+    section                  IS "371"
+    words                    IS "imprisonment for life, or with imprisonment for a term not exceeding 10 years, and shall also be liable to fine"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `or with`
+    imprisonment             IS `or with`
+    `maximum term in months` IS JUST 120
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `shall also be liable to`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `not prescribed`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 371 of the Penal Code 1871 (habitual dealing in slaves)
+GIVEN f IS A `Slavery and Forced Labour Facts` @desc The habitual dealing in slaves
+GIVETH A BOOLEAN
+DECIDE `offence under s 371` f IF
+        "Whoever"
+   ...  f's `habitually imports, exports, removes, buys, sells, traffics or deals in slaves`
+
+@export Frame a charge under section 371 of the Penal Code 1871 (habitual dealing in slaves), or say why none can be framed
+GIVEN f IS A `Slavery and Forced Labour Facts` @desc The dealing, and the particulars of the charge
+GIVETH A Charge
+`charge under s 371` f MEANS
+    `frame the charge` (f's particulars) "371" "habitual dealing in slaves"
+        (`punishment prescribed by s 371`'s words)
+        (`offence under s 371` f)
+        "did habitually deal in slaves"
+        (`missing unless` (`offence under s 371` f) "habitually imports, exports, removes, buys, sells, traffics or deals in slaves")
+
+-- ss 372, 373, 373A: deferred (time). See notes/body-b-coverage.md.
+
+§§ `s 374 - unlawful compulsory labour`
+
+-- 374. Whoever unlawfully compels any person to labour against the will of
+--      that person, shall be punished with imprisonment for a term which may
+--      extend to one year, or with fine, or with both.
+@ref Penal Code 1871 s 374
+`punishment prescribed by s 374` MEANS Punishment WITH
+    section                  IS "374"
+    words                    IS "imprisonment for a term which may extend to one year, or with fine, or with both"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `or with`
+    `maximum term in months` IS JUST 12
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `or with`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `not prescribed`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS TRUE
+
+@export Whether the accused has committed an offence punishable under section 374 of the Penal Code 1871 (unlawful compulsory labour)
+GIVEN f IS A `Slavery and Forced Labour Facts` @desc The compulsion to labour
+GIVETH A BOOLEAN
+DECIDE `offence under s 374` f IF
+        "Whoever"
+   ...  f's `unlawfully compels the person to labour`
+   ...  f's `against the will of that person`
+
+@export Frame a charge under section 374 of the Penal Code 1871 (unlawful compulsory labour), or say why none can be framed
+GIVEN f IS A `Slavery and Forced Labour Facts` @desc The compulsion, and the particulars of the charge
+GIVETH A Charge
+`charge under s 374` f MEANS
+    `frame the charge` (f's particulars) "374" "unlawful compulsory labour"
+        (`punishment prescribed by s 374`'s words)
+        (`offence under s 374` f)
+        (CONCAT "did unlawfully compel ", (`one person` (f's victim)), " to labour against ", (`possessive pronoun` (f's victim's pronoun)), " will, to wit, ", f's `the labour`)
+        (concat (LIST
+            (`missing unless` (f's `unlawfully compels the person to labour`) "unlawfully compels any person to labour"),
+            (`missing unless` (f's `against the will of that person`) "against the will of that person")))

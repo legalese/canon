@@ -1,0 +1,719 @@
+-- Singapore Penal Code 1871 - Chapter 17 (Offences against property), part 2:
+--   Criminal misappropriation of property   ss 403-404
+--   Criminal breach of trust                ss 405-409
+--   Receiving stolen property               ss 410-414
+--
+-- Source: Penal Code 1871, 2020 Revised Edition, SSO "Current version as at
+-- 09 Sep 2026" (inputs/PC1871.txt). Section text copied mechanically.
+--
+-- Before reading:
+--
+-- * Three facts records: `Misappropriation Facts` (ss 403-404), `CBT Facts`
+--   (ss 405-409) and `Stolen Property Facts` (ss 410-414). Field names follow
+--   the reference row (reference/drafts-row/misappropriation-403.l4,
+--   cbt-405-406.l4) where it has the element; the aggravations of ss 407-409,
+--   which the reference row nested in an `Aggravated CBT Facts`, are flat
+--   leaves of `CBT Facts` here (notes/property-forks.md P-1).
+-- * "Stolen property" (s 410) is this group's definition, read by ss 411-414
+--   and by other groups; it is exported as `stolen property within section 410`.
+-- * The defences in ss 411(3) and 412(2) are part of those sections, so they
+--   sit in the offence ladder (notes/PLAN.md §5; fork P-6).
+
+IMPORT prelude
+IMPORT `pc-domain`
+IMPORT `pc-general`
+
+§ `Chapter 17 - Offences against property: criminal misappropriation of property`
+
+§§ `The facts of one misappropriation`
+
+@ref Penal Code 1871 ss 403, 404 - the operative atoms, and the particulars CPC s 124 requires
+DECLARE `Misappropriation Facts` HAS
+    particulars           IS A Particulars @desc Who is charged, and when and where the offence was committed
+    `the property`        IS A STRING  @desc What was misappropriated or converted, as it is to read after "to wit," - for example "a valuable ring"
+    dishonestly           IS A BOOLEAN @desc Did the accused act dishonestly (s 24)? A misappropriation for a time only is still one (Explanation 1). A finder who takes property in nobody's possession to protect it for, or restore it to, the owner does not take or misappropriate it dishonestly; but a finder who appropriates it knowing or having the means of discovering the owner, or before using reasonable means to find and notify the owner and keeping it a reasonable time, does (Explanation 2). Illustration (c): a joint owner using the horse is not dishonest.
+    misappropriates       IS A BOOLEAN @desc Did the accused misappropriate the property - set it apart or assign it to a use that is wrongful?
+    `converts to his own use`
+                          IS A BOOLEAN @desc Did the accused convert the property to his own use - deal with it as if it were his own?
+    `movable property`    IS A BOOLEAN @desc Was the thing movable property (s 22)? (s 403 only; s 404 speaks of "property")
+    -- s 404
+    `knowing that such property was in the possession of a deceased person at the time of that person's decease`
+                          IS A BOOLEAN @desc Did the accused know that the property was in the possession of a person who has died, at the time of death? (fault element; s 404)
+    `has not since been in the possession of any person legally entitled to such possession`
+                          IS A BOOLEAN @desc Has the property not since been in the possession of anyone legally entitled to it? (s 404)
+    `the deceased`        IS A STRING  @desc The deceased person's name, as it is to appear in a s 404 charge
+    `employed by him as a clerk or servant at the time of such person's decease`
+                          IS A BOOLEAN @desc Was the accused, when that person died, employed by the deceased as a clerk or servant? (s 404 - raises the maximum term from 3 to 7 years)
+
+§§ `s 403 - dishonest misappropriation of property`
+
+{{TEXT:403}}
+{{P:403}}
+
+@export Whether the accused "dishonestly misappropriates or converts to his own use movable property" within section 403 of the Penal Code 1871
+GIVEN f IS A `Misappropriation Facts` @desc What the accused did with the property, and with what intent
+GIVETH A BOOLEAN
+DECIDE `dishonestly misappropriates or converts to his own use` f IF
+        "Whoever"
+   ...  f's dishonestly
+   ...  (    f's misappropriates
+        OR   f's `converts to his own use` )
+
+@export Whether the accused has committed an offence punishable under section 403 of the Penal Code 1871 (dishonest misappropriation of property)
+GIVEN f IS A `Misappropriation Facts` @desc What the accused did with the property, and with what intent
+GIVETH A BOOLEAN
+DECIDE `offence under s 403` f IF
+        `dishonestly misappropriates or converts to his own use` f
+   ...  f's `movable property`
+
+§§ `s 404 - dishonest misappropriation of property possessed by a deceased person at the time of his death`
+
+{{TEXT:404}}
+{{P:404}}
+
+{{P:404, clerk or servant}}
+
+@export Whether the accused has committed an offence punishable under section 404 of the Penal Code 1871 (dishonest misappropriation of property possessed by a deceased person at the time of his death)
+GIVEN f IS A `Misappropriation Facts` @desc What the accused did with the deceased's property, and what the accused knew
+GIVETH A BOOLEAN
+DECIDE `offence under s 404` f IF
+        `dishonestly misappropriates or converts to his own use` f
+   ...  "property,"
+   ...  f's `knowing that such property was in the possession of a deceased person at the time of that person's decease`
+   ...  ", and"
+   ...  f's `has not since been in the possession of any person legally entitled to such possession`
+
+§§ `The misappropriation charges`
+
+GIVEN f IS A `Misappropriation Facts`
+GIVETH A STRING
+`what the accused did with it` f MEANS
+    `joined with` " and " (concat (LIST
+        (`included if` (f's misappropriates) "misappropriate"),
+        (`included if` (f's `converts to his own use`) "convert to your own use")))
+
+GIVEN f IS A `Misappropriation Facts`
+GIVETH A STRING
+`the recital of the misappropriation` f MEANS
+    CONCAT "did dishonestly ", (`what the accused did with it` f), " movable property, to wit, ", f's `the property`
+
+GIVEN f IS A `Misappropriation Facts`
+GIVETH A LIST OF STRING
+`elements of misappropriation not made out` f MEANS
+    concat (LIST
+        (`missing unless` (f's dishonestly) "dishonestly (section 24)"),
+        (`missing unless` (f's misappropriates OR f's `converts to his own use`) "misappropriates or converts to his own use"))
+
+@export Frame a charge under section 403 of the Penal Code 1871 (dishonest misappropriation of property), or say why none can be framed
+GIVEN f IS A `Misappropriation Facts` @desc The misappropriation, and the particulars of the charge
+GIVETH A Charge
+`charge under s 403` f MEANS
+    `frame the charge` (f's particulars) "403" "dishonest misappropriation of property"
+        (`punishment prescribed by s 403`'s words)
+        (`offence under s 403` f)
+        (`the recital of the misappropriation` f)
+        (concat (LIST (`elements of misappropriation not made out` f),
+                      (`missing unless` (f's `movable property`) "movable property (section 22)")))
+
+@export Frame a charge under section 404 of the Penal Code 1871 (dishonest misappropriation of property possessed by a deceased person at the time of his death), or say why none can be framed
+GIVEN f IS A `Misappropriation Facts` @desc The misappropriation, the deceased, and the particulars of the charge
+GIVETH A Charge
+`charge under s 404` f MEANS
+    `frame the charge` (f's particulars) "404" "dishonest misappropriation of property possessed by a deceased person at the time of his death"
+        (IF f's `employed by him as a clerk or servant at the time of such person's decease`
+         THEN `punishment prescribed by s 404, clerk or servant`'s words
+         ELSE `punishment prescribed by s 404`'s words)
+        (`offence under s 404` f)
+        (CONCAT "did dishonestly ", (`what the accused did with it` f), " property, to wit, ", f's `the property`,
+                ", knowing that the said property was in the possession of ", f's `the deceased`,
+                " at the time of the decease of the said ", f's `the deceased`,
+                ", and had not since been in the possession of any person legally entitled to such possession",
+                (IF f's `employed by him as a clerk or servant at the time of such person's decease` THEN ", you being at the time of the said decease employed by the deceased as a clerk or servant" ELSE ""))
+        (concat (LIST (`elements of misappropriation not made out` f),
+                      (`missing unless` (f's `knowing that such property was in the possession of a deceased person at the time of that person's decease`) "knowing that such property was in the possession of a deceased person at the time of that person's decease"),
+                      (`missing unless` (f's `has not since been in the possession of any person legally entitled to such possession`) "and has not since been in the possession of any person legally entitled to such possession")))
+
+§ `Chapter 17 - Offences against property: criminal breach of trust`
+
+§§ `The facts of one entrustment`
+
+@ref Penal Code 1871 ss 405-409 - the operative atoms, and the particulars CPC ss 124 and 125 require
+DECLARE `CBT Facts` HAS
+    particulars           IS A Particulars @desc Who is charged, and when and where the offence was committed
+    `entrusted by`        IS A STRING  @desc The person or body that entrusted the property to the accused, as it is to read after "being entrusted by"; leave blank if the charge does not name them
+    property              IS A STRING  @desc What the accused was entrusted with, as it is to read after "namely," - for example "a sum of $5,000"
+    `property, in short`  IS A STRING  @desc A short back-reference to the same property, as it is to read after "the said"; leave blank to repeat the property in full
+    `purpose of the entrustment`
+                          IS A STRING  @desc What the accused was entrusted with the property for, as it is to read after the property; leave blank if not needed
+
+    -- s 405
+    `entrusted with property`
+                          IS A BOOLEAN @desc Was the accused in any manner entrusted with property?
+    `entrusted with dominion over property`
+                          IS A BOOLEAN @desc Was the accused in any manner entrusted with dominion over property?
+    dishonestly           IS A BOOLEAN @desc Did the accused act dishonestly (s 24)? Illustration (d): an agent who departs from instructions in good faith, believing it to be to the principal's advantage, is not dishonest.
+    `misappropriates that property`
+                          IS A BOOLEAN @desc Did the accused misappropriate THAT property - the property entrusted?
+    `converts that property to his own use`
+                          IS A BOOLEAN @desc Did the accused convert THAT property to his own use?
+    `uses that property`  IS A BOOLEAN @desc Did the accused use that property?
+    `disposes of that property`
+                          IS A BOOLEAN @desc Did the accused dispose of that property?
+    `any direction of law prescribing the mode in which such trust is to be discharged`
+                          IS A BOOLEAN @desc Was the use or disposal in violation of a direction of law prescribing how the trust is to be discharged? Illustration (a): an executor bound to divide the effects according to the will.
+    `any legal contract, express or implied, which he has made touching the discharge of such trust`
+                          IS A BOOLEAN @desc Was the use or disposal in violation of a legal contract, express or implied, that the accused made touching the discharge of the trust? Illustration (c): the agent's contract to invest as directed.
+    `intentionally suffers any other person to do so`
+                          IS A BOOLEAN @desc Did the accused intentionally allow another person to misappropriate, convert, use or dispose of the property in that way?
+
+    -- s 407
+    `entrusted with property for the purpose of transportation for hire or storage for rent or charge`
+                          IS A BOOLEAN @desc Was the property entrusted to the accused for the purpose of transportation for hire, or storage for rent or charge? The Illustration: a carrier, a warehouse owner or operator.
+
+    -- s 408
+    `being an employee`   IS A BOOLEAN @desc Was the accused an employee - including a person engaged in a capacity with the same fundamental qualities as an employee, paid or not (s 408(2))?
+    `entrusted in such capacity`
+                          IS A BOOLEAN @desc Was the property, or dominion over it, entrusted to the accused in that capacity as employee?
+
+    -- s 409(1)(a)-(h)
+    `in his capacity as a public servant`
+                          IS A BOOLEAN @desc (a) Was the entrustment in the accused's capacity as a public servant (s 21, pc-general)?
+    `in the way of his trade, profession or business as a banker, a merchant, a factor, a broker, an attorney or an agent`
+                          IS A BOOLEAN @desc (b) ... in the way of the accused's trade, profession or business as a banker, merchant, factor, broker, attorney or agent?
+    `in his professional capacity`
+                          IS A BOOLEAN @desc (c) ... in the accused's professional capacity (other than by way of a trade, profession or business in (b))?
+    `in his capacity as a director of a corporation`
+                          IS A BOOLEAN @desc (d) ... in the accused's capacity as a director of a corporation? "Director" includes a de facto or shadow director, an alternate or substitute, and a member of a member-managed corporation (s 409(2)); paid or not (s 409(3)(a)).
+    `in his capacity as an officer of an unincorporated association`
+                          IS A BOOLEAN @desc (e) ... as an officer (president, secretary, committee member, or analogous, directing or purporting) of an unincorporated association (s 409(2))?
+    `in his capacity as a partner in a partnership`
+                          IS A BOOLEAN @desc (f) ... as a partner (including one purporting to act as a partner) in a partnership, including a limited partnership or limited liability partnership (s 409(2))?
+    `in his capacity as a key executive of a corporation, an unincorporated association or a partnership`
+                          IS A BOOLEAN @desc (g) ... as a key executive - a person with general control and management of its administration, employee or not (s 409(2))?
+    `in his capacity as a fiduciary`
+                          IS A BOOLEAN @desc (h) ... as a fiduciary - a person who has undertaken to act for another in circumstances giving rise to a relationship of trust, confidence and loyalty, including an executor, administrator, liquidator, receiver and trustee (other than of an implied, constructive or resulting trust), even if a contract says no fiduciary relationship arises (s 409(2), (3)(b))?
+
+§§ `s 405 - criminal breach of trust`
+
+{{TEXT:405}}
+@export Whether the accused "commits criminal breach of trust" within section 405 of the Penal Code 1871
+GIVEN f IS A `CBT Facts` @desc The entrustment, and what became of the property entrusted
+GIVETH A BOOLEAN
+DECIDE `commits criminal breach of trust` f IF
+        "Whoever, being in any manner"
+   ...  (    f's `entrusted with property`
+        OR   f's `entrusted with dominion over property` )
+   ...  (    (    f's dishonestly
+             AND  (    f's `misappropriates that property`
+                  OR   f's `converts that property to his own use` ) )
+        OR   (    f's dishonestly
+             AND  (    f's `uses that property`
+                  OR   f's `disposes of that property` )
+             AND  "in violation of"
+             AND  (    f's `any direction of law prescribing the mode in which such trust is to be discharged`
+                  OR   f's `any legal contract, express or implied, which he has made touching the discharge of such trust` ) )
+        OR   f's `intentionally suffers any other person to do so` )
+   ...  ", commits criminal breach of trust"
+
+§§ `s 406 - punishment of criminal breach of trust`
+
+{{TEXT:406}}
+{{P:406}}
+
+@export Whether the accused has committed an offence punishable under section 406 of the Penal Code 1871 (criminal breach of trust)
+GIVEN f IS A `CBT Facts` @desc The entrustment, and what became of the property entrusted
+GIVETH A BOOLEAN
+DECIDE `offence under s 406` f IF
+        "Whoever"
+   ...  `commits criminal breach of trust` f
+
+§§ `s 407 - criminal breach of trust of property entrusted for purposes of transportation or storage`
+
+{{TEXT:407}}
+{{P:407}}
+
+@export Whether the accused has committed an offence punishable under section 407 of the Penal Code 1871 (criminal breach of trust of property entrusted for purposes of transportation or storage)
+GIVEN f IS A `CBT Facts` @desc The entrustment, its purpose, and what became of the property
+GIVETH A BOOLEAN
+DECIDE `offence under s 407` f IF
+        "Whoever, being"
+   ...  f's `entrusted with property for the purpose of transportation for hire or storage for rent or charge`
+   ...  `commits criminal breach of trust` f
+   ...  "in respect of such property"
+
+§§ `s 408 - criminal breach of trust by employees`
+
+{{TEXT:408}}
+{{P:408}}
+
+@export Whether the accused has committed an offence punishable under section 408 of the Penal Code 1871 (criminal breach of trust by employees)
+GIVEN f IS A `CBT Facts` @desc The entrustment, the accused's employment, and what became of the property
+GIVETH A BOOLEAN
+DECIDE `offence under s 408` f IF
+        "(1) Whoever,"
+   ...  f's `being an employee`
+   ...  ", and being in any manner"
+   ...  f's `entrusted in such capacity`
+   ...  `commits criminal breach of trust` f
+   ...  "in respect of that property"
+
+§§ `s 409 - criminal breach of trust by public servant, or by banker, merchant, agent, director, officer, partner, key executive or fiduciary`
+
+{{TEXT:409}}
+{{P:409}}
+
+@export Whether the property was entrusted to the accused in one of the capacities in section 409(1)(a) to (h) of the Penal Code 1871
+GIVEN f IS A `CBT Facts` @desc The capacity in which the property was entrusted
+GIVETH A BOOLEAN
+DECIDE `entrusted in a capacity within section 409(1)` f IF
+        f's `in his capacity as a public servant`
+   OR   f's `in the way of his trade, profession or business as a banker, a merchant, a factor, a broker, an attorney or an agent`
+   OR   f's `in his professional capacity`
+   OR   f's `in his capacity as a director of a corporation`
+   OR   f's `in his capacity as an officer of an unincorporated association`
+   OR   f's `in his capacity as a partner in a partnership`
+   OR   f's `in his capacity as a key executive of a corporation, an unincorporated association or a partnership`
+   OR   f's `in his capacity as a fiduciary`
+
+@export Whether the accused has committed an offence punishable under section 409 of the Penal Code 1871 (criminal breach of trust by public servant, banker, merchant, agent, director, officer, partner, key executive or fiduciary)
+GIVEN f IS A `CBT Facts` @desc The entrustment, the capacity, and what became of the property
+GIVETH A BOOLEAN
+DECIDE `offence under s 409` f IF
+        "(1) Whoever, being in any manner entrusted with property, or with any dominion over property -"
+   ...  `entrusted in a capacity within section 409(1)` f
+   ...  `commits criminal breach of trust` f
+   ...  "in respect of that property"
+
+§§ `The criminal breach of trust charges`
+
+GIVEN f IS A `CBT Facts`
+GIVETH A STRING
+`by whom entrusted` f MEANS
+    IF   f's `entrusted by` EQUALS ""
+    THEN ""
+    ELSE CONCAT " by ", f's `entrusted by`
+
+GIVEN f IS A `CBT Facts`
+GIVETH A STRING
+`what the accused was entrusted with` f MEANS
+    `joined with` " and " (concat (LIST
+        (`included if` (f's `entrusted with property`) "property"),
+        (`included if` (f's `entrusted with dominion over property`) "dominion over property")))
+
+GIVEN f IS A `CBT Facts`
+GIVETH A STRING
+`the property, in short` f MEANS
+    IF   f's `property, in short` EQUALS ""
+    THEN f's property
+    ELSE f's `property, in short`
+
+GIVEN f IS A `CBT Facts`
+GIVETH A BOOLEAN
+`the first or second limb is made out` f MEANS
+        f's dishonestly
+    AND (    f's `misappropriates that property`
+         OR  f's `converts that property to his own use`
+         OR  (    (f's `uses that property` OR f's `disposes of that property`)
+              AND (    f's `any direction of law prescribing the mode in which such trust is to be discharged`
+                   OR  f's `any legal contract, express or implied, which he has made touching the discharge of such trust`)))
+
+GIVEN f IS A `CBT Facts`
+GIVETH A STRING
+`what the accused did with it` f MEANS
+    `joined with` ", and " (concat (LIST
+        (`included if` (f's `misappropriates that property`) "misappropriate"),
+        (`included if` (f's `converts that property to his own use`) "convert to your own use"),
+        (`included if` (f's `uses that property`) "use"),
+        (`included if` (f's `disposes of that property`) "dispose of")))
+
+GIVEN f IS A `CBT Facts`
+GIVETH A STRING
+`in violation of what` f MEANS
+    IF   f's `any direction of law prescribing the mode in which such trust is to be discharged`
+      OR f's `any legal contract, express or implied, which he has made touching the discharge of such trust`
+    THEN " in violation of " APPEND (`joined with` ", or of " (concat (LIST
+             (`included if` (f's `any direction of law prescribing the mode in which such trust is to be discharged`) "a direction of law prescribing the mode in which the said trust was to be discharged"),
+             (`included if` (f's `any legal contract, express or implied, which he has made touching the discharge of such trust`) "a legal contract, express or implied, which you had made touching the discharge of the said trust"))))
+    ELSE ""
+
+-- CPC s 125: breach of trust is recited with its manner.
+GIVEN f IS A `CBT Facts`
+GIVETH A STRING
+`the manner of the breach of trust` f MEANS
+    CONCAT "being entrusted", (`by whom entrusted` f), " with ", (`what the accused was entrusted with` f),
+           ", namely, ", f's property,
+           (IF f's `purpose of the entrustment` EQUALS "" THEN "" ELSE " " APPEND f's `purpose of the entrustment`),
+           ", did ",
+           (`joined with` ", and did " (concat (LIST
+               (`included if` (`the first or second limb is made out` f)
+                   (CONCAT "dishonestly ", (`what the accused did with it` f), " the said ", (`the property, in short` f), (`in violation of what` f))),
+               (`included if` (f's `intentionally suffers any other person to do so`)
+                   (CONCAT "intentionally suffer another person so to do in respect of the said ", (`the property, in short` f))))))
+
+GIVEN f IS A `CBT Facts`
+GIVETH A LIST OF STRING
+`elements of criminal breach of trust not made out` f MEANS
+    concat (LIST
+        (`missing unless` (f's `entrusted with property` OR f's `entrusted with dominion over property`) "being in any manner entrusted with property, or with any dominion over property"),
+        (`missing unless` ((`the first or second limb is made out` f) OR f's `intentionally suffers any other person to do so`) "dishonestly misappropriates or converts to his own use that property, or dishonestly uses or disposes of that property in violation of a direction of law or a legal contract, or intentionally suffers any other person to do so"))
+
+@export Frame a charge under section 406 of the Penal Code 1871 (criminal breach of trust), or say why none can be framed
+GIVEN f IS A `CBT Facts` @desc The entrustment, what became of the property, and the particulars of the charge
+GIVETH A Charge
+`charge under s 406` f MEANS
+    `frame the charge` (f's particulars) "406" "criminal breach of trust"
+        (`punishment prescribed by s 406`'s words)
+        (`offence under s 406` f)
+        (`the manner of the breach of trust` f)
+        (`elements of criminal breach of trust not made out` f)
+
+@export Frame a charge under section 407 of the Penal Code 1871 (criminal breach of trust of property entrusted for purposes of transportation or storage), or say why none can be framed
+GIVEN f IS A `CBT Facts` @desc The entrustment, its purpose, and the particulars of the charge
+GIVETH A Charge
+`charge under s 407` f MEANS
+    `frame the charge` (f's particulars) "407" "criminal breach of trust of property entrusted for purposes of transportation or storage"
+        (`punishment prescribed by s 407`'s words)
+        (`offence under s 407` f)
+        (CONCAT "being entrusted with property for the purpose of transportation for hire or storage for rent or charge, and ", (`the manner of the breach of trust` f))
+        (concat (LIST (`missing unless` (f's `entrusted with property for the purpose of transportation for hire or storage for rent or charge`) "being entrusted with property for the purpose of transportation for hire or storage for rent or charge"),
+                      (`elements of criminal breach of trust not made out` f)))
+
+@export Frame a charge under section 408 of the Penal Code 1871 (criminal breach of trust by employees), or say why none can be framed
+GIVEN f IS A `CBT Facts` @desc The entrustment, the employment, and the particulars of the charge
+GIVETH A Charge
+`charge under s 408` f MEANS
+    `frame the charge` (f's particulars) "408" "criminal breach of trust by employee"
+        (`punishment prescribed by s 408`'s words)
+        (`offence under s 408` f)
+        (CONCAT "being an employee, and in such capacity ", (`the manner of the breach of trust` f))
+        (concat (LIST (`missing unless` (f's `being an employee`) "being an employee (section 408(2))"),
+                      (`missing unless` (f's `entrusted in such capacity`) "being in any manner entrusted in such capacity"),
+                      (`elements of criminal breach of trust not made out` f)))
+
+GIVEN f IS A `CBT Facts`
+GIVETH A STRING
+`the capacity within section 409(1)` f MEANS
+    `joined with` ", and " (concat (LIST
+        (`included if` (f's `in his capacity as a public servant`) "in your capacity as a public servant"),
+        (`included if` (f's `in the way of his trade, profession or business as a banker, a merchant, a factor, a broker, an attorney or an agent`) "in the way of your business as a banker, merchant, factor, broker, attorney or agent"),
+        (`included if` (f's `in his professional capacity`) "in your professional capacity"),
+        (`included if` (f's `in his capacity as a director of a corporation`) "in your capacity as a director of a corporation"),
+        (`included if` (f's `in his capacity as an officer of an unincorporated association`) "in your capacity as an officer of an unincorporated association"),
+        (`included if` (f's `in his capacity as a partner in a partnership`) "in your capacity as a partner in a partnership"),
+        (`included if` (f's `in his capacity as a key executive of a corporation, an unincorporated association or a partnership`) "in your capacity as a key executive"),
+        (`included if` (f's `in his capacity as a fiduciary`) "in your capacity as a fiduciary")))
+
+@export Frame a charge under section 409 of the Penal Code 1871 (criminal breach of trust by public servant, banker, merchant, agent, director, officer, partner, key executive or fiduciary), or say why none can be framed
+GIVEN f IS A `CBT Facts` @desc The entrustment, the capacity, and the particulars of the charge
+GIVETH A Charge
+`charge under s 409` f MEANS
+    `frame the charge` (f's particulars) "409" "criminal breach of trust by public servant, or by banker, merchant, agent, director, officer, partner, key executive or fiduciary"
+        (`punishment prescribed by s 409`'s words)
+        (`offence under s 409` f)
+        (CONCAT (`the capacity within section 409(1)` f), ", ", (`the manner of the breach of trust` f))
+        (concat (LIST (`missing unless` (`entrusted in a capacity within section 409(1)` f) "entrusted in one of the capacities in section 409(1)(a) to (h)"),
+                      (`elements of criminal breach of trust not made out` f)))
+
+§ `Chapter 17 - Offences against property: receiving stolen property`
+
+§§ `The facts of one receipt`
+
+@ref Penal Code 1871 ss 410-414 - the operative atoms, and the particulars CPC s 124 requires
+DECLARE `Stolen Property Facts` HAS
+    particulars           IS A Particulars @desc Who is charged, and when and where the offence was committed
+    `the property`        IS A STRING  @desc The property, as it is to read after "to wit," - for example "one Samsung handphone"
+    `from whom`           IS A STRING  @desc From whom the property was received or with whom it was dealt, if the charge names them; leave blank if not
+
+    -- s 410(1): how the property became stolen property
+    `transferred by theft, extortion or robbery`
+                          IS A BOOLEAN @desc Has possession of the property been transferred by theft, extortion or robbery (ss 378, 383, 390), in or outside Singapore?
+    `criminally misappropriated`
+                          IS A BOOLEAN @desc Has the property been criminally misappropriated (ss 403-404), in or outside Singapore?
+    `criminal breach of trust or cheating has been committed in respect of it`
+                          IS A BOOLEAN @desc Has criminal breach of trust (s 405) or cheating (s 415) been committed in respect of the property, in or outside Singapore?
+    `converted or exchanged from stolen property`
+                          IS A BOOLEAN @desc Is it property into or for which stolen property has been converted or exchanged, or anything acquired by such conversion or exchange, immediately or otherwise (s 410(2))?
+    `subsequently came into the possession of a person legally entitled to the possession thereof`
+                          IS A BOOLEAN @desc Has the property since come into the possession of a person legally entitled to possess it? If so it ceases to be stolen property (s 410(1)). The prosecution need not prove the elements of the original offence (Explanation).
+
+    -- s 411(1), 413, 414(1): "or property obtained in whole or in part through an offence involving fraud or dishonesty"
+    `obtained in whole or in part through an offence involving fraud or dishonesty`
+                          IS A BOOLEAN @desc Was the property obtained, in whole or part, through an offence involving fraud or dishonesty? (ss 411, 413, 414)
+
+    -- the accused's act
+    receives              IS A BOOLEAN @desc Did the accused receive the property? (ss 411, 412)
+    retains               IS A BOOLEAN @desc Did the accused retain the property? (ss 411, 412)
+    knowing               IS A BOOLEAN @desc Did the accused know the property to be stolen property, or so obtained? (fault element, s 26D)
+    `having reason to believe`
+                          IS A BOOLEAN @desc Did the accused have reason to believe it (s 26)?
+
+    -- s 411(2), 414(2)
+    `a motor vehicle or any component part of a motor vehicle`
+                          IS A BOOLEAN @desc Is the property a motor vehicle, or a component part of one, as defined in s 379A(3)?
+
+    -- s 411(3), 412(2)
+    `he has a reasonable excuse to receive or retain the property`
+                          IS A BOOLEAN @desc Has the accused proved a reasonable excuse to receive or retain the property? (defence, s 411(3), s 412(2); the burden is on the accused)
+    `he exercised reasonable care as soon as practicable after having the knowledge or reason to believe`
+                          IS A BOOLEAN @desc Has the accused proved that he exercised reasonable care as soon as practicable after having that knowledge or reason to believe? (defence, s 411(3), s 412(2)) The illustrations: reporting the funds to the bank; keeping the jewels in the safe and reporting to the police.
+
+    -- s 412
+    `transferred by the commission of gang-robbery`
+                          IS A BOOLEAN @desc Did the accused know or have reason to believe that possession of the property was transferred by gang-robbery (s 391)? (s 412, first limb)
+    `receives from a person he knows or has reason to believe to belong or to have belonged to gang-robbers`
+                          IS A BOOLEAN @desc Did the accused receive the property from a person he knew or had reason to believe to belong or have belonged to gang-robbers? (s 412, second limb)
+    `which he knows or has reason to believe to have been stolen`
+                          IS A BOOLEAN @desc ... property which he knew or had reason to believe to have been stolen? (s 412, second limb)
+
+    -- s 413
+    `habitually receives or deals in`
+                          IS A BOOLEAN @desc Did the accused habitually receive or deal in such property? (s 413)
+
+    -- s 414
+    `voluntarily assists in concealing or disposing of or making away with`
+                          IS A BOOLEAN @desc Did the accused voluntarily (s 26A) assist in concealing, disposing of or making away with the property? (s 414)
+
+§§ `s 410 - stolen property`
+
+{{TEXT:410}}
+@export Whether property is "stolen property" within section 410 of the Penal Code 1871
+GIVEN f IS A `Stolen Property Facts` @desc How the property came to be where it is
+GIVETH A BOOLEAN
+DECIDE `stolen property within section 410` f IF
+        "(1) Property"
+   ...  (    f's `transferred by theft, extortion or robbery`
+        OR   f's `criminally misappropriated`
+        OR   f's `criminal breach of trust or cheating has been committed in respect of it`
+        OR   "(2) includes"
+             AND f's `converted or exchanged from stolen property` )
+   ...  "is designated as stolen property ... But if such property"
+   ...  NOT f's `subsequently came into the possession of a person legally entitled to the possession thereof`
+
+GIVEN f IS A `Stolen Property Facts`
+GIVETH A BOOLEAN
+`stolen property or property obtained through an offence involving fraud or dishonesty` f MEANS
+        `stolen property within section 410` f
+    OR  f's `obtained in whole or in part through an offence involving fraud or dishonesty`
+
+§§ `s 411 - receiving stolen property`
+
+{{TEXT:411}}
+{{P:411(1)}}
+
+{{P:411(2)}}
+
+@export Whether the defence in section 411(3) (or 412(2)) of the Penal Code 1871 is made out - a reasonable excuse, and reasonable care as soon as practicable
+GIVEN f IS A `Stolen Property Facts` @desc What the accused did once he knew or had reason to believe
+GIVETH A BOOLEAN
+DECIDE `defence under s 411(3)` f IF
+        "It is a defence ... to prove that"
+   ...  f's `he has a reasonable excuse to receive or retain the property`
+   ...  "and that"
+   ...  f's `he exercised reasonable care as soon as practicable after having the knowledge or reason to believe`
+
+@export Whether the accused has committed an offence punishable under section 411(1) of the Penal Code 1871 (receiving stolen property)
+GIVEN f IS A `Stolen Property Facts` @desc The receipt, and what the accused knew
+GIVETH A BOOLEAN
+DECIDE `offence under s 411(1)` f IF
+        "(1) Whoever"
+   ...  (    f's receives
+        OR   f's retains )
+   ...  "any property,"
+   ...  (    f's knowing
+        OR   f's `having reason to believe` )
+   ...  "the property to be"
+   ...  `stolen property or property obtained through an offence involving fraud or dishonesty` f
+   ...  "(3)"
+   ...  NOT `defence under s 411(3)` f
+
+@export Whether the accused has committed an offence punishable under section 411(2) of the Penal Code 1871 (receiving a stolen motor vehicle or component part)
+GIVEN f IS A `Stolen Property Facts` @desc The receipt, what was received, and what the accused knew
+GIVETH A BOOLEAN
+DECIDE `offence under s 411(2)` f IF
+        `offence under s 411(1)` f
+   ...  "(2) If the stolen property is"
+   ...  f's `a motor vehicle or any component part of a motor vehicle`
+
+§§ `s 412 - receiving property stolen in the commission of a gang-robbery`
+
+{{TEXT:412}}
+{{P:412}}
+
+@export Whether the accused has committed an offence punishable under section 412 of the Penal Code 1871 (receiving property stolen in the commission of a gang-robbery)
+GIVEN f IS A `Stolen Property Facts` @desc The receipt, and what the accused knew of its source
+GIVETH A BOOLEAN
+DECIDE `offence under s 412` f IF
+        "(1) Whoever"
+   ...  (    (    (    f's receives
+                  OR   f's retains )
+             AND  `stolen property within section 410` f
+             AND  f's `transferred by the commission of gang-robbery` )
+        OR   (    f's receives
+             AND  f's `receives from a person he knows or has reason to believe to belong or to have belonged to gang-robbers`
+             AND  f's `which he knows or has reason to believe to have been stolen` ) )
+   ...  "(2)"
+   ...  NOT `defence under s 411(3)` f
+
+§§ `s 413 - habitually dealing in stolen property`
+
+{{TEXT:413}}
+{{P:413}}
+
+@export Whether the accused has committed an offence punishable under section 413 of the Penal Code 1871 (habitually dealing in stolen property)
+GIVEN f IS A `Stolen Property Facts` @desc The dealing, and what the accused knew
+GIVETH A BOOLEAN
+DECIDE `offence under s 413` f IF
+        "Whoever"
+   ...  f's `habitually receives or deals in`
+   ...  "property which he"
+   ...  (    f's knowing
+        OR   f's `having reason to believe` )
+   ...  "to be"
+   ...  `stolen property or property obtained through an offence involving fraud or dishonesty` f
+
+§§ `s 414 - assisting in concealment or disposal of stolen property`
+
+{{TEXT:414}}
+{{P:414(1)}}
+
+{{P:414(2)}}
+
+@export Whether the accused has committed an offence punishable under section 414(1) of the Penal Code 1871 (assisting in concealment or disposal of stolen property)
+GIVEN f IS A `Stolen Property Facts` @desc The assistance, and what the accused knew
+GIVETH A BOOLEAN
+DECIDE `offence under s 414(1)` f IF
+        "(1) Whoever"
+   ...  f's `voluntarily assists in concealing or disposing of or making away with`
+   ...  "property which he"
+   ...  (    f's knowing
+        OR   f's `having reason to believe` )
+   ...  "to be"
+   ...  `stolen property or property obtained through an offence involving fraud or dishonesty` f
+
+@export Whether the accused has committed an offence punishable under section 414(2) of the Penal Code 1871 (assisting in concealment or disposal of a stolen motor vehicle or component part)
+GIVEN f IS A `Stolen Property Facts` @desc The assistance, what the property was, and what the accused knew
+GIVETH A BOOLEAN
+DECIDE `offence under s 414(2)` f IF
+        `offence under s 414(1)` f
+   ...  "(2) If the property ... is"
+   ...  f's `a motor vehicle or any component part of a motor vehicle`
+
+§§ `The stolen property charges`
+
+GIVEN f IS A `Stolen Property Facts`
+GIVETH A STRING
+`knowing or having reason to believe` f MEANS
+    IF f's knowing THEN "knowing" ELSE "having reason to believe"
+
+GIVEN f IS A `Stolen Property Facts`
+GIVETH A STRING
+`what the property was believed to be` f MEANS
+    IF   `stolen property within section 410` f
+    THEN "stolen property"
+    ELSE "property obtained in whole or in part through an offence involving fraud or dishonesty"
+
+GIVEN f IS A `Stolen Property Facts`
+GIVETH A STRING
+`from whom, recited` f MEANS
+    IF f's `from whom` EQUALS "" THEN "" ELSE CONCAT " from ", f's `from whom`
+
+GIVEN f IS A `Stolen Property Facts`
+GIVETH A STRING
+`the recital of the receipt` f MEANS
+    CONCAT "did dishonestly ",
+           (`joined with` " and " (concat (LIST (`included if` (f's receives) "receive"), (`included if` (f's retains) "retain")))),
+           " property, to wit, ", f's `the property`, (`from whom, recited` f), ", ",
+           (`knowing or having reason to believe` f), " the same to be ", (`what the property was believed to be` f)
+
+GIVEN f IS A `Stolen Property Facts`
+GIVETH A LIST OF STRING
+`elements of receiving not made out` f MEANS
+    concat (LIST
+        (`missing unless` (f's receives OR f's retains) "receives or retains any property"),
+        (`missing unless` (f's knowing OR f's `having reason to believe`) "knowing or having reason to believe"),
+        (`missing unless` (`stolen property or property obtained through an offence involving fraud or dishonesty` f) "the property to be stolen property (section 410) or property obtained in whole or in part through an offence involving fraud or dishonesty"),
+        (`missing unless` (NOT `defence under s 411(3)` f) "no reasonable excuse with reasonable care proved (section 411(3))"))
+
+@export Frame a charge under section 411(1) of the Penal Code 1871 (receiving stolen property), or say why none can be framed
+GIVEN f IS A `Stolen Property Facts` @desc The receipt, and the particulars of the charge
+GIVETH A Charge
+`charge under s 411(1)` f MEANS
+    `frame the charge` (f's particulars) "411(1)" "receiving stolen property"
+        (`punishment prescribed by s 411(1)`'s words)
+        (`offence under s 411(1)` f)
+        (`the recital of the receipt` f)
+        (`elements of receiving not made out` f)
+
+@export Frame a charge under section 411(2) of the Penal Code 1871 (receiving a stolen motor vehicle or component part), or say why none can be framed
+GIVEN f IS A `Stolen Property Facts` @desc The receipt, and the particulars of the charge
+GIVETH A Charge
+`charge under s 411(2)` f MEANS
+    `frame the charge` (f's particulars) "411(2)" "receiving stolen property, being a motor vehicle or component part of a motor vehicle"
+        (`punishment prescribed by s 411(2)`'s words)
+        (`offence under s 411(2)` f)
+        (CONCAT (`the recital of the receipt` f), ", the said property being a motor vehicle or a component part of a motor vehicle")
+        (concat (LIST (`elements of receiving not made out` f),
+                      (`missing unless` (f's `a motor vehicle or any component part of a motor vehicle`) "a motor vehicle or any component part of a motor vehicle as defined in section 379A(3)")))
+
+@export Frame a charge under section 412 of the Penal Code 1871 (receiving property stolen in the commission of a gang-robbery), or say why none can be framed
+GIVEN f IS A `Stolen Property Facts` @desc The receipt, and the particulars of the charge
+GIVETH A Charge
+`charge under s 412` f MEANS
+    `frame the charge` (f's particulars) "412" "receiving property stolen in the commission of a gang-robbery"
+        (`punishment prescribed by s 412`'s words)
+        (`offence under s 412` f)
+        (IF f's `transferred by the commission of gang-robbery`
+         THEN CONCAT "did dishonestly receive or retain stolen property, to wit, ", f's `the property`, (`from whom, recited` f), ", ", (`knowing or having reason to believe` f), " that the possession thereof had been transferred by the commission of gang-robbery"
+         ELSE CONCAT "did receive from ", f's `from whom`, ", whom you knew or had reason to believe to belong or to have belonged to gang-robbers, property, to wit, ", f's `the property`, ", which you knew or had reason to believe to have been stolen")
+        (concat (LIST
+            (`missing unless` ((f's receives OR f's retains) AND (f's `transferred by the commission of gang-robbery` OR f's `receives from a person he knows or has reason to believe to belong or to have belonged to gang-robbers`))
+                "receives or retains stolen property known or believed to have been transferred by gang-robbery, or receives from a person known or believed to be a gang-robber property known or believed to have been stolen"),
+            (`missing unless` (`offence under s 412` f) "the elements of section 412(1) taken together, with no defence under section 412(2)")))
+
+@export Frame a charge under section 413 of the Penal Code 1871 (habitually dealing in stolen property), or say why none can be framed
+GIVEN f IS A `Stolen Property Facts` @desc The dealing, and the particulars of the charge
+GIVETH A Charge
+`charge under s 413` f MEANS
+    `frame the charge` (f's particulars) "413" "habitually dealing in stolen property"
+        (`punishment prescribed by s 413`'s words)
+        (`offence under s 413` f)
+        (CONCAT "did habitually receive or deal in property, to wit, ", f's `the property`, ", ", (`knowing or having reason to believe` f), " the same to be ", (`what the property was believed to be` f))
+        (concat (LIST
+            (`missing unless` (f's `habitually receives or deals in`) "habitually receives or deals in property"),
+            (`missing unless` (f's knowing OR f's `having reason to believe`) "which he knows or has reason to believe"),
+            (`missing unless` (`stolen property or property obtained through an offence involving fraud or dishonesty` f) "to be stolen property or property obtained through an offence involving fraud or dishonesty")))
+
+GIVEN f IS A `Stolen Property Facts`
+GIVETH A STRING
+`the recital of the assistance` f MEANS
+    CONCAT "did voluntarily assist in concealing or disposing of or making away with property, to wit, ", f's `the property`,
+           ", ", (`knowing or having reason to believe` f), " the same to be ", (`what the property was believed to be` f)
+
+GIVEN f IS A `Stolen Property Facts`
+GIVETH A LIST OF STRING
+`elements of assisting not made out` f MEANS
+    concat (LIST
+        (`missing unless` (f's `voluntarily assists in concealing or disposing of or making away with`) "voluntarily assists in concealing or disposing of or making away with property"),
+        (`missing unless` (f's knowing OR f's `having reason to believe`) "which he knows or has reason to believe"),
+        (`missing unless` (`stolen property or property obtained through an offence involving fraud or dishonesty` f) "to be stolen property or property obtained through an offence involving fraud or dishonesty"))
+
+@export Frame a charge under section 414(1) of the Penal Code 1871 (assisting in concealment or disposal of stolen property), or say why none can be framed
+GIVEN f IS A `Stolen Property Facts` @desc The assistance, and the particulars of the charge
+GIVETH A Charge
+`charge under s 414(1)` f MEANS
+    `frame the charge` (f's particulars) "414(1)" "assisting in concealment or disposal of stolen property"
+        (`punishment prescribed by s 414(1)`'s words)
+        (`offence under s 414(1)` f)
+        (`the recital of the assistance` f)
+        (`elements of assisting not made out` f)
+
+@export Frame a charge under section 414(2) of the Penal Code 1871 (assisting in concealment or disposal of a stolen motor vehicle or component part), or say why none can be framed
+GIVEN f IS A `Stolen Property Facts` @desc The assistance, and the particulars of the charge
+GIVETH A Charge
+`charge under s 414(2)` f MEANS
+    `frame the charge` (f's particulars) "414(2)" "assisting in concealment or disposal of stolen property, being a motor vehicle or component part of a motor vehicle"
+        (`punishment prescribed by s 414(2)`'s words)
+        (`offence under s 414(2)` f)
+        (CONCAT (`the recital of the assistance` f), ", the said property being a motor vehicle or a component part of a motor vehicle")
+        (concat (LIST (`elements of assisting not made out` f),
+                      (`missing unless` (f's `a motor vehicle or any component part of a motor vehicle`) "a motor vehicle or any component part of a motor vehicle as defined in section 379A(3)")))

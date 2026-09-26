@@ -1,0 +1,965 @@
+-- Singapore Penal Code 1871 - Chapter 16, "Offences affecting life"
+-- (ss 299-311) and "Causing miscarriage; injuries to unborn children;
+-- exposure of infants; and concealment of births" (ss 312-318).
+--
+-- Covers: s 299 (culpable homicide), s 300 with Exceptions 1-7 (murder),
+-- ss 302(1), 302(2), 304(a), 304(b), 304A(a), 304A(b), 305(1)(a)-(c), 306,
+-- 307(1), 307(2), 308, 308B, 312, 313, 317, 318.
+-- Deferred (notes/body-a-coverage.md): ss 301, 304B, 304C, 308A, 310, 311,
+-- 314, 315, 316. s 303 does not exist; s 309 is repealed.
+--
+-- Source: Penal Code 1871, 2020 Revised Edition, SSO current version as at
+-- 09 Sep 2026 (inputs/PC1871.txt).
+--
+-- What a reader must know before reading:
+--
+-- * Murder is culpable homicide (s 299) that meets a limb of s 300 and falls
+--   within none of its Exceptions. The Exceptions are part of s 300 itself,
+--   not general exceptions (PLAN.md §5), so they are in the ladder, each its
+--   own exported rule. An Exception is for the accused to bring himself
+--   within; an unknown Exception leaf is FALSE, so a murder charge frames
+--   unless one is established. That is the Code's burden, not a default.
+-- * s 304A reads `Rash Act Facts`, declared in pc-body-a-hurt.l4 beside
+--   ss 336-338, which punish the same conduct by its lesser results.
+-- * s 301 (transferred description) is a deeming rule with no charge of its
+--   own; the reference row's culpable-homicide-301.l4 encodes it and it is
+--   not repeated here (deferred, F-9).
+
+IMPORT prelude
+IMPORT `pc-domain`
+IMPORT `pc-general`
+IMPORT `pc-body-a-hurt`
+
+§ `Penal Code 1871 - Chapter 16, Offences affecting life (ss 299-311)`
+
+§§ `The facts of one homicide, or attempt`
+
+@ref Penal Code 1871 ss 299, 300, 302, 304, 307, 308 - the operative atoms
+DECLARE `Homicide Facts` HAS
+    particulars IS A Particulars @desc Who is charged, and when and where the offence was committed
+    victim IS A STRING @desc The name of the person killed (or, for ss 307-308, the person whose death was intended), as it is to appear in the charge
+    `victim described as` IS A STRING @desc How the charge describes that person, after the name; leave blank if not needed
+    `the manner` IS A STRING @desc What the accused did, as it is to read after "to wit," - for example "by stabbing the said Z in the chest with a knife"
+    -- s 299
+    `causes death by doing an act` IS A BOOLEAN @desc Did the accused's act cause the victim's death? Accelerating the death of someone already ill is causing it (Explanation 1); so is causing a bodily injury from which death follows although proper treatment might have prevented it (Explanation 2). Killing a child in the womb is not homicide; killing a living child any part of whom has been brought forth may be (Explanation 3).
+    `with the intention of causing death` IS A BOOLEAN @desc Fault element: did the accused do the act intending to cause death? (ss 299, 300(a), 304(a), 307, 308)
+    `with the intention of causing such bodily injury as is likely to cause death` IS A BOOLEAN @desc Fault element: did the accused intend to cause a bodily injury that is likely to cause death? (ss 299, 304(a))
+    `with the knowledge that he is likely by such act to cause death` IS A BOOLEAN @desc Fault element: did the accused know that the act was likely to cause death? (ss 299, 304(b))
+    -- s 300 (b)-(d)
+    `with the intention of causing such bodily injury as the offender knows to be likely to cause the death of the person to whom the harm is caused` IS A BOOLEAN @desc Fault element: did the accused intend a bodily injury he knew to be likely to kill this particular victim - for example because he knew of the victim's disease? (s 300(b), illus (b))
+    `with the intention of causing bodily injury to any person` IS A BOOLEAN @desc Fault element: did the accused intend to cause the bodily injury that was in fact inflicted? (s 300(c))
+    `the bodily injury intended to be inflicted is sufficient in the ordinary course of nature to cause death` IS A BOOLEAN @desc Is that injury sufficient in the ordinary course of nature to cause death? An objective question. (s 300(c))
+    `knows that the act is so imminently dangerous that it must in all probability cause death, or such bodily injury as is likely to cause death` IS A BOOLEAN @desc Fault element: did the accused know the act was so imminently dangerous that it must in all probability cause death or likely-fatal injury? (s 300(d))
+    `commits such act without any excuse for incurring the risk of causing death or such injury` IS A BOOLEAN @desc Did the accused do the act without any excuse for running that risk? (s 300(d))
+    -- s 300 Exception 1
+    `whilst deprived of the power of self-control by grave and sudden provocation` IS A BOOLEAN @desc Was the accused deprived of self-control by grave and sudden provocation? A question of fact: would an ordinary person of the same gender and age, sharing characteristics affecting its gravity, be so deprived (Explanation 1)? Words, gestures or conduct will do (Explanation 2).
+    `causes the death of the person who gave the provocation, or of any other person by mistake or accident` IS A BOOLEAN @desc Was the person killed the one who gave the provocation, or another person killed by mistake or accident? (Exception 1)
+    `the provocation is not sought or voluntarily provoked by the offender as an excuse for killing or doing harm to any person` IS A BOOLEAN @desc Was the provocation NOT sought or voluntarily provoked by the accused as an excuse? (Exception 1 proviso (a))
+    `the offender did not know and had no reason to believe that the provocation was given by anything done in obedience to the law, or by a public servant in the lawful exercise of his powers` IS A BOOLEAN @desc Did the accused neither know nor have reason to believe that the provocation came from something done in obedience to the law or by a public servant lawfully exercising his powers? (Exception 1 proviso (b))
+    `the provocation is not given by anything done in the lawful exercise of the right of private defence` IS A BOOLEAN @desc Was the provocation NOT given by something done in the lawful exercise of the right of private defence? (Exception 1 proviso (c))
+    -- s 300 Exception 2
+    `in the exercise of the right of private defence of person or property, exceeds the power given to him by law` IS A BOOLEAN @desc Was the accused exercising the right of private defence of person or property, and did he exceed the power the law gave him? (Exception 2)
+    `causes the death of the person against whom he is exercising such right of defence` IS A BOOLEAN @desc Was the person killed the one against whom he was defending? (Exception 2)
+    `without premeditation formed prior to the circumstances which gave rise to the act of private defence` IS A BOOLEAN @desc Was there NO intention, formed before the circumstances giving rise to the private defence, to cause death (s 300(a)) or injury of the kind in s 300(b) or (c), or to do an act known to be imminently dangerous (s 300(d))? (Exception 2 Explanation)
+    `without any intention of doing more harm than is necessary for the purpose of such defence` IS A BOOLEAN @desc Did the accused NOT intend more harm than was necessary for the defence? (Exception 2)
+    -- s 300 Exception 3
+    `being a public servant, or aiding a public servant acting for the advancement of public justice, exceeds the powers given to him by law` IS A BOOLEAN @desc Was the accused a public servant (or aiding one acting for the advancement of public justice) who exceeded his legal powers? (Exception 3)
+    `causes death by doing an act which he, in good faith, believes to be lawful and necessary for the due discharge of his duty as such public servant` IS A BOOLEAN @desc Did he cause death by an act he believed in good faith (s 26B) to be lawful and necessary for his duty? (Exception 3)
+    `without ill will towards the person whose death is caused` IS A BOOLEAN @desc Did he act without ill will towards the person killed? (Exception 3)
+    -- s 300 Exception 4
+    `without premeditation formed prior to the circumstances constituting the sudden fight` IS A BOOLEAN @desc Was there NO intention, formed before the sudden fight, of the kind s 300(a)-(d) describes? (Exception 4 Explanation 3)
+    `in a sudden fight` IS A BOOLEAN @desc Was the killing in a sudden fight? A "fight" includes an exchange of blows even if they miss, and a single blow or punch (Explanation 2); a mutual stare is not a fight (illus (a)). It does not matter who gave the provocation or struck first (Explanation 1).
+    `in the heat of passion upon a sudden quarrel` IS A BOOLEAN @desc Was it in the heat of passion upon a sudden quarrel? A quarrel needs no words (Explanation 4).
+    `without the offender having taken undue advantage or acted in a cruel or unusual manner` IS A BOOLEAN @desc Did the accused NOT take undue advantage, and NOT act in a cruel or unusual manner? Kicking a motionless victim is undue advantage (illus (b)). (Exception 4)
+    `the offender did not know and had no reason to believe that the person whose death was caused was acting in obedience to the law, or was a public servant acting in the lawful exercise of his powers` IS A BOOLEAN @desc Did the accused neither know nor have reason to believe that the deceased was acting in obedience to the law, or was a public servant acting lawfully? (Exception 4 proviso)
+    -- s 300 Exception 5
+    `the person whose death is caused is above 18 years of age` IS A BOOLEAN @desc Was the deceased above 18 years of age? (Exception 5; the helper `above 18 years of age` decides it from the age)
+    `suffers death or takes the risk of death with his own consent` IS A BOOLEAN @desc Did the deceased suffer death, or take the risk of it, with his own consent (s 90)? (Exception 5)
+    -- s 300 Exception 6
+    `the offender being a woman voluntarily causes the death of her child` IS A BOOLEAN @desc Is the accused a woman who voluntarily caused the death of her own child? (Exception 6)
+    `the child is below 12 months of age` IS A BOOLEAN @desc Was the child below 12 months of age? (Exception 6)
+    `the balance of her mind was disturbed by reason of her not having fully recovered from the effect of giving birth to the child or by reason of the effect of lactation` IS A BOOLEAN @desc At the time, was the balance of her mind disturbed because she had not fully recovered from giving birth to the child, or by the effect of lactation? (Exception 6)
+    -- s 300 Exception 7
+    `suffering from such abnormality of mind as substantially impaired his capacity to know the nature of the acts or omissions` IS A BOOLEAN @desc Was the accused suffering from an abnormality of mind (arrested or retarded development, inherent causes, or disease or injury) that substantially impaired his capacity to know the nature of his acts or omissions in causing the death? (Exception 7(a)(i))
+    `substantially impaired capacity to know that the acts or omissions are wrong by the ordinary standards of reasonable and honest persons` IS A BOOLEAN @desc ... substantially impaired his capacity to know they were wrong by the ordinary standards of reasonable and honest persons? (Exception 7(a)(ii), and the paragraph below it, limb (a))
+    `substantially impaired capacity to know that the acts or omissions are wrong as contrary to law` IS A BOOLEAN @desc ... and to know they were wrong as contrary to law? (Exception 7(a)(ii), and the paragraph below it, limb (b))
+    `suffering from such abnormality of mind as substantially impaired his power to control his acts or omissions` IS A BOOLEAN @desc ... substantially impaired his power to control his acts or omissions in causing the death? (Exception 7(b))
+    -- ss 307, 308 - attempts
+    `under such circumstances that if he by that act caused death he would be guilty of murder` IS A BOOLEAN @desc Were the circumstances such that, had the act caused death, it would have been murder (s 300, no Exception)? (s 307)
+    `under such circumstances that if he by that act caused death he would be guilty of culpable homicide not amounting to murder` IS A BOOLEAN @desc Were the circumstances such that, had the act caused death, it would have been culpable homicide not amounting to murder - for example on grave and sudden provocation (illus to s 308)? (s 308)
+    `hurt is caused to any person by such act` IS A BOOLEAN @desc Did the act cause hurt (s 319) to anyone? (ss 307(1), 308)
+    `under sentence of imprisonment for life` IS A BOOLEAN @desc Was the accused, at the time, under sentence of imprisonment for life? (s 307(2))
+
+§§ `s 299 - culpable homicide`
+
+-- 299. Whoever causes death by doing an act with the intention of causing
+--      death, or with the intention of causing such bodily injury as is likely
+--      to cause death, or with the knowledge that he is likely by such act to
+--      cause death, commits the offence of culpable homicide.
+--      [Explanations 1-3 are in the @desc of `causes death by doing an act`.]
+@export Whether the accused "commits the offence of culpable homicide" within section 299 of the Penal Code 1871
+GIVEN f IS A `Homicide Facts` @desc What the accused did, and what he meant or foresaw by it
+GIVETH A BOOLEAN
+DECIDE `commits culpable homicide` f IF
+        "Whoever"
+    AND f's `causes death by doing an act`
+    AND (    f's `with the intention of causing death`
+         OR  f's `with the intention of causing such bodily injury as is likely to cause death`
+         OR  f's `with the knowledge that he is likely by such act to cause death` )
+
+§§ `s 300 - murder`
+
+-- 300. Except in the cases hereinafter excepted culpable homicide is murder -
+--   (a) if the act by which the death is caused is done with the intention of
+--       causing death;
+--   (b) if it is done with the intention of causing such bodily injury as the
+--       offender knows to be likely to cause the death of the person to whom
+--       the harm is caused;
+--   (c) if it is done with the intention of causing bodily injury to any
+--       person, and the bodily injury intended to be inflicted is sufficient in
+--       the ordinary course of nature to cause death; or
+--   (d) if the person committing the act knows that it is so imminently
+--       dangerous that it must in all probability cause death, or such bodily
+--       injury as is likely to cause death, and commits such act without any
+--       excuse for incurring the risk of causing death, or such injury as
+--       aforesaid.
+
+@export Exception 1 to section 300 of the Penal Code 1871 - grave and sudden provocation
+GIVEN f IS A `Homicide Facts` @desc The provocation, and whom the accused killed
+GIVETH A BOOLEAN
+DECIDE `Exception 1 to section 300 applies` f IF
+        "Culpable homicide is not murder if the offender"
+    ... f's `whilst deprived of the power of self-control by grave and sudden provocation`
+    ... f's `causes the death of the person who gave the provocation, or of any other person by mistake or accident`
+    ... "subject to the following provisos: (a)"
+    ... f's `the provocation is not sought or voluntarily provoked by the offender as an excuse for killing or doing harm to any person`
+    ... "(b)"
+    ... f's `the offender did not know and had no reason to believe that the provocation was given by anything done in obedience to the law, or by a public servant in the lawful exercise of his powers`
+    ... "(c)"
+    ... f's `the provocation is not given by anything done in the lawful exercise of the right of private defence`
+
+@export Exception 2 to section 300 of the Penal Code 1871 - exceeding the right of private defence
+GIVEN f IS A `Homicide Facts` @desc The private defence, and what the accused intended
+GIVETH A BOOLEAN
+DECIDE `Exception 2 to section 300 applies` f IF
+        "Culpable homicide is not murder if the offender"
+    ... f's `in the exercise of the right of private defence of person or property, exceeds the power given to him by law`
+    ... "and"
+    ... f's `causes the death of the person against whom he is exercising such right of defence`
+    ... f's `without premeditation formed prior to the circumstances which gave rise to the act of private defence`
+    ... "and"
+    ... f's `without any intention of doing more harm than is necessary for the purpose of such defence`
+
+@export Exception 3 to section 300 of the Penal Code 1871 - public servant exceeding his powers
+GIVEN f IS A `Homicide Facts` @desc The public servant's duty and belief
+GIVETH A BOOLEAN
+DECIDE `Exception 3 to section 300 applies` f IF
+        "Culpable homicide is not murder if the offender,"
+    ... f's `being a public servant, or aiding a public servant acting for the advancement of public justice, exceeds the powers given to him by law`
+    ... "and"
+    ... f's `causes death by doing an act which he, in good faith, believes to be lawful and necessary for the due discharge of his duty as such public servant`
+    ... "and"
+    ... f's `without ill will towards the person whose death is caused`
+
+@export Exception 4 to section 300 of the Penal Code 1871 - sudden fight
+GIVEN f IS A `Homicide Facts` @desc The fight, and how the accused conducted himself in it
+GIVETH A BOOLEAN
+DECIDE `Exception 4 to section 300 applies` f IF
+        "Culpable homicide is not murder if it is committed"
+    ... f's `without premeditation formed prior to the circumstances constituting the sudden fight`
+    ... f's `in a sudden fight`
+    ... f's `in the heat of passion upon a sudden quarrel`
+    ... "and"
+    ... f's `without the offender having taken undue advantage or acted in a cruel or unusual manner`
+    ... "subject to the proviso that"
+    ... f's `the offender did not know and had no reason to believe that the person whose death was caused was acting in obedience to the law, or was a public servant acting in the lawful exercise of his powers`
+
+@export Exception 5 to section 300 of the Penal Code 1871 - consent of a person above 18 years of age
+GIVEN f IS A `Homicide Facts` @desc The deceased's age and consent
+GIVETH A BOOLEAN
+DECIDE `Exception 5 to section 300 applies` f IF
+        "Culpable homicide is not murder when the person whose death is caused, being"
+    ... f's `the person whose death is caused is above 18 years of age`
+    ... ","
+    ... f's `suffers death or takes the risk of death with his own consent`
+
+@export Exception 6 to section 300 of the Penal Code 1871 - a mother's killing of her child below 12 months of age
+GIVEN f IS A `Homicide Facts` @desc The mother, the child, and the balance of her mind
+GIVETH A BOOLEAN
+DECIDE `Exception 6 to section 300 applies` f IF
+        "Culpable homicide is not murder if"
+    ... f's `the offender being a woman voluntarily causes the death of her child`
+    ... "being a child"
+    ... f's `the child is below 12 months of age`
+    ... "and at the time of the offence"
+    ... f's `the balance of her mind was disturbed by reason of her not having fully recovered from the effect of giving birth to the child or by reason of the effect of lactation`
+
+@export Whether a child of the given age in months is "below 12 months of age" (s 300 Exception 6, s 310 of the Penal Code 1871)
+GIVEN months IS A NUMBER @desc The child's age in completed months
+GIVETH A BOOLEAN
+DECIDE `below 12 months of age` months IF months < 12
+
+@export Exception 7 to section 300 of the Penal Code 1871 - abnormality of mind
+GIVEN f IS A `Homicide Facts` @desc The accused's state of mind at the time
+GIVETH A BOOLEAN
+DECIDE `Exception 7 to section 300 applies` f IF
+        "Culpable homicide is not murder if ... the offender was suffering from such abnormality of mind ... as substantially - (a) impaired the offender's capacity - (i)"
+    ..  f's `suffering from such abnormality of mind as substantially impaired his capacity to know the nature of the acts or omissions`
+    OR  "(ii) to know whether such acts or omissions are wrong - which applies only if there was a substantial impairment of the capacity to know that they (a) are wrong by the ordinary standards of reasonable and honest persons; and (b) are wrong as contrary to law"
+        ... f's `substantially impaired capacity to know that the acts or omissions are wrong by the ordinary standards of reasonable and honest persons`
+        ... f's `substantially impaired capacity to know that the acts or omissions are wrong as contrary to law`
+    OR  "(b) impaired the offender's power to control his acts or omissions"
+    ..  f's `suffering from such abnormality of mind as substantially impaired his power to control his acts or omissions`
+
+@export Whether any of the Exceptions to section 300 of the Penal Code 1871 applies, so that culpable homicide is not murder
+GIVEN f IS A `Homicide Facts` @desc The facts each Exception reads
+GIVETH A BOOLEAN
+DECIDE `an Exception to section 300 applies` f IF
+        `Exception 1 to section 300 applies` f
+    OR  `Exception 2 to section 300 applies` f
+    OR  `Exception 3 to section 300 applies` f
+    OR  `Exception 4 to section 300 applies` f
+    OR  `Exception 5 to section 300 applies` f
+    OR  `Exception 6 to section 300 applies` f
+    OR  `Exception 7 to section 300 applies` f
+
+@export Whether culpable homicide is "murder within the meaning of section 300(a)" of the Penal Code 1871
+GIVEN f IS A `Homicide Facts` @desc What the accused did, what he meant by it, and the Exceptions
+GIVETH A BOOLEAN
+DECIDE `murder within the meaning of section 300(a)` f IF
+        "Except in the cases hereinafter excepted"
+    AND NOT (`an Exception to section 300 applies` f)
+    AND `commits culpable homicide` f
+    AND "is murder - (a) if the act by which the death is caused is done"
+    AND f's `with the intention of causing death`
+
+@export Whether culpable homicide is "murder within the meaning of section 300(b)" of the Penal Code 1871
+GIVEN f IS A `Homicide Facts` @desc What the accused did, what he meant by it, and the Exceptions
+GIVETH A BOOLEAN
+DECIDE `murder within the meaning of section 300(b)` f IF
+        "Except in the cases hereinafter excepted"
+    AND NOT (`an Exception to section 300 applies` f)
+    AND `commits culpable homicide` f
+    AND "is murder - (b) if it is done"
+    AND f's `with the intention of causing such bodily injury as the offender knows to be likely to cause the death of the person to whom the harm is caused`
+
+@export Whether culpable homicide is "murder within the meaning of section 300(c)" of the Penal Code 1871
+GIVEN f IS A `Homicide Facts` @desc What the accused did, what he meant by it, and the Exceptions
+GIVETH A BOOLEAN
+DECIDE `murder within the meaning of section 300(c)` f IF
+        "Except in the cases hereinafter excepted"
+    AND NOT (`an Exception to section 300 applies` f)
+    AND `commits culpable homicide` f
+    AND "is murder - (c) if it is done"
+    AND f's `with the intention of causing bodily injury to any person`
+    AND "and"
+    AND f's `the bodily injury intended to be inflicted is sufficient in the ordinary course of nature to cause death`
+
+@export Whether culpable homicide is "murder within the meaning of section 300(d)" of the Penal Code 1871
+GIVEN f IS A `Homicide Facts` @desc What the accused did, what he knew of it, and the Exceptions
+GIVETH A BOOLEAN
+DECIDE `murder within the meaning of section 300(d)` f IF
+        "Except in the cases hereinafter excepted"
+    AND NOT (`an Exception to section 300 applies` f)
+    AND `commits culpable homicide` f
+    AND "is murder - (d) if the person committing the act"
+    AND f's `knows that the act is so imminently dangerous that it must in all probability cause death, or such bodily injury as is likely to cause death`
+    AND "and"
+    AND f's `commits such act without any excuse for incurring the risk of causing death or such injury`
+
+@export Whether the accused "commits murder" within section 300 of the Penal Code 1871, under any of its limbs
+GIVEN f IS A `Homicide Facts` @desc What the accused did, what he meant or knew, and the Exceptions
+GIVETH A BOOLEAN
+DECIDE `commits murder` f IF
+        `murder within the meaning of section 300(a)` f
+    OR  `murder within the meaning of section 300(b)` f
+    OR  `murder within the meaning of section 300(c)` f
+    OR  `murder within the meaning of section 300(d)` f
+
+@export Whether the accused commits "culpable homicide not amounting to murder" (ss 299, 300 and 304 of the Penal Code 1871)
+GIVEN f IS A `Homicide Facts` @desc What the accused did, what he meant or knew, and the Exceptions
+GIVETH A BOOLEAN
+DECIDE `commits culpable homicide not amounting to murder` f IF
+        `commits culpable homicide` f
+    ... "not amounting to"
+    ... NOT (`commits murder` f)
+
+GIVEN f IS A `Homicide Facts`
+GIVETH A LIST OF STRING
+`elements of culpable homicide not made out` f MEANS
+    concat (LIST
+        (`missing unless` (f's `causes death by doing an act`) "causes death by doing an act"),
+        (`missing unless` (f's `with the intention of causing death` OR f's `with the intention of causing such bodily injury as is likely to cause death` OR f's `with the knowledge that he is likely by such act to cause death`) "with the intention of causing death, or of causing such bodily injury as is likely to cause death, or with the knowledge that he is likely by such act to cause death"))
+
+GIVEN f    IS A `Homicide Facts`
+      what IS A STRING
+GIVETH A STRING
+`the homicide recital` f what MEANS
+    CONCAT "did commit ", what, " by causing the death of ", (`one` (f's victim) (f's `victim described as`)), ", to wit, ", f's `the manner`
+
+§§ `s 301 - culpable homicide by causing the death of a person other than the person whose death was intended`
+
+-- Deferred: a deeming rule with no charge of its own. The reference row's
+-- culpable-homicide-301.l4 encodes it; see body-a-forks.md F-9.
+
+§§ `s 302 - punishment for murder`
+
+-- 302.-(1) Whoever commits murder within the meaning of section 300(a) shall
+--      be punished with death.
+--   (2) Whoever commits murder within the meaning of section 300(b), (c) or
+--      (d) shall be punished with death or imprisonment for life and shall, if
+--      he is not punished with death, also be liable to caning.
+%%PUNISH 302(1) | death | S | - | - | | | - | - | | | - | | | F
+%%PUNISH 302(2) | death or imprisonment for life and shall, if he is not punished with death, also be liable to caning | O | O | - | | | - | - | | | L | | | F
+
+@export Whether the accused has committed an offence punishable under section 302(1) of the Penal Code 1871 (murder within the meaning of section 300(a))
+GIVEN f IS A `Homicide Facts` @desc What the accused did, what he meant by it, and the Exceptions
+GIVETH A BOOLEAN
+DECIDE `offence under s 302(1)` f IF
+        "Whoever commits"
+    ... `murder within the meaning of section 300(a)` f
+
+@export Whether the accused has committed an offence punishable under section 302(2) of the Penal Code 1871 (murder within the meaning of section 300(b), (c) or (d))
+GIVEN f IS A `Homicide Facts` @desc What the accused did, what he meant or knew, and the Exceptions
+GIVETH A BOOLEAN
+DECIDE `offence under s 302(2)` f IF
+        "Whoever commits murder within the meaning of section 300(b), (c) or (d)"
+    ... (    `murder within the meaning of section 300(b)` f
+         OR  `murder within the meaning of section 300(c)` f
+         OR  `murder within the meaning of section 300(d)` f )
+
+GIVEN f IS A `Homicide Facts`
+GIVETH A LIST OF STRING
+`elements of murder not made out` f MEANS
+    concat (LIST
+        (`elements of culpable homicide not made out` f),
+        (`missing unless` (NOT (`an Exception to section 300 applies` f)) "the case is not within any of the Exceptions to section 300"))
+
+@export Frame a charge under section 302(1) of the Penal Code 1871 (murder), or say why none can be framed
+GIVEN f IS A `Homicide Facts` @desc What the accused did, and the particulars of the charge
+GIVETH A Charge
+`charge under s 302(1)` f MEANS
+    `frame the charge` (f's particulars) "302(1)" "murder"
+        (`punishment prescribed by s 302(1)`'s words)
+        (`offence under s 302(1)` f)
+        (`the homicide recital` f "murder")
+        (concat (LIST (`elements of murder not made out` f),
+                      (`missing unless` (f's `with the intention of causing death`) "the act by which the death is caused is done with the intention of causing death (s 300(a))")))
+
+@export Frame a charge under section 302(2) of the Penal Code 1871 (murder), or say why none can be framed
+GIVEN f IS A `Homicide Facts` @desc What the accused did, and the particulars of the charge
+GIVETH A Charge
+`charge under s 302(2)` f MEANS
+    `frame the charge` (f's particulars) "302(2)" "murder"
+        (`punishment prescribed by s 302(2)`'s words)
+        (`offence under s 302(2)` f)
+        (`the homicide recital` f "murder")
+        (concat (LIST (`elements of murder not made out` f),
+                      (`missing unless` (`murder within the meaning of section 300(b)` f OR `murder within the meaning of section 300(c)` f OR `murder within the meaning of section 300(d)` f) "a limb of section 300(b), (c) or (d)")))
+
+-- [There is no section 303.]
+
+§§ `s 304 - punishment for culpable homicide not amounting to murder`
+
+-- 304. Whoever commits culpable homicide not amounting to murder shall -
+--   (a) if the act by which death is caused is done with the intention of
+--       causing death, or of causing such bodily injury as is likely to cause
+--       death, be punished with - (i) imprisonment for life, and shall also be
+--       liable to caning; or (ii) imprisonment for a term which may extend to
+--       20 years, and shall also be liable to fine or to caning; or
+--   (b) if the act is done with the knowledge that it is likely to cause death,
+--       but without any intention to cause death, or to cause such bodily
+--       injury as is likely to cause death, be punished with imprisonment for
+--       a term which may extend to 15 years, or with fine, or with caning, or
+--       with any combination of such punishments.
+%%PUNISH 304(a) | imprisonment for life, and shall also be liable to caning; or imprisonment for a term which may extend to 20 years, and shall also be liable to fine or to caning | - | O | O | 240 | | - | L | | | L | | | F
+%%PUNISH 304(b) | imprisonment for a term which may extend to 15 years, or with fine, or with caning, or with any combination of such punishments | - | - | O | 180 | | - | O | | | O | | | T
+
+@export Whether the accused has committed an offence punishable under section 304(a) of the Penal Code 1871
+GIVEN f IS A `Homicide Facts` @desc What the accused did, what he meant or knew, and the Exceptions
+GIVETH A BOOLEAN
+DECIDE `offence under s 304(a)` f IF
+        "Whoever commits"
+    AND `commits culpable homicide not amounting to murder` f
+    AND "(a) if the act by which death is caused is done"
+    AND (    f's `with the intention of causing death`
+         OR  f's `with the intention of causing such bodily injury as is likely to cause death` )
+
+@export Whether the accused has committed an offence punishable under section 304(b) of the Penal Code 1871
+GIVEN f IS A `Homicide Facts` @desc What the accused did, what he meant or knew, and the Exceptions
+GIVETH A BOOLEAN
+DECIDE `offence under s 304(b)` f IF
+        "Whoever commits"
+    AND `commits culpable homicide not amounting to murder` f
+    AND "(b) if the act is done"
+    AND f's `with the knowledge that he is likely by such act to cause death`
+    AND "but without any intention to cause death, or to cause such bodily injury as is likely to cause death"
+    AND NOT (f's `with the intention of causing death`)
+    AND NOT (f's `with the intention of causing such bodily injury as is likely to cause death`)
+
+GIVEN f IS A `Homicide Facts`
+GIVETH A LIST OF STRING
+`elements of culpable homicide not amounting to murder not made out` f MEANS
+    concat (LIST
+        (`elements of culpable homicide not made out` f),
+        (`missing unless` (NOT (`commits murder` f)) "not amounting to murder (the facts make out murder under section 300 with no Exception: charge under section 302)"))
+
+@export Frame a charge under section 304(a) of the Penal Code 1871, or say why none can be framed
+GIVEN f IS A `Homicide Facts` @desc What the accused did, and the particulars of the charge
+GIVETH A Charge
+`charge under s 304(a)` f MEANS
+    `frame the charge` (f's particulars) "304(a)" "culpable homicide not amounting to murder"
+        (`punishment prescribed by s 304(a)`'s words)
+        (`offence under s 304(a)` f)
+        (`the homicide recital` f "culpable homicide not amounting to murder")
+        (concat (LIST (`elements of culpable homicide not amounting to murder not made out` f),
+                      (`missing unless` (f's `with the intention of causing death` OR f's `with the intention of causing such bodily injury as is likely to cause death`) "the act is done with the intention of causing death, or of causing such bodily injury as is likely to cause death")))
+
+@export Frame a charge under section 304(b) of the Penal Code 1871, or say why none can be framed
+GIVEN f IS A `Homicide Facts` @desc What the accused did, and the particulars of the charge
+GIVETH A Charge
+`charge under s 304(b)` f MEANS
+    `frame the charge` (f's particulars) "304(b)" "culpable homicide not amounting to murder"
+        (`punishment prescribed by s 304(b)`'s words)
+        (`offence under s 304(b)` f)
+        (`the homicide recital` f "culpable homicide not amounting to murder")
+        (concat (LIST (`elements of culpable homicide not amounting to murder not made out` f),
+                      (`missing unless` (f's `with the knowledge that he is likely by such act to cause death`) "the act is done with the knowledge that it is likely to cause death"),
+                      (`missing unless` (NOT (f's `with the intention of causing death` OR f's `with the intention of causing such bodily injury as is likely to cause death`)) "without any intention to cause death, or such bodily injury as is likely to cause death (with that intention the offence is section 304(a))")))
+
+§§ `s 304A - causing death by rash or negligent act`
+
+-- 304A. Whoever causes the death of any person by doing any rash or negligent
+--       act not amounting to culpable homicide, shall be punished -
+--   (a) in the case of a rash act, with imprisonment for a term which may
+--       extend to 5 years, or with fine, or with both; or
+--   (b) in the case of a negligent act, with imprisonment for a term which may
+--       extend to 2 years, or with fine, or with both.
+%%PUNISH 304A(a) | imprisonment for a term which may extend to 5 years, or with fine, or with both | - | - | O | 60 | | - | O | | | - | | | T
+%%PUNISH 304A(b) | imprisonment for a term which may extend to 2 years, or with fine, or with both | - | - | O | 24 | | - | O | | | - | | | T
+
+@export Whether the accused has committed an offence punishable under section 304A(a) of the Penal Code 1871 (causing death by a rash act)
+GIVEN f IS A `Rash Act Facts` @desc What the accused did, and what it caused
+GIVETH A BOOLEAN
+DECIDE `offence under s 304A(a)` f IF
+        "Whoever"
+    ... f's `causes the death of any person`
+    ... "by doing any"
+    ... `a rash act` f
+    ... f's `not amounting to culpable homicide`
+
+@export Whether the accused has committed an offence punishable under section 304A(b) of the Penal Code 1871 (causing death by a negligent act)
+GIVEN f IS A `Rash Act Facts` @desc What the accused did, and what it caused
+GIVETH A BOOLEAN
+DECIDE `offence under s 304A(b)` f IF
+        "Whoever"
+    ... f's `causes the death of any person`
+    ... "by doing any"
+    ... `a negligent act` f
+    ... f's `not amounting to culpable homicide`
+
+@export Frame a charge under section 304A(a) of the Penal Code 1871, or say why none can be framed
+GIVEN f IS A `Rash Act Facts` @desc What the accused did, and the particulars of the charge
+GIVETH A Charge
+`charge under s 304A(a)` f MEANS
+    `frame the charge` (f's particulars) "304A(a)" "causing death by rash act"
+        (`punishment prescribed by s 304A(a)`'s words)
+        (`offence under s 304A(a)` f)
+        (CONCAT "did cause the death of ", (`one` (f's victim) (f's `victim described as`)), " by doing a rash act not amounting to culpable homicide, to wit, ", f's `the manner`)
+        (concat (LIST (`missing unless` (f's `causes the death of any person`) "causes the death of any person"),
+                      (`missing unless` (`a rash act` f) "by doing a rash act"),
+                      (`missing unless` (f's `not amounting to culpable homicide`) "not amounting to culpable homicide")))
+
+@export Frame a charge under section 304A(b) of the Penal Code 1871, or say why none can be framed
+GIVEN f IS A `Rash Act Facts` @desc What the accused did, and the particulars of the charge
+GIVETH A Charge
+`charge under s 304A(b)` f MEANS
+    `frame the charge` (f's particulars) "304A(b)" "causing death by negligent act"
+        (`punishment prescribed by s 304A(b)`'s words)
+        (`offence under s 304A(b)` f)
+        (CONCAT "did cause the death of ", (`one` (f's victim) (f's `victim described as`)), " by doing a negligent act not amounting to culpable homicide, to wit, ", f's `the manner`)
+        (concat (LIST (`missing unless` (f's `causes the death of any person`) "causes the death of any person"),
+                      (`missing unless` (`a negligent act` f) "by doing a negligent act"),
+                      (`missing unless` (f's `not amounting to culpable homicide`) "not amounting to culpable homicide")))
+
+-- ss 304B and 304C: deferred (time). They need "domestic worker" and
+-- "vulnerable person" (ss 73(4), 74A(5)), which are general-part's.
+
+§§ `ss 305 and 306 - abetment of suicide or attempted suicide`
+
+@ref Penal Code 1871 ss 305, 306 - the operative atoms
+DECLARE `Suicide Abetment Facts` HAS
+    particulars IS A Particulars @desc Who is charged, and when and where the offence was committed
+    victim IS A STRING @desc The name of the person who committed or attempted suicide
+    `victim described as` IS A STRING @desc How the charge describes that person, after the name; leave blank if not needed
+    `the manner` IS A STRING @desc How the accused abetted, as it is to read after "to wit,"
+    `the person commits suicide` IS A BOOLEAN @desc Did the person commit suicide? (ss 305(1)(a), 306)
+    `the person attempts suicide` IS A BOOLEAN @desc Did the person attempt suicide? (ss 305(1)(b), (c), 306)
+    `abets the commission of such suicide or attempted suicide` IS A BOOLEAN @desc Did the accused abet it, within s 107 (instigating, engaging in a conspiracy for, or intentionally aiding it)? Abetment is general-part's to define; joined at integration.
+    `the person is a minor or a person who lacks capacity` IS A BOOLEAN @desc Was the person below 18 years of age, or lacking capacity to understand the consequences of attempting or committing suicide, from unsoundness of mind, mental incapacity, intoxication, or a drug or other substance? (s 305(2))
+    `knew or ought reasonably to have known that the person was a minor or a person who lacks capacity` IS A BOOLEAN @desc Fault element: did the accused know, or ought he reasonably to have known, that? (s 305(1))
+    `hurt is caused to any person in the course of the attempted suicide` IS A BOOLEAN @desc Was hurt (s 319) caused to anyone in the course of the attempt? (s 305(1)(c))
+
+-- 305.-(1) If any minor or other person who lacks capacity -
+--   (a) commits suicide, whoever abets the commission of the suicide and who
+--       knew or ought reasonably to have known that the person who committed
+--       suicide was a minor or a person who lacks capacity, shall be punished
+--       with death or imprisonment for life, or with imprisonment for a term
+--       which may extend to 20 years, and shall, if he is not sentenced to death
+--       or imprisonment for life, also be liable to fine;
+--   (b) attempts suicide, whoever abets the attempted suicide and who knew or
+--       ought reasonably to have known [the same], shall be punished with
+--       imprisonment for a term which may extend to 15 years, and shall also be
+--       liable to fine; or
+--   (c) attempts suicide and hurt is caused to any person in the course of the
+--       attempted suicide, whoever abets the attempted suicide and who knew or
+--       ought reasonably to have known [the same], shall be punished with
+--       imprisonment for life or with imprisonment for a term which may extend
+--       to 20 years, and shall, if he is not sentenced to imprisonment for
+--       life, also be liable to fine.
+--   (2) "minor" means a person below 18 years of age; "person who lacks
+--       capacity" means [see the @desc of the leaf].
+-- 306. If any person attempts or commits suicide, whoever abets the commission
+--      of such attempted suicide or suicide shall be punished with imprisonment
+--      for a term which may extend to 10 years, and shall also be liable to
+--      fine.
+%%PUNISH 305(1)(a) | death or imprisonment for life, or with imprisonment for a term which may extend to 20 years, and shall, if he is not sentenced to death or imprisonment for life, also be liable to fine | O | O | O | 240 | | - | L | | | - | | | F
+%%PUNISH 305(1)(b) | imprisonment for a term which may extend to 15 years, and shall also be liable to fine | - | - | S | 180 | | - | L | | | - | | | F
+%%PUNISH 305(1)(c) | imprisonment for life or with imprisonment for a term which may extend to 20 years, and shall, if he is not sentenced to imprisonment for life, also be liable to fine | - | O | O | 240 | | - | L | | | - | | | F
+%%PUNISH 306 | imprisonment for a term which may extend to 10 years, and shall also be liable to fine | - | - | S | 120 | | - | L | | | - | | | F
+
+@export Whether the accused has committed an offence punishable under section 305(1)(a) of the Penal Code 1871
+GIVEN f IS A `Suicide Abetment Facts` @desc Who died, and the accused's part and knowledge
+GIVETH A BOOLEAN
+DECIDE `offence under s 305(1)(a)` f IF
+        "If any minor or other person who lacks capacity"
+    ... f's `the person is a minor or a person who lacks capacity`
+    ... "(a)"
+    ... f's `the person commits suicide`
+    ... "whoever"
+    ... f's `abets the commission of such suicide or attempted suicide`
+    ... "and who"
+    ... f's `knew or ought reasonably to have known that the person was a minor or a person who lacks capacity`
+
+@export Whether the accused has committed an offence punishable under section 305(1)(b) of the Penal Code 1871
+GIVEN f IS A `Suicide Abetment Facts` @desc Who attempted suicide, and the accused's part and knowledge
+GIVETH A BOOLEAN
+DECIDE `offence under s 305(1)(b)` f IF
+        "If any minor or other person who lacks capacity"
+    ... f's `the person is a minor or a person who lacks capacity`
+    ... "(b)"
+    ... f's `the person attempts suicide`
+    ... "whoever"
+    ... f's `abets the commission of such suicide or attempted suicide`
+    ... "and who"
+    ... f's `knew or ought reasonably to have known that the person was a minor or a person who lacks capacity`
+
+@export Whether the accused has committed an offence punishable under section 305(1)(c) of the Penal Code 1871
+GIVEN f IS A `Suicide Abetment Facts` @desc Who attempted suicide, what hurt it caused, and the accused's part and knowledge
+GIVETH A BOOLEAN
+DECIDE `offence under s 305(1)(c)` f IF
+        "If any minor or other person who lacks capacity"
+    ... f's `the person is a minor or a person who lacks capacity`
+    ... "(c)"
+    ... f's `the person attempts suicide`
+    ... "and"
+    ... f's `hurt is caused to any person in the course of the attempted suicide`
+    ... "whoever"
+    ... f's `abets the commission of such suicide or attempted suicide`
+    ... "and who"
+    ... f's `knew or ought reasonably to have known that the person was a minor or a person who lacks capacity`
+
+@export Whether the accused has committed an offence punishable under section 306 of the Penal Code 1871 (abetment of suicide or attempted suicide)
+GIVEN f IS A `Suicide Abetment Facts` @desc Who committed or attempted suicide, and the accused's part
+GIVETH A BOOLEAN
+DECIDE `offence under s 306` f IF
+        "If any person"
+    AND (    f's `the person attempts suicide`
+         OR  f's `the person commits suicide` )
+    AND "whoever"
+    AND f's `abets the commission of such suicide or attempted suicide`
+
+GIVEN f IS A `Suicide Abetment Facts`
+GIVETH A STRING
+`the abetment recital` f MEANS
+    CONCAT "did abet the ", (IF f's `the person commits suicide` THEN "suicide" ELSE "attempted suicide"), " of ", (`one` (f's victim) (f's `victim described as`)), ", to wit, ", f's `the manner`
+
+GIVEN f IS A `Suicide Abetment Facts`
+GIVETH A LIST OF STRING
+`elements of section 305 not made out` f MEANS
+    concat (LIST
+        (`missing unless` (f's `the person is a minor or a person who lacks capacity`) "the person is a minor or a person who lacks capacity"),
+        (`missing unless` (f's `abets the commission of such suicide or attempted suicide`) "abets the suicide or attempted suicide (s 107)"),
+        (`missing unless` (f's `knew or ought reasonably to have known that the person was a minor or a person who lacks capacity`) "knew or ought reasonably to have known that the person was a minor or a person who lacks capacity"))
+
+@export Frame a charge under section 305(1)(a) of the Penal Code 1871, or say why none can be framed
+GIVEN f IS A `Suicide Abetment Facts` @desc The facts, and the particulars of the charge
+GIVETH A Charge
+`charge under s 305(1)(a)` f MEANS
+    `frame the charge` (f's particulars) "305(1)(a)" "abetment of suicide of minor or person who lacks mental capacity"
+        (`punishment prescribed by s 305(1)(a)`'s words)
+        (`offence under s 305(1)(a)` f)
+        (`the abetment recital` f)
+        (concat (LIST (`missing unless` (f's `the person commits suicide`) "the person commits suicide"), (`elements of section 305 not made out` f)))
+
+@export Frame a charge under section 305(1)(b) of the Penal Code 1871, or say why none can be framed
+GIVEN f IS A `Suicide Abetment Facts` @desc The facts, and the particulars of the charge
+GIVETH A Charge
+`charge under s 305(1)(b)` f MEANS
+    `frame the charge` (f's particulars) "305(1)(b)" "abetment of attempted suicide of minor or person who lacks mental capacity"
+        (`punishment prescribed by s 305(1)(b)`'s words)
+        (`offence under s 305(1)(b)` f)
+        (`the abetment recital` f)
+        (concat (LIST (`missing unless` (f's `the person attempts suicide`) "the person attempts suicide"), (`elements of section 305 not made out` f)))
+
+@export Frame a charge under section 305(1)(c) of the Penal Code 1871, or say why none can be framed
+GIVEN f IS A `Suicide Abetment Facts` @desc The facts, and the particulars of the charge
+GIVETH A Charge
+`charge under s 305(1)(c)` f MEANS
+    `frame the charge` (f's particulars) "305(1)(c)" "abetment of attempted suicide of minor or person who lacks mental capacity where hurt is caused"
+        (`punishment prescribed by s 305(1)(c)`'s words)
+        (`offence under s 305(1)(c)` f)
+        (`the abetment recital` f)
+        (concat (LIST (`missing unless` (f's `the person attempts suicide`) "the person attempts suicide"),
+                      (`missing unless` (f's `hurt is caused to any person in the course of the attempted suicide`) "hurt is caused to any person in the course of the attempted suicide"),
+                      (`elements of section 305 not made out` f)))
+
+@export Frame a charge under section 306 of the Penal Code 1871, or say why none can be framed
+GIVEN f IS A `Suicide Abetment Facts` @desc The facts, and the particulars of the charge
+GIVETH A Charge
+`charge under s 306` f MEANS
+    `frame the charge` (f's particulars) "306" "abetment of suicide or attempted suicide"
+        (`punishment prescribed by s 306`'s words)
+        (`offence under s 306` f)
+        (`the abetment recital` f)
+        (concat (LIST (`missing unless` (f's `the person attempts suicide` OR f's `the person commits suicide`) "the person attempts or commits suicide"),
+                      (`missing unless` (f's `abets the commission of such suicide or attempted suicide`) "abets the suicide or attempted suicide (s 107)")))
+
+§§ `s 307 - attempt to murder`
+
+-- 307.-(1) Whoever does any act with the intention of causing death and under
+--      such circumstances that if he by that act caused death he would be
+--      guilty of murder, shall be punished with imprisonment for a term which
+--      may extend to 15 years, and shall also be liable to fine; and if hurt is
+--      caused to any person by such act, the offender shall be punished with -
+--      (a) imprisonment for life and shall also be liable to caning; or
+--      (b) imprisonment for a term which may extend to 20 years, and shall also
+--      be liable to fine, or to caning or to both.
+--   (2) When any person offending under this section is under sentence of
+--      imprisonment for life, he may, if hurt is caused, be punished with death.
+%%PUNISH 307(1) | imprisonment for a term which may extend to 15 years, and shall also be liable to fine | - | - | S | 180 | | - | L | | | - | | | F
+%%PUNISH 307(1), hurt caused | imprisonment for life and shall also be liable to caning; or imprisonment for a term which may extend to 20 years, and shall also be liable to fine, or to caning or to both | - | O | O | 240 | | - | L | | | L | | | T
+%%PUNISH 307(2) | death | O | - | - | | | - | - | | | - | | | F
+
+@export Whether the accused has committed an offence punishable under section 307(1) of the Penal Code 1871 (attempt to murder)
+GIVEN f IS A `Homicide Facts` @desc What the accused did, and with what intention
+GIVETH A BOOLEAN
+DECIDE `offence under s 307(1)` f IF
+        "Whoever does any act"
+    ... f's `with the intention of causing death`
+    ... "and"
+    ... f's `under such circumstances that if he by that act caused death he would be guilty of murder`
+
+@export Whether the accused has committed an offence under section 307 of the Penal Code 1871 for which section 307(2) permits death (hurt caused by one under sentence of imprisonment for life)
+GIVEN f IS A `Homicide Facts` @desc What the accused did, what it caused, and his sentence
+GIVETH A BOOLEAN
+DECIDE `offence under s 307(2)` f IF
+        "When any person offending under this section"
+    ... `offence under s 307(1)` f
+    ... "is"
+    ... f's `under sentence of imprisonment for life`
+    ... "he may, if"
+    ... f's `hurt is caused to any person by such act`
+
+@export Frame a charge under section 307(1) of the Penal Code 1871 (attempt to murder), or say why none can be framed
+GIVEN f IS A `Homicide Facts` @desc What the accused did, and the particulars of the charge
+GIVETH A Charge
+`charge under s 307(1)` f MEANS
+    `frame the charge` (f's particulars) "307(1)" "attempt to murder"
+        (IF f's `hurt is caused to any person by such act`
+         THEN `punishment prescribed by s 307(1), hurt caused`'s words
+         ELSE `punishment prescribed by s 307(1)`'s words)
+        (`offence under s 307(1)` f)
+        (CONCAT "did an act, to wit, ", f's `the manner`, ", with the intention of causing the death of ", (`one` (f's victim) (f's `victim described as`)),
+                ", under such circumstances that if by that act you had caused death you would have been guilty of murder",
+                IF f's `hurt is caused to any person by such act` THEN ", and hurt was caused by such act" ELSE "")
+        (concat (LIST (`missing unless` (f's `with the intention of causing death`) "does any act with the intention of causing death"),
+                      (`missing unless` (f's `under such circumstances that if he by that act caused death he would be guilty of murder`) "under such circumstances that if he by that act caused death he would be guilty of murder")))
+
+@export Frame a charge under section 307(2) of the Penal Code 1871, or say why none can be framed
+GIVEN f IS A `Homicide Facts` @desc What the accused did, and the particulars of the charge
+GIVETH A Charge
+`charge under s 307(2)` f MEANS
+    `frame the charge` (f's particulars) "307(2)" "attempt to murder by a person under sentence of imprisonment for life"
+        (`punishment prescribed by s 307(2)`'s words)
+        (`offence under s 307(2)` f)
+        (CONCAT "being under sentence of imprisonment for life, did an act, to wit, ", f's `the manner`, ", with the intention of causing the death of ", (`one` (f's victim) (f's `victim described as`)),
+                ", under such circumstances that if by that act you had caused death you would have been guilty of murder, and hurt was caused by such act")
+        (concat (LIST (`missing unless` (`offence under s 307(1)` f) "an offence under section 307(1)"),
+                      (`missing unless` (f's `under sentence of imprisonment for life`) "under sentence of imprisonment for life"),
+                      (`missing unless` (f's `hurt is caused to any person by such act`) "hurt is caused")))
+
+§§ `s 308 - attempt to commit culpable homicide`
+
+-- 308. Whoever does any act with the intention to cause death and under such
+--      circumstances that if he by that act caused death he would be guilty of
+--      culpable homicide not amounting to murder, shall be punished with
+--      imprisonment for a term which may extend to 7 years, or with fine, or
+--      with both; and if hurt is caused to any person by such act, the offender
+--      shall be punished with imprisonment for a term which may extend to
+--      15 years, or with fine, or with caning, or with any combination of such
+--      punishments.
+%%PUNISH 308 | imprisonment for a term which may extend to 7 years, or with fine, or with both | - | - | O | 84 | | - | O | | | - | | | T
+%%PUNISH 308, hurt caused | imprisonment for a term which may extend to 15 years, or with fine, or with caning, or with any combination of such punishments | - | - | O | 180 | | - | O | | | O | | | T
+
+@export Whether the accused has committed an offence punishable under section 308 of the Penal Code 1871 (attempt to commit culpable homicide)
+GIVEN f IS A `Homicide Facts` @desc What the accused did, and with what intention
+GIVETH A BOOLEAN
+DECIDE `offence under s 308` f IF
+        "Whoever does any act"
+    ... f's `with the intention of causing death`
+    ... "and"
+    ... f's `under such circumstances that if he by that act caused death he would be guilty of culpable homicide not amounting to murder`
+
+@export Frame a charge under section 308 of the Penal Code 1871 (attempt to commit culpable homicide), or say why none can be framed
+GIVEN f IS A `Homicide Facts` @desc What the accused did, and the particulars of the charge
+GIVETH A Charge
+`charge under s 308` f MEANS
+    `frame the charge` (f's particulars) "308" "attempt to commit culpable homicide"
+        (IF f's `hurt is caused to any person by such act`
+         THEN `punishment prescribed by s 308, hurt caused`'s words
+         ELSE `punishment prescribed by s 308`'s words)
+        (`offence under s 308` f)
+        (CONCAT "did an act, to wit, ", f's `the manner`, ", with the intention of causing the death of ", (`one` (f's victim) (f's `victim described as`)),
+                ", under such circumstances that if by that act you had caused death you would have been guilty of culpable homicide not amounting to murder",
+                IF f's `hurt is caused to any person by such act` THEN ", and hurt was caused by such act" ELSE "")
+        (concat (LIST (`missing unless` (f's `with the intention of causing death`) "does any act with the intention to cause death"),
+                      (`missing unless` (f's `under such circumstances that if he by that act caused death he would be guilty of culpable homicide not amounting to murder`) "under such circumstances that if he by that act caused death he would be guilty of culpable homicide not amounting to murder")))
+
+-- s 308A: deferred (time). "Group" has the meaning in the Organised Crime Act
+-- 2015 s 2(1), which is not in this job's inputs.
+
+§§ `s 308B - concealment, desecration or disposal of corpse`
+
+-- 308B.-(1) A person shall be guilty of an offence who intentionally or
+--      knowingly conceals, desecrates or disposes of a human corpse and by such
+--      act impedes or prevents - (a) the discovery or identification of a human
+--      corpse; or (b) the detection, investigation or prosecution of an offence
+--      under this Code or any other written law.
+--   (2) ... shall be punished with imprisonment for a term which may extend to
+--      7 years.
+--   (3) "desecrate" includes any act committed after the death of a living
+--      person including but not limited to dismemberment, disfigurement,
+--      mutilation, burning, or any act committed to cause the human corpse in
+--      whole or in part to be devoured, scattered or dissipated.
+@ref Penal Code 1871 s 308B - the operative atoms
+DECLARE `Corpse Facts` HAS
+    particulars IS A Particulars @desc Who is charged, and when and where the offence was committed
+    `the corpse` IS A STRING @desc Whose corpse, as it is to appear in the charge - for example "the corpse of one Z"
+    `the manner` IS A STRING @desc What the accused did with the corpse, as it is to read after "to wit,"
+    `intentionally or knowingly conceals, desecrates or disposes of a human corpse` IS A BOOLEAN @desc Did the accused intentionally or knowingly conceal, desecrate or dispose of a human corpse? Desecration includes dismemberment, disfigurement, mutilation, burning, or causing it to be devoured, scattered or dissipated (s 308B(3)).
+    `by such act impedes or prevents the discovery or identification of a human corpse` IS A BOOLEAN @desc Did that impede or prevent the discovery or identification of a corpse? (s 308B(1)(a))
+    `by such act impedes or prevents the detection, investigation or prosecution of an offence` IS A BOOLEAN @desc Did it impede or prevent the detection, investigation or prosecution of an offence under the Code or other written law? (s 308B(1)(b))
+
+%%PUNISH 308B(2) | imprisonment for a term which may extend to 7 years | - | - | S | 84 | | - | - | | | - | | | F
+
+@export Whether the accused has committed an offence under section 308B(1) of the Penal Code 1871, punishable under section 308B(2)
+GIVEN f IS A `Corpse Facts` @desc What the accused did with the corpse, and what it impeded
+GIVETH A BOOLEAN
+DECIDE `offence under s 308B` f IF
+        "A person shall be guilty of an offence who"
+    AND f's `intentionally or knowingly conceals, desecrates or disposes of a human corpse`
+    AND "and by such act impedes or prevents -"
+    AND (    f's `by such act impedes or prevents the discovery or identification of a human corpse`
+         OR  f's `by such act impedes or prevents the detection, investigation or prosecution of an offence` )
+
+@export Frame a charge under section 308B of the Penal Code 1871, or say why none can be framed
+GIVEN f IS A `Corpse Facts` @desc The facts, and the particulars of the charge
+GIVETH A Charge
+`charge under s 308B` f MEANS
+    `frame the charge` (f's particulars) "308B(2)" "concealment, desecration or disposal of corpse"
+        (`punishment prescribed by s 308B(2)`'s words)
+        (`offence under s 308B` f)
+        (CONCAT "did intentionally conceal, desecrate or dispose of ", f's `the corpse`, ", and by such act impeded ",
+                `joined with` " and " (concat (LIST
+                    (`included if` (f's `by such act impedes or prevents the discovery or identification of a human corpse`) "the discovery or identification of a human corpse"),
+                    (`included if` (f's `by such act impedes or prevents the detection, investigation or prosecution of an offence`) "the detection, investigation or prosecution of an offence"))),
+                ", to wit, ", f's `the manner`)
+        (concat (LIST (`missing unless` (f's `intentionally or knowingly conceals, desecrates or disposes of a human corpse`) "intentionally or knowingly conceals, desecrates or disposes of a human corpse"),
+                      (`missing unless` (f's `by such act impedes or prevents the discovery or identification of a human corpse` OR f's `by such act impedes or prevents the detection, investigation or prosecution of an offence`) "by such act impedes or prevents the discovery or identification of a corpse, or the detection, investigation or prosecution of an offence")))
+
+-- s 309. [Repealed by Act 15 of 2019]
+-- ss 310, 311 (infanticide): deferred (time); Exception 6 to s 300 above
+-- encodes the same conditions for the murder question.
+
+§ `Penal Code 1871 - Chapter 16, Causing miscarriage; injuries to unborn children; exposure of infants; and concealment of births (ss 312-318)`
+
+§§ `ss 312 and 313 - causing miscarriage`
+
+-- 312. Subject to the provisions of the Termination of Pregnancy Act 1974,
+--      whoever voluntarily causes a woman with child to miscarry, shall be
+--      punished with imprisonment for a term which may extend to 3 years, or
+--      with fine, or with both; and if the woman's pregnancy is of more than
+--      16 weeks' duration as calculated in accordance with section 4 of that
+--      Act, shall be punished with imprisonment for a term which may extend to
+--      7 years, and shall also be liable to fine.
+--      Explanation.-A woman who causes herself to miscarry is within the
+--      meaning of this section.
+-- 313. Whoever commits the offence defined in section 312, without the consent
+--      of the woman, whether the woman's pregnancy is of more than 16 weeks'
+--      duration or not as mentioned in that section, shall be punished with
+--      imprisonment for life, or with imprisonment for a term which may extend
+--      to 10 years, and shall, if he is not sentenced to imprisonment for life,
+--      also be liable to fine.
+@ref Penal Code 1871 ss 312, 313 - the operative atoms
+DECLARE `Miscarriage Facts` HAS
+    particulars IS A Particulars @desc Who is charged, and when and where the offence was committed
+    victim IS A STRING @desc The name of the woman, as it is to appear in the charge
+    `victim described as` IS A STRING @desc How the charge describes her, after the name; leave blank if not needed
+    `the manner` IS A STRING @desc How the miscarriage was caused, as it is to read after "to wit,"
+    `voluntarily causes a woman with child to miscarry` IS A BOOLEAN @desc Did the accused voluntarily (s 26A) cause a pregnant woman to miscarry? A woman who causes herself to miscarry is within this (s 312 Explanation).
+    `not a treatment authorised by the Termination of Pregnancy Act 1974` IS A BOOLEAN @desc Was it NOT a termination the Termination of Pregnancy Act 1974 authorises? That Act is not encoded; the investigator answers it.
+    `the woman's pregnancy is of more than 16 weeks' duration` IS A BOOLEAN @desc Was the pregnancy of more than 16 weeks' duration, calculated under s 4 of the Termination of Pregnancy Act 1974? (s 312; the helper `more than 16 weeks' duration` decides it from the weeks)
+    `without the consent of the woman` IS A BOOLEAN @desc Was it done without the woman's consent? (s 313)
+
+%%PUNISH 312 | imprisonment for a term which may extend to 3 years, or with fine, or with both | - | - | O | 36 | | - | O | | | - | | | T
+%%PUNISH 312, more than 16 weeks | imprisonment for a term which may extend to 7 years, and shall also be liable to fine | - | - | S | 84 | | - | L | | | - | | | F
+%%PUNISH 313 | imprisonment for life, or with imprisonment for a term which may extend to 10 years, and shall, if he is not sentenced to imprisonment for life, also be liable to fine | - | O | O | 120 | | - | L | | | - | | | F
+
+@export Whether a pregnancy of the given number of weeks is "of more than 16 weeks' duration" (s 312 of the Penal Code 1871)
+GIVEN weeks IS A NUMBER @desc The duration of the pregnancy in weeks, calculated under s 4 of the Termination of Pregnancy Act 1974
+GIVETH A BOOLEAN
+DECIDE `more than 16 weeks' duration` weeks IF weeks > 16
+
+@export Whether the accused commits "the offence defined in section 312" of the Penal Code 1871 (causing miscarriage)
+GIVEN f IS A `Miscarriage Facts` @desc What the accused did
+GIVETH A BOOLEAN
+DECIDE `offence under s 312` f IF
+        "Subject to the provisions of the Termination of Pregnancy Act 1974,"
+    ... f's `not a treatment authorised by the Termination of Pregnancy Act 1974`
+    ... "whoever"
+    ... f's `voluntarily causes a woman with child to miscarry`
+
+@export Whether the accused has committed an offence punishable under section 313 of the Penal Code 1871 (causing miscarriage without the woman's consent)
+GIVEN f IS A `Miscarriage Facts` @desc What the accused did, and whether the woman consented
+GIVETH A BOOLEAN
+DECIDE `offence under s 313` f IF
+        "Whoever commits the offence defined in section 312"
+    ... `offence under s 312` f
+    ... f's `without the consent of the woman`
+
+GIVEN f IS A `Miscarriage Facts`
+GIVETH A LIST OF STRING
+`elements of section 312 not made out` f MEANS
+    concat (LIST
+        (`missing unless` (f's `voluntarily causes a woman with child to miscarry`) "voluntarily causes a woman with child to miscarry"),
+        (`missing unless` (f's `not a treatment authorised by the Termination of Pregnancy Act 1974`) "not authorised by the Termination of Pregnancy Act 1974"))
+
+@export Frame a charge under section 312 of the Penal Code 1871, or say why none can be framed
+GIVEN f IS A `Miscarriage Facts` @desc The facts, and the particulars of the charge
+GIVETH A Charge
+`charge under s 312` f MEANS
+    `frame the charge` (f's particulars) "312" "causing miscarriage"
+        (IF f's `the woman's pregnancy is of more than 16 weeks' duration`
+         THEN `punishment prescribed by s 312, more than 16 weeks`'s words
+         ELSE `punishment prescribed by s 312`'s words)
+        (`offence under s 312` f)
+        (CONCAT "did voluntarily cause ", (`one` (f's victim) (f's `victim described as`)), ", a woman with child, to miscarry",
+                IF f's `the woman's pregnancy is of more than 16 weeks' duration` THEN ", her pregnancy being of more than 16 weeks' duration" ELSE "",
+                ", to wit, ", f's `the manner`)
+        (`elements of section 312 not made out` f)
+
+@export Frame a charge under section 313 of the Penal Code 1871, or say why none can be framed
+GIVEN f IS A `Miscarriage Facts` @desc The facts, and the particulars of the charge
+GIVETH A Charge
+`charge under s 313` f MEANS
+    `frame the charge` (f's particulars) "313" "causing miscarriage without woman's consent"
+        (`punishment prescribed by s 313`'s words)
+        (`offence under s 313` f)
+        (CONCAT "did, without her consent, voluntarily cause ", (`one` (f's victim) (f's `victim described as`)), ", a woman with child, to miscarry, to wit, ", f's `the manner`)
+        (concat (LIST (`elements of section 312 not made out` f),
+                      (`missing unless` (f's `without the consent of the woman`) "without the consent of the woman")))
+
+-- ss 314, 315, 316: deferred (time).
+
+§§ `s 317 - exposure and abandonment of a child below 12 years of age`
+
+-- 317. Whoever, being the father or mother of a child below 12 years of age,
+--      or having the care of such child, exposes or leaves such child in any
+--      place with the intention of wholly abandoning such child shall be
+--      punished with imprisonment for a term which may extend to 7 years, or
+--      with fine, or with both.
+--      Explanation.-This section is not intended to prevent the trial of the
+--      offender for murder or culpable homicide as the case may be, if the
+--      child dies in consequence of the exposure.
+@ref Penal Code 1871 s 317 - the operative atoms
+DECLARE `Child Exposure Facts` HAS
+    particulars IS A Particulars @desc Who is charged, and when and where the offence was committed
+    victim IS A STRING @desc The child's name, as it is to appear in the charge
+    `victim described as` IS A STRING @desc How the charge describes the child, after the name; leave blank if not needed
+    `the manner` IS A STRING @desc Where and how the child was left, as it is to read after "to wit,"
+    `being the father or mother of the child, or having the care of the child` IS A BOOLEAN @desc Is the accused the child's father or mother, or did he or she have the care of the child? (s 317)
+    `the child is below 12 years of age` IS A BOOLEAN @desc Was the child below 12 years of age? (s 317; the helper `below 12 years of age`)
+    `exposes or leaves such child in any place` IS A BOOLEAN @desc Did the accused expose or leave the child somewhere? (s 317)
+    `with the intention of wholly abandoning such child` IS A BOOLEAN @desc Fault element: did the accused intend to abandon the child wholly? (s 317)
+
+%%PUNISH 317 | imprisonment for a term which may extend to 7 years, or with fine, or with both | - | - | O | 84 | | - | O | | | - | | | T
+
+@export Whether the accused has committed an offence punishable under section 317 of the Penal Code 1871
+GIVEN f IS A `Child Exposure Facts` @desc Who the accused is to the child, and what he or she did
+GIVETH A BOOLEAN
+DECIDE `offence under s 317` f IF
+        "Whoever,"
+    ... f's `being the father or mother of the child, or having the care of the child`
+    ... "a child"
+    ... f's `the child is below 12 years of age`
+    ... f's `exposes or leaves such child in any place`
+    ... f's `with the intention of wholly abandoning such child`
+
+@export Frame a charge under section 317 of the Penal Code 1871, or say why none can be framed
+GIVEN f IS A `Child Exposure Facts` @desc The facts, and the particulars of the charge
+GIVETH A Charge
+`charge under s 317` f MEANS
+    `frame the charge` (f's particulars) "317" "exposure and abandonment of a child below 12 years of age by parent or person having care of it"
+        (`punishment prescribed by s 317`'s words)
+        (`offence under s 317` f)
+        (CONCAT "being a parent of, or having the care of, ", (`one` (f's victim) (f's `victim described as`)), ", a child below 12 years of age, did leave the said child with the intention of wholly abandoning the said child, to wit, ", f's `the manner`)
+        (concat (LIST (`missing unless` (f's `being the father or mother of the child, or having the care of the child`) "being the father or mother of the child, or having the care of the child"),
+                      (`missing unless` (f's `the child is below 12 years of age`) "a child below 12 years of age"),
+                      (`missing unless` (f's `exposes or leaves such child in any place`) "exposes or leaves such child in any place"),
+                      (`missing unless` (f's `with the intention of wholly abandoning such child`) "with the intention of wholly abandoning such child")))
+
+§§ `s 318 - concealment of birth by secret disposal of dead body`
+
+-- 318. Whoever by secretly burying or otherwise disposing of the dead body of a
+--      child, whether such child dies before or after or during its birth,
+--      intentionally conceals or endeavours to conceal the birth of such child
+--      shall be punished with imprisonment for a term which may extend to
+--      2 years, or with fine, or with both.
+@ref Penal Code 1871 s 318 - the operative atoms
+DECLARE `Concealment of Birth Facts` HAS
+    particulars IS A Particulars @desc Who is charged, and when and where the offence was committed
+    `the manner` IS A STRING @desc How the body was disposed of, as it is to read after "to wit,"
+    `by secretly burying or otherwise disposing of the dead body of a child` IS A BOOLEAN @desc Did the accused secretly bury, or otherwise dispose of, the dead body of a child - whether the child died before, during or after birth? (s 318)
+    `intentionally conceals or endeavours to conceal the birth of such child` IS A BOOLEAN @desc Fault element: did the accused thereby intentionally conceal, or try to conceal, the child's birth? (s 318)
+
+%%PUNISH 318 | imprisonment for a term which may extend to 2 years, or with fine, or with both | - | - | O | 24 | | - | O | | | - | | | T
+
+@export Whether the accused has committed an offence punishable under section 318 of the Penal Code 1871
+GIVEN f IS A `Concealment of Birth Facts` @desc What the accused did with the body, and why
+GIVETH A BOOLEAN
+DECIDE `offence under s 318` f IF
+        "Whoever"
+    ... f's `by secretly burying or otherwise disposing of the dead body of a child`
+    ... f's `intentionally conceals or endeavours to conceal the birth of such child`
+
+@export Frame a charge under section 318 of the Penal Code 1871, or say why none can be framed
+GIVEN f IS A `Concealment of Birth Facts` @desc The facts, and the particulars of the charge
+GIVETH A Charge
+`charge under s 318` f MEANS
+    `frame the charge` (f's particulars) "318" "concealment of birth by secret disposal of dead body"
+        (`punishment prescribed by s 318`'s words)
+        (`offence under s 318` f)
+        (CONCAT "did, by secretly disposing of the dead body of a child, intentionally conceal the birth of the said child, to wit, ", f's `the manner`)
+        (concat (LIST (`missing unless` (f's `by secretly burying or otherwise disposing of the dead body of a child`) "by secretly burying or otherwise disposing of the dead body of a child"),
+                      (`missing unless` (f's `intentionally conceals or endeavours to conceal the birth of such child`) "intentionally conceals or endeavours to conceal the birth of such child")))

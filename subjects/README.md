@@ -32,6 +32,7 @@ encoding at all, which the `what it encodes` column says plainly.
 | [`au/wa/residential-tenancies-act`](au/wa/residential-tenancies-act) | Residential Tenancies Act 1987 (Western Australia) — row `legalese-michael` | `draft` |
 
 Two subjects above carry a second, independent row from the bulk ingestion: `sg/penal-code-1871/encodings/legalese-aswathy/` (the whole Code, Chapters 1–23) beside the `legalese` row, and `il/hvac-work-licensing-2025/encodings/legalese-michael/` (the whole Law, in Hebrew-commented English L4) beside `legalese` and `legalese-he`. Rows are equal; neither is primary.
+`sg/penal-code-1871` also has a third row, `encodings/legalese-whole-code/` (2026-09-26): the whole Code again, made in one run of nine agents to the charge generator's contract, with 443 sections encoded and 42 deferred for time.
 
 `sg/child-support` is the odd one and worth knowing about before you read it: its primary
 source is an **announcement, not an enactment**. No Bill has been introduced, so its

@@ -1,0 +1,1690 @@
+-- Singapore Penal Code 1871 - Chapter 17 (Offences against property), part 1:
+--   Theft                      ss 378-382
+--   Extortion                  ss 383-389
+--   Robbery and gang-robbery   ss 390-402 (there is no s 398)
+--
+-- Source: Penal Code 1871, 2020 Revised Edition, SSO "Current version as at
+-- 09 Sep 2026" (inputs/PC1871.txt). Section text below is copied from that file
+-- mechanically, page footers removed, curly quotes and dashes folded to ASCII.
+--
+-- Before reading:
+--
+-- * Three facts records, one per family: `Theft Facts` (ss 378-382),
+--   `Extortion Facts` (ss 383-389), `Robbery Facts` (ss 390-397, nesting a
+--   theft and an extortion, as the reference row does), and `Gang Facts`
+--   (ss 399-402, which need no robbery to have happened).
+-- * Field names follow the reference row (reference/drafts-row/theft-378-379.l4,
+--   extortion-383-384.l4, robbery-390-392.l4) wherever the reference row has the
+--   element, so the charge generator's catalogue entries for ss 379, 384, 392
+--   and 394 keep their leaf names. The aggravations the reference row put in a
+--   nested `Theft in Dwelling Facts` are flat leaves of `Theft Facts` here
+--   (notes/property-forks.md P-1).
+-- * Punishments are data (`punishment prescribed by s N`), verbatim from this
+--   text - which differs from the reference row for ss 382 and 384 (Act 21 of
+--   2025, wef 17/08/2026).
+-- * Leaves that read another group's definitions (hurt, grievous hurt,
+--   wrongful restraint, murder: body-a; attempt: general-part) are flat
+--   BOOLEANs whose @desc says so; they are listed in notes/property-coverage.md
+--   under "cross-module joins owed".
+
+IMPORT prelude
+IMPORT `pc-domain`
+IMPORT `pc-general`
+
+§ `Chapter 17 - Offences against property: theft`
+
+§§ `The facts of one taking`
+
+@ref Penal Code 1871 ss 378-382 - the operative atoms, and the particulars CPC s 124 requires
+DECLARE `Theft Facts` HAS
+    particulars           IS A Particulars @desc Who is charged, and when and where the offence was committed
+    victim                IS A STRING  @desc The name of the person out of whose possession the property was taken, as it is to appear in the charge - for example "Ng Juin Chye Joel"
+    `victim described as` IS A STRING  @desc How the charge describes that person, after the name - for example "the owner of the said stall"; leave blank if not needed
+    `victim pronoun`      IS A Pronoun @desc The pronoun the charge uses for that person
+    `the property`        IS A STRING  @desc What was taken, as it is to read after "did commit theft of" - for example "a handphone valued at about $450/-"
+
+    -- s 378 "intending to take dishonestly"
+    `intending to take`   IS A BOOLEAN @desc Did the accused intend to TAKE the property out of the other person's possession? (fault element, s 22A) Illustration (h): hiding a ring in the owner's house, meaning to come back for it, is an intention to take.
+    dishonestly           IS A BOOLEAN @desc Did the accused act dishonestly - intending a wrongful gain or a wrongful loss, or in a way reasonable and honest people would call dishonest, knowing that (s 24)? Illustrations (i), (m), (n), (p): taking one's own watch from a jeweller with no lien, taking with a belief in implied consent, or in good faith believing the thing one's own, is not dishonest; illustrations (j), (k), (l): taking back a pledged watch, or holding a thing to ransom for a reward, is.
+    -- "any movable property"
+    `movable property`    IS A BOOLEAN @desc Was the thing movable property - property of any description other than land, things attached to the earth, and things permanently fastened to anything so attached (s 22)? A thing attached to the earth is not, but becomes so as soon as it is severed (Explanation 1); intangible property is (Explanation 6).
+    -- "out of the possession of any person without that person's consent"
+    `out of the possession of any person`
+                          IS A BOOLEAN @desc Was the property in the possession of some person when it was moved? Illustration (e): plate entrusted to a warehouse operator is not in the owner's possession; (g): a ring on the high road is in nobody's; (f): a ring on a table in the house Z occupies is in Z's.
+    `without that person's consent`
+                          IS A BOOLEAN @desc Was the property moved WITHOUT the consent of the person in possession? Consent may be express or implied, and may be given by the person in possession or by anyone with authority, express or implied (Explanation 5). Illustration (o): a wife's gift of her husband's property she has no authority to give is no consent.
+    -- "moves that property in order to such taking"
+    `moves that property` IS A BOOLEAN @desc Did the accused move the property? Removing an obstacle to its moving, or separating it from another thing, counts (Explanation 3); a moving by the same act as the severance counts (Explanation 2); causing an animal to move it counts (Explanation 4, illustration (b)); transferring intangible property between accounts or persons, or extinguishing it, counts (Explanation 6, illustration (q)).
+    `in order to such taking`
+                          IS A BOOLEAN @desc Was the moving done FOR THE PURPOSE of that taking? Illustration (a): the tree is stolen the moment it is severed in order to the taking.
+
+    -- s 379A
+    `a motor vehicle`     IS A BOOLEAN @desc Was the property a motor vehicle - a mechanically propelled vehicle intended or adapted for use on roads, including a trailer drawn by a motor vehicle (s 379A(3))?
+    `any component part of a motor vehicle`
+                          IS A BOOLEAN @desc Was the property a component part attached to a motor vehicle, including any tyre, accessory or equipment attached to it (s 379A(3))?
+
+    -- s 380 "in any building, tent or vessel ... used as a human dwelling, or for the custody of property"
+    building              IS A BOOLEAN @desc Was the theft committed in a building?
+    tent                  IS A BOOLEAN @desc Was the theft committed in a tent?
+    vessel                IS A BOOLEAN @desc Was the theft committed in a vessel?
+    `as a human dwelling` IS A BOOLEAN @desc Was that building, tent or vessel used as a human dwelling? "Human dwelling" is not defined in the Code; its ordinary meaning governs.
+    `for the custody of property`
+                          IS A BOOLEAN @desc Was that building, tent or vessel used for the custody of property - a shop, a warehouse, a store room?
+
+    -- s 381
+    `being a clerk or servant`
+                          IS A BOOLEAN @desc Was the accused a clerk or servant?
+    `being employed in the capacity of a clerk or servant`
+                          IS A BOOLEAN @desc Was the accused employed in the capacity of a clerk or servant?
+    `in the possession of his master or employer`
+                          IS A BOOLEAN @desc Was the property taken in the possession of the accused's master or employer?
+
+    -- s 382
+    `having made preparation for causing death or hurt or restraint, or fear of death or of hurt or of restraint, to any person`
+                          IS A BOOLEAN @desc Had the accused made preparation for causing death, hurt (s 319, pc-body-a) or restraint, or fear of any of these, to any person? Illustration (a): a loaded pistol carried to hurt Z if Z resisted; (b): companions posted to restrain Z.
+    `in order to commit such theft`
+                          IS A BOOLEAN @desc Was that preparation made in order to commit the theft?
+    `in order to effect his escape after committing such theft`
+                          IS A BOOLEAN @desc ... or in order to escape after committing it?
+    `in order to retain property taken by such theft`
+                          IS A BOOLEAN @desc ... or in order to keep the property taken?
+    `the preparation`     IS A STRING  @desc The preparation made, as it is to read after "having made preparation for causing" in a s 382 charge - for example "hurt to the said Tan Ah Kow, to wit, by carrying a knife"
+
+§§ `s 378 - theft`
+
+-- 378. Whoever, intending to take dishonestly any movable property out of the
+-- possession of any person without that person's consent, moves that property in order to
+-- such taking, is said to commit theft.
+--
+-- Explanation 1.-A thing so long as it is attached to the earth, not being movable property, is not
+-- the subject of theft; but it becomes capable of being the subject of theft as soon as it is severed from
+-- the earth.
+--
+-- Explanation 2.-A moving, effected by the same act which effects the severance, may be a theft.
+--
+-- Explanation 3.-A person is said to cause a thing to move by removing an obstacle which
+-- prevented it from moving, or by separating it from any other thing, as well as by actually moving it.
+--
+-- Explanation 4.-A person, who by any means causes an animal to move, is said to move that
+-- animal, and to move everything which in consequence of the motion so caused is moved by that
+-- animal.
+--
+-- Explanation 5.-The consent mentioned in the definition may be express or implied, and may be
+-- given either by the person in possession, or by any person having for that purpose authority either
+-- express or implied.
+--
+-- Explanation 6.-A person may move property which is intangible or incorporeal by transferring
+-- the property from one account to another account or transferring the interests in the property from one
+-- person to another person or by extinguishing the property.
+--
+-- Illustrations
+--
+-- (a) A cuts down a tree on Z's ground, with the intention of dishonestly taking the tree out of Z's
+-- possession without Z's consent. Here, as soon as A has severed the tree, in order to such taking, he has
+-- committed theft.
+--
+-- (b) A puts a bait for dogs in his pocket, and thus induces Z's dog to follow it. Here, if A's intention
+-- be dishonestly to take the dog out of Z's possession without Z's consent, A has committed theft as
+-- soon as Z's dog has begun to follow A.
+--
+-- (c) [Deleted by Act 51 of 2007]
+--
+-- (d) A, being Z's servant and entrusted by Z with the care of Z's plate, dishonestly runs away with
+-- the plate without Z's consent. A has committed theft.
+--
+-- (e) Z, going on a journey, entrusts his plate to A, the owner or operator of a warehouse, till Z shall
+-- return. A carries the plate to a goldsmith and sells it. Here the plate was not in Z's possession. It could
+-- not, therefore, be taken out of Z's possession, and A has not committed theft, though he may have
+-- committed criminal breach of trust.
+--
+-- [Act 23 of 2021 wef 01/03/2022]
+--
+-- (f) A finds a ring belonging to Z on a table in the house which Z occupies. Here the ring is in Z's
+-- possession, and if A dishonestly removes it, A commits theft.
+--
+-- (g) A finds a ring lying on the high road, not in the possession of any person. A by taking it
+-- commits no theft, though he may commit criminal misappropriation of property.
+--
+-- (h) A sees a ring belonging to Z lying on a table in Z's house. Not venturing to misappropriate the
+-- ring immediately for fear of search and detection, A hides the ring in a place where it is highly
+-- improbable that it will ever be found by Z, with the intention of taking the ring from the hiding place
+-- and selling it when the loss is forgotten. Here A, at the time of first moving the ring, commits theft.
+--
+-- (i) A delivers his watch to Z, a jeweller, to be regulated. Z carries it to his shop. A, not owing to the
+-- jeweller any debt for which the jeweller might lawfully detain the watch as a security, enters the shop
+-- openly, takes his watch by force out of Z's hand, and carries it away. Here A, though he may have
+-- committed criminal trespass and assault, has not committed theft, inasmuch as what he did was not
+-- done dishonestly.
+--
+-- (j) If A owes money to Z for repairing the watch, and if Z retains the watch lawfully as a security
+-- for the debt, and A takes the watch out of Z's possession, with the intention of depriving Z of the
+-- property as a security for his debt, he commits theft, inasmuch as he takes it dishonestly.
+--
+-- (k) Again, if A having pawned his watch to Z, takes it out of Z's possession without Z's consent,
+-- not having paid what he borrowed on the watch, he commits theft, though the watch is his own
+-- property, inasmuch as he takes it dishonestly.
+--
+-- (l) A takes an article belonging to Z out of Z's possession, without Z's consent, with the intention
+-- of keeping it until he obtains money from Z as a reward for its restoration. Here A takes dishonestly; A
+-- has therefore committed theft.
+--
+-- (m) A, being on friendly terms with Z, goes into Z's library in Z's absence and takes away a book,
+-- without Z's express consent, for the purpose merely of reading it, and with the intention of returning
+-- it. Here, it is probable that A may have conceived that he had Z's implied consent to use Z's book. If
+-- this was A's impression, A has not committed theft.
+--
+-- (n) A asks charity from Z's wife. She gives A money, food and clothes, which A knows to belong
+-- to Z, her husband. Here, it is probable that A may conceive that Z's wife is authorised to give away
+-- alms. If this was A's impression, A has not committed theft.
+--
+-- (o) A is the paramour of Z's wife. She gives A valuable property, which A knows to belong to her
+-- husband Z, and to be such property as she has no authority from Z to give. If A takes the property
+-- dishonestly, he commits theft.
+--
+-- (p) A in good faith, believing property belonging to Z to be A's own property, takes that property
+-- out of B's possession. Here, as A does not take dishonestly, he does not commit theft.
+--
+-- (q) A gains access to Z's bank account and dishonestly transfers money from Z's account to A's
+--
+-- own account without Z's knowledge or consent. A commits theft.
+--
+-- [15/2019]
+@export Whether the accused "commits theft" within section 378 of the Penal Code 1871
+GIVEN f IS A `Theft Facts` @desc The taking - what was taken, from whom, with what intent
+GIVETH A BOOLEAN
+DECIDE `commits theft` f IF
+        "Whoever,"
+   ...  f's `intending to take`
+   ...  f's dishonestly
+   ...  "any"
+   ...  f's `movable property`
+   ...  f's `out of the possession of any person`
+   ...  f's `without that person's consent`
+   ...  f's `moves that property`
+   ...  f's `in order to such taking`
+   ...  ", is said to commit theft"
+
+§§ `s 379 - punishment for theft`
+
+-- 379. Whoever commits theft shall be punished with imprisonment for a term which
+-- may extend to 3 years, or with fine, or with both.
+@ref Penal Code 1871 s 379
+`punishment prescribed by s 379` MEANS Punishment WITH
+    section                  IS "379"
+    words                    IS "imprisonment for a term which may extend to 3 years, or with fine, or with both"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `or with`
+    `maximum term in months` IS JUST 36
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `or with`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `not prescribed`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS TRUE
+
+@export Whether the accused has committed an offence punishable under section 379 of the Penal Code 1871 (theft)
+GIVEN f IS A `Theft Facts` @desc The taking - what was taken, from whom, with what intent
+GIVETH A BOOLEAN
+DECIDE `offence under s 379` f IF
+        "Whoever"
+   ...  `commits theft` f
+
+§§ `s 379A - punishment for theft of a motor vehicle`
+
+-- 379A.-(1) Whoever commits theft of a motor vehicle or any component part of a
+-- motor vehicle shall be punished with imprisonment for a term which may extend to
+-- 7 years, and shall also be liable to fine.
+--
+-- (2) A person convicted of an offence under this section shall, unless the court for
+-- special reasons thinks fit to order otherwise, be disqualified for such period as the court
+-- may order from the date of his release from imprisonment from holding or obtaining a
+-- driving licence under the Road Traffic Act 1961.
+--
+-- (3) In this section -
+--
+-- "component part", in relation to a motor vehicle, means any component part
+-- attached to the motor vehicle, and includes any tyre, accessory or equipment
+-- attached to the motor vehicle;
+--
+-- "motor vehicle" means a mechanically propelled vehicle intended or adapted for
+-- use on roads, and includes a trailer drawn by a motor vehicle.
+--
+-- Theft in dwelling house, etc.
+--
+-- (2), the disqualification from holding a driving licence, is an order made on
+-- conviction under the Road Traffic Act 1961, not one of the punishments of
+-- s 53; it rides in the charge's punishment words.
+@ref Penal Code 1871 s 379A
+`punishment prescribed by s 379A` MEANS Punishment WITH
+    section                  IS "379A"
+    words                    IS "imprisonment for a term which may extend to 7 years, and shall also be liable to fine"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 84
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `shall also be liable to`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `not prescribed`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 379A of the Penal Code 1871 (theft of a motor vehicle)
+GIVEN f IS A `Theft Facts` @desc The taking, and what was taken
+GIVETH A BOOLEAN
+DECIDE `offence under s 379A` f IF
+        "(1) Whoever"
+   ...  `commits theft` f
+   ...  "of"
+   ...  (    f's `a motor vehicle`
+        OR   f's `any component part of a motor vehicle` )
+
+§§ `s 380 - theft in dwelling house, etc.`
+
+-- 380. Whoever commits theft in any building, tent or vessel, which building, tent or
+-- vessel is used as a human dwelling, or for the custody of property, shall be punished
+-- with imprisonment for a term which may extend to 7 years, and shall also be liable to
+-- fine.
+@ref Penal Code 1871 s 380
+`punishment prescribed by s 380` MEANS Punishment WITH
+    section                  IS "380"
+    words                    IS "imprisonment for a term which may extend to 7 years, and shall also be liable to fine"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 84
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `shall also be liable to`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `not prescribed`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 380 of the Penal Code 1871 (theft in a building, tent or vessel used as a human dwelling or for the custody of property)
+GIVEN f IS A `Theft Facts` @desc The taking, and the place it was committed in
+GIVETH A BOOLEAN
+DECIDE `offence under s 380` f IF
+        "Whoever"
+   ...  `commits theft` f
+   ...  "in any"
+   ...  (    f's building
+        OR   f's tent
+        OR   f's vessel )
+   ...  ", which building, tent or vessel is used"
+   ...  (    f's `as a human dwelling`
+        OR   f's `for the custody of property` )
+
+§§ `s 381 - theft by clerk or servant of property in possession of master`
+
+-- 381. Whoever, being a clerk or servant, or being employed in the capacity of a clerk
+-- or servant, commits theft in respect of any property in the possession of his master or
+-- employer, shall be punished with imprisonment for a term which may extend to 7 years,
+-- and shall also be liable to fine.
+@ref Penal Code 1871 s 381
+`punishment prescribed by s 381` MEANS Punishment WITH
+    section                  IS "381"
+    words                    IS "imprisonment for a term which may extend to 7 years, and shall also be liable to fine"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 84
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `shall also be liable to`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `not prescribed`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 381 of the Penal Code 1871 (theft by clerk or servant of property in possession of master)
+GIVEN f IS A `Theft Facts` @desc The taking, and the accused's employment
+GIVETH A BOOLEAN
+DECIDE `offence under s 381` f IF
+        "Whoever,"
+   ...  (    f's `being a clerk or servant`
+        OR   f's `being employed in the capacity of a clerk or servant` )
+   ...  `commits theft` f
+   ...  "in respect of any property"
+   ...  f's `in the possession of his master or employer`
+
+§§ `s 382 - theft after preparation made for causing death or hurt in order to commit theft`
+
+-- 382. Whoever commits theft, having made preparation for causing death or hurt or
+--
+-- restraint, or fear of death or of hurt or of restraint, to any person in order to commit such
+-- theft, or in order to effect his escape after committing such theft, or in order to retain
+-- property taken by such theft, shall be punished with imprisonment for a term which may
+-- extend to 10 years, and shall also be liable to caning.
+--
+-- Illustrations
+--
+-- (a) A commits theft of property in Z's possession; and, while committing this theft, he has a loaded
+-- pistol under his garment, having provided this pistol for the purpose of hurting Z in case Z should
+-- resist. A has committed the offence defined in this section.
+--
+-- (b) A picks Z's pocket, having posted several of his companions near him, in order that they may
+-- restrain Z, if Z should perceive what is passing and should resist, or should attempt to apprehend A. A
+-- has committed the offence defined in this section.
+--
+-- [Act 21 of 2025 wef 17/08/2026]
+@ref Penal Code 1871 s 382
+`punishment prescribed by s 382` MEANS Punishment WITH
+    section                  IS "382"
+    words                    IS "imprisonment for a term which may extend to 10 years, and shall also be liable to caning"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 120
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `not prescribed`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall also be liable to`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 382 of the Penal Code 1871 (theft after preparation made for causing death, hurt or restraint)
+GIVEN f IS A `Theft Facts` @desc The taking, and the preparation made for it
+GIVETH A BOOLEAN
+DECIDE `offence under s 382` f IF
+        "Whoever"
+   ...  `commits theft` f
+   ...  f's `having made preparation for causing death or hurt or restraint, or fear of death or of hurt or of restraint, to any person`
+   ...  (    f's `in order to commit such theft`
+        OR   f's `in order to effect his escape after committing such theft`
+        OR   f's `in order to retain property taken by such theft` )
+
+§§ `The theft charges`
+
+-- CPC s 125 illustration (a): a theft charge need not set out the manner.
+GIVEN f IS A `Theft Facts`
+GIVETH A STRING
+`the recital of the theft` f MEANS
+    CONCAT "did commit theft of ", f's `the property`,
+           ", in the possession of ", (`one` (f's victim) (f's `victim described as`))
+
+GIVEN f IS A `Theft Facts`
+GIVETH A LIST OF STRING
+`elements of theft not made out` f MEANS
+    concat (LIST
+        (`missing unless` (f's `intending to take`) "intending to take"),
+        (`missing unless` (f's dishonestly) "dishonestly (section 24)"),
+        (`missing unless` (f's `movable property`) "any movable property (section 22)"),
+        (`missing unless` (f's `out of the possession of any person`) "out of the possession of any person"),
+        (`missing unless` (f's `without that person's consent`) "without that person's consent"),
+        (`missing unless` (f's `moves that property`) "moves that property"),
+        (`missing unless` (f's `in order to such taking`) "in order to such taking"))
+
+@export Frame a charge under section 379 of the Penal Code 1871 (theft), or say why none can be framed
+GIVEN f IS A `Theft Facts` @desc The taking, and the particulars of the charge
+GIVETH A Charge
+`charge under s 379` f MEANS
+    `frame the charge` (f's particulars) "379" "theft"
+        (`punishment prescribed by s 379`'s words)
+        (`offence under s 379` f)
+        (`the recital of the theft` f)
+        (`elements of theft not made out` f)
+
+@export Frame a charge under section 379A of the Penal Code 1871 (theft of a motor vehicle), or say why none can be framed
+GIVEN f IS A `Theft Facts` @desc The taking, what was taken, and the particulars of the charge
+GIVETH A Charge
+`charge under s 379A` f MEANS
+    `frame the charge` (f's particulars) "379A" "theft of a motor vehicle"
+        (`punishment prescribed by s 379A`'s words)
+        (`offence under s 379A` f)
+        (CONCAT (`the recital of the theft` f), (IF f's `a motor vehicle` THEN ", a motor vehicle" ELSE ", a component part of a motor vehicle"))
+        (concat (LIST (`elements of theft not made out` f),
+                      (`missing unless` (f's `a motor vehicle` OR f's `any component part of a motor vehicle`) "of a motor vehicle or any component part of a motor vehicle (section 379A(3))")))
+
+GIVEN f IS A `Theft Facts`
+GIVETH A STRING
+`the place the theft was committed in` f MEANS
+    CONCAT ", in a ",
+           (`joined with` " or " (concat (LIST
+               (`included if` (f's building) "building"),
+               (`included if` (f's tent) "tent"),
+               (`included if` (f's vessel) "vessel")))),
+           " used ",
+           (`joined with` " or " (concat (LIST
+               (`included if` (f's `as a human dwelling`) "as a human dwelling"),
+               (`included if` (f's `for the custody of property`) "for the custody of property"))))
+
+@export Frame a charge under section 380 of the Penal Code 1871 (theft in dwelling house, etc.), or say why none can be framed
+GIVEN f IS A `Theft Facts` @desc The taking, the place it was committed in, and the particulars of the charge
+GIVETH A Charge
+`charge under s 380` f MEANS
+    `frame the charge` (f's particulars) "380" "theft in dwelling"
+        (`punishment prescribed by s 380`'s words)
+        (`offence under s 380` f)
+        (CONCAT (`the recital of the theft` f), (`the place the theft was committed in` f))
+        (concat (LIST (`elements of theft not made out` f),
+                      (`missing unless` (f's building OR f's tent OR f's vessel) "in any building, tent or vessel"),
+                      (`missing unless` (f's `as a human dwelling` OR f's `for the custody of property`) "which building, tent or vessel is used as a human dwelling, or for the custody of property")))
+
+@export Frame a charge under section 381 of the Penal Code 1871 (theft by clerk or servant of property in possession of master), or say why none can be framed
+GIVEN f IS A `Theft Facts` @desc The taking, the accused's employment, and the particulars of the charge
+GIVETH A Charge
+`charge under s 381` f MEANS
+    `frame the charge` (f's particulars) "381" "theft by clerk or servant of property in possession of master"
+        (`punishment prescribed by s 381`'s words)
+        (`offence under s 381` f)
+        (CONCAT "being ", (IF f's `being a clerk or servant` THEN "a clerk or servant" ELSE "employed in the capacity of a clerk or servant"),
+                ", ", (`the recital of the theft` f), ", your master or employer")
+        (concat (LIST (`missing unless` (f's `being a clerk or servant` OR f's `being employed in the capacity of a clerk or servant`) "being a clerk or servant, or being employed in the capacity of a clerk or servant"),
+                      (`elements of theft not made out` f),
+                      (`missing unless` (f's `in the possession of his master or employer`) "in respect of any property in the possession of his master or employer")))
+
+@export Frame a charge under section 382 of the Penal Code 1871 (theft after preparation made for causing death or hurt), or say why none can be framed
+GIVEN f IS A `Theft Facts` @desc The taking, the preparation, and the particulars of the charge
+GIVETH A Charge
+`charge under s 382` f MEANS
+    `frame the charge` (f's particulars) "382" "theft after preparation made for causing death or hurt in order to commit theft"
+        (`punishment prescribed by s 382`'s words)
+        (`offence under s 382` f)
+        (CONCAT (`the recital of the theft` f), ", having made preparation for causing ", f's `the preparation`,
+                " in order to ",
+                (`joined with` ", or in order to " (concat (LIST
+                    (`included if` (f's `in order to commit such theft`) "commit such theft"),
+                    (`included if` (f's `in order to effect his escape after committing such theft`) "effect your escape after committing such theft"),
+                    (`included if` (f's `in order to retain property taken by such theft`) "retain property taken by such theft")))))
+        (concat (LIST (`elements of theft not made out` f),
+                      (`missing unless` (f's `having made preparation for causing death or hurt or restraint, or fear of death or of hurt or of restraint, to any person`) "having made preparation for causing death or hurt or restraint, or fear of death or of hurt or of restraint, to any person"),
+                      (`missing unless` (f's `in order to commit such theft` OR f's `in order to effect his escape after committing such theft` OR f's `in order to retain property taken by such theft`) "in order to commit such theft, or to effect his escape after committing it, or to retain property taken by it")))
+
+§ `Chapter 17 - Offences against property: extortion`
+
+§§ `The facts of one threat`
+
+@ref Penal Code 1871 ss 383-389 - the operative atoms, and the particulars CPC ss 124 and 125 require
+DECLARE `Extortion Facts` HAS
+    particulars             IS A Particulars @desc Who is charged, and when and where the offence was committed
+    victim                  IS A STRING  @desc The name of the person put in fear, as it is to appear in the charge
+    `victim described as`   IS A STRING  @desc How the charge describes that person, after the name; leave blank if not needed
+    `victim pronoun`        IS A Pronoun @desc The pronoun the charge uses for the person put in fear
+    `the property extorted` IS A STRING  @desc What was delivered, as it is to read after "did extort" - for example "cash of $200/-"
+    `the fear`              IS A STRING  @desc What the victim was put in fear of, as it is to read after "in fear" - for example "of harm to his reputation, to wit, by threatening to publish a defamatory libel concerning him"
+
+    -- s 383
+    intentionally           IS A BOOLEAN @desc Did the accused mean to put the victim in fear? (fault element, s 26C)
+    `put the victim in fear` IS A BOOLEAN @desc Was the victim in fact put in fear?
+    `that person`           IS A BOOLEAN @desc Was the harm feared harm to the victim themselves?
+    `any other person`      IS A BOOLEAN @desc Was the harm feared harm to somebody other than the victim? Illustration (b): Z's child.
+    body                    IS A BOOLEAN @desc ... harm in body?
+    mind                    IS A BOOLEAN @desc ... harm in mind?
+    reputation              IS A BOOLEAN @desc ... harm in reputation? Illustration (a): a defamatory libel.
+    property                IS A BOOLEAN @desc ... harm in property?
+    dishonestly             IS A BOOLEAN @desc Did the accused act dishonestly (s 24)? The harm may be one to be caused legally or illegally (illustration (c): a threat to report a real offence).
+    `induced the person so put in fear`
+                            IS A BOOLEAN @desc Was the delivery brought about BY that fear?
+    `any property`          IS A BOOLEAN @desc Was property delivered to any person (s 22)?
+    `valuable security`     IS A BOOLEAN @desc Was a valuable security delivered (s 30)? Illustration (b): a promissory note.
+    `anything signed or sealed which may be converted into a valuable security`
+                            IS A BOOLEAN @desc Was something signed or sealed delivered which may be converted into a valuable security? Illustration (d): a signed blank paper.
+
+    -- ss 385, 387, 389: the attempt-shaped offences
+    `in order to commit extortion`
+                            IS A BOOLEAN @desc Did the accused act in order to commit extortion? (ss 385, 387, 389 - no delivery need have followed)
+    `puts or attempts to put any person in fear`
+                            IS A BOOLEAN @desc Did the accused put, or attempt to put, any person in fear? (ss 385, 387, 389)
+
+    -- ss 386, 387
+    `fear of death`         IS A BOOLEAN @desc Was the fear a fear of death, to that person or to any other? (ss 386, 387)
+    `fear of grievous hurt` IS A BOOLEAN @desc Was the fear a fear of grievous hurt (s 320, defined in pc-body-a; joined at integration), to that person or to any other? (ss 386, 387)
+
+    -- ss 388, 389
+    `fear of an accusation against that person or any other`
+                            IS A BOOLEAN @desc Was the fear a fear of an accusation against that person or anyone else? (ss 388, 389)
+    `of having committed, or attempted to commit, an offence punishable with death, or with imprisonment for life, or with imprisonment for a term which may extend to 10 years`
+                            IS A BOOLEAN @desc Was the accusation feared one of having committed, or attempted to commit, an offence punishable with death, imprisonment for life, or imprisonment which may extend to 10 years? Whether an offence is so punishable is read from its punishment (pc-general's `punishable with death or imprisonment for life`; `punishable with imprisonment for` 120 `months or upwards within section 41`).
+    `of having attempted to induce any other person to commit such offence`
+                            IS A BOOLEAN @desc Was the accusation feared one of having attempted to induce another to commit such an offence? (s 388 only - s 389 does not have this limb)
+
+§§ `s 383 - extortion`
+
+-- 383. Whoever intentionally puts any person in fear of any harm to that person or to
+-- any other person, in body, mind, reputation or property, whether such harm is to be
+-- caused legally or illegally, and thereby dishonestly induces the person so put in fear to
+-- deliver to any person any property or valuable security, or anything signed or sealed
+-- which may be converted into a valuable security, commits "extortion".
+--
+-- Illustrations
+--
+-- (a) A threatens to publish a defamatory libel concerning Z, unless Z gives him money. He thus
+-- induces Z to give him money. A has committed extortion.
+--
+-- (b) A threatens Z that he will keep Z's child in wrongful confinement, unless Z will sign and
+-- deliver to A a promissory note binding Z to pay certain moneys to A. Z signs and delivers the note. A
+-- has committed extortion.
+--
+-- (c) A, an enforcement officer, sees Z committing an offence, and threatens to report the offence
+-- unless Z gives him money. Z fears that the report may result in his being prosecuted for the offence
+-- and delivers money to A. A has committed extortion.
+--
+-- (d) A, by putting Z in fear of grievous hurt, dishonestly induces Z to sign or affix his seal to a blank
+-- paper and deliver it to A. Z signs and delivers the paper to A. Here, as the paper so signed may be
+-- converted into a valuable security, A has committed extortion.
+@export Whether the accused "commits extortion" within section 383 of the Penal Code 1871
+GIVEN f IS AN `Extortion Facts` @desc The threat, whom it frightened, and what it got
+GIVETH A BOOLEAN
+DECIDE `commits extortion` f IF
+        "Whoever"
+   ...  f's intentionally
+   ...  f's `put the victim in fear`
+   ...  "of any harm to"
+   ...  (    f's `that person`
+        OR   f's `any other person` )
+   ...  ", in"
+   ...  (    f's body
+        OR   f's mind
+        OR   f's reputation
+        OR   f's property )
+   ...  ", whether such harm is to be caused legally or illegally, and thereby"
+   ...  f's dishonestly
+   ...  f's `induced the person so put in fear`
+   ...  "to deliver to any person"
+   ...  (    f's `any property`
+        OR   f's `valuable security`
+        OR   f's `anything signed or sealed which may be converted into a valuable security` )
+   ...  ", commits extortion"
+
+GIVEN f IS AN `Extortion Facts`
+GIVETH A BOOLEAN
+`fear of harm to any person in body, mind, reputation or property` f MEANS
+        (f's `that person` OR f's `any other person`)
+    AND (f's body OR f's mind OR f's reputation OR f's property)
+
+§§ `s 384 - punishment for extortion`
+
+-- 384. Whoever commits extortion shall be punished with imprisonment for a term of
+-- not less than 2 years and not more than 7 years and shall also be liable to caning.
+--
+-- [Act 21 of 2025 wef 17/08/2026]
+@ref Penal Code 1871 s 384
+`punishment prescribed by s 384` MEANS Punishment WITH
+    section                  IS "384"
+    words                    IS "imprisonment for a term of not less than 2 years and not more than 7 years and shall also be liable to caning"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 84
+    `minimum term in months` IS JUST 24
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `not prescribed`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall also be liable to`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 384 of the Penal Code 1871 (extortion)
+GIVEN f IS AN `Extortion Facts` @desc The threat, whom it frightened, and what it got
+GIVETH A BOOLEAN
+DECIDE `offence under s 384` f IF
+        "Whoever"
+   ...  `commits extortion` f
+
+§§ `s 385 - putting person in fear of harm in order to commit extortion`
+
+-- 385. Whoever, in order to commit extortion, puts or attempts to put any person in
+-- fear of any harm to that person or to any other person, in body, mind, reputation or
+-- property, whether such harm is to be caused legally or illegally, shall be punished with
+-- imprisonment for a term of not less than 2 years and not more than 5 years and shall
+-- also be liable to caning.
+--
+-- [Act 21 of 2025 wef 17/08/2026]
+@ref Penal Code 1871 s 385
+`punishment prescribed by s 385` MEANS Punishment WITH
+    section                  IS "385"
+    words                    IS "imprisonment for a term of not less than 2 years and not more than 5 years and shall also be liable to caning"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 60
+    `minimum term in months` IS JUST 24
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `not prescribed`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall also be liable to`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 385 of the Penal Code 1871 (putting a person in fear of harm in order to commit extortion)
+GIVEN f IS AN `Extortion Facts` @desc The threat, and what it was for
+GIVETH A BOOLEAN
+DECIDE `offence under s 385` f IF
+        "Whoever,"
+   ...  f's `in order to commit extortion`
+   ...  f's `puts or attempts to put any person in fear`
+   ...  "of any harm to"
+   ...  (    f's `that person`
+        OR   f's `any other person` )
+   ...  ", in"
+   ...  (    f's body
+        OR   f's mind
+        OR   f's reputation
+        OR   f's property )
+   ...  ", whether such harm is to be caused legally or illegally"
+
+§§ `s 386 - extortion by putting a person in fear of death or grievous hurt`
+
+-- 386. Whoever commits extortion by putting any person in fear of death or of
+-- grievous hurt to that person or to any other, shall be punished with imprisonment for a
+-- term of not less than 2 years and not more than 10 years and with caning.
+@ref Penal Code 1871 s 386
+`punishment prescribed by s 386` MEANS Punishment WITH
+    section                  IS "386"
+    words                    IS "imprisonment for a term of not less than 2 years and not more than 10 years and with caning"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 120
+    `minimum term in months` IS JUST 24
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `not prescribed`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall be punished with`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 386 of the Penal Code 1871 (extortion by putting a person in fear of death or grievous hurt)
+GIVEN f IS AN `Extortion Facts` @desc The threat, whom it frightened, and what it got
+GIVETH A BOOLEAN
+DECIDE `offence under s 386` f IF
+        "Whoever"
+   ...  `commits extortion` f
+   ...  "by putting any person in fear of"
+   ...  (    f's `fear of death`
+        OR   f's `fear of grievous hurt` )
+   ...  (    f's `that person`
+        OR   f's `any other person` )
+
+§§ `s 387 - putting person in fear of death or of grievous hurt in order to commit extortion`
+
+-- 387. Whoever, in order to commit extortion, puts or attempts to put any person in
+-- fear of death or of grievous hurt to that person or to any other, shall be punished with
+-- imprisonment for a term of not less than 2 years and not more than 7 years and shall
+-- also be liable to caning.
+--
+-- [Act 21 of 2025 wef 17/08/2026]
+--
+-- Extortion by threat of accusation of an offence punishable with death, or
+-- imprisonment, etc.
+@ref Penal Code 1871 s 387
+`punishment prescribed by s 387` MEANS Punishment WITH
+    section                  IS "387"
+    words                    IS "imprisonment for a term of not less than 2 years and not more than 7 years and shall also be liable to caning"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 84
+    `minimum term in months` IS JUST 24
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `not prescribed`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall also be liable to`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 387 of the Penal Code 1871 (putting a person in fear of death or of grievous hurt in order to commit extortion)
+GIVEN f IS AN `Extortion Facts` @desc The threat, and what it was for
+GIVETH A BOOLEAN
+DECIDE `offence under s 387` f IF
+        "Whoever,"
+   ...  f's `in order to commit extortion`
+   ...  f's `puts or attempts to put any person in fear`
+   ...  "of"
+   ...  (    f's `fear of death`
+        OR   f's `fear of grievous hurt` )
+   ...  (    f's `that person`
+        OR   f's `any other person` )
+
+§§ `s 388 - extortion by threat of accusation of an offence punishable with death, or imprisonment, etc.`
+
+-- 388. Whoever commits extortion by putting any person in fear of an accusation
+-- against that person or any other, of having committed, or attempted to commit, an
+-- offence punishable with death, or with imprisonment for life, or with imprisonment for
+-- a term which may extend to 10 years, or of having attempted to induce any other person
+-- to commit such offence, shall be punished with imprisonment for a term which may
+-- extend to 10 years, and shall also be liable to fine or to caning.
+@ref Penal Code 1871 s 388
+`punishment prescribed by s 388` MEANS Punishment WITH
+    section                  IS "388"
+    words                    IS "imprisonment for a term which may extend to 10 years, and shall also be liable to fine or to caning"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 120
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `shall also be liable to`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall also be liable to`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 388 of the Penal Code 1871 (extortion by threat of accusation of an offence punishable with death, imprisonment for life or imprisonment for 10 years)
+GIVEN f IS AN `Extortion Facts` @desc The threat of accusation, and what it got
+GIVETH A BOOLEAN
+DECIDE `offence under s 388` f IF
+        "Whoever"
+   ...  `commits extortion` f
+   ...  "by putting any person in"
+   ...  f's `fear of an accusation against that person or any other`
+   ...  (    f's `of having committed, or attempted to commit, an offence punishable with death, or with imprisonment for life, or with imprisonment for a term which may extend to 10 years`
+        OR   f's `of having attempted to induce any other person to commit such offence` )
+
+§§ `s 389 - putting person in fear of accusation of offence, in order to commit extortion`
+
+-- 389. Whoever, in order to commit extortion, puts or attempts to put any person in
+-- fear of an accusation against that person or any other, of having committed, or
+-- attempted to commit, an offence punishable with death, or with imprisonment for life,
+-- or with imprisonment for a term which may extend to 10 years, shall be punished with
+-- imprisonment for a term which may extend to 10 years, and shall also be liable to fine
+-- or to caning.
+@ref Penal Code 1871 s 389
+`punishment prescribed by s 389` MEANS Punishment WITH
+    section                  IS "389"
+    words                    IS "imprisonment for a term which may extend to 10 years, and shall also be liable to fine or to caning"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 120
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `shall also be liable to`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall also be liable to`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 389 of the Penal Code 1871 (putting a person in fear of accusation of an offence in order to commit extortion)
+GIVEN f IS AN `Extortion Facts` @desc The threat of accusation, and what it was for
+GIVETH A BOOLEAN
+DECIDE `offence under s 389` f IF
+        "Whoever,"
+   ...  f's `in order to commit extortion`
+   ...  f's `puts or attempts to put any person in fear`
+   ...  "of"
+   ...  f's `fear of an accusation against that person or any other`
+   ...  f's `of having committed, or attempted to commit, an offence punishable with death, or with imprisonment for life, or with imprisonment for a term which may extend to 10 years`
+
+§§ `The extortion charges`
+
+-- CPC s 125: extortion is an offence by threat, so the charge recites the
+-- manner - what the victim was put in fear of.
+GIVEN f IS AN `Extortion Facts`
+GIVETH A STRING
+`the manner of the extortion` f MEANS
+    CONCAT "did extort ", f's `the property extorted`,
+           " from ", (`one` (f's victim) (f's `victim described as`)),
+           " by intentionally putting ", (`object pronoun` (f's `victim pronoun`)),
+           " in fear ", f's `the fear`
+
+GIVEN f IS AN `Extortion Facts`
+GIVETH A STRING
+`the manner of the putting in fear` f MEANS
+    CONCAT "in order to commit extortion, did put or attempt to put ", (`one` (f's victim) (f's `victim described as`)),
+           " in fear ", f's `the fear`
+
+GIVEN f IS AN `Extortion Facts`
+GIVETH A LIST OF STRING
+`elements of extortion not made out` f MEANS
+    concat (LIST
+        (`missing unless` (f's intentionally) "intentionally"),
+        (`missing unless` (f's `put the victim in fear`) "puts any person in fear"),
+        (`missing unless` (`fear of harm to any person in body, mind, reputation or property` f) "of any harm to that person or to any other person, in body, mind, reputation or property"),
+        (`missing unless` (f's dishonestly) "dishonestly (section 24)"),
+        (`missing unless` (f's `induced the person so put in fear`) "thereby induces the person so put in fear"),
+        (`missing unless` (f's `any property` OR f's `valuable security` OR f's `anything signed or sealed which may be converted into a valuable security`) "to deliver to any person any property or valuable security, or anything signed or sealed which may be converted into a valuable security"))
+
+GIVEN f IS AN `Extortion Facts`
+GIVETH A LIST OF STRING
+`elements of putting in fear in order to commit extortion not made out` f MEANS
+    concat (LIST
+        (`missing unless` (f's `in order to commit extortion`) "in order to commit extortion"),
+        (`missing unless` (f's `puts or attempts to put any person in fear`) "puts or attempts to put any person in fear"))
+
+GIVEN f IS AN `Extortion Facts`
+GIVETH A LIST OF STRING
+`missing fear of death or grievous hurt` f MEANS
+    `missing unless` ((f's `fear of death` OR f's `fear of grievous hurt`) AND (f's `that person` OR f's `any other person`))
+        "in fear of death or of grievous hurt to that person or to any other"
+
+@export Frame a charge under section 384 of the Penal Code 1871 (extortion), or say why none can be framed
+GIVEN f IS AN `Extortion Facts` @desc The threat, what it got, and the particulars of the charge
+GIVETH A Charge
+`charge under s 384` f MEANS
+    `frame the charge` (f's particulars) "384" "extortion"
+        (`punishment prescribed by s 384`'s words)
+        (`offence under s 384` f)
+        (`the manner of the extortion` f)
+        (`elements of extortion not made out` f)
+
+@export Frame a charge under section 385 of the Penal Code 1871 (putting a person in fear of harm in order to commit extortion), or say why none can be framed
+GIVEN f IS AN `Extortion Facts` @desc The threat, and the particulars of the charge
+GIVETH A Charge
+`charge under s 385` f MEANS
+    `frame the charge` (f's particulars) "385" "putting person in fear of harm in order to commit extortion"
+        (`punishment prescribed by s 385`'s words)
+        (`offence under s 385` f)
+        (`the manner of the putting in fear` f)
+        (concat (LIST (`elements of putting in fear in order to commit extortion not made out` f),
+                      (`missing unless` (`fear of harm to any person in body, mind, reputation or property` f) "of any harm to that person or to any other person, in body, mind, reputation or property")))
+
+@export Frame a charge under section 386 of the Penal Code 1871 (extortion by putting a person in fear of death or grievous hurt), or say why none can be framed
+GIVEN f IS AN `Extortion Facts` @desc The threat, what it got, and the particulars of the charge
+GIVETH A Charge
+`charge under s 386` f MEANS
+    `frame the charge` (f's particulars) "386" "extortion by putting a person in fear of death or grievous hurt"
+        (`punishment prescribed by s 386`'s words)
+        (`offence under s 386` f)
+        (`the manner of the extortion` f)
+        (concat (LIST (`elements of extortion not made out` f), (`missing fear of death or grievous hurt` f)))
+
+@export Frame a charge under section 387 of the Penal Code 1871 (putting a person in fear of death or of grievous hurt in order to commit extortion), or say why none can be framed
+GIVEN f IS AN `Extortion Facts` @desc The threat, and the particulars of the charge
+GIVETH A Charge
+`charge under s 387` f MEANS
+    `frame the charge` (f's particulars) "387" "putting person in fear of death or of grievous hurt in order to commit extortion"
+        (`punishment prescribed by s 387`'s words)
+        (`offence under s 387` f)
+        (`the manner of the putting in fear` f)
+        (concat (LIST (`elements of putting in fear in order to commit extortion not made out` f), (`missing fear of death or grievous hurt` f)))
+
+@export Frame a charge under section 388 of the Penal Code 1871 (extortion by threat of accusation of an offence punishable with death, or imprisonment, etc.), or say why none can be framed
+GIVEN f IS AN `Extortion Facts` @desc The threat of accusation, what it got, and the particulars of the charge
+GIVETH A Charge
+`charge under s 388` f MEANS
+    `frame the charge` (f's particulars) "388" "extortion by threat of accusation of an offence punishable with death, or imprisonment, etc."
+        (`punishment prescribed by s 388`'s words)
+        (`offence under s 388` f)
+        (`the manner of the extortion` f)
+        (concat (LIST (`elements of extortion not made out` f),
+                      (`missing unless` (f's `fear of an accusation against that person or any other`) "by putting any person in fear of an accusation against that person or any other"),
+                      (`missing unless` (f's `of having committed, or attempted to commit, an offence punishable with death, or with imprisonment for life, or with imprisonment for a term which may extend to 10 years` OR f's `of having attempted to induce any other person to commit such offence`) "of having committed or attempted to commit an offence punishable with death, imprisonment for life or imprisonment which may extend to 10 years, or of having attempted to induce another to commit such offence")))
+
+@export Frame a charge under section 389 of the Penal Code 1871 (putting a person in fear of accusation of an offence in order to commit extortion), or say why none can be framed
+GIVEN f IS AN `Extortion Facts` @desc The threat of accusation, and the particulars of the charge
+GIVETH A Charge
+`charge under s 389` f MEANS
+    `frame the charge` (f's particulars) "389" "putting person in fear of accusation of offence, in order to commit extortion"
+        (`punishment prescribed by s 389`'s words)
+        (`offence under s 389` f)
+        (`the manner of the putting in fear` f)
+        (concat (LIST (`elements of putting in fear in order to commit extortion not made out` f),
+                      (`missing unless` (f's `fear of an accusation against that person or any other`) "of an accusation against that person or any other"),
+                      (`missing unless` (f's `of having committed, or attempted to commit, an offence punishable with death, or with imprisonment for life, or with imprisonment for a term which may extend to 10 years`) "of having committed or attempted to commit an offence punishable with death, imprisonment for life or imprisonment which may extend to 10 years")))
+
+§ `Chapter 17 - Offences against property: robbery and gang-robbery`
+
+§§ `The facts of one robbery`
+
+@ref Penal Code 1871 ss 390-397 - the operative atoms s 390 adds over ss 378 and 383, the gang-robbery count of s 391, and the aggravations of ss 392-397
+DECLARE `Robbery Facts` HAS
+    particulars IS A Particulars     @desc Who is charged, and when and where the offence was committed
+    theft       IS A `Theft Facts`   @desc The theft s 390(2) upgrades, if the robbery is a theft-robbery; leave every leaf FALSE if it is not
+    extortion   IS AN `Extortion Facts` @desc The extortion s 390(3) upgrades, if the robbery is an extortion-robbery; leave every leaf FALSE if it is not
+    `the hurt`  IS A STRING          @desc How the hurt was caused, as it is to read after "to wit, by" in a s 394 charge; leave blank if none
+
+    -- s 390(2)
+    `in order to commit theft`  IS A BOOLEAN @desc Was the violence done before the theft, to bring it about?
+    `in committing the theft`   IS A BOOLEAN @desc Was the violence done while the theft was being committed?
+    `in carrying away property obtained by the theft`
+                                IS A BOOLEAN @desc Was it done while carrying away what had been taken?
+    `in attempting to carry away property obtained by the theft`
+                                IS A BOOLEAN @desc Was it done while attempting to carry away what had been taken?
+    `for that end`              IS A BOOLEAN @desc Was the violence done FOR THE PURPOSE of the theft? Illustration (a): "in order to the committing of that theft".
+    voluntarily                 IS A BOOLEAN @desc Was it done voluntarily (s 26A)? Governs both "causes" and "attempts to cause".
+    causes                      IS A BOOLEAN @desc Did the offender actually cause the harm?
+    `attempts to cause`         IS A BOOLEAN @desc Did the offender attempt to cause it?
+    death                       IS A BOOLEAN @desc ... death?
+    hurt                        IS A BOOLEAN @desc ... hurt (s 319, pc-body-a)?
+    `wrongful restraint`        IS A BOOLEAN @desc ... wrongful restraint (s 339, pc-body-a)? Illustration (a): holding Z down.
+    `fear of instant death`     IS A BOOLEAN @desc ... fear of instant death?
+    `fear of instant hurt`      IS A BOOLEAN @desc ... fear of instant hurt?
+    `fear of instant wrongful restraint`
+                                IS A BOOLEAN @desc ... fear of instant wrongful restraint?
+
+    -- s 390(3)
+    `in the presence of the person put in fear`
+                                IS A BOOLEAN @desc Was the offender present - sufficiently near to put the other person in fear of instant death, hurt or wrongful restraint (Explanation) - when committing the extortion? Illustration (d): not so, for a threat about a child held elsewhere.
+    `instant death`             IS A BOOLEAN @desc Was the fear one of instant death?
+    `instant hurt`              IS A BOOLEAN @desc ... of instant hurt? Illustration (b): the pistol shown on the high road.
+    `instant wrongful restraint` IS A BOOLEAN @desc ... of instant wrongful restraint?
+    `to that person`            IS A BOOLEAN @desc Was the instant harm feared harm to the person put in fear?
+    `to some other person`      IS A BOOLEAN @desc ... or to some other person? Illustration (c): the child on the high road.
+    `then and there`            IS A BOOLEAN @desc Was the thing delivered up then and there?
+
+    -- s 391
+    `5 or more persons conjointly commit or attempt to commit the robbery`
+                                IS A BOOLEAN @desc Did 5 or more persons conjointly commit or attempt to commit the robbery? Decide it with `5 or more persons` over the count.
+    `the persons conjointly committing or attempting, and the persons present and aiding, amount to 5 or more`
+                                IS A BOOLEAN @desc Do the persons conjointly committing or attempting the robbery, together with the persons present and aiding, amount to 5 or more? Decide it with `5 or more persons` over the count.
+    `present and aiding such commission or attempt`
+                                IS A BOOLEAN @desc Was the accused, if not himself committing or attempting the robbery, present and aiding its commission or attempt? (s 391)
+
+    -- s 392
+    `committed after 7 p.m. and before 7 a.m.`
+                                IS A BOOLEAN @desc Was the robbery committed after 7 p.m. and before 7 a.m.? This changes the punishment s 392 prescribes, not whether the offence is made out.
+
+    -- ss 393, 394, 397 "attempts to commit robbery"
+    `attempting to commit robbery` IS A BOOLEAN @desc Did the accused attempt to commit robbery (s 511, defined in pc-general-part; joined at integration)?
+
+    -- s 394
+    `voluntarily causes hurt`   IS A BOOLEAN @desc Did any person voluntarily cause hurt (s 321, defined in pc-body-a; joined at integration) in committing or attempting to commit the robbery?
+    `such person`               IS A BOOLEAN @desc Is the accused the person who voluntarily caused that hurt? (s 394)
+    `any other person jointly concerned in committing or attempting to commit such robbery`
+                                IS A BOOLEAN @desc Was the accused, if not that person, jointly concerned in committing or attempting to commit the robbery? (ss 394, 397)
+
+    -- s 396
+    `one of those persons commits murder in so committing gang-robbery`
+                                IS A BOOLEAN @desc Did any one of the 5 or more persons conjointly committing the gang-robbery commit murder (s 300, defined in pc-body-a; joined at integration) in so committing it?
+
+    -- s 397
+    `armed with any deadly weapon` IS A BOOLEAN @desc Was the offender, at the time of committing or attempting the robbery, armed with any deadly weapon? "Deadly weapon" is not defined in the Code.
+    `uses any deadly weapon`    IS A BOOLEAN @desc ... or did the offender use any deadly weapon?
+    `causes grievous hurt to any person`
+                                IS A BOOLEAN @desc ... or did the offender cause grievous hurt (s 320, pc-body-a) to any person?
+    `attempts to cause death or grievous hurt to any person`
+                                IS A BOOLEAN @desc ... or did the offender attempt to cause death or grievous hurt to any person?
+    `such offender`             IS A BOOLEAN @desc Is the accused the offender who was so armed, used the weapon, or caused or attempted that harm? (s 397)
+
+§§ `s 390 - robbery`
+
+-- 390.-(1) In all robbery there is either theft or extortion.
+--
+-- When theft is robbery
+--
+-- (2) Theft is "robbery" if, in order to commit theft, or in committing the theft, or in
+-- carrying away or attempting to carry away property obtained by the theft, the offender,
+-- for that end, voluntarily causes or attempts to cause to any person death, or hurt, or
+-- wrongful restraint, or fear of instant death, or of instant hurt, or of instant wrongful
+-- restraint.
+--
+-- When extortion is robbery
+--
+-- (3) Extortion is "robbery" if the offender, at the time of committing the extortion, is
+-- in the presence of the person put in fear, and commits the extortion by putting that
+-- person in fear of instant death, of instant hurt, or of instant wrongful restraint to that
+-- person or to some other person, and, by so putting in fear, induces the person so put in
+-- fear then and there to deliver up the thing extorted.
+--
+-- Explanation.-The offender is said to be present if he is sufficiently near to put the other person in
+-- fear of instant death, of instant hurt, or of instant wrongful restraint.
+--
+-- Illustrations
+--
+-- (a) A holds Z down, and dishonestly takes Z's money and jewels from Z's clothes, without Z's
+-- consent. Here A has committed theft, and, in order to the committing of that theft, has voluntarily
+-- caused wrongful restraint to Z. A has therefore committed robbery.
+--
+-- (b) A meets Z on the high road, shows a pistol, and demands Z's purse. Z, in consequence
+-- surrenders his purse. Here A has extorted the purse from Z, by putting him in fear of instant hurt, and
+-- being at the time of committing the extortion in his presence. A has therefore committed robbery.
+--
+-- (c) A meets Z and Z's child on the high road. A takes the child, and threatens to fling it down a
+-- precipice, unless Z delivers his purse. Z, in consequence, delivers his purse. Here A has extorted the
+-- purse from Z, by causing Z to be in fear of instant hurt to the child, Z being present. A has therefore
+-- committed robbery on Z.
+--
+-- (d) A obtains property from Z by saying, "Your child is in the hands of my gang, and will be put
+-- to death unless you send us $1,000." This is extortion, and punishable as such; but it is not robbery,
+-- unless Z is put in fear of the instant death of his child.
+@export Whether a theft is "robbery" within section 390(2) of the Penal Code 1871
+GIVEN f IS A `Robbery Facts` @desc The theft, and the violence s 390(2) requires on top of it
+GIVETH A BOOLEAN
+DECIDE `theft is robbery` f IF
+        "(2)"
+   ...  `commits theft` (f's theft)
+   ...  "is robbery if,"
+   ...  (    f's `in order to commit theft`
+        OR   f's `in committing the theft`
+        OR   f's `in carrying away property obtained by the theft`
+        OR   f's `in attempting to carry away property obtained by the theft` )
+   ...  ", the offender,"
+   ...  f's `for that end`
+   ...  f's voluntarily
+   ...  (    f's causes
+        OR   f's `attempts to cause` )
+   ...  "to any person"
+   ...  (    f's death
+        OR   f's hurt
+        OR   f's `wrongful restraint`
+        OR   f's `fear of instant death`
+        OR   f's `fear of instant hurt`
+        OR   f's `fear of instant wrongful restraint` )
+
+@export Whether an extortion is "robbery" within section 390(3) of the Penal Code 1871
+GIVEN f IS A `Robbery Facts` @desc The extortion, and the presence and immediacy s 390(3) requires on top of it
+GIVETH A BOOLEAN
+DECIDE `extortion is robbery` f IF
+        "(3)"
+   ...  `commits extortion` (f's extortion)
+   ...  "is robbery if the offender, at the time of committing the extortion, is"
+   ...  f's `in the presence of the person put in fear`
+   ...  ", and commits the extortion by putting that person in fear of"
+   ...  (    f's `instant death`
+        OR   f's `instant hurt`
+        OR   f's `instant wrongful restraint` )
+   ...  (    f's `to that person`
+        OR   f's `to some other person` )
+   ...  ", and, by so putting in fear, induces the person so put in fear"
+   ...  f's `then and there`
+   ...  "to deliver up the thing extorted"
+
+@export Whether the accused "commits robbery" within section 390 of the Penal Code 1871
+GIVEN f IS A `Robbery Facts` @desc The theft or the extortion, and the aggravation that upgrades it
+GIVETH A BOOLEAN
+DECIDE `commits robbery` f IF
+        "(1) In all robbery there is either"
+   ...  (    `theft is robbery` f
+        OR   `extortion is robbery` f )
+
+§§ `s 391 - gang-robbery`
+
+-- 391. When 5 or more persons conjointly commit or attempt to commit a robbery, or
+-- where the whole number of persons conjointly committing or attempting to commit a
+-- robbery, and of persons present and aiding such commission or attempt, amount to 5 or
+-- more, every person so committing, attempting, or aiding, is said to commit
+-- "gang-robbery".
+
+@export Whether the accused "commits gang-robbery" within section 391 of the Penal Code 1871
+GIVEN f IS A `Robbery Facts` @desc The robbery or attempt, and how many took part in it
+GIVETH A BOOLEAN
+DECIDE `commits gang-robbery` f IF
+        "When"
+   ...  (    f's `5 or more persons conjointly commit or attempt to commit the robbery`
+        OR   f's `the persons conjointly committing or attempting, and the persons present and aiding, amount to 5 or more` )
+   ...  ", every person so"
+   ...  (    `commits robbery` f
+        OR   f's `attempting to commit robbery`
+        OR   f's `present and aiding such commission or attempt` )
+   ...  "is said to commit gang-robbery"
+
+§§ `s 392 - punishment for robbery`
+
+-- 392. Whoever commits robbery shall be punished with imprisonment for a term of
+-- not less than 2 years and not more than 10 years and shall also be punished with caning
+-- with not less than 6 strokes; and if the robbery is committed after 7 p.m. and before
+-- 7 a.m. the offender shall be punished with imprisonment for a term of not less than
+-- 3 years and not more than 14 years and shall also be punished with caning with not less
+-- than 12 strokes.
+@ref Penal Code 1871 s 392
+`punishment prescribed by s 392` MEANS Punishment WITH
+    section                  IS "392"
+    words                    IS "imprisonment for a term of not less than 2 years and not more than 10 years and shall also be punished with caning with not less than 6 strokes"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 120
+    `minimum term in months` IS JUST 24
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `not prescribed`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall be punished with`
+    `minimum strokes`        IS JUST 6
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@ref Penal Code 1871 s 392, after 7 p.m. and before 7 a.m.
+`punishment prescribed by s 392, after 7 p.m. and before 7 a.m.` MEANS Punishment WITH
+    section                  IS "392, after 7 p.m. and before 7 a.m."
+    words                    IS "imprisonment for a term of not less than 3 years and not more than 14 years and shall also be punished with caning with not less than 12 strokes"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 168
+    `minimum term in months` IS JUST 36
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `not prescribed`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall be punished with`
+    `minimum strokes`        IS JUST 12
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 392 of the Penal Code 1871 (robbery)
+GIVEN f IS A `Robbery Facts` @desc The theft or the extortion, and the aggravation that upgrades it
+GIVETH A BOOLEAN
+DECIDE `offence under s 392` f IF
+        "Whoever"
+   ...  `commits robbery` f
+
+§§ `s 393 - attempt to commit robbery`
+
+-- 393. Whoever attempts to commit robbery shall be punished with imprisonment for
+-- a term of not less than 2 years and not more than 7 years and shall also be liable to
+-- caning.
+--
+-- [Act 21 of 2025 wef 17/08/2026]
+@ref Penal Code 1871 s 393
+`punishment prescribed by s 393` MEANS Punishment WITH
+    section                  IS "393"
+    words                    IS "imprisonment for a term of not less than 2 years and not more than 7 years and shall also be liable to caning"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 84
+    `minimum term in months` IS JUST 24
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `not prescribed`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall also be liable to`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 393 of the Penal Code 1871 (attempt to commit robbery)
+GIVEN f IS A `Robbery Facts` @desc The attempted robbery
+GIVETH A BOOLEAN
+DECIDE `offence under s 393` f IF
+        "Whoever"
+   ...  f's `attempting to commit robbery`
+
+§§ `s 394 - voluntarily causing hurt in committing robbery`
+
+-- 394. If any person, in committing or in attempting to commit robbery, voluntarily
+-- causes hurt, such person, and any other person, jointly concerned in committing or
+-- attempting to commit such robbery, shall be punished with imprisonment for a term of
+-- not less than 5 years and not more than 20 years and shall also be punished with caning
+-- with not less than 12 strokes.
+@ref Penal Code 1871 s 394
+`punishment prescribed by s 394` MEANS Punishment WITH
+    section                  IS "394"
+    words                    IS "imprisonment for a term of not less than 5 years and not more than 20 years and shall also be punished with caning with not less than 12 strokes"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 240
+    `minimum term in months` IS JUST 60
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `not prescribed`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall be punished with`
+    `minimum strokes`        IS JUST 12
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 394 of the Penal Code 1871 (voluntarily causing hurt in committing robbery)
+GIVEN f IS A `Robbery Facts` @desc The robbery or attempt, the hurt, and where the accused stood
+GIVETH A BOOLEAN
+DECIDE `offence under s 394` f IF
+        "If any person, in committing or in attempting to commit"
+   ...  (    `commits robbery` f
+        OR   f's `attempting to commit robbery` )
+   ...  f's `voluntarily causes hurt`
+   ...  (    f's `such person`
+        OR   f's `any other person jointly concerned in committing or attempting to commit such robbery` )
+
+§§ `s 395 - punishment for gang-robbery`
+
+-- 395. Whoever commits gang-robbery shall be punished with imprisonment for a
+-- term of not less than 5 years and not more than 20 years and shall also be punished with
+-- caning with not less than 12 strokes.
+@ref Penal Code 1871 s 395
+`punishment prescribed by s 395` MEANS Punishment WITH
+    section                  IS "395"
+    words                    IS "imprisonment for a term of not less than 5 years and not more than 20 years and shall also be punished with caning with not less than 12 strokes"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 240
+    `minimum term in months` IS JUST 60
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `not prescribed`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall be punished with`
+    `minimum strokes`        IS JUST 12
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 395 of the Penal Code 1871 (gang-robbery)
+GIVEN f IS A `Robbery Facts` @desc The gang-robbery
+GIVETH A BOOLEAN
+DECIDE `offence under s 395` f IF
+        "Whoever"
+   ...  `commits gang-robbery` f
+
+§§ `s 396 - gang-robbery with murder`
+
+-- 396. If any one of 5 or more persons who are conjointly committing gang-robbery,
+-- commits murder in so committing gang-robbery, every one of those persons shall be
+-- punished with death or imprisonment for life, and if he is not sentenced to death, shall
+-- also be punished with caning with not less than 12 strokes.
+@ref Penal Code 1871 s 396
+`punishment prescribed by s 396` MEANS Punishment WITH
+    section                  IS "396"
+    words                    IS "death or imprisonment for life, and if he is not sentenced to death, shall also be punished with caning with not less than 12 strokes"
+    death                    IS `or with`
+    `imprisonment for life`  IS `or with`
+    imprisonment             IS `not prescribed`
+    `maximum term in months` IS NOTHING
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `not prescribed`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall be punished with`
+    `minimum strokes`        IS JUST 12
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 396 of the Penal Code 1871 (gang-robbery with murder)
+GIVEN f IS A `Robbery Facts` @desc The gang-robbery, and the murder
+GIVETH A BOOLEAN
+DECIDE `offence under s 396` f IF
+        "If any one of 5 or more persons who are conjointly"
+   ...  `commits gang-robbery` f
+   ...  f's `one of those persons commits murder in so committing gang-robbery`
+   ...  ", every one of those persons"
+
+§§ `s 397 - robbery when armed or with attempt to cause death or grievous hurt`
+
+-- 397. If at the time of committing or attempting to commit robbery, the offender is
+-- armed with or uses any deadly weapon, or causes grievous hurt to any person, or
+-- attempts to cause death or grievous hurt to any person, such offender, and any other
+-- person jointly concerned in committing or attempting to commit such robbery, shall be
+-- punished with caning with not less than 12 strokes, in addition to any other punishment
+-- to which he may be liable under any other section of this Code.
+--
+-- [There is no section 398.]
+@ref Penal Code 1871 s 397
+`punishment prescribed by s 397` MEANS Punishment WITH
+    section                  IS "397"
+    words                    IS "caning with not less than 12 strokes, in addition to any other punishment to which he may be liable under any other section of this Code"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `not prescribed`
+    `maximum term in months` IS NOTHING
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `not prescribed`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall be punished with`
+    `minimum strokes`        IS JUST 12
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 397 of the Penal Code 1871 (robbery when armed or with attempt to cause death or grievous hurt)
+GIVEN f IS A `Robbery Facts` @desc The robbery or attempt, the weapon or grievous hurt, and where the accused stood
+GIVETH A BOOLEAN
+DECIDE `offence under s 397` f IF
+        "If at the time of committing or attempting to commit"
+   ...  (    `commits robbery` f
+        OR   f's `attempting to commit robbery` )
+   ...  ", the offender"
+   ...  (    f's `armed with any deadly weapon`
+        OR   f's `uses any deadly weapon`
+        OR   f's `causes grievous hurt to any person`
+        OR   f's `attempts to cause death or grievous hurt to any person` )
+   ...  (    f's `such offender`
+        OR   f's `any other person jointly concerned in committing or attempting to commit such robbery` )
+
+-- s 398. [There is no section 398.]
+
+§§ `The robbery charges`
+
+GIVEN f IS A `Robbery Facts`
+GIVETH A BOOLEAN
+`pleaded as a theft-robbery` f MEANS
+    IF   `extortion is robbery` f
+    THEN FALSE
+    ELSE NOT (f's theft's victim EQUALS "")
+
+GIVEN f IS A `Robbery Facts`
+GIVETH A STRING
+`the person robbed` f MEANS
+    IF   `pleaded as a theft-robbery` f
+    THEN `one` (f's theft's victim) (f's theft's `victim described as`)
+    ELSE `one` (f's extortion's victim) (f's extortion's `victim described as`)
+
+GIVEN f IS A `Robbery Facts`
+GIVETH A STRING
+`the thing robbed` f MEANS
+    IF   `pleaded as a theft-robbery` f
+    THEN f's theft's `the property`
+    ELSE f's extortion's `the property extorted`
+
+GIVEN f IS A `Robbery Facts`
+GIVETH A STRING
+`the person robbed, spoken of` f MEANS
+    IF   `pleaded as a theft-robbery` f
+    THEN `object pronoun` (f's theft's `victim pronoun`)
+    ELSE `object pronoun` (f's extortion's `victim pronoun`)
+
+-- The reference row's wording, pinned there to the reported charge in Chen
+-- Weixiong Jerriek v PP [2003] SGHC 103: "did rob one X of Y". The night limb
+-- of s 392 changes the punishment, not the recital.
+GIVEN f IS A `Robbery Facts`
+GIVETH A STRING
+`the recital of the robbery` f MEANS
+    CONCAT "did rob ", (`the person robbed` f), " of ", (`the thing robbed` f)
+
+GIVEN f IS A `Robbery Facts`
+GIVETH A STRING
+`the recital of the attempted robbery` f MEANS
+    CONCAT "did attempt to rob ", (`the person robbed` f), " of ", (`the thing robbed` f)
+
+GIVEN f IS A `Robbery Facts`
+GIVETH A STRING
+`in committing or attempting` f MEANS
+    IF `commits robbery` f THEN "committing" ELSE "attempting to commit"
+
+GIVEN f IS A `Robbery Facts`
+GIVETH A LIST OF STRING
+`elements of robbery not made out` f MEANS
+    concat (LIST
+        (`missing unless` (`commits theft` (f's theft) OR `commits extortion` (f's extortion))
+            "in all robbery there is either theft or extortion (section 390(1))"),
+        (`missing unless` (`theft is robbery` f OR `extortion is robbery` f)
+            "the aggravation that makes a theft robbery (section 390(2)) or an extortion robbery (section 390(3))"))
+
+GIVEN f IS A `Robbery Facts`
+GIVETH A LIST OF STRING
+`elements of robbery or attempted robbery not made out` f MEANS
+    `missing unless` (`commits robbery` f OR f's `attempting to commit robbery`) "in committing or in attempting to commit robbery"
+
+@export Frame a charge under section 392 of the Penal Code 1871 (robbery), or say why none can be framed
+GIVEN f IS A `Robbery Facts` @desc The robbery, and the particulars of the charge
+GIVETH A Charge
+`charge under s 392` f MEANS
+    `frame the charge` (f's particulars) "392" "robbery"
+        (IF f's `committed after 7 p.m. and before 7 a.m.`
+         THEN `punishment prescribed by s 392, after 7 p.m. and before 7 a.m.`'s words
+         ELSE `punishment prescribed by s 392`'s words)
+        (`offence under s 392` f)
+        (`the recital of the robbery` f)
+        (`elements of robbery not made out` f)
+
+@export Frame a charge under section 393 of the Penal Code 1871 (attempt to commit robbery), or say why none can be framed
+GIVEN f IS A `Robbery Facts` @desc The attempted robbery, and the particulars of the charge
+GIVETH A Charge
+`charge under s 393` f MEANS
+    `frame the charge` (f's particulars) "393" "attempt to commit robbery"
+        (`punishment prescribed by s 393`'s words)
+        (`offence under s 393` f)
+        (`the recital of the attempted robbery` f)
+        (`missing unless` (f's `attempting to commit robbery`) "attempts to commit robbery (section 511)")
+
+@export Frame a charge under section 394 of the Penal Code 1871 (voluntarily causing hurt in committing robbery), or say why none can be framed
+GIVEN f IS A `Robbery Facts` @desc The robbery, the hurt, and the particulars of the charge
+GIVETH A Charge
+`charge under s 394` f MEANS
+    `frame the charge` (f's particulars) "394" "voluntarily causing hurt in committing robbery"
+        (`punishment prescribed by s 394`'s words)
+        (`offence under s 394` f)
+        (CONCAT "were jointly concerned in ", (`in committing or attempting` f), " robbery of ", (`the thing robbed` f),
+                " from ", (`the person robbed` f),
+                " and whilst ", (`in committing or attempting` f), " the said robbery, voluntarily caused hurt to ",
+                (`the person robbed, spoken of` f), ", to wit, by ", f's `the hurt`)
+        (concat (LIST (`elements of robbery or attempted robbery not made out` f),
+                      (`missing unless` (f's `voluntarily causes hurt`) "voluntarily causes hurt (section 321)"),
+                      (`missing unless` (f's `such person` OR f's `any other person jointly concerned in committing or attempting to commit such robbery`) "such person, or any other person jointly concerned in committing or attempting to commit such robbery")))
+
+@export Frame a charge under section 395 of the Penal Code 1871 (gang-robbery), or say why none can be framed
+GIVEN f IS A `Robbery Facts` @desc The gang-robbery, and the particulars of the charge
+GIVETH A Charge
+`charge under s 395` f MEANS
+    `frame the charge` (f's particulars) "395" "gang-robbery"
+        (`punishment prescribed by s 395`'s words)
+        (`offence under s 395` f)
+        (CONCAT "being one of 5 or more persons, did commit gang-robbery of ", (`the thing robbed` f), " from ", (`the person robbed` f))
+        (concat (LIST
+            (`missing unless` (f's `5 or more persons conjointly commit or attempt to commit the robbery` OR f's `the persons conjointly committing or attempting, and the persons present and aiding, amount to 5 or more`) "5 or more persons conjointly committing or attempting the robbery, or present and aiding it"),
+            (`missing unless` (`commits robbery` f OR f's `attempting to commit robbery` OR f's `present and aiding such commission or attempt`) "every person so committing, attempting, or aiding")))
+
+@export Frame a charge under section 396 of the Penal Code 1871 (gang-robbery with murder), or say why none can be framed
+GIVEN f IS A `Robbery Facts` @desc The gang-robbery, the murder, and the particulars of the charge
+GIVETH A Charge
+`charge under s 396` f MEANS
+    `frame the charge` (f's particulars) "396" "gang-robbery with murder"
+        (`punishment prescribed by s 396`'s words)
+        (`offence under s 396` f)
+        (CONCAT "being one of 5 or more persons conjointly committing gang-robbery of ", (`the thing robbed` f), " from ", (`the person robbed` f),
+                ", in the course of which murder was committed by one of those persons in so committing gang-robbery")
+        (concat (LIST
+            (`missing unless` (`commits gang-robbery` f) "gang-robbery (section 391)"),
+            (`missing unless` (f's `one of those persons commits murder in so committing gang-robbery`) "any one of those persons commits murder in so committing gang-robbery")))
+
+@export Frame a charge under section 397 of the Penal Code 1871 (robbery when armed or with attempt to cause death or grievous hurt), or say why none can be framed
+GIVEN f IS A `Robbery Facts` @desc The robbery, the weapon or grievous hurt, and the particulars of the charge
+GIVETH A Charge
+`charge under s 397` f MEANS
+    `frame the charge` (f's particulars) "397" "robbery when armed or with attempt to cause death or grievous hurt"
+        (`punishment prescribed by s 397`'s words)
+        (`offence under s 397` f)
+        (CONCAT "at the time of ", (`in committing or attempting` f), " robbery of ", (`the thing robbed` f),
+                " from ", (`the person robbed` f), ", ",
+                (IF f's `such offender` THEN "you were " ELSE "you being jointly concerned in the said robbery, the offender was "),
+                (`joined with` ", or " (concat (LIST
+                    (`included if` (f's `armed with any deadly weapon`) "armed with a deadly weapon"),
+                    (`included if` (f's `uses any deadly weapon`) "using a deadly weapon"),
+                    (`included if` (f's `causes grievous hurt to any person`) "causing grievous hurt"),
+                    (`included if` (f's `attempts to cause death or grievous hurt to any person`) "attempting to cause death or grievous hurt")))))
+        (concat (LIST (`elements of robbery or attempted robbery not made out` f),
+                      (`missing unless` (f's `armed with any deadly weapon` OR f's `uses any deadly weapon` OR f's `causes grievous hurt to any person` OR f's `attempts to cause death or grievous hurt to any person`) "armed with or uses any deadly weapon, or causes grievous hurt, or attempts to cause death or grievous hurt, to any person"),
+                      (`missing unless` (f's `such offender` OR f's `any other person jointly concerned in committing or attempting to commit such robbery`) "such offender, or any other person jointly concerned in committing or attempting to commit such robbery")))
+
+§ `Chapter 17 - Offences against property: gangs (ss 399-402)`
+
+@ref Penal Code 1871 ss 399-402 - offences of preparing, belonging and assembling, which need no robbery to have happened
+DECLARE `Gang Facts` HAS
+    particulars IS A Particulars @desc Who is charged, and when and where the offence was committed
+    `the gang`  IS A STRING      @desc The gang or assembly, as it is to read in the charge - for example "a gang of persons known as the 'Ang Soon Tong'"
+    `makes any preparation for committing gang-robbery`
+                IS A BOOLEAN @desc Did the accused make any preparation for committing gang-robbery (s 391)? (s 399)
+    `belongs to a gang of persons associated for the purpose of habitually committing gang-robbery`
+                IS A BOOLEAN @desc Did the accused belong to a gang of persons associated for the purpose of habitually committing gang-robbery? (s 400)
+    `belongs to a gang of persons associated for the purpose of habitually committing theft or robbery`
+                IS A BOOLEAN @desc Did the accused belong to a gang of persons associated for the purpose of habitually committing theft or robbery? (s 401)
+    `not being gang-robbers`
+                IS A BOOLEAN @desc Was that gang NOT a gang of gang-robbers? (s 401 - a gang of gang-robbers is s 400)
+    `one of 5 or more persons assembled for the purpose of committing gang-robbery`
+                IS A BOOLEAN @desc Was the accused one of 5 or more persons assembled for the purpose of committing gang-robbery? Decide the count with `5 or more persons`. (s 402)
+
+§§ `s 399 - making preparation to commit gang-robbery`
+
+-- 399. Whoever makes any preparation for committing gang-robbery, shall be
+-- punished with imprisonment for a term of not less than 3 years and not more than
+-- 10 years and shall also be liable to caning.
+--
+-- [Act 21 of 2025 wef 17/08/2026]
+@ref Penal Code 1871 s 399
+`punishment prescribed by s 399` MEANS Punishment WITH
+    section                  IS "399"
+    words                    IS "imprisonment for a term of not less than 3 years and not more than 10 years and shall also be liable to caning"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 120
+    `minimum term in months` IS JUST 36
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `not prescribed`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall also be liable to`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 399 of the Penal Code 1871 (making preparation to commit gang-robbery)
+GIVEN f IS A `Gang Facts` @desc The preparation
+GIVETH A BOOLEAN
+DECIDE `offence under s 399` f IF
+        "Whoever"
+   ...  f's `makes any preparation for committing gang-robbery`
+
+§§ `s 400 - punishment for belonging to gang-robbers`
+
+-- 400. Whoever shall belong to a gang of persons associated for the purpose of
+-- habitually committing gang-robbery, shall be punished with imprisonment for life, or
+-- with imprisonment for a term which may extend to 10 years, and shall also be liable to
+-- caning.
+--
+-- [Act 21 of 2025 wef 17/08/2026]
+@ref Penal Code 1871 s 400
+`punishment prescribed by s 400` MEANS Punishment WITH
+    section                  IS "400"
+    words                    IS "imprisonment for life, or with imprisonment for a term which may extend to 10 years, and shall also be liable to caning"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `or with`
+    imprisonment             IS `or with`
+    `maximum term in months` IS JUST 120
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `not prescribed`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall also be liable to`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 400 of the Penal Code 1871 (belonging to gang-robbers)
+GIVEN f IS A `Gang Facts` @desc The gang, and the accused's membership
+GIVETH A BOOLEAN
+DECIDE `offence under s 400` f IF
+        "Whoever shall"
+   ...  f's `belongs to a gang of persons associated for the purpose of habitually committing gang-robbery`
+
+§§ `s 401 - punishment for belonging to gang of thieves`
+
+-- 401. Whoever shall belong to any gang of persons associated for the purpose of
+-- habitually committing theft or robbery, and not being gang-robbers, shall be punished
+-- with imprisonment for a term which may extend to 7 years.
+--
+-- [15/2019]
+-- [Act 21 of 2025 wef 17/08/2026]
+@ref Penal Code 1871 s 401
+`punishment prescribed by s 401` MEANS Punishment WITH
+    section                  IS "401"
+    words                    IS "imprisonment for a term which may extend to 7 years"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 84
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `not prescribed`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `not prescribed`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 401 of the Penal Code 1871 (belonging to a gang of thieves)
+GIVEN f IS A `Gang Facts` @desc The gang, and the accused's membership
+GIVETH A BOOLEAN
+DECIDE `offence under s 401` f IF
+        "Whoever shall"
+   ...  f's `belongs to a gang of persons associated for the purpose of habitually committing theft or robbery`
+   ...  ", and"
+   ...  f's `not being gang-robbers`
+
+§§ `s 402 - assembling for purpose of committing gang-robbery`
+
+-- 402. Whoever shall be one of 5 or more persons assembled for the purpose of
+-- committing gang-robbery, shall be punished with imprisonment for a term which may
+-- extend to 7 years, and shall also be liable to caning.
+--
+-- [Act 21 of 2025 wef 17/08/2026]
+@ref Penal Code 1871 s 402
+`punishment prescribed by s 402` MEANS Punishment WITH
+    section                  IS "402"
+    words                    IS "imprisonment for a term which may extend to 7 years, and shall also be liable to caning"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 84
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `not prescribed`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall also be liable to`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export Whether the accused has committed an offence punishable under section 402 of the Penal Code 1871 (assembling for the purpose of committing gang-robbery)
+GIVEN f IS A `Gang Facts` @desc The assembly
+GIVETH A BOOLEAN
+DECIDE `offence under s 402` f IF
+        "Whoever shall be"
+   ...  f's `one of 5 or more persons assembled for the purpose of committing gang-robbery`
+
+§§ `The gang charges`
+
+@export Frame a charge under section 399 of the Penal Code 1871 (making preparation to commit gang-robbery), or say why none can be framed
+GIVEN f IS A `Gang Facts` @desc The preparation, and the particulars of the charge
+GIVETH A Charge
+`charge under s 399` f MEANS
+    `frame the charge` (f's particulars) "399" "making preparation to commit gang-robbery"
+        (`punishment prescribed by s 399`'s words)
+        (`offence under s 399` f)
+        (CONCAT "did make preparation for committing gang-robbery, together with ", f's `the gang`)
+        (`missing unless` (f's `makes any preparation for committing gang-robbery`) "makes any preparation for committing gang-robbery")
+
+@export Frame a charge under section 400 of the Penal Code 1871 (belonging to gang-robbers), or say why none can be framed
+GIVEN f IS A `Gang Facts` @desc The gang, and the particulars of the charge
+GIVETH A Charge
+`charge under s 400` f MEANS
+    `frame the charge` (f's particulars) "400" "belonging to gang-robbers"
+        (`punishment prescribed by s 400`'s words)
+        (`offence under s 400` f)
+        (CONCAT "did belong to ", f's `the gang`, ", being a gang of persons associated for the purpose of habitually committing gang-robbery")
+        (`missing unless` (f's `belongs to a gang of persons associated for the purpose of habitually committing gang-robbery`) "belongs to a gang of persons associated for the purpose of habitually committing gang-robbery")
+
+@export Frame a charge under section 401 of the Penal Code 1871 (belonging to a gang of thieves), or say why none can be framed
+GIVEN f IS A `Gang Facts` @desc The gang, and the particulars of the charge
+GIVETH A Charge
+`charge under s 401` f MEANS
+    `frame the charge` (f's particulars) "401" "belonging to gang of thieves"
+        (`punishment prescribed by s 401`'s words)
+        (`offence under s 401` f)
+        (CONCAT "did belong to ", f's `the gang`, ", being a gang of persons associated for the purpose of habitually committing theft or robbery, and not being gang-robbers")
+        (concat (LIST
+            (`missing unless` (f's `belongs to a gang of persons associated for the purpose of habitually committing theft or robbery`) "belongs to a gang of persons associated for the purpose of habitually committing theft or robbery"),
+            (`missing unless` (f's `not being gang-robbers`) "not being gang-robbers")))
+
+@export Frame a charge under section 402 of the Penal Code 1871 (assembling for the purpose of committing gang-robbery), or say why none can be framed
+GIVEN f IS A `Gang Facts` @desc The assembly, and the particulars of the charge
+GIVETH A Charge
+`charge under s 402` f MEANS
+    `frame the charge` (f's particulars) "402" "assembling for purpose of committing gang-robbery"
+        (`punishment prescribed by s 402`'s words)
+        (`offence under s 402` f)
+        (CONCAT "were one of 5 or more persons, namely ", f's `the gang`, ", assembled for the purpose of committing gang-robbery")
+        (`missing unless` (f's `one of 5 or more persons assembled for the purpose of committing gang-robbery`) "one of 5 or more persons assembled for the purpose of committing gang-robbery")

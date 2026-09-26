@@ -1,0 +1,2054 @@
+-- Singapore Penal Code 1871 - the GENERAL PART that attaches to other offences:
+--
+--   Chapter 1  Preliminary                      ss 1-5 and the Schedule (s 4B)
+--   Chapter 3  Punishments                      ss 53-75
+--   Chapter 5  Abetment                         ss 107-120
+--   Chapter 5A Criminal conspiracy              ss 120A-120B
+--   Chapter 23 Attempts to commit offences      ss 511-512
+--
+-- Source: Penal Code 1871, 2020 Revised Edition, SSO "Current version as at
+-- 09 Sep 2026" (inputs/PC1871.txt). Section text is quoted above each rule with
+-- the page footers removed, straight quotes for curly ones.
+--
+-- What a reader must know before reading.
+--
+-- 1. Abetment, conspiracy and attempt are offences ABOUT another offence. The
+--    offence abetted, conspired at or attempted belongs to some other group's
+--    module, which this one may not IMPORT during the parallel phase
+--    (notes/PLAN.md §1). So each facts record here carries the other offence as
+--    PARTICULARS (its name, the section punishing it, its punishment in words)
+--    and as BOOLEAN leaves in the Code's words (`the offence abetted is
+--    punishable with death or imprisonment for life`), whose @desc names the
+--    pc-general reader of a `Punishment` that decides it. At integration these
+--    leaves become calls; they are listed in notes/general-part-forks.md as
+--    cross-module joins owed.
+--
+-- 2. The charge is laid under the section that punishes, READ WITH the section
+--    that makes the inchoate offence (CPC 2010 s 123(4); FORK GP-1):
+--      abetment, committed     -> "<offence section> read with section 109"
+--      abetment, not committed -> "<offence section> read with section 116";
+--                                 "115" alone when s 115 fixes its own term
+--      criminal conspiracy     -> "120B read with section <offence section>"
+--      attempt                 -> "<offence section> read with section 511"
+--    `frame the charge read with` (pc-general) builds all of them.
+--
+-- 3. The enhanced penalties of ss 73-74D are not offences and have no charge of
+--    their own; each is a ladder saying whether the enhancement is available,
+--    and one function (`twice the maximum punishment of` p `under section` s,
+--    with s 74E(2) inside it) says what it does to a `Punishment`.
+--
+-- 4. General exceptions are not repeated here (s 6; PLAN §5).
+
+IMPORT prelude
+IMPORT `pc-domain`
+IMPORT `pc-general`
+
+-- ===========================================================================
+§ `Chapter 1 - Preliminary`
+-- ===========================================================================
+
+§§ `s 1 - short title`
+
+-- 1. This Act is the Penal Code 1871.
+-- Inert: a name, not a rule.
+
+§§ `s 2 - punishment of offences committed within Singapore`
+
+-- 2. Every person shall be liable to punishment under this Code and not
+--    otherwise for every act or omission contrary to the provisions thereof,
+--    of which he is guilty within Singapore.
+--
+-- Inert as a ladder: it is the territorial premise every offence ladder in the
+-- Code rests on, and no offence ladder repeats it (as none repeats a general
+-- exception). Where the act was done is a witness's fact: `Place`'s
+-- `within Singapore` (pc-domain). ss 4, 4A and 4B below say when an act done
+-- outside Singapore is deemed done within it.
+
+§§ `s 3 - offences committed beyond, but which by law may be tried within, Singapore`
+
+-- 3. Any person liable by law to be tried for an offence committed beyond the
+--    limits of Singapore, shall be dealt with according to the provisions of
+--    this Code for any act committed beyond Singapore, in the same manner as if
+--    such act had been committed within Singapore.
+--
+-- Inert: whether a person is "liable by law to be tried" for an act abroad is
+-- decided by some other law (s 3 confers no jurisdiction itself). Once that is
+-- so, the offence ladders apply unchanged, which is what "in the same manner"
+-- asks; there is nothing to compute.
+
+§§ `ss 4, 4A, 4B - acts outside Singapore deemed committed in Singapore`
+
+@ref Penal Code 1871 ss 4, 4A, 4B - the operative atoms
+DECLARE `Extraterritorial Facts` HAS
+    -- s 4 and s 4A
+    `public servant`
+        IS A BOOLEAN @desc Is the person a public servant (s 21, pc-general `public servant within section 21`)?
+    `a citizen of Singapore`
+        IS A BOOLEAN @desc Is the person a citizen of Singapore?
+    `a permanent resident of Singapore`
+        IS A BOOLEAN @desc Is the person a permanent resident of Singapore?
+    `acting in the course of his employment`
+        IS A BOOLEAN @desc Was the person acting in the course of his employment when he did the act or made the omission?
+    `purporting to act in the course of his employment`
+        IS A BOOLEAN @desc Was the person purporting to act in the course of his employment when he did the act or made the omission?
+    `commits an act or omission outside Singapore`
+        IS A BOOLEAN @desc Was the act done, or the omission made, outside Singapore?
+    `would constitute an offence under the law in force in Singapore if committed in Singapore`
+        IS A BOOLEAN @desc Would the act or omission constitute an offence under the law in force in Singapore if it had been committed in Singapore? (s 4)
+    `would constitute an offence under Chapter 6 or 6B if committed in Singapore`
+        IS A BOOLEAN @desc Would the act or omission constitute an offence under Chapter 6 (Offences against the State) or Chapter 6B (Genocide) if it had been committed in Singapore? (s 4A) - defined in pc-state-public; joined at integration
+    -- s 4B
+    `a specified offence`
+        IS A BOOLEAN @desc Is the offence a "specified offence" - one listed in the Schedule, or an attempt, an abetment or a criminal conspiracy to commit one (s 4B(2))? Decide it with `specified offence within the Schedule`.
+    `a relevant act of the offence occurs in Singapore`
+        IS A BOOLEAN @desc Did a relevant act of the offence - an act or omission which is a physical element of it (s 4B(2)) - occur in Singapore?
+    `any other relevant act of the offence occurs outside Singapore`
+        IS A BOOLEAN @desc Did any other relevant act of the offence occur outside Singapore?
+    `a relevant act of the offence occurs partly in Singapore and partly outside Singapore`
+        IS A BOOLEAN @desc Did a relevant act of the offence occur partly in Singapore and partly outside it (whether or not other relevant acts occurred in Singapore)?
+    `the offence involved an intention to make a gain or cause a loss or exposure to a risk of loss or to cause harm to any person in body, mind, reputation or property`
+        IS A BOOLEAN @desc Did the offence involve an intention to make a gain, or to cause a loss or exposure to a risk of loss, or to cause harm to any person in body, mind, reputation or property?
+    `that gain, loss or harm occurs in Singapore`
+        IS A BOOLEAN @desc Did that gain, loss or harm occur in Singapore?
+
+-- 4. Every public servant who, being a citizen or a permanent resident of
+--    Singapore, when acting or purporting to act in the course of his
+--    employment, commits an act or omission outside Singapore that if
+--    committed in Singapore would constitute an offence under the law in force
+--    in Singapore, is deemed to have committed that act or omission in
+--    Singapore.
+@export Whether an act or omission outside Singapore is deemed to have been committed in Singapore by section 4 of the Penal Code 1871 (public servants)
+GIVEN j IS AN `Extraterritorial Facts` @desc Who did the act, in what capacity, where, and what it would be in Singapore
+GIVETH A BOOLEAN
+DECIDE `deemed committed in Singapore within section 4` j IF
+        "Every"
+    AND j's `public servant`
+    AND "who, being"
+    AND (j's `a citizen of Singapore` OR j's `a permanent resident of Singapore`)
+    AND "of Singapore, when"
+    AND (j's `acting in the course of his employment` OR j's `purporting to act in the course of his employment`)
+    AND j's `commits an act or omission outside Singapore`
+    AND "that if committed in Singapore"
+    AND j's `would constitute an offence under the law in force in Singapore if committed in Singapore`
+    AND "is deemed to have committed that act or omission in Singapore."
+
+-- 4A. Every person who, being a citizen or permanent resident of Singapore,
+--     commits an act or omission outside Singapore that if committed in
+--     Singapore would constitute an offence under Chapter 6 (Offences against
+--     the State) or 6B (Genocide), is deemed to have committed that act or
+--     omission in Singapore.                                       [15/2019]
+@export Whether an act or omission outside Singapore is deemed to have been committed in Singapore by section 4A of the Penal Code 1871 (offences against the State and genocide)
+GIVEN j IS AN `Extraterritorial Facts` @desc Who did the act, where, and what it would be in Singapore
+GIVETH A BOOLEAN
+DECIDE `deemed committed in Singapore within section 4A` j IF
+        "Every person who, being"
+    AND (j's `a citizen of Singapore` OR j's `a permanent resident of Singapore`)
+    AND j's `commits an act or omission outside Singapore`
+    AND "that if committed in Singapore"
+    AND j's `would constitute an offence under Chapter 6 or 6B if committed in Singapore`
+    AND "is deemed to have committed that act or omission in Singapore."
+
+-- 4B.-(1) A specified offence is deemed to have been committed in Singapore
+--     where -
+--     (a) a relevant act of the specified offence occurs in Singapore and any
+--         other relevant act of that specified offence occurs outside Singapore;
+--     (b) a relevant act of the specified offence occurs partly in Singapore and
+--         partly outside Singapore, whether or not other relevant acts of that
+--         specified offence occur in Singapore; or
+--     (c) the specified offence involved an intention to make a gain or cause a
+--         loss or exposure to a risk of loss or to cause harm to any person in
+--         body, mind, reputation or property, and that gain, loss or harm occurs
+--         in Singapore.
+--     (2) In this section - "relevant act", in relation to a specified offence,
+--     means an act or omission (whether occurring wholly or partly in or outside
+--     Singapore) which is a physical element of the specified offence;
+--     "specified offence" means an offence specified in the Schedule and
+--     includes an attempt to commit the offence, an abetment of the offence and
+--     a criminal conspiracy to commit the offence.
+--     (3) The Minister may, by order in the Gazette, amend the Schedule.
+--
+-- (3) is inert: the Schedule below is as at the consolidation date.
+@export Whether a specified offence is deemed to have been committed in Singapore by section 4B(1) of the Penal Code 1871
+GIVEN j IS AN `Extraterritorial Facts` @desc Which offence, and where its physical elements and its intended gain, loss or harm occurred
+GIVETH A BOOLEAN
+DECIDE `deemed committed in Singapore within section 4B` j IF
+        "A"
+    AND j's `a specified offence`
+    AND "is deemed to have been committed in Singapore where -"
+    AND (   "(a)"
+         OR (    j's `a relevant act of the offence occurs in Singapore`
+             AND j's `any other relevant act of the offence occurs outside Singapore`)
+         OR "(b)"
+         OR j's `a relevant act of the offence occurs partly in Singapore and partly outside Singapore`
+         OR "(c)"
+         OR (    j's `the offence involved an intention to make a gain or cause a loss or exposure to a risk of loss or to cause harm to any person in body, mind, reputation or property`
+             AND j's `that gain, loss or harm occurs in Singapore`))
+
+§§ `The Schedule - specified offences deemed to be committed in Singapore (s 4B)`
+
+-- THE SCHEDULE (Section 4B(2) and (3))
+--  1. Communicating false information of harmful thing under section 268A.
+--  2. Placing or sending thing causing fear of harm under sections 268B and 268C.
+--  3. Theft under sections 379 to 382.
+--  4. Extortion and related offences under sections 384 to 389.
+--  5. Robbery and related offences under sections 392 to 402.
+--  6. Dishonest misappropriation of property under sections 403 and 404.
+--  7. Criminal breach of trust under sections 406 to 409.
+--  8. Receiving stolen property and related offences under sections 411 to 414.
+--  9. Cheating and related offences under sections 417 to 420.
+-- 10. Obtaining services dishonestly or fraudulently under section 420A.
+-- 11. Offences relating to fraudulent deeds and dispositions of property under
+--     sections 421 to 424.
+-- 12. Fraud by false representation, non-disclosure or abuse of position under
+--     sections 424A and 424B.                       [S 524/2023 wef 28/07/2023]
+-- 13. Forgery and related offences under sections 465 to 477A.
+-- 14. Offences relating to currency and bank notes under sections 489A to 489I.
+-- 15. All other offences in this Code or any other written law with fault
+--     elements of fraud, dishonesty or deception but excluding any offence
+--     under the Prevention of Corruption Act 1960 and the Securities and Futures
+--     Act 2001.
+--
+-- A range "sections 379 to 382" is read to include the lettered sections the
+-- Code prints between its ends (379A), taken from the table of contents; a
+-- definition section inside a range (470, 473C) is listed because the range
+-- names it, and is harmless because it defines no offence (FORK GP-2).
+@ref Penal Code 1871, the Schedule, items 1-14, expanded from the table of contents
+GIVETH A LIST OF STRING
+`the sections named in items 1 to 14 of the Schedule` MEANS
+    LIST "268A", "268B", "268C",
+         "379", "379A", "380", "381", "382",
+         "384", "385", "386", "387", "388", "389",
+         "392", "393", "394", "395", "396", "397", "399", "400", "401", "402",
+         "403", "404",
+         "406", "407", "408", "409",
+         "411", "412", "413", "414",
+         "417", "418", "419", "420",
+         "420A",
+         "421", "422", "423", "424",
+         "424A", "424B",
+         "465", "466", "467", "468", "469", "470", "471", "472", "473", "473A", "473B", "473C", "474", "475", "476", "477", "477A",
+         "489A", "489B", "489C", "489D", "489E", "489F", "489G", "489H", "489I"
+
+@export Whether an offence is a "specified offence" in the Schedule, for section 4B of the Penal Code 1871 (an attempt, abetment or conspiracy to commit one is a specified offence too: pass the section of the offence attempted, abetted or conspired at)
+GIVEN `the section` IS A STRING @desc The section of this Code under which the offence is punishable - for example "420"; for an offence under another written law, any other text
+      `has fault elements of fraud, dishonesty or deception` IS A BOOLEAN @desc Does the offence have fault elements of fraud, dishonesty or deception? (item 15)
+      `is an offence under the Prevention of Corruption Act 1960 or the Securities and Futures Act 2001` IS A BOOLEAN @desc Is it an offence under the Prevention of Corruption Act 1960 or the Securities and Futures Act 2001? (excluded from item 15)
+GIVETH A BOOLEAN
+DECIDE `specified offence within the Schedule` `the section` `has fault elements of fraud, dishonesty or deception` `is an offence under the Prevention of Corruption Act 1960 or the Securities and Futures Act 2001` IF
+        elem `the section` `the sections named in items 1 to 14 of the Schedule`
+    OR  (    `has fault elements of fraud, dishonesty or deception`
+         AND NOT `is an offence under the Prevention of Corruption Act 1960 or the Securities and Futures Act 2001`)
+
+§§ `s 5 - certain laws not to be affected by this Code`
+
+-- 5. Nothing in this Code is intended to repeal, vary, suspend, or affect any
+--    of the provisions of any Act for punishing mutiny and desertion of
+--    officers or servicemen in the Singapore Armed Forces, or of any other law
+--    for the time being in force.
+-- Inert: a saving provision about other laws; this encoding covers only this
+-- Code.
+
+-- ===========================================================================
+§ `Chapter 3 - Punishments`
+-- ===========================================================================
+
+§§ `s 53 - punishments`
+
+-- 53. The punishments to which offenders are liable under the provisions of
+--     this Code are - (a) death; (b) imprisonment; (c) forfeiture of property;
+--     (d) fine; (e) caning.
+--     Explanation.-Caning shall be with a rattan.
+--
+-- Encoded in pc-general.l4 as the five kinds of the shared `Punishment` record
+-- (plus imprisonment for life, s 54), because every punishing section fills
+-- one. Declared there by PLAN §6, so that ss 41, 115, 116, 118, 120 and 512 can
+-- read it; not redeclared here. The Explanation is inert.
+
+§§ `s 54 - imprisonment for life`
+
+-- 54. "Imprisonment for life", in relation to any prescribed punishment under
+--     this Code or any other written law, means imprisonment for the duration of
+--     a person's natural life.
+-- Inert: a definition carried in the @desc of `Punishment`'s
+-- `imprisonment for life` field (pc-general). It is why "imprisonment for life"
+-- has no `maximum term in months`, and why s 119 and s 120's fractions of "the
+-- longest term" cannot be taken of it (see s 120 below).
+
+-- [There are no sections 55 and 56.]
+-- s 57. [Repealed by Act 51 of 2007]
+-- [There are no sections 58 to 70.]
+-- s 71. [Repealed by Act 15 of 2010]
+
+§§ `s 72 - punishment where it is doubtful of which of several offences a person is guilty`
+
+-- 72. In all cases in which judgment is given that a person is guilty of one of
+--     several offences specified in the judgment, but that it is doubtful of
+--     which of these offences he is guilty, the offender shall be punished for
+--     the offence for which the lowest punishment is provided, if the same
+--     punishment is not provided for all.
+--
+-- Deferred as a comparison (see the coverage table): the Code does not say how
+-- to order two punishments of different kinds (a longer term against a larger
+-- fine, caning against none). What IS certain is encoded: where the
+-- punishments are the same, s 72 has nothing to choose; and where two
+-- punishments prescribe the same kinds in the same way and differ only in the
+-- maximum term, the lower maximum term is the lower punishment. Anything else is
+-- refused by name.
+@export Of two punishments provided for the several offences in a judgment under section 72 of the Penal Code 1871, the lower one - refused where the Code gives no way to compare them
+GIVEN a IS A Punishment @desc The punishment provided for one of the offences
+      b IS A Punishment @desc The punishment provided for another of the offences
+GIVETH A Punishment
+`the lower punishment within section 72 of` a `and` b MEANS
+    BRANCH
+        IF a's words EQUALS b's words THEN a
+        IF `prescribed in the same way apart from the term` a b
+        THEN CONSIDER a's `maximum term in months`
+             WHEN JUST x THEN
+                 CONSIDER b's `maximum term in months`
+                 WHEN JUST y THEN IF x AT MOST y THEN a ELSE b
+                 WHEN NOTHING THEN `section 72 gives no way to compare these two punishments`
+             WHEN NOTHING THEN `section 72 gives no way to compare these two punishments`
+        OTHERWISE `section 72 gives no way to compare these two punishments`
+
+GIVEN a IS A Punishment
+      b IS A Punishment
+GIVETH A BOOLEAN
+`prescribed in the same way apart from the term` a b MEANS
+        a's death                    EQUALS b's death
+    AND a's `imprisonment for life`  EQUALS b's `imprisonment for life`
+    AND a's imprisonment             EQUALS b's imprisonment
+    AND a's `minimum term in months` EQUALS b's `minimum term in months`
+    AND a's `forfeiture of property` EQUALS b's `forfeiture of property`
+    AND a's fine                     EQUALS b's fine
+    AND a's `maximum fine`           EQUALS b's `maximum fine`
+    AND a's `minimum fine`           EQUALS b's `minimum fine`
+    AND a's caning                   EQUALS b's caning
+    AND a's `minimum strokes`        EQUALS b's `minimum strokes`
+    AND a's `maximum strokes`        EQUALS b's `maximum strokes`
+    AND a's `or with both`           EQUALS b's `or with both`
+
+@ref Penal Code 1871 s 72 - "the lowest punishment" is not defined across kinds of punishment
+GIVETH A Punishment
+`section 72 gives no way to compare these two punishments` MEANS
+    REFUSE "section 72 gives no way to compare these two punishments"
+
+§§ `s 73 - enhanced penalties for offences against domestic workers`
+
+-- 73.-(1) Where an employer of a domestic worker, a member of the employer's
+--     household or an employment agent of a domestic worker is convicted of an
+--     offence under this Code (other than an excluded offence) that is
+--     committed against that domestic worker, the court may sentence the person
+--     convicted to twice the maximum punishment that the court could, but for
+--     this section, impose for that offence.
+--     (2) This section does not apply where the offender (A) proves that,
+--     despite A being an employer of the domestic worker (B), a member of B's
+--     employer's household or an employment agent of B, the relationship
+--     between A and B did not adversely affect B's ability to protect herself
+--     from A in respect of the harm caused by the offence.
+--     (3) [Jurisdiction of Magistrates' and District Courts - inert here.]
+--     (4) In this section - "domestic worker" means any female house servant
+--     employed in, or in connection with, the domestic services of her
+--     employer's private dwelling house and who is required to reside in her
+--     employer's private dwelling house; "dwelling house" means a place of
+--     residence and includes a building or tenement wholly or principally used,
+--     constructed or adapted for use for human habitation; "employer", in
+--     relation to a domestic worker, includes a person who has the same
+--     fundamental qualities as an employer of the domestic worker and whose
+--     orders the domestic worker has reasonable grounds for believing she is
+--     expected to obey; "employment agency personnel" has the meaning given by
+--     section 2 of the Employment Agencies Act 1958; "employment agent", in
+--     relation to a domestic worker, means an employment agency personnel or a
+--     person who performs work similar to an employment agency personnel, and
+--     whose orders the domestic worker has reasonable grounds for believing she
+--     is expected to obey; "excluded offence" means an offence - (a) under
+--     section 304B, 304C or 335A; or (b) under this Code which is punishable
+--     with death or imprisonment for life; "member of the employer's
+--     household", in relation to a domestic worker, means a person residing in
+--     the private dwelling house of the domestic worker's employer at the time
+--     the offence was committed, and whose orders the domestic worker has
+--     reasonable grounds for believing she is expected to obey.
+@ref Penal Code 1871 s 73 - the operative atoms
+DECLARE `Domestic Worker Enhancement Facts` HAS
+    `the offender is an employer of the domestic worker`
+        IS A BOOLEAN @desc Is the offender the victim's employer? s 73(4) widens "employer" to a person with the same fundamental qualities as an employer, whose orders the victim has reasonable grounds for believing she is expected to obey.
+    `the offender is a member of the employer's household`
+        IS A BOOLEAN @desc Was the offender residing in the private dwelling house of the victim's employer at the time of the offence, and a person whose orders the victim had reasonable grounds for believing she was expected to obey? (s 73(4))
+    `the offender is an employment agent of the domestic worker`
+        IS A BOOLEAN @desc Is the offender employment agency personnel (Employment Agencies Act 1958 s 2), or a person doing similar work, whose orders the victim has reasonable grounds for believing she is expected to obey? (s 73(4))
+    `the victim is a female house servant`
+        IS A BOOLEAN @desc Is the victim a female house servant? (s 73(4) "domestic worker")
+    `employed in, or in connection with, the domestic services of her employer's private dwelling house`
+        IS A BOOLEAN @desc Is she employed in, or in connection with, the domestic services of her employer's private dwelling house - a place of residence, including a building or tenement wholly or principally used, constructed or adapted for human habitation? (s 73(4))
+    `required to reside in her employer's private dwelling house`
+        IS A BOOLEAN @desc Is she required to reside in her employer's private dwelling house? (s 73(4))
+    `convicted of an offence under this Code`
+        IS A BOOLEAN @desc Has the offender been convicted of an offence under the Penal Code 1871?
+    `the offence is committed against that domestic worker`
+        IS A BOOLEAN @desc Was that offence committed against the domestic worker?
+    `the offence is under section 304B, 304C or 335A`
+        IS A BOOLEAN @desc Is the offence one under section 304B, 304C or 335A? (an excluded offence, s 73(4)(a))
+    `the offence is punishable with death or imprisonment for life`
+        IS A BOOLEAN @desc Is the offence punishable with death or imprisonment for life? (an excluded offence, s 73(4)(b)) Decide it with pc-general's `punishable with death or imprisonment for life` over the offence's punishment.
+    `the offender proves that the relationship did not adversely affect the victim's ability to protect herself`
+        IS A BOOLEAN @desc Has the offender PROVED that the relationship did not adversely affect the victim's ability to protect herself from him in respect of the harm caused by the offence? (s 73(2)) The burden is the offender's: leave FALSE unless it is proved.
+
+@export Whether a person is a "domestic worker" within section 73(4) of the Penal Code 1871
+GIVEN f IS A `Domestic Worker Enhancement Facts` @desc The victim's employment and residence
+GIVETH A BOOLEAN
+DECIDE `domestic worker within section 73` f IF
+        "any"
+    AND f's `the victim is a female house servant`
+    AND f's `employed in, or in connection with, the domestic services of her employer's private dwelling house`
+    AND "and who"
+    AND f's `required to reside in her employer's private dwelling house`
+
+@export Whether an offence is an "excluded offence" within section 73(4) of the Penal Code 1871
+GIVEN f IS A `Domestic Worker Enhancement Facts` @desc Which offence the offender was convicted of
+GIVETH A BOOLEAN
+DECIDE `excluded offence within section 73` f IF
+        "an offence -"
+    AND (    f's `the offence is under section 304B, 304C or 335A`
+         OR  f's `the offence is punishable with death or imprisonment for life`)
+
+@export Whether the court may sentence the offender to twice the maximum punishment under section 73 of the Penal Code 1871 (offences against domestic workers)
+GIVEN f IS A `Domestic Worker Enhancement Facts` @desc Who the offender and victim are to each other, and the offence
+GIVETH A BOOLEAN
+DECIDE `enhanced penalty under s 73` f IF
+        "(1) Where an"
+    AND (    f's `the offender is an employer of the domestic worker`
+         OR  f's `the offender is a member of the employer's household`
+         OR  f's `the offender is an employment agent of the domestic worker`)
+    AND "of a"
+    AND `domestic worker within section 73` f
+    AND "is"
+    AND f's `convicted of an offence under this Code`
+    AND "(other than an"
+    AND NOT (`excluded offence within section 73` f)
+    AND ") that is"
+    AND f's `the offence is committed against that domestic worker`
+    AND "(2) This section does not apply where the offender (A) proves that"
+    AND NOT f's `the offender proves that the relationship did not adversely affect the victim's ability to protect herself`
+
+§§ `s 74 - enhanced penalties for racially or religiously aggravated offences`
+
+-- 74.-(1) Where a person is convicted of an offence specified in subsection (2)
+--     which is racially or religiously aggravated, the court may sentence the
+--     person to 2 times the amount of punishment to which he would otherwise
+--     have been liable for that offence.
+--     (2) The offence referred to in subsection (1) is as follows:
+--     (a) an offence under this Code except sections 298 and 298A, and an
+--         offence which is punishable with death or imprisonment for life;
+--     (b) an offence of attempting to commit, abetting the commission of, or
+--         being a party to a criminal conspiracy to commit, any offence under
+--         paragraph (a).
+--     (3) [Jurisdiction of Magistrates' and District Courts - inert here.]
+--     (4) For the purposes of this section, an offence is racially or
+--     religiously aggravated if - (a) at the time of committing the offence, or
+--     immediately before or after committing such offence, the offender
+--     demonstrates towards the victim of the offence hostility based on the
+--     victim's membership (or presumed membership) of a racial or religious
+--     group; or (b) the offence is motivated (wholly or partly) by hostility
+--     towards members of a racial or religious group based on their membership
+--     of that group.
+--     (5) It is immaterial for the purposes of paragraph (a) or (b) of
+--     subsection (4) whether or not the offender's hostility is also based, to
+--     any extent, on any other factor not mentioned in that paragraph.
+--     (6) In this section - "membership", in relation to a racial or religious
+--     group, includes association with members of that group; "presumed" means
+--     presumed by the offender.
+--
+-- (2)(a) is read as EXCEPTING offences punishable with death or imprisonment for
+-- life, as ss 73, 74A-74D do (FORK GP-3).
+@ref Penal Code 1871 s 74 - the operative atoms
+DECLARE `Racial or Religious Aggravation Facts` HAS
+    `convicted of an offence under this Code`
+        IS A BOOLEAN @desc Has the offender been convicted of an offence under the Penal Code 1871 - or of attempting, abetting or conspiring to commit one (s 74(2)(b))?
+    `the offence is under section 298 or 298A`
+        IS A BOOLEAN @desc Is the offence (or the offence attempted, abetted or conspired at) one under section 298 or 298A?
+    `the offence is punishable with death or imprisonment for life`
+        IS A BOOLEAN @desc Is the offence (or the offence attempted, abetted or conspired at) punishable with death or imprisonment for life? (FORK GP-3)
+    `demonstrates towards the victim hostility based on the victim's membership of a racial or religious group`
+        IS A BOOLEAN @desc At the time of the offence, or immediately before or after it, did the offender demonstrate towards the victim hostility based on the victim's membership - or membership the offender presumed - of a racial or religious group? "Membership" includes association with members (s 74(6)). Other reasons for the hostility do not matter (s 74(5)).
+    `motivated by hostility towards members of a racial or religious group based on their membership of that group`
+        IS A BOOLEAN @desc Was the offence motivated, wholly or partly, by hostility towards members of a racial or religious group based on their membership of it? Other reasons for the hostility do not matter (s 74(5)).
+
+@export Whether an offence is "racially or religiously aggravated" within section 74(4) of the Penal Code 1871
+GIVEN f IS A `Racial or Religious Aggravation Facts` @desc The offender's hostility, and what it was based on
+GIVETH A BOOLEAN
+DECIDE `racially or religiously aggravated within section 74` f IF
+        (    "(a) at the time of committing the offence, or immediately before or after committing such offence, the offender"
+         AND f's `demonstrates towards the victim hostility based on the victim's membership of a racial or religious group`)
+    OR  (    "(b) the offence is"
+         AND f's `motivated by hostility towards members of a racial or religious group based on their membership of that group`)
+
+@export Whether the court may sentence the offender to 2 times the punishment under section 74 of the Penal Code 1871 (racially or religiously aggravated offences)
+GIVEN f IS A `Racial or Religious Aggravation Facts` @desc The offence, and the offender's hostility
+GIVETH A BOOLEAN
+DECIDE `enhanced penalty under s 74` f IF
+        "(1) Where a person is"
+    AND f's `convicted of an offence under this Code`
+    AND "except sections 298 and 298A"
+    AND NOT f's `the offence is under section 298 or 298A`
+    AND "and an offence which is punishable with death or imprisonment for life"
+    AND NOT f's `the offence is punishable with death or imprisonment for life`
+    AND "which is"
+    AND `racially or religiously aggravated within section 74` f
+
+§§ `s 74A - enhanced penalties for offences against vulnerable persons`
+
+-- 74A.-(1) This section applies where a person is convicted of an offence
+--     specified in subsection (3) (called in this section the offender) against
+--     a vulnerable person.
+--     (2) The court may sentence the offender to punishment not exceeding twice
+--     the maximum punishment that the court could, but for this section, impose
+--     for the offence, if at the time of committing the offence the offender
+--     knew or ought reasonably to have known that the victim was a vulnerable
+--     person.
+--     (2A) This section does not apply where the offender proves that despite
+--     being a vulnerable person the victim was capable of protecting himself
+--     from the offender in respect of the harm caused by the offence in the same
+--     manner as an ordinary person who is not a vulnerable person.
+--     (3) The offence to which this section applies is any offence under this
+--     Code which may be committed against a vulnerable person except an offence
+--     - (a) under section 304B, 304C, 335A or 376F; or (b) punishable with death
+--     or imprisonment for life.
+--     (4) [Jurisdiction of Magistrates' and District Courts - inert here.]
+--     (5) In this section - "abuse" and "self-neglect" have the meanings given
+--     by section 2(1) of the Vulnerable Adults Act 2018; "vulnerable person"
+--     means an individual who is, by reason of mental or physical infirmity,
+--     disability or incapacity, substantially unable to protect himself from
+--     abuse, neglect or self-neglect.
+@ref Penal Code 1871 s 74A - the operative atoms
+DECLARE `Vulnerable Person Enhancement Facts` HAS
+    `convicted of an offence under this Code which may be committed against a vulnerable person`
+        IS A BOOLEAN @desc Has the offender been convicted of an offence under the Penal Code 1871 that may be committed against a vulnerable person?
+    `the offence is committed against the victim`
+        IS A BOOLEAN @desc Was that offence committed against the victim?
+    `the victim is an individual`
+        IS A BOOLEAN @desc Is the victim an individual (a human being)?
+    `by reason of mental or physical infirmity, disability or incapacity`
+        IS A BOOLEAN @desc Does the victim have a mental or physical infirmity, disability or incapacity?
+    `substantially unable to protect himself from abuse, neglect or self-neglect`
+        IS A BOOLEAN @desc By reason of it, is the victim substantially unable to protect himself from abuse, neglect or self-neglect ("abuse" and "self-neglect" as in the Vulnerable Adults Act 2018 s 2(1), which is not encoded here)?
+    `knew or ought reasonably to have known that the victim was a vulnerable person`
+        IS A BOOLEAN @desc At the time of the offence, did the offender know, or ought he reasonably to have known, that the victim was a vulnerable person?
+    `the offence is under section 304B, 304C, 335A or 376F`
+        IS A BOOLEAN @desc Is the offence one under section 304B, 304C, 335A or 376F? (excepted, s 74A(3)(a))
+    `the offence is punishable with death or imprisonment for life`
+        IS A BOOLEAN @desc Is the offence punishable with death or imprisonment for life? (excepted, s 74A(3)(b))
+    `the offender proves that the victim was capable of protecting himself as an ordinary person would`
+        IS A BOOLEAN @desc Has the offender PROVED that, despite being a vulnerable person, the victim was capable of protecting himself from the offender in respect of the harm caused, as an ordinary person who is not vulnerable would? (s 74A(2A)) Leave FALSE unless it is proved.
+
+@export Whether a person is a "vulnerable person" within section 74A(5) of the Penal Code 1871
+GIVEN f IS A `Vulnerable Person Enhancement Facts` @desc The victim's condition
+GIVETH A BOOLEAN
+DECIDE `vulnerable person within section 74A` f IF
+        "an"
+    AND f's `the victim is an individual`
+    AND "who is,"
+    AND f's `by reason of mental or physical infirmity, disability or incapacity`
+    AND f's `substantially unable to protect himself from abuse, neglect or self-neglect`
+
+@export Whether the court may sentence the offender to twice the maximum punishment under section 74A of the Penal Code 1871 (offences against vulnerable persons)
+GIVEN f IS A `Vulnerable Person Enhancement Facts` @desc The offence, the victim, and what the offender knew
+GIVETH A BOOLEAN
+DECIDE `enhanced penalty under s 74A` f IF
+        "(1) ... a person is"
+    AND f's `convicted of an offence under this Code which may be committed against a vulnerable person`
+    AND "(3) ... except an offence - (a) under section 304B, 304C, 335A or 376F; or (b) punishable with death or imprisonment for life"
+    AND NOT f's `the offence is under section 304B, 304C, 335A or 376F`
+    AND NOT f's `the offence is punishable with death or imprisonment for life`
+    AND f's `the offence is committed against the victim`
+    AND "against a"
+    AND `vulnerable person within section 74A` f
+    AND "(2) ... if at the time of committing the offence the offender"
+    AND f's `knew or ought reasonably to have known that the victim was a vulnerable person`
+    AND "(2A) This section does not apply where the offender proves that"
+    AND NOT f's `the offender proves that the victim was capable of protecting himself as an ordinary person would`
+
+§§ `s 74B - enhanced penalties for offences against a person below 14 years of age`
+
+-- 74B.-(1) Subsection (2) applies to any offence under this Code which may be
+--     committed against a person below 14 years of age except where - (a) it is
+--     expressly provided that an enhanced or mandatory minimum sentence will
+--     apply to the offence when it is committed against a person below 14 years
+--     of age; (b) the offence is under section 304B, 304C, 377BG, 377BH, 377BI,
+--     377BJ or 377BK; or (c) the offence is punishable with death or
+--     imprisonment for life.
+--     (2) Where any person commits an offence under this Code against a person
+--     below 14 years of age, the court may sentence the person convicted of the
+--     offence to punishment not exceeding twice the maximum punishment that the
+--     court could, but for this section, impose for the offence if at the time
+--     of committing the offence the offender knew or ought reasonably to have
+--     known that the victim was a person below 14 years of age.
+--     (3) This section does not apply where the offender proves that the victim
+--     despite being a person below 14 years of age, was capable of protecting
+--     himself from the offender in respect of the harm caused by the offence in
+--     the same manner as a person of or above 14 years of age.
+--     (4) [Jurisdiction of Magistrates' and District Courts - inert here.]
+@ref Penal Code 1871 s 74B - the operative atoms
+DECLARE `Child Victim Enhancement Facts` HAS
+    `convicted of an offence under this Code which may be committed against a person below 14 years of age`
+        IS A BOOLEAN @desc Has the offender been convicted of an offence under the Penal Code 1871 that may be committed against a person below 14 years of age?
+    `the offence is committed against the victim`
+        IS A BOOLEAN @desc Was that offence committed against the victim?
+    `the victim is below 14 years of age`
+        IS A BOOLEAN @desc Was the victim below 14 years of age at the time? Decide it with `below 14 years of age` over the victim's age in completed years.
+    `knew or ought reasonably to have known that the victim was a person below 14 years of age`
+        IS A BOOLEAN @desc At the time of the offence, did the offender know, or ought he reasonably to have known, that the victim was below 14 years of age?
+    `it is expressly provided that an enhanced or mandatory minimum sentence applies to the offence when committed against a person below 14 years of age`
+        IS A BOOLEAN @desc Does the offence's own section expressly provide an enhanced or mandatory minimum sentence when it is committed against a person below 14? (excepted, s 74B(1)(a))
+    `the offence is under section 304B, 304C, 377BG, 377BH, 377BI, 377BJ or 377BK`
+        IS A BOOLEAN @desc Is the offence one under section 304B, 304C, 377BG, 377BH, 377BI, 377BJ or 377BK? (excepted, s 74B(1)(b))
+    `the offence is punishable with death or imprisonment for life`
+        IS A BOOLEAN @desc Is the offence punishable with death or imprisonment for life? (excepted, s 74B(1)(c))
+    `the offender proves that the victim was capable of protecting himself as a person of or above 14 years of age would`
+        IS A BOOLEAN @desc Has the offender PROVED that the victim was capable of protecting himself from the offender in respect of the harm caused, as a person of or above 14 would? (s 74B(3)) Leave FALSE unless it is proved.
+
+@export Whether the court may sentence the offender to twice the maximum punishment under section 74B of the Penal Code 1871 (offences against a person below 14 years of age)
+GIVEN f IS A `Child Victim Enhancement Facts` @desc The offence, the victim's age, and what the offender knew
+GIVETH A BOOLEAN
+DECIDE `enhanced penalty under s 74B` f IF
+        "(1) ... any offence under this Code which may be committed against a person below 14 years of age"
+    AND f's `convicted of an offence under this Code which may be committed against a person below 14 years of age`
+    AND "except where - (a)"
+    AND NOT f's `it is expressly provided that an enhanced or mandatory minimum sentence applies to the offence when committed against a person below 14 years of age`
+    AND "(b)"
+    AND NOT f's `the offence is under section 304B, 304C, 377BG, 377BH, 377BI, 377BJ or 377BK`
+    AND "(c)"
+    AND NOT f's `the offence is punishable with death or imprisonment for life`
+    AND "(2) Where any person commits an offence under this Code"
+    AND f's `the offence is committed against the victim`
+    AND "against a person"
+    AND f's `the victim is below 14 years of age`
+    AND "if at the time of committing the offence the offender"
+    AND f's `knew or ought reasonably to have known that the victim was a person below 14 years of age`
+    AND "(3) This section does not apply where the offender proves that"
+    AND NOT f's `the offender proves that the victim was capable of protecting himself as a person of or above 14 years of age would`
+
+§§ `s 74C - enhanced penalties for offences against victims in intimate relationships`
+
+-- 74C.-(1) Subsection (2) applies where an offender (A) is convicted of any
+--     offence under Chapter 16 (except an offence punishable with death or
+--     imprisonment for life) committed against a person (B) who was or is in an
+--     intimate relationship with A.
+--     (2) When the offender (A) commits an offence against B, the court may
+--     sentence the person convicted of the offence to punishment not exceeding
+--     twice the maximum punishment that the court could, but for this section,
+--     impose for the offence if at the time of committing the offence A knew or
+--     ought reasonably to have known that B was or is in an intimate
+--     relationship with A.
+--     (3) This section does not apply where the offender (A) proves that,
+--     despite A having been or being in an intimate relationship with B, the
+--     relationship between A and B did not adversely affect B's ability to
+--     protect B from A in respect of the harm caused by the offence.
+--     (4) [Jurisdiction of Magistrates' and District Courts - inert here.]
+--     (5) For the purpose of this section, the court may determine whether the
+--     offender (A) was or is in an intimate relationship with the victim (B)
+--     having regard to all the circumstances of the case, including the
+--     following: (a) whether A and B are living in the same household,
+--     although it is not necessary that they live in the same household;
+--     (b) whether A and B share the tasks and duties of their daily lives;
+--     (c) whether A and B have made arrangements to share expenses or financial
+--     support and the degree of financial dependence or interdependence between
+--     A and B; (d) whether there is a sexual relationship between A and B,
+--     although it is not necessary that there be a sexual relationship between
+--     them; (e) whether A and B share the care and support of a specific person
+--     below 21 years of age; (f) whether A and B conduct themselves toward
+--     their friends, relatives or other persons as parties to an intimate
+--     relationship, and whether A and B are so treated by their friends,
+--     relatives or other persons.
+--
+-- (5) is a list of factors the court weighs, none necessary and none
+-- sufficient, so it is not a ladder: it is the @desc of the one leaf that asks
+-- the question (FORK GP-4).
+@ref Penal Code 1871 s 74C - the operative atoms
+DECLARE `Intimate Relationship Enhancement Facts` HAS
+    `convicted of an offence under Chapter 16`
+        IS A BOOLEAN @desc Has the offender (A) been convicted of an offence under Chapter 16 (offences affecting the human body)?
+    `the offence is punishable with death or imprisonment for life`
+        IS A BOOLEAN @desc Is the offence punishable with death or imprisonment for life? (excepted, s 74C(1))
+    `the offence is committed against the victim`
+        IS A BOOLEAN @desc Was that offence committed against the victim (B)?
+    `the victim was or is in an intimate relationship with the offender`
+        IS A BOOLEAN @desc Was or is B in an intimate relationship with A? The court decides it on all the circumstances (s 74C(5)), including whether they live in the same household (not necessary), share the tasks and duties of daily life, share expenses or financial support or depend on each other financially, have a sexual relationship (not necessary), share the care of a specific person below 21, and present themselves to, and are treated by, friends and relatives as parties to an intimate relationship.
+    `knew or ought reasonably to have known of the intimate relationship`
+        IS A BOOLEAN @desc At the time of the offence, did A know, or ought A reasonably to have known, that B was or is in an intimate relationship with A?
+    `the offender proves that the relationship did not adversely affect the victim's ability to protect himself or herself`
+        IS A BOOLEAN @desc Has A PROVED that the relationship did not adversely affect B's ability to protect B from A in respect of the harm caused by the offence? (s 74C(3)) Leave FALSE unless it is proved.
+
+@export Whether the court may sentence the offender to twice the maximum punishment under section 74C of the Penal Code 1871 (victims in intimate relationships)
+GIVEN f IS AN `Intimate Relationship Enhancement Facts` @desc The offence, the relationship, and what the offender knew
+GIVETH A BOOLEAN
+DECIDE `enhanced penalty under s 74C` f IF
+        "(1) ... an offender (A) is"
+    AND f's `convicted of an offence under Chapter 16`
+    AND "(except an offence punishable with death or imprisonment for life)"
+    AND NOT f's `the offence is punishable with death or imprisonment for life`
+    AND f's `the offence is committed against the victim`
+    AND "a person (B) who"
+    AND f's `the victim was or is in an intimate relationship with the offender`
+    AND "(2) ... if at the time of committing the offence A"
+    AND f's `knew or ought reasonably to have known of the intimate relationship`
+    AND "(3) This section does not apply where the offender (A) proves that"
+    AND NOT f's `the offender proves that the relationship did not adversely affect the victim's ability to protect himself or herself`
+
+§§ `s 74D - enhanced penalties for offences against victims in close relationships`
+
+-- 74D.-(1) Subsection (2) applies where an offender (A) is convicted of any
+--     offence under Chapter 16 (except an offence punishable with death or
+--     imprisonment for life) committed against a person (B) who was or is in a
+--     close relationship with A.
+--     (2) When the offender (A) commits an offence against B, the court may
+--     sentence the person convicted of the offence to punishment not exceeding
+--     twice the maximum punishment that the court could, but for this section,
+--     impose for the offence if at the time of committing the offence A knew or
+--     ought reasonably to have known that B was or is in a close relationship
+--     with A.
+--     (3) This section does not apply where the offender (A) proves that,
+--     despite A having been or being in a close relationship with B, the
+--     relationship between A and B did not adversely affect B's ability to
+--     protect B from A in respect of the harm caused by the offence.
+--     (4) [Jurisdiction of Magistrates' and District Courts - inert here.]
+--     (5) In this section, the offender (A) was or is in a close relationship
+--     with the victim (B) where - (a) A is a member of the same household as B;
+--     and (b) A and B had frequent contact with each other.
+--     (6) For the purposes of subsection (5), A and B are to be treated as
+--     members of the same household if - (a) they live in the same household;
+--     or (b) they do not live in the same household, but A or B visits the
+--     household to which the other belongs so often and for such periods of
+--     time that it is reasonable to regard A and B as being members of the same
+--     household.
+@ref Penal Code 1871 s 74D - the operative atoms
+DECLARE `Close Relationship Enhancement Facts` HAS
+    `convicted of an offence under Chapter 16`
+        IS A BOOLEAN @desc Has the offender (A) been convicted of an offence under Chapter 16 (offences affecting the human body)?
+    `the offence is punishable with death or imprisonment for life`
+        IS A BOOLEAN @desc Is the offence punishable with death or imprisonment for life? (excepted, s 74D(1))
+    `the offence is committed against the victim`
+        IS A BOOLEAN @desc Was that offence committed against the victim (B)?
+    `they live in the same household`
+        IS A BOOLEAN @desc Do (or did) A and B live in the same household? (s 74D(6)(a))
+    `A or B visits the household to which the other belongs so often and for such periods of time that it is reasonable to regard them as members of the same household`
+        IS A BOOLEAN @desc Not living in the same household, does A or B visit the other's household so often and for such periods that it is reasonable to regard them as members of the same household? (s 74D(6)(b))
+    `A and B had frequent contact with each other`
+        IS A BOOLEAN @desc Did A and B have frequent contact with each other? (s 74D(5)(b))
+    `knew or ought reasonably to have known of the close relationship`
+        IS A BOOLEAN @desc At the time of the offence, did A know, or ought A reasonably to have known, that B was or is in a close relationship with A?
+    `the offender proves that the relationship did not adversely affect the victim's ability to protect himself or herself`
+        IS A BOOLEAN @desc Has A PROVED that the relationship did not adversely affect B's ability to protect B from A in respect of the harm caused by the offence? (s 74D(3)) Leave FALSE unless it is proved.
+
+@export Whether the offender "was or is in a close relationship with the victim" within section 74D(5)-(6) of the Penal Code 1871
+GIVEN f IS A `Close Relationship Enhancement Facts` @desc The household, and how often A and B were in contact
+GIVETH A BOOLEAN
+DECIDE `close relationship within section 74D` f IF
+        "(5)(a) A is a member of the same household as B - (6)"
+    AND (    f's `they live in the same household`
+         OR  f's `A or B visits the household to which the other belongs so often and for such periods of time that it is reasonable to regard them as members of the same household`)
+    AND "(5)(b)"
+    AND f's `A and B had frequent contact with each other`
+
+@export Whether the court may sentence the offender to twice the maximum punishment under section 74D of the Penal Code 1871 (victims in close relationships)
+GIVEN f IS A `Close Relationship Enhancement Facts` @desc The offence, the relationship, and what the offender knew
+GIVETH A BOOLEAN
+DECIDE `enhanced penalty under s 74D` f IF
+        "(1) ... an offender (A) is"
+    AND f's `convicted of an offence under Chapter 16`
+    AND "(except an offence punishable with death or imprisonment for life)"
+    AND NOT f's `the offence is punishable with death or imprisonment for life`
+    AND f's `the offence is committed against the victim`
+    AND "a person (B) who was or is in a"
+    AND `close relationship within section 74D` f
+    AND "(2) ... if at the time of committing the offence A"
+    AND f's `knew or ought reasonably to have known of the close relationship`
+    AND "(3) This section does not apply where the offender (A) proves that"
+    AND NOT f's `the offender proves that the relationship did not adversely affect the victim's ability to protect himself or herself`
+
+§§ `s 74E - application of enhanced penalties`
+
+-- 74E.-(1) Where 2 or more of the sections from amongst sections 73 to 74D are
+--     applicable to enhance the punishment for an offence from that which the
+--     offender would otherwise have been liable for - (a) the punishment for the
+--     same offence shall not be enhanced by the application of more than one of
+--     those sections; and (b) the court may determine which section should
+--     apply to enhance the punishment.
+--     (2) Where any punishment prescribed for an offence is - (a) a specified
+--     minimum sentence or a mandatory minimum sentence of imprisonment or
+--     caning, section 73, 74, 74A, 74B, 74C or 74D does not apply to enhance
+--     such punishment; and (b) a sentence of caning, section 73, 74, 74A, 74B,
+--     74C or 74D does not apply to enhance the maximum number of strokes of the
+--     cane that may be imposed.
+--
+-- The one function below applies ONE enhancing section to a `Punishment`, which
+-- is how s 74E(1)(a) is kept: the court chooses the section (s 74E(1)(b)) and
+-- the function is applied once. It doubles the maximum term and the maximum
+-- fine; s 74E(2)(a) leaves an imprisonment that carries a minimum term
+-- unenhanced (FORK GP-5), and s 74E(2)(b) leaves the maximum strokes alone.
+-- A maximum the section does not state stays NOTHING: twice "not stated" is
+-- not a number.
+
+GIVEN m IS A MAYBE NUMBER
+GIVETH A MAYBE NUMBER
+`twice` m MEANS
+    CONSIDER m
+    WHEN JUST x  THEN JUST (x TIMES 2)
+    WHEN NOTHING THEN NOTHING
+
+@export The punishment an enhancing section of ss 73-74D of the Penal Code 1871 allows (twice the maximum), subject to section 74E(2)
+GIVEN p       IS A Punishment @desc The punishment the offence's own section prescribes
+      section IS A STRING     @desc The one enhancing section the court applies - "73", "74", "74A", "74B", "74C" or "74D" (s 74E(1))
+GIVETH A Punishment
+`twice the maximum punishment of` p `under section` section MEANS
+    Punishment WITH
+        section                  IS CONCAT p's section, " read with ", section
+        words                    IS CONCAT "punishment not exceeding twice the maximum punishment for the offence (section ", section, "), the punishment for the offence being: ", p's words
+        death                    IS p's death
+        `imprisonment for life`  IS p's `imprisonment for life`
+        imprisonment             IS p's imprisonment
+        `maximum term in months` IS IF isJust (p's `minimum term in months`)
+                                    THEN p's `maximum term in months`
+                                    ELSE `twice` (p's `maximum term in months`)
+        `minimum term in months` IS p's `minimum term in months`
+        `forfeiture of property` IS p's `forfeiture of property`
+        fine                     IS p's fine
+        `maximum fine`           IS `twice` (p's `maximum fine`)
+        `minimum fine`           IS p's `minimum fine`
+        caning                   IS p's caning
+        `minimum strokes`        IS p's `minimum strokes`
+        `maximum strokes`        IS p's `maximum strokes`
+        `or with both`           IS p's `or with both`
+
+-- s 75. [Repealed by Act 15 of 2019]
+
+-- ===========================================================================
+§ `Chapter 3 and Chapters 5, 5A, 23 - a punishment the court is not bound to impose in full`
+-- ===========================================================================
+
+-- ss 116(2)-(3) and 512(3)-(4) say the same thing in the same words: where the
+-- punishment prescribed for the offence abetted (s 116) or attempted (s 512(2))
+-- is "fixed by law, or is a specified minimum sentence or a mandatory minimum
+-- sentence of imprisonment or fine or caning", the court "(a) shall not be
+-- bound to impose the fixed, specified minimum or mandatory minimum sentence;
+-- and (b) may sentence the [abettor / offender] to such sentence or combination
+-- of sentences as the court thinks fit but not exceeding the maximum punishment
+-- prescribed for that offence", and nothing in (b) "empowers a court to impose
+-- a type of punishment that is not prescribed" for the offence.
+--
+-- So: every kind the offence prescribes becomes one of alternatives the court
+-- may combine (`or with`, and `or with both`); no minimum survives; the maxima
+-- stand; a kind the offence does not prescribe stays `not prescribed` (s 116(3),
+-- s 512(4)). FORK GP-6 records why `or with` and not `shall also be liable to`.
+-- Where the punishment is neither fixed nor has a minimum, it is the offence's
+-- punishment unchanged (s 116(1), s 512(2)).
+
+GIVEN h IS A `How a punishment is prescribed`
+GIVETH A `How a punishment is prescribed`
+`at the court's choice` h MEANS
+    IF h EQUALS `not prescribed` THEN `not prescribed` ELSE `or with`
+
+GIVEN p       IS A Punishment
+      section IS A STRING
+GIVETH A Punishment
+`not bound by a fixed or minimum sentence` p section MEANS
+    Punishment WITH
+        section                  IS CONCAT p's section, " read with ", section
+        words                    IS CONCAT "such sentence or combination of sentences as the court thinks fit but not exceeding the maximum punishment prescribed for that offence (section ", section, "), the punishment prescribed for that offence being: ", p's words
+        death                    IS `at the court's choice` (p's death)
+        `imprisonment for life`  IS `at the court's choice` (p's `imprisonment for life`)
+        imprisonment             IS `at the court's choice` (p's imprisonment)
+        `maximum term in months` IS p's `maximum term in months`
+        `minimum term in months` IS NOTHING
+        `forfeiture of property` IS `at the court's choice` (p's `forfeiture of property`)
+        fine                     IS `at the court's choice` (p's fine)
+        `maximum fine`           IS p's `maximum fine`
+        `minimum fine`           IS NOTHING
+        caning                   IS `at the court's choice` (p's caning)
+        `minimum strokes`        IS NOTHING
+        `maximum strokes`        IS p's `maximum strokes`
+        `or with both`           IS TRUE
+
+GIVEN p       IS A Punishment
+      section IS A STRING
+GIVETH A Punishment
+`the same punishment, read with` p section MEANS
+    Punishment WITH
+        section                  IS CONCAT p's section, " read with ", section
+        words                    IS p's words
+        death                    IS p's death
+        `imprisonment for life`  IS p's `imprisonment for life`
+        imprisonment             IS p's imprisonment
+        `maximum term in months` IS p's `maximum term in months`
+        `minimum term in months` IS p's `minimum term in months`
+        `forfeiture of property` IS p's `forfeiture of property`
+        fine                     IS p's fine
+        `maximum fine`           IS p's `maximum fine`
+        `minimum fine`           IS p's `minimum fine`
+        caning                   IS p's caning
+        `minimum strokes`        IS p's `minimum strokes`
+        `maximum strokes`        IS p's `maximum strokes`
+        `or with both`           IS p's `or with both`
+
+-- ===========================================================================
+§ `Chapter 5 - Abetment`
+-- ===========================================================================
+
+§§ `The facts of one abetment`
+
+@ref Penal Code 1871 ss 107-117 - the operative atoms, and the particulars CPC s 124 requires
+DECLARE `Abetment Facts` HAS
+    particulars IS A Particulars @desc Who is charged, and when and where the abetment was committed
+    `the person abetted`
+        IS A STRING  @desc The person instigated, conspired with or aided, as the charge names them - for example "Tan Ah Kow"
+    `the person abetted described as`
+        IS A STRING  @desc How the charge describes the person abetted after the name; leave blank if not needed
+    `the offence abetted`
+        IS A STRING  @desc The offence abetted, as the charge names it - for example "cheating". Where the person abetted acted with a different intention or knowledge, name the offence the act would have been with the abettor's intention and knowledge (s 110).
+    `the section punishing the offence abetted`
+        IS A STRING  @desc The section under which the offence abetted is punishable - for example "420"
+    `the punishment provided for the offence abetted`
+        IS A STRING  @desc The punishment that section provides, in its own words - for example "imprisonment for a term which may extend to 3 years, or with fine, or with both"
+    `the manner of the abetment`
+        IS A STRING  @desc What the accused did, as it is to read after "to wit," - for example "by asking him to deceive the bank into releasing the loan"; leave blank if not needed
+
+    -- s 107(1)(a), with Explanation 1
+    `instigates any person to do that thing`
+        IS A BOOLEAN @desc Did the accused instigate (urge, provoke, encourage or command) any person to do the thing? (s 107(1)(a))
+    `by intentional misrepresentation`
+        IS A BOOLEAN @desc Did the accused make an intentional misrepresentation? (s 107 Explanation 1)
+    `by intentional concealment of a material fact which he is bound to disclose`
+        IS A BOOLEAN @desc Did the accused intentionally conceal a material fact which he was bound to disclose? (s 107 Explanation 1)
+    `voluntarily causes or procures, or attempts to cause or procure, a thing to be done`
+        IS A BOOLEAN @desc By that misrepresentation or concealment, did the accused voluntarily (s 26A) cause or procure the thing to be done, or attempt to? (s 107 Explanation 1)
+
+    -- s 107(1)(b)
+    `engages with one or more other persons in a conspiracy for the doing of that thing`
+        IS A BOOLEAN @desc Did the accused engage with one or more other persons in a conspiracy for the doing of the thing? He need not have concerted it with the person who does it (s 108 Explanation 5).
+    `an act or illegal omission takes place in pursuance of that conspiracy`
+        IS A BOOLEAN @desc Did an act or an illegal omission (s 43) take place in pursuance of that conspiracy?
+    `in order to the doing of that thing`
+        IS A BOOLEAN @desc Was that act or omission in order to the doing of the thing?
+
+    -- s 107(1)(c), with Explanation 2
+    `the aid is intentional`
+        IS A BOOLEAN @desc Did the accused aid the doing of the thing intentionally (s 26C)?
+    `by any act or illegal omission`
+        IS A BOOLEAN @desc Was the aid given by an act or an illegal omission (s 43)?
+    `does anything, prior to or at the time of the commission of the act, in order to facilitate its commission`
+        IS A BOOLEAN @desc Before or at the time the act was committed, did the accused do anything in order to facilitate its commission? (s 107 Explanation 2)
+    `thereby facilitates the commission of the act`
+        IS A BOOLEAN @desc Did that in fact facilitate the commission of the act? (s 107 Explanation 2)
+
+    -- s 108 (with Explanations 2-4) and s 108A
+    `the thing abetted is the commission of an offence`
+        IS A BOOLEAN @desc Is the thing abetted the commission of an offence? "Offence" here includes a thing punishable under any other written law (s 40(2)); an abetment is itself an offence, so an abetment of an abetment counts (s 108 Explanation 4). The act need not be committed (Explanation 2).
+    `the thing abetted is an act which would be an offence if committed by a person capable by law of committing an offence with the same intention or knowledge as that of the abettor`
+        IS A BOOLEAN @desc Would the act be an offence if done by a person capable by law of committing an offence, with the abettor's intention or knowledge? The person abetted need not be capable, nor share any guilty intention (s 108 Explanation 3). The abetted omission may be one the abettor was not himself bound to do (Explanation 1).
+    `abets in Singapore`
+        IS A BOOLEAN @desc Did the accused abet in Singapore? (s 108A)
+    `the act abetted is to be committed without and beyond Singapore and would constitute an offence if committed in Singapore`
+        IS A BOOLEAN @desc Is the act abetted one to be committed outside Singapore which would constitute an offence if committed in Singapore? (s 108A)
+
+    -- s 109 and its Explanation; ss 115-116
+    `the act abetted is committed`
+        IS A BOOLEAN @desc Was the act abetted committed?
+    `in consequence of the instigation`
+        IS A BOOLEAN @desc Was it committed in consequence of the instigation? (s 109 Explanation)
+    `in pursuance of the conspiracy`
+        IS A BOOLEAN @desc Was it committed in pursuance of the conspiracy? (s 109 Explanation)
+    `with the aid which constitutes the abetment`
+        IS A BOOLEAN @desc Was it committed with the aid which constitutes the abetment? (s 109 Explanation)
+    `that offence is not committed in consequence of the abetment`
+        IS A BOOLEAN @desc Was the offence abetted NOT committed in consequence of the abetment? (ss 115, 116) Answer TRUE only if it is established that it was not.
+    `no express provision is made by this Code for the punishment of such abetment`
+        IS A BOOLEAN @desc Does this Code make no express provision for punishing this abetment? (s 109) Some sections punish the abetment of their offence expressly; then the charge is under that section.
+    `no express provision is made by this Code or by any other written law for the punishment of such abetment`
+        IS A BOOLEAN @desc Does neither this Code nor any other written law make express provision for punishing this abetment? (ss 115, 116)
+    `the offence abetted is punishable with death or imprisonment for life`
+        IS A BOOLEAN @desc Is the offence abetted punishable with death or imprisonment for life? Decide it with pc-general's `punishable with death or imprisonment for life` over that offence's punishment. (s 115)
+    `the offence abetted is punishable with imprisonment`
+        IS A BOOLEAN @desc Is the offence abetted punishable with imprisonment? Decide it with pc-general's `punishable with imprisonment` over that offence's punishment. (s 116)
+
+    -- s 117
+    `abets the commission of the offence by the public generally`
+        IS A BOOLEAN @desc Did the accused abet the commission of the offence by the public generally? (s 117)
+    `abets the commission of the offence by a number or class of persons exceeding 10`
+        IS A BOOLEAN @desc Did the accused abet its commission by any number or class of persons exceeding 10? Decide the number with `exceeding 10`. (s 117)
+
+    -- s 111 to s 114
+    `a different act is done`
+        IS A BOOLEAN @desc Was an act done other than the act abetted? (s 111)
+    `the act done was a probable consequence of the abetment`
+        IS A BOOLEAN @desc Was the act done a probable consequence of the abetment? (s 111 proviso)
+    `the act done was committed under the influence of the instigation, or with the aid or in pursuance of the conspiracy which constituted the abetment`
+        IS A BOOLEAN @desc Was the act done committed under the influence of the instigation, or with the aid, or in pursuance of the conspiracy, which constituted the abetment? (s 111 proviso)
+    `the act done is committed in addition to the act abetted`
+        IS A BOOLEAN @desc Was the act done committed in addition to the act abetted (rather than instead of it)? (s 112)
+    `the act done constitutes a distinct offence`
+        IS A BOOLEAN @desc Does the act done constitute an offence distinct from the one abetted? (s 112)
+    `the act is abetted with the intention of causing a particular effect`
+        IS A BOOLEAN @desc Did the abettor abet the act intending it to cause a particular effect? (s 113)
+    `the act causes a different effect from that intended by the abettor`
+        IS A BOOLEAN @desc Did the act for which the abettor is liable cause a different effect from the one he intended? (s 113)
+    `the abettor knew that the act abetted was likely to cause that effect`
+        IS A BOOLEAN @desc Did the abettor know that the act abetted was likely to cause the effect it caused? (s 113)
+    `is present when the act or offence is committed`
+        IS A BOOLEAN @desc Was the abettor present when the act or offence was committed? (s 114)
+
+§§ `s 107 - abetment of the doing of a thing`
+
+-- 107.-(1) A person abets the doing of a thing who -
+--     (a) instigates any person to do that thing;
+--     (b) engages with one or more other person or persons in any conspiracy
+--         for the doing of that thing, if an act or illegal omission takes place
+--         in pursuance of that conspiracy, and in order to the doing of that
+--         thing; or
+--     (c) intentionally aids, by any act or illegal omission, the doing of that
+--         thing.                                                     [15/2019]
+--     (2) A person may abet the doing of a thing despite the existence of facts
+--     of which he is unaware which make the doing of the thing impossible.
+--     Explanation 1.-A person who, by intentional misrepresentation, or by
+--     intentional concealment of a material fact which he is bound to disclose,
+--     voluntarily causes or procures, or attempts to cause or procure, a thing
+--     to be done, is said to instigate the doing of that thing.
+--     Illustration. A, a public officer, is authorised by a warrant from a
+--     court of justice to apprehend Z. B, knowing that fact and also that C is
+--     not Z, intentionally represents to A that C is Z, and thereby
+--     intentionally causes A to apprehend C. Here B abets by instigation the
+--     apprehension of C.
+--     Explanation 2.-Whoever, either prior to or at the time of the commission
+--     of an act, does anything in order to facilitate the commission of that
+--     act, and thereby facilitates the commission thereof, is said to aid the
+--     doing of that act.
+--
+-- (2) removes a defence rather than adding an element: nothing in the ladder
+-- asks whether the thing could be done, so an impossibility the abettor did not
+-- know of changes nothing (tested). Explanation 1 widens "instigates" and is its
+-- own ladder; Explanation 2 says what "aids" is, and is its own ladder.
+
+@export Whether the accused "instigates" the doing of a thing within section 107(1)(a) of the Penal Code 1871, with Explanation 1
+GIVEN f IS AN `Abetment Facts` @desc What the accused said, concealed or urged
+GIVETH A BOOLEAN
+DECIDE `instigates within section 107` f IF
+        f's `instigates any person to do that thing`
+    OR  (    "Explanation 1.-A person who, by"
+         AND (    f's `by intentional misrepresentation`
+              OR  f's `by intentional concealment of a material fact which he is bound to disclose`)
+         AND f's `voluntarily causes or procures, or attempts to cause or procure, a thing to be done`
+         AND "is said to instigate the doing of that thing.")
+
+@export Whether the accused "aids" the doing of an act within section 107 Explanation 2 of the Penal Code 1871
+GIVEN f IS AN `Abetment Facts` @desc What the accused did to facilitate the act
+GIVETH A BOOLEAN
+DECIDE `aids within section 107` f IF
+        "Whoever, either prior to or at the time of the commission of an act,"
+    AND f's `does anything, prior to or at the time of the commission of the act, in order to facilitate its commission`
+    AND "and"
+    AND f's `thereby facilitates the commission of the act`
+    AND "is said to aid the doing of that act."
+
+@export Whether the accused "abets the doing of a thing" within section 107 of the Penal Code 1871
+GIVEN f IS AN `Abetment Facts` @desc The instigation, conspiracy or aid
+GIVETH A BOOLEAN
+DECIDE `abets the doing of a thing` f IF
+        (    "A person abets the doing of a thing who - (a)"
+         AND `instigates within section 107` f
+         AND "any person to do that thing;")
+    OR  (    "(b)"
+         AND f's `engages with one or more other persons in a conspiracy for the doing of that thing`
+         AND "if"
+         AND f's `an act or illegal omission takes place in pursuance of that conspiracy`
+         AND "and"
+         AND f's `in order to the doing of that thing`)
+    OR  (    "(c)"
+         AND f's `the aid is intentional`
+         AND `aids within section 107` f
+         AND f's `by any act or illegal omission`
+         AND "the doing of that thing.")
+
+§§ `ss 108, 108A, 108B - abettor`
+
+-- 108. A person abets an offence who abets either the commission of an
+--     offence, or the commission of an act which would be an offence, if
+--     committed by a person capable by law of committing an offence with the
+--     same intention or knowledge as that of the abettor.
+--     Explanation 1.-The abetment of the illegal omission of an act may amount
+--     to an offence, although the abettor may not himself be bound to do that
+--     act.
+--     Explanation 2.-To constitute the offence of abetment, it is not necessary
+--     that the act abetted should be committed, or that the effect requisite to
+--     constitute the offence should be caused.
+--     Explanation 3.-It is not necessary that the person abetted should be
+--     capable by law of committing an offence, or that he should have the same
+--     guilty intention or knowledge as that of the abettor, or any guilty
+--     intention or knowledge.
+--     Explanation 4.-The abetment of an offence being an offence, the abetment
+--     of such an abetment is also an offence.
+--     Explanation 5.-It is not necessary to the commission of the offence of
+--     abetment by conspiracy that the abettor should concert the offence with
+--     the person who commits it. It is sufficient if he engages in the
+--     conspiracy in pursuance of which the offence is committed.
+--     [Illustrations: see pc-general-part-tests.l4]
+--
+-- 108A. A person abets an offence within the meaning of this Code who, in
+--     Singapore, abets the commission of any act without and beyond Singapore
+--     which would constitute an offence if committed in Singapore.
+--
+-- 108B. A person abets an offence within the meaning of this Code who abets an
+--     offence committed in Singapore notwithstanding that any or all of the acts
+--     constituting the abetment were done outside Singapore.
+--
+-- The Explanations widen leaves (their @desc says so); none adds a condition.
+-- s 108A adds a limb. s 108B removes a condition that no leaf asks (where the
+-- abetment was done), so it is inert here, and a fixture tests it.
+
+@export Whether the accused "abets an offence" within sections 108 and 108A of the Penal Code 1871
+GIVEN f IS AN `Abetment Facts` @desc The abetment, and what was abetted
+GIVETH A BOOLEAN
+DECIDE `abets an offence` f IF
+        "A person abets an offence who"
+    AND `abets the doing of a thing` f
+    AND "either"
+    AND (    f's `the thing abetted is the commission of an offence`
+         OR  f's `the thing abetted is an act which would be an offence if committed by a person capable by law of committing an offence with the same intention or knowledge as that of the abettor`
+         OR  (    "s 108A: who,"
+              AND f's `abets in Singapore`
+              AND "abets the commission of any act"
+              AND f's `the act abetted is to be committed without and beyond Singapore and would constitute an offence if committed in Singapore`))
+
+§§ `s 109 - punishment of abetment if the act abetted is committed in consequence`
+
+-- 109. Whoever abets any offence shall, if the act abetted is committed in
+--     consequence of the abetment, and no express provision is made by this Code
+--     for the punishment of such abetment, be punished with the punishment
+--     provided for the offence.
+--     Explanation.-An act or offence is said to be committed in consequence of
+--     abetment, when it is committed in consequence of the instigation, or in
+--     pursuance of the conspiracy, or with the aid which constitutes the
+--     abetment.
+
+@export Whether the act abetted is "committed in consequence of the abetment" within section 109 of the Penal Code 1871 and its Explanation
+GIVEN f IS AN `Abetment Facts` @desc Whether and how the act abetted was committed
+GIVETH A BOOLEAN
+DECIDE `committed in consequence of the abetment within section 109` f IF
+        f's `the act abetted is committed`
+    AND "in consequence of abetment, when it is committed"
+    AND (    f's `in consequence of the instigation`
+         OR  f's `in pursuance of the conspiracy`
+         OR  f's `with the aid which constitutes the abetment`)
+
+@export Whether the accused has committed an offence punishable under section 109 of the Penal Code 1871 (abetment, the act abetted being committed in consequence)
+GIVEN f IS AN `Abetment Facts` @desc The abetment, what was abetted, and whether it was committed
+GIVETH A BOOLEAN
+DECIDE `offence under s 109` f IF
+        "Whoever"
+    AND `abets an offence` f
+    AND "shall, if"
+    AND `committed in consequence of the abetment within section 109` f
+    AND "and"
+    AND f's `no express provision is made by this Code for the punishment of such abetment`
+
+-- The punishment s 109 prescribes is the offence abetted's: the `Punishment`
+-- record of the offence's own section, relabelled.
+@export The punishment for an abetment punishable under section 109 of the Penal Code 1871: "the punishment provided for the offence"
+GIVEN p IS A Punishment @desc The punishment the offence abetted's own section prescribes
+GIVETH A Punishment
+`the punishment under s 109 for abetting an offence punishable with` p MEANS
+    `the same punishment, read with` p "109"
+
+§§ `s 110 - abetment where the person abetted has a different intention`
+
+-- 110. Whoever abets the commission of an offence shall, if the person abetted
+--     does the act with a different intention or knowledge from that of the
+--     abettor, be punished with the punishment provided for the offence which
+--     would have been committed if the act had been done with the intention or
+--     knowledge of the abettor and with no other.
+--
+-- Encoded as the rule for which offence the record names: `the offence abetted`
+-- (and its section and punishment) is the offence the act would have been with
+-- the abettor's intention and knowledge. Its @desc says so. There is no ladder,
+-- because s 110 chooses a punishment rather than adding an element.
+
+§§ `s 111 - liability of abettor when one act is abetted and a different act is done`
+
+-- 111. When an act is abetted and a different act is done, the abettor is
+--     liable for the act done, in the same manner, and to the same extent, as
+--     if he had directly abetted it:
+--     Provided the act done was a probable consequence of the abetment, and was
+--     committed under the influence of the instigation, or with the aid or in
+--     pursuance of the conspiracy which constituted the abetment.
+
+@export Whether the abettor is liable for a different act done, as if he had directly abetted it, under section 111 of the Penal Code 1871
+GIVEN f IS AN `Abetment Facts` @desc The act abetted, and the act done
+GIVETH A BOOLEAN
+DECIDE `liable for the act done within section 111` f IF
+        "When an act is"
+    AND `abets the doing of a thing` f
+    AND "and"
+    AND f's `a different act is done`
+    AND "Provided"
+    AND f's `the act done was a probable consequence of the abetment`
+    AND "and"
+    AND f's `the act done was committed under the influence of the instigation, or with the aid or in pursuance of the conspiracy which constituted the abetment`
+
+§§ `s 112 - abettor liable to cumulative punishment`
+
+-- 112. If the act for which the abettor is liable under section 111 is
+--     committed in addition to the act abetted, and constitutes a distinct
+--     offence, the abettor is liable to punishment for each of the offences.
+
+@export Whether the abettor is liable to punishment for each of the offences, under section 112 of the Penal Code 1871
+GIVEN f IS AN `Abetment Facts` @desc The act abetted, and the act done in addition
+GIVETH A BOOLEAN
+DECIDE `liable for each of the offences within section 112` f IF
+        "If the act for which the abettor is liable under section 111"
+    AND `liable for the act done within section 111` f
+    AND f's `the act done is committed in addition to the act abetted`
+    AND "and"
+    AND f's `the act done constitutes a distinct offence`
+
+§§ `s 113 - abettor liable for an effect different from that intended`
+
+-- 113. When an act is abetted with the intention on the part of the abettor of
+--     causing a particular effect, and an act for which the abettor is liable
+--     in consequence of the abetment causes a different effect from that
+--     intended by the abettor, the abettor is liable for the effect caused, in
+--     the same manner, and to the same extent, as if he had abetted the act with
+--     the intention of causing that effect, provided he knew that the act
+--     abetted was likely to cause that effect.
+
+@export Whether the abettor is liable for the effect caused, under section 113 of the Penal Code 1871
+GIVEN f IS AN `Abetment Facts` @desc The effect intended, and the effect caused
+GIVETH A BOOLEAN
+DECIDE `liable for the effect caused within section 113` f IF
+        "When an act is"
+    AND `abets the doing of a thing` f
+    AND f's `the act is abetted with the intention of causing a particular effect`
+    AND "and an act for which the abettor is liable in consequence of the abetment"
+    AND f's `the act causes a different effect from that intended by the abettor`
+    AND "provided"
+    AND f's `the abettor knew that the act abetted was likely to cause that effect`
+
+§§ `s 114 - abettor present when offence committed`
+
+-- 114. Whenever any person who, if absent, would be liable to be punished as an
+--     abettor, is present when the act or offence for which he would be
+--     punishable in consequence of the abetment is committed, he shall be
+--     deemed to have committed such act or offence.
+--
+-- A deeming rule: where it holds, the charge is for the offence itself (under
+-- its own section, by that offence's module), not for abetment. So there is no
+-- `charge under s 114` here; the ladder says when the deeming applies.
+
+@export Whether an abettor who is present is deemed to have committed the act or offence, under section 114 of the Penal Code 1871
+GIVEN f IS AN `Abetment Facts` @desc The abetment, and whether the abettor was present
+GIVETH A BOOLEAN
+DECIDE `deemed to have committed the offence within section 114` f IF
+        "Whenever any person who, if absent, would be liable to be punished as an abettor,"
+    AND `offence under s 109` f
+    AND "is"
+    AND f's `is present when the act or offence is committed`
+
+§§ `s 115 - abetment of an offence punishable with death or imprisonment for life`
+
+-- 115. Whoever abets the commission of an offence punishable with death or
+--     imprisonment for life, shall, if that offence is not committed in
+--     consequence of the abetment, and no express provision is made by this
+--     Code or by any other written law for the punishment of such abetment, be
+--     punished with imprisonment for a term that may extend to 20 years, and
+--     shall also be liable to fine or to caning.
+--     Illustration. A instigates B to murder Z. The offence is not committed.
+--     ... A shall be punished with imprisonment for a term that may extend to
+--     20 years, and shall also be liable to fine or to caning.
+--                                          [Act 23 of 2021 wef 01/03/2022]
+
+@export Whether the accused has committed an offence punishable under section 115 of the Penal Code 1871 (abetment of an offence punishable with death or imprisonment for life, not committed)
+GIVEN f IS AN `Abetment Facts` @desc The abetment, what was abetted, and that it was not committed
+GIVETH A BOOLEAN
+DECIDE `offence under s 115` f IF
+        "Whoever"
+    AND `abets an offence` f
+    AND "the commission of an offence"
+    AND f's `the offence abetted is punishable with death or imprisonment for life`
+    AND "shall, if"
+    AND f's `that offence is not committed in consequence of the abetment`
+    AND "and"
+    AND f's `no express provision is made by this Code or by any other written law for the punishment of such abetment`
+
+@ref Penal Code 1871 s 115
+`punishment prescribed by s 115` MEANS Punishment WITH
+    section                  IS "115"
+    words                    IS "imprisonment for a term that may extend to 20 years, and shall also be liable to fine or to caning"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 240
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `shall also be liable to`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall also be liable to`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+§§ `s 116 - abetment of an offence punishable with imprisonment`
+
+-- 116.-(1) Whoever abets an offence punishable with imprisonment shall, if
+--     that offence is not committed in consequence of the abetment, and no
+--     express provision is made by this Code or any other written law for the
+--     punishment of such abetment, be punished in the same manner as if the
+--     abettor had committed the offence.
+--     (2) Despite subsection (1), where the punishment prescribed for an offence
+--     mentioned in that subsection is fixed by law, or is a specified minimum
+--     sentence or a mandatory minimum sentence of imprisonment or fine or
+--     caning, the court sentencing the person who abetted the offence -
+--     (a) shall not be bound to impose the fixed, specified minimum or
+--         mandatory minimum sentence; and
+--     (b) may sentence the abettor to such sentence or combination of sentences
+--         as the court thinks fit but not exceeding the maximum punishment
+--         prescribed for that offence.
+--     (3) To avoid doubt, nothing in subsection (2)(b) empowers a court to
+--     impose a type of punishment that is not prescribed for an offence
+--     mentioned in subsection (1) or otherwise provided by any written law for
+--     that offence.
+--     [Illustrations (a)-(d): see pc-general-part-tests.l4 and FORK GP-7]
+
+@export Whether the accused has committed an offence punishable under section 116 of the Penal Code 1871 (abetment of an offence punishable with imprisonment, not committed)
+GIVEN f IS AN `Abetment Facts` @desc The abetment, what was abetted, and that it was not committed
+GIVETH A BOOLEAN
+DECIDE `offence under s 116` f IF
+        "(1) Whoever"
+    AND `abets an offence` f
+    AND "punishable with imprisonment"
+    AND f's `the offence abetted is punishable with imprisonment`
+    AND "shall, if"
+    AND f's `that offence is not committed in consequence of the abetment`
+    AND "and"
+    AND f's `no express provision is made by this Code or by any other written law for the punishment of such abetment`
+    AND "- and s 115 is such a provision for an offence punishable with death or imprisonment for life (FORK GP-13)"
+    AND NOT f's `the offence abetted is punishable with death or imprisonment for life`
+
+@export The punishment for an abetment punishable under section 116 of the Penal Code 1871: the offence's own, or under s 116(2)-(3) where that is fixed by law or has a minimum
+GIVEN p IS A Punishment @desc The punishment the offence abetted's own section prescribes
+GIVETH A Punishment
+`the punishment under s 116 for abetting an offence punishable with` p MEANS
+    IF   `fixed by law or carries a minimum sentence` p
+    THEN `not bound by a fixed or minimum sentence` p "116"
+    ELSE `the same punishment, read with` p "116"
+
+§§ `s 117 - abetting the commission of an offence by the public or by more than 10 persons`
+
+-- 117. Whoever abets the commission of an offence by the public generally, or
+--     by any number or class of persons exceeding 10, shall be punished with
+--     imprisonment for a term which may extend to 5 years, or with fine, or
+--     with both.
+--     Illustration. A, an employee at a worksite, affixes a placard at the
+--     worksite where more than 10 persons are employed. A instigates the
+--     workers to damage property at the worksite if their demand for a pay rise
+--     is not met. A has committed an offence under this section.
+
+@export Whether a number of persons is "exceeding 10" (s 117 of the Penal Code 1871)
+GIVEN n IS A NUMBER @desc The number of persons
+GIVETH A BOOLEAN
+DECIDE `exceeding 10` n IF n > 10
+
+@export Whether the accused has committed an offence punishable under section 117 of the Penal Code 1871 (abetting the commission of an offence by the public or by more than 10 persons)
+GIVEN f IS AN `Abetment Facts` @desc The abetment, and to whom it was addressed
+GIVETH A BOOLEAN
+DECIDE `offence under s 117` f IF
+        "Whoever"
+    AND `abets an offence` f
+    AND "the commission of an offence"
+    AND (    f's `abets the commission of the offence by the public generally`
+         OR  f's `abets the commission of the offence by a number or class of persons exceeding 10`)
+
+@ref Penal Code 1871 s 117
+`punishment prescribed by s 117` MEANS Punishment WITH
+    section                  IS "117"
+    words                    IS "imprisonment for a term which may extend to 5 years, or with fine, or with both"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `or with`
+    `maximum term in months` IS JUST 60
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `or with`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `not prescribed`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS TRUE
+
+§§ `The charges of abetment`
+
+-- The recital, read off the leaves that are TRUE, in the order s 107 states
+-- them. The form follows the reference charges' "did cheat one X by deceiving"
+-- (CPC s 125: abetment is charged with its manner):
+--   "did abet the commission of cheating by instigating one Tan Ah Kow, to
+--    wit, by ..., which offence was committed in consequence of your abetment"
+GIVEN f IS AN `Abetment Facts`
+GIVETH A STRING
+`the modes of the abetment` f MEANS
+    `joined with` " and " (concat (LIST
+        (`included if` (`instigates within section 107` f) "instigating"),
+        (`included if` (f's `engages with one or more other persons in a conspiracy for the doing of that thing`) "engaging in a conspiracy with"),
+        (`included if` (f's `the aid is intentional` AND `aids within section 107` f) "intentionally aiding")))
+
+GIVEN f       IS AN `Abetment Facts`
+      outcome IS A STRING
+GIVETH A STRING
+`the recital of the abetment` f outcome MEANS
+    CONCAT "did abet the commission of ", f's `the offence abetted`,
+           " by ", `the modes of the abetment` f, " ", `one` (f's `the person abetted`) (f's `the person abetted described as`),
+           `to wit` (f's `the manner of the abetment`),
+           outcome
+
+GIVEN f IS AN `Abetment Facts`
+GIVETH A LIST OF STRING
+`elements of abetment not made out` f MEANS
+    concat (LIST
+        (`missing unless` (`abets the doing of a thing` f) "instigates any person to do that thing, engages in a conspiracy for its doing, or intentionally aids its doing (section 107)"),
+        (`missing unless` (f's `the thing abetted is the commission of an offence` OR f's `the thing abetted is an act which would be an offence if committed by a person capable by law of committing an offence with the same intention or knowledge as that of the abettor` OR (f's `abets in Singapore` AND f's `the act abetted is to be committed without and beyond Singapore and would constitute an offence if committed in Singapore`)) "the thing abetted is an offence, or an act which would be one (sections 108, 108A)"),
+        (`missing unless` (`abets an offence` f) "the elements of sections 107 and 108 taken together"))
+
+GIVEN s IS A STRING
+GIVETH A STRING
+`in brackets unless blank` s MEANS
+    IF s EQUALS "" THEN "" ELSE CONCAT " (", s, ")"
+
+@export Frame a charge of abetment punishable under section 109 of the Penal Code 1871 (the offence abetted committed in consequence), or say why none can be framed
+GIVEN f IS AN `Abetment Facts` @desc The abetment, what was abetted, and the particulars of the charge
+GIVETH A Charge
+`charge under s 109` f MEANS
+    `frame the charge read with` (f's particulars) (f's `the section punishing the offence abetted`) (LIST "109")
+        (CONCAT "abetment of ", f's `the offence abetted`)
+        (CONCAT "the punishment provided for the offence", `in brackets unless blank` (f's `the punishment provided for the offence abetted`))
+        (`offence under s 109` f)
+        (`the recital of the abetment` f ", which offence was committed in consequence of your abetment")
+        (concat (LIST (`elements of abetment not made out` f),
+                      (`missing unless` (`committed in consequence of the abetment within section 109` f) "the act abetted is committed in consequence of the instigation, in pursuance of the conspiracy, or with the aid (section 109 Explanation)"),
+                      (`missing unless` (f's `no express provision is made by this Code for the punishment of such abetment`) "no express provision is made by this Code for the punishment of such abetment")))
+
+@export Frame a charge of abetment punishable under section 115 of the Penal Code 1871 (an offence punishable with death or imprisonment for life, not committed), or say why none can be framed
+GIVEN f IS AN `Abetment Facts` @desc The abetment, what was abetted, and the particulars of the charge
+GIVETH A Charge
+`charge under s 115` f MEANS
+    `frame the charge` (f's particulars) "115"
+        (CONCAT "abetment of ", f's `the offence abetted`, ", an offence punishable with death or imprisonment for life")
+        (`punishment prescribed by s 115`'s words)
+        (`offence under s 115` f)
+        (`the recital of the abetment` f (CONCAT ", an offence punishable under section ", f's `the section punishing the offence abetted`, " with death or imprisonment for life, which offence was not committed in consequence of your abetment"))
+        (concat (LIST (`elements of abetment not made out` f),
+                      (`missing unless` (f's `the offence abetted is punishable with death or imprisonment for life`) "the offence abetted is punishable with death or imprisonment for life"),
+                      (`missing unless` (f's `that offence is not committed in consequence of the abetment`) "that offence is not committed in consequence of the abetment"),
+                      (`missing unless` (f's `no express provision is made by this Code or by any other written law for the punishment of such abetment`) "no express provision is made by this Code or by any other written law for the punishment of such abetment")))
+
+@export Frame a charge of abetment punishable under section 116 of the Penal Code 1871 (an offence punishable with imprisonment, not committed), or say why none can be framed
+GIVEN f IS AN `Abetment Facts` @desc The abetment, what was abetted, and the particulars of the charge
+GIVETH A Charge
+`charge under s 116` f MEANS
+    `frame the charge read with` (f's particulars) (f's `the section punishing the offence abetted`) (LIST "116")
+        (CONCAT "abetment of ", f's `the offence abetted`)
+        (CONCAT "in the same manner as if the abettor had committed the offence", `in brackets unless blank` (f's `the punishment provided for the offence abetted`))
+        (`offence under s 116` f)
+        (`the recital of the abetment` f ", which offence was not committed in consequence of your abetment")
+        (concat (LIST (`elements of abetment not made out` f),
+                      (`missing unless` (f's `the offence abetted is punishable with imprisonment`) "the offence abetted is punishable with imprisonment"),
+                      (`missing unless` (f's `that offence is not committed in consequence of the abetment`) "that offence is not committed in consequence of the abetment"),
+                      (`missing unless` (f's `no express provision is made by this Code or by any other written law for the punishment of such abetment`) "no express provision is made by this Code or by any other written law for the punishment of such abetment")))
+
+@export Frame a charge under section 117 of the Penal Code 1871 (abetting the commission of an offence by the public or by more than 10 persons), or say why none can be framed
+GIVEN f IS AN `Abetment Facts` @desc The abetment, to whom it was addressed, and the particulars of the charge
+GIVETH A Charge
+`charge under s 117` f MEANS
+    `frame the charge` (f's particulars) "117"
+        "abetting the commission of an offence by the public or by more than 10 persons"
+        (`punishment prescribed by s 117`'s words)
+        (`offence under s 117` f)
+        (CONCAT "did abet the commission of ", f's `the offence abetted`, " by ",
+                `joined with` " and " (concat (LIST
+                    (`included if` (f's `abets the commission of the offence by the public generally`) "the public generally"),
+                    (`included if` (f's `abets the commission of the offence by a number or class of persons exceeding 10`) "a number or class of persons exceeding 10"))),
+                `to wit` (f's `the manner of the abetment`))
+        (concat (LIST (`elements of abetment not made out` f),
+                      (`missing unless` (f's `abets the commission of the offence by the public generally` OR f's `abets the commission of the offence by a number or class of persons exceeding 10`) "by the public generally, or by any number or class of persons exceeding 10")))
+
+§§ `ss 118-120 - concealing a design to commit an offence`
+
+-- 118. Whoever, intending to facilitate, or knowing it to be likely that he
+--     will thereby facilitate, the commission of an offence punishable with
+--     death or imprisonment for life, voluntarily conceals, by any act or
+--     illegal omission, the existence of a design to commit such offence, or
+--     makes any representation which he knows to be false respecting such
+--     design, shall, if that offence is committed, be punished with
+--     imprisonment for a term which may extend to 7 years, or, if the offence
+--     is not committed, with imprisonment for a term which may extend to
+--     3 years: and, in either case, shall also be liable to fine.
+--
+-- 119. Whoever, being a public servant, intending to facilitate, or knowing it
+--     to be likely that he will thereby facilitate, the commission of an
+--     offence, the commission of which it is his duty as such public servant to
+--     prevent, voluntarily conceals, by any act or illegal omission, the
+--     existence of a design to commit such offence, or makes any representation
+--     which he knows to be false respecting such design, shall, if the offence
+--     is committed, be punished with imprisonment for a term which may extend
+--     to one-half of the longest term provided for that offence, or with such
+--     fine as is provided for that offence, or with both; or, if the offence is
+--     punishable with death or imprisonment for life, be punished with
+--     imprisonment for a term which may extend to 15 years, and also be liable
+--     to fine; or if the offence is not committed, shall be punished with
+--     imprisonment for a term which may extend to one-fourth part of the
+--     longest term provided for that offence, or with such fine as is provided
+--     for that offence, or with both; or, if the offence not committed is
+--     punishable with death or imprisonment for life, be punished with
+--     imprisonment for a term which may extend to 7 years, and also be liable
+--     to fine.
+--
+-- 120. Whoever, intending to facilitate, or knowing it to be likely that he
+--     will thereby facilitate, the commission of an offence punishable with
+--     imprisonment, voluntarily conceals, by any act or illegal omission, the
+--     existence of a design to commit such offence, or makes any representation
+--     which he knows to be false respecting such design, shall, if the offence
+--     is committed, be punished with imprisonment for a term which may extend
+--     to one-fourth, and if the offence is not committed, to one-eighth of the
+--     longest term provided for that offence; or with such fine as is provided
+--     for the offence, or with both.
+--
+-- The three share one definition of the conduct, which is its own ladder
+-- (`conceals a design to commit an offence`); each punishing section adds what
+-- it adds. Whether the offence was committed changes only the punishment.
+
+@ref Penal Code 1871 ss 118-120 - the operative atoms, and the particulars CPC s 124 requires
+DECLARE `Concealment of Design Facts` HAS
+    particulars IS A Particulars @desc Who is charged, and when and where the concealment was committed
+    `the offence designed`
+        IS A STRING  @desc The offence the design was to commit, as the charge names it - for example "gang-robbery"
+    `the section punishing the offence designed`
+        IS A STRING  @desc The section under which that offence is punishable - for example "395"
+    `the design`
+        IS A STRING  @desc Whose design it was, as it is to read after "the existence of a design" - for example "of certain persons to commit gang-robbery at B"
+    `the manner of the concealment`
+        IS A STRING  @desc How the accused concealed or misrepresented the design, as it is to read after "to wit," - for example "by falsely informing the police that a gang-robbery was about to be committed at C"; leave blank if not needed
+    `intending to facilitate the commission of the offence`
+        IS A BOOLEAN @desc Did the accused intend to facilitate the commission of the offence?
+    `knowing it to be likely that he will thereby facilitate the commission of the offence`
+        IS A BOOLEAN @desc Did the accused know it to be likely that he would thereby facilitate it (s 26D)?
+    voluntarily
+        IS A BOOLEAN @desc Did the accused conceal the design voluntarily - by means he intended, or knew or had reason to believe likely, to conceal it (s 26A)?
+    `conceals, by any act or illegal omission, the existence of a design to commit the offence`
+        IS A BOOLEAN @desc Did the accused, by an act or by an illegal omission (s 43), conceal the existence of a design to commit the offence?
+    `makes a representation which he knows to be false respecting the design`
+        IS A BOOLEAN @desc Did the accused make a representation about the design which he knew to be false?
+    `the offence designed is punishable with death or imprisonment for life`
+        IS A BOOLEAN @desc Is the offence designed punishable with death or imprisonment for life? Decide it with pc-general's `punishable with death or imprisonment for life`. (ss 118, 119)
+    `the offence designed is punishable with imprisonment`
+        IS A BOOLEAN @desc Is the offence designed punishable with imprisonment? Decide it with pc-general's `punishable with imprisonment`. (s 120)
+    `the offence designed is committed`
+        IS A BOOLEAN @desc Was the offence designed committed? (changes the punishment under ss 118-120, not the offence)
+    `being a public servant`
+        IS A BOOLEAN @desc Was the accused a public servant (s 21)? (s 119)
+    `the commission of the offence is his duty as such public servant to prevent`
+        IS A BOOLEAN @desc Was it his duty as that public servant to prevent the commission of the offence? (s 119)
+
+@export Whether the accused conceals, or misrepresents, a design to commit an offence, as ss 118, 119 and 120 of the Penal Code 1871 describe the conduct
+GIVEN f IS A `Concealment of Design Facts` @desc The design, and what the accused did about it
+GIVETH A BOOLEAN
+DECIDE `conceals a design to commit an offence` f IF
+        "Whoever,"
+    AND (    f's `intending to facilitate the commission of the offence`
+         OR  f's `knowing it to be likely that he will thereby facilitate the commission of the offence`)
+    AND "the commission of an offence,"
+    AND (    (f's voluntarily AND f's `conceals, by any act or illegal omission, the existence of a design to commit the offence`)
+         OR  f's `makes a representation which he knows to be false respecting the design`)
+
+@export Whether the accused has committed an offence punishable under section 118 of the Penal Code 1871 (concealing a design to commit an offence punishable with death or imprisonment for life)
+GIVEN f IS A `Concealment of Design Facts` @desc The design, and what the accused did about it
+GIVETH A BOOLEAN
+DECIDE `offence under s 118` f IF
+        `conceals a design to commit an offence` f
+    AND "an offence"
+    AND f's `the offence designed is punishable with death or imprisonment for life`
+
+@export Whether the accused has committed an offence punishable under section 119 of the Penal Code 1871 (a public servant concealing a design to commit an offence which it is his duty to prevent)
+GIVEN f IS A `Concealment of Design Facts` @desc The design, the accused's office, and what he did about it
+GIVETH A BOOLEAN
+DECIDE `offence under s 119` f IF
+        "Whoever, being a"
+    AND f's `being a public servant`
+    AND `conceals a design to commit an offence` f
+    AND "the commission of which"
+    AND f's `the commission of the offence is his duty as such public servant to prevent`
+
+@export Whether the accused has committed an offence punishable under section 120 of the Penal Code 1871 (concealing a design to commit an offence punishable with imprisonment)
+GIVEN f IS A `Concealment of Design Facts` @desc The design, and what the accused did about it
+GIVETH A BOOLEAN
+DECIDE `offence under s 120` f IF
+        `conceals a design to commit an offence` f
+    AND "an offence"
+    AND f's `the offence designed is punishable with imprisonment`
+
+@ref Penal Code 1871 s 118 - if the offence is committed
+`punishment prescribed by s 118, the offence committed` MEANS Punishment WITH
+    section                  IS "118"
+    words                    IS "imprisonment for a term which may extend to 7 years ... and, in either case, shall also be liable to fine"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 84
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `shall also be liable to`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `not prescribed`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@ref Penal Code 1871 s 118 - if the offence is not committed
+`punishment prescribed by s 118, the offence not committed` MEANS Punishment WITH
+    section                  IS "118"
+    words                    IS "if the offence is not committed, with imprisonment for a term which may extend to 3 years: and, in either case, shall also be liable to fine"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 36
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `shall also be liable to`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `not prescribed`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+-- ss 119 and 120 prescribe a fraction of "the longest term provided for that
+-- offence". That is computed from the offence's own `Punishment`; where the
+-- offence states no maximum term (imprisonment for life - s 54 - or a section
+-- silent on the term), the fraction cannot be taken and is refused by name.
+-- s 119 gives its own terms for offences punishable with death or life; s 120
+-- does not (FORK GP-8).
+@export The given fraction of "the longest term provided for" an offence, in months (ss 119 and 120 of the Penal Code 1871)
+GIVEN fraction IS A NUMBER     @desc The fraction - 1/2, 1/4 or 1/8
+      p        IS A Punishment @desc The punishment the offence's own section prescribes
+GIVETH A NUMBER
+`the fraction` fraction `of the longest term provided for` p MEANS
+    IF `prescribed at all` (p's `imprisonment for life`)
+    THEN `the longest term provided for that offence is not stated, so the fraction cannot be taken`
+    ELSE CONSIDER p's `maximum term in months`
+         WHEN JUST m  THEN m TIMES fraction
+         WHEN NOTHING THEN `the longest term provided for that offence is not stated, so the fraction cannot be taken`
+
+@ref Penal Code 1871 ss 54, 119, 120 - imprisonment for life has no term to take a fraction of
+GIVETH A NUMBER
+`the longest term provided for that offence is not stated, so the fraction cannot be taken` MEANS
+    REFUSE "the longest term provided for that offence is not stated, so the fraction cannot be taken"
+
+@export The words of the punishment section 119 of the Penal Code 1871 prescribes, on whether the offence designed was committed and whether it is punishable with death or imprisonment for life
+GIVEN f IS A `Concealment of Design Facts` @desc Whether the offence was committed, and how it is punishable
+GIVETH A STRING
+`the punishment words of s 119` f MEANS
+    BRANCH
+        IF f's `the offence designed is committed` AND f's `the offence designed is punishable with death or imprisonment for life`
+        THEN "imprisonment for a term which may extend to 15 years, and also be liable to fine"
+        IF f's `the offence designed is committed`
+        THEN "imprisonment for a term which may extend to one-half of the longest term provided for that offence, or with such fine as is provided for that offence, or with both"
+        IF f's `the offence designed is punishable with death or imprisonment for life`
+        THEN "imprisonment for a term which may extend to 7 years, and also be liable to fine"
+        OTHERWISE "imprisonment for a term which may extend to one-fourth part of the longest term provided for that offence, or with such fine as is provided for that offence, or with both"
+
+@export The words of the punishment section 120 of the Penal Code 1871 prescribes, on whether the offence designed was committed
+GIVEN f IS A `Concealment of Design Facts` @desc Whether the offence was committed
+GIVETH A STRING
+`the punishment words of s 120` f MEANS
+    IF   f's `the offence designed is committed`
+    THEN "imprisonment for a term which may extend to one-fourth ... of the longest term provided for that offence; or with such fine as is provided for the offence, or with both"
+    ELSE "if the offence is not committed, to one-eighth of the longest term provided for that offence; or with such fine as is provided for the offence, or with both"
+
+GIVEN f IS A `Concealment of Design Facts`
+GIVETH A STRING
+`the recital of the concealment` f MEANS
+    CONCAT "did, ",
+           `joined with` " and " (concat (LIST
+               (`included if` (f's `intending to facilitate the commission of the offence`) "intending to facilitate"),
+               (`included if` (f's `knowing it to be likely that he will thereby facilitate the commission of the offence`) "knowing it to be likely that you would thereby facilitate"))),
+           " the commission of ", f's `the offence designed`,
+           ", an offence punishable under section ", f's `the section punishing the offence designed`, ", ",
+           `joined with` ", and " (concat (LIST
+               (`included if` (f's voluntarily AND f's `conceals, by any act or illegal omission, the existence of a design to commit the offence`) (CONCAT "voluntarily conceal the existence of a design ", f's `the design`)),
+               (`included if` (f's `makes a representation which he knows to be false respecting the design`) (CONCAT "make a representation which you knew to be false respecting a design ", f's `the design`)))),
+           `to wit` (f's `the manner of the concealment`),
+           IF f's `the offence designed is committed`
+           THEN ", which offence was committed"
+           ELSE ", which offence was not committed"
+
+GIVEN f IS A `Concealment of Design Facts`
+GIVETH A LIST OF STRING
+`elements of concealing a design not made out` f MEANS
+    concat (LIST
+        (`missing unless` (f's `intending to facilitate the commission of the offence` OR f's `knowing it to be likely that he will thereby facilitate the commission of the offence`) "intending to facilitate, or knowing it to be likely that he will thereby facilitate, the commission of the offence"),
+        (`missing unless` ((f's voluntarily AND f's `conceals, by any act or illegal omission, the existence of a design to commit the offence`) OR f's `makes a representation which he knows to be false respecting the design`) "voluntarily conceals, by any act or illegal omission, the existence of a design to commit such offence, or makes any representation which he knows to be false respecting such design"))
+
+@export Frame a charge under section 118 of the Penal Code 1871 (concealing a design to commit an offence punishable with death or imprisonment for life), or say why none can be framed
+GIVEN f IS A `Concealment of Design Facts` @desc The design, what the accused did about it, and the particulars of the charge
+GIVETH A Charge
+`charge under s 118` f MEANS
+    `frame the charge` (f's particulars) "118"
+        "concealing a design to commit an offence punishable with death or imprisonment for life"
+        (IF f's `the offence designed is committed`
+         THEN `punishment prescribed by s 118, the offence committed`'s words
+         ELSE `punishment prescribed by s 118, the offence not committed`'s words)
+        (`offence under s 118` f)
+        (`the recital of the concealment` f)
+        (concat (LIST (`elements of concealing a design not made out` f),
+                      (`missing unless` (f's `the offence designed is punishable with death or imprisonment for life`) "the offence is punishable with death or imprisonment for life")))
+
+@export Frame a charge under section 119 of the Penal Code 1871 (a public servant concealing a design to commit an offence which it is his duty to prevent), or say why none can be framed
+GIVEN f IS A `Concealment of Design Facts` @desc The design, the accused's office, what he did about it, and the particulars of the charge
+GIVETH A Charge
+`charge under s 119` f MEANS
+    `frame the charge` (f's particulars) "119"
+        "a public servant concealing a design to commit an offence which it is his duty to prevent"
+        (`the punishment words of s 119` f)
+        (`offence under s 119` f)
+        (CONCAT "being a public servant whose duty as such it was to prevent the commission of ", f's `the offence designed`, ", ", `the recital of the concealment` f)
+        (concat (LIST (`missing unless` (f's `being a public servant`) "being a public servant"),
+                      (`missing unless` (f's `the commission of the offence is his duty as such public servant to prevent`) "the commission of which it is his duty as such public servant to prevent"),
+                      (`elements of concealing a design not made out` f)))
+
+@export Frame a charge under section 120 of the Penal Code 1871 (concealing a design to commit an offence punishable with imprisonment), or say why none can be framed
+GIVEN f IS A `Concealment of Design Facts` @desc The design, what the accused did about it, and the particulars of the charge
+GIVETH A Charge
+`charge under s 120` f MEANS
+    `frame the charge` (f's particulars) "120"
+        "concealing a design to commit an offence punishable with imprisonment"
+        (`the punishment words of s 120` f)
+        (`offence under s 120` f)
+        (`the recital of the concealment` f)
+        (concat (LIST (`elements of concealing a design not made out` f),
+                      (`missing unless` (f's `the offence designed is punishable with imprisonment`) "the offence is punishable with imprisonment")))
+
+-- ===========================================================================
+§ `Chapter 5A - Criminal conspiracy`
+-- ===========================================================================
+
+§§ `s 120A - definition of criminal conspiracy`
+
+-- 120A.-(1) When a person agrees with another person to commit an offence or
+--     cause an offence to be committed, such an agreement is designated a
+--     criminal conspiracy.
+--     (2) A person may be a party to a criminal conspiracy despite the existence
+--     of facts of which he is unaware which make the commission of the offence
+--     impossible.
+--     (3) A person may be a party to a criminal conspiracy even though any other
+--     person who agrees to commit the offence that is the subject of the
+--     conspiracy or to cause that offence to be committed does not intend to
+--     carry out that agreement.
+--     (4) A person may be a party to a criminal conspiracy in Singapore to
+--     commit an offence outside Singapore, which would constitute an offence if
+--     committed in Singapore.
+--     (5) A person may be a party to a criminal conspiracy to commit an offence
+--     in Singapore even though all or any of the acts constituting the criminal
+--     conspiracy were done outside Singapore.
+--     Explanation.-It is immaterial whether the offence is the ultimate object
+--     of such agreement, or is merely incidental to that object.
+--
+-- (2), (3) and (5) and the Explanation remove conditions no leaf asks; they are
+-- in the leaves' @desc. (4) adds a limb.
+
+@ref Penal Code 1871 ss 120A-120B - the operative atoms, and the particulars CPC s 124 requires
+DECLARE `Criminal Conspiracy Facts` HAS
+    particulars IS A Particulars @desc Who is charged, and when and where the agreement was made
+    `the other party`
+        IS A STRING  @desc The other party or parties to the agreement, as the charge names them - for example "one Tan Ah Kow"
+    `the offence agreed upon`
+        IS A STRING  @desc The offence that is the subject of the conspiracy, as the charge names it - for example "cheating"
+    `the section punishing the offence agreed upon`
+        IS A STRING  @desc The section under which that offence is punishable - for example "420"
+    `the agreement`
+        IS A STRING  @desc What was agreed, as it is to read after "to wit," - for example "to deceive DBS Bank into releasing a loan of $50,000"; leave blank if not needed
+    `agrees with another person`
+        IS A BOOLEAN @desc Did the accused agree with another person? The other need not intend to carry the agreement out (s 120A(3)); the acts constituting the agreement may have been done outside Singapore (s 120A(5)).
+    `to commit an offence`
+        IS A BOOLEAN @desc Was the agreement to commit an offence? It does not matter whether the offence is the ultimate object of the agreement or merely incidental to it (Explanation), nor whether facts unknown to the accused made it impossible (s 120A(2)). "Offence" includes a thing punishable under any other written law (s 40(2)).
+    `to cause an offence to be committed`
+        IS A BOOLEAN @desc Was the agreement to cause an offence to be committed (by someone)?
+    `is a party in Singapore`
+        IS A BOOLEAN @desc Was the accused a party to the agreement in Singapore? (s 120A(4))
+    `to commit an act outside Singapore which would constitute an offence if committed in Singapore`
+        IS A BOOLEAN @desc Was the agreement to commit an act outside Singapore which would constitute an offence if committed in Singapore? (s 120A(4))
+    `no express provision is made in this Code for the punishment of such a conspiracy`
+        IS A BOOLEAN @desc Does this Code make no express provision for punishing this conspiracy? (s 120B) Some sections punish a conspiracy to commit their offence expressly; then the charge is under that section.
+
+@export Whether the accused is "a party to a criminal conspiracy" within section 120A of the Penal Code 1871
+GIVEN f IS A `Criminal Conspiracy Facts` @desc The agreement, and what it was to do
+GIVETH A BOOLEAN
+DECIDE `is a party to a criminal conspiracy` f IF
+        "(1) When a person"
+    AND f's `agrees with another person`
+    AND (    f's `to commit an offence`
+         OR  f's `to cause an offence to be committed`
+         OR  (    "(4) ... a criminal conspiracy"
+              AND f's `is a party in Singapore`
+              AND f's `to commit an act outside Singapore which would constitute an offence if committed in Singapore`))
+    AND "such an agreement is designated a criminal conspiracy."
+
+§§ `s 120B - punishment of criminal conspiracy`
+
+-- 120B. Whoever is a party to a criminal conspiracy shall, where no express
+--     provision is made in this Code for the punishment of such a conspiracy,
+--     be punished in the same manner as if he had abetted the offence that is
+--     the subject of the conspiracy.
+
+@export Whether the accused has committed an offence punishable under section 120B of the Penal Code 1871 (criminal conspiracy)
+GIVEN f IS A `Criminal Conspiracy Facts` @desc The agreement, and what it was to do
+GIVETH A BOOLEAN
+DECIDE `offence under s 120B` f IF
+        "Whoever is"
+    AND `is a party to a criminal conspiracy` f
+    AND "shall, where"
+    AND f's `no express provision is made in this Code for the punishment of such a conspiracy`
+
+@export Frame a charge under section 120B of the Penal Code 1871 (criminal conspiracy), or say why none can be framed
+GIVEN f IS A `Criminal Conspiracy Facts` @desc The agreement, what it was to do, and the particulars of the charge
+GIVETH A Charge
+`charge under s 120B` f MEANS
+    `frame the charge read with` (f's particulars) "120B" (LIST (f's `the section punishing the offence agreed upon`))
+        (CONCAT "criminal conspiracy to commit ", f's `the offence agreed upon`)
+        "in the same manner as if he had abetted the offence that is the subject of the conspiracy"
+        (`offence under s 120B` f)
+        (CONCAT "were a party to a criminal conspiracy with ", f's `the other party`,
+                IF f's `to commit an offence` OR NOT f's `to cause an offence to be committed`
+                THEN " to commit "
+                ELSE " to cause to be committed ",
+                f's `the offence agreed upon`,
+                `to wit` (f's `the agreement`))
+        (concat (LIST
+            (`missing unless` (f's `agrees with another person`) "agrees with another person"),
+            (`missing unless` (f's `to commit an offence` OR f's `to cause an offence to be committed` OR (f's `is a party in Singapore` AND f's `to commit an act outside Singapore which would constitute an offence if committed in Singapore`)) "to commit an offence or cause an offence to be committed"),
+            (`missing unless` (f's `no express provision is made in this Code for the punishment of such a conspiracy`) "no express provision is made in this Code for the punishment of such a conspiracy"),
+            (`missing unless` (`is a party to a criminal conspiracy` f) "the elements of section 120A taken together")))
+
+-- ===========================================================================
+§ `Chapter 23 - Attempts to commit offences`
+-- ===========================================================================
+
+§§ `The facts of one attempt`
+
+@ref Penal Code 1871 ss 511-512 - the operative atoms, and the particulars CPC s 124 requires
+DECLARE `Attempt Facts` HAS
+    particulars IS A Particulars @desc Who is charged, and when and where the attempt was made
+    `the offence attempted`
+        IS A STRING  @desc The offence attempted, as the charge names it - for example "theft"
+    `the particulars of the attempt`
+        IS A STRING  @desc What was attempted and how, as it is to read after "did attempt to commit <offence>" - for example "of some jewels, by breaking open a box"; leave blank if not needed
+    `the section punishing the offence attempted`
+        IS A STRING  @desc The section under which the offence attempted is punishable - for example "379"
+    `the punishment prescribed for the offence attempted`
+        IS A STRING  @desc The punishment that section prescribes, in its own words - for example "imprisonment for a term which may extend to 3 years, or with fine, or with both"
+    `the offence is punishable by this Code or by any other written law`
+        IS A BOOLEAN @desc Is the offence attempted punishable by this Code or by any other written law? (s 511(1))
+    `with the intention of committing that offence`
+        IS A BOOLEAN @desc Did the accused intend to commit that offence (s 26C)? It does not matter that facts he was unaware of made it impossible (s 511(3)).
+    `does an act towards the commission of that offence`
+        IS A BOOLEAN @desc Did the accused do an act towards the commission of the offence? (s 511(1)-(2))
+    `the act is strongly corroborative of an intention to commit the offence`
+        IS A BOOLEAN @desc Is the act strongly corroborative of an intention to commit the offence? (s 511(2)) Examples which, in the circumstances, MAY be such an act: (a) lying in wait for, searching for or following the contemplated victim; (b) enticing or seeking to entice the victim to the place contemplated for the offence; (c) reconnoitring that place; (d) unlawfully entering a place where the offence is contemplated; (e) possessing materials for the offence specially designed for such unlawful use, or that can serve no lawful purpose of the person in the circumstances; (f) possessing, collecting or fabricating materials for the offence at or near the contemplated place, where that serves no lawful purpose of the person; (g) soliciting an innocent agent to engage in conduct that is a physical element of the offence.
+    `the offence attempted is punishable with death or imprisonment for life`
+        IS A BOOLEAN @desc Is the offence attempted punishable with death or imprisonment for life? Decide it with pc-general's `punishable with death or imprisonment for life` over that offence's punishment. (s 512(1))
+    `no express provision is made for the punishment of such attempt`
+        IS A BOOLEAN @desc Does neither this Code nor the other written law make express provision for punishing an attempt to commit this offence? (s 512(1), (2)) Where one does (for example s 307 attempted murder, s 393 attempted robbery), the charge is under that section.
+    `the punishment prescribed for the offence is fixed by law or a minimum sentence`
+        IS A BOOLEAN @desc Is the punishment prescribed for the offence attempted fixed by law, or a specified or mandatory minimum sentence of imprisonment, fine or caning? Decide it with pc-general's `fixed by law or carries a minimum sentence`. (s 512(3) - changes the punishment, not the offence)
+
+§§ `s 511 - attempt to commit offence`
+
+-- 511.-(1) A person attempts to commit an offence punishable by this Code or by
+--     any other written law who, with the intention of committing that offence
+--     takes a substantial step towards the commission of that offence.
+--     (2) For the purposes of subsection (1), an act is a substantial step
+--     towards the commission of an offence if it is strongly corroborative of an
+--     intention to commit the offence and the following are examples of acts
+--     which in the circumstances of each case may constitute taking a
+--     substantial step: (a) lying in wait, searching for or following the
+--     contemplated victim of the offence; (b) enticing or seeking to entice the
+--     contemplated victim of the offence to go to the place contemplated for its
+--     commission; (c) reconnoitring the place contemplated for the commission
+--     of the offence; (d) unlawful entry of a place in which it is contemplated
+--     that the offence will be committed; (e) possession of materials to be
+--     employed in the commission of the offence, that are specially designed for
+--     such unlawful use or that can serve no lawful purpose of the person in such
+--     possession under the circumstances; (f) possession, collection or
+--     fabrication of materials to be employed in the commission of the offence,
+--     at or near the place contemplated for its commission, if such possession,
+--     collection or fabrication serves no lawful purpose of the person mentioned
+--     in subsection (1) under the circumstances; (g) soliciting an innocent
+--     agent to engage in conduct constituting a physical element of the
+--     offence.
+--     (3) A person may attempt the doing of a thing despite the existence of
+--     facts of which he is unaware which make the doing of the thing
+--     impossible.
+--     [Illustrations (a)-(d): see pc-general-part-tests.l4]
+--
+-- (2)'s examples "may constitute" a substantial step "in the circumstances of
+-- each case": none is sufficient by itself, so they are not limbs of the
+-- ladder. They are the @desc of the leaf they help answer (FORK GP-9).
+-- (3) removes a defence: no leaf asks whether the offence could be committed.
+
+@export Whether the accused "takes a substantial step towards the commission of" an offence within section 511(2) of the Penal Code 1871
+GIVEN f IS AN `Attempt Facts` @desc What the accused did towards the offence
+GIVETH A BOOLEAN
+DECIDE `takes a substantial step towards the commission of that offence` f IF
+        "(2) ... an"
+    AND f's `does an act towards the commission of that offence`
+    AND "is a substantial step towards the commission of an offence if it is"
+    AND f's `the act is strongly corroborative of an intention to commit the offence`
+
+@export Whether the accused "attempts to commit an offence" within section 511 of the Penal Code 1871
+GIVEN f IS AN `Attempt Facts` @desc The offence attempted, the accused's intention, and what he did towards it
+GIVETH A BOOLEAN
+DECIDE `attempts to commit an offence` f IF
+        "(1) A person attempts to commit an offence"
+    AND f's `the offence is punishable by this Code or by any other written law`
+    AND "who,"
+    AND f's `with the intention of committing that offence`
+    AND `takes a substantial step towards the commission of that offence` f
+
+§§ `s 512 - punishment for attempting to commit offences`
+
+-- 512.-(1) A person who attempts to commit an offence punishable by this Code
+--     or by any other written law with death or imprisonment for life, shall,
+--     where no express provision is made by this Code or by such other written
+--     law for the punishment of such attempt, be punished with imprisonment for
+--     a term which may extend to 20 years, and shall also be liable to fine or
+--     to caning.
+--     Illustration. A attempts to commit kidnapping of B in order that B may be
+--     murdered but did not succeed. ... A shall be punished with imprisonment
+--     for a term which may extend to 20 years, and shall also be liable to fine
+--     or to caning.
+--     (2) Subject to subsection (3), any person who attempts to commit an
+--     offence punishable by this Code or by any other written law (other than an
+--     offence mentioned in subsection (1)), shall, where no express provision is
+--     made by this Code or by such other written law for the punishment of such
+--     attempt, be punished with such punishment as is prescribed for that
+--     offence.
+--     (3) Despite subsection (2), where the punishment prescribed for an offence
+--     mentioned in that subsection is fixed by law, a specified minimum sentence
+--     or a mandatory minimum sentence of imprisonment or fine or caning, the
+--     court sentencing the person who attempted to commit the offence -
+--     (a) shall not be bound to impose such fixed, specified or mandatory
+--         minimum sentence; and
+--     (b) may sentence the offender to such sentence or combination of sentences
+--         as the court thinks fit but not exceeding the maximum punishment
+--         prescribed for that offence.
+--     (4) To avoid doubt, nothing in subsection (3)(b) empowers a court to
+--     impose a type of punishment that is not prescribed for an offence
+--     mentioned in subsection (2) or otherwise provided by any written law for
+--     that offence.
+--     Illustration. A attempts to commit robbery but did not succeed. If A had
+--     committed robbery, he would have been subject to a mandatory minimum term
+--     of imprisonment of not less than 2 years and mandatory caning of a
+--     minimum of 6 strokes. As the court is not bound to impose the minimum
+--     mandatory punishment prescribed for robbery, A may be sentenced to 6
+--     months imprisonment with no caning for attempted robbery. However, the
+--     court may not sentence A to a fine, as this is not a prescribed
+--     punishment for robbery but the court may sentence A to probation if he is
+--     a young offender.
+
+@export Whether the accused has committed an offence punishable under section 512(1) of the Penal Code 1871 (attempting an offence punishable with death or imprisonment for life)
+GIVEN f IS AN `Attempt Facts` @desc The offence attempted, and the attempt
+GIVETH A BOOLEAN
+DECIDE `offence under s 512(1)` f IF
+        "(1) A person who"
+    AND `attempts to commit an offence` f
+    AND "punishable by this Code or by any other written law with"
+    AND f's `the offence attempted is punishable with death or imprisonment for life`
+    AND "shall, where"
+    AND f's `no express provision is made for the punishment of such attempt`
+
+@export Whether the accused has committed an offence punishable under section 512(2) of the Penal Code 1871 (attempting any other offence)
+GIVEN f IS AN `Attempt Facts` @desc The offence attempted, and the attempt
+GIVETH A BOOLEAN
+DECIDE `offence under s 512(2)` f IF
+        "(2) ... any person who"
+    AND `attempts to commit an offence` f
+    AND "(other than an offence mentioned in subsection (1))"
+    AND NOT f's `the offence attempted is punishable with death or imprisonment for life`
+    AND "shall, where"
+    AND f's `no express provision is made for the punishment of such attempt`
+
+@ref Penal Code 1871 s 512(1)
+`punishment prescribed by s 512(1)` MEANS Punishment WITH
+    section                  IS "512(1)"
+    words                    IS "imprisonment for a term which may extend to 20 years, and shall also be liable to fine or to caning"
+    death                    IS `not prescribed`
+    `imprisonment for life`  IS `not prescribed`
+    imprisonment             IS `shall be punished with`
+    `maximum term in months` IS JUST 240
+    `minimum term in months` IS NOTHING
+    `forfeiture of property` IS `not prescribed`
+    fine                     IS `shall also be liable to`
+    `maximum fine`           IS NOTHING
+    `minimum fine`           IS NOTHING
+    caning                   IS `shall also be liable to`
+    `minimum strokes`        IS NOTHING
+    `maximum strokes`        IS NOTHING
+    `or with both`           IS FALSE
+
+@export The punishment for an attempt punishable under section 512(2) of the Penal Code 1871: the offence's own, or under s 512(3)-(4) where that is fixed by law or has a minimum
+GIVEN p IS A Punishment @desc The punishment the offence attempted's own section prescribes
+GIVETH A Punishment
+`the punishment under s 512(2) for attempting an offence punishable with` p MEANS
+    IF   `fixed by law or carries a minimum sentence` p
+    THEN `not bound by a fixed or minimum sentence` p "512(3)"
+    ELSE `the same punishment, read with` p "512(2)"
+
+§§ `The charges of attempt`
+
+GIVEN s IS A STRING
+GIVETH A STRING
+`with a space before` s MEANS
+    IF s EQUALS "" THEN "" ELSE CONCAT " ", s
+
+GIVEN f IS AN `Attempt Facts`
+GIVETH A STRING
+`the recital of the attempt` f MEANS
+    CONCAT "did attempt to commit ", f's `the offence attempted`, `with a space before` (f's `the particulars of the attempt`)
+
+GIVEN f IS AN `Attempt Facts`
+GIVETH A LIST OF STRING
+`elements of attempt not made out` f MEANS
+    concat (LIST
+        (`missing unless` (f's `the offence is punishable by this Code or by any other written law`) "an offence punishable by this Code or by any other written law"),
+        (`missing unless` (f's `with the intention of committing that offence`) "with the intention of committing that offence"),
+        (`missing unless` (`takes a substantial step towards the commission of that offence` f) "takes a substantial step towards the commission of that offence - an act strongly corroborative of an intention to commit it (section 511(2))"),
+        (`missing unless` (f's `no express provision is made for the punishment of such attempt`) "no express provision is made by this Code or by such other written law for the punishment of such attempt"))
+
+@export Frame a charge of attempt punishable under section 512(1) of the Penal Code 1871 (an offence punishable with death or imprisonment for life), or say why none can be framed
+GIVEN f IS AN `Attempt Facts` @desc The offence attempted, the attempt, and the particulars of the charge
+GIVETH A Charge
+`charge under s 512(1)` f MEANS
+    `frame the charge read with` (f's particulars) (f's `the section punishing the offence attempted`) (LIST "511")
+        (CONCAT "attempt to commit ", f's `the offence attempted`)
+        (`punishment prescribed by s 512(1)`'s words)
+        (`offence under s 512(1)` f)
+        (`the recital of the attempt` f)
+        (concat (LIST (`elements of attempt not made out` f),
+                      (`missing unless` (f's `the offence attempted is punishable with death or imprisonment for life`) "the offence is punishable with death or imprisonment for life (section 512(1))")))
+
+@export Frame a charge of attempt punishable under section 512(2) of the Penal Code 1871, or say why none can be framed
+GIVEN f IS AN `Attempt Facts` @desc The offence attempted, the attempt, and the particulars of the charge
+GIVETH A Charge
+`charge under s 512(2)` f MEANS
+    `frame the charge read with` (f's particulars) (f's `the section punishing the offence attempted`) (LIST "511")
+        (CONCAT "attempt to commit ", f's `the offence attempted`)
+        (IF f's `the punishment prescribed for the offence is fixed by law or a minimum sentence`
+         THEN CONCAT "such punishment as is prescribed for that offence", `in brackets unless blank` (f's `the punishment prescribed for the offence attempted`), "; the court is not bound to impose the fixed, specified or mandatory minimum sentence, and may sentence the offender to such sentence or combination of sentences as the court thinks fit but not exceeding the maximum punishment prescribed for that offence (section 512(3))"
+         ELSE CONCAT "such punishment as is prescribed for that offence", `in brackets unless blank` (f's `the punishment prescribed for the offence attempted`))
+        (`offence under s 512(2)` f)
+        (`the recital of the attempt` f)
+        (concat (LIST (`elements of attempt not made out` f),
+                      (`missing unless` (NOT f's `the offence attempted is punishable with death or imprisonment for life`) "an offence other than one punishable with death or imprisonment for life (that is section 512(1))")))

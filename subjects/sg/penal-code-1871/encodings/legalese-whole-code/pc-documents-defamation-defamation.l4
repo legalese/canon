@@ -1,0 +1,327 @@
+-- Singapore Penal Code 1871 - Chapter 20 (ss 493-498, all repealed or never
+-- enacted) and Chapter 21, DEFAMATION: ss 499-502.
+--
+--   s 499  defines "defame", with Explanations 1-5 and the First to Tenth
+--          Exceptions and their Explanation (good faith presumed)
+--   s 500  punishes defamation
+--   s 501  printing or engraving matter known to be defamatory
+--   s 502  sale of printed or engraved substance containing defamatory matter
+--
+-- Source: Penal Code 1871, 2020 Revised Edition, SSO "Current version as at
+-- 09 Sep 2026" (inputs/PC1871.txt), page footers removed.
+--
+-- Before reading:
+--
+-- * s 499's ten Exceptions are part of s 499 ("is said, except in the cases
+--   hereinafter excepted, to defame"), not general exceptions, so they are on
+--   its ladder (notes/PLAN.md §5) - as ONE call, `the imputation falls within
+--   an Exception to s 499`, whose own ladder is the drill-down.
+-- * The Explanation to the Exceptions presumes good faith "unless the
+--   contrary appears". The leaf the ladder reads is therefore
+--   `the want of good faith appears`, and good faith holds while it is FALSE.
+--   The charge generator fills an unknown leaf with FALSE, so an unknown
+--   good-faith leaf leaves good faith presumed - as the Code says - but no
+--   Exception can apply unless its OTHER leaves are answered TRUE, so no
+--   charge is refused on an unanswered question (FORK DD-10).
+
+IMPORT prelude
+IMPORT `pc-domain`
+IMPORT `pc-general`
+IMPORT `pc-documents-defamation-common`
+
+§ `Penal Code 1871 - Chapter 20`
+
+-- s 493. [Repealed by Act 15 of 2019]
+-- s 494. [Repealed by Act 15 of 2019]
+-- s 495. [Repealed by Act 15 of 2019]
+-- s 496. [Repealed by Act 15 of 2019]
+-- [There is no section 497.]
+-- s 498. [Repealed by Act 51 of 2007]
+
+§ `Penal Code 1871 - Chapter 21, defamation`
+
+§§ `The facts of one imputation - ss 499, 500`
+
+@ref Penal Code 1871 ss 499, 500 - the operative atoms, the Explanations and Exceptions, and the particulars CPC ss 124-125 require
+DECLARE `Defamation Facts` HAS
+    particulars           IS A Particulars @desc Who is charged, and when and where the offence was committed
+    victim                IS A STRING  @desc The name of the person defamed, as it is to appear in the charge - a company, an association or a collection of persons may be defamed as such (Explanation 2)
+    `victim described as` IS A STRING  @desc How the charge describes the person defamed, after the name; leave blank if not needed
+    `victim pronoun`      IS A Pronoun @desc The pronoun the charge uses for the person defamed
+    `the imputation`      IS A STRING  @desc What was imputed, as it is to read after "imputing that" - for example "the said Tan Ah Kow had stolen money from the temple fund"
+    `the means`           IS A STRING  @desc How it was made or published, as it is to read after "by" - for example "posting the words '...' on Facebook"
+
+    -- "by words either spoken or intended to be read, or by signs, or by visible representations"
+    `by words either spoken or intended to be read`
+                          IS A BOOLEAN @desc Was the imputation made by words, spoken or meant to be read - in written, electronic or other media (Explanation 5)?
+    `by signs`            IS A BOOLEAN @desc Was it made by signs - for example pointing at someone (s 499 illus (b))?
+    `by visible representations`
+                          IS A BOOLEAN @desc Was it made by a visible representation - for example a picture (s 499 illus (c))?
+    -- "makes or publishes any imputation concerning any person"
+    `makes or publishes any imputation concerning any person`
+                          IS A BOOLEAN @desc Did the accused make or publish an imputation concerning the person? It may be put as an alternative, or ironically (Explanation 3; s 499 illus (a)). (Physical element.)
+    -- "intending to harm, or knowing or having reason to believe that such imputation will harm, the reputation of such person"
+    `intending to harm the reputation of such person`
+                          IS A BOOLEAN @desc Did the accused intend the imputation to harm the person's reputation? (Fault element.)
+    `knowing or having reason to believe that such imputation will harm the reputation of such person`
+                          IS A BOOLEAN @desc Did the accused know, or have reason to believe (s 26), that the imputation would harm the person's reputation? (Fault element.)
+    `the harm is harm to reputation within Explanation 4`
+                          IS A BOOLEAN @desc Is the harm meant or foreseen one that, directly or indirectly, in the estimation of others, lowers the person's moral or intellectual character, or his character in his calling, or his credit, or causes it to be believed that his body is in a loathsome or disgraceful state? Explanation 4: nothing else "harms a person's reputation".
+    -- Explanation 1: a deceased person
+    `imputes anything to a deceased person`
+                          IS A BOOLEAN @desc Explanation 1: Is the imputation made concerning a person who is dead?
+    `would harm the reputation of that person if living`
+                          IS A BOOLEAN @desc Explanation 1: Would the imputation harm that person's reputation if he were alive?
+    `is intended to be hurtful to the feelings of his family or other near relatives`
+                          IS A BOOLEAN @desc Explanation 1: Was the imputation intended to hurt the feelings of his family or other near relatives? (Fault element.)
+
+    -- The Exceptions
+    `the want of good faith appears`
+                          IS A BOOLEAN @desc Does it appear that the accused did NOT act in good faith - that is, without due care and attention (s 26B)? Under the Explanation to the Exceptions, good faith is presumed for the Second, Third and Fifth to Tenth Exceptions unless the contrary appears.
+    -- First Exception
+    `the imputation is true`
+                          IS A BOOLEAN @desc First Exception: Is the imputation true?
+    `it is for the public good that the imputation should be made or published`
+                          IS A BOOLEAN @desc First Exception: Is it for the public good that it be made or published? This is a question of fact.
+    -- Second Exception
+    `expresses an opinion respecting the conduct of any person touching the discharge of his public functions, or his character so far as it appears in that conduct`
+                          IS A BOOLEAN @desc Second Exception: Is the imputation an opinion about the person's conduct in discharging his public functions, or about his character only so far as it appears in that conduct, and no further?
+    -- Third Exception
+    `expresses an opinion respecting the conduct of any person touching any public question, and his character so far as it appears in that conduct`
+                          IS A BOOLEAN @desc Third Exception: Is it an opinion about the person's conduct touching a public question (petitioning Government, attending a public meeting, canvassing for a candidate), or about his character only so far as it appears in that conduct?
+    -- Fourth Exception
+    `publishes a substantially true report of the proceedings of a court of justice or of Parliament, or of their result`
+                          IS A BOOLEAN @desc Fourth Exception: Is it a substantially true report of proceedings of a court of justice (including a Magistrate or officer holding an inquiry in open court preliminary to a trial - the Explanation) or of Parliament, or of their result?
+    -- Fifth Exception
+    `expresses an opinion respecting the merits of a decided case, or the conduct of a party, witness or agent in it, or his character so far as it appears in that conduct`
+                          IS A BOOLEAN @desc Fifth Exception: Is it an opinion about the merits of a civil or criminal case a court has decided, or the conduct of a party, witness or agent in it, or his character only so far as it appears in that conduct, and no further?
+    -- Sixth Exception
+    `expresses an opinion respecting the merits of a performance its author has submitted to the judgment of the public, or the author's character so far as it appears in it`
+                          IS A BOOLEAN @desc Sixth Exception: Is it an opinion about the merits of a performance (a book, a public speech, acting or singing on a public stage) its author submitted to public judgment, expressly or by conduct, or the author's character only so far as it appears in that performance?
+    -- Seventh Exception
+    `passes censure on the conduct of another over whom the accused has lawful authority, in matters to which that authority relates`
+                          IS A BOOLEAN @desc Seventh Exception: Did the accused have authority over the person, conferred by law or by a lawful contract with him, and pass censure on his conduct in matters to which that authority relates (a judge on a witness, a parent on a child, an employer on a servant)?
+    -- Eighth Exception
+    `prefers an accusation against the person to one having lawful authority over him with respect to the subject matter of the accusation`
+                          IS A BOOLEAN @desc Eighth Exception: Did the accused make an accusation against the person to someone with lawful authority over him in the matter accused - a Magistrate, an employer, a parent?
+    -- Ninth Exception
+    `makes an imputation on the character of another for the protection of the interests of the person making it or of any other person, or for the public good`
+                          IS A BOOLEAN @desc Ninth Exception: Was the imputation made to protect the interests of the accused or of anyone else, or for the public good?
+    -- Tenth Exception
+    `conveys a caution to one person against another, intended for the good of that person or of one in whom he is interested, or for the public good`
+                          IS A BOOLEAN @desc Tenth Exception: Was it a caution given to one person against another, meant for the good of the person cautioned, or of someone he is interested in, or for the public good?
+
+§§ `s 499 - defamation`
+
+-- 499. Whoever, by words either spoken or intended to be read, or by signs, or
+--      by visible representations, makes or publishes any imputation
+--      concerning any person, intending to harm, or knowing or having reason to
+--      believe that such imputation will harm, the reputation of such person,
+--      is said, except in the cases hereinafter excepted, to defame that
+--      person.
+--   Explanation 1.-It may amount to defamation to impute anything to a
+--   deceased person, if the imputation would harm the reputation of that
+--   person if living, and is intended to be hurtful to the feelings of his
+--   family or other near relatives.
+--   Explanation 2.-It may amount to defamation to make an imputation
+--   concerning a company, or an association or a collection of persons as
+--   such.
+--   Explanation 3.-An imputation in the form of an alternative, or expressed
+--   ironically, may amount to defamation.
+--   Explanation 4.-No imputation is said to harm a person's reputation, unless
+--   that imputation directly or indirectly, in the estimation of others,
+--   lowers the moral or intellectual character of that person, or lowers the
+--   character of that person in respect of his calling, or lowers the credit
+--   of that person, or causes it to be believed that the body of that person
+--   is in a loathsome state, or in a state generally considered as
+--   disgraceful.
+--   Explanation 5.-An imputation may be made or published in written,
+--   electronic or other media.
+--   [Illustrations (a)-(c) are tests.]
+--
+-- Explanations 2, 3 and 5 widen leaves and ride in @desc. Explanation 4 limits
+-- "harm" and is a leaf beside the fault element. Explanation 1 is an
+-- alternative limb for a deceased person (FORK DD-10a).
+
+@export Whether an imputation falls within one of the First to Tenth Exceptions to section 499 of the Penal Code 1871
+GIVEN f IS A `Defamation Facts` @desc The imputation, and the circumstances in which it was made
+GIVETH A BOOLEAN
+DECIDE `the imputation falls within an Exception to s 499` f IF
+        (    "First Exception.-It is not defamation to impute anything which is"
+        ...  f's `the imputation is true`
+        ...  "concerning any person, if"
+        ...  f's `it is for the public good that the imputation should be made or published` )
+   OR   (    "Fourth Exception.-It is not defamation to"
+        ...  f's `publishes a substantially true report of the proceedings of a court of justice or of Parliament, or of their result` )
+   OR   (    "Explanation to Exceptions.-... good faith shall be presumed unless the contrary appears."
+        ...  NOT f's `the want of good faith appears`
+        ...  (    "Second Exception.-" ... f's `expresses an opinion respecting the conduct of any person touching the discharge of his public functions, or his character so far as it appears in that conduct`
+             OR   "Third Exception.-"  ... f's `expresses an opinion respecting the conduct of any person touching any public question, and his character so far as it appears in that conduct`
+             OR   "Fifth Exception.-"  ... f's `expresses an opinion respecting the merits of a decided case, or the conduct of a party, witness or agent in it, or his character so far as it appears in that conduct`
+             OR   "Sixth Exception.-"  ... f's `expresses an opinion respecting the merits of a performance its author has submitted to the judgment of the public, or the author's character so far as it appears in it`
+             OR   "Seventh Exception.-" ... f's `passes censure on the conduct of another over whom the accused has lawful authority, in matters to which that authority relates`
+             OR   "Eighth Exception.-" ... f's `prefers an accusation against the person to one having lawful authority over him with respect to the subject matter of the accusation`
+             OR   "Ninth Exception.-"  ... f's `makes an imputation on the character of another for the protection of the interests of the person making it or of any other person, or for the public good`
+             OR   "Tenth Exception.-"  ... f's `conveys a caution to one person against another, intended for the good of that person or of one in whom he is interested, or for the public good` ) )
+
+@export Whether the accused "defames" a person within section 499 of the Penal Code 1871
+GIVEN f IS A `Defamation Facts` @desc The imputation, how it was made, what the accused intended or knew, and the circumstances
+GIVETH A BOOLEAN
+DECIDE defames f IF
+        "Whoever, by"
+   ...  (    f's `by words either spoken or intended to be read`
+        OR   f's `by signs`
+        OR   f's `by visible representations` )
+   ...  f's `makes or publishes any imputation concerning any person`
+   ...  (    (    (    f's `intending to harm the reputation of such person`
+                  OR   f's `knowing or having reason to believe that such imputation will harm the reputation of such person` )
+             ...  "Explanation 4.-No imputation is said to harm a person's reputation, unless"
+             ...  f's `the harm is harm to reputation within Explanation 4` )
+        OR   (    "Explanation 1.-It may amount to defamation to"
+             ...  f's `imputes anything to a deceased person`
+             ...  "if the imputation"
+             ...  f's `would harm the reputation of that person if living`
+             ...  "and"
+             ...  f's `is intended to be hurtful to the feelings of his family or other near relatives` ) )
+   ...  "is said, except in the cases hereinafter excepted, to defame that person"
+   ...  NOT `the imputation falls within an Exception to s 499` f
+
+§§ `s 500 - punishment for defamation`
+
+-- 500. Whoever defames another shall be punished with imprisonment for a term
+--      which may extend to 2 years, or with fine, or with both.
+@export Whether the accused has committed an offence punishable under section 500 of the Penal Code 1871 (defamation)
+GIVEN f IS A `Defamation Facts` @desc The imputation, how it was made, what the accused intended or knew, and the circumstances
+GIVETH A BOOLEAN
+DECIDE `offence under s 500` f IF
+        "Whoever"
+   ...  defames f
+
+@ref Penal Code 1871 s 500
+`punishment prescribed by s 500` MEANS
+    `a punishment of imprisonment, or fine, or both` "500"
+        "imprisonment for a term which may extend to 2 years, or with fine, or with both" 24
+
+§§ `The facts of printing or selling defamatory matter - ss 501, 502`
+
+@ref Penal Code 1871 ss 501, 502 - the operative atoms, and the particulars CPC ss 124-125 require
+DECLARE `Defamatory Matter Facts` HAS
+    particulars           IS A Particulars @desc Who is charged, and when and where the offence was committed
+    `the matter`          IS A STRING  @desc The matter or substance, as it is to read after "to wit," - for example "500 copies of a pamphlet stating that ..."
+    `the person defamed`  IS A STRING  @desc The person the matter is defamatory of, as the charge names them
+    -- s 501
+    `prints or engraves any matter`
+                          IS A BOOLEAN @desc s 501: Did the accused print or engrave the matter? (Physical element.)
+    `knowing or having good reason to believe that such matter is defamatory of any person`
+                          IS A BOOLEAN @desc s 501: Did the accused know, or have good reason to believe, that it was defamatory of someone (s 499)? (Fault element.)
+    -- s 502
+    `sells or offers for sale any printed or engraved substance`
+                          IS A BOOLEAN @desc s 502: Did the accused sell, or offer for sale, a printed or engraved substance? (Physical element.)
+    `the substance contains defamatory matter`
+                          IS A BOOLEAN @desc s 502: Does it contain defamatory matter - matter that defames someone within s 499?
+    `knowing that it contains such matter`
+                          IS A BOOLEAN @desc s 502: Did the accused know it contained that matter? (Fault element.)
+
+§§ `s 501 - printing or engraving matter known to be defamatory`
+
+-- 501. Whoever prints or engraves any matter, knowing or having good reason to
+--      believe that such matter is defamatory of any person, shall be punished
+--      with imprisonment for a term which may extend to 2 years, or with fine,
+--      or with both.
+@export Whether the accused has committed an offence punishable under section 501 of the Penal Code 1871 (printing or engraving matter known to be defamatory)
+GIVEN f IS A `Defamatory Matter Facts` @desc What was printed or engraved, and what the accused knew of it
+GIVETH A BOOLEAN
+DECIDE `offence under s 501` f IF
+        "Whoever"
+   ...  f's `prints or engraves any matter`
+   ...  f's `knowing or having good reason to believe that such matter is defamatory of any person`
+
+@ref Penal Code 1871 s 501
+`punishment prescribed by s 501` MEANS
+    `a punishment of imprisonment, or fine, or both` "501"
+        "imprisonment for a term which may extend to 2 years, or with fine, or with both" 24
+
+§§ `s 502 - sale of printed or engraved substance containing defamatory matter`
+
+-- 502. Whoever sells or offers for sale any printed or engraved substance,
+--      containing defamatory matter, knowing that it contains such matter,
+--      shall be punished with imprisonment for a term which may extend to
+--      2 years, or with fine, or with both.
+@export Whether the accused has committed an offence punishable under section 502 of the Penal Code 1871 (sale of printed or engraved substance containing defamatory matter)
+GIVEN f IS A `Defamatory Matter Facts` @desc What was sold or offered for sale, and what the accused knew of it
+GIVETH A BOOLEAN
+DECIDE `offence under s 502` f IF
+        "Whoever"
+   ...  f's `sells or offers for sale any printed or engraved substance`
+   ...  f's `the substance contains defamatory matter`
+   ...  f's `knowing that it contains such matter`
+
+@ref Penal Code 1871 s 502
+`punishment prescribed by s 502` MEANS
+    `a punishment of imprisonment, or fine, or both` "502"
+        "imprisonment for a term which may extend to 2 years, or with fine, or with both" 24
+
+§ `The charges - Chapter 21`
+
+-- CPC s 125: defamation turns on what was imputed and how, so the manner is
+-- recited.
+GIVEN f IS A `Defamation Facts`
+GIVETH A STRING
+`the manner of the defamation` f MEANS
+    CONCAT "did defame ", (`one` (f's victim) (f's `victim described as`)),
+           " by ", f's `the means`,
+           ", imputing that ", f's `the imputation`, ", ",
+           (BRANCH
+                IF   f's `intending to harm the reputation of such person`
+                THEN "intending to harm"
+                IF   f's `knowing or having reason to believe that such imputation will harm the reputation of such person`
+                THEN "knowing or having reason to believe that such imputation would harm"
+                OTHERWISE "intending to hurt the feelings of the family or near relatives of, and so as would harm"),
+           " the reputation of the said ", f's victim
+
+GIVEN f IS A `Defamation Facts`
+GIVETH A LIST OF STRING
+`elements of defamation not made out` f MEANS
+    concat (LIST
+        (`missing unless` (f's `by words either spoken or intended to be read` OR f's `by signs` OR f's `by visible representations`) "by words either spoken or intended to be read, or by signs, or by visible representations"),
+        (`missing unless` (f's `makes or publishes any imputation concerning any person`) "makes or publishes any imputation concerning any person"),
+        (`missing unless` (((f's `intending to harm the reputation of such person` OR f's `knowing or having reason to believe that such imputation will harm the reputation of such person`) AND f's `the harm is harm to reputation within Explanation 4`)
+                           OR (f's `imputes anything to a deceased person` AND f's `would harm the reputation of that person if living` AND f's `is intended to be hurtful to the feelings of his family or other near relatives`))
+            "intending to harm, or knowing or having reason to believe that such imputation will harm, the reputation of such person (Explanations 1 and 4)"),
+        (`missing unless` (NOT `the imputation falls within an Exception to s 499` f) "not within any of the cases excepted (the First to Tenth Exceptions)"),
+        (`missing unless` (defames f) "the elements of section 499 taken together"))
+
+@export Frame a charge under section 500 of the Penal Code 1871 (defamation), or say why none can be framed
+GIVEN f IS A `Defamation Facts` @desc The imputation, how it was made, what the accused intended or knew, and the particulars of the charge
+GIVETH A Charge
+`charge under s 500` f MEANS
+    `frame the charge` (f's particulars) "500" "defamation"
+        (`punishment prescribed by s 500`'s words)
+        (`offence under s 500` f)
+        (`the manner of the defamation` f)
+        (`elements of defamation not made out` f)
+
+@export Frame a charge under section 501 of the Penal Code 1871 (printing or engraving matter known to be defamatory), or say why none can be framed
+GIVEN f IS A `Defamatory Matter Facts` @desc What was printed or engraved, what the accused knew of it, and the particulars of the charge
+GIVETH A Charge
+`charge under s 501` f MEANS
+    `frame the charge` (f's particulars) "501" "printing or engraving matter known to be defamatory"
+        (`punishment prescribed by s 501`'s words)
+        (`offence under s 501` f)
+        (CONCAT "did print or engrave matter, to wit, ", f's `the matter`, ", knowing or having good reason to believe that such matter was defamatory of ", f's `the person defamed`)
+        (concat (LIST
+            (`missing unless` (f's `prints or engraves any matter`) "prints or engraves any matter"),
+            (`missing unless` (f's `knowing or having good reason to believe that such matter is defamatory of any person`) "knowing or having good reason to believe that such matter is defamatory of any person")))
+
+@export Frame a charge under section 502 of the Penal Code 1871 (sale of printed or engraved substance containing defamatory matter), or say why none can be framed
+GIVEN f IS A `Defamatory Matter Facts` @desc What was sold or offered for sale, what the accused knew of it, and the particulars of the charge
+GIVETH A Charge
+`charge under s 502` f MEANS
+    `frame the charge` (f's particulars) "502" "sale of printed or engraved substance containing defamatory matter"
+        (`punishment prescribed by s 502`'s words)
+        (`offence under s 502` f)
+        (CONCAT "did sell or offer for sale a printed or engraved substance, to wit, ", f's `the matter`, ", containing matter defamatory of ", f's `the person defamed`, ", knowing that it contained such matter")
+        (concat (LIST
+            (`missing unless` (f's `sells or offers for sale any printed or engraved substance`) "sells or offers for sale any printed or engraved substance"),
+            (`missing unless` (f's `the substance contains defamatory matter`) "containing defamatory matter"),
+            (`missing unless` (f's `knowing that it contains such matter`) "knowing that it contains such matter")))
