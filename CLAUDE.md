@@ -28,31 +28,20 @@ Leave `JL4_LIBRARY_PATH` unset.
 
 ## Where things go
 
-The layout is ruled in `docs/directory-conventions.md` (rulings of 2026-08-05), which reaches `main` with [#3](https://github.com/legalese/canon/pull/3); until then read it from its branch:
-
-```bash
-git show origin/docs/directory-conventions:docs/directory-conventions.md
-```
+The layout is ruled in [`docs/directory-conventions.md`](docs/directory-conventions.md) (rulings of 2026-08-05; the ISO spelling ruled again 2026-09-26).
 
 In short: `subjects/<jurisdiction>/<slug>/` for the law, with `<jurisdiction>` an ISO 3166 code in lowercase (`sg`, `il`, `us/ca`); `subjects/contracts/<genre>/<slug>/` for contract forms; and each encoding as its own row at `encodings/<row>/`, with an `encoding.json`, a `NOTES.md` and a `SOURCE-LICENSE.md` beside the `.l4`.
 The `encoding-a-subject` skill's `references/canon-deposit.md` walks through it.
 
-**Until #3 merges, `main` also has a full-name spelling** (`subjects/israel/`, `subjects/western-australia/`), some with the `.l4` directly in the subject directory. #3 moves everything to ISO codes (ruled 2026-09-26: the shorter spelling).
-Before creating a subject, check whether the law already has one under either spelling.
+Before creating a subject, check whether the law already has one: a second encoding of a law is a new row beside the others, and rows are equal.
 
 **Where to commit.** Members of the `legalese` GitHub organisation commit straight to `main` (ruled 2026-09-26).
 **Contributions from outside Legalese are welcome**, by the standard GitHub route: fork this repository, commit to a branch of your fork, and open a pull request against `main`.
 
 ## Worked examples to read first
 
-On the `mengwong/drafts` branch until [#2](https://github.com/legalese/canon/pull/2) moves them to `main`:
-
 - `subjects/il/hvac-work-licensing-2025/encodings/legalese/` — a Law and its fee regulations in three vintages, with a scope statement, a fork register, a table of every fee in each vintage, and a test file that is meant to fail and says how many times.
 - `subjects/sg/child-support/` — a subject whose primary source is an announcement rather than a statute, and says so.
-
-```bash
-git show origin/mengwong/drafts:subjects/il/hvac-work-licensing-2025/encodings/legalese/encoding.json
-```
 
 ## When the encoding exists
 
