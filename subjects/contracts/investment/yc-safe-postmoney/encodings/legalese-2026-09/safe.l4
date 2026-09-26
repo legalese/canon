@@ -1,0 +1,308 @@
+-- safe.l4 — the instrument, one Safe, section by section.
+--
+-- Source form: Y Combinator, "Postmoney Safe — Valuation Cap Only", version 1.2, with the
+-- Discount Only and MFN Only forms where they differ (variation register, axis A).
+-- © 2023 Y Combinator Management, LLC, CC BY-ND 4.0 International. Every quotation below
+-- is from those forms; section labels are the forms' own.
+--
+-- Division of labour: this module states what ONE Safe is entitled to, given the
+-- capitalisation figures the definitions in §2 call for. Computing those figures for a
+-- whole cap table — the Company Capitalization fixpoint, the round price, who converts
+-- and who cashes out — is safe-portfolio.l4's job, and it hands the results in here.
+
+IMPORT prelude
+IMPORT `safe-form`
+
+§ `Terms`
+
+-- The three published economic variants, as one type (SPEC.md ruling R3).
+DECLARE EconomicTerms IS ONE OF
+    `Valuation Cap`       HAS `Post-Money Valuation Cap` IS A NUMBER
+    `Discount`            HAS `Discount Rate`            IS A NUMBER   -- as printed: "[100 minus the discount]%"
+    `Most Favored Nation`
+
+GIVEN safe IS A SafeIn
+GIVETH AN EconomicTerms
+`terms of` safe MEANS
+    CONSIDER safe's terms's cap
+    WHEN JUST c  THEN `Valuation Cap` c
+    WHEN NOTHING THEN CONSIDER safe's terms's discount
+                      WHEN JUST d  THEN `Discount` (100 MINUS d)
+                      WHEN NOTHING THEN `Most Favored Nation`
+
+GIVEN safe IS A SafeIn
+GIVETH A NUMBER
+-- "in exchange for the payment by [Investor Name] (the “Investor”) of $[_____] (the
+-- “Purchase Amount”)"
+`Purchase Amount` safe MEANS safe's purchaseAmount
+
+§ `1. Events`
+
+§§ `(a) Equity Financing`
+
+-- The figures §1(a) needs, as of the initial closing. The first is the round's; the
+-- second is the §2 definition, computed for the whole cap table by safe-portfolio.l4.
+DECLARE `Equity Financing` HAS
+    `lowest price per share of the Standard Preferred Stock` IS A NUMBER
+    `Company Capitalization`                                 IS A NUMBER
+
+-- "If there is an Equity Financing before the termination of this Safe, on the initial
+-- closing of such Equity Financing, this Safe will automatically convert into the greater
+-- of: (1) the number of shares of Standard Preferred Stock equal to the Purchase Amount
+-- divided by the lowest price per share of the Standard Preferred Stock; or (2) the
+-- number of shares of Safe Preferred Stock equal to the Purchase Amount divided by the
+-- Safe Price."                                                        — cap form
+-- "… will automatically convert into the number of shares of Safe Preferred Stock equal
+-- to the Purchase Amount divided by the Discount Price."              — discount form
+-- "… will automatically convert into the number of shares of Standard Preferred Stock
+-- equal to the Purchase Amount divided by the lowest price per share of the Standard
+-- Preferred Stock."                                                   — MFN form
+GIVEN safe IS A SafeIn
+      financing IS AN `Equity Financing`
+GIVETH A NUMBER
+`shares on conversion` safe financing MEANS
+    CONSIDER `terms of` safe
+    WHEN `Valuation Cap` cap THEN
+        max (`Purchase Amount` safe DIVIDED BY lowest)
+            (`Purchase Amount` safe DIVIDED BY `Safe Price` cap (financing's `Company Capitalization`))
+    WHEN `Discount` rate THEN
+        `Purchase Amount` safe DIVIDED BY `Discount Price` lowest rate
+    WHEN `Most Favored Nation` THEN
+        `Purchase Amount` safe DIVIDED BY lowest
+  WHERE
+    lowest MEANS financing's `lowest price per share of the Standard Preferred Stock`
+
+-- Which class the shares are: Safe Preferred Stock when the Safe Price or the Discount
+-- Price governs, Standard Preferred Stock otherwise. The cap form's "greater of" resolves
+-- to (2) exactly when the Safe Price is below the round price.
+GIVEN safe IS A SafeIn
+      financing IS AN `Equity Financing`
+GIVETH A STRING
+`class on conversion` safe financing MEANS
+    CONSIDER `terms of` safe
+    WHEN `Valuation Cap` cap THEN
+        IF `Safe Price` cap (financing's `Company Capitalization`) LESS THAN financing's `lowest price per share of the Standard Preferred Stock`
+        THEN "Safe Preferred Stock"
+        ELSE "Standard Preferred Stock"
+    WHEN `Discount` rate THEN "Safe Preferred Stock"
+    WHEN `Most Favored Nation` THEN "Standard Preferred Stock"
+
+§§ `(b) Liquidity Event`
+
+-- The figures §1(b) needs, as of immediately prior to the Liquidity Event.
+DECLARE `Liquidity Event` HAS
+    `Proceeds`                               IS A NUMBER   -- "cash and other assets … legally available for distribution"
+    `Liquidity Capitalization`               IS A NUMBER   -- §2, computed by safe-portfolio.l4
+    `fair market value of the Common Stock`  IS A NUMBER   -- the discount and MFN forms' Liquidity Price basis
+    `indebtedness and creditor claims`       IS A NUMBER   -- §1(d)(i): paid first
+
+-- "the Investor will automatically be entitled … to receive a portion of Proceeds …
+-- equal to the greater of (i) the Purchase Amount (the “Cash-Out Amount”) or (ii) the
+-- amount payable on the number of shares of Common Stock equal to the Purchase Amount
+-- divided by the Liquidity Price (the “Conversion Amount”)."          — cap and discount forms
+-- "… equal to the Purchase Amount (the “Cash-Out Amount”)."           — MFN form
+GIVEN safe IS A SafeIn
+GIVETH A NUMBER
+`Cash-Out Amount` safe MEANS `Purchase Amount` safe
+
+GIVEN safe IS A SafeIn
+      event IS A `Liquidity Event`
+GIVETH A NUMBER
+-- the number of shares of Common Stock the Conversion Amount is measured on
+`Conversion Amount shares` safe event MEANS
+    `Purchase Amount` safe DIVIDED BY `Liquidity Price` safe event
+
+GIVEN safe IS A SafeIn
+      event IS A `Liquidity Event`
+GIVETH A NUMBER
+-- "the amount payable on" those shares: their share of the Proceeds, on an as-converted
+-- basis, which is Proceeds ÷ Liquidity Capitalization per share (User Guide p. 21).
+`amount payable on the Conversion Amount` safe event MEANS
+    `Conversion Amount shares` safe event TIMES (event's `Proceeds` DIVIDED BY event's `Liquidity Capitalization`)
+
+GIVEN safe IS A SafeIn
+      event IS A `Liquidity Event`
+GIVETH A NUMBER
+`liquidity entitlement` safe event MEANS
+    CONSIDER `terms of` safe
+    WHEN `Most Favored Nation` THEN `Cash-Out Amount` safe
+    OTHERWISE max (`Cash-Out Amount` safe) (`amount payable on the Conversion Amount` safe event)
+
+GIVEN safe IS A SafeIn
+      event IS A `Liquidity Event`
+GIVETH A BOOLEAN
+-- Whether this Safe takes the Conversion Amount rather than cashing out. §2's Liquidity
+-- Capitalization excludes "Safes … where the holders … are receiving Cash-Out Amounts",
+-- so safe-portfolio.l4 needs this to compute the figure it hands back in.
+DECIDE `takes the Conversion Amount` safe event IF
+        (NOT (`terms of` safe EQUALS `Most Favored Nation`))
+    AND `amount payable on the Conversion Amount` safe event GREATER THAN `Cash-Out Amount` safe
+
+§§ `(c) Dissolution Event`
+
+-- "If there is a Dissolution Event before the termination of this Safe, the Investor
+-- will automatically be entitled (subject to the liquidation priority set forth in
+-- Section 1(d) below) to receive a portion of Proceeds equal to the Cash-Out Amount"
+GIVEN safe IS A SafeIn
+GIVETH A NUMBER
+`dissolution entitlement` safe MEANS `Cash-Out Amount` safe
+
+§§ `(d) Liquidation Priority`
+
+-- "The Investor’s right to receive its Cash-Out Amount is: (i) Junior to payment of
+-- outstanding indebtedness and creditor claims …; (ii) On par with payments for other
+-- Safes and/or Preferred Stock, and if the applicable Proceeds are insufficient to permit
+-- full payments to the Investor and such other Safes and/or Preferred Stock, the
+-- applicable Proceeds will be distributed pro rata to the Investor and such other Safes
+-- and/or Preferred Stock in proportion to the full payments that would otherwise be due;
+-- and (iii) Senior to payments for Common Stock."
+--
+-- What one Safe actually receives of its Cash-Out Amount, given the Proceeds, the senior
+-- claims and the total of all pari passu cash-out claims. Preferred Stock preferences
+-- rank with the Safes here and are folded into `pari passu claims` by the caller.
+GIVEN safe IS A SafeIn
+      proceeds IS A NUMBER
+      `senior claims` IS A NUMBER
+      `pari passu claims` IS A NUMBER
+GIVETH A NUMBER
+`cash-out actually paid` safe proceeds `senior claims` `pari passu claims` MEANS
+    BRANCH
+        IF available AT MOST 0 THEN 0
+        IF available AT LEAST `pari passu claims` THEN `Cash-Out Amount` safe
+        OTHERWISE `Cash-Out Amount` safe TIMES available DIVIDED BY `pari passu claims`
+  WHERE
+    available MEANS proceeds MINUS `senior claims`
+
+§§ `(e) Termination`
+
+-- "This Safe will automatically terminate … immediately following the earliest to occur
+-- of: (i) the issuance of Capital Stock to the Investor pursuant to the automatic
+-- conversion of this Safe under Section 1(a); or (ii) the payment, or setting aside for
+-- payment, of amounts due the Investor pursuant to Section 1(b) or Section 1(c)."
+DECLARE History HAS
+    `Capital Stock has been issued on conversion`        IS A BOOLEAN
+    `amounts due under 1(b) or 1(c) have been paid or set aside` IS A BOOLEAN
+
+GIVEN history IS A History
+GIVETH A BOOLEAN
+DECIDE `the Safe has terminated` history IF
+        history's `Capital Stock has been issued on conversion`
+    OR  history's `amounts due under 1(b) or 1(c) have been paid or set aside`
+
+§ `2. Definitions`
+
+GIVEN cap IS A NUMBER
+      `Company Capitalization` IS A NUMBER
+GIVETH A NUMBER
+-- "“Safe Price” means the price per share equal to the Post-Money Valuation Cap divided
+-- by the Company Capitalization."
+`Safe Price` cap `Company Capitalization` MEANS cap DIVIDED BY `Company Capitalization`
+
+GIVEN `lowest price per share of the Standard Preferred Stock` IS A NUMBER
+      `Discount Rate` IS A NUMBER
+GIVETH A NUMBER
+-- "“Discount Price” means the lowest price per share of the Standard Preferred Stock sold
+-- in the Equity Financing multiplied by the Discount Rate."           — discount form
+`Discount Price` `lowest price per share of the Standard Preferred Stock` `Discount Rate` MEANS
+    `lowest price per share of the Standard Preferred Stock` TIMES `Discount Rate` DIVIDED BY 100
+
+GIVEN safe IS A SafeIn
+      event IS A `Liquidity Event`
+GIVETH A NUMBER
+-- "“Liquidity Price” means the price per share equal to the Post-Money Valuation Cap
+-- divided by the Liquidity Capitalization."                           — cap form
+-- "… the fair market value of the Common Stock at the time of the Liquidity Event, as
+-- determined by reference to the purchase price payable in connection with such Liquidity
+-- Event, multiplied by the Discount Rate."                            — discount form
+-- "… the fair market value of the Common Stock at the time of the applicable Liquidity
+-- Event (determined by reference to the purchase price payable in connection with such
+-- Liquidity Event)."  — MFN form, where it is used only by Dividend Amount (register E4)
+`Liquidity Price` safe event MEANS
+    CONSIDER `terms of` safe
+    WHEN `Valuation Cap` cap THEN cap DIVIDED BY event's `Liquidity Capitalization`
+    WHEN `Discount` rate THEN event's `fair market value of the Common Stock` TIMES rate DIVIDED BY 100
+    WHEN `Most Favored Nation` THEN event's `fair market value of the Common Stock`
+
+GIVEN safe IS A SafeIn
+      event IS A `Liquidity Event`
+      `dividend per share of Common Stock` IS A NUMBER
+GIVETH A NUMBER
+-- "“Dividend Amount” means, with respect to any date on which the Company pays a dividend
+-- on its outstanding Common Stock, the amount of such dividend that is paid per share of
+-- Common Stock multiplied by (x) the Purchase Amount divided by (y) the Liquidity Price
+-- (treating the dividend date as a Liquidity Event solely for purposes of calculating
+-- such Liquidity Price)."
+`Dividend Amount` safe event `dividend per share of Common Stock` MEANS
+    `dividend per share of Common Stock` TIMES (`Purchase Amount` safe DIVIDED BY `Liquidity Price` safe event)
+
+§ `5. Miscellaneous`
+
+§§ `(a) Amendment by a majority-in-interest`
+
+-- "Any provision of this Safe may be amended, waived or modified by written consent of the
+-- Company and either (i) the Investor or (ii) the majority-in-interest of all
+-- then-outstanding Safes with the same “Post-Money Valuation Cap” and “Discount Rate” as
+-- this Safe (and Safes lacking one or both of such terms will be considered to be the same
+-- with respect to such term(s)) … “Majority-in-interest” refers to the holders of the
+-- applicable group of Safes whose Safes have a total Purchase Amount greater than 50% of
+-- the total Purchase Amount of all of such applicable group of Safes."
+GIVEN a IS A SafeIn
+      b IS A SafeIn
+GIVETH A BOOLEAN
+DECIDE `same terms group` a b IF
+        a's terms's cap EQUALS b's terms's cap
+    AND a's terms's discount EQUALS b's terms's discount
+
+GIVEN safe IS A SafeIn
+      outstanding IS A LIST OF SafeIn
+      consenting IS A LIST OF STRING
+GIVETH A BOOLEAN
+-- TRUE when the consenting holders form a majority-in-interest of this Safe's group.
+DECIDE `majority-in-interest consents` safe outstanding consenting IF
+    consentingAmount GREATER THAN groupAmount DIVIDED BY 2
+  WHERE
+    group MEANS filter (GIVEN s YIELD `same terms group` safe s) outstanding
+    groupAmount MEANS sum (map (GIVEN s YIELD s's purchaseAmount) group)
+    consentingAmount MEANS sum (map (GIVEN s YIELD s's purchaseAmount) (filter (GIVEN s YIELD elem (s's investor's name) consenting) group))
+
+§ `3. “MFN” Amendment Provision (MFN form only)`
+
+-- "If the Company issues any Subsequent Convertible Securities with terms more favorable
+-- than those of this Safe (including, without limitation, a valuation cap and/or discount)
+-- prior to termination of this Safe, the Company will promptly provide the Investor with
+-- written notice thereof, together with a copy of such Subsequent Convertible Securities
+-- (the “MFN Notice”) … In the event the Investor determines that the terms of the
+-- Subsequent Convertible Securities are preferable to the terms of this instrument, the
+-- Investor will notify the Company in writing within 10 days of the receipt of the MFN
+-- Notice. Promptly after receipt of such written notice from the Investor, the Company
+-- agrees to amend and restate this instrument to be identical to the instrument(s)
+-- evidencing the Subsequent Convertible Securities."                   — MFN form, §3
+--
+-- The family's one hard deadline (10 days) and two soft ones ("promptly", supplied as a
+-- number of days by the caller). The Investor's step is a permission: not electing
+-- discharges the provision; the Company's failure at either end is a breach.
+
+DECLARE Actor IS ONE OF
+    Company
+    Investor
+
+DECLARE Action IS ONE OF
+    `provide the MFN Notice`
+    `notify the Company that the terms are preferable`
+    `amend and restate this Safe to be identical`
+
+GIVEN promptly IS A NUMBER
+GIVETH A DEONTIC Actor Action
+`MFN Amendment Provision` promptly MEANS
+    PARTY Company
+    MUST `provide the MFN Notice`
+    WITHIN promptly
+    HENCE PARTY Investor
+          MAY `notify the Company that the terms are preferable`
+          WITHIN 10
+          HENCE PARTY Company
+                MUST `amend and restate this Safe to be identical`
+                WITHIN promptly
+                LEST BREACH BY Company BECAUSE "the Company did not amend and restate the Safe after the Investor's MFN election"
+          LEST FULFILLED
+    LEST BREACH BY Company BECAUSE "the Company issued more favorable Subsequent Convertible Securities without giving the MFN Notice"

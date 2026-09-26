@@ -1,5 +1,182 @@
 # subjects/
 
+One directory per body of law. **Sixteen are listed as at 2026-09-23.** Ten are enacted
+law, or announced as law: four Singapore subjects, three pieces of Israeli legislation, one
+US federal regulation, one Act of the UK Parliament and one Law of Jersey. Of the other six, one is a synthetic insurance
+policy, two are commercial standard forms, one is eight private issuers' card T&Cs bundled as
+one comparison subject, one is a judge-made doctrine encoded across four jurisdictions, and one
+is a body of Israeli **collective agreements** rather than enacted law at all. Each of those six
+is flagged below. One subject, `contracts/investment/yc-safe-premoney`, holds source text and no
+encoding at all, which the `what it encodes` column says plainly.
+
+| subject | what it encodes | status |
+| --- | --- | --- |
+| [`sg/succession`](sg/succession) | Wills Act 1838, Intestate Succession Act 1967, Probate and Administration Act 1934 — three Acts against one ontology | `draft` |
+| [`sg/child-support`](sg/child-support) | the SG Child Support Package announced at the National Day Rally on 23 August 2026, and childcare leave under the Child Development Co-Savings Act 2001 | `draft` |
+| [`sg/pdpa-2012`](sg/pdpa-2012) | Personal Data Protection Act 2012, Part VIA (data breach notification) | `draft` |
+| [`sg/penal-code-1871`](sg/penal-code-1871) | Penal Code 1871 — cheating, theft, extortion, robbery, criminal breach of trust, criminal intimidation, hurt (ss 22–25, 321, 323A, 378–384, 390–394, 405–406, 415–420, 503–506) with the form of a charge under CPC 2010 ss 123–126, and s 301 (transferred malice) | `draft` |
+| [`us/chubb-hospital-cash`](us/chubb-hospital-cash) | a **synthetic** supplemental hospitalization cash policy — never law, never in force — encoded twice, independently, as evidence in a replication study | `experimental` |
+| [`us/regcf`](us/regcf) | SEC Regulation Crowdfunding, 17 CFR Part 227, encoded twice and independently: the eight requirement groups one wiki page presents, with a rule-version axis back to commencement in 2016, and all 22 sections de novo from the eCFR | `draft` |
+| [`uk/bna-1981`](uk/bna-1981) | British Nationality Act 1981, section 1 — British citizenship by birth or adoption in the United Kingdom, as in force on 4 July 2026; the demo pipeline's smoke-test subject, "as is traditional" (Sergot et al., 1986) | `draft` |
+| [`je/charities-2014`](je/charities-2014) | Charities (Jersey) Law 2014 — the charity test (Articles 5-7, with the definitions it needs), encoded de novo as a cleanroom smoke test, with its DMN/BPMN projections and a three-way comparison against an earlier encoding of the whole Law | `draft` |
+| [`contracts/investment/yc-safe-postmoney`](contracts/investment/yc-safe-postmoney) | the Y Combinator post-money SAFE — six instruments plus four Pro Rata Side Letters, with their User Guide — deposited verbatim, with one encoding row | `draft` |
+| [`contracts/investment/yc-safe-premoney`](contracts/investment/yc-safe-premoney) | nothing, and none planned in this repository — **sources only**: the 2013–2018 "original safe", four US variants, recovered from the Internet Archive | `draft` |
+| [`contracts/payments/sg-miles-card`](contracts/payments/sg-miles-card) | eight Singapore card issuers' reward-programme T&Cs — DBS yuu, DBS Woman's World, Citi Rewards, HSBC Revolution, UOB Lady's Solitaire, POSB PAssion, plus two flat-rate cards with no held T&C — against one shared ontology, so "which card earns the most on this purchase" can be asked across all eight at once | `draft` |
+| [`il/ofek-hadash-2008`](il/ofek-hadash-2008) | the Ofek Hadash reform — the collective agreements, and one budget-law chapter, that determine an Israeli teacher's pay | `draft` |
+| [`il/hvac-work-licensing-2025`](il/hvac-work-licensing-2025) | the Refrigeration or Air-Conditioning Systems Work Licensing Law 5785-2025 (licence grades, eligibility with the Second Schedule, validity, foreign experts, commencement) and its Fees Regulations in THREE vintages — the SimpLEX draft shown in Schwartz, Bar-Siman-Tov & Gelbard (2025), as made, as amended — with the paper's own test table run against all three | `draft` |
+| [`il/penal-law-1977`](il/penal-law-1977) | Penal Law 5737-1977 — theft and robbery (ss 383, 384, 402, 403, 404), encoded in Hebrew with English renderings beside every rule | `draft` |
+| [`il/traffic-ordinance-bac`](il/traffic-ordinance-bac) | Traffic Ordinance [New Version] 5721-1961, s 64B(a) "intoxicated" — the drink-driving alcohol thresholds, with reg. 169A of the Traffic Regulations — on the rule-effective axis either side of the 2010 amendment that lowered the threshold for new, young and professional drivers | `draft` |
+| [`doctrine/contract/unilateral-mistake`](doctrine/contract/unilateral-mistake) | the Singapore doctrine of unilateral mistake in contract — *Chwee Kin Keong v Digilandmall.com* [2005] SGCA 2 — encoded beside three comparators (English common law, *Taylor v Johnson*, Restatement (Second) § 153) against one ontology | `draft` |
+
+`sg/child-support` is the odd one and worth knowing about before you read it: its primary
+source is an **announcement, not an enactment**. No Bill has been introduced, so its
+rule-version axis carries *administered today* against *announced*, and the statute the
+announcement would amend is recorded as the source bundle's `instrument`.
+
+`sg/penal-code-1871` grew on 2026-09-17 from one section to ten modules, encoded in inert style
+for the charge-generator demo, with a seven-case bench of reported judgments asserted inside the
+modules rather than a `cases/` directory; it gained section 393 and a `projections/` directory on
+2026-09-21, and still has no `registers/`, `report/` or `gates/`. The projections are the
+repository's **first generated ladder figures** — six robbery decisions read out of the module
+through `jl4-lsp` in four carriers each, one of them prose, so the section's elements can be laid
+beside a textbook's list without anyone transcribing them. It is filed as a
+subject rather than an l4-ide example because it is a body of law, and this is where bodies
+of law live; its `NOTES.md` states what the sidecar does not carry. It is also the row whose
+**source terms bite hardest**: inert style works by quoting the statute inline, so unlike
+`sg/pdpa-2012` it reproduces its section verbatim rather than paraphrasing it. See that
+row's `SOURCE-LICENSE.md`.
+
+`us/chubb-hospital-cash` is the row that most needs its label read. It is the first `experimental`
+row, and the status is not a weaker `draft` — it marks a different kind of thing. **The instrument is
+synthetic: fictional parties, never issued, never in force, never construed.** It was invented by
+researchers as a benchmarking target, and it is filed here because it is a body of contractual rules
+that has been encoded, not because anyone is subject to it. It is also the first row whose source
+terms are **determined** rather than undetermined — the policy originates in a CC BY 4.0 article, so
+attribution is required and is recorded in `NOTICE`. Two independent encodings sit side by side under
+`encodings/`, written blind to each other and to the benchmark's answer key, because the comparison
+between them is the evidence. Read its `NOTES.md` before drawing any conclusion from it: the source
+text was modified before publication in a way that removed the operative insuring clause.
+
+`doctrine/contract/unilateral-mistake` is the first row under a **third grammar**, and the first
+whose subject is **judge-made law**. Everything else here is a text somebody enacted or drafted;
+this is a rule that exists only as a line of holdings, and the encoding's point is comparative —
+Singapore's equitable limb requires constructive knowledge **plus** an additional element of
+impropriety, and that formula is visible as distinctive only when England's, Australia's and the
+American rule are computed on the same facts beside it. Filing it under `sg/` would have made
+three of its four modules trespassers; filing four sibling subjects would have left the comparison
+homeless. So it seeds `doctrine/<area>/<leaf>/`, with a controlled area vocabulary in
+[`doctrine/AREAS.md`](doctrine/AREAS.md) on the model of `contracts/GENRES.md`. **That grammar is a
+proposal, not a ruling** — `docs/directory-conventions.md` §12 owns the rewrite and this row has
+not amended it; the argument is set out in the row's `NOTES.md` §1 so a reviewer can disagree with
+it rather than reconstruct it.
+
+Two things about that row need reading before it is relied on. Its **comparators are read at second
+hand**: the English and Australian authorities were never fetched from their own reports, only from
+*Chwee Kin Keong*'s account of them, and the American column states the Restatement rule rather than
+the law of any State. And it is the first row whose registers had to be **bent to fit** — a judgment
+has no in-force banner and no amendment markers, so the source bundle declares no annotations and
+the sweep register has nothing to dispose of; both say so in their own notes, and both record the
+schema vocabulary gaps as upstream candidates rather than papering over them.
+
+`contracts/payments/sg-miles-card` is the first subject under a **new genre**, `payments/`,
+seeded in the same change (`contracts/GENRES.md` records why). It is also the first `contracts/`
+row that is a **bundle**: eight instruments by five different issuers, filed as one leaf against
+one shared domain module and composer, because the point of the encoding is a comparison across
+all eight (Meng ruled this shape on 2026-09-21, the day it was deposited) — the same reason
+`sg/succession` bundles four Acts and `il/ofek-hadash-2008` bundles several collective agreements.
+Its `subject.json.encodings_note` and its row's `NOTES.md` §0 both state the argument in full.
+**HG1 was waived, not signed** — `status: draft` is not a weaker claim about the encoding's
+correctness than usual; it specifically reflects that nobody has checked its isomorphism to the
+eight source texts yet, notwithstanding that every machine gate (848 scenario assertions, a
+Catala projection with zero refusals) passed. See `encodings/legalese/gates/HG1.waiver.md`.
+
+The two `contracts/` rows are the first entries under a **second grammar**. Everything above them
+is enacted law, filed by the authority that enacted it — `sg/`, `us/`, an ISO 3166-1 code. A
+commercial instrument has no promulgating authority and often no jurisdiction at all until a
+governing-law clause supplies one, so it is filed by **genre** instead:
+`contracts/<genre>/<leaf>/`, with `governing_law` as a `subject.json` field rather than a
+directory. The genre vocabulary is controlled — insurance, investment, leasing, lending — and
+lives in [`contracts/GENRES.md`](contracts/GENRES.md), which these rows seed. See
+`docs/directory-conventions.md` §3, and §8.4 of that document, which names
+`yc-safe-postmoney` as its worked example of a standard form. **That document is not on this
+branch**: it lives on `docs/directory-conventions` and is unlinked here for that reason, so
+read it with `git show docs/directory-conventions:docs/directory-conventions.md`.
+
+Both SAFE rows carry the publisher's text byte-exact, a Markdown rendering of it, the header and
+footer strings pandoc throws away (which is where the licence and the version stamp live), digests
+for everything, and a validated source bundle. **`yc-safe-premoney` stops there** — no `encodings/`
+directory, and none planned in this repository; its `NOTES.md` says why. `yc-safe-postmoney` adds
+one encoding row and a fork register, and neither row has `projections/`, `report/` or `gates/`, so
+no human review has been sought for either. They also differ from each other in the way that matters
+most for a corpus: `yc-safe-postmoney` is the second row
+here whose source terms are **determined** — CC BY-ND 4.0, printed in the form's own footer, so
+attribution is a condition and is recorded in `NOTICE` — while `yc-safe-premoney` carries **no
+terms at all**, because the licence footer was added in 2018 and those captures are from 2014.
+Read each row's `SOURCE-LICENSE.md` before deriving anything from it. `yc-safe-postmoney`'s also
+records an unresolved question: whether an L4 formalisation of a form is an "adaptation" under a
+NoDerivatives licence.
+
+`il/penal-law-1977` is the second Israeli row and the first that is enacted law. Its source --
+the consolidated text of the Penal Law, 651 sections, deposited 2026-09-16 -- had sat in the tree
+with no encoding beside it until 2026-09-21, when five of those sections were encoded: theft, and
+the robbery sub-chapter that builds on it. The row exists to be read **beside**
+`sg/penal-code-1871`, whose robbery module encodes the same crime from the other colonial code,
+and its `NOTES.md` carries an element-by-element comparison of the two. Two things about it are
+unlike every other row here. It is written in **Hebrew** -- identifiers, section titles and the
+default natural-language rendering of every rule -- with an English rendering tagged beside each
+one, so the same source produces a whole document in either language. And it carries the same two
+open source-terms questions as `il/ofek-hadash-2008`, for the same reason: the consolidated text
+was read from a Wikisource volunteer project rather than from *Reshumot*, which is geo-blocked and
+publishes no consolidation. Its `SOURCE-LICENSE.md` sits beside `source/` at the subject level
+rather than inside the encoding row.
+
+`il/ofek-hadash-2008` is the first row whose subject is **not enacted law**, and the label
+should be read before the row is. Ofek Hadash is a **collective agreement** between the State
+of Israel and the Teachers' Union, layered with later agreements, binding decisions of a joint
+bipartite follow-up committee, and ministry circulars. The one Act in the picture — Chapter 9
+of the 2025 budget law — works by referring back to an *approved collective agreement* rather
+than setting a rate itself, so even the statutory layer routes through the agreements. It is
+filed under `il/` because the State is one of the two parties and the Knesset is the authority
+for the fiscal chapter; `contracts/` would have been wrong, because this is not a commercial
+instrument and it governs a whole profession.
+
+It is also the first row read **entirely from a third-party corpus** rather than from an
+official publisher, and the first whose `SOURCE-LICENSE.md` therefore carries **two** open
+questions instead of one: what may be done with the instruments, and what may be done with the
+compilation that transcribed them. Nothing was fetched from the Ministry of Education or from
+*Reshumot*; the digests are over the corpus's published HTML. Its `/akn/il/…` identifiers,
+which appear throughout that row's document register, are a convention of that corpus and are
+**not citable outside it** — the corpus says so itself, and the row repeats it rather than
+letting the identifiers pass as citations. Two further things distinguish it: all 282 documents
+of the source corpus were read and are deposited as a per-document register, which is what
+surfaced a January 2025 committee decision as the authoritative source for salary tables
+otherwise attributed to an October 2022 agreement; and it is the first row to carry an
+**executed** foreign-notation projection — six worked cases run through `catala interpret`
+against the emitted Catala module, reproducing the figures the L4 asserts.
+
+`us/regcf` was encoded in `legalese/l4-ide` and deposited here on 2026-09-23, byte-identical, with
+its history left in l4-ide, which vendors it back into its regression corpus once its
+`etc/canon-pin.json` names a commit that contains it. Its `README.md`, `PROJECTIONS.md`
+and ladder figures stayed in l4-ide, because they describe l4-ide's own projections of the
+corpus, and each row's `NOTES.md` says where they are. `uk/bna-1981` and `je/charities-2014` were
+deposited from l4-ide the same day, in the same way, and nothing of either stayed behind.
+`je/charities-2014` is the first row under a Crown Dependency. Its code, `je`, is Jersey's own
+ISO 3166-1 alpha-2 code: Jersey legislates for itself, so the Law is filed under Jersey and not
+under `uk/`.
+
+*(This paragraph read "Empty at this writing" until 2026-08-25, by which point three
+subjects had landed; a fourth landed on 2026-08-27, a fifth on 2026-08-31, the two
+`contracts/` rows on 2026-09-04, and the first `doctrine/` row and the first `il/` row on
+2026-09-07. A README that
+describes a directory it no longer matches is worse than none, because it is believed.)*
+
+**Two directory spellings coexist on `main`.** The subjects listed above follow
+`docs/directory-conventions.md` (on the `docs/directory-conventions` branch): ISO 3166 codes, and each encoding as a row under
+`encodings/<row>/`. The jurisdiction directories below, from the bulk source ingestion,
+use full names and keep any encoding in the subject directory itself. Where one law
+appears under both spellings (Israel's refrigeration and air-conditioning Law, the
+Singapore Penal Code), the two are separate encodings, not copies.
+
 One directory per jurisdiction, then one directory per body of law inside it.
 
 | jurisdiction | contents |
@@ -68,9 +245,6 @@ One directory per jurisdiction, then one directory per body of law inside it.
 | [`quebec/`](quebec/) | Quebec (Canadian province or territory) -- **metadata only**; licence decision pending |
 | [`saskatchewan/`](saskatchewan/) | Saskatchewan (Canadian province or territory) -- **metadata only**; licence decision pending |
 
-`regcf` (SEC Regulation Crowdfunding, 17 CFR Part 227) arrives with the pipeline's G4
-milestone, with the British Nationality Act 1981 to follow.
-
 The directory contract (the "class" — see the repository README for the class/instance
 design) is the subject-sidecar shape defined by the l4-ide orchestrator:
 
@@ -88,6 +262,18 @@ design) is the subject-sidecar shape defined by the l4-ide orchestrator:
 
 An instance is expected to veer from the class; its divergences are recorded in its own
 `NOTES.md`, never by forking the template.
+
+Two amendments to that table are already in force and are not yet written into it, because
+`docs/directory-conventions.md` supersedes it and its own §12
+owns the rewrite. First, the sidecar shape above now describes a **vendored encoding row** under
+`encodings/<encoder>/`, one level below the subject, and the descriptor splits in two:
+`subject.json` at the subject level carries facts about the law, `encoding.json` in each row
+carries facts about the encoding (§4.2). All seven subjects already do this. Second, `source/` and
+`registers/` sit at the **subject** level, because the source text is a fact about the law and is
+shared by every row (§6). That one is not yet uniform, and the tree is the honest record: both
+`contracts/` rows put `source/` and `registers/` at the subject level, `us/chubb-hospital-cash`
+puts `registers/` there, and the `sg/` rows keep both inside the encoding row. Do not read the
+table above as contradicting the conventions document.
 
 The stages an encoding passes through, and what the HG1 and HG2 gates certify, are in
 [`PIPELINE.md`](../PIPELINE.md).

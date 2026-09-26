@@ -1,0 +1,451 @@
+IMPORT prelude
+IMPORT daydate
+
+-- =====================================================================
+-- CASE STUDY: REGULATION — PDPA DBNO
+-- Personal Data Protection Act · Data Breach Notification Obligation
+--
+-- This is a technology prototype, not legal advice.
+--
+-- Modern-L4 transcription of the legacy "LegalSS" spreadsheet encoding
+-- of a fragment of Singapore's Personal Data Protection Act, Part VIA,
+-- read together with the PDP (Notification of Data Breaches) Regulations
+-- and the PDPC Advisory Guidelines, Part 20.
+--
+-- Generally, if an organisation experiences a data breach, it has 30 days
+-- to assess it. If the breach turns out to be Notifiable, the organisation
+-- has 3 days to inform both the PDPC and the affected individuals.
+-- =====================================================================
+
+§ `Singapore Personal Data Protection Act — Data Breach Notification`
+@ref-src Act Part VIA; PDP (Notification of Data Breaches) Regulations; Advisory Guidelines Part 20
+
+
+-- =====================================================================
+§§ `Ontology`
+-- =====================================================================
+
+-- Act §26 First Schedule, Part 1 — the prescribed personal data whose
+-- breach is taken to result in significant harm to the individual.
+DECLARE `Schedule Part 1 Category` IS ONE OF
+    `1 remuneration`
+    `2 income from sale of goods or property`
+    `3 credit, charge or debit card number`
+    `4 account number with a bank or finance company`
+    `5 identification as a child or young person under the CYPA`
+    `6 identification of a vulnerable adult under the VAA`
+    `7 private key for a secure electronic record or signature`
+    `8 net worth`
+    `9 deposit of moneys with an organisation`
+    `10 withdrawal of deposited moneys`
+    `11 advances, loans and other credit facilities`
+    `12 liabilities incurred on the individual's behalf`
+    `13 payment of moneys or transfer of property to the individual`
+    `14 creditworthiness`
+    `15 investment in capital markets products`
+    `16 existence and amount of any debt`
+    `17 insurance policy terms, premiums, benefits and claims`
+    `18 health assessment, diagnosis, treatment or prevention`
+    `19 treatment relating to human reproduction`
+    `20 organ donation, removal or transplantation`
+    `21 suicide or attempted suicide`
+    `22 domestic, child or sexual abuse`
+    `23 adoption matters`
+
+-- The closed-world set of facts that describe one data-breach scenario.
+-- Each "GIVEN" line in the legacy scenario tests sets one of these fields.
+DECLARE `Data Breach` HAS
+    -- Act §26A(2)(a): an unauthorised act in relation to personal data
+    `unauthorised access`        IS A BOOLEAN
+    `unauthorised use`           IS A BOOLEAN
+    `unauthorised disclosure`    IS A BOOLEAN
+    `unauthorised copying`       IS A BOOLEAN
+    `unauthorised modification`  IS A BOOLEAN
+    `unauthorised disposal`      IS A BOOLEAN
+    -- Act §26A(2)(b): loss of a storage medium where such an act is likely
+    `loss of storage medium making an unauthorised act likely` IS A BOOLEAN
+    -- Act §26B(4): exception where the breach is confined within one organisation
+    `occurred only within an organisation` IS A BOOLEAN
+    -- Regs 3(1)(a): personal identifiers
+    `relates to the individual's full name`             IS A BOOLEAN
+    `relates to the individual's alias`                 IS A BOOLEAN
+    `relates to the individual's identification number` IS A BOOLEAN
+    -- Act §26B(2)(a) read with Part 1 (subject to Part 2) of the Schedule
+    `prescribed personal data involved` IS A LIST OF `Schedule Part 1 Category`
+    -- Act §26B(3): scale
+    `number of affected individuals` IS A NUMBER
+    -- Act §26D(5): remediation exceptions to notifying individuals
+    `organisation took action rendering harm unlikely`     IS A BOOLEAN
+    `organisation had implemented a technological measure`  IS A BOOLEAN
+    -- Act §26D(6)(a): PDPC waiver / exclusion of individual notification
+    `PDPC has prohibited notification of individuals` IS A BOOLEAN
+    -- Act §4(1)(c): public-agency carve-out
+    `the organisation is a public agency` IS A BOOLEAN
+
+
+-- =====================================================================
+§§ `Constitutive rules — NDB Qualification`
+-- =====================================================================
+
+-- Act §26A: "a data breach occurred"
+GIVEN breach IS A `Data Breach`
+DECIDE `an unauthorised act in relation to personal data occurred` IF
+       breach's `unauthorised access`
+    OR breach's `unauthorised use`
+    OR breach's `unauthorised disclosure`
+    OR breach's `unauthorised copying`
+    OR breach's `unauthorised modification`
+    OR breach's `unauthorised disposal`
+
+GIVEN breach IS A `Data Breach`
+DECIDE `a data breach occurred` IF
+       `an unauthorised act in relation to personal data occurred` breach
+    OR breach's `loss of storage medium making an unauthorised act likely`
+
+-- Regs 3(1)(a): the breach relates to a prescribed personal identifier
+GIVEN breach IS A `Data Breach`
+DECIDE `the breach relates to a prescribed personal identifier` IF
+       breach's `relates to the individual's full name`
+    OR breach's `relates to the individual's alias`
+    OR breach's `relates to the individual's identification number`
+
+-- Act §26B(2)(a) read with Part 1 of the Schedule: at least one prescribed
+-- category of personal data is involved.
+GIVEN breach IS A `Data Breach`
+DECIDE `the breach relates to a prescribed Part 1 category` IF
+    CONSIDER breach's `prescribed personal data involved`
+        WHEN EMPTY THEN FALSE
+        OTHERWISE       TRUE
+
+-- Act §26B(1)(a) and (2): the breach results in, or is likely to result in,
+-- significant harm to an affected individual.
+GIVEN breach IS A `Data Breach`
+DECIDE `the breach is likely to result in significant harm` IF
+        `the breach relates to a prescribed personal identifier` breach
+    AND `the breach relates to a prescribed Part 1 category` breach
+
+-- Act §26B(3): the prescribed threshold of affected individuals.
+`the prescribed threshold of affected individuals` MEANS 500
+
+-- Act §26B(1)(b) and (3): the breach is, or is likely to be, of a
+-- significant scale.
+GIVEN breach IS A `Data Breach`
+DECIDE `the breach is of significant scale` IF
+    breach's `number of affected individuals`
+        GREATER THAN `the prescribed threshold of affected individuals`
+
+-- Act §26B: it is a Notifiable Data Breach.
+@export Decide whether a data breach is a Notifiable Data Breach under Part VIA of the Singapore PDPA.
+GIVEN breach IS A `Data Breach` @desc The facts of the data breach being assessed.
+DECIDE `it is a Notifiable Data Breach` IF
+        `a data breach occurred` breach
+    AND NOT breach's `occurred only within an organisation`
+    AND (   `the breach is likely to result in significant harm` breach
+         OR `the breach is of significant scale` breach )
+
+
+-- =====================================================================
+§§ `Constitutive rules — derived obligations`
+-- =====================================================================
+
+-- Act §26D(1) read with §4(1)(c): the organisation must notify the PDPC.
+@export Decide whether the organisation is obliged to notify the PDPC of the breach.
+GIVEN breach IS A `Data Breach` @desc The facts of the data breach being assessed.
+DECIDE `the organisation must notify the PDPC` IF
+        `it is a Notifiable Data Breach` breach
+    AND NOT breach's `the organisation is a public agency`
+
+-- Act §26D(2) read with §26D(5)–(6) and §4(1)(c): the organisation must
+-- notify the affected individuals, unless a remediation or exclusion applies.
+@export Decide whether the organisation is obliged to notify the affected individuals of the breach.
+GIVEN breach IS A `Data Breach` @desc The facts of the data breach being assessed.
+DECIDE `the organisation must notify the affected individuals` IF
+        `it is a Notifiable Data Breach` breach
+    AND NOT breach's `the organisation is a public agency`
+    AND NOT breach's `organisation took action rendering harm unlikely`
+    AND NOT breach's `organisation had implemented a technological measure`
+    AND NOT breach's `PDPC has prohibited notification of individuals`
+
+
+-- =====================================================================
+§§ `Regulative rules — parties and actions`
+-- =====================================================================
+
+DECLARE Actor IS ONE OF
+    `the Organisation`
+    `the PDPC`
+
+DECLARE Action IS ONE OF
+    `assess whether the breach is notifiable`
+    `notify the PDPC`
+    `notify the affected individuals`
+    `query for an explanation of inaction`
+    `respond to the PDPC with an explanation of the inaction`
+
+
+-- =====================================================================
+§§ `Regulative rules — PHASE 1: ASSESS`
+-- =====================================================================
+
+-- Act §26C(2): every organisation that is not a public agency, upon becoming
+-- aware that a data breach may have occurred, must assess within 30 days
+-- whether it is a Notifiable Data Breach.
+GIVEN breach IS A `Data Breach`
+`Assessment` breach MEANS
+    PARTY  `the Organisation`
+    MUST   `assess whether the breach is notifiable`
+    WITHIN 30
+    HENCE  `Notification` breach
+    LEST   `PDPC query with demand`
+
+-- The PDPC may query the organisation, demanding an explanation of inaction.
+`PDPC query with demand` MEANS
+    PARTY `the PDPC`
+    MAY   `query for an explanation of inaction`
+    HENCE `Respond to PDPC`
+
+-- Having been queried, the organisation must respond to the PDPC.
+`Respond to PDPC` MEANS
+    PARTY `the Organisation`
+    MUST  `respond to the PDPC with an explanation of the inaction`
+
+
+-- =====================================================================
+§§ `Regulative rules — PHASE 2: NOTIFY`
+-- =====================================================================
+
+-- Act §26D: Notification = notify the PDPC AND notify the individuals.
+GIVEN breach IS A `Data Breach`
+`Notification` breach MEANS
+    `Notify PDPC` breach
+    RAND
+    `Notify Individuals` breach
+
+-- Act §26D(1): within 3 days, if it is a Notifiable Data Breach (and you
+-- are not a public agency), notify the PDPC.
+GIVEN breach IS A `Data Breach`
+`Notify PDPC` breach MEANS
+    IF   `the organisation must notify the PDPC` breach
+    THEN PARTY  `the Organisation`
+         MUST   `notify the PDPC`
+         WITHIN 3
+         HENCE  FULFILLED
+         LEST   BREACH BY `the Organisation`
+                BECAUSE "failed to notify the PDPC within 3 days of assessing the breach as notifiable"
+    ELSE FULFILLED
+
+-- Act §26D(2): within 3 days, notify each of the affected individuals,
+-- unless a §26D(5) remediation or a §26D(6) exclusion applies.
+GIVEN breach IS A `Data Breach`
+`Notify Individuals` breach MEANS
+    IF   `the organisation must notify the affected individuals` breach
+    THEN PARTY  `the Organisation`
+         MUST   `notify the affected individuals`
+         WITHIN 3
+         HENCE  FULFILLED
+         LEST   BREACH BY `the Organisation`
+                BECAUSE "failed to notify the affected individuals within 3 days"
+    ELSE FULFILLED
+
+
+-- =====================================================================
+§§ `Scenario testing`
+-- =====================================================================
+
+-- L4 records have no functional-update syntax, so each scenario is built in
+-- full. Reading a column of values top-to-bottom recovers the "GIVEN" lists of
+-- the legacy spreadsheet scenarios.
+
+-- Advisory Guidelines p130 — Misplaced storage drive.
+-- Loss of storage medium with likely disposal, but the breach occurred only
+-- within the organisation. EXPECT: NOT a Notifiable Data Breach.
+`Misplaced storage drive` MEANS `Data Breach` WITH
+    `unauthorised access`        IS FALSE
+    `unauthorised use`           IS FALSE
+    `unauthorised disclosure`    IS FALSE
+    `unauthorised copying`       IS FALSE
+    `unauthorised modification`  IS FALSE
+    `unauthorised disposal`      IS FALSE
+    `loss of storage medium making an unauthorised act likely` IS TRUE
+    `occurred only within an organisation` IS TRUE
+    `relates to the individual's full name`             IS TRUE
+    `relates to the individual's alias`                 IS FALSE
+    `relates to the individual's identification number` IS FALSE
+    `prescribed personal data involved` IS LIST `13 payment of moneys or transfer of property to the individual`
+    `number of affected individuals` IS 0
+    `organisation took action rendering harm unlikely`     IS FALSE
+    `organisation had implemented a technological measure`  IS FALSE
+    `PDPC has prohibited notification of individuals` IS FALSE
+    `the organisation is a public agency` IS FALSE
+
+#ASSERT NOT (`it is a Notifiable Data Breach` `Misplaced storage drive`)
+
+-- Advisory Guidelines p131 (20.2) — ABC. Unauthorised disclosure; relates to
+-- full name and credit-card number. EXPECT: NDB; notify PDPC and individuals.
+`ABC` MEANS `Data Breach` WITH
+    `unauthorised access`        IS FALSE
+    `unauthorised use`           IS FALSE
+    `unauthorised disclosure`    IS TRUE
+    `unauthorised copying`       IS FALSE
+    `unauthorised modification`  IS FALSE
+    `unauthorised disposal`      IS FALSE
+    `loss of storage medium making an unauthorised act likely` IS FALSE
+    `occurred only within an organisation` IS FALSE
+    `relates to the individual's full name`             IS TRUE
+    `relates to the individual's alias`                 IS FALSE
+    `relates to the individual's identification number` IS FALSE
+    `prescribed personal data involved` IS LIST `3 credit, charge or debit card number`
+    `number of affected individuals` IS 200
+    `organisation took action rendering harm unlikely`     IS FALSE
+    `organisation had implemented a technological measure`  IS FALSE
+    `PDPC has prohibited notification of individuals` IS FALSE
+    `the organisation is a public agency` IS FALSE
+
+#ASSERT `it is a Notifiable Data Breach` `ABC`
+#ASSERT `the organisation must notify the PDPC` `ABC`
+#ASSERT `the organisation must notify the affected individuals` `ABC`
+
+-- Advisory Guidelines p131 (20.2) — DEF and GHI. As ABC, but the PDPC, in
+-- consultation, agrees ABC is best placed to notify, so DEF/GHI are
+-- prohibited from notifying the individuals.
+-- EXPECT: NDB; notify PDPC; do NOT notify individuals.
+`DEF and GHI` MEANS `Data Breach` WITH
+    `unauthorised access`        IS FALSE
+    `unauthorised use`           IS FALSE
+    `unauthorised disclosure`    IS TRUE
+    `unauthorised copying`       IS FALSE
+    `unauthorised modification`  IS FALSE
+    `unauthorised disposal`      IS FALSE
+    `loss of storage medium making an unauthorised act likely` IS FALSE
+    `occurred only within an organisation` IS FALSE
+    `relates to the individual's full name`             IS TRUE
+    `relates to the individual's alias`                 IS FALSE
+    `relates to the individual's identification number` IS FALSE
+    `prescribed personal data involved` IS LIST `3 credit, charge or debit card number`
+    `number of affected individuals` IS 200
+    `organisation took action rendering harm unlikely`     IS FALSE
+    `organisation had implemented a technological measure`  IS FALSE
+    `PDPC has prohibited notification of individuals` IS TRUE
+    `the organisation is a public agency` IS FALSE
+
+#ASSERT `it is a Notifiable Data Breach` `DEF and GHI`
+#ASSERT `the organisation must notify the PDPC` `DEF and GHI`
+#ASSERT NOT (`the organisation must notify the affected individuals` `DEF and GHI`)
+
+-- Advisory Guidelines p138 (20.3) — Unauthorised access of patients' medical
+-- records. 50 affected (below the scale threshold), but significant harm via
+-- identification number + a health-diagnosis category.
+-- EXPECT: NDB; notify PDPC and individuals.
+`Patient records` MEANS `Data Breach` WITH
+    `unauthorised access`        IS TRUE
+    `unauthorised use`           IS FALSE
+    `unauthorised disclosure`    IS FALSE
+    `unauthorised copying`       IS FALSE
+    `unauthorised modification`  IS FALSE
+    `unauthorised disposal`      IS FALSE
+    `loss of storage medium making an unauthorised act likely` IS FALSE
+    `occurred only within an organisation` IS FALSE
+    `relates to the individual's full name`             IS FALSE
+    `relates to the individual's alias`                 IS FALSE
+    `relates to the individual's identification number` IS TRUE
+    `prescribed personal data involved` IS LIST `18 health assessment, diagnosis, treatment or prevention`
+    `number of affected individuals` IS 50
+    `organisation took action rendering harm unlikely`     IS FALSE
+    `organisation had implemented a technological measure`  IS FALSE
+    `PDPC has prohibited notification of individuals` IS FALSE
+    `the organisation is a public agency` IS FALSE
+
+#ASSERT `it is a Notifiable Data Breach` `Patient records`
+#ASSERT `the organisation must notify the PDPC` `Patient records`
+#ASSERT `the organisation must notify the affected individuals` `Patient records`
+
+-- Advisory Guidelines p139 (20.4) — Theft of portable storage drive with hotel
+-- guests' details. 1000 affected (significant scale) and significant harm.
+-- EXPECT: NDB; notify PDPC and individuals.
+`Hotel drive` MEANS `Data Breach` WITH
+    `unauthorised access`        IS TRUE
+    `unauthorised use`           IS FALSE
+    `unauthorised disclosure`    IS FALSE
+    `unauthorised copying`       IS FALSE
+    `unauthorised modification`  IS FALSE
+    `unauthorised disposal`      IS FALSE
+    `loss of storage medium making an unauthorised act likely` IS FALSE
+    `occurred only within an organisation` IS FALSE
+    `relates to the individual's full name`             IS TRUE
+    `relates to the individual's alias`                 IS FALSE
+    `relates to the individual's identification number` IS TRUE
+    `prescribed personal data involved` IS LIST `3 credit, charge or debit card number`
+    `number of affected individuals` IS 1000
+    `organisation took action rendering harm unlikely`     IS FALSE
+    `organisation had implemented a technological measure`  IS FALSE
+    `PDPC has prohibited notification of individuals` IS FALSE
+    `the organisation is a public agency` IS FALSE
+
+#ASSERT `it is a Notifiable Data Breach` `Hotel drive`
+#ASSERT `the organisation must notify the affected individuals` `Hotel drive`
+
+-- Advisory Guidelines p141 (20.7) — Disclosure of 250 students' library loan
+-- history. 250 affected, no significant harm. EXPECT: not significant scale;
+-- NOT a Notifiable Data Breach.
+`Library loans` MEANS `Data Breach` WITH
+    `unauthorised access`        IS FALSE
+    `unauthorised use`           IS FALSE
+    `unauthorised disclosure`    IS TRUE
+    `unauthorised copying`       IS FALSE
+    `unauthorised modification`  IS FALSE
+    `unauthorised disposal`      IS FALSE
+    `loss of storage medium making an unauthorised act likely` IS FALSE
+    `occurred only within an organisation` IS FALSE
+    `relates to the individual's full name`             IS FALSE
+    `relates to the individual's alias`                 IS FALSE
+    `relates to the individual's identification number` IS FALSE
+    `prescribed personal data involved` IS EMPTY
+    `number of affected individuals` IS 250
+    `organisation took action rendering harm unlikely`     IS FALSE
+    `organisation had implemented a technological measure`  IS FALSE
+    `PDPC has prohibited notification of individuals` IS FALSE
+    `the organisation is a public agency` IS FALSE
+
+#ASSERT NOT (`the breach is of significant scale` `Library loans`)
+#ASSERT NOT (`it is a Notifiable Data Breach` `Library loans`)
+
+-- Advisory Guidelines p142 (20.9) — Disclosure of an email attachment with the
+-- personal data of 1000 customers. Significant scale and significant harm, but
+-- the organisation has taken action rendering harm unlikely (§26D(5)).
+-- EXPECT: NDB; notify PDPC; do NOT notify individuals.
+`Remediated email` MEANS `Data Breach` WITH
+    `unauthorised access`        IS FALSE
+    `unauthorised use`           IS FALSE
+    `unauthorised disclosure`    IS TRUE
+    `unauthorised copying`       IS FALSE
+    `unauthorised modification`  IS FALSE
+    `unauthorised disposal`      IS FALSE
+    `loss of storage medium making an unauthorised act likely` IS FALSE
+    `occurred only within an organisation` IS FALSE
+    `relates to the individual's full name`             IS TRUE
+    `relates to the individual's alias`                 IS FALSE
+    `relates to the individual's identification number` IS FALSE
+    `prescribed personal data involved` IS LIST `3 credit, charge or debit card number`
+    `number of affected individuals` IS 1000
+    `organisation took action rendering harm unlikely`     IS TRUE
+    `organisation had implemented a technological measure`  IS FALSE
+    `PDPC has prohibited notification of individuals` IS FALSE
+    `the organisation is a public agency` IS FALSE
+
+#ASSERT `it is a Notifiable Data Breach` `Remediated email`
+#ASSERT `the organisation must notify the PDPC` `Remediated email`
+#ASSERT NOT (`the organisation must notify the affected individuals` `Remediated email`)
+
+
+-- =====================================================================
+§§ `Regulative trace — the happy path`
+-- =====================================================================
+
+-- Drive the Assessment obligation for the ABC scenario: the organisation
+-- assesses in time, then notifies both the PDPC and the individuals in time.
+#EVAL `it is a Notifiable Data Breach` `ABC`
+
+#TRACE `Assessment` `ABC` AT 0 WITH
+    PARTY `the Organisation` DOES `assess whether the breach is notifiable` AT 20
+    PARTY `the Organisation` DOES `notify the PDPC`                         AT 22
+    PARTY `the Organisation` DOES `notify the affected individuals`         AT 22
