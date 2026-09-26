@@ -1,6 +1,6 @@
 # subjects/
 
-One directory per body of law. **Sixteen are listed as at 2026-09-23.** Ten are enacted
+One directory per body of law. **Nineteen subjects are listed as at 2026-09-26**; the first sixteen are described in this paragraph, and the last three, which arrived with the bulk ingestion, below it. Ten are enacted
 law, or announced as law: four Singapore subjects, three pieces of Israeli legislation, one
 US federal regulation, one Act of the UK Parliament and one Law of Jersey. Of the other six, one is a synthetic insurance
 policy, two are commercial standard forms, one is eight private issuers' card T&Cs bundled as
@@ -27,6 +27,11 @@ encoding at all, which the `what it encodes` column says plainly.
 | [`il/penal-law-1977`](il/penal-law-1977) | Penal Law 5737-1977 — theft and robbery (ss 383, 384, 402, 403, 404), encoded in Hebrew with English renderings beside every rule | `draft` |
 | [`il/traffic-ordinance-bac`](il/traffic-ordinance-bac) | Traffic Ordinance [New Version] 5721-1961, s 64B(a) "intoxicated" — the drink-driving alcohol thresholds, with reg. 169A of the Traffic Regulations — on the rule-effective axis either side of the 2010 amendment that lowered the threshold for new, young and professional drivers | `draft` |
 | [`doctrine/contract/unilateral-mistake`](doctrine/contract/unilateral-mistake) | the Singapore doctrine of unilateral mistake in contract — *Chwee Kin Keong v Digilandmall.com* [2005] SGCA 2 — encoded beside three comparators (English common law, *Taylor v Johnson*, Restatement (Second) § 153) against one ontology | `draft` |
+| [`eu/FinMont-demo`](eu/FinMont-demo) | PSD2 strong customer authentication (Commission Delegated Regulation (EU) 2018/389) and refunds and liability under Directive (EU) 2015/2366, orchestrated for one firm — row `legalese-aswathy` | `draft` |
+| [`nz/online-safety-minimum-age-bill-2026`](nz/online-safety-minimum-age-bill-2026) | the Online Safety (Minimum Age and Child Safety Risk Assessment) Bill — row `legalese-michael` | `draft` |
+| [`au/wa/residential-tenancies-act`](au/wa/residential-tenancies-act) | Residential Tenancies Act 1987 (Western Australia) — row `legalese-michael` | `draft` |
+
+Two subjects above carry a second, independent row from the bulk ingestion: `sg/penal-code-1871/encodings/legalese-aswathy/` (the whole Code, Chapters 1–23) beside the `legalese` row, and `il/hvac-work-licensing-2025/encodings/legalese-michael/` (the whole Law, in Hebrew-commented English L4) beside `legalese` and `legalese-he`. Rows are equal; neither is primary.
 
 `sg/child-support` is the odd one and worth knowing about before you read it: its primary
 source is an **announcement, not an enactment**. No Bill has been introduced, so its
@@ -170,80 +175,78 @@ subjects had landed; a fourth landed on 2026-08-27, a fifth on 2026-08-31, the t
 2026-09-07. A README that
 describes a directory it no longer matches is worse than none, because it is believed.)*
 
-**Two directory spellings coexist on `main`.** The subjects listed above follow
-`docs/directory-conventions.md` (on the `docs/directory-conventions` branch): ISO 3166 codes, and each encoding as a row under
-`encodings/<row>/`. The jurisdiction directories below, from the bulk source ingestion,
-use full names and keep any encoding in the subject directory itself. Where one law
-appears under both spellings (Israel's refrigeration and air-conditioning Law, the
-Singapore Penal Code), the two are separate encodings, not copies.
+## The bulk ingestion, by jurisdiction
+
+Every jurisdiction directory uses its ISO 3166 code (`docs/directory-conventions.md` §2): countries and the EU at the top (`sg`, `il`, `nz`, `eu`), subdivisions nested beneath them (`au/wa`, `us/ca`, `ca/on`).
+Most subjects below hold source text and metadata only; where one had already been encoded, the encoding is a row under its `encodings/`, as above.
 
 One directory per jurisdiction, then one directory per body of law inside it.
 
 | jurisdiction | contents |
 | ------------ | -------- |
-| [`western-australia/`](western-australia/) | Western Australian Acts |
-| [`european-union/`](european-union/) | European Union Regulations and Directives |
-| [`singapore/`](singapore/) | Singapore Acts |
-| [`commonwealth-of-australia/`](commonwealth-of-australia/) | Commonwealth of Australia Acts |
-| [`new-south-wales/`](new-south-wales/) | New South Wales Acts |
-| [`victoria/`](victoria/) | Victorian Acts -- **not openly licensed; metadata only** until permission is obtained |
-| [`queensland/`](queensland/) | Queensland Acts |
-| [`south-australia/`](south-australia/) | South Australian Acts |
-| [`tasmania/`](tasmania/) | Tasmanian Acts |
-| [`new-zealand/`](new-zealand/) | New Zealand Acts and Bills |
-| [`united-kingdom/`](united-kingdom/) | United Kingdom Acts (Westminster) |
-| [`australian-capital-territory/`](australian-capital-territory/) | Australian Capital Territory Acts |
-| [`northern-territory/`](northern-territory/) | Northern Territory Acts -- conditional permission; confirm before quoting text |
-| [`united-states/`](united-states/) | United States federal Acts (public domain) |
-| [`california/`](california/) | California code divisions (public domain) |
-| [`new-york/`](new-york/) | New York Consolidated Laws articles |
-| [`texas/`](texas/) | Texas code chapters |
-| [`canada/`](canada/) | Canadian federal Acts -- English and French equally authoritative; conditional permission |
-| [`ontario/`](ontario/) | Ontario statutes -- English and French equally authoritative; conditional permission |
-| [`british-columbia/`](british-columbia/) | British Columbia statutes (King's Printer Licence) |
-| [`india/`](india/) | Indian central Acts -- no reuse licence; not independently spot-checked |
-| [`ireland/`](ireland/) | Irish Acts (Oireachtas PSI Licence, CC BY 4.0) |
-| [`south-africa/`](south-africa/) | South African Acts -- **licence unclear; metadata only** until resolved |
-| [`hong-kong/`](hong-kong/) | Hong Kong ordinances -- **not openly licensed; metadata only**; English and Chinese equally authentic |
-| [`israel/`](israel/) | Israeli Laws (no copyright in statutes, Copyright Act 2007 s 6) -- Hebrew authoritative |
-| [`alabama/`](alabama/) | Alabama (US state) -- **metadata only**; licence decision pending |
-| [`alaska/`](alaska/) | Alaska (US state) -- **metadata only**; licence decision pending |
-| [`arizona/`](arizona/) | Arizona (US state) -- **metadata only**; licence decision pending |
-| [`arkansas/`](arkansas/) | Arkansas (US state) -- **metadata only**; licence decision pending |
-| [`colorado/`](colorado/) | Colorado (US state) -- **metadata only**; licence decision pending |
-| [`connecticut/`](connecticut/) | Connecticut (US state) -- **metadata only**; licence decision pending |
-| [`delaware/`](delaware/) | Delaware (US state) -- **metadata only**; licence decision pending |
-| [`district-of-columbia/`](district-of-columbia/) | District of Columbia (US federal district) -- **metadata only**; licence decision pending |
-| [`florida/`](florida/) | Florida (US state) -- **metadata only**; licence decision pending |
-| [`georgia/`](georgia/) | Georgia (US state) -- **metadata only**; licence decision pending |
-| [`hawaii/`](hawaii/) | Hawaii (US state) -- **metadata only**; licence decision pending |
-| [`indiana/`](indiana/) | Indiana (US state) -- **metadata only**; licence decision pending |
-| [`iowa/`](iowa/) | Iowa (US state) -- **metadata only**; licence decision pending |
-| [`kansas/`](kansas/) | Kansas (US state) -- **metadata only**; licence decision pending |
-| [`kentucky/`](kentucky/) | Kentucky (US state) -- **metadata only**; licence decision pending |
-| [`maine/`](maine/) | Maine (US state) -- **metadata only**; licence decision pending |
-| [`maryland/`](maryland/) | Maryland (US state) -- **metadata only**; licence decision pending |
-| [`minnesota/`](minnesota/) | Minnesota (US state) -- **metadata only**; licence decision pending |
-| [`mississippi/`](mississippi/) | Mississippi (US state) -- **metadata only**; licence decision pending |
-| [`montana/`](montana/) | Montana (US state) -- **metadata only**; licence decision pending |
-| [`new-mexico/`](new-mexico/) | New Mexico (US state) -- **metadata only**; licence decision pending |
-| [`north-dakota/`](north-dakota/) | North Dakota (US state) -- **metadata only**; licence decision pending |
-| [`oklahoma/`](oklahoma/) | Oklahoma (US state) -- **metadata only**; licence decision pending |
-| [`south-carolina/`](south-carolina/) | South Carolina (US state) -- **metadata only**; licence decision pending |
-| [`south-dakota/`](south-dakota/) | South Dakota (US state) -- **metadata only**; licence decision pending |
-| [`tennessee/`](tennessee/) | Tennessee (US state) -- **metadata only**; licence decision pending |
-| [`vermont/`](vermont/) | Vermont (US state) -- **metadata only**; licence decision pending |
-| [`virginia/`](virginia/) | Virginia (US state) -- **metadata only**; licence decision pending |
-| [`washington/`](washington/) | Washington (US state) -- **metadata only**; licence decision pending |
-| [`wyoming/`](wyoming/) | Wyoming (US state) -- **metadata only**; licence decision pending |
-| [`alberta/`](alberta/) | Alberta (Canadian province or territory) -- **metadata only**; licence decision pending |
-| [`manitoba/`](manitoba/) | Manitoba (Canadian province or territory) -- **metadata only**; licence decision pending |
-| [`newfoundland-and-labrador/`](newfoundland-and-labrador/) | Newfoundland and Labrador (Canadian province or territory) -- **metadata only**; licence decision pending |
-| [`northwest-territories/`](northwest-territories/) | Northwest Territories (Canadian province or territory) -- **metadata only**; licence decision pending |
-| [`nova-scotia/`](nova-scotia/) | Nova Scotia (Canadian province or territory) -- **metadata only**; licence decision pending |
-| [`nunavut/`](nunavut/) | Nunavut (Canadian province or territory) -- **metadata only**; licence decision pending |
-| [`quebec/`](quebec/) | Quebec (Canadian province or territory) -- **metadata only**; licence decision pending |
-| [`saskatchewan/`](saskatchewan/) | Saskatchewan (Canadian province or territory) -- **metadata only**; licence decision pending |
+| [`au/wa/`](au/wa/) | Western Australian Acts |
+| [`eu/`](eu/) | European Union Regulations and Directives |
+| [`sg/`](sg/) | Singapore Acts |
+| [`au/`](au/) | Commonwealth of Australia Acts |
+| [`au/nsw/`](au/nsw/) | New South Wales Acts |
+| [`au/vic/`](au/vic/) | Victorian Acts -- **not openly licensed; metadata only** until permission is obtained |
+| [`au/qld/`](au/qld/) | Queensland Acts |
+| [`au/sa/`](au/sa/) | South Australian Acts |
+| [`au/tas/`](au/tas/) | Tasmanian Acts |
+| [`nz/`](nz/) | New Zealand Acts and Bills |
+| [`uk/`](uk/) | United Kingdom Acts (Westminster) |
+| [`au/act/`](au/act/) | Australian Capital Territory Acts |
+| [`au/nt/`](au/nt/) | Northern Territory Acts -- conditional permission; confirm before quoting text |
+| [`us/`](us/) | United States federal Acts (public domain) |
+| [`us/ca/`](us/ca/) | California code divisions (public domain) |
+| [`us/ny/`](us/ny/) | New York Consolidated Laws articles |
+| [`us/tx/`](us/tx/) | Texas code chapters |
+| [`ca/`](ca/) | Canadian federal Acts -- English and French equally authoritative; conditional permission |
+| [`ca/on/`](ca/on/) | Ontario statutes -- English and French equally authoritative; conditional permission |
+| [`ca/bc/`](ca/bc/) | British Columbia statutes (King's Printer Licence) |
+| [`in/`](in/) | Indian central Acts -- no reuse licence; not independently spot-checked |
+| [`ie/`](ie/) | Irish Acts (Oireachtas PSI Licence, CC BY 4.0) |
+| [`za/`](za/) | South African Acts -- **licence unclear; metadata only** until resolved |
+| [`hk/`](hk/) | Hong Kong ordinances -- **not openly licensed; metadata only**; English and Chinese equally authentic |
+| [`il/`](il/) | Israeli Laws (no copyright in statutes, Copyright Act 2007 s 6) -- Hebrew authoritative |
+| [`us/al/`](us/al/) | Alabama (US state) -- **metadata only**; licence decision pending |
+| [`us/ak/`](us/ak/) | Alaska (US state) -- **metadata only**; licence decision pending |
+| [`us/az/`](us/az/) | Arizona (US state) -- **metadata only**; licence decision pending |
+| [`us/ar/`](us/ar/) | Arkansas (US state) -- **metadata only**; licence decision pending |
+| [`us/co/`](us/co/) | Colorado (US state) -- **metadata only**; licence decision pending |
+| [`us/ct/`](us/ct/) | Connecticut (US state) -- **metadata only**; licence decision pending |
+| [`us/de/`](us/de/) | Delaware (US state) -- **metadata only**; licence decision pending |
+| [`us/dc/`](us/dc/) | District of Columbia (US federal district) -- **metadata only**; licence decision pending |
+| [`us/fl/`](us/fl/) | Florida (US state) -- **metadata only**; licence decision pending |
+| [`us/ga/`](us/ga/) | Georgia (US state) -- **metadata only**; licence decision pending |
+| [`us/hi/`](us/hi/) | Hawaii (US state) -- **metadata only**; licence decision pending |
+| [`us/in/`](us/in/) | Indiana (US state) -- **metadata only**; licence decision pending |
+| [`us/ia/`](us/ia/) | Iowa (US state) -- **metadata only**; licence decision pending |
+| [`us/ks/`](us/ks/) | Kansas (US state) -- **metadata only**; licence decision pending |
+| [`us/ky/`](us/ky/) | Kentucky (US state) -- **metadata only**; licence decision pending |
+| [`us/me/`](us/me/) | Maine (US state) -- **metadata only**; licence decision pending |
+| [`us/md/`](us/md/) | Maryland (US state) -- **metadata only**; licence decision pending |
+| [`us/mn/`](us/mn/) | Minnesota (US state) -- **metadata only**; licence decision pending |
+| [`us/ms/`](us/ms/) | Mississippi (US state) -- **metadata only**; licence decision pending |
+| [`us/mt/`](us/mt/) | Montana (US state) -- **metadata only**; licence decision pending |
+| [`us/nm/`](us/nm/) | New Mexico (US state) -- **metadata only**; licence decision pending |
+| [`us/nd/`](us/nd/) | North Dakota (US state) -- **metadata only**; licence decision pending |
+| [`us/ok/`](us/ok/) | Oklahoma (US state) -- **metadata only**; licence decision pending |
+| [`us/sc/`](us/sc/) | South Carolina (US state) -- **metadata only**; licence decision pending |
+| [`us/sd/`](us/sd/) | South Dakota (US state) -- **metadata only**; licence decision pending |
+| [`us/tn/`](us/tn/) | Tennessee (US state) -- **metadata only**; licence decision pending |
+| [`us/vt/`](us/vt/) | Vermont (US state) -- **metadata only**; licence decision pending |
+| [`us/va/`](us/va/) | Virginia (US state) -- **metadata only**; licence decision pending |
+| [`us/wa/`](us/wa/) | Washington (US state) -- **metadata only**; licence decision pending |
+| [`us/wy/`](us/wy/) | Wyoming (US state) -- **metadata only**; licence decision pending |
+| [`ca/ab/`](ca/ab/) | Alberta (Canadian province or territory) -- **metadata only**; licence decision pending |
+| [`ca/mb/`](ca/mb/) | Manitoba (Canadian province or territory) -- **metadata only**; licence decision pending |
+| [`ca/nl/`](ca/nl/) | Newfoundland and Labrador (Canadian province or territory) -- **metadata only**; licence decision pending |
+| [`ca/nt/`](ca/nt/) | Northwest Territories (Canadian province or territory) -- **metadata only**; licence decision pending |
+| [`ca/ns/`](ca/ns/) | Nova Scotia (Canadian province or territory) -- **metadata only**; licence decision pending |
+| [`ca/nu/`](ca/nu/) | Nunavut (Canadian province or territory) -- **metadata only**; licence decision pending |
+| [`ca/qc/`](ca/qc/) | Quebec (Canadian province or territory) -- **metadata only**; licence decision pending |
+| [`ca/sk/`](ca/sk/) | Saskatchewan (Canadian province or territory) -- **metadata only**; licence decision pending |
 
 The directory contract (the "class" — see the repository README for the class/instance
 design) is the subject-sidecar shape defined by the l4-ide orchestrator:

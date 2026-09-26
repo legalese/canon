@@ -24,7 +24,7 @@ The page's only other rights statements are "© Crown and database right" and a 
 legislation.gov.uk specifies no other attribution statement on that page, so the default applies. It is recorded above and in the repository `NOTICE`.
 
 **What could not be re-checked.** On 2026-09-23 a direct request to `https://www.legislation.gov.uk/help` returned HTTP 202 with an empty body: the same WAF challenge that forced the original fetch through the Internet Archive. The Internet Archive's own capture of that page, `20260813162906`, is also the challenge. So the site's help page was not read for this deposit.
-The same OGL conclusion was reached independently on canon `main` for another Westminster Act, `subjects/united-kingdom/nationality-and-borders-act-2022/SOURCE-LICENSE.md` (`1d6aaea`, terms checked 2026-09-22 at `https://www.legislation.gov.uk/help`).
+The same OGL conclusion was reached independently on canon `main` for another Westminster Act, `subjects/uk/nationality-and-borders-act-2022/SOURCE-LICENSE.md` (`1d6aaea`, terms checked 2026-09-22 at `https://www.legislation.gov.uk/help`).
 
 The **encoding** under `encodings/` is licensed under **Apache-2.0**, per the repository `NOTICE`. That licence covers the encoding only and makes no claim over the legislative text.
 
