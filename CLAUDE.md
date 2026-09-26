@@ -28,7 +28,7 @@ Leave `JL4_LIBRARY_PATH` unset.
 
 ## Where things go
 
-The layout is ruled in `docs/directory-conventions.md` (rulings of 2026-08-05), which is on the `docs/directory-conventions` branch and not yet on `main`:
+The layout is ruled in `docs/directory-conventions.md` (rulings of 2026-08-05), which reaches `main` with [#3](https://github.com/legalese/canon/pull/3); until then read it from its branch:
 
 ```bash
 git show origin/docs/directory-conventions:docs/directory-conventions.md
@@ -37,8 +37,8 @@ git show origin/docs/directory-conventions:docs/directory-conventions.md
 In short: `subjects/<jurisdiction>/<slug>/` for the law, with `<jurisdiction>` an ISO 3166 code in lowercase (`sg`, `il`, `us/ca`); `subjects/contracts/<genre>/<slug>/` for contract forms; and each encoding as its own row at `encodings/<row>/`, with an `encoding.json`, a `NOTES.md` and a `SOURCE-LICENSE.md` beside the `.l4`.
 The `encoding-a-subject` skill's `references/canon-deposit.md` walks through it.
 
-**`main` does not follow that layout everywhere yet.** Much of it uses full jurisdiction names (`subjects/israel/`, `subjects/western-australia/`) with the `.l4` directly in the subject directory.
-If the law you are about to encode already has a directory under the other spelling, ask before creating a second one.
+**Until #3 merges, `main` also has a full-name spelling** (`subjects/israel/`, `subjects/western-australia/`), some with the `.l4` directly in the subject directory. #3 moves everything to ISO codes (ruled 2026-09-26: the shorter spelling).
+Before creating a subject, check whether the law already has one under either spelling.
 
 **Where to commit.** Members of the `legalese` GitHub organisation commit straight to `main` (ruled 2026-09-26).
 **Contributions from outside Legalese are welcome**, by the standard GitHub route: fork this repository, commit to a branch of your fork, and open a pull request against `main`.
