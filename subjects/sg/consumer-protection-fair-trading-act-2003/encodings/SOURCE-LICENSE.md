@@ -9,7 +9,7 @@ Legislation Division of the Attorney-General's Chambers of Singapore ("AGC").
   grant in [SSO's Terms of Use](https://sso.agc.gov.sg/Terms-of-Use) cl.13,
   subject to the conditions reproduced below. AGC may modify or revoke that
   permission at any time without notice (cl.14).
-- **Retrieved**: 2026-09-22, from https://sso.agc.gov.sg/Act/CPFTA2003
+- **Retrieved**: PDF created 2026-09-30 (the earlier 2026-09-22 date is when the Act was indexed; see `source/PROVENANCE.md`), from https://sso.agc.gov.sg/Act/CPFTA2003
 - **Excluded from the grant**: graphics and images on SSO, which may not be
   reproduced without AGC's prior written permission (cl.6).
 

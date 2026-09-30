@@ -30,6 +30,7 @@ encoding at all, which the `what it encodes` column says plainly.
 | [`eu/FinMont-demo`](eu/FinMont-demo) | PSD2 strong customer authentication (Commission Delegated Regulation (EU) 2018/389) and refunds and liability under Directive (EU) 2015/2366, orchestrated for one firm — row `legalese-aswathy` | `draft` |
 | [`nz/online-safety-minimum-age-bill-2026`](nz/online-safety-minimum-age-bill-2026) | the Online Safety (Minimum Age and Child Safety Risk Assessment) Bill — row `legalese-michael` | `draft` |
 | [`au/wa/residential-tenancies-act`](au/wa/residential-tenancies-act) | Residential Tenancies Act 1987 (Western Australia) — row `legalese-michael` | `draft` |
+| [`sg/consumer-protection-fair-trading-act-2003`](sg/consumer-protection-fair-trading-act-2003) | Consumer Protection (Fair Trading) Act 2003 — the whole Act (ss 1–44, First, Second, Fourth and Fifth Schedules), every delegation to regulations a named refusal — row `legalese-aswathy` | `draft` |
 
 Two subjects above carry a second, independent row from the bulk ingestion: `sg/penal-code-1871/encodings/legalese-aswathy/` (the whole Code, Chapters 1–23) beside the `legalese` row, and `il/hvac-work-licensing-2025/encodings/legalese-michael/` (the whole Law, in Hebrew-commented English L4) beside `legalese` and `legalese-he`. Rows are equal; neither is primary.
 `sg/penal-code-1871` also has a third row, `encodings/legalese-whole-code/` (2026-09-26): the whole Code again, made in one run of nine agents to the charge generator's contract, with 443 sections encoded and 42 deferred for time.
