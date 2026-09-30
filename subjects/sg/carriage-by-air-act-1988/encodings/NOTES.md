@@ -1,6 +1,6 @@
 # Carriage by Air Act 1988 — encoding notes
 
-Status `draft`. **No domain expert has read this against the source, and no independent test pass has been run** (section 6).
+Status `draft`. **No domain expert has read this against the source.** An independent test pass was run on 2026-09-30 (section 6).
 
 ## 1. What is encoded and what is not
 
@@ -193,7 +193,7 @@ Each reading below is a choice where the text survives more than one. None is ma
 | F2 | Article 20(2) (Second) | "in the carriage of cargo and baggage": whether it reaches damage by delay | destruction, loss or damage of baggage or cargo only | the paragraph is about "negligent pilotage or negligence in the handling of the aircraft or in navigation", which causes destruction and damage |
 | F3 | Article 22(2) (Second) | the weight to take where part of the baggage or cargo is lost | no rule; refuses when other packages are affected | the Second Schedule has no partial-loss paragraph |
 | F4 | Article 26(2) | "forthwith after the discovery ... and, at the latest, within N days": is "forthwith" a condition of the time limit in 26(4) | yes | 26(4) bars an action "failing complaint within the times aforesaid" and the times are those in 26(2) |
-| F5 | Article 13(3) | "at the expiration of seven days after the date on which it ought to have arrived" | from the 8th day | expiration of the seventh day |
+| F5 | Article 13(3) | "at the expiration of seven days after the date on which it ought to have arrived" | from the eighth day after that date (the rule is `asserted GREATER THAN ought PLUS 7`, i.e. from ought + 8; the ninth day if the date itself is counted as day 1) | expiration of the seventh day |
 | F6 | Article 29(2), s 8 | how the two years are counted | by the anniversary date (`add months`; 29 Feb 2024 + 2 years is 28 Feb 2026) | 29(2) leaves the method to the law of the court seised; the rule takes the ordinary one |
 | F7 | Article 25A(3) (First) | the exclusion applies where the damage resulted from the servant's act "done with intent to cause damage or recklessly" | the servant may not avail himself of the limits in that case; the Third confines it to passengers and baggage | the text |
 | F8 | Article 34 | First names Articles 3 to 9, Third Articles 3 to 8 | in both, the documentary provisions do not apply to extraordinary carriage | the difference (Article 9) does not change the answer, since Third's Article 9 keeps the limits in any case |
@@ -225,13 +225,13 @@ caa-types.l4                                   0         0       0
 TOTAL (9 modules)                              0       457       0
 ```
 
-No test is meant to fail. The harness can fail (a scratch file with `#ASSERT 1 EQUALS 2` prints `errors 1, failed 1` and exits 1), so the 0 is not vacuous. The assertions were written from the text of each Article in the Schedule named beside it, on both sides of each threshold, and for every rule that differs between the three texts against each text; **but they were written by the same session that wrote the rules, so this is not the independent test the skill recommends.**
+No test is meant to fail. The harness can fail (a scratch file with `#ASSERT 1 EQUALS 2` prints `errors 1, failed 1` and exits 1), so the 0 is not vacuous. The assertions were written from the text of each Article in the Schedule named beside it, on both sides of each threshold, and for every rule that differs between the three texts against each text; **but they were written by the same session that wrote the rules; the independent pass is `tests-independent.l4` (343 assertions, all satisfied; report in `INDEPENDENT-TEST-REPORT.md`).**
 
 `#TRACE` results are printed, not asserted. Read on 2026-09-30: `the carrier's duty to inform the consignor ...` and `the carrier's duty to give the consignee notice ...` each give `FULFILLED` when the carrier acts.
 
 ## 6. Open questions, and what has not been done
 
-1. **Independent test pass not run.**
+1. **Independent test pass run, 2026-09-30.** A fresh agent fixed its expected answers from the source, then wrote `tests-independent.l4` (343 assertions, 0 failed); it skimmed some rule bodies, so it was not fully blind. Untested by it: Arts 12, 14, 16, 27, 28, 31, 36, 40, 41, content checks for Arts 6 and 8, Art 29(2) month-end counting (F6), Montreal postal carriage, Art 22(5) and (6) conversion. To settle: the Art 13(3) day count (the agent counts the ninth day; F5 above says the eighth, the rule is `ought PLUS 7`), and that Art 21(2) returns FALSE, not REFUSE, for texts with no such provision.
 2. **HG1 (fidelity) has not been sought.** An aviation-law reader should go through 3.1 to 3.3 and forks F1 to F15, particularly F1, F2, F4.
 3. **The pipeline has not been run** on this encoding.
 4. **The source is an unofficial SSO consolidation** (SOURCE-LICENSE.md); the printed Schedules were not compared with the treaty texts or the authentic French text that s 3(2) makes prevail.

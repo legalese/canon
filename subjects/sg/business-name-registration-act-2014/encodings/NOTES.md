@@ -1,6 +1,6 @@
 # Business Names Registration Act 2014 — encoding notes
 
-Status `draft`. **No domain expert has read this against the source, and no independent test pass has been run** (section 6).
+Status `draft`. **No domain expert has read this against the source.** An independent test pass was run on 2026-09-30 (section 6).
 
 ## 1. What is encoded and what is not
 
@@ -207,13 +207,13 @@ bnra-types.l4                                  0         0       0
 TOTAL (11 modules)                             0       619       0
 ```
 
-No test is meant to fail. The harness can fail (a scratch file with `#ASSERT 1 EQUALS 2` prints `errors 1, failed 1` and exits 1), so the 0 is not vacuous. The assertions were written from the text on both sides of each threshold in 3.1; **but they were written by the same session that wrote the rules, so this is not the independent test the skill recommends.**
+No test is meant to fail. The harness can fail (a scratch file with `#ASSERT 1 EQUALS 2` prints `errors 1, failed 1` and exits 1), so the 0 is not vacuous. The assertions were written from the text on both sides of each threshold in 3.1; they were written by the same session that wrote the rules; the independent pass is `tests-independent.l4` (599 assertions, all satisfied; report in `INDEPENDENT-TEST-REPORT.md`).
 
 `#TRACE` results are printed, not asserted (L4 cannot assert them). Read on 2026-09-30, for each of the nine regulative rules: an act on the last day (day 14, day 30 or day 42 as the rule says) gives `FULFILLED`; waiting one day longer gives `DEONTIC BREACHED ... BY` the named party with the section's reason.
 
 ## 6. Open questions, and what has not been done
 
-1. **Independent test pass not run.** `references/second-pass.md` describes a fresh session that writes `tests-independent.l4` from the source before opening the encoding.
+1. **Independent test pass run, 2026-09-30.** A fresh agent fixed its expected answers from the source before opening the encoding, then wrote `tests-independent.l4` (599 assertions, 0 failed). It read the modules for names and signatures, so it was not blind to the logic. Gaps it found: the s 11(12) offence has no field for a failure under s 11(11); s 40(5) counts a partner as an officer but the role list has no partner; s 2(1) "business" for a trade not carried on for gain is ambiguous and untested. Untested: leap-day anniversaries, the regulative deadlines in ss 11(9), 11(11), 19(1), 20(1), 20(3), and the inert provisions. Original note:
 2. **HG1 (fidelity) has not been sought.** A Singapore company-law reader should go section by section, especially ss 4, 11, 17 and 24, and F1 to F15.
 3. **The pipeline has not been run** on this encoding.
 4. **The source is an unofficial SSO consolidation.** No authoritative text was compared. The PDF was downloaded by hand (SOURCE-LICENSE.md).

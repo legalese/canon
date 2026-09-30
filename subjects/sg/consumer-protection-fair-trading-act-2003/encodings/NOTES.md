@@ -199,6 +199,7 @@ Every reading below is a choice where the text survives more than one. None is m
 | F11 | 19(3)(b) | "on demand, produce": is compliance vacuous where no demand was made | the field is TRUE if the card was produced whenever demanded, including where it was never demanded | the duty arises only on demand |
 | F12 | Second Schedule para 26 | the printed quotation ends `money.,` | the encoding takes the intended words, "This is not a bill. You are not required to pay any money." | the trailing comma is an extraction artefact in the PDF text; para 26 says "or words to that effect" |
 | F13 | 9(4)(e), (f) | the individual "must inform the Commission in writing if a notifiable event occurs in a specified period": no time is stated (contrast (d), 14 days) | encoded without a `WITHIN` | adding one would invent it |
+| F14 | 22(1), 22(6) | whether a warrant that names no officer is "valid in form": 22(6) lists only the subject-matter and offences-copy requirements, but 22(1) has the court authorise "by name an investigation officer and one or more authorised assistants" | it is not valid in form; `the warrant is valid in form and in force when exercised` now requires the naming as well | found by the independent test pass (section 6, item 1): an unnamed warrant is not a 22(1) warrant, and nobody could exercise it. Before 2026-09-30 the rule built validity from 22(6) alone. |
 
 **Where I looked and found no fork**: the ss 19 to 25 powers and duties; ss 27 to 30 elements (checked each against "knowing or reckless", "reasonable excuse" and the burden words); s 34(1) (the "lower of" is unambiguous); Part 3's transferee and transferor; s 7(1) and (2). A reviewer should not treat that as proof there are none: fork completeness cannot be established (SKILL step 9).
 
@@ -223,10 +224,11 @@ cpfta-tests-part3b-offences.l4                 0        67       0
 cpfta-tests-part3-goods.l4                     0        70       0
 cpfta-tests-part4-general.l4                   0        41       0
 cpfta-types.l4                                 0         0       0
-TOTAL (15 modules)                             0       626       0
+tests-independent.l4                           0       651       0
+TOTAL (16 modules)                             0      1277       0
 ```
 
-No test is meant to fail. Every assertion passed on its first run; the harness can fail (a scratch file with `#ASSERT 1 EQUALS 2` prints `errors 1, failed 1` and exits 1), so the 0 is not vacuous. The assertions were written from the text of each provision, on both sides of each threshold in 3.1 and both polarities of each Second Schedule paragraph; but they were written by the same session that wrote the rules, so **this is not the independent test the skill recommends**.
+(The first 15 modules, without `tests-independent.l4`, total 626 assertions.) No test is meant to fail. The harness can fail (a scratch file with `#ASSERT 1 EQUALS 2` prints `errors 1, failed 1` and exits 1), so the 0 is not vacuous. The 626 were written from the text of each provision, on both sides of each threshold in 3.1 and both polarities of each Second Schedule paragraph, by the same session that wrote the rules. `tests-independent.l4` is the independent pass (section 6).
 
 `#TRACE` results are printed, not asserted (L4 cannot assert them). Read by eye on 2026-09-30:
 
@@ -235,8 +237,8 @@ No test is meant to fail. Every assertion passed on its first run; the harness c
 
 ## 6. Open questions, and what has not been done
 
-1. **Independent test pass not run.** `references/second-pass.md` describes a fresh session that writes `tests-independent.l4` from the source before opening the encoding. It has not been done; each failing assertion it produced would be a disagreement between two readings.
-2. **HG1 (fidelity) has not been sought.** A Singapore consumer-law reader should go section by section, especially Part 2's records (the Second Schedule constructors have a long field per fact), s 12 (limitation), and F1 to F13.
+1. **Independent test pass run, 2026-09-30.** A fresh agent that had not seen the encoding fixed its expected answers from the source, then wrote `tests-independent.l4` (651 assertions; report in `INDEPENDENT-TEST-REPORT.md`). It disagreed once: an unnamed warrant was valid in form under 22(6) alone. The rule now also requires the naming (F14) and all 651 pass. The agent read the modules for names and signatures, so it was not blind to the logic. Not tested by it: the 14-day duties in 9(4)(d) to (f) and 10(6)(c), F1's partial cases, several edge days (14(3), the warrant's last day, the Fourth Schedule year, leap days in s 12), 8(10) and (11), and the inert provisions.
+2. **HG1 (fidelity) has not been sought.** A Singapore consumer-law reader should go section by section, especially Part 2's records (the Second Schedule constructors have a long field per fact), s 12 (limitation), and F1 to F14.
 3. **The source is an unofficial SSO consolidation.** No authoritative text (the printed 2020 Revised Edition, the Gazette) was compared.
 4. **Is the modelling of "whether the court will" versus "whether the court may" the right level for s 7(5), s 9 and s 10?** The encoding answers availability only.
 5. **s 12 knowledge.** Would a reviewer prefer the three dates (actual, observable, expert-advice) as separate rules per s 12(1)(b)(i) and (ii) (knowledge that a representation is false, versus knowledge that advantage was taken)? They are one date here.
