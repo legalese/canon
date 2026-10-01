@@ -9,7 +9,8 @@
 #     wants "assertion failed" on the Message line, misses it.
 #   * `#ASSERT e` where e refuses prints "assertion refused" at Warning severity. The
 #     skill's script counts it nowhere, so a refusing assertion looks green.
-# This script reads the line after every "Message:" and counts both. It also counts
+# This script reads the line after every "Message:" and counts both. The same fix to
+# the skill's asset is legalese/l4-ide#533. This script also counts
 # "assertion could not be evaluated" as a failure.
 #
 # Why not trust the exit code: `l4 run` exits 0 when an #ASSERT fails or refuses.

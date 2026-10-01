@@ -151,7 +151,7 @@ It did not read `tests-*.l4`, `census.l4`, `CENSUS.md` or this file, and changed
 A `#ASSERT REFUSED` whose expression produces a value prints "assertion failed: …" on the line *after* `Message:`, which the skill's grep misses, so 9 of the 12 showed as errors but not as failures.
 An `#ASSERT` whose expression refuses prints "assertion refused" at Warning severity, which the skill's script counts nowhere at all, so a refusing assertion looks green.
 This row's `check.sh` reads the line after every `Message:` and adds a `refused` column; section 8 has the positive control.
-The skill's asset in `legalese/l4-ide` (`skills/encoding-a-subject/assets/check.sh`, mirrored in `legalese/l4-plugin`) still has the defect.
+The fix to the skill's own asset (`skills/encoding-a-subject/assets/check.sh` in `legalese/l4-ide`, mirrored in `legalese/l4-plugin`) is legalese/l4-ide#533, with the regenerated bundle as legalese/l4-plugin#6; both were open on 2026-10-01.
 
 **What the test author could not express with this encoding's names**, each a limit of the domain rather than a wrong answer:
 
@@ -169,7 +169,7 @@ Every contested reading the encoding could express agreed with the test author's
 Three things about L4 this encoding ran into. All were measured on the binary named in section 8.
 
 - **`JSONDECODE` and `§` headings (smucclaw/l4-ide#947, open).** An enum declared under a `§` heading decodes from JSON as a plain string, and the record that holds it then fails comparison ("assertion could not be evaluated"). `labelling-domain.l4` therefore has no `§` headings, and says so at its top: its records are what a caller sends as JSON over REST or MCP. Measured both ways on 2026-10-01: the same JSON decoded into the same record succeeds without the headings and fails with them.
-- **An inline `JSONDECODE` silently returns `RIGHT OF NOTHING`.** `#EVAL JSONDECODE "<json>"`, or a `JSONDECODE` whose type is fixed only by comparing it to a typed value, decodes nothing and reports success. The same JSON in a definition with `GIVETH AN EITHER STRING <type>` decodes correctly. `fixture-manifests.l4` uses the typed form, and its seven round-trip assertions are the guard. No issue was found for this; it is a candidate to file.
+- **An inline `JSONDECODE` silently returns `RIGHT OF NOTHING`.** `#EVAL JSONDECODE "<json>"`, or a `JSONDECODE` whose type is fixed only by comparing it to a typed value, decodes nothing and reports success. The same JSON in a definition with `GIVETH AN EITHER STRING <type>` decodes correctly. `fixture-manifests.l4` uses the typed form, and its seven round-trip assertions are the guard. Filed as smucclaw/l4-ide#993 on 2026-10-01, with a minimal repro and the mechanism (an untyped fallback that returns `NOTHING` for any JSON object).
 - **An imported mixfix that ends in a keyword cannot be called.** A function defined as `` `the generator with` users `monthly users` `` works in its own module, but a call from an importing module fails with "expects 1 input, but here it is given 2". The test kit uses a prefix form instead.
 
 Smaller syntax notes, all loud: in a one-line `GIVEN`, `x IS A LIST OF T, y IS A U` reads `T, y` as type arguments (put each input on its own line); a mixfix keyword may not share a name with the input it labels; `#ASSERT … BECAUSE` may continue onto a second line but `#ASSERT … EQUALS` may not.
