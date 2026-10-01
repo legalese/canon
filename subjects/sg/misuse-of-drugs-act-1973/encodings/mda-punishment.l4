@@ -1,0 +1,368 @@
+IMPORT prelude
+IMPORT `mda-types`
+IMPORT `mda-second-schedule`
+IMPORT `mda-section-punishments`
+
+-- Misuse of Drugs Act 1973, s 33 (punishment for offences), s 33A (repeat consumption of specified drugs), s 33B (discretion not to impose death) and
+-- the Second Schedule, which s 33(1) says "has effect ... with respect to the way in which offences under this Act are punishable on conviction".
+-- Source: source/MDA1973.txt lines 2429 to 3022 (ss 33, 33A, 33B), 5869 to 6770 (the Second Schedule).
+--
+-- The question this module answers: WHAT IS THE PUNISHMENT ON CONVICTION?  The answer is a `Punishment`: the printed minimum and maximum, not a sentence.
+-- The order of precedence is the Act's: s 33(1) says the Second Schedule has effect "except as provided in subsection (3B), (4A), (4B) or (4C) or under
+-- section 33A", and s 33(4D) says the punishment of (4A) or (4B) "applies only if the punishment as shown in the sixth column of the Second Schedule is not
+-- applicable".  So, for trafficking, import and export: the sixth column (a specified drug or quantity) first; then the repeat band of s 33(4A) or the
+-- enhanced band of s 33(4B); then the Schedule's class columns.  For possession: the sixth column, with s 33(3B) for a repeat offender where the row says
+-- it is "subject to section 33(3B)".  For consumption and failures to provide a specimen: s 33A, then ss 33(4), (4AA), (4AB), then s 33(3A).
+-- Where the Schedule does not say (no row; two sixth-column rows with different punishments) the answer is REFUSE, not a guess.
+
+§ `The Second Schedule: finding the row`
+
+@ref "Misuse of Drugs Act 1973, Second Schedule, first column"
+GIVEN section IS A STRING
+GIVETH A LIST OF `Second Schedule Row`
+`the Second Schedule rows for the section` MEANS
+    filter (GIVEN r YIELD r's `section creating the offence` EQUALS section) `the Second Schedule`
+
+-- A band: "not less than 330 grammes and not more than 500 grammes" is both ends inclusive; "more than 500 grammes" has no upper end and an exclusive
+-- lower end; "less than 330 grammes" has no lower end and an exclusive upper end.  0 is "no bound".  The quantity must be greater than 0: a case with no
+-- cannabis in it is not "less than 330 grammes of cannabis".  An opium band also asks for the morphine the opium contains.
+@ref "Misuse of Drugs Act 1973, Second Schedule, sixth column; s 33(2)(b)"
+GIVEN b IS A `Quantity Band`, w IS A NUMBER, m IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the quantity falls within the band` IF
+        w GREATER THAN 0
+    AND (   b's `lower bound in grammes` EQUALS 0
+         OR (b's `lower bound is inclusive` AND w AT LEAST b's `lower bound in grammes`)
+         OR ((NOT b's `lower bound is inclusive`) AND (w GREATER THAN b's `lower bound in grammes`)))
+    AND (   b's `upper bound in grammes` EQUALS 0
+         OR (b's `upper bound is inclusive` AND w AT MOST b's `upper bound in grammes`)
+         OR ((NOT b's `upper bound is inclusive`) AND (w LESS THAN b's `upper bound in grammes`)))
+    AND (   b's `morphine in the opium, lower bound in grammes` EQUALS 0
+         OR (b's `morphine in the opium, lower bound is inclusive` AND m AT LEAST b's `morphine in the opium, lower bound in grammes`)
+         OR ((NOT b's `morphine in the opium, lower bound is inclusive`) AND (m GREATER THAN b's `morphine in the opium, lower bound in grammes`)))
+
+-- What a sixth-column row measures.  On manufacture the Schedule names the drug and not a quantity: the quantity is 1 if the drug manufactured is that
+-- drug, 0 if it is not, so the row's bound (none) is met exactly when it is.
+@ref "Misuse of Drugs Act 1973, Second Schedule, sixth column; s 33(2)(b)(i) and (ii)"
+GIVEN r IS A `Second Schedule Row`, q IS A `Drug Quantity Facts`, sq IS A `Scheduled Quantity Facts`
+GIVETH A NUMBER
+`the quantity a row measures` MEANS
+    CONSIDER r's `quantity of`
+    WHEN `Opium` THEN q's `the weight of opium in grammes`
+    WHEN `Morphine in a controlled drug, opium excluded` THEN q's `the weight of morphine in the controlled drug, opium excluded, in grammes`
+    WHEN `Diamorphine` THEN q's `the weight of diamorphine in grammes`
+    WHEN `Cocaine` THEN q's `the weight of cocaine in grammes`
+    WHEN `Cannabis` THEN q's `the weight of cannabis in grammes`
+    WHEN `Cannabis mixture` THEN q's `the weight of cannabis mixture in grammes`
+    WHEN `Cannabis resin` THEN q's `the weight of cannabis resin in grammes`
+    WHEN `Methamphetamine` THEN q's `the weight of methamphetamine in grammes`
+    WHEN `Manufacture of morphine or a salt, ester or salt of ester of morphine` THEN
+        BRANCH IF sq's `the drug manufactured is morphine or a salt, ester or salt of ester of morphine` THEN 1 OTHERWISE 0
+    WHEN `Manufacture of diamorphine or a salt of diamorphine` THEN
+        BRANCH IF sq's `the drug manufactured is diamorphine or a salt of diamorphine` THEN 1 OTHERWISE 0
+    WHEN `Manufacture of cocaine or a salt of cocaine` THEN
+        BRANCH IF sq's `the drug manufactured is cocaine or a salt of cocaine` THEN 1 OTHERWISE 0
+    WHEN `Manufacture of methamphetamine or a salt of methamphetamine` THEN
+        BRANCH IF sq's `the drug manufactured is methamphetamine or a salt of methamphetamine` THEN 1 OTHERWISE 0
+    WHEN `Nothing specified` THEN 0
+
+@ref "Misuse of Drugs Act 1973, Second Schedule, sixth column"
+GIVEN r IS A `Second Schedule Row`, q IS A `Drug Quantity Facts`, sq IS A `Scheduled Quantity Facts`
+GIVETH A BOOLEAN
+DECIDE `the sixth column row is engaged` IF
+        r's `column` EQUALS `Sixth column: a specified drug or quantity`
+    AND NOT r's `the row is residual: it applies only where no more specific row of the same section applies`
+    AND `the quantity falls within the band` (r's `quantity band`) (`the quantity a row measures` r q sq) (q's `the weight of morphine in the opium in grammes`)
+
+@ref "Misuse of Drugs Act 1973, Second Schedule, sixth column; s 33(4D)"
+GIVEN section IS A STRING, q IS A `Drug Quantity Facts`, sq IS A `Scheduled Quantity Facts`
+GIVETH A LIST OF `Second Schedule Row`
+`the sixth column rows that apply` MEANS
+    filter (GIVEN r YIELD `the sixth column row is engaged` r q sq) (`the Second Schedule rows for the section` section)
+
+@ref "Misuse of Drugs Act 1973, s 33(4D)"
+GIVEN section IS A STRING, q IS A `Drug Quantity Facts`, sq IS A `Scheduled Quantity Facts`
+GIVETH A BOOLEAN
+DECIDE `the sixth column punishment applies` IF
+    NOT null (`the sixth column rows that apply` section q sq)
+
+-- The rows that apply when no sixth-column row is engaged: the class-column row for the drug's class (sections 5, 6, 7, whose class columns are "except as
+-- otherwise provided in this Schedule", and sections 11 and 11E, whose class columns are the whole of the punishment) and the sixth-column possession row
+-- 8(a)(9) ("except as otherwise provided in this Schedule"), which is flagged residual.
+@ref "Misuse of Drugs Act 1973, Second Schedule, 'except as otherwise provided in this Schedule'"
+GIVEN r IS A `Second Schedule Row`, class IS A `Drug Class`
+GIVETH A BOOLEAN
+DECIDE `the row is a residual row for the class` IF
+        (   r's `the row is residual: it applies only where no more specific row of the same section applies`
+        AND r's `column` EQUALS `Sixth column: a specified drug or quantity`)
+    OR  (   r's `column` EQUALS `Third to fifth columns: by the class of drug`
+        AND r's `class of drug` EQUALS class)
+
+@ref "Misuse of Drugs Act 1973, Second Schedule, 'except as otherwise provided in this Schedule'"
+GIVEN section IS A STRING, class IS A `Drug Class`
+GIVETH A LIST OF `Second Schedule Row`
+`the residual rows that apply` MEANS
+    filter (GIVEN r YIELD `the row is a residual row for the class` r class) (`the Second Schedule rows for the section` section)
+
+@ref "Misuse of Drugs Act 1973, Second Schedule, seventh column; s 33(2)(c)"
+GIVEN section IS A STRING
+GIVETH A LIST OF `Second Schedule Row`
+`the general column rows` MEANS
+    filter (GIVEN r YIELD r's `column` EQUALS `Seventh column: general`) (`the Second Schedule rows for the section`  section)
+
+@ref "Misuse of Drugs Act 1973, s 33(3)"
+GIVEN a IS A `Punishment`, b IS A `Punishment`
+GIVETH A BOOLEAN
+DECIDE `the two punishments are the same` IF
+        a's `the punishment is death` EQUALS b's `the punishment is death`
+    AND a's `imprisonment for life is a possible sentence` EQUALS b's `imprisonment for life is a possible sentence`
+    AND a's `the maximum imprisonment in months` EQUALS b's `the maximum imprisonment in months`
+    AND a's `the minimum imprisonment in months` EQUALS b's `the minimum imprisonment in months`
+    AND a's `the maximum fine in dollars` EQUALS b's `the maximum fine in dollars`
+    AND a's `the minimum fine in dollars` EQUALS b's `the minimum fine in dollars`
+    AND a's `the minimum strokes of the cane` EQUALS b's `the minimum strokes of the cane`
+    AND a's `the maximum strokes of the cane` EQUALS b's `the maximum strokes of the cane`
+    AND a's `imprisonment, fine or both may be imposed in the alternative` EQUALS b's `imprisonment, fine or both may be imposed in the alternative`
+
+-- The row that governs: a sixth-column row that is engaged; if there is none, the residual row for the class (or the sixth-column residual); if there is
+-- none, a seventh-column row.  Where several sixth-column rows are engaged by one drug (a drug containing both diamorphine and cocaine) and they print
+-- different punishments, the Schedule does not say which governs, and the answer is REFUSE (fork F4 in NOTES.md).
+@ref "Misuse of Drugs Act 1973, Second Schedule; s 33(1) and (2)"
+GIVEN section IS A STRING, class IS A `Drug Class`, q IS A `Drug Quantity Facts`, sq IS A `Scheduled Quantity Facts`
+GIVETH A `Second Schedule Row`
+`the Second Schedule row that governs` MEANS
+    BRANCH IF     count (`the sixth column rows that apply` section q sq) EQUALS 1
+              THEN at (`the sixth column rows that apply` section q sq) 0
+           IF     count (`the sixth column rows that apply` section q sq) GREATER THAN 1
+              AND null (filter (GIVEN r YIELD NOT `the two punishments are the same` (r's `punishment`) ((at (`the sixth column rows that apply` section q sq) 0)'s `punishment`))
+                               (`the sixth column rows that apply` section q sq))
+              THEN at (`the sixth column rows that apply` section q sq) 0
+           IF     count (`the sixth column rows that apply` section q sq) GREATER THAN 1
+              THEN REFUSE "Second Schedule: more than one sixth-column row applies and they print different punishments; the Schedule does not say which governs"
+           IF     count (`the residual rows that apply` section class) EQUALS 1
+              THEN at (`the residual rows that apply` section class) 0
+           IF     count (`the general column rows` section) EQUALS 1
+              THEN at (`the general column rows` section) 0
+           OTHERWISE REFUSE "Second Schedule: no row for this offence section and class"
+
+@ref "Misuse of Drugs Act 1973, Second Schedule; s 33(1) and (2)"
+GIVEN section IS A STRING, class IS A `Drug Class`, q IS A `Drug Quantity Facts`, sq IS A `Scheduled Quantity Facts`
+GIVETH A `Punishment`
+`the Second Schedule punishment` MEANS
+    (`the Second Schedule row that governs` section class q sq)'s `punishment`
+
+§ `The punishments the sections state: finding the band`
+
+@ref "Misuse of Drugs Act 1973, the sections named in each row"
+GIVEN offence IS A STRING, band IS A `Punishment Band`
+GIVETH A LIST OF `Section Punishment Row`
+`the section punishment rows` MEANS
+    filter (GIVEN r YIELD r's `offence` EQUALS offence AND r's `band` EQUALS band) `the punishments the sections state`
+
+@ref "Misuse of Drugs Act 1973, the sections named in each row"
+GIVEN offence IS A STRING, band IS A `Punishment Band`
+GIVETH A `Punishment`
+`the punishment the sections state for the band` MEANS
+    BRANCH IF count (`the section punishment rows` offence band) EQUALS 1
+           THEN (at (`the section punishment rows` offence band) 0)'s `punishment`
+           OTHERWISE REFUSE "the sections state no such band for this offence"
+
+-- The enhanced band, where the facts engage it, prevails over the repeat band ("Subject to subsection (5)" in 11F(4); "Subject to subsection (4)" in
+-- 11H(3)); the repeat band prevails over the base band ("Subject to subsection (3A)" in 11B(3)).
+@ref "Misuse of Drugs Act 1973, ss 11B(3), 11C(2), 11D(3), 11F(3) to (5), 11H(2) to (4), 11M(2) and (3), 11N(3), 11O(2), 11P(3)"
+GIVEN offence IS A STRING, `the repeat band is engaged` IS A BOOLEAN, `the enhanced band is engaged` IS A BOOLEAN
+GIVETH A `Punishment`
+`the punishment the section states for the offence` MEANS
+    BRANCH IF     `the enhanced band is engaged` AND NOT null (`the section punishment rows` offence `Enhanced band`)
+              THEN `the punishment the sections state for the band` offence `Enhanced band`
+           IF     `the repeat band is engaged` AND NOT null (`the section punishment rows` offence `Repeat band`)
+              THEN `the punishment the sections state for the band` offence `Repeat band`
+           OTHERWISE `the punishment the sections state for the band` offence `Base band`
+
+§ `33(4A), (4B), (4D). Trafficking, import and export`
+
+@ref "Misuse of Drugs Act 1973, s 33(4A) and (4B)"
+GIVEN c IS A `Drug Class`
+GIVETH A STRING
+`the label of the section 33(4A) and (4B) bands` MEANS
+    CONSIDER c
+    WHEN `Class A drug` THEN "5(1) or 7, Class A drug"
+    WHEN `Class B drug` THEN "5(1) or 7, Class B drug"
+    WHEN `Class C drug` THEN "5(1) or 7, Class C drug"
+    WHEN `Not in any class` THEN "5(1) or 7, not in any class"
+
+-- 33(4A): a person convicted under 5(1), 7, 11F(1) or 11H(1) and again convicted under 5(1) or 7.  33(4B): a person 21 or older convicted under 5(1)
+-- or 7 where the intended recipient is a young person or a vulnerable person.  Both give the same figures by class.  33(4D): they apply "only if the
+-- punishment as shown in the sixth column ... is not applicable".  The offence section ("5" or "7") picks the Schedule's rows; the class is the drug's.
+@ref "Misuse of Drugs Act 1973, s 33(1), (4A), (4B), (4D); Second Schedule, ss 5 and 7"
+GIVEN section IS A STRING, class IS A `Drug Class`, q IS A `Drug Quantity Facts`, sq IS A `Scheduled Quantity Facts`, a IS AN `Antecedent Facts`
+GIVETH A `Punishment`
+`the punishment on conviction of an offence under section 5(1) or 7` MEANS
+    BRANCH IF `the sixth column punishment applies` section q sq
+              THEN `the Second Schedule punishment` section class q sq
+           IF a's `the accused has a previous conviction under section 5(1), 7, 11F(1) or 11H(1)`
+              THEN `the punishment the sections state for the band` (`the label of the section 33(4A) and (4B) bands` class) `Repeat band`
+           IF a's `the accused is 21 years of age or older` AND a's `the intended recipient of the controlled drug is a young person or a vulnerable person`
+              THEN `the punishment the sections state for the band` (`the label of the section 33(4A) and (4B) bands` class) `Enhanced band`
+           OTHERWISE `the Second Schedule punishment` section class q sq
+
+§ `33(3B). Possession`
+
+-- 33(3B): a person with a previous conviction under 8(a) or 11I(1)(a) who is convicted of an offence under 8(a) that the sixth column of the Second
+-- Schedule specifies is subject to this subsection is punished with imprisonment of 2 to 10 years and is also liable to a fine not exceeding $20,000.
+@ref "Misuse of Drugs Act 1973, s 33(3B); Second Schedule, 8(a), sixth column"
+GIVEN class IS A `Drug Class`, q IS A `Drug Quantity Facts`, sq IS A `Scheduled Quantity Facts`, a IS AN `Antecedent Facts`
+GIVETH A `Punishment`
+`the punishment on conviction of an offence under section 8(a)` MEANS
+    BRANCH IF     (`the Second Schedule row that governs` "8(a)" class q sq)'s `the punishment is subject to section 33(3B)`
+              AND a's `the accused has a previous conviction under section 8(a) or 11I(1)(a)`
+              THEN `the punishment the sections state for the band` "8(a)" `Repeat band`
+           OTHERWISE `the Second Schedule punishment` "8(a)" class q sq
+
+§ `33A. Repeat consumption of specified drugs; failure to provide a specimen`
+
+-- 33A(1): a person who has not less than (a) 2 previous admissions; (b) 2 previous convictions for consumption of a specified drug under 8(b); (c) 2 for
+-- failure to provide a urine specimen under 31(2); (d) one previous admission and one previous conviction under 8(b) for a specified drug; (e) one admission
+-- and one conviction under 31(2); or (f) one conviction under 8(b) for a specified drug and one under 31(2), and is convicted of an offence under 8(b) for
+-- consumption of a specified drug or under 31(2), is punished with 5 to 7 years and 3 to 6 strokes.  33A(1A): the same list, for an offence under 31A(2)
+-- committed on or after 1 April 2019.
+@ref "Misuse of Drugs Act 1973, s 33A(1)(a) to (f)"
+GIVEN a IS AN `Antecedent Facts`
+GIVETH A BOOLEAN
+DECIDE `the antecedents are those of section 33A(1)(a) to (f)` IF
+        a's `the number of the accused's previous admissions` AT LEAST 2
+    OR  a's `the number of the accused's previous convictions for consumption of a specified drug under section 8(b)` AT LEAST 2
+    OR  a's `the number of the accused's previous convictions for failure to provide a urine specimen under section 31(2)` AT LEAST 2
+    OR  (   a's `the number of the accused's previous admissions` AT LEAST 1
+        AND a's `the number of the accused's previous convictions for consumption of a specified drug under section 8(b)` AT LEAST 1)
+    OR  (   a's `the number of the accused's previous admissions` AT LEAST 1
+        AND a's `the number of the accused's previous convictions for failure to provide a urine specimen under section 31(2)` AT LEAST 1)
+    OR  (   a's `the number of the accused's previous convictions for consumption of a specified drug under section 8(b)` AT LEAST 1
+        AND a's `the number of the accused's previous convictions for failure to provide a urine specimen under section 31(2)` AT LEAST 1)
+
+-- 33A(1B), for an offence committed on or after 1 April 2019 of consumption of a specified drug under 8(b), failure to provide a urine specimen under 31(2)
+-- or a hair specimen under 31A(2): not less than (a) 2 previous convictions under section 34 of the Singapore Armed Forces Act 1972 for consumption of a
+-- specified drug; (b) one admission and one such conviction; (c) one such conviction and one under 31(2); (d) 2 under 31A(2); (e) one admission and one
+-- under 31A(2); (f) one under 8(b) for a specified drug and one under 31A(2); (g) one under 8(b) and one such military conviction; (h) one such military
+-- conviction and one under 31A(2); (i) one under 31(2) and one under 31A(2).
+@ref "Misuse of Drugs Act 1973, s 33A(1B)(a) to (i)"
+GIVEN a IS AN `Antecedent Facts`
+GIVETH A BOOLEAN
+DECIDE `the antecedents are those of section 33A(1B)(a) to (i)` IF
+        a's `the number of the accused's previous convictions for consumption of a specified drug under section 34 of the Singapore Armed Forces Act 1972` AT LEAST 2
+    OR  (   a's `the number of the accused's previous admissions` AT LEAST 1
+        AND a's `the number of the accused's previous convictions for consumption of a specified drug under section 34 of the Singapore Armed Forces Act 1972` AT LEAST 1)
+    OR  (   a's `the number of the accused's previous convictions for consumption of a specified drug under section 34 of the Singapore Armed Forces Act 1972` AT LEAST 1
+        AND a's `the number of the accused's previous convictions for failure to provide a urine specimen under section 31(2)` AT LEAST 1)
+    OR  a's `the number of the accused's previous convictions for failure to provide a hair specimen under section 31A(2)` AT LEAST 2
+    OR  (   a's `the number of the accused's previous admissions` AT LEAST 1
+        AND a's `the number of the accused's previous convictions for failure to provide a hair specimen under section 31A(2)` AT LEAST 1)
+    OR  (   a's `the number of the accused's previous convictions for consumption of a specified drug under section 8(b)` AT LEAST 1
+        AND a's `the number of the accused's previous convictions for failure to provide a hair specimen under section 31A(2)` AT LEAST 1)
+    OR  (   a's `the number of the accused's previous convictions for consumption of a specified drug under section 8(b)` AT LEAST 1
+        AND a's `the number of the accused's previous convictions for consumption of a specified drug under section 34 of the Singapore Armed Forces Act 1972` AT LEAST 1)
+    OR  (   a's `the number of the accused's previous convictions for consumption of a specified drug under section 34 of the Singapore Armed Forces Act 1972` AT LEAST 1
+        AND a's `the number of the accused's previous convictions for failure to provide a hair specimen under section 31A(2)` AT LEAST 1)
+    OR  (   a's `the number of the accused's previous convictions for failure to provide a urine specimen under section 31(2)` AT LEAST 1
+        AND a's `the number of the accused's previous convictions for failure to provide a hair specimen under section 31A(2)` AT LEAST 1)
+
+-- Which of 33A(1), (1A), (1B) the offence engages: (1) is for 8(b) of a specified drug and for 31(2); (1A) is for 31A(2) committed on or after 1 April
+-- 2019; (1B) is for any of the three committed on or after 1 April 2019.
+@ref "Misuse of Drugs Act 1973, s 33A(1), (1A) and (1B)"
+GIVEN o IS A `Consumption Offence`, a IS AN `Antecedent Facts`
+GIVETH A BOOLEAN
+DECIDE `section 33A(1), (1A) or (1B) applies` IF
+        (   (   (   o EQUALS `Consumption of a specified drug (section 8(b)(ii))`
+                 OR o EQUALS `Failure to provide a urine specimen (section 31(2))`)
+            AND `the antecedents are those of section 33A(1)(a) to (f)` a)
+         OR (   o EQUALS `Failure to provide a hair specimen (section 31A(2))`
+            AND a's `the offence was committed on or after 1 April 2019`
+            AND `the antecedents are those of section 33A(1)(a) to (f)` a)
+         OR (   (   o EQUALS `Consumption of a specified drug (section 8(b)(ii))`
+                 OR o EQUALS `Failure to provide a urine specimen (section 31(2))`
+                 OR o EQUALS `Failure to provide a hair specimen (section 31A(2))`)
+            AND a's `the offence was committed on or after 1 April 2019`
+            AND `the antecedents are those of section 33A(1B)(a) to (i)` a))
+
+-- 33(4): a person with a previous conviction under 8(b) or 31(2) who is again convicted of 8(b) or 31(2) is punished with not less than 3 years.
+-- 33(4AA): a person with a previous conviction under 11I(1)(b) or 31A(2), or a previous admission, or a previous conviction under section 34 of the
+-- Singapore Armed Forces Act 1972 for consumption, convicted of 8(b) or 31(2) committed on or after 1 April 2019: not less than 3 years.  33(4AB): a person
+-- with any of those or a previous conviction under 8(b) or 31(2), convicted of 31A(2) committed on or after 1 April 2019: not less than 3 years.  (All
+-- "unless he or she is punished under section 33A for that same offence".)
+@ref "Misuse of Drugs Act 1973, s 33(4), (4AA) and (4AB)"
+GIVEN o IS A `Consumption Offence`, a IS AN `Antecedent Facts`
+GIVETH A BOOLEAN
+DECIDE `section 33(4), (4AA) or (4AB) applies` IF
+        (   (   o EQUALS `Consumption of a specified drug (section 8(b)(ii))`
+             OR o EQUALS `Consumption of another controlled drug (section 8(b)(i))`
+             OR o EQUALS `Failure to provide a urine specimen (section 31(2))`)
+        AND (   a's `the accused has a previous conviction under section 8(b) or 31(2)`
+             OR (   a's `the offence was committed on or after 1 April 2019`
+                AND (   a's `the accused has a previous conviction under section 11I(1)(b) or 31A(2)`
+                     OR a's `the accused has a previous admission under section 34(2) to an approved institution`
+                     OR a's `the accused has a previous conviction for consumption of a controlled drug or psychoactive substance under section 34 of the Singapore Armed Forces Act 1972`))))
+    OR  (   o EQUALS `Failure to provide a hair specimen (section 31A(2))`
+        AND a's `the offence was committed on or after 1 April 2019`
+        AND (   a's `the accused has a previous conviction under section 8(b), 11I(1)(b), 31(2) or 31A(2)`
+             OR a's `the accused has a previous admission under section 34(2) to an approved institution`
+             OR a's `the accused has a previous conviction for consumption of a controlled drug or psychoactive substance under section 34 of the Singapore Armed Forces Act 1972`))
+
+-- An offence under 8(b), 31(2) or 31A(2) committed BEFORE 1 April 2019 is not punished by 33(3A) (which says "committed on or after 1 April 2019"), and the
+-- Act as it stood then is not in this text: the answer is REFUSE.
+@ref "Misuse of Drugs Act 1973, ss 33(3A), 33(4), 33(4AA), 33(4AB), 33A(1), (1A), (1B), (2)"
+GIVEN o IS A `Consumption Offence`, a IS AN `Antecedent Facts`
+GIVETH A `Punishment`
+`the punishment on conviction of consumption or of failing to provide a specimen` MEANS
+    BRANCH IF     a's `the accused has been convicted under section 33A(1), (1A) or (1B)`
+              AND NOT (o EQUALS `Consumption of another controlled drug (section 8(b)(i))`)
+              THEN `the punishment the sections state for the band` "8(b) for a specified drug, 31(2) or 31A(2)" `Enhanced band`
+           IF `section 33A(1), (1A) or (1B) applies` o a
+              THEN `the punishment the sections state for the band` "8(b) for a specified drug, 31(2) or 31A(2)" `Repeat band`
+           IF `section 33(4), (4AA) or (4AB) applies` o a
+              THEN `the punishment the sections state for the band` "8(b), 31(2) or 31A(2)" `Repeat band`
+           IF a's `the offence was committed on or after 1 April 2019`
+              THEN `the punishment the sections state for the band` "8(b), 31(2) or 31A(2)" `Base band`
+           OTHERWISE REFUSE "8(b), 31(2) or 31A(2) committed before 1 April 2019: section 33(3A) does not apply and the Act as it then stood is not encoded"
+
+-- 33(3C) and (3D): consumption of a psychoactive substance.  (3D): a previous conviction under 8(b), 11I(1)(b), 31(2) or 31A(2), a previous admission
+-- under 34(2), or a previous conviction under section 34 of the Singapore Armed Forces Act 1972 for consumption, gives 3 to 10 years.
+@ref "Misuse of Drugs Act 1973, s 33(3C) and (3D)"
+GIVEN a IS AN `Antecedent Facts`
+GIVETH A `Punishment`
+`the punishment on conviction of an offence under section 11I(1)(b)` MEANS
+    BRANCH IF     a's `the accused has a previous conviction under section 8(b), 11I(1)(b), 31(2) or 31A(2)`
+               OR a's `the accused has a previous admission under section 34(2) to an approved institution`
+               OR a's `the accused has a previous conviction for consumption of a controlled drug or psychoactive substance under section 34 of the Singapore Armed Forces Act 1972`
+              THEN `the punishment the sections state for the band` "11I(1)(b)" `Repeat band`
+           OTHERWISE `the punishment the sections state for the band` "11I(1)(b)" `Base band`
+
+-- 33(4C): a person 21 or older convicted under 11A where the gathering consists of a young person or a vulnerable person: 5 to 20 years and 3 to 10 strokes.
+@ref "Misuse of Drugs Act 1973, ss 11A(1), 33(4C)"
+GIVEN a IS AN `Antecedent Facts`
+GIVETH A `Punishment`
+`the punishment on conviction of an offence under section 11A` MEANS
+    `the punishment the section states for the offence` "11A" FALSE (a's `the accused is 21 years of age or older` AND a's `the gathering consists of a young person or a vulnerable person`)
+
+§ `33B. Discretion of the court not to impose the sentence of death`
+
+-- 33B(1): where a person commits or attempts to commit an offence under 5(1) or 7 punishable with death under the sixth column and is convicted, the court
+-- (a) MAY, if the person satisfies 33B(2), instead of death sentence him to imprisonment for life and, if so, caning of not less than 15 strokes; or
+-- (b) SHALL, if the person satisfies 33B(3), instead of death sentence him to imprisonment for life.  33B(2): the person proves on a balance of
+-- probabilities that his involvement was restricted to transporting, sending or delivering, offering to, an act preparatory, or a combination, AND the Public
+-- Prosecutor certifies that, in his determination, the person has substantively assisted the Central Narcotics Bureau in disrupting drug trafficking
+-- activities.  33B(3): the same restriction AND the person proves on a balance of probabilities that he was suffering from such abnormality of mind as
+-- substantially impaired his mental responsibility.  33B(4): the Public Prosecutor's determination is at his sole discretion and no action lies unless
+-- bad faith or malice is proved: the certificate is a fact, and the encoding does not review it.
+@ref "Misuse of Drugs Act 1973, s 33B(1) to (4)"
+GIVEN s IS A `Section 33B Facts`
+GIVETH A `Death Penalty Outcome`
+`the sentence where the sixth column punishment is death` MEANS
+    BRANCH IF NOT s's `the person is convicted of an offence under section 5(1) or 7, or of attempting to commit one, punishable with death under the sixth column of the Second Schedule`
+              THEN REFUSE "section 33B applies only to a person convicted of an offence under section 5(1) or 7, or an attempt, punishable with death under the sixth column"
+           IF     s's `the person proves on a balance of probabilities that his or her involvement was restricted to transporting, sending or delivering a controlled drug, offering to do so, doing or offering to do an act preparatory to or for the purpose of doing so, or any combination of them`
+              AND s's `the person proves on a balance of probabilities that he or she was suffering from such abnormality of mind as substantially impaired his or her mental responsibility for his or her acts and omissions in relation to the offence`
+              THEN `The court must impose imprisonment for life instead (section 33B(1)(b))`
+           IF     s's `the person proves on a balance of probabilities that his or her involvement was restricted to transporting, sending or delivering a controlled drug, offering to do so, doing or offering to do an act preparatory to or for the purpose of doing so, or any combination of them`
+              AND s's `the Public Prosecutor certifies to a court that, in his or her determination, the person has substantively assisted the Central Narcotics Bureau in disrupting drug trafficking activities within or outside Singapore`
+              THEN `The court may impose imprisonment for life and not fewer than 15 strokes of the cane instead (section 33B(1)(a))`
+           OTHERWISE `The sentence of death stands`

@@ -13,16 +13,19 @@ Row `legalese-aswathy`. Status `draft`. **No domain expert has read this against
 | `cpc-first-schedule.l4` | the data: 478 printed rows and the 4 "other written law" rows. **Generated**; do not edit |
 | `cpc-offence-procedure.l4` | reading a row; derived rows; the four "other written law" bands; ss 7 to 9 (trial courts) |
 | `cpc-second-schedule.l4` | the Second Schedule (32 items, written laws) and the two sections that read it: s 159 (State Courts) and s 211A (High Court) |
+| `written-law-interface.l4` | the interface to the Acts that create their own offences, **identical in this row, `sg/prevention-of-corruption-act-1960` and `sg/misuse-of-drugs-act-1973`**: one record, `Written Law Procedure Statement` (section 4) |
+| `cpc-other-laws.l4` | an offence under an Act that has made its statement: arrestable, warrant or summons, bailable, the trial courts, and the Second Schedule, read together; the Prevention of Corruption Act 1960 and the Misuse of Drugs Act 1973 are the two Acts that have made one |
 | `cpc-tests-offence-procedure.l4` | 135 assertions. **Generated** by `generators/cpc_tests_1.py` |
 | `cpc-tests-second-schedule.l4` | 103 assertions. **Generated** by `generators/cpc_tests_2.py` |
+| `cpc-tests-other-laws.l4` | 126 assertions: worked examples for an offence under each of the two Acts, with and without the Act's statement. **Generated** by `generators/cpc_tests_3.py` |
 
-**Two questions.** *Do the criminal case disclosure procedures apply to this offence?* (Second Schedule, ss 159, 211A). The Schedule lists written laws, not offences: an offence is within it when its Act is listed (item 9 excludes ss 6 and 15 of the Immigration Act 1959; item 2A is the Banishment Act 1959 only as in force before the 2023 amendment). Section 159 then asks whether the case is to be tried in a District Court, and s 211A whether it must be, or has been designated to be, tried in the High Court; the parties' consent extends both. *And: what is the procedural treatment of this offence?* Given a Penal Code section (and subsection), `the First Schedule rows for the Penal Code section` returns its rows; `the procedural treatment of a row` returns arrestable, warrant, bailable and which courts may try it. For an offence under another written law, the four printed bands give the answer by the severity of the punishment.
+**Two questions.** *Do the criminal case disclosure procedures apply to this offence?* (Second Schedule, ss 159, 211A). The Schedule lists written laws, not offences: an offence is within it when its Act is listed (item 9 excludes ss 6 and 15 of the Immigration Act 1959; item 2A is the Banishment Act 1959 only as in force before the 2023 amendment). Section 159 then asks whether the case is to be tried in a District Court, and s 211A whether it must be, or has been designated to be, tried in the High Court; the parties' consent extends both. *And: what is the procedural treatment of this offence?* Given a Penal Code section (and subsection), `the First Schedule rows for the Penal Code section` returns its rows; `the procedural treatment of a row` returns arrestable, warrant, bailable and which courts may try it. For an offence under another written law, the four printed bands give the answer by the severity of the punishment, **and the other law may say otherwise** ("unless specifically empowered ... by the law offended against"; s 2(1) "or under any other written law"; "shown to be triable ... under that law"): `cpc-other-laws.l4` reads those three answers from an Act's own statement, for the two Acts that have made one.
 
 **Not encoded, and why** (section 2 has the account):
 
 - every other section of the Code (Parts 1 to 22), and the Third, Fourth, Fifth, Sixth and Seventh Schedules: out of scope by instruction. The procedures of Part 9 and Part 10 Division 5 themselves (the Case for the Prosecution and the Case for the Defence) are not encoded; only whether they apply is. The Code's Part 14 (evidence and witnesses), which connects to the Evidence Act subject, is among them.
 - the elements of the offences: the Penal Code, `sg/penal-code-1871`.
-- the other written laws whose offences the four bands cover, and the Criminal Procedure Rules.
+- the other written laws whose offences the four bands cover, except the Prevention of Corruption Act 1960 and the Misuse of Drugs Act 1973 (which make their statements in their own rows), and the Criminal Procedure Rules.
 
 ## 2. Coverage table
 
@@ -55,6 +58,7 @@ Disposition: `encoded` (a rule or the data in the module named); `inert` (read, 
 | Second Schedule, items 1 to 23 (32 items with the lettered ones) | Laws to which criminal case disclosure procedures apply | encoded: data, and `the offence is under a law specified in the Second Schedule` | second-schedule |
 | 159(1), (3) | When criminal case disclosure procedures apply (State Courts) | encoded (fork F7); 159(2) deleted | second-schedule |
 | 211A(1), (2) | When they apply (High Court) | encoded (fork F9) | second-schedule |
+| First Schedule bands for other written laws, read with an Act's own statement | | encoded for the Prevention of Corruption Act 1960 (item 16A of the Second Schedule) and the Misuse of Drugs Act 1973 (item 12) | other-laws |
 | 158, 160 to 171, 172 to 221 (the procedures themselves), 427(1) (power to amend the Schedules) | | out-of-scope | — |
 | Third, Fourth, Fifth, Sixth, Seventh Schedules | | out-of-scope | — |
 
@@ -93,6 +97,21 @@ The Code's Part 14 (evidence and witnesses) is out of scope here, so nothing in 
 
 Limitation to report: the two Acts reference each other through a copied interface module, not through a cross-subject import. The exact references the interface stands for are listed in the Evidence Act row's NOTES.md section 4.
 
+### 4A. The Acts that create their own offences
+
+The same arrangement, for a second interface. The First Schedule's last four rows, and ss 2(1) and 9(2) and (3), leave three answers to "the law offended against" or "any other written law": that the police are specifically empowered to arrest without warrant, that the offence is arrestable, and that the law shows the offence as triable by a District Court or a Magistrate's Court under that law. **`written-law-interface.l4`** declares one record, `Written Law Procedure Statement`, carried byte-identically in this row, `sg/prevention-of-corruption-act-1960` and `sg/misuse-of-drugs-act-1973`. The Act's row computes it from the Act's own sections (the Prevention of Corruption Act ss 32(1), 34; the Misuse of Drugs Act ss 25(1), 53); `cpc-other-laws.l4` reads it. `check.sh` compares the copies with `cmp` in each of the four rows that carry an interface module.
+
+| the Code needs | the Act says | the statement says |
+| --- | --- | --- |
+| arrestable whatever the punishment | PCA s 32(1): every offence "deemed to be an arrestable offence for the purposes of the Criminal Procedure Code 2010" | `the Act deems the offence to be an arrestable offence ...` TRUE |
+| the law offended against specifically empowers the police | MDA s 25(1): an officer of the Bureau, police officer, special police officer or officer of customs "may arrest and search without a warrant" any person who has committed or is reasonably suspected of an offence under the Act; PCA s 15(1) gives the power to the Director and special investigators, not the police | MDA TRUE; PCA FALSE |
+| District Court | PCA s 34 "jurisdiction to try any offence under this Act and to award the full punishment"; MDA s 53 "a District Court has power to impose the full penalty ... except the punishment of death" | TRUE for both (the Code's s 9(3) itself excepts an offence punishable with death) |
+| Magistrate's Court | PCA: silent; MDA s 53 gives it jurisdiction over "all proceedings" | FALSE for both (fork F10; the Code's own s 7(1)(a) still lets a Magistrate's Court try an offence up to 5 years) |
+
+The Second Schedule needs no statement: items 12 and 16A already list the Misuse of Drugs Act 1973 and the Prevention of Corruption Act 1960 as printed, and `cpc-tests-other-laws.l4` tests that an offence under either is within it and that `the criminal case disclosure procedures` then apply as ss 159 and 211A say.
+
+What is NOT done, and why: the Code's rules cannot call the Act's `the punishment for the offence`; the caller passes the maximum term, death and life as `Jurisdiction Facts`. The cross-reference that would need a real cross-subject import is that one.
+
 ## 5. What `check.sh` prints
 
 Run with `l4` build `unstable-20260926-c76e6b0` (win32-x64), 2026-10-01:
@@ -101,15 +120,18 @@ Run with `l4` build `unstable-20260926-c76e6b0` (win32-x64), 2026-10-01:
 module                                    errors satisfied  failed
 cpc-first-schedule.l4                          0         0       0
 cpc-offence-procedure.l4                       0         0       0
+cpc-other-laws.l4                              0         0       0
 cpc-second-schedule.l4                         0         0       0
 cpc-tests-offence-procedure.l4                 0       135       0
+cpc-tests-other-laws.l4                        0       126       0
 cpc-tests-second-schedule.l4                   0       103       0
 cpc-types.l4                                   0         0       0
 ea-cpc-interface.l4                            0         0       0
-TOTAL (7 modules)                              0       238       0
+written-law-interface.l4                       0         0       0
+TOTAL (10 modules)                             0       364       0
 ```
 
-No assertion is expected to fail. `cmp` of the two copies of `ea-cpc-interface.l4`: identical.
+No assertion is expected to fail. `check.sh` compares each `*-interface.l4` with the copies of the same name in the sibling subjects with `cmp`: identical (the check was added on 2026-10-01 and is in the Evidence Act row's `check.sh` too).
 
 ## 6. Fork register
 
@@ -123,6 +145,7 @@ No assertion is expected to fail. `cmp` of the two copies of `ea-cpc-interface.l
 | F7 | s 159(1)(b) "is to be tried in a District Court" | a fact about the forum; a Magistrate's Court trial is outside (1) and needs consent under (3) | the text |
 | F8 | item 9 "other than sections 6 and 15" | the section is tested without subsections, so every subsection of ss 6 and 15 is excluded | the item names sections, not subsections |
 | F9 | s 211A(2) "any offence that is to be tried in the General Division of the High Court, but is not mentioned in subsection (1)" | consent extends the procedures to an offence designated for the High Court under a law the Schedule does not list | (1)(a) already covers every offence that must be tried there |
+| F10 | an Act's statement (`cpc-other-laws.l4`) | it can only add to what the case already shows (it makes `a law other than the Penal Code shows the offence as triable by a ... Court under that law` true, never false); an Act that deems its offences arrestable (PCA s 32(1)) makes every offence under it arrestable whatever its punishment; an Act that empowers the police (MDA s 25(1)) engages "unless specifically empowered" and so matters only below 3 years' imprisonment; neither statement says a Magistrate's Court may try the offence, so s 7(1)(a) decides | ss 2(1), 9(2)(b), 9(3)(b) and the First Schedule's last four rows |
 | F6 | the third column "ordinarily": Explanatory Note 2 says the column does not restrict the powers of arrest police officers may lawfully exercise | the column answers "ordinarily", and no rule says a non-arrestable offence cannot lead to an arrest | s 64 and s 65 give other powers; they are not encoded |
 
 ## 7. Extraction of the First Schedule: what was tried and what was checked
@@ -146,6 +169,7 @@ Checks run on the result (478 rows):
 
 - Second Schedule: it says "laws"; is an offence under subsidiary legislation made under a listed Act within it? The encoding takes the Act that creates the offence as given and does not decide this.
 - s 211A(2) (fork F9): is the meaning taken the intended one?
+- Misuse of Drugs Act s 53 gives a Magistrate's Court jurisdiction over "all proceedings under this Act". Read literally with Code s 9(2)(b), a Magistrate's Court could try an offence punishable with death. The statement says FALSE and leaves the Magistrate's Court to s 7(1)(a); is that the intended reading (fork F10)?
 - Are blank "by what court triable" cells (57 rows) meant as "General Division of the High Court only" (F3)? In particular ss 306 and 399 (10 years) and ss 123 and 130C (15 years): s 8(1) alone would let a District Court try a 10-year offence, so the blank there either overrides s 8(1) or is a gap.
 - For the false-evidence rows (ss 195 to 200) the printed arrest cell is "according as to whether arrest may be made without warrant for the offence or not" for s 195 but "May arrest without warrant" for ss 196 to 200; confirm that is as intended and not an extraction of one cell.
 - s 376EB(3)(a) and the like are stored with their subsection; sections whose subsections the Penal Code renumbers will need the lookup by `base section`.
