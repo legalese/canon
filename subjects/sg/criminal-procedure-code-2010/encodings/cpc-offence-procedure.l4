@@ -1,0 +1,283 @@
+IMPORT prelude
+IMPORT `ea-cpc-interface`
+IMPORT `cpc-types`
+IMPORT `cpc-first-schedule`
+
+-- Criminal Procedure Code 2010, the First Schedule and the provisions that read it: sections 2(1) (arrestable, non-arrestable, bailable,
+-- fine-only), 4 and 7 to 9.
+-- Source: source/CPC2010.txt lines 843 to 1360 and 18457 to 21780.
+--
+-- The question this module answers: WHAT IS THE PROCEDURAL TREATMENT OF AN OFFENCE?  Given an offence under the Penal Code 1871, the
+-- First Schedule says whether the police may ordinarily arrest without warrant, whether a warrant or a summons ordinarily issues,
+-- whether the offence is bailable, and which court tries it; for an offence under another written law the printed bands at the foot of
+-- the Schedule say it by the severity of the punishment; and sections 7 to 9 settle the trial court from the punishment.  The elements
+-- of the offence are NOT in this table (Explanatory Note 1): they are in the Penal Code, whose subject is
+-- sg/penal-code-1871, and in the other written law.
+--
+-- Section 4 sends both kinds of offence through this Code: offences under the Penal Code 1871 "must be inquired into and tried
+-- according to this Code" (4(1)); offences under any other written law "must also be", subject to any law regulating the manner or
+-- place of inquiring into or trying them (4(2)).
+
+§ `The First Schedule as a lookup`
+
+@ref "Criminal Procedure Code 2010, First Schedule, column 1"
+GIVEN section IS A STRING
+GIVETH A LIST OF `First Schedule Row`
+`the First Schedule rows for the Penal Code section` MEANS
+    filter (GIVEN r YIELD r's `base section` EQUALS section) `the rows of the First Schedule`
+
+@ref "Criminal Procedure Code 2010, First Schedule, column 1"
+GIVEN section IS A STRING
+GIVETH A BOOLEAN
+DECIDE `the First Schedule has a row for the Penal Code section` IF
+    NOT null (`the First Schedule rows for the Penal Code section` section)
+
+§ `Reading one row`
+
+-- Column 3.  "May not arrest without warrant" is the printed answer for a non-arrestable offence.  The bands for other written laws say
+-- "unless specifically empowered to do so by the law offended against", which is not an arrest power under the Code: the answer
+-- "ordinarily" is no.  Explanatory Note 2: the third column does not restrict the powers of arrest without warrant that police officers
+-- may lawfully exercise, and section 64(1) and (2) give others.
+@ref "Criminal Procedure Code 2010, First Schedule, column 3; s 2(1) 'arrestable offence'"
+GIVEN r IS A `First Schedule Row`
+GIVETH A BOOLEAN
+`the row says the police may ordinarily arrest without warrant` MEANS
+    CONSIDER r's `arrest rule`
+    WHEN `May arrest without warrant` THEN TRUE
+    WHEN `May not arrest without warrant` THEN FALSE
+    WHEN `May not arrest without warrant unless specifically empowered by the law offended against` THEN FALSE
+    WHEN `As for the underlying offence` THEN REFUSE "First Schedule column 3: the row is derived from the offence it is ancillary to (abetted, conspired in, attempted or the like); supply that offence's row"
+
+@ref "Criminal Procedure Code 2010, First Schedule, column 4"
+GIVEN r IS A `First Schedule Row`
+GIVETH A BOOLEAN
+`the row says a warrant ordinarily issues` MEANS
+    CONSIDER r's `process rule`
+    WHEN `A warrant ordinarily issues` THEN TRUE
+    WHEN `A summons ordinarily issues` THEN FALSE
+    WHEN `As for the underlying offence` THEN REFUSE "First Schedule column 4: the row is derived from the offence it is ancillary to; supply that offence's row"
+    WHEN `As for the offence committed by the person hired, engaged or employed` THEN REFUSE "First Schedule column 4, s 150: the process follows the offence committed by the person hired, engaged or employed; supply that offence's row"
+
+@ref "Criminal Procedure Code 2010, First Schedule, column 5; s 2(1) 'bailable offence'"
+GIVEN r IS A `First Schedule Row`
+GIVETH A BOOLEAN
+`the row says the offence is bailable of right` MEANS
+    CONSIDER r's `bail rule`
+    WHEN `Bailable` THEN TRUE
+    WHEN `Not bailable` THEN FALSE
+    WHEN `As for the underlying offence` THEN REFUSE "First Schedule column 5: the row is derived from the offence it is ancillary to; supply that offence's row"
+
+-- Column 7, "by what court triable besides the General Division of High Court": a blank cell means no court besides the General
+-- Division of the High Court (the offences are capital or carry life).  The General Division of the High Court is always a court of trial
+-- ("besides" it), so only the two State Courts are answered by the column.
+@ref "Criminal Procedure Code 2010, First Schedule, column 7; ss 9(2)(a), 9(3)(a)"
+GIVEN r IS A `First Schedule Row`
+GIVETH A BOOLEAN
+`the row shows the offence as triable by a Magistrate's Court` MEANS
+    CONSIDER r's `court rule`
+    WHEN `Magistrate's Court or District Court` THEN TRUE
+    WHEN `District Court` THEN FALSE
+    WHEN `General Division of the High Court only` THEN FALSE
+    WHEN `As for the underlying offence` THEN REFUSE "First Schedule column 7: the row is derived from the offence it is ancillary to; supply that offence's row"
+    WHEN `According to sections 7, 8 and 9` THEN REFUSE "First Schedule, offences under other written laws: the court is according to sections 7, 8 and 9; use the jurisdiction rules"
+
+@ref "Criminal Procedure Code 2010, First Schedule, column 7; s 9(3)(a)"
+GIVEN r IS A `First Schedule Row`
+GIVETH A BOOLEAN
+`the row shows the offence as triable by a District Court` MEANS
+    CONSIDER r's `court rule`
+    WHEN `Magistrate's Court or District Court` THEN TRUE
+    WHEN `District Court` THEN TRUE
+    WHEN `General Division of the High Court only` THEN FALSE
+    WHEN `As for the underlying offence` THEN REFUSE "First Schedule column 7: the row is derived from the offence it is ancillary to; supply that offence's row"
+    WHEN `According to sections 7, 8 and 9` THEN REFUSE "First Schedule, offences under other written laws: the court is according to sections 7, 8 and 9; use the jurisdiction rules"
+
+@ref "Criminal Procedure Code 2010, First Schedule"
+GIVEN r IS A `First Schedule Row`
+GIVETH A `Procedural Treatment`
+`the procedural treatment of a row` MEANS
+    `Procedural Treatment` WITH
+        `the police may ordinarily arrest without warrant` IS `the row says the police may ordinarily arrest without warrant` r
+        `a warrant ordinarily issues in the first instance` IS `the row says a warrant ordinarily issues` r
+        `the offence is bailable of right` IS `the row says the offence is bailable of right` r
+        `a Magistrate's Court may try the offence` IS `the row shows the offence as triable by a Magistrate's Court` r
+        `a District Court may try the offence` IS `the row shows the offence as triable by a District Court` r
+        `the General Division of the High Court may try the offence` IS TRUE
+
+-- Where a cell is derived from the offence a row is ancillary to (abetment, conspiracy, attempt, the enhanced penalties of ss 73, 74A and
+-- 74B, the false-evidence offences, and so on), the treatment is that of the underlying offence's row for that column.  The printed words
+-- carry the condition: "May arrest without warrant, if arrest for the offence abetted may be made without warrant but not otherwise".
+@ref "Criminal Procedure Code 2010, First Schedule, rows whose cells say 'according as to whether ... for the offence'"
+GIVEN r IS A `First Schedule Row`, u IS A `Procedural Treatment`
+GIVETH A `Procedural Treatment`
+`the procedural treatment of a derived row` MEANS
+    `Procedural Treatment` WITH
+        `the police may ordinarily arrest without warrant` IS
+            BRANCH IF r's `arrest rule` EQUALS `As for the underlying offence` THEN u's `the police may ordinarily arrest without warrant`
+                   OTHERWISE `the row says the police may ordinarily arrest without warrant` r
+        `a warrant ordinarily issues in the first instance` IS
+            BRANCH IF r's `process rule` EQUALS `As for the underlying offence` THEN u's `a warrant ordinarily issues in the first instance`
+                   IF r's `process rule` EQUALS `As for the offence committed by the person hired, engaged or employed` THEN u's `a warrant ordinarily issues in the first instance`
+                   OTHERWISE `the row says a warrant ordinarily issues` r
+        `the offence is bailable of right` IS
+            BRANCH IF r's `bail rule` EQUALS `As for the underlying offence` THEN u's `the offence is bailable of right`
+                   OTHERWISE `the row says the offence is bailable of right` r
+        `a Magistrate's Court may try the offence` IS
+            BRANCH IF r's `court rule` EQUALS `As for the underlying offence` THEN u's `a Magistrate's Court may try the offence`
+                   OTHERWISE `the row shows the offence as triable by a Magistrate's Court` r
+        `a District Court may try the offence` IS
+            BRANCH IF r's `court rule` EQUALS `As for the underlying offence` THEN u's `a District Court may try the offence`
+                   OTHERWISE `the row shows the offence as triable by a District Court` r
+        `the General Division of the High Court may try the offence` IS TRUE
+
+§ `Offences against laws other than the Penal Code 1871`
+
+-- The last four printed rows give, by the severity of the punishment, the answers for an offence under another written law: death or
+-- imprisonment for 7 years or upwards, and 3 years or upwards but less than 7, are arrestable, warrant, not bailable; imprisonment for
+-- less than 3 years, and fine only, are not arrestable "unless specifically empowered to do so by the law offended against", summons,
+-- bailable.  The court is "according to sections 7, 8 and 9".  Section 2(1) also says arrestable and bailable offences are those shown in
+-- the Schedule "or under any other written law", so the other law may itself say otherwise; the two facts below carry that.
+@ref "Criminal Procedure Code 2010, First Schedule, 'Offences against laws other than the Penal Code 1871', 1st to 4th bands"
+GIVEN j IS A `Jurisdiction Facts`
+GIVETH A BOOLEAN
+DECIDE `the offence is punishable with death or imprisonment of 7 years or upwards` IF
+        j's `the offence is punishable with death`
+    OR  j's `the offence is punishable with imprisonment for life`
+    OR  (   NOT j's `the offence is a fine-only offence`
+        AND j's `the maximum term of imprisonment provided by law, in years` AT LEAST 7)
+
+@ref "Criminal Procedure Code 2010, First Schedule, 'Offences against laws other than the Penal Code 1871', 2nd band"
+GIVEN j IS A `Jurisdiction Facts`
+GIVETH A BOOLEAN
+DECIDE `the offence is punishable with imprisonment of 3 years or upwards but less than 7` IF
+        NOT j's `the offence is punishable with death`
+    AND NOT j's `the offence is punishable with imprisonment for life`
+    AND NOT j's `the offence is a fine-only offence`
+    AND j's `the maximum term of imprisonment provided by law, in years` AT LEAST 3
+    AND j's `the maximum term of imprisonment provided by law, in years` LESS THAN 7
+
+@ref "Criminal Procedure Code 2010, First Schedule, 'Offences against laws other than the Penal Code 1871', 3rd and 4th bands"
+GIVEN j IS A `Jurisdiction Facts`
+GIVETH A BOOLEAN
+DECIDE `the offence is punishable with imprisonment of less than 3 years or with fine only` IF
+        NOT j's `the offence is punishable with death`
+    AND NOT j's `the offence is punishable with imprisonment for life`
+    AND (   j's `the offence is a fine-only offence`
+         OR j's `the maximum term of imprisonment provided by law, in years` LESS THAN 3)
+
+@ref "Criminal Procedure Code 2010, First Schedule, 'Offences against laws other than the Penal Code 1871'; s 2(1) 'arrestable offence'"
+GIVEN j IS A `Jurisdiction Facts`, `the law offended against specifically empowers the police to arrest without warrant` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the offence under another written law is an arrestable offence` IF
+        `the offence is punishable with death or imprisonment of 7 years or upwards` j
+    OR  `the offence is punishable with imprisonment of 3 years or upwards but less than 7` j
+    OR  (   `the offence is punishable with imprisonment of less than 3 years or with fine only` j
+        AND `the law offended against specifically empowers the police to arrest without warrant`)
+
+@ref "Criminal Procedure Code 2010, First Schedule, 'Offences against laws other than the Penal Code 1871'"
+GIVEN j IS A `Jurisdiction Facts`
+GIVETH A BOOLEAN
+DECIDE `a warrant ordinarily issues for the offence under another written law` IF
+        `the offence is punishable with death or imprisonment of 7 years or upwards` j
+    OR  `the offence is punishable with imprisonment of 3 years or upwards but less than 7` j
+
+@ref "Criminal Procedure Code 2010, First Schedule, 'Offences against laws other than the Penal Code 1871'; s 2(1) 'bailable offence'"
+GIVEN j IS A `Jurisdiction Facts`
+GIVETH A BOOLEAN
+DECIDE `the offence under another written law is bailable` IF
+    `the offence is punishable with imprisonment of less than 3 years or with fine only` j
+
+§ `7 to 9. Which court tries the offence`
+
+-- 7(1)(a): a Magistrate's Court has jurisdiction to try any offence for which the maximum term of imprisonment provided by law does not
+-- exceed 5 years or which is a fine-only offence.  "Fine-only offence" is defined in section 2(1): an offence punishable only with a fine.
+-- An offence punishable with death or with imprisonment for life has no maximum "term" within 5 or 10 years, and is outside 7(1)(a) and
+-- 8(1) (see NOTES.md, fork F1).
+@ref "Criminal Procedure Code 2010, s 7(1)(a)"
+GIVEN j IS A `Jurisdiction Facts`
+GIVETH A BOOLEAN
+DECIDE `a Magistrate's Court has jurisdiction under section 7(1)(a)` IF
+        NOT j's `the offence is punishable with death`
+    AND NOT j's `the offence is punishable with imprisonment for life`
+    AND (   j's `the offence is a fine-only offence`
+         OR j's `the maximum term of imprisonment provided by law, in years` AT MOST 5)
+
+@ref "Criminal Procedure Code 2010, s 8(1)"
+GIVEN j IS A `Jurisdiction Facts`
+GIVETH A BOOLEAN
+DECIDE `a District Court has jurisdiction under section 8(1)` IF
+        NOT j's `the offence is punishable with death`
+    AND NOT j's `the offence is punishable with imprisonment for life`
+    AND (   j's `the offence is a fine-only offence`
+         OR j's `the maximum term of imprisonment provided by law, in years` AT MOST 10)
+
+-- 9(2): despite section 7(1), a Magistrate's Court may try any offence under the Penal Code 1871 shown to be triable by a Magistrate's Court in
+-- the seventh column of the First Schedule, or under any other law shown to be triable by a Magistrate's Court under that law.
+@ref "Criminal Procedure Code 2010, s 9(2)(a) and (b)"
+GIVEN j IS A `Jurisdiction Facts`
+GIVETH A BOOLEAN
+DECIDE `a Magistrate's Court may try the offence under section 9(2)` IF
+        (   j's `the offence is under the Penal Code 1871`
+        AND j's `the First Schedule shows the offence as triable by a Magistrate's Court`)
+    OR  (   NOT j's `the offence is under the Penal Code 1871`
+        AND j's `a law other than the Penal Code 1871 shows the offence as triable by a Magistrate's Court under that law`)
+
+-- 9(1): where an offence is triable by a District Court but not by a Magistrate's Court, the Public Prosecutor may in writing authorise a
+-- Magistrate's Court in any particular case to try the offence.
+@ref "Criminal Procedure Code 2010, s 9(1)"
+GIVEN j IS A `Jurisdiction Facts`
+GIVETH A BOOLEAN
+DECIDE `a Magistrate's Court may try the offence under section 9(1)` IF
+        j's `the Public Prosecutor has authorised in writing a Magistrate's Court to try the offence in the particular case`
+    AND `a District Court has jurisdiction under section 8(1)` j
+    AND NOT `a Magistrate's Court has jurisdiction under section 7(1)(a)` j
+    AND NOT `a Magistrate's Court may try the offence under section 9(2)` j
+
+@ref "Criminal Procedure Code 2010, ss 7(1)(a), 9(1), 9(2)"
+GIVEN j IS A `Jurisdiction Facts`
+GIVETH A BOOLEAN
+DECIDE `a Magistrate's Court may try the offence` IF
+        `a Magistrate's Court has jurisdiction under section 7(1)(a)` j
+    OR  `a Magistrate's Court may try the offence under section 9(2)` j
+    OR  `a Magistrate's Court may try the offence under section 9(1)` j
+
+-- 9(3): despite section 8(1), a District Court may try any offence OTHER THAN an offence punishable with death if (a) it is under the Penal
+-- Code 1871 and shown to be triable by a District Court in the seventh column; (b) it is under another law and shown to be triable by a
+-- District Court under that law; or (c) the Public Prosecutor applies to the District Court to try it and the accused consents, or if more
+-- than one are charged together with the same offence, all consent.
+@ref "Criminal Procedure Code 2010, s 9(3)(a), (b) and (c)"
+GIVEN j IS A `Jurisdiction Facts`
+GIVETH A BOOLEAN
+DECIDE `a District Court may try the offence under section 9(3)` IF
+        NOT j's `the offence is punishable with death`
+    AND (   (   j's `the offence is under the Penal Code 1871`
+            AND j's `the First Schedule shows the offence as triable by a District Court`)
+         OR (   NOT j's `the offence is under the Penal Code 1871`
+            AND j's `a law other than the Penal Code 1871 shows the offence as triable by a District Court under that law`)
+         OR (   j's `the Public Prosecutor applies to the District Court to try the offence`
+            AND j's `the accused consents, or if more than one are charged together with the same offence, all consent`))
+
+@ref "Criminal Procedure Code 2010, ss 8(1), 9(3)"
+GIVEN j IS A `Jurisdiction Facts`
+GIVETH A BOOLEAN
+DECIDE `a District Court may try the offence` IF
+        `a District Court has jurisdiction under section 8(1)` j
+    OR  `a District Court may try the offence under section 9(3)` j
+
+-- 9(4): nothing in section 9 enlarges the power of the Magistrate's Court or District Court under section 303 (sentences).  Section 303 is
+-- not encoded here, so this is stated and not applied.
+
+-- The trial courts under sections 7 to 9.  The General Division of the High Court is the court of trial for every offence by the First
+-- Schedule's own heading ("besides the General Division of High Court"), and its criminal jurisdiction is conferred by the Supreme Court of
+-- Judicature Act 1969, which is not encoded.
+@ref "Criminal Procedure Code 2010, ss 7, 8, 9; First Schedule heading of column 7"
+GIVEN j IS A `Jurisdiction Facts`
+GIVETH A `Procedural Treatment`
+`the trial courts for the offence` MEANS
+    `Procedural Treatment` WITH
+        `the police may ordinarily arrest without warrant` IS REFUSE "ss 7 to 9 do not decide arrest"
+        `a warrant ordinarily issues in the first instance` IS REFUSE "ss 7 to 9 do not decide the process"
+        `the offence is bailable of right` IS REFUSE "ss 7 to 9 do not decide bail"
+        `a Magistrate's Court may try the offence` IS `a Magistrate's Court may try the offence` j
+        `a District Court may try the offence` IS `a District Court may try the offence` j
+        `the General Division of the High Court may try the offence` IS TRUE
