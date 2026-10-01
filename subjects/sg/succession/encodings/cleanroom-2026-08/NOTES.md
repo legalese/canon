@@ -146,6 +146,8 @@ The refresh replaces this row's modules, goldens and four registers with l4-ide'
 l4-ide's `report/run-2026-08-26-003.md` is the same rendered report as `report/go-run-report.md`, differing only in table padding and emphasis markers, so it was not added a second time.
 
 One thing did not move.
-The source texts this row was encoded from (`source/*.pdf`, `*.html`, `*.txt`) stay in l4-ide at `jl4/examples/legal/sg-succession/cleanroom-2026-08/source/`, because Singapore's source terms are undetermined.
-`registers/source-bundle.json` pins them by `sha256` and names them by those l4-ide paths.
+The source texts this row was encoded from (`source/*.pdf`, `*.html`, `*.txt`) stayed in l4-ide at `jl4/examples/legal/sg-succession/cleanroom-2026-08/source/`, because Singapore's source terms are undetermined, and `registers/source-bundle.json` named them by those l4-ide paths.
+**Superseded 2026-10-01 by Meng:** an openly published document is cited by its authoritative URL and `sha256` and fetched from its publisher, not redistributed, and a public repository does not point into a private one.
+The bundle now carries no `local_path`; `source/fetch-sso.py` re-creates every PDF, `pdftotext -layout` rendering and landing page from Singapore Statutes Online.
+Checked that day: all seven PDFs and their renderings came back byte-identical to the copies l4-ide held; the landing pages differ only in their "as at" render date, cache-busting parameters and SSO's "Last updated" stamp, and list the same historical versions.
 l4-ide blesses this row into its regression corpus in the change that bumps its canon pin past this commit. Its mirror places the row at `jl4/examples/canon/sg/succession/cleanroom/`.
