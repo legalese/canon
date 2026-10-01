@@ -72,6 +72,7 @@ No row is `deferred`.
 | `mda-offences.l4`, `mda-presumptions.l4`, `mda-punishment.l4`, `mda-enforcement.l4` | the rules |
 | `written-law-interface.l4` | DECLARE-only; **identical in this row, `sg/criminal-procedure-code-2010` and `sg/prevention-of-corruption-act-1960`** (section 4) |
 | `mda-tests-offences.l4` (198), `mda-tests-presumptions.l4` (89), `mda-tests-punishment.l4` (328), `mda-tests-enforcement.l4` (324) | tests **generated** by `generators/mda_tests_1.py` and `mda_tests_2.py` |
+| `mda-tests-scenario-tan.l4` (21) | the Act's part of the case *Public Prosecutor v Tan* (4 g of diamorphine: the s 17 and s 18 presumptions, s 5(1) with and without rebuttal, the punishment, and the statement handed to the Code); **generated** by `scenarios/public-prosecutor-v-tan/` (SCENARIO.md; `build.py` writes the four per-Act files). The CPC row hard-codes the statement this file asserts |
 | `check.sh` | runs every module and compares the interface module with the copies in the sibling subjects |
 
 ## 4. Cross-subject references
@@ -153,9 +154,10 @@ mda-tests-enforcement.l4                       0       324       0
 mda-tests-offences.l4                          0       198       0
 mda-tests-presumptions.l4                      0        89       0
 mda-tests-punishment.l4                        0       328       0
+mda-tests-scenario-tan.l4                      0        21       0
 mda-types.l4                                   0         0       0
 written-law-interface.l4                       0         0       0
-TOTAL (12 modules)                             0       939       0
+TOTAL (13 modules)                             0       960       0
 ```
 
 No assertion is expected to fail. The tests were written from the Act's text by the same session that wrote the rules; **no independent test pass has been run** (the encoding-a-subject skill's step 8) and no domain expert has read the modules against the Act (gate HG1).

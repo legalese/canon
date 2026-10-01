@@ -18,6 +18,7 @@ Row `legalese-aswathy`. Status `draft`. **No domain expert has read this against
 | `cpc-tests-offence-procedure.l4` | 135 assertions. **Generated** by `generators/cpc_tests_1.py` |
 | `cpc-tests-second-schedule.l4` | 103 assertions. **Generated** by `generators/cpc_tests_2.py` |
 | `cpc-tests-other-laws.l4` | 126 assertions: worked examples for an offence under each of the two Acts, with and without the Act's statement. **Generated** by `generators/cpc_tests_3.py` |
+| `cpc-tests-scenario-tan.l4` | 12 assertions: the Code's part of the case *Public Prosecutor v Tan* (an offence under the Misuse of Drugs Act 1973 s 5(1) and one under the Prevention of Corruption Act 1960 s 5(b): arrestable, the courts that may try each, the Second Schedule, s 159). It hard-codes the two Acts' statements; the Acts' own scenario files assert the same values. **Generated** by `scenarios/public-prosecutor-v-tan/build.py` |
 
 **Two questions.** *Do the criminal case disclosure procedures apply to this offence?* (Second Schedule, ss 159, 211A). The Schedule lists written laws, not offences: an offence is within it when its Act is listed (item 9 excludes ss 6 and 15 of the Immigration Act 1959; item 2A is the Banishment Act 1959 only as in force before the 2023 amendment). Section 159 then asks whether the case is to be tried in a District Court, and s 211A whether it must be, or has been designated to be, tried in the High Court; the parties' consent extends both. *And: what is the procedural treatment of this offence?* Given a Penal Code section (and subsection), `the First Schedule rows for the Penal Code section` returns its rows; `the procedural treatment of a row` returns arrestable, warrant, bailable and which courts may try it. For an offence under another written law, the four printed bands give the answer by the severity of the punishment, **and the other law may say otherwise** ("unless specifically empowered ... by the law offended against"; s 2(1) "or under any other written law"; "shown to be triable ... under that law"): `cpc-other-laws.l4` reads those three answers from an Act's own statement, for the two Acts that have made one.
 
@@ -124,11 +125,12 @@ cpc-other-laws.l4                              0         0       0
 cpc-second-schedule.l4                         0         0       0
 cpc-tests-offence-procedure.l4                 0       135       0
 cpc-tests-other-laws.l4                        0       126       0
+cpc-tests-scenario-tan.l4                      0        12       0
 cpc-tests-second-schedule.l4                   0       103       0
 cpc-types.l4                                   0         0       0
 ea-cpc-interface.l4                            0         0       0
 written-law-interface.l4                       0         0       0
-TOTAL (10 modules)                             0       364       0
+TOTAL (11 modules)                             0       376       0
 ```
 
 No assertion is expected to fail. `check.sh` compares each `*-interface.l4` with the copies of the same name in the sibling subjects with `cmp`: identical (the check was added on 2026-10-01 and is in the Evidence Act row's `check.sh` too).

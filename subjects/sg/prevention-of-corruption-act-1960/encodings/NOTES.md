@@ -71,6 +71,7 @@ No row is `deferred`.
 | `pca-offences.l4`, `pca-evidence.l4`, `pca-procedure.l4` | the rules |
 | `written-law-interface.l4` | DECLARE-only; **identical in this row, `sg/criminal-procedure-code-2010` and `sg/misuse-of-drugs-act-1973`** (section 4) |
 | `pca-tests-offences.l4` (361), `pca-tests-evidence.l4` (24), `pca-tests-procedure.l4` (181) | tests **generated** by `generators/pca_tests_1.py` and `pca_tests_2.py` from the Act's text, using `generators/fixtures.py` |
+| `pca-tests-scenario-tan.l4` (15) | the Act's part of the case *Public Prosecutor v Tan* (an offer of $5,000 to a Government officer: s 5(b) with and without the s 8 presumption, the punishment, and the statement handed to the Code); **generated** by `scenarios/public-prosecutor-v-tan/` (SCENARIO.md; `build.py` writes the four per-Act files). The CPC row hard-codes the statement this file asserts |
 | `check.sh` | runs every module and compares the interface module with the copies in the sibling subjects |
 
 ## 4. Cross-subject references: what the Act points at, and how each is represented
@@ -139,9 +140,10 @@ pca-procedure.l4                               0         0       0
 pca-tests-evidence.l4                          0        24       0
 pca-tests-offences.l4                          0       361       0
 pca-tests-procedure.l4                         0       181       0
+pca-tests-scenario-tan.l4                      0        15       0
 pca-types.l4                                   0         0       0
 written-law-interface.l4                       0         0       0
-TOTAL (8 modules)                              0       566       0
+TOTAL (9 modules)                              0       581       0
 ```
 
 No assertion is expected to fail. The tests' expected values were written from the Act's text by the same session that wrote the rules; **no independent test pass has been run** (the encoding-a-subject skill's step 8), and no domain expert has read the modules against the Act (gate HG1). Both are the next steps.

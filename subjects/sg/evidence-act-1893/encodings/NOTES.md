@@ -21,6 +21,7 @@ The Evidence Act 1893 as printed in Singapore Statutes Online's PDF, current ver
 | `ea-bankers-schedules.l4` | How are bankers' books proved; which offences are "child abuse" or "sexual"? | ss 170 to 177, both Schedules |
 | `ea-goals.l4` | the principal questions, exported; the conclusions the Act hands the Code | assembles the above |
 | `ea-tests-*.l4` (9 files) | — | 803 assertions, **generated** by `generators/ea_tests_*.py` from `ea-types.l4` |
+| `ea-tests-scenario-tan.l4` | the Evidence Act's part of the case *Public Prosecutor v Tan*: an accused's offer to an officer as an admission (ss 17 to 23), and the s 107 burden | 5 assertions, **generated** by `scenarios/public-prosecutor-v-tan/` (SCENARIO.md; `build.py` writes the four per-Act files); the case runs through the Criminal Procedure Code, Prevention of Corruption Act and Misuse of Drugs Act rows too; nothing here feeds them |
 
 **Shape.** Each rule is a `BOOLEAN` (or a `MAYBE`, an enumeration, or a named `REFUSE`) over a record of facts a witness could testify to; the Act's illustrations are the test cases. Where the Act says the court "may" or "is to" do something, the rule says whether the condition for the power or duty is met, never what the court decides in its discretion. Presumptions return the strength the Act gives them (`the court may presume`, `the court is to presume`, `conclusive proof`) or `NOTHING`.
 
@@ -128,7 +129,7 @@ The First Schedule (child abuse offences, sexual offences) is encoded as four li
 
 ## 6. What `check.sh` prints
 
-Run with `l4` build `unstable-20260926-c76e6b0` (win32-x64), 2026-10-01: 21 modules, 0 errors, 803 assertions satisfied, 0 failed.
+Run with `l4` build `unstable-20260926-c76e6b0` (win32-x64), 2026-10-01: 22 modules, 0 errors, 808 assertions satisfied, 0 failed (803 in the nine `ea-tests-*` files, 5 in the scenario file).
 
 ```
 ea-tests-examination.l4                      0       105       0
@@ -137,10 +138,11 @@ ea-tests-presumptions-burden.l4              0        83       0
 ea-tests-proof.l4                            0       149       0
 ea-tests-records-opinion-character.l4        0        70       0
 ea-tests-relevancy.l4                        0        50       0
+ea-tests-scenario-tan.l4                      0         5       0
 ea-tests-schedules-goals.l4                  0       136       0
 ea-tests-statements.l4                       0        89       0
 ea-tests-witnesses-privilege.l4              0        95       0
-TOTAL (21 modules)                           0       803       0
+TOTAL (22 modules)                           0       808       0
 ```
 
 No assertion is expected to fail. A deliberately wrong assertion was run once, to check the harness reports it (it did), and not kept.
