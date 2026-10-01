@@ -143,10 +143,11 @@ pca-tests-procedure.l4                         0       181       0
 pca-tests-scenario-tan.l4                      0        15       0
 pca-types.l4                                   0         0       0
 written-law-interface.l4                       0         0       0
-TOTAL (9 modules)                              0       581       0
+tests-independent.l4                           0       434       0
+TOTAL (10 modules)                             0      1015       0
 ```
 
-No assertion is expected to fail. The tests' expected values were written from the Act's text by the same session that wrote the rules; **no independent test pass has been run** (the encoding-a-subject skill's step 8), and no domain expert has read the modules against the Act (gate HG1). Both are the next steps.
+No assertion is expected to fail. Except `tests-independent.l4` (section 9), the tests' expected values were written from the Act's text by the same session that wrote the rules. No domain expert has read the modules against the Act (gate HG1).
 
 ## 8. Open questions for a domain expert
 
@@ -154,3 +155,15 @@ No assertion is expected to fail. The tests' expected values were written from t
 - Is the s 24 corroboration rule available for the Penal Code offences in the list of ss 161 to 165, 213 to 215 only when the trial is of one of those, or also in a trial under the Act that merely involves one? The encoding follows the words (a trial "into" one of them).
 - s 17(1): "may, without the order of the Public Prosecutor, exercise all or any of the powers … given by the Criminal Procedure Code 2010" for an arrestable offence "disclosed in the course of an investigation under this Act": does "disclosed" require that the offence be unforeseen? Not encoded: a fact.
 - Whether s 14's civil debt is available against both agent and giver at once. The encoding allows either as defendant.
+
+## 9. The independent test pass, 2026-10-01
+
+A fresh agent that had not seen the encoding decided its expected answers from the source text and wrote them to `independent-pass-answers.md` before opening any `.l4` file, then wrote `tests-independent.l4`. It did read the rule modules for names and signatures, so it was not blind to the logic. It was told not to open this file, `encoding.json`, the existing tests or the generators. Run by `check.sh` with the rest of the row.
+
+**Result.** `tests-independent.l4`: 434 assertions, 434 satisfied, 0 failed. No disagreement. Its first runs had type errors that were the agent's own (it passed arguments to the s 6(a) and s 9(1) rules in the wrong order); none of its expected values was changed. Process slip, recorded in `independent-pass-answers.md`: the agent's first attempt to save its answers failed in the shell, and `pca-types.l4` was displayed in a parallel call before the file was saved; it had worked its answers out from `PCA1960.txt` before that and none changed afterwards.
+
+**Covered.** s 2 (each of paragraphs (a) to (e) of gratification; agent, including that a subcontractor is an agent only for s 8); ss 5 and 6 (each limb, made out and not, including corruptness supplied by the s 8 presumption and defeated when the contrary is proved); s 7 (60 versus 84 months, fine ceiling $100,000); the fine and months for all 16 offences, in the ordinary case and in the three contract cases, and ss 29 to 31; s 8 (direct and intermediary routes); s 9; ss 10 to 12; s 13 (money and assessable value, the s 13(2) cap); s 14; the officer roles of ss 3, 4, 15 to 20, 22; ss 23 to 25, 36; ss 32(1), 33, 34, 35, 37.
+
+**Not testable with the records.** The s 8 presumption is wired to ss 5 and 6 by a BOOLEAN input, so there is no single function from the facts to the offence (the agent fed the presumption's result in by hand); `the offence is committed by the acceptance of a gratification` is a fixed list of five offence constructors, so the encoding cannot test whether "acceptance" reaches the giving-side offences; ss 29(b) and 37 fold their statute-level facts into single BOOLEANs; no field links a charged offence to its matter or transaction, so the 5 versus 7 year choice under s 7 is an input; s 15(3) and s 16(1) are BOOLEANs and role parameters with little to test beyond them; the s 36(2) redaction duty and the s 14(2) savings clause are not rules.
+
+**A reading to check.** s 7 raises the ceiling for "an offence under section 5 or 6"; the encoding and the agent both read that to include s 6(c), so an offence under s 6(c) concerning a Government contract carries 84 months. A court might read the raise as meant for gratification offences only.

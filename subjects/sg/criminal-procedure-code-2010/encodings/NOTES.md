@@ -1,6 +1,6 @@
 # Criminal Procedure Code 2010 — First Schedule — encoding notes
 
-Row `legalese-aswathy`. Status `draft`. **No domain expert has read this against the source, and no independent test pass has been run** (section 6).
+Row `legalese-aswathy`. Status `draft`. **No domain expert has read this against the source.** An independent test pass was run on 2026-10-01 (section 9): 872 of 873 assertions satisfied, one left failing on purpose (F11), and no mismatch between the printed First Schedule and the 478 stored rows.
 
 ## 1. What is encoded and what is not
 
@@ -130,10 +130,11 @@ cpc-tests-second-schedule.l4                   0       103       0
 cpc-types.l4                                   0         0       0
 ea-cpc-interface.l4                            0         0       0
 written-law-interface.l4                       0         0       0
-TOTAL (11 modules)                             0       376       0
+tests-independent.l4                           1       872       1
+TOTAL (12 modules)                             1      1248       1
 ```
 
-No assertion is expected to fail. `check.sh` compares each `*-interface.l4` with the copies of the same name in the sibling subjects with `cmp`: identical (the check was added on 2026-10-01 and is in the Evidence Act row's `check.sh` too).
+**One assertion is expected to fail**: `tests-independent.l4` (s 211A(2), fork F11), so `check.sh` exits 1. No other assertion is expected to fail. `check.sh` compares each `*-interface.l4` with the copies of the same name in the sibling subjects with `cmp`: identical (the check was added on 2026-10-01 and is in the Evidence Act row's `check.sh` too).
 
 ## 6. Fork register
 
@@ -149,6 +150,7 @@ No assertion is expected to fail. `check.sh` compares each `*-interface.l4` with
 | F9 | s 211A(2) "any offence that is to be tried in the General Division of the High Court, but is not mentioned in subsection (1)" | consent extends the procedures to an offence designated for the High Court under a law the Schedule does not list | (1)(a) already covers every offence that must be tried there |
 | F10 | an Act's statement (`cpc-other-laws.l4`) | it can only add to what the case already shows (it makes `a law other than the Penal Code shows the offence as triable by a ... Court under that law` true, never false); an Act that deems its offences arrestable (PCA s 32(1)) makes every offence under it arrestable whatever its punishment; an Act that empowers the police (MDA s 25(1)) engages "unless specifically empowered" and so matters only below 3 years' imprisonment; neither statement says a Magistrate's Court may try the offence, so s 7(1)(a) decides | ss 2(1), 9(2)(b), 9(3)(b) and the First Schedule's last four rows |
 | F6 | the third column "ordinarily": Explanatory Note 2 says the column does not restrict the powers of arrest police officers may lawfully exercise | the column answers "ordinarily", and no rule says a non-arrestable offence cannot lead to an arrest | s 64 and s 65 give other powers; they are not encoded |
+| F11 | s 211A(2): the procedures also apply to "any offence that is to be tried in the General Division of the High Court, but is not mentioned in subsection (1)", if all parties consent | consent has effect only where the offence must be tried there or the Public Prosecutor designates the High Court (the F9 reading) | `High Court Disclosure Facts` has no field for "is to be tried in the General Division" apart from those two | the independent pass read the words literally: an offence under an unlisted law, not required to be tried there and not designated, that is nevertheless to be tried there, with consent, is within (2); the encoding says it is not. The records cannot express the extra route, and the text does not say how an offence reaches the High Court other than by (1)(a) or (1)(b). Left failing; both readings stay visible |
 
 ## 7. Extraction of the First Schedule: what was tried and what was checked
 
@@ -169,9 +171,20 @@ Checks run on the result (478 rows):
 
 ## 8. Open questions for a domain expert
 
+- s 211A(2) (forks F9 and F11): by what route, other than s 211A(1)(a) or (b), is an offence "to be tried in the General Division"? If there is one, the encoding needs a field for it.
 - Second Schedule: it says "laws"; is an offence under subsidiary legislation made under a listed Act within it? The encoding takes the Act that creates the offence as given and does not decide this.
 - s 211A(2) (fork F9): is the meaning taken the intended one?
 - Misuse of Drugs Act s 53 gives a Magistrate's Court jurisdiction over "all proceedings under this Act". Read literally with Code s 9(2)(b), a Magistrate's Court could try an offence punishable with death. The statement says FALSE and leaves the Magistrate's Court to s 7(1)(a); is that the intended reading (fork F10)?
 - Are blank "by what court triable" cells (57 rows) meant as "General Division of the High Court only" (F3)? In particular ss 306 and 399 (10 years) and ss 123 and 130C (15 years): s 8(1) alone would let a District Court try a 10-year offence, so the blank there either overrides s 8(1) or is a gap.
 - For the false-evidence rows (ss 195 to 200) the printed arrest cell is "according as to whether arrest may be made without warrant for the offence or not" for s 195 but "May arrest without warrant" for ss 196 to 200; confirm that is as intended and not an extraction of one cell.
 - s 376EB(3)(a) and the like are stored with their subsection; sections whose subsections the Penal Code renumbers will need the lookup by `base section`.
+
+## 9. The independent test pass, 2026-10-01
+
+A fresh agent that had not seen the encoding decided its expected answers from the source text and wrote them to `independent-pass-answers.md` before opening any `.l4` file, then wrote `tests-independent.l4`. It did read the rule modules for names and signatures, so it was not blind to the logic. It was told not to open this file, `encoding.json`, the existing tests or the generators. Run by `check.sh` with the rest of the row.
+
+**Result.** `tests-independent.l4`: 873 assertions, 872 satisfied, 1 failed (s 211A(2), fork F11). Its author fixed two errors of its own (it indexed the last line of s 225 as the fourth row when it is the fifth; a stray "1871" from its own extraction on the s 512(2) punishment cell); the encoding was right on both.
+
+**First Schedule against the page.** The agent extracted the table from the PDF with its own word-position script and compared all 478 Penal Code rows and the 4 other-law rows with the stored rows: the section-label sequence is identical (including the labels "226 (as in force immediately before ... s 77 ...)" and "227 (repealed)"), and the descriptions, columns 3, 4, 5 and 7 and the punishment text agree. Every difference its diff reported came from chapter headings or wrapped neighbouring cells entering its own extraction. 96 rows are spot-checked in the test file, across chapters 3 to 23: the derived cells (109 to 120, 120B, 512, 73, 74A, 74B, 471, 149, 150, 193 to 201), multi-line sections (193, 222, 130B), blank court cells, and every kind of cell in columns 3, 4, 5 and 7. All 32 Second Schedule items match on number and printed text, including 2A's qualification, 9's exclusion of ss 6 and 15, and item 18's Cap. 256 edition. Sections 7 to 9 are tested on both sides of the 5-year and 10-year lines, with s 9(2) and (3)(a) to (c); a District-Court-only court cell on a one-month offence (s 175) is still tried by a Magistrate's Court under s 7(1)(a).
+
+**Not testable with the records.** Column 6 is a free string, so the maximum term, fine-only and punishable-with-death facts are supplied by hand in every jurisdiction fixture. The two Acts' statements are inputs: this row cannot check the reading of PCA ss 32(1), 34 or MDA ss 25(1), 53. MDA s 53's rule that a District Court cannot impose death is covered only through s 9(3). The Second Schedule match is on the exact Act string, so item 18 written with its Cap. qualifier would not match. A derived row's column 6 ("up to twice the punishment") stays text.

@@ -1,6 +1,6 @@
 # Evidence Act 1893 — encoding notes
 
-Row `legalese-aswathy`. Status `draft`. **No domain expert has read this against the source, and no independent test pass has been run** (section 7).
+Row `legalese-aswathy`. Status `draft`. **No domain expert has read this against the source.** An independent test pass was run on 2026-10-01 (section 9): it found three encoding errors, now fixed, and left two assertions failing on purpose (F15, F16).
 
 ## 1. What is encoded and what is not
 
@@ -20,7 +20,7 @@ The Evidence Act 1893 as printed in Singapore Statutes Online's PDF, current ver
 | `ea-examination.l4` | How is a witness examined; what do previous statements prove; what corroborates? | ss 137 to 169 |
 | `ea-bankers-schedules.l4` | How are bankers' books proved; which offences are "child abuse" or "sexual"? | ss 170 to 177, both Schedules |
 | `ea-goals.l4` | the principal questions, exported; the conclusions the Act hands the Code | assembles the above |
-| `ea-tests-*.l4` (9 files) | — | 803 assertions, **generated** by `generators/ea_tests_*.py` from `ea-types.l4` |
+| `ea-tests-*.l4` (9 files) | — | 806 assertions, **generated** by `generators/ea_tests_*.py` from `ea-types.l4` |
 | `ea-tests-scenario-tan.l4` | the Evidence Act's part of the case *Public Prosecutor v Tan*: an accused's offer to an officer as an admission (ss 17 to 23), and the s 107 burden | 5 assertions, **generated** by `scenarios/public-prosecutor-v-tan/` (SCENARIO.md; `build.py` writes the four per-Act files); the case runs through the Criminal Procedure Code, Prevention of Corruption Act and Misuse of Drugs Act rows too; nothing here feeds them |
 
 **Shape.** Each rule is a `BOOLEAN` (or a `MAYBE`, an enumeration, or a named `REFUSE`) over a record of facts a witness could testify to; the Act's illustrations are the test cases. Where the Act says the court "may" or "is to" do something, the rule says whether the condition for the power or duty is met, never what the court decides in its discretion. Presumptions return the strength the Act gives them (`the court may presume`, `the court is to presume`, `conclusive proof`) or `NOTHING`.
@@ -129,7 +129,7 @@ The First Schedule (child abuse offences, sexual offences) is encoded as four li
 
 ## 6. What `check.sh` prints
 
-Run with `l4` build `unstable-20260926-c76e6b0` (win32-x64), 2026-10-01: 22 modules, 0 errors, 808 assertions satisfied, 0 failed (803 in the nine `ea-tests-*` files, 5 in the scenario file).
+Run with `l4` build `unstable-20260926-c76e6b0` (win32-x64), 2026-10-01: 23 modules, 1763 assertions satisfied, **2 failed, both expected** (806 in the nine `ea-tests-*` files, 5 in the scenario file, 952 satisfied and 2 failed in `tests-independent.l4`); `check.sh` therefore exits 1.
 
 ```
 ea-tests-examination.l4                      0       105       0
@@ -142,10 +142,11 @@ ea-tests-scenario-tan.l4                      0         5       0
 ea-tests-schedules-goals.l4                  0       136       0
 ea-tests-statements.l4                       0        89       0
 ea-tests-witnesses-privilege.l4              0        95       0
-TOTAL (22 modules)                           0       808       0
+tests-independent.l4                           2       952       2
+TOTAL (23 modules)                           2      1763       2
 ```
 
-No assertion is expected to fail. A deliberately wrong assertion was run once, to check the harness reports it (it did), and not kept.
+**Two assertions are expected to fail**, both in `tests-independent.l4`: B13e (s 4(3)) and X11e (s 161(3)); they are forks F15 and F16 and are kept failing so that both readings stay visible. Every other assertion is expected to pass. A deliberately wrong assertion was run once, to check the harness reports it (it did), and not kept.
 
 ## 7. Fork register
 
@@ -165,6 +166,8 @@ No assertion is expected to fail. A deliberately wrong assertion was run once, t
 | F12 | s 124(2): "relevant in criminal proceedings in respect of a specified offence" | the rule takes the Boolean as a parameter; `the offence is a specified offence` is a separate rule over its own record | the definition has five limbs |
 | F13 | s 128(1) and 128A(1): whether the "advice" limb survives the 128(2) exceptions | the exceptions subtract from every limb | 128(2) says "nothing in this section protects" |
 | F14 | s 59(1)(a) to (n) | one field: the fourteen kinds of judicially noticed fact have one effect (s 58) | no difference in effect; the list is in a comment |
+| F15 | s 4(3): "When one fact is declared by this Act to be conclusive proof of another, the court is, on proof of the one fact, to regard the other as proved, and is not to allow evidence to be given for the purpose of disproving it": two consequences | `the treatment of a presumed fact` returns `regarded as proved`; the second consequence is the separate rule `evidence may be given to disprove the presumed fact` (FALSE for conclusive proof) | the enumeration can carry one value; both consequences are encoded, in two rules | independent pass B13e expects the enumeration itself to say `evidence to disprove it is not allowed`, and fails. Probably a test-author expectation; left failing |
+| F16 | s 161(3): a witness may "with the permission of the court, refer to a copy ... if the court is satisfied that there is sufficient reason for the non-production of the original" | the rule asks whether the writing qualifies for refreshing memory (made at the time, or read at the time or soon after); whether a copy may be used is not asked | a rule per question the section answers | independent pass X11e expects FALSE when the writing qualifies but the witness refers to a copy without sufficient reason, and fails. Low severity; left failing |
 
 ## 8. Open questions for a domain expert
 
@@ -172,3 +175,21 @@ No assertion is expected to fail. A deliberately wrong assertion was run once, t
 - s 32(1)(k) with s 32(6): is "the accused or any of the co-accused is represented by an advocate" tested when the agreement is made, as encoded, or at trial?
 - s 116 illustrations (recent possession of stolen goods; the accomplice caution) are inert here; whether they should be encoded as conditions with CPC ss 265 and 266 is a modelling choice.
 - the interface's `Kind of Report or Statement` enumeration has no rule yet; it belongs with the Code's Part 14.
+
+## 9. The independent test pass, 2026-10-01
+
+A fresh agent that had not seen the encoding decided its expected answers from the source text and wrote them to `independent-pass-answers.md` before opening any `.l4` file, then wrote `tests-independent.l4`. It did read the rule modules for names and signatures, so it was not blind to the logic. It was told not to open this file, `encoding.json`, the existing tests or the generators. Run by `check.sh` with the rest of the row.
+
+**Result.** 954 assertions. First run 948 satisfied, 6 failed. The agent had fixed 11 of its own fixtures after its first run (938 satisfied, 18 failed) and removed two assertions of its own (R1, W11h); no expected value was changed to match the code.
+
+| id | provision | what the encoding did | disposition |
+| --- | --- | --- | --- |
+| O3c | s 49 and its Explanation | read only "acquainted"; the field carrying the Explanation's routes (has seen the person write, received answers, habitually received documents) was not read | **encoding error, fixed**: `the opinion on handwriting is relevant under section 49` now needs both |
+| K4 | ss 170, 171 | `the company is a bank` was defined and not used; an unlicensed company's copy was received | **encoding error, fixed**: s 171's rule now needs `the company is a bank`; regression assertion added in `ea-tests-schedules-goals.l4` |
+| D24c, D24e | s 80A(1), (2), (5) | a film "in the possession of the Government or any specified statutory body": the record could not tell the two, so a body outside the Second Schedule passed s 80A(1) and a Government-held film's certificate failed s 80A(2) | **encoding error, fixed**: `Film Print Facts` gained `the document is in the possession of the Government`; both rules need it or the Second Schedule entry. The independent file's ten positional `Film Print Facts` fixtures got a ninth argument (FALSE, and TRUE for D24e's Government-held film); regression assertions added in `ea-tests-proof.l4` |
+| B13e | s 4(3) | `regarded as proved` | F15; left failing |
+| X11e | s 161(3) | the writing qualifies, so TRUE | F16; left failing |
+
+Three assertions were added to the generated tests so the fixes are held by the row's own tests (`generators/ea_tests_2.py`, `ea_tests_3.py`). After the fixes: 952 of 954 satisfied.
+
+**Not testable with the records** (so nothing tests them): s 177 (amendment of the Schedules by Gazette order) has no rule; s 154A is left to the Minister's rules; s 59(3) and s 138(3) have no rule; s 175's three clear days' service has no field; the time limits (30 years, 7 years, 280 days, age 18 or 16) are BOOLEANs, so their boundaries are not tested; s 124 cannot separate a communication made before the marriage from one made during it; s 128 cannot hold a communication and a separately observed fact in one record; a person's own opinion by words versus by conduct is tested for s 52 only.

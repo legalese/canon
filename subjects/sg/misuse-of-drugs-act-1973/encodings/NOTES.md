@@ -157,10 +157,11 @@ mda-tests-punishment.l4                        0       328       0
 mda-tests-scenario-tan.l4                      0        21       0
 mda-types.l4                                   0         0       0
 written-law-interface.l4                       0         0       0
-TOTAL (13 modules)                             0       960       0
+tests-independent.l4                           0       315       0
+TOTAL (14 modules)                             0      1275       0
 ```
 
-No assertion is expected to fail. The tests were written from the Act's text by the same session that wrote the rules; **no independent test pass has been run** (the encoding-a-subject skill's step 8) and no domain expert has read the modules against the Act (gate HG1).
+No assertion is expected to fail. Except `tests-independent.l4` (section 10), the tests were written from the Act's text by the same session that wrote the rules. No domain expert has read the modules against the Act (gate HG1).
 
 ## 9. Open questions for a domain expert
 
@@ -171,3 +172,15 @@ No assertion is expected to fail. The tests were written from the Act's text by 
 - s 11E and s 11Q: whether the young person must in fact have committed the offence (encoded as an input).
 - s 53 and the Magistrate's Court (F7).
 - Whether a person with a previous conviction under s 8(a) for a Class A drug, now convicted of 8(a) for a quantity within the (b) band, is outside s 33(3B) (the encoding says yes, as the row says).
+
+## 10. The independent test pass, 2026-10-01
+
+A fresh agent that had not seen the encoding decided its expected answers from the source text and wrote them to `independent-pass-answers.md` before opening any `.l4` file, then wrote `tests-independent.l4`. It did read the rule modules for names and signatures, so it was not blind to the logic. It was told not to open this file, `encoding.json`, the existing tests or the generators. Run by `check.sh` with the rest of the row. For the Second Schedule the agent also read the rendered PDF pages, and was told not to open `mda-second-schedule.l4` (generated data) until its answers were written down.
+
+**Result.** `tests-independent.l4`: 315 assertions, 315 satisfied, 0 failed, and no mismatch between the printed Second Schedule and the encoding in any cell it tested. To check the run could fail, it appended two deliberately wrong assertions, saw both fail, and removed them. About 215 of the 315 are Second Schedule and ss 33, 33A, 33B cells: ss 5 and 7 for all seven specified-quantity drugs at every band edge (and opium with its morphine content); the general rows for Classes A, B and C; s 6; manufacture; s 8(a) bands for seven drugs; s 33(3B), 33(3A), 33(4), 33A, 33(4A), (4B), (4D); s 33B in all outcomes; ss 9, 10, 10A, 11, 11E, 30, 31(2A), 31A(2A), 31B(2) and about 20 section-stated punishments. The other 100 cover s 17 on both sides of every figure (including ketamine and the MDMA group), ss 18 to 22B, and about 45 offence scenarios. Consumption has no Second Schedule row (s 8(b) is "[Deleted by Act 1 of 2019]"); it was tested through ss 33(3A), 33(4) and 33A.
+
+**Test-author guesses the Act's text does not prove** (the encoding agreed): a s 33(3B) sentence is imprisonment "and also liable to a fine", so `imprisonment, fine or both may be imposed in the alternative` is FALSE; where both s 33B gateways are proved the outcome is the mandatory life of s 33B(1)(b).
+
+**Not tested, or not expressible.** Opium over 1,200 g with 30 g or less of morphine (or the reverse) falls in neither the sixth-column band nor the "not less than" band, and was not asserted; s 33(4) prints only a minimum and the encoding stores a maximum of 0, so only the minimum was asserted; the First, Third and Fourth Schedule lists are out of scope, so drug class and "specified drug" are inputs; most enforcement powers (ss 26 to 29, 31A, 31B, 34 on) and the psychoactive-substance offences ss 11C, 11D, 11O to 11Q got few or no scenarios; the s 33(4AA) and (4AB) combinations and the s 33A(1B) Singapore Armed Forces and hair combinations were not exercised; the records cannot express "young person" separately from age 21, or "vulnerable person" status.
+
+**An unintended overwrite.** The agent's first heredoc failed and a follow-up command ran a stale generator from the sibling Prevention of Corruption Act pass, which regenerated that row's `tests-independent.l4`. That file was re-run afterwards (434 satisfied, 0 failed).
