@@ -8,8 +8,9 @@ different publishers each need their own answer.
 ## What is actually known
 
 Measured 2026-09-21 over the ten `pdftotext -layout` extractions in `legalese/l4-ide` at
-`jl4/examples/legal/miles-card/source/*.txt` (the authoritative copy; see `NOTES.md` §0 —
-the PDFs and their extractions are not vendored into this repository): a case-insensitive
+`jl4/examples/legal/miles-card/source/*.txt` (then the copy of record; this repository holds
+neither the PDFs nor the extractions — `source/fetch.sh` re-creates both from the issuers' own
+URLs and refuses any PDF whose `sha256` differs from the bundle's; see `NOTES.md` §0): a case-insensitive
 search for `copyright`, `©`, `all rights reserved` and `licen[cs]e` across all ten files
 returns **one hit, and it is a false positive** — HSBC's MCC table row 28,
 `7801 Government Licensed On-Line Casinos`. **No document carries a copyright notice, a
