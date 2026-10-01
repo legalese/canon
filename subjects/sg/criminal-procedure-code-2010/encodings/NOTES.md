@@ -4,7 +4,7 @@ Row `legalese-aswathy`. Status `draft`. **No domain expert has read this against
 
 ## 1. What is encoded and what is not
 
-**Scope, by the requester's instruction of 2026-10-01: the First Schedule only**, with the provisions that read it. The Schedule is "Tabular statement of offences under the Penal Code 1871", as printed in Singapore Statutes Online's PDF, current version as at 01 Oct 2026. It is a procedural cross-reference for Penal Code offences: for each Penal Code section it says whether the police may ordinarily arrest without warrant, whether a warrant or a summons ordinarily issues, whether the offence is bailable of right, the maximum punishment, and which court tries it besides the General Division of the High Court. It is **not** a list of all Singapore criminal offences, and it is **not** a statement of the elements of the offences (Explanatory Note 1 says so); the elements are in the Penal Code (`sg/penal-code-1871`).
+**Scope, by the requester's instructions of 2026-10-01: the First Schedule, then the Second Schedule**, with the provisions that read them. The Schedule is "Tabular statement of offences under the Penal Code 1871", as printed in Singapore Statutes Online's PDF, current version as at 01 Oct 2026. It is a procedural cross-reference for Penal Code offences: for each Penal Code section it says whether the police may ordinarily arrest without warrant, whether a warrant or a summons ordinarily issues, whether the offence is bailable of right, the maximum punishment, and which court tries it besides the General Division of the High Court. It is **not** a list of all Singapore criminal offences, and it is **not** a statement of the elements of the offences (Explanatory Note 1 says so); the elements are in the Penal Code (`sg/penal-code-1871`).
 
 | module | covers |
 | --- | --- |
@@ -12,13 +12,15 @@ Row `legalese-aswathy`. Status `draft`. **No domain expert has read this against
 | `ea-cpc-interface.l4` | the interface to the Evidence Act subject, **identical in both rows**; nothing in this row's rules reads it yet (section 4) |
 | `cpc-first-schedule.l4` | the data: 478 printed rows and the 4 "other written law" rows. **Generated**; do not edit |
 | `cpc-offence-procedure.l4` | reading a row; derived rows; the four "other written law" bands; ss 7 to 9 (trial courts) |
+| `cpc-second-schedule.l4` | the Second Schedule (32 items, written laws) and the two sections that read it: s 159 (State Courts) and s 211A (High Court) |
 | `cpc-tests-offence-procedure.l4` | 135 assertions. **Generated** by `generators/cpc_tests_1.py` |
+| `cpc-tests-second-schedule.l4` | 103 assertions. **Generated** by `generators/cpc_tests_2.py` |
 
-**The question the encoding answers:** *what is the procedural treatment of this offence?* Given a Penal Code section (and subsection), `the First Schedule rows for the Penal Code section` returns its rows; `the procedural treatment of a row` returns arrestable, warrant, bailable and which courts may try it. For an offence under another written law, the four printed bands give the answer by the severity of the punishment.
+**Two questions.** *Do the criminal case disclosure procedures apply to this offence?* (Second Schedule, ss 159, 211A). The Schedule lists written laws, not offences: an offence is within it when its Act is listed (item 9 excludes ss 6 and 15 of the Immigration Act 1959; item 2A is the Banishment Act 1959 only as in force before the 2023 amendment). Section 159 then asks whether the case is to be tried in a District Court, and s 211A whether it must be, or has been designated to be, tried in the High Court; the parties' consent extends both. *And: what is the procedural treatment of this offence?* Given a Penal Code section (and subsection), `the First Schedule rows for the Penal Code section` returns its rows; `the procedural treatment of a row` returns arrestable, warrant, bailable and which courts may try it. For an offence under another written law, the four printed bands give the answer by the severity of the punishment.
 
 **Not encoded, and why** (section 2 has the account):
 
-- every other section of the Code (Parts 1 to 22), and the Second, Third, Fourth, Fifth, Sixth and Seventh Schedules: out of scope by instruction. The Code's Part 14 (evidence and witnesses), which connects to the Evidence Act subject, is among them.
+- every other section of the Code (Parts 1 to 22), and the Third, Fourth, Fifth, Sixth and Seventh Schedules: out of scope by instruction. The procedures of Part 9 and Part 10 Division 5 themselves (the Case for the Prosecution and the Case for the Defence) are not encoded; only whether they apply is. The Code's Part 14 (evidence and witnesses), which connects to the Evidence Act subject, is among them.
 - the elements of the offences: the Penal Code, `sg/penal-code-1871`.
 - the other written laws whose offences the four bands cover, and the Criminal Procedure Rules.
 
@@ -50,7 +52,11 @@ Disposition: `encoded` (a rule or the data in the module named); `inert` (read, 
 | 9(4) | no enlargement of s 303 powers | inert: s 303 is not encoded | — |
 | 10 to 13 | consent; the Public Prosecutor | out-of-scope (written and tested, then removed when the scope was narrowed to the First Schedule) | — |
 | 14 to 429 | Parts 4 to 22, including Part 14 (evidence and witnesses) | out-of-scope | — |
-| Second, Third, Fourth, Fifth, Sixth, Seventh Schedules | | out-of-scope | — |
+| Second Schedule, items 1 to 23 (32 items with the lettered ones) | Laws to which criminal case disclosure procedures apply | encoded: data, and `the offence is under a law specified in the Second Schedule` | second-schedule |
+| 159(1), (3) | When criminal case disclosure procedures apply (State Courts) | encoded (fork F7); 159(2) deleted | second-schedule |
+| 211A(1), (2) | When they apply (High Court) | encoded (fork F9) | second-schedule |
+| 158, 160 to 171, 172 to 221 (the procedures themselves), 427(1) (power to amend the Schedules) | | out-of-scope | — |
+| Third, Fourth, Fifth, Sixth, Seventh Schedules | | out-of-scope | — |
 
 ## 3. The data: how a printed row becomes a record
 
@@ -95,10 +101,12 @@ Run with `l4` build `unstable-20260926-c76e6b0` (win32-x64), 2026-10-01:
 module                                    errors satisfied  failed
 cpc-first-schedule.l4                          0         0       0
 cpc-offence-procedure.l4                       0         0       0
+cpc-second-schedule.l4                         0         0       0
 cpc-tests-offence-procedure.l4                 0       135       0
+cpc-tests-second-schedule.l4                   0       103       0
 cpc-types.l4                                   0         0       0
 ea-cpc-interface.l4                            0         0       0
-TOTAL (5 modules)                              0       135       0
+TOTAL (7 modules)                              0       238       0
 ```
 
 No assertion is expected to fail. `cmp` of the two copies of `ea-cpc-interface.l4`: identical.
@@ -112,6 +120,9 @@ No assertion is expected to fail. `cmp` of the two copies of `ea-cpc-interface.l
 | F3 | a blank "by what court triable" cell | no court besides the General Division of the High Court | the column is headed "besides the General Division of High Court", so a blank cell means no court besides it. The 57 blank rows are the most serious offences (death, life, or 15 to 20 years, e.g. ss 121, 194, 375(2), 395, 512(1)), but not all: s 306 and s 399 are printed with 10 years and a blank court although s 8(1) would let a District Court try a 10-year offence. The Schedule does not state the reading in terms |
 | F4 | the four "other written law" rows are printed after s 512(2) and the extraction first fused them into it | separate rows, section "Other written law", court "According to sections 7, 8 and 9" | they are headed "OFFENCES AGAINST LAWS OTHER THAN THE PENAL CODE 1871" and are not attempts |
 | F5 | "May not arrest without warrant unless specifically empowered to do so by the law offended against" | not arrestable ordinarily; the other law's own power is a further input (`the law offended against specifically empowers ...`) | s 2(1) defines arrestable by "ordinarily arrest without warrant according to the third column ... or under any other written law" |
+| F7 | s 159(1)(b) "is to be tried in a District Court" | a fact about the forum; a Magistrate's Court trial is outside (1) and needs consent under (3) | the text |
+| F8 | item 9 "other than sections 6 and 15" | the section is tested without subsections, so every subsection of ss 6 and 15 is excluded | the item names sections, not subsections |
+| F9 | s 211A(2) "any offence that is to be tried in the General Division of the High Court, but is not mentioned in subsection (1)" | consent extends the procedures to an offence designated for the High Court under a law the Schedule does not list | (1)(a) already covers every offence that must be tried there |
 | F6 | the third column "ordinarily": Explanatory Note 2 says the column does not restrict the powers of arrest police officers may lawfully exercise | the column answers "ordinarily", and no rule says a non-arrestable offence cannot lead to an arrest | s 64 and s 65 give other powers; they are not encoded |
 
 ## 7. Extraction of the First Schedule: what was tried and what was checked
@@ -133,6 +144,8 @@ Checks run on the result (478 rows):
 
 ## 8. Open questions for a domain expert
 
+- Second Schedule: it says "laws"; is an offence under subsidiary legislation made under a listed Act within it? The encoding takes the Act that creates the offence as given and does not decide this.
+- s 211A(2) (fork F9): is the meaning taken the intended one?
 - Are blank "by what court triable" cells (57 rows) meant as "General Division of the High Court only" (F3)? In particular ss 306 and 399 (10 years) and ss 123 and 130C (15 years): s 8(1) alone would let a District Court try a 10-year offence, so the blank there either overrides s 8(1) or is a gap.
 - For the false-evidence rows (ss 195 to 200) the printed arrest cell is "according as to whether arrest may be made without warrant for the offence or not" for s 195 but "May arrest without warrant" for ss 196 to 200; confirm that is as intended and not an extraction of one cell.
 - s 376EB(3)(a) and the like are stored with their subsection; sections whose subsections the Penal Code renumbers will need the lookup by `base section`.
