@@ -1,0 +1,174 @@
+IMPORT `cat-domain`
+
+-- Cat Regulations 2012 (WA) -- the prescribing regulations the Act leaves its
+-- exemptions to, and the registration periods.
+--
+-- Source: sources/cat-regulations-2012.txt, converted from the register's own
+-- mrdoc_48735.docx (sha256 ae3baa53a091d8f9...; the full digest is in
+-- registers/source-bundle.json). Gazetted 16 Nov 2012 p. 5537-69.
+--
+-- WHY THIS MODULE EXISTS. cat-part2-div1-registration.l4 takes
+-- `of a class prescribed as exempt from registration` and
+-- `of a class prescribed as exempt from wearing a tag in a public place` as
+-- facts supplied, because s 5(2)(c) and s 6(2) delegate them and the Act cannot
+-- make them true. Regulations 9 and 10 are what makes them true. This module
+-- decides them from facts about the cat's custody or its appearance at a show,
+-- so that nothing about the exemptions rests on an unexplained boolean.
+--
+-- The Act module still takes them as inputs. That is the scope discipline in
+-- CLAUDE.md and it is deliberate: the Act and the regulations are different
+-- instruments, each amendable without the other, and a module that reached
+-- across would hide which instrument a conclusion came from. The wiring is done
+-- at the call site, in cat-cases.l4.
+--
+-- No library imports: see the note at the head of cat-domain.l4.
+
+§ `Cat Regulations 2012`
+
+§§ `9 -- Cats exempt from registration (s. 5(2)(c) and 9(2)(b))`
+
+-- reg 9(2): "a cat that is in the custody of any of the following is exempt from
+-- registration -- (a) Cat Welfare Society Inc., trading as "Cat Haven";
+-- (b) The Royal Society for the Prevention of Cruelty to Animals, Western
+-- Australia; (c) the Department of State of the Commonwealth that is
+-- administered by the Commonwealth Minister administering the Biosecurity Act
+-- 2015 (Commonwealth); (d) a cat management facility; (e) veterinary premises as
+-- defined in the Veterinary Practice Act 2021 section 3."
+--
+-- An enum, because custody is single-valued here: the regulation asks whose
+-- custody the cat is in, and `nobody listed` is the ordinary case.
+DECLARE Custodian IS ONE OF
+    `Cat Haven`                                                          -- (a)
+    `the RSPCA in Western Australia`                                     -- (b)
+    `the Commonwealth department administering the Biosecurity Act 2015`  -- (c)
+    `a cat management facility`                                          -- (d)
+    `veterinary premises under the Veterinary Practice Act 2021 section 3` -- (e)
+    `nobody listed in regulation 9(2)`
+
+-- reg 9(3): "a cat that is in foster care is exempt from registration if --
+-- (a) the cat has been placed into that foster care by either of the following
+-- -- (i) Cat Welfare Society Inc., trading as "Cat Haven"; (ii) The Royal
+-- Society for the Prevention of Cruelty to Animals, Western Australia; or
+-- (b) the cat has been placed into that foster care by a SAFE entity, provided
+-- that the cat has not been in foster care for more than a total of 12 weeks".
+--
+-- The proviso attaches to limb (b) only: a Cat Haven or RSPCA placement carries
+-- no time limit, a SAFE placement expires at 12 weeks. That asymmetry is the
+-- whole content of the paragraph, so the placer is an enum and the weeks are a
+-- number.
+DECLARE FosterPlacer IS ONE OF
+    `Cat Haven`                          -- reg 9(3)(a)(i)
+    `the RSPCA in Western Australia`     -- reg 9(3)(a)(ii)
+    `a SAFE entity`                      -- reg 9(3)(b)
+    `nobody listed in regulation 9(3)`
+
+DECLARE CustodyFacts HAS
+    `in the custody of`                  IS A Custodian
+    `in foster care`                     IS A BOOLEAN
+    `placed into that foster care by`    IS A FosterPlacer
+    `total weeks the cat has been in foster care` IS A NUMBER
+
+GIVEN `the facts` IS A CustodyFacts
+GIVETH A BOOLEAN
+DECIDE `regulation 9(2) exempts the cat` IF
+    CONSIDER `the facts`'s `in the custody of`
+    WHEN `nobody listed in regulation 9(2)` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the facts` IS A CustodyFacts
+GIVETH A BOOLEAN
+DECIDE `regulation 9(3) exempts the cat` IF
+        "a cat that is in foster care" ... `the facts`'s `in foster care`
+    AND CONSIDER `the facts`'s `placed into that foster care by`
+        WHEN `Cat Haven` THEN TRUE
+        WHEN `the RSPCA in Western Australia` THEN TRUE
+        WHEN `a SAFE entity` THEN
+            "provided that the cat has not been in foster care for more than a total of 12 weeks"
+                ... `the facts`'s `total weeks the cat has been in foster care` AT MOST 12
+        OTHERWISE FALSE
+
+-- What s 5(2)(c) and s 9(2)(b) of the Act read as `of a class prescribed as
+-- exempt from registration`.
+GIVEN `the facts` IS A CustodyFacts
+GIVETH A BOOLEAN
+DECIDE `the cat is of a class prescribed as exempt from registration` IF
+        `regulation 9(2) exempts the cat` `the facts`
+    OR  `regulation 9(3) exempts the cat` `the facts`
+
+§§ `10 -- Cats exempt from wearing tag (s. 6(2))`
+
+-- reg 10(1): "exhibited means exhibited for show purposes at a cat show held by
+-- -- (a) Cat Owners' Association of Western Australia Incorporated; or (b) the
+-- Feline Control Council of Western Australia (Inc); or (c) Australian National
+-- Cats Incorporated; or (d) Cats United WA Incorporated; or (e) a body that is
+-- affiliated with an organisation mentioned in paragraph (a), (b), (c) or (d)."
+--
+-- reg 10(2): "The owner of a cat that is being exhibited is exempt from the
+-- requirement to ensure the cat wears its registration tag in a public place in
+-- section 6(1) of the Act."
+DECLARE ShowHost IS ONE OF
+    `the Cat Owners' Association of Western Australia Incorporated`   -- (a)
+    `the Feline Control Council of Western Australia (Inc)`           -- (b)
+    `Australian National Cats Incorporated`                           -- (c)
+    `Cats United WA Incorporated`                                     -- (d)
+    `a body affiliated with one of those organisations`               -- (e)
+    `a host not listed in regulation 10(1)`
+
+DECLARE ShowFacts HAS
+    `exhibited for show purposes at a cat show` IS A BOOLEAN
+    `the show was held by`                      IS A ShowHost
+
+-- What s 6(2) of the Act reads as `of a class prescribed as exempt from wearing
+-- a tag in a public place`. Note that the regulation exempts THE OWNER of a cat
+-- being exhibited, while s 6(2) speaks of a CLASS OF CATS prescribed as exempt:
+-- the regulation answers a question the Act did not quite ask. Recorded as a
+-- finding; encoded as the regulation reads, since it is the regulation that
+-- creates the exemption.
+GIVEN `the facts` IS A ShowFacts
+GIVETH A BOOLEAN
+DECIDE `the cat is of a class prescribed as exempt from wearing a tag in a public place` IF
+        "a cat that is being exhibited" ... `the facts`'s `exhibited for show purposes at a cat show`
+    AND CONSIDER `the facts`'s `the show was held by`
+        WHEN `a host not listed in regulation 10(1)` THEN FALSE
+        OTHERWISE TRUE
+
+§§ `12 -- Period of registration (s. 9(7))`
+
+-- reg 12(1): "Registration of a cat may be for -- (a) either one year or 3
+-- years; or (b) for the life of the cat."
+DECLARE RegistrationPeriod IS ONE OF
+    `one year`
+    `3 years`
+    `the life of the cat`
+
+-- reg 12(2)(a): registration "has effect from the period specified in the
+-- registration certificate until -- (i) in the case of registration for one
+-- year -- the next 31 October, unless cancelled sooner; or (ii) in the case of
+-- registration for 3 years -- 31 October in the final year of that period,
+-- unless cancelled sooner; or (iii) in the case of registration for the life of
+-- the cat -- the death of the cat, unless cancelled sooner".
+--
+-- So every fixed-term registration expires on 31 October, whatever month it was
+-- granted in. A one-year registration granted in September runs about six weeks.
+GIVEN `the period` IS A RegistrationPeriod
+GIVETH A BOOLEAN
+DECIDE `the registration expires on a 31 October` IF
+    CONSIDER `the period`
+    WHEN `one year` THEN TRUE
+    WHEN `3 years` THEN TRUE
+    WHEN `the life of the cat` THEN FALSE
+
+-- reg 12(2)(b): registration "may be renewed to take effect as from 1 November
+-- in any year, within the preceding period of 21 days."
+--
+-- INTERPRETIVE FORK, recorded in registers/fork-register.json as FORK-1. "the
+-- preceding period of 21 days" before 1 November is either 11-31 October (21
+-- days counted back inclusive of 31 October) or 12-31 October (21 clear days
+-- before 1 November). The reading taken is 11-31 October; the other is live.
+-- Both are asserted in cat-cases.l4 so that a change of reading is visible.
+GIVEN `the date of the renewal application` IS A DATE
+GIVETH A BOOLEAN
+DECIDE `the renewal is within the period allowed by regulation 12(2)(b)` IF
+        "in October" ... DATE_MONTH `the date of the renewal application` EQUALS 10
+    AND "within the preceding period of 21 days"
+            ... DATE_DAY `the date of the renewal application` AT LEAST 11
