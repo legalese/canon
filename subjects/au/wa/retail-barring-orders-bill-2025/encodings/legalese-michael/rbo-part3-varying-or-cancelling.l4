@@ -1,0 +1,82 @@
+IMPORT `rbo-domain`
+
+-- Retail Barring Orders Bill 2025 (WA) -- Part 3, varying or cancelling an RBO.
+--
+-- This module is where incident B-01 lives. Section 39 enumerates the orders a
+-- court may make, and enumerates a DIFFERENT set depending on which section
+-- fixed the hearing. Encoding the two enumerations separately, as the section
+-- writes them, is what makes the difference between them assertable.
+
+§ `Part 3 -- Varying or cancelling an RBO`
+
+§§ `Membership`
+
+-- No prelude on this machine (H-04), so `elem` is unavailable and membership is
+-- written out. Structural recursion over the list, which is all `elem` is.
+GIVEN `the order`       IS AN AvailableOrder
+      `the orders`      IS A LIST OF AvailableOrder
+GIVETH A BOOLEAN
+DECIDE `the order` `is among` `the orders` IF
+    CONSIDER `the orders`
+    WHEN EMPTY THEN FALSE
+    WHEN head FOLLOWED BY tail THEN head EQUALS `the order` OR (`the order` `is among` tail)
+
+§§ `39 -- Varying or cancelling RBO`
+
+-- s 39(1): "At a hearing fixed under section 37 the court may make an order --
+--   (a) dismissing the application to vary or cancel the RBO; or
+--   (b) subject to subsection (4), varying the RBO; or
+--   (c) cancelling the RBO."
+--
+-- s 39(2): "At a hearing fixed under section 38(1)(a) the court may make an
+--   order cancelling the RBO."
+--
+-- Two subsections, two lists, and the whole of B-01 is the difference between
+-- them. Section 39 says nothing at all about a hearing fixed under s 36, whose
+-- outcomes (grant leave / dismiss) are s 36(2)'s own, so that arm is EMPTY --
+-- an honest silence about section 39, not a claim that the court can do nothing.
+GIVEN `the hearing` IS A HearingFixedUnder
+GIVETH A LIST OF AvailableOrder
+DECIDE `the orders the court may make under section 39` IS
+    CONSIDER `the hearing`
+    WHEN `section 37 -- an inter partes hearing` THEN
+        LIST `dismissing the application to vary or cancel the RBO`,
+             `varying the RBO`,
+             `cancelling the RBO`
+    WHEN `section 38(1)(a) -- a cancellation heard in the absence of the person bound` THEN
+        LIST `cancelling the RBO`
+    WHEN `section 36(1)(a) -- a leave hearing` THEN EMPTY
+
+-- The operative question B-01 asks. A court that declines to grant an
+-- application needs some order by which the application stops being on foot.
+-- At a s 37 hearing that is s 39(1)(a). At a s 38(1)(a) hearing there is none.
+GIVEN `the hearing` IS A HearingFixedUnder
+GIVETH A BOOLEAN
+DECIDE `the court may dismiss the application at this hearing` IF
+    `dismissing the application to vary or cancel the RBO` `is among` (`the orders the court may make under section 39` `the hearing`)
+
+§§ `The gap, named so that it can be asserted`
+
+-- NOT THE BILL'S WORDS. `no order is available under section 39` corresponds to
+-- no text in the Bill; it is the encoder's name for the state the Bill leaves
+-- undescribed, and it exists so that B-01 can be demonstrated by an assertion
+-- rather than argued in prose.
+--
+-- It is deliberately NOT a REFUSE. A refusal says the MODEL declines to answer.
+-- Here the model is complete and the statute is not: every fact needed to
+-- decide the case is present, and s 39 simply provides no order to make. Those
+-- are different claims and only the second one is true.
+DECLARE Section39Outcome IS ONE OF
+    `the RBO is cancelled`
+    `the application is dismissed`
+    `no order is available under section 39`
+
+GIVEN `the hearing` IS A HearingFixedUnder
+      `the court is satisfied the RBO should be cancelled` IS A BOOLEAN
+GIVETH A Section39Outcome
+DECIDE `the outcome under section 39` IS
+    IF   `the court is satisfied the RBO should be cancelled`
+    THEN `the RBO is cancelled`
+    ELSE IF `the court may dismiss the application at this hearing` `the hearing`
+         THEN `the application is dismissed`
+         ELSE `no order is available under section 39`

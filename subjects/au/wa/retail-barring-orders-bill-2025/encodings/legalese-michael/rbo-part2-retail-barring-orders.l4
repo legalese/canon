@@ -1,0 +1,201 @@
+IMPORT `rbo-domain`
+
+-- Retail Barring Orders Bill 2025 (WA) -- Part 1 s 6, and Part 2.
+-- What retail violence is, who may apply, when a court may make an RBO, and
+-- how long it lasts.
+--
+-- No library imports: see the note at the head of rbo-domain.l4 and incidents
+-- H-03 and H-04 in INCIDENTS.md.
+
+§ `Part 1 -- Preliminary`
+
+§§ `6 -- Retail violence`
+
+-- s 6(1): "A person commits retail violence if the person, while on retail
+-- premises, engages in any of the following behaviour in relation to another
+-- person on the retail premises".
+--
+-- The five paragraphs are the disjunction. The last rung spells OR rather than
+-- taking the `..` sugar: a chain that ends in sugar never says what kind of
+-- chain it is, and a chain that ends in sugar because someone deleted the final
+-- rung looks exactly the same.
+GIVEN incident IS AN Incident
+GIVETH A BOOLEAN
+DECIDE `the behaviour is of a kind listed in section 6(1)` IF
+        "(a)" ... incident's `behaviour`'s `physical violence or abuse`
+    ..  "(b)" ... incident's `behaviour`'s `sexual violence or abuse`
+    ..  "(c)" ... incident's `behaviour`'s `threatening behaviour`
+    ..  "(d)" ... incident's `behaviour`'s `stalking`
+    OR  "(e)" ... incident's `behaviour`'s `harassing, intimidating or offensive behaviour`
+
+-- Three conjuncts, in the order the subsection puts them: the actor is on the
+-- premises; another person is on the premises; the behaviour answers to one of
+-- the five paragraphs.
+GIVEN incident IS AN Incident
+GIVETH A BOOLEAN
+DECIDE `the incident is retail violence under section 6(1)` IF
+        "while on retail premises" ... incident's `the actor is on the premises`
+    ... "in relation to another person on the retail premises" ... incident's `another person is on the premises`
+    AND `the behaviour is of a kind listed in section 6(1)` incident
+
+-- s 6(2): "A person who procures another person to commit retail violence is
+-- taken to have also committed the retail violence."
+--
+-- A deeming provision, so it sits BESIDE s 6(1) as an alternative route to the
+-- same conclusion, not inside it. Note what it does to the procurer's own
+-- presence: s 6(1) requires the actor to be on the premises, and s 6(2) deems
+-- the procurer to have committed the violence without requiring the procurer to
+-- have been anywhere at all. That is what the subsection says, and it is
+-- encoded as written.
+GIVEN incident IS AN Incident
+GIVETH A BOOLEAN
+DECIDE `the actor commits retail violence` IF
+        "(1)" ... `the incident is retail violence under section 6(1)` incident
+    OR  "(2) ... is taken to have also committed the retail violence" ... incident's `the actor procured another to commit it`
+
+§ `Part 2 -- Retail barring orders`
+
+§§ `Division 1 -- Applying for an RBO`
+
+§§§ `8 -- Who may apply for RBO`
+
+-- s 8(3): each of four classes is an `eligible person` for retail premises.
+-- Paragraph (b) is conditional on (a) failing -- "if there is no employer for
+-- the retail premises" -- and (c) on the premises being in a shopping centre.
+-- So the capacities are alternatives with their own conditions, which is a
+-- CONSIDER over the capacity claimed, not a flat disjunction.
+DECLARE ApplicantCapacity IS ONE OF
+    `the employer for the retail premises`
+    `the person who conducts the retail business`
+    `the owner of the retail shopping centre or their authorised manager`
+    `a union entitled to represent the retail workers`
+    `none of the above`
+
+DECLARE RBOApplication HAS
+    `applicant capacity`                            IS AN ApplicantCapacity
+    `there is an employer for the retail premises`  IS A BOOLEAN
+    `incident`                                      IS AN Incident
+    `premises stated in the application`            IS A Premises
+    `date the application is made`                  IS A DATE
+    `respondent`                                    IS A Person
+
+GIVEN application IS AN RBOApplication
+GIVETH A BOOLEAN
+DECIDE `the applicant is an eligible person for the retail premises` IF
+    CONSIDER application's `applicant capacity`
+    WHEN `the employer for the retail premises` THEN TRUE
+    WHEN `the person who conducts the retail business`
+        THEN NOT application's `there is an employer for the retail premises`
+    WHEN `the owner of the retail shopping centre or their authorised manager`
+        THEN application's `premises stated in the application`'s `part of a retail shopping centre`
+    WHEN `a union entitled to represent the retail workers` THEN TRUE
+    OTHERWISE FALSE
+
+-- s 8(2): "An RBO application cannot be made later than 12 months after the day
+-- on which the retail violence is alleged to have been committed."
+--
+-- The window endpoint is built by ADDING a year to the earlier date, never by
+-- subtracting from the later one. Incrementing the YEAR is the clamp-immune
+-- direction and it is leap-safe, because the calendar does the work.
+GIVEN application IS AN RBOApplication
+GIVETH A BOOLEAN
+DECIDE `the application is made within the section 8(2) period` IF
+    (application's `date the application is made`) `is within twelve months after` (application's `incident`'s `date`)
+
+§§ `Division 2 -- Making an RBO`
+
+§§§ `11 -- Grounds for making RBO`
+
+-- s 11(b): the person is likely to (i) commit retail violence on those premises
+-- again; or (ii) otherwise stalk or harass a retail worker on those premises.
+-- Both limbs are predictions and neither is computable from the incident, so
+-- they are facts the court supplies. The court's satisfaction is a record
+-- rather than a flag, so the encoding says WHO was satisfied of WHAT.
+DECLARE CourtSatisfaction HAS
+    `likely to commit retail violence on those premises again`  IS A BOOLEAN
+    `likely to otherwise stalk or harass a retail worker there` IS A BOOLEAN
+    `making the RBO is appropriate in the circumstances`        IS A BOOLEAN
+    `the terms are the least restrictive possible`              IS A BOOLEAN
+
+-- Identity is a field you compare, never the whole record.
+GIVEN application IS AN RBOApplication
+GIVETH A BOOLEAN
+DECIDE `the incident was on the premises stated in the application` IF
+         application's `incident`'s `premises`'s `name`
+    EQUALS application's `premises stated in the application`'s `name`
+
+GIVEN satisfaction IS A CourtSatisfaction
+GIVETH A BOOLEAN
+DECIDE `the person is likely to offend again on those premises` IF
+        "(i)" ... satisfaction's `likely to commit retail violence on those premises again`
+    OR  "(ii)" ... satisfaction's `likely to otherwise stalk or harass a retail worker there`
+
+GIVEN application  IS AN RBOApplication
+      satisfaction IS A CourtSatisfaction
+GIVETH A BOOLEAN
+DECIDE `grounds for making an RBO exist` IF
+        "(a) the person has committed retail violence on the retail premises stated in the RBO application"
+    ... `the actor commits retail violence` (application's `incident`)
+    ... `the incident was on the premises stated in the application` application
+    ... "(b) the person is likely to --" ... `the person is likely to offend again on those premises` satisfaction
+    AND "(c) making the RBO is appropriate in the circumstances" ... satisfaction's `making the RBO is appropriate in the circumstances`
+
+§§§ `10 -- Making RBO`
+
+-- s 10: "A court may make an RBO against a person if -- (a) the court is
+-- satisfied that -- (i) there are grounds ...; and (ii) the terms ... are the
+-- least restrictive ...; and (b) the person is an individual who has reached 10
+-- years of age."
+--
+-- The age floor in (b) is TEN, which is neither of the Bill's two defined age
+-- classes -- `adult` (18 and over) and `child` (under 18). It appears once, so
+-- it is carried as a fact about the respondent rather than as a third member of
+-- `Age`: folding it in would make every age-sensitive rule in the Bill branch
+-- three ways when all of them branch two ways.
+GIVEN application IS AN RBOApplication
+      satisfaction IS A CourtSatisfaction
+      `the respondent has reached 10 years of age` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may make an RBO` IF
+        "(a)(i) there are grounds for making the RBO under section 11" ... `grounds for making an RBO exist` application satisfaction
+    ... "(a)(ii) the terms of the RBO are the least restrictive" ... satisfaction's `the terms are the least restrictive possible`
+    AND "(b) the person is an individual who has reached 10 years of age" ... `the respondent has reached 10 years of age`
+
+§§ `Division 3 -- When an RBO is in force`
+
+§§§ `21 -- Duration of RBO`
+
+-- s 21(2): a period the court specifies must be not longer than 2 years for an
+-- adult, 1 year for a child.
+GIVEN `age when made` IS AN Age
+GIVETH A NUMBER
+DECIDE `the maximum period in days` IS
+    CONSIDER `age when made`
+    WHEN `an adult` THEN 730
+    WHEN `a child`  THEN 365
+
+-- s 21(3): "Unless varied or cancelled under Part 3, an RBO remains in force
+-- for -- (a) if a period is specified in the RBO -- that period ...; or (b) if
+-- no period is specified ... and the person ... is an adult ... 2 years ...; or
+-- (c) if no period is specified ... and the person ... is a child ... 1 year".
+--
+-- The MAYBE is matched, not folded: the absence of a specified period is a fact
+-- about the order for which the statute then supplies a default, which is a
+-- default the law provides rather than an outcome the law names.
+GIVEN order IS AN RBO
+GIVETH A NUMBER
+DECIDE `the period for which the RBO remains in force, in days` IS
+    CONSIDER order's `period specified in days`
+    WHEN JUST period THEN period
+    WHEN NOTHING     THEN `the maximum period in days` (order's `age when the RBO was made`)
+
+-- s 21(2) constrains the COURT, so it is a predicate about the order rather
+-- than part of the duration calculation: an order specifying longer than the
+-- maximum is one the court had no power to make, not one that runs longer.
+GIVEN order IS AN RBO
+GIVETH A BOOLEAN
+DECIDE `the specified period is within the section 21(2) limit` IF
+    CONSIDER order's `period specified in days`
+    WHEN NOTHING     THEN TRUE
+    WHEN JUST period THEN
+        period AT MOST `the maximum period in days` (order's `age when the RBO was made`)

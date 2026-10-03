@@ -1,0 +1,170 @@
+IMPORT `rbo-domain`
+IMPORT `rbo-part2-retail-barring-orders`
+IMPORT `rbo-part3-varying-or-cancelling`
+IMPORT `rbo-part5-service-and-firearms`
+
+-- Retail Barring Orders Bill 2025 (WA) -- worked cases and assertions.
+--
+-- The assertions marked INCIDENT are the ones that carry a finding in
+-- INCIDENTS.md. PIPELINE.md's standard is that "every finding is traceable to a
+-- provision and reproducible by machine": an incident that cannot be
+-- demonstrated by an assertion or a worked scenario is an opinion, not a
+-- finding. These are the demonstrations.
+--
+-- BUILDING A DATE. There is no date literal and no date constructor in scope,
+-- because `daydate` is not installed (H-04). `TODATE` is a compiler builtin and
+-- returns `MAYBE DATE`, so every fixture that needs a date takes it as a GIVEN
+-- and the assertion site unwraps the MAYBE. The NOTHING arms are unreachable
+-- for the literal strings used here -- `TODATE "2026-03-01"` cannot fail -- and
+-- they return FALSE rather than refusing, so an arm that somehow WERE reached
+-- would fail its assertion loudly instead of passing quietly. `REFUSE` is not
+-- available in this build either, which is why FALSE is the fallback.
+
+§ `Worked cases`
+
+§§ `Parties and places`
+
+`Northbridge IGA` MEANS Premises WITH
+    `name`                                 IS "Northbridge IGA"
+    `a retail business is conducted on it` IS TRUE
+    `part of a retail shopping centre`     IS FALSE
+
+`Dale` MEANS Person WITH
+    `name` IS "Dale"
+    `age`  IS `an adult`
+
+§§ `A firearms RBO`
+
+-- s 15(3)(f) restraint present, so this is a `firearms RBO` within s 63(1).
+GIVEN `the day it came into force` IS A DATE
+GIVETH AN RBO
+`the firearms RBO against Dale in force from` `the day it came into force` MEANS RBO WITH
+    `person who is bound`                    IS `Dale`
+    `age when the RBO was made`              IS `an adult`
+    `premises stated in the application`      IS `Northbridge IGA`
+    `period specified in days`                IS NOTHING
+    `came into force on`                      IS `the day it came into force`
+    `prohibits possession of a firearm item`  IS TRUE
+
+-- Dale uses a firearm at work: a security contractor whose employer holds the
+-- authorisation. This is squarely the case s 63(4) is for.
+`Dale uses a firearm at work` MEANS FirearmsCircumstances WITH
+    `the restrained person uses a firearm item in their usual occupation` IS TRUE
+    `a co-licensee holds an authorisation for the same firearm item`      IS FALSE
+
+§ `B-01 -- section 39(2) has no power to dismiss`
+
+-- The two enumerations, read straight off s 39(1) and s 39(2).
+#EVAL `the orders the court may make under section 39` `section 37 -- an inter partes hearing`
+#EVAL `the orders the court may make under section 39` `section 38(1)(a) -- a cancellation heard in the absence of the person bound`
+
+-- INCIDENT B-01. At a s 37 hearing the court may dismiss; at a s 38(1)(a)
+-- hearing it may not. The pair is the finding: the power exists in the Bill,
+-- and the subsection that most needs it does not confer it.
+#ASSERT `the court may dismiss the application at this hearing` `section 37 -- an inter partes hearing`
+#ASSERT NOT (`the court may dismiss the application at this hearing` `section 38(1)(a) -- a cancellation heard in the absence of the person bound`)
+
+-- INCIDENT B-01, the consequence. A cancellation application that the court
+-- declines to grant is left with no order by which it can be disposed of.
+#ASSERT (`the outcome under section 39` `section 38(1)(a) -- a cancellation heard in the absence of the person bound` FALSE) EQUALS `no order is available under section 39`
+
+-- The control. The same facts at a s 37 hearing resolve, which is what shows
+-- the gap belongs to s 39(2) and not to the fact pattern.
+#ASSERT (`the outcome under section 39` `section 37 -- an inter partes hearing` FALSE) EQUALS `the application is dismissed`
+
+-- And the court that IS satisfied can cancel at either hearing, so nothing
+-- above is an artefact of the cancellation power being missing.
+#ASSERT (`the outcome under section 39` `section 38(1)(a) -- a cancellation heard in the absence of the person bound` TRUE) EQUALS `the RBO is cancelled`
+#ASSERT (`the outcome under section 39` `section 37 -- an inter partes hearing` TRUE) EQUALS `the RBO is cancelled`
+
+§ `B-02 -- the firearms notification chain breaks on six of nine service routes`
+
+-- Every route in the Bill is good service. Stated first, because the finding is
+-- that service and the firearms inquiry come apart, and that requires both
+-- halves on the record.
+#ASSERT `the relevant order is served` `personal service by a prison officer`
+#ASSERT `the relevant order is served` `substituted service effected by post`
+#ASSERT `the relevant order is served` `service taken to have been effected by presence in court`
+#ASSERT `the relevant order is served` `personal service by a police officer`
+
+-- The s 63(2) duty, route by route. Two routes carry it.
+#ASSERT `section 63(2) obliges the server to ask the firearms questions` `personal service by a police officer`
+#ASSERT `section 63(2) obliges the server to ask the firearms questions` `substituted service effected orally by a police officer`
+
+-- And seven do not.
+#ASSERT NOT (`section 63(2) obliges the server to ask the firearms questions` `personal service by a registrar of the court`)
+#ASSERT NOT (`section 63(2) obliges the server to ask the firearms questions` `personal service by a person authorised by a registrar`)
+#ASSERT NOT (`section 63(2) obliges the server to ask the firearms questions` `personal service by a custodial officer`)
+#ASSERT NOT (`section 63(2) obliges the server to ask the firearms questions` `personal service by a prison officer`)
+#ASSERT NOT (`section 63(2) obliges the server to ask the firearms questions` `service taken to have been effected by presence in court`)
+#ASSERT NOT (`section 63(2) obliges the server to ask the firearms questions` `substituted service effected by post`)
+#ASSERT NOT (`section 63(2) obliges the server to ask the firearms questions` `substituted service effected by electronic means`)
+
+-- INCIDENT B-02, scenario A: personal service by a prison officer. Good
+-- service, firearms RBO, Dale uses a firearm at work -- and the Commissioner's
+-- s 63(4) duty never arises, so the s 63(5) offence cannot be committed by the
+-- employer who holds the authorisation.
+GIVETH A BOOLEAN
+`B-02 scenario A -- prison officer serves personally` MEANS
+    CONSIDER TODATE "2026-03-01"
+    WHEN NOTHING THEN FALSE
+    WHEN JUST `the day` THEN
+            `the relevant order is served` `personal service by a prison officer`
+        AND NOT (`the Commissioner must notify under section 63(4)` (`the firearms RBO against Dale in force from` `the day`) `personal service by a prison officer` `Dale uses a firearm at work`)
+        AND NOT (`a responsible person could commit the section 63(5) offence` (`the firearms RBO against Dale in force from` `the day`) `personal service by a prison officer` `Dale uses a firearm at work`)
+
+#ASSERT `B-02 scenario A -- prison officer serves personally`
+
+-- INCIDENT B-02, scenario B: substituted service by post, approved by a senior
+-- police officer under s 57(1) and effected by a police officer. Still no duty,
+-- because s 63(2) reaches substituted service only where effected ORALLY.
+GIVETH A BOOLEAN
+`B-02 scenario B -- substituted service by post` MEANS
+    CONSIDER TODATE "2026-03-01"
+    WHEN NOTHING THEN FALSE
+    WHEN JUST `the day` THEN
+            `the relevant order is served` `substituted service effected by post`
+        AND NOT (`the Commissioner must notify under section 63(4)` (`the firearms RBO against Dale in force from` `the day`) `substituted service effected by post` `Dale uses a firearm at work`)
+
+#ASSERT `B-02 scenario B -- substituted service by post`
+
+-- INCIDENT B-02, scenario C: the person is in court when the order is made, so
+-- s 54(2) deems personal service with no server at all. This is the commonest
+-- case and the one where the person is most easily questioned.
+GIVETH A BOOLEAN
+`B-02 scenario C -- deemed service by presence in court` MEANS
+    CONSIDER TODATE "2026-03-01"
+    WHEN NOTHING THEN FALSE
+    WHEN JUST `the day` THEN
+            `the relevant order is served` `service taken to have been effected by presence in court`
+        AND NOT (`the Commissioner must notify under section 63(4)` (`the firearms RBO against Dale in force from` `the day`) `service taken to have been effected by presence in court` `Dale uses a firearm at work`)
+
+#ASSERT `B-02 scenario C -- deemed service by presence in court`
+
+-- The control. Change ONLY the service route to the one s 63(2) names, on
+-- identical facts, and the whole chain fires. This is what makes the three
+-- scenarios above findings about s 63(2) rather than about the fixture.
+GIVETH A BOOLEAN
+`B-02 control -- a police officer serves personally` MEANS
+    CONSIDER TODATE "2026-03-01"
+    WHEN NOTHING THEN FALSE
+    WHEN JUST `the day` THEN
+            `the Commissioner must notify under section 63(4)` (`the firearms RBO against Dale in force from` `the day`) `personal service by a police officer` `Dale uses a firearm at work`
+        AND `a responsible person could commit the section 63(5) offence` (`the firearms RBO against Dale in force from` `the day`) `personal service by a police officer` `Dale uses a firearm at work`
+
+#ASSERT `B-02 control -- a police officer serves personally`
+
+§ `Sanity -- section 21 duration`
+
+`an RBO on Dale with no period specified` MEANS
+    CONSIDER TODATE "2026-03-01"
+    WHEN NOTHING THEN 0
+    WHEN JUST `the day` THEN
+        `the period for which the RBO remains in force, in days` (`the firearms RBO against Dale in force from` `the day`)
+
+-- s 21(3)(b): no period specified, adult -- 2 years.
+#ASSERT `an RBO on Dale with no period specified` EQUALS 730
+
+-- s 21(2): the ceiling the court may specify, for each age class.
+#ASSERT (`the maximum period in days` `an adult`) EQUALS 730
+#ASSERT (`the maximum period in days` `a child`) EQUALS 365

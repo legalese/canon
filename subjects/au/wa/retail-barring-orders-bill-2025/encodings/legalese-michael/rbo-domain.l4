@@ -1,0 +1,195 @@
+-- Retail Barring Orders Bill 2025 (WA), Bill No. 47 -- shared ontology.
+--
+-- This module carries the types the operative modules share. It states no rule:
+-- every `DECLARE` here is a fact-shape, and every predicate over it lives in the
+-- module for the Part that enacts it.
+--
+-- Source: sources/bill-47-1.txt, extracted with `pdftotext -layout` from
+-- Bill+47-1.002.pdf (sha256 bc504a511cac03e97cc462a5eb3ca1578f493e726b6f072bf
+-- a89887602f9fb73). Section and line references throughout are to that extract.
+--
+-- NO IMPORTS. The `l4` on this machine ships without its standard library
+-- (incident H-04) and an unresolvable IMPORT typechecks clean (H-03), so an
+-- `IMPORT prelude` line here would be a claim this file cannot cash. Everything
+-- below uses compiler builtins only -- records, enums, CONSIDER, LIST, and the
+-- DATE_DAY/DATE_MONTH/DATE_YEAR accessors.
+--
+-- HOUSE STYLE. Inert style: the statutory words ride as inert strings in the
+-- scaffolding, and the operative atoms are short names the ladder can print and
+-- the wizard can ask. Field names start at the complement, because the Saxon
+-- genitive already supplies "is" and "has" -- `claim's `on retail premises``
+-- reads "the claim IS on retail premises", so writing `is on retail premises`
+-- says it twice.
+
+§ `Part 1 -- Preliminary`
+
+§§ `5 -- Terms used`
+
+-- s 5: `adult` means a person who has reached 18 years of age; `child` means a
+-- person under 18 years of age. The Bill uses the pair as a partition, and
+-- every age-sensitive rule in it (ss 21(2), 28(2), 29(1), 33, 34(1), 40(2),
+-- 48) branches on exactly one of the two. So it is ONE type with two
+-- alternatives, not two booleans -- entry 6.3 of the phrasebook.
+DECLARE Age IS ONE OF
+    `an adult`
+    `a child`
+
+-- s 5: `premises` means the whole or any part of a building, place, stall,
+-- structure, tent, vehicle or yard. Carried as an identity, because nothing in
+-- the encoded slice turns on WHICH kind of structure it is -- only on whether
+-- two references are to the same premises (entry 6.6: identity is a field you
+-- compare, never the whole record).
+DECLARE Premises HAS
+    `name`                                   IS A STRING
+    `a retail business is conducted on it`   IS A BOOLEAN
+    `part of a retail shopping centre`       IS A BOOLEAN
+
+-- s 5: `person who is bound`, in relation to an RBO, means the person named in
+-- the RBO on whose lawful activities and behaviour restraints are imposed.
+DECLARE Person HAS
+    `name`          IS A STRING
+    `age`           IS AN Age
+
+§§ `6 -- Retail violence`
+
+-- s 6(1)(a)-(e). Five limbs, kept as five independent booleans rather than an
+-- enum: the subsection reads "engages in ANY of the following behaviour", so a
+-- single incident may answer to several limbs at once, and a radio button would
+-- lose that. Checkbox-relation pattern.
+DECLARE Behaviour HAS
+    `physical violence or abuse`                    IS A BOOLEAN   -- (a)
+    `sexual violence or abuse`                      IS A BOOLEAN   -- (b)
+    `threatening behaviour`                         IS A BOOLEAN   -- (c)
+    `stalking`                                      IS A BOOLEAN   -- (d)
+    `harassing, intimidating or offensive behaviour` IS A BOOLEAN  -- (e)
+
+-- The fact pattern s 6(1) tests. Both the actor and the other person must be on
+-- the retail premises: "if the person, WHILE ON retail premises, engages in ...
+-- in relation to another person ON THE RETAIL PREMISES".
+DECLARE Incident HAS
+    `actor`                          IS A Person
+    `premises`                       IS A Premises
+    `the actor is on the premises`   IS A BOOLEAN
+    `another person is on the premises` IS A BOOLEAN
+    `behaviour`                      IS A Behaviour
+    `date`                           IS A DATE
+    -- s 6(2): a person who procures another to commit retail violence is taken
+    -- to have also committed it. A deeming provision, so it is a fact about the
+    -- incident and not a sixth limb of `Behaviour`.
+    `the actor procured another to commit it` IS A BOOLEAN
+
+§ `Part 2 -- Retail barring orders`
+
+-- s 5: `retail barring order (RBO)` means an order made under section 10
+-- imposing restraints of the kind referred to in section 15.
+--
+-- `period specified` is MAYBE by design and must not be folded into a total
+-- enum: s 21(1) says the court MAY specify a period, and s 21(3) gives three
+-- different default rules depending on whether one was specified and on the
+-- person's age. The absence is a fact about the order, not a named outcome --
+-- bucket 3 of drafting-patterns.md.
+DECLARE RBO HAS
+    `person who is bound`          IS A Person
+    `age when the RBO was made`    IS AN Age
+    `premises stated in the application` IS A Premises
+    `period specified in days`     IS A MAYBE NUMBER
+    `came into force on`           IS A DATE
+    -- s 63(1): a `firearms RBO` is an RBO that prohibits a restrained person
+    -- from being in possession of a firearm item. s 15(3)(f) is the restraint
+    -- that makes it one.
+    `prohibits possession of a firearm item` IS A BOOLEAN
+
+§ `Part 5 -- General`
+
+§§ `52 -- Term used: relevant order`
+
+-- s 52: `relevant order` means (a) an RBO; or (b) an order under section
+-- 39(1)(b) varying an RBO.
+DECLARE RelevantOrder IS ONE OF
+    `an RBO`
+    `an order under section 39(1)(b) varying an RBO`
+
+§§ `55, 57 -- How a relevant order is served`
+
+-- s 55(2): personal service must be effected by one of five classes of person.
+-- s 54(2): where the person bound is present in court when the order is made,
+-- the order is TAKEN to have been served personally when it is made -- so there
+-- is a sixth way for an order to become served, with no server at all.
+-- s 57(6): substituted service may be prescribed orally, by post, or by email,
+-- text message or other electronic means.
+--
+-- These are collapsed into one type because s 63(2) discriminates across all of
+-- them at once: it asks both WHO served and HOW.
+DECLARE ServiceRoute IS ONE OF
+    `personal service by a registrar of the court`            -- s 55(2)(a)
+    `personal service by a person authorised by a registrar`  -- s 55(2)(b)
+    `personal service by a police officer`                    -- s 55(2)(c)
+    `personal service by a custodial officer`                 -- s 55(2)(d)
+    `personal service by a prison officer`                    -- s 55(2)(e)
+    `service taken to have been effected by presence in court` -- s 54(2)
+    `substituted service effected orally by a police officer`  -- s 57(6)(a)
+    `substituted service effected by post`                     -- s 57(6)(b)
+    `substituted service effected by electronic means`         -- s 57(6)(c)
+
+§ `Part 3 -- Varying or cancelling an RBO`
+
+-- s 39(1) and (2) enumerate what a court MAY order, and they enumerate
+-- DIFFERENT sets depending on which section fixed the hearing. The disjunction
+-- is the whole subject of incident B-01, so the orders are a type of their own
+-- and the two subsections are two decisions returning lists over it.
+DECLARE AvailableOrder IS ONE OF
+    `dismissing the application to vary or cancel the RBO`   -- s 39(1)(a)
+    `varying the RBO`                                        -- s 39(1)(b)
+    `cancelling the RBO`                                     -- s 39(1)(c), (2)
+
+-- Which section fixed the hearing. s 36 is the leave hearing on an application
+-- by the person bound; s 37 is the ordinary inter partes hearing; s 38(1)(a) is
+-- the hearing of a cancellation application that the applicant for the RBO has
+-- asked, under s 34(3), to have heard in the absence of the person bound.
+DECLARE HearingFixedUnder IS ONE OF
+    `section 36(1)(a) -- a leave hearing`
+    `section 37 -- an inter partes hearing`
+    `section 38(1)(a) -- a cancellation heard in the absence of the person bound`
+
+§§ `Dates`
+
+-- NOT house style, and recorded as such. drafting-patterns.md builds date
+-- windows with `daydate` -- `Day`, `Date`, leap-safe year increments. That
+-- library is not installed here (H-04), so the comparison is done on the
+-- components the compiler supplies directly. Rewrite this against `daydate`
+-- once the library is available; the ONLY reason it is here is the missing
+-- library, and nothing about the Bill called for it.
+--
+-- Lexicographic on (year, month, day). A BRANCH rather than a nested IF/ELSE
+-- staircase: the arms are flat and first-match, which is what BRANCH says.
+GIVEN `the earlier date` IS A DATE
+      `the later date`   IS A DATE
+GIVETH A BOOLEAN
+DECIDE `the earlier date` `is on or before` `the later date` IF
+    BRANCH
+       IF DATE_YEAR  `the earlier date` LESS THAN    DATE_YEAR  `the later date` THEN TRUE
+       IF DATE_YEAR  `the earlier date` GREATER THAN DATE_YEAR  `the later date` THEN FALSE
+       IF DATE_MONTH `the earlier date` LESS THAN    DATE_MONTH `the later date` THEN TRUE
+       IF DATE_MONTH `the earlier date` GREATER THAN DATE_MONTH `the later date` THEN FALSE
+       OTHERWISE DATE_DAY `the earlier date` AT MOST DATE_DAY `the later date`
+
+-- s 8(2)'s window. Written as a comparison against the incident date's
+-- components with the YEAR incremented, rather than by constructing the
+-- endpoint date, because constructing a DATE needs `daydate`'s YMD or Date and
+-- no library is installed (H-04).
+--
+-- The leap edge, worked rather than assumed: an incident on 29 February 2024
+-- gives a virtual bound of (2025, 2, 29), a day that does not exist. No real
+-- application date can equal it, and the last real date at or before it is
+-- 28 February 2025 -- which is also what `daydate`'s clamping `add months`
+-- would yield. So the two agree on every input that can actually occur.
+GIVEN `the application date` IS A DATE
+      `the incident date`    IS A DATE
+GIVETH A BOOLEAN
+DECIDE `the application date` `is within twelve months after` `the incident date` IF
+    BRANCH
+       IF DATE_YEAR `the application date` LESS THAN    (DATE_YEAR `the incident date` PLUS 1) THEN TRUE
+       IF DATE_YEAR `the application date` GREATER THAN (DATE_YEAR `the incident date` PLUS 1) THEN FALSE
+       IF DATE_MONTH `the application date` LESS THAN    DATE_MONTH `the incident date` THEN TRUE
+       IF DATE_MONTH `the application date` GREATER THAN DATE_MONTH `the incident date` THEN FALSE
+       OTHERWISE DATE_DAY `the application date` AT MOST DATE_DAY `the incident date`

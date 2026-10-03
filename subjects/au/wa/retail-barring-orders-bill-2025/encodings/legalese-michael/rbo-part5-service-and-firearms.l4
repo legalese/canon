@@ -1,0 +1,114 @@
+IMPORT `rbo-domain`
+
+-- Retail Barring Orders Bill 2025 (WA) -- Part 5 Divisions 2 and 3.
+-- How a relevant order is served, and what follows when the order is a
+-- firearms RBO.
+--
+-- This module is where incident B-02 lives. Section 63's notification chain has
+-- three links, and every link after the first is conditioned on the first. The
+-- point of encoding service routes as a type is that the condition on the first
+-- link can then be evaluated against every route the Bill allows, instead of
+-- against the one route the drafter had in mind.
+
+§ `Part 5 -- General`
+
+§§ `Division 2 -- Service of summons for hearing or relevant order`
+
+§§§ `54, 55, 57 -- When a relevant order is served`
+
+-- s 54(1): a relevant order must be served by personal service unless
+-- substituted service is allowed under s 56 or 57.
+-- s 54(2): if the person bound is present in court when the order is made, the
+-- order is TAKEN to have been served personally on them when it is made.
+-- s 55(2): personal service must be effected by one of five classes of person.
+-- s 57(5): where a senior police officer approves substituted service, the
+-- order is served if the server takes the prescribed steps.
+--
+-- Every member of ServiceRoute is good service. That is the premise B-02 needs
+-- and it is worth stating as its own rule rather than assuming it: the finding
+-- is that the Bill treats these routes as equivalent for SERVICE and as wholly
+-- different for the FIREARMS INQUIRY, and the first half has to be on the
+-- record for the second half to be a finding.
+GIVEN `the route` IS A ServiceRoute
+GIVETH A BOOLEAN
+DECIDE `the relevant order is served` IF
+    CONSIDER `the route`
+    WHEN `personal service by a registrar of the court`             THEN TRUE
+    WHEN `personal service by a person authorised by a registrar`   THEN TRUE
+    WHEN `personal service by a police officer`                     THEN TRUE
+    WHEN `personal service by a custodial officer`                  THEN TRUE
+    WHEN `personal service by a prison officer`                     THEN TRUE
+    WHEN `service taken to have been effected by presence in court` THEN TRUE
+    WHEN `substituted service effected orally by a police officer`  THEN TRUE
+    WHEN `substituted service effected by post`                     THEN TRUE
+    WHEN `substituted service effected by electronic means`         THEN TRUE
+
+§§ `Division 3 -- Other matters`
+
+§§§ `63 -- Notification of firearms RBO`
+
+-- The facts s 63 turns on beyond the order and the route.
+DECLARE FirearmsCircumstances HAS
+    `the restrained person uses a firearm item in their usual occupation` IS A BOOLEAN
+    `a co-licensee holds an authorisation for the same firearm item`      IS A BOOLEAN
+
+-- s 63(2): "A police officer who serves a firearms RBO personally or effects
+-- substituted service of a firearms RBO under section 56(3) or 57(5) ORALLY
+-- must -- (a) ask the restrained person [the four questions]; and (b) complete
+-- the relevant part of the POLICE COPY of the firearms RBO ...".
+--
+-- Two limbs, and both of them are narrow. The first requires the server to be a
+-- police officer; the second requires the substituted service to have been
+-- effected orally. Six of the nine routes in `ServiceRoute` satisfy neither.
+GIVEN `the route` IS A ServiceRoute
+GIVETH A BOOLEAN
+DECIDE `section 63(2) obliges the server to ask the firearms questions` IF
+        "a police officer who serves a firearms RBO personally" ... `the route` EQUALS `personal service by a police officer`
+    OR  "or effects substituted service ... orally" ... `the route` EQUALS `substituted service effected orally by a police officer`
+
+-- The first link. There is no police copy unless a police officer completed one
+-- under s 63(2)(b).
+GIVEN `the order` IS AN RBO
+      `the route` IS A ServiceRoute
+GIVETH A BOOLEAN
+DECIDE `a completed police copy of the firearms RBO exists` IF
+        `the order`'s `prohibits possession of a firearm item`
+    AND `section 63(2) obliges the server to ask the firearms questions` `the route`
+
+-- s 63(4): "ON RECEIPT OF THE POLICE COPY of a firearms RBO that indicates that
+-- the restrained person uses or has access to a firearm item in the course of
+-- the person's usual occupation, or holds a firearms authorisation in respect
+-- of a firearm item for which a co-licensee also holds a firearms
+-- authorisation, the Commissioner of Police must promptly notify the
+-- responsible person or co-licensee ...".
+--
+-- The second link, and the conditional opening clause is the hinge of B-02.
+GIVEN `the order`         IS AN RBO
+      `the route`         IS A ServiceRoute
+      `the circumstances` IS A FirearmsCircumstances
+GIVETH A BOOLEAN
+DECIDE `the Commissioner must notify under section 63(4)` IF
+        "On receipt of the police copy of a firearms RBO" ... `a completed police copy of the firearms RBO exists` `the order` `the route`
+    AND `the circumstances is one section 63(4) covers` `the circumstances`
+
+GIVEN `the circumstances` IS A FirearmsCircumstances
+GIVETH A BOOLEAN
+DECIDE `the circumstances is one section 63(4) covers` IF
+        "uses or has access to a firearm item in the course of the person's usual occupation" ... `the circumstances`'s `the restrained person uses a firearm item in their usual occupation`
+    OR  "or holds a firearms authorisation ... for which a co-licensee also holds" ... `the circumstances`'s `a co-licensee holds an authorisation for the same firearm item`
+
+-- s 63(5): "A RESPONSIBLE PERSON NOTIFIED UNDER SUBSECTION (4) who allows the
+-- restrained person to use or have access to a firearm item commits an
+-- offence."  s 63(6) is the same shape for a co-licensee.
+--
+-- The third link. Both offences are drafted as offences by a person "notified
+-- under subsection (4)", so an unnotified responsible person or co-licensee
+-- cannot commit them however dangerous their conduct. That is the consequence
+-- B-02 records: the gap in s 63(2) does not merely delay paperwork, it
+-- disapplies two offence provisions.
+GIVEN `the order`         IS AN RBO
+      `the route`         IS A ServiceRoute
+      `the circumstances` IS A FirearmsCircumstances
+GIVETH A BOOLEAN
+DECIDE `a responsible person could commit the section 63(5) offence` IF
+    `the Commissioner must notify under section 63(4)` `the order` `the route` `the circumstances`
