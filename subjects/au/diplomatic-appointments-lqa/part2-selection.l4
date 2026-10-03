@@ -1,0 +1,629 @@
+-- Diplomatic Appointments (Selection Process) Bill 2026 (Cth), first reading print (Senate),
+-- 7 September 2026 (file 26S2721).
+-- Part 2 -- Selection process for diplomatic appointments -- main provisions (ss 9-11).
+--
+-- Imports Part 3 (the Selection Committee, ss 12-13), which imports Part 1 (ss 1-8).
+
+IMPORT `part3-committees`
+
+§ `Appointments and acting arrangements`
+
+-- An appointment to an office, with what ss 9, 10, 14 and 15 ask about it. The Bill does not say
+-- who appoints (REF-17): the appointing act and whether the Governor-General made it are facts.
+-- `Selection Committees for the office` lists every Committee established for an appointment to
+-- the office, earlier vacancies included, in the order they were established; FORK-04 decides
+-- which of them s 9(3) and s 10(6) count. `the previous appointment to the office was made on`
+-- is the day the last appointment to the office was made before this one (a day before any
+-- Committee in the list if there was none).
+DECLARE Appointment HAS
+    `office`                                              IS AN Office
+    `appointee`                                           IS A Person
+    `made on`                                             IS A NUMBER
+    `term starts on`                                      IS A NUMBER
+    `made by the Governor-General`                        IS A BOOLEAN
+    `the previous appointment to the office was made on`  IS A NUMBER
+    `Selection Committees for the office`                 IS A LIST OF `Selection Committee`
+    `the Minister is satisfied the appointee has no significant political affiliation` IS A BOOLEAN
+    `the Senate passed a resolution approving it`         IS A BOOLEAN
+    `the Senate's resolution was passed on`               IS A NUMBER
+    `the House passed a resolution approving it`          IS A BOOLEAN
+    `the House's resolution was passed on`                IS A NUMBER
+    `a statement of reasons was tabled in the Senate`     IS A BOOLEAN
+    `the Senate statement was tabled on`                  IS A NUMBER
+    `a statement of reasons was tabled in the House`      IS A BOOLEAN
+    `the House statement was tabled on`                   IS A NUMBER
+    `the Minister is aware of the facts of any failure to comply` IS A BOOLEAN
+    `terminated as soon as practicable after the Minister became aware` IS A BOOLEAN
+
+-- s 11(1)(a), (b): the occasions on which a person may act in a designated diplomatic office.
+DECLARE Occasion IS ONE OF
+    `a vacancy in the office`
+    `the appointee is absent from duty`
+    `the appointee is unable to perform the duties of the office`
+    `none of these`
+
+-- An arrangement for a person to act in an office (s 11, s 14(4)-(6)). The Bill does not say
+-- who makes it or how (REF-25); the arrangement, its day and its occasion are facts.
+DECLARE `acting arrangement` HAS
+    `office`                                    IS AN Office
+    `the chargé d’affaires`                     IS A Person
+    `made on`                                   IS A NUMBER
+    `occasion`                                  IS AN Occasion
+    `the Minister is aware of the facts of any failure to comply` IS A BOOLEAN
+    `terminated as soon as practicable after the Minister became aware` IS A BOOLEAN
+
+§ `Which Committees count for an appointment`
+
+-- FORK-04, reading A (taken): "a Selection Committee established for the purpose of making such a
+-- recommendation" (s 9(3)(a), (b)) and "that particular appointment" (s 10(6)) mean a Committee
+-- established for the current vacancy, that is, after the previous appointment to the office was
+-- made. s 10(7) ("a Selection Committee's recommendation ... is of no effect after an appointment
+-- to the office is made") and the s 10(7) note ("historical recommendations cannot be relied on
+-- for subsequent appointments") point the same way.
+@ref s 9(3)(a), (b); s 10(6), (7)
+GIVEN p IS A NUMBER, cs IS A LIST OF `Selection Committee`
+GIVETH A LIST OF `Selection Committee`
+`the Committees established after` p `among` cs MEANS
+    CONSIDER cs
+    WHEN EMPTY THEN cs
+    WHEN c FOLLOWED BY rest THEN
+        IF   c's `established on` GREATER THAN p
+        THEN c FOLLOWED BY `the Committees established after` p `among` rest
+        ELSE `the Committees established after` p `among` rest
+
+GIVEN a IS AN Appointment
+GIVETH A LIST OF `Selection Committee`
+`the Committees for this appointment` a MEANS
+    `the Committees established after` (a's `the previous appointment to the office was made on`) `among` (a's `Selection Committees for the office`)
+
+-- FORK-04, reading B: every Committee ever established for an appointment to the office counts.
+GIVEN a IS AN Appointment
+GIVETH A LIST OF `Selection Committee`
+`the Committees for this appointment, reading B` a MEANS
+    a's `Selection Committees for the office`
+
+§ `10 Recommendations by Selection Committees`
+
+§§ `The list`
+
+GIVEN es IS A LIST OF `list entry`
+GIVETH A NUMBER
+`the number of candidates on` es MEANS
+    CONSIDER es
+    WHEN EMPTY THEN 0
+    WHEN e FOLLOWED BY rest THEN 1 PLUS `the number of candidates on` rest
+
+GIVEN es IS A LIST OF `list entry`
+      r  IS A NUMBER
+GIVETH A NUMBER
+`the number of candidates on` es `with a significant political affiliation on` r MEANS
+    CONSIDER es
+    WHEN EMPTY THEN 0
+    WHEN e FOLLOWED BY rest THEN
+        (IF `has a significant political affiliation on` (e's `candidate`) r THEN 1 ELSE 0)
+        PLUS `the number of candidates on` rest `with a significant political affiliation on` r
+
+GIVEN es IS A LIST OF `list entry`
+      r  IS A NUMBER
+GIVETH A BOOLEAN
+`a candidate on` es `has a disqualifying political affiliation on` r MEANS
+    CONSIDER es
+    WHEN EMPTY THEN FALSE
+    WHEN e FOLLOWED BY rest THEN
+        `has a disqualifying political affiliation on` (e's `candidate`) r
+     OR `a candidate on` rest `has a disqualifying political affiliation on` r
+
+GIVEN es IS A LIST OF `list entry`
+      r  IS A NUMBER
+GIVETH A BOOLEAN
+`every candidate on` es `with a significant political affiliation on` r `has reasons set out` MEANS
+    CONSIDER es
+    WHEN EMPTY THEN TRUE
+    WHEN e FOLLOWED BY rest THEN
+        ((NOT (`has a significant political affiliation on` (e's `candidate`) r)) OR e's `the list sets out reasons despite the affiliation`)
+        AND `every candidate on` rest `with a significant political affiliation on` r `has reasons set out`
+
+GIVEN n IS A STRING, es IS A LIST OF `list entry`
+GIVETH A BOOLEAN
+`the candidate named` n `is on` es MEANS
+    CONSIDER es
+    WHEN EMPTY THEN FALSE
+    WHEN e FOLLOWED BY rest THEN (e's `candidate`'s `name` EQUALS n) OR `the candidate named` n `is on` rest
+
+§§ `10(1) and (6) Candidate list: when, and how many`
+
+-- s 10(6): "If: (a) a Selection Committee established for an appointment to a designated
+-- diplomatic office refers the matter back to the Minister; and (b) the Minister subsequently
+-- establishes another Selection Committee (the second or subsequent Committee) for that
+-- particular appointment; subsection (1) has effect in relation to the second or subsequent
+-- Committee as if the reference to a list of between 2 and 10 (inclusive) proposed candidates
+-- were instead a reference to a list of 2 or 3 proposed candidates."
+-- `earlier` are the Committees for the same appointment (FORK-04 decides which those are; the list
+-- may include c and later Committees: only those established before c are read). c is second or
+-- subsequent if one of them referred the matter back on or before the day c was established.
+@ref s 10(6)
+GIVEN c IS A `Selection Committee`, earlier IS A LIST OF `Selection Committee`
+GIVETH A BOOLEAN
+DECIDE `the Committee` c `is a second or subsequent Committee after` earlier IF
+    CONSIDER earlier
+    WHEN EMPTY THEN FALSE
+    WHEN x FOLLOWED BY rest THEN
+        (    x's `established on` LESS THAN c's `established on`
+         AND `the Committee referred the matter back` x
+         AND x's `notice given on` AT MOST c's `established on`)
+     OR `the Committee` c `is a second or subsequent Committee after` rest
+
+-- s 10(1): "The Minister must, within 7 days of establishing a Selection Committee for an
+-- appointment to a designated diplomatic office, give the Selection Committee a list of between
+-- 2 and 10 (inclusive) proposed candidates for the appointment."
+@ref s 10(1), (6)
+GIVEN c IS A `Selection Committee`, earlier IS A LIST OF `Selection Committee`
+GIVETH A BOOLEAN
+DECIDE `the list for` c `after` earlier `has a permitted number of candidates` IF
+    IF   `the Committee` c `is a second or subsequent Committee after` earlier
+    THEN n AT LEAST 2 AND n AT MOST 3
+    ELSE n AT LEAST 2 AND n AT MOST 10
+    WHERE
+        n MEANS `the number of candidates on` (c's `list`)
+
+-- "within 7 days of establishing": FORK-05, reading A (taken): the 7 days begin on the day after
+-- the day of establishment (the day of the event is excluded: Acts Interpretation Act s 36(1),
+-- items 5 and 6, by analogy), so the last day is the 7th day after it; then s 36(2) carries a last
+-- day that is a Saturday, Sunday or holiday to the next day that is none of those.
+@ref s 10(1); Acts Interpretation Act 1901 s 36(1), (2)
+GIVEN c IS A `Selection Committee`, w IS A World
+GIVETH A NUMBER
+`the last day for giving the list to` c `in` w MEANS
+    `the last day for doing a thing, given s 36(2), when the stated last day is`
+        (`the first day of a period beginning after` (c's `established on`) PLUS 6)
+        `and the holidays are` (w's `holidays`)
+
+-- FORK-05, reading B: the 7 days include the day of establishment, so the last day is the 6th day
+-- after it (then s 36(2)).
+@ref s 10(1); Acts Interpretation Act 1901 s 36(1) item 2, (2)
+GIVEN c IS A `Selection Committee`, w IS A World
+GIVETH A NUMBER
+`the last day for giving the list, reading B, to` c `in` w MEANS
+    `the last day for doing a thing, given s 36(2), when the stated last day is`
+        (`the first day of a period beginning on` (c's `established on`) PLUS 6)
+        `and the holidays are` (w's `holidays`)
+
+@ref s 10(1)
+GIVEN c IS A `Selection Committee`, w IS A World
+GIVETH A BOOLEAN
+DECIDE `the list was given to` c `in time in` w IF
+        c's `list given`
+    AND c's `list given on` AT LEAST c's `established on`
+    AND c's `list given on` AT MOST `the last day for giving the list to` c `in` w
+
+@ref s 10(1)
+GIVEN c IS A `Selection Committee`, w IS A World
+GIVETH A BOOLEAN
+DECIDE `the list was given to` c `in time, reading B, in` w IF
+        c's `list given`
+    AND c's `list given on` AT LEAST c's `established on`
+    AND c's `list given on` AT MOST `the last day for giving the list, reading B, to` c `in` w
+
+§§ `10(2) What the list may propose`
+
+-- s 10(2): "The list: (a) must not propose any candidate who has a disqualifying political
+-- affiliation; and (b) if the list proposes between 2 and 4 candidates (inclusive)--may only
+-- propose 1 candidate who has a significant political affiliation; and (c) if the list proposes
+-- between 5 and 10 candidates (inclusive)--may only propose up to 2 candidates who have a
+-- significant political affiliation; and (d) for each candidate who has a significant political
+-- affiliation (if any)--must set out reasons why the candidate would be appropriate for
+-- appointment to the office despite the candidate's significant political affiliation."
+-- Affiliations are tested on the day the list is given (ENCODING-NOTES.md, E-06).
+@ref s 10(2)(a)
+GIVEN c IS A `Selection Committee`
+GIVETH A BOOLEAN
+DECIDE `s 10(2)(a) is met by the list for` c IF
+    (NOT `a candidate on` (c's `list`) `has a disqualifying political affiliation on` (c's `list given on`))
+
+@ref s 10(2)(b), (c)
+GIVEN c IS A `Selection Committee`
+GIVETH A BOOLEAN
+DECIDE `s 10(2)(b) and (c) are met by the list for` c IF
+    BRANCH
+        IF n AT LEAST 2 AND n AT MOST 4  THEN spa AT MOST 1
+        IF n AT LEAST 5 AND n AT MOST 10 THEN spa AT MOST 2
+        OTHERWISE TRUE
+    WHERE
+        n   MEANS `the number of candidates on` (c's `list`)
+        spa MEANS `the number of candidates on` (c's `list`) `with a significant political affiliation on` (c's `list given on`)
+
+@ref s 10(2)(d)
+GIVEN c IS A `Selection Committee`
+GIVETH A BOOLEAN
+DECIDE `s 10(2)(d) is met by the list for` c IF
+    `every candidate on` (c's `list`) `with a significant political affiliation on` (c's `list given on`) `has reasons set out`
+
+-- s 10(1) and (2) together: the Minister's duties about the list.
+@ref s 10(1), (2), (6)
+GIVEN c       IS A `Selection Committee`
+      earlier IS A LIST OF `Selection Committee`
+      w       IS A World
+GIVETH A BOOLEAN
+DECIDE `the Minister complied with s 10(1) and (2) for` c `after` earlier `in` w IF
+        `the list was given to` c `in time in` w
+    AND `the list for` c `after` earlier `has a permitted number of candidates`
+    AND `s 10(2)(a) is met by the list for` c
+    AND `s 10(2)(b) and (c) are met by the list for` c
+    AND `s 10(2)(d) is met by the list for` c
+
+§§ `10(3) to (5) The Committee's decision`
+
+-- s 10(3): "The Selection Committee must, within 2 months after receiving the list, give the
+-- Minister a written notice: (a) if the Selection Committee agrees on a candidate for the
+-- appointment--recommending the candidate's appointment to the office; or (b) otherwise--referring
+-- the matter back to the Minister."
+-- "within 2 months after receiving the list": the period begins after the day of receipt (Acts
+-- Interpretation Act s 36(1), item 6), runs 2 months under s 2G(2), and s 36(2) carries a last
+-- day that is a Saturday, Sunday or holiday forward. The list is taken to be received on the day
+-- it is given (REF-24; ENCODING-NOTES.md, E-13).
+@ref s 10(3); Acts Interpretation Act 1901 ss 2G(2), 36(1) item 6, 36(2)
+GIVEN c IS A `Selection Committee`, w IS A World
+GIVETH A NUMBER
+`the last day for the Committee's notice for` c `in` w MEANS
+    `the last day for doing a thing, given s 36(2), when the stated last day is`
+        (`the last day of a period of` 2 `months starting on` (`the first day of a period beginning after` (c's `list given on`)))
+        `and the holidays are` (w's `holidays`)
+
+@ref s 10(3)
+GIVEN c IS A `Selection Committee`, w IS A World
+GIVETH A BOOLEAN
+DECIDE `the Committee` c `gave its notice in time in` w IF
+        c's `list given`
+    AND c's `notice given`
+    AND c's `notice given on` AT MOST `the last day for the Committee's notice for` c `in` w
+
+-- "if the Selection Committee agrees on a candidate": FORK-08, reading A (taken): the Committee
+-- agrees when the question of recommending the candidate is carried under s 13(3) at a quorate
+-- meeting (s 13(1), (2)). FORK-06, reading A (taken): "a candidate for the appointment" is a
+-- candidate on the list the Minister gave.
+@ref s 10(3)(a); s 13(1)-(3)
+GIVEN c IS A `Selection Committee`, n IS A STRING
+GIVETH A BOOLEAN
+DECIDE `the Committee` c `agrees on the candidate named` n IF
+        `the decision was made at a quorate meeting` c
+    AND `the question was carried` c
+    AND `the candidate named` n `is on` (c's `list`)
+
+-- FORK-08, reading B: "agrees" means all three members agree.
+@ref s 10(3)(a)
+GIVEN c IS A `Selection Committee`, n IS A STRING
+GIVETH A BOOLEAN
+DECIDE `the Committee` c `agrees, reading B of FORK-08, on the candidate named` n IF
+        `the decision was made at a quorate meeting` c
+    AND c's `votes for` AT LEAST 3
+    AND `the candidate named` n `is on` (c's `list`)
+
+-- FORK-06, reading B: the Committee may agree on a person who was not on the list (s 10(4) lets it
+-- inform itself from anyone).
+@ref s 10(3)(a), (4)
+GIVEN c IS A `Selection Committee`, n IS A STRING
+GIVETH A BOOLEAN
+DECIDE `the Committee` c `agrees, reading B of FORK-06, on the candidate named` n IF
+        `the decision was made at a quorate meeting` c
+    AND `the question was carried` c
+
+-- FORK-07, reading B (majority of votes cast) at the level of s 10(3)(a).
+@ref s 10(3)(a); s 13(3)
+GIVEN c IS A `Selection Committee`, n IS A STRING
+GIVETH A BOOLEAN
+DECIDE `the Committee` c `agrees, reading B of FORK-07, on the candidate named` n IF
+        `the decision was made at a quorate meeting` c
+    AND `the question was carried, reading B` c
+    AND `the candidate named` n `is on` (c's `list`)
+
+-- s 10(3)(a): the Committee recommends the candidate named n when it gives a written notice
+-- recommending that candidate and it agreed on that candidate.
+@ref s 10(3)(a)
+GIVEN c IS A `Selection Committee`, n IS A STRING
+GIVETH A BOOLEAN
+DECIDE `the Committee` c `recommends the candidate named` n IF
+        c's `notice given`
+    AND (CONSIDER c's `notice`
+         WHEN `recommending` m THEN m EQUALS n
+         OTHERWISE FALSE)
+    AND `the Committee` c `agrees on the candidate named` n
+
+-- The Committee recommends someone.
+@ref s 10(3)(a)
+GIVEN c IS A `Selection Committee`
+GIVETH A BOOLEAN
+DECIDE `the Committee made a recommendation` c IF
+    CONSIDER c's `notice`
+    WHEN `recommending` m THEN `the Committee` c `recommends the candidate named` m
+    OTHERWISE FALSE
+
+-- s 10(3)(b): "otherwise--referring the matter back to the Minister". A referral is a decision
+-- under s 10(3), so s 13(1) requires it to be made at a meeting, and s 13(2) a quorate one
+-- (ENCODING-NOTES.md, E-15: no majority is required for it, since it is what follows when the
+-- Committee does not agree).
+@ref s 10(3)(b); s 13(1), (2)
+GIVEN c IS A `Selection Committee`
+GIVETH A BOOLEAN
+DECIDE `the Committee referred the matter back` c IF
+        c's `notice given`
+    AND (CONSIDER c's `notice`
+         WHEN `referring the matter back to the Minister` THEN TRUE
+         OTHERWISE FALSE)
+    AND `the decision was made at a quorate meeting` c
+
+-- s 10(4): "The Selection Committee may, in making a decision for the purposes of subsection (3),
+-- seek assistance, input or information from such persons as the Selection Committee determines."
+-- A permission with no condition; nothing to decide.
+
+-- s 10(5) (dissolution) is encoded in part3-committees.l4 with s 12(8), which it limits.
+
+§§ `10(7) Recommendations apply only to particular vacancies`
+
+-- s 10(7): "To avoid doubt, a Selection Committee's recommendation for an appointment to a
+-- designated diplomatic office is of no effect after an appointment to the office is made."
+-- A recommendation has effect on day d if it was given on or before d and no appointment to the
+-- office was made after it and before d. `p` is the day of the last appointment to the office made
+-- before d.
+@ref s 10(7)
+GIVEN c IS A `Selection Committee`, d IS A NUMBER, p IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the recommendation of` c `has effect on` d `when the last appointment before it was made on` p IF
+        `the Committee made a recommendation` c
+    AND c's `notice given on` AT MOST d
+    AND c's `notice given on` GREATER THAN p
+
+§ `9 Appointments to designated diplomatic offices`
+
+§§ `9(2) Appointments when a Selection Committee makes a recommendation`
+
+GIVEN n IS A STRING, p IS A NUMBER, d IS A NUMBER, cs IS A LIST OF `Selection Committee`
+GIVETH A BOOLEAN
+`a Committee recommends` n `with effect, after` p `, on` d `among` cs MEANS
+    CONSIDER cs
+    WHEN EMPTY THEN FALSE
+    WHEN c FOLLOWED BY rest THEN
+        (`the Committee` c `recommends the candidate named` n AND `the recommendation of` c `has effect on` d `when the last appointment before it was made on` p)
+     OR `a Committee recommends` n `with effect, after` p `, on` d `among` rest
+
+-- s 9(2): "This subsection applies if a Selection Committee recommends the person's appointment to
+-- the office." Read with s 10(7): the recommendation must still have effect when the appointment
+-- is made.
+@ref s 9(2); s 10(7)
+GIVEN a IS AN Appointment
+GIVETH A BOOLEAN
+DECIDE `section 9(2) applies to` a IF
+    `a Committee recommends` (a's `appointee`'s `name`) `with effect, after` (a's `the previous appointment to the office was made on`) `, on` (a's `made on`) `among` (a's `Selection Committees for the office`)
+
+-- FORK-09, reading A (taken): s 9(2) permits an appointment of the recommended person; nothing in
+-- the operative provisions obliges the Minister, or anyone, to make it. The simplified outline
+-- (s 3: "any person so recommended by the Selection Committee must be appointed") and EM para 18
+-- say otherwise; s 3 is not operative (coverage.json).
+@ref s 9(1), (2); s 3
+GIVEN a IS AN Appointment
+GIVETH A BOOLEAN
+DECIDE `someone must appoint the person a Committee recommended for` a IF FALSE
+
+-- FORK-09, reading B: the person a Committee recommends must be appointed.
+@ref s 3; s 9(2)
+GIVEN a IS AN Appointment
+GIVETH A BOOLEAN
+DECIDE `someone must appoint the person a Committee recommended, reading B, for` a IF
+    `section 9(2) applies to` a
+
+§§ `9(3) Appointments when no recommendation from a Selection Committee`
+
+GIVEN d IS A NUMBER, cs IS A LIST OF `Selection Committee`
+GIVETH A BOOLEAN
+`a Committee had made a recommendation by` d `among` cs MEANS
+    CONSIDER cs
+    WHEN EMPTY THEN FALSE
+    WHEN c FOLLOWED BY rest THEN
+        (`the Committee made a recommendation` c AND c's `notice given on` AT MOST d)
+     OR `a Committee had made a recommendation by` d `among` rest
+
+GIVEN d IS A NUMBER, cs IS A LIST OF `Selection Committee`
+GIVETH A NUMBER
+`the number of Committees that had referred the matter back by` d `among` cs MEANS
+    CONSIDER cs
+    WHEN EMPTY THEN 0
+    WHEN c FOLLOWED BY rest THEN
+        (IF `the Committee referred the matter back` c AND c's `notice given on` AT MOST d THEN 1 ELSE 0)
+        PLUS `the number of Committees that had referred the matter back by` d `among` rest
+
+-- s 9(3)(a): "no recommendation for an appointment to the office has been made by a Selection
+-- Committee established for the purpose of making such a recommendation"; (b): "at least two such
+-- Selection Committees have instead referred the matter back to the Minister".
+-- FORK-04, reading A (taken): the Committees for this appointment (this vacancy).
+@ref s 9(3)(a), (b)
+GIVEN a IS AN Appointment
+GIVETH A BOOLEAN
+DECIDE `paragraphs 9(3)(a) and (b) are met for` a IF
+        (NOT `a Committee had made a recommendation by` (a's `made on`) `among` (`the Committees for this appointment` a))
+    AND `the number of Committees that had referred the matter back by` (a's `made on`) `among` (`the Committees for this appointment` a) AT LEAST 2
+
+-- FORK-04, reading B: every Committee ever established for an appointment to the office.
+@ref s 9(3)(a), (b)
+GIVEN a IS AN Appointment
+GIVETH A BOOLEAN
+DECIDE `paragraphs 9(3)(a) and (b) are met, reading B of FORK-04, for` a IF
+        (NOT `a Committee had made a recommendation by` (a's `made on`) `among` (`the Committees for this appointment, reading B` a))
+    AND `the number of Committees that had referred the matter back by` (a's `made on`) `among` (`the Committees for this appointment, reading B` a) AT LEAST 2
+
+-- s 9(3)(c)(i): "the Minister is satisfied the person does not have a significant political
+-- affiliation". FORK-10, reading A (taken): the condition is the Minister's state of
+-- satisfaction, a fact; whether the person in truth has such an affiliation does not enter it.
+@ref s 9(3)(c)(i)
+GIVEN a IS AN Appointment
+GIVETH A BOOLEAN
+DECIDE `subparagraph 9(3)(c)(i) is met for` a IF
+    a's `the Minister is satisfied the appointee has no significant political affiliation`
+
+-- FORK-10, reading B: the Minister must be satisfied, and the person must in fact have no
+-- significant political affiliation on the day of the appointment.
+@ref s 9(3)(c)(i); s 8(2)
+GIVEN a IS AN Appointment
+GIVETH A BOOLEAN
+DECIDE `subparagraph 9(3)(c)(i) is met, reading B of FORK-10, for` a IF
+        a's `the Minister is satisfied the appointee has no significant political affiliation`
+    AND (NOT `has a significant political affiliation on` (a's `appointee`) (a's `made on`))
+
+-- s 9(3)(c)(ii): "both Houses of Parliament pass a resolution approving the person's appointment
+-- to the office". FORK-11, reading A (taken): both resolutions must have been passed by the day
+-- the appointment is made, since s 9(1) asks whether s 9(3) applies when the person "may be
+-- appointed" (EM para 19 reads it so).
+@ref s 9(3)(c)(ii)
+GIVEN a IS AN Appointment
+GIVETH A BOOLEAN
+DECIDE `subparagraph 9(3)(c)(ii) is met for` a IF
+        a's `the Senate passed a resolution approving it`
+    AND a's `the Senate's resolution was passed on` AT MOST a's `made on`
+    AND a's `the House passed a resolution approving it`
+    AND a's `the House's resolution was passed on` AT MOST a's `made on`
+
+-- FORK-11, reading B: the resolutions may come after the appointment ("pass" in the present tense,
+-- approval after the event).
+@ref s 9(3)(c)(ii)
+GIVEN a IS AN Appointment
+GIVETH A BOOLEAN
+DECIDE `subparagraph 9(3)(c)(ii) is met, reading B of FORK-11, for` a IF
+        a's `the Senate passed a resolution approving it`
+    AND a's `the House passed a resolution approving it`
+
+-- s 9(3): "This subsection applies if: (a) ...; and (b) ...; and (c) either: (i) ...; or (ii) ...".
+@ref s 9(3)
+GIVEN a IS AN Appointment
+GIVETH A BOOLEAN
+DECIDE `section 9(3) applies to` a IF
+        `paragraphs 9(3)(a) and (b) are met for` a
+    AND (`subparagraph 9(3)(c)(i) is met for` a OR `subparagraph 9(3)(c)(ii) is met for` a)
+
+§§ `9(1) Appointments`
+
+-- s 9(1): "A person may be appointed to a designated diplomatic office only if: (a) the person
+-- does not have a disqualifying political affiliation; and (b) subsection (2) or (3) applies."
+-- The affiliation is tested on the day the appointment is made.
+@ref s 9(1)
+GIVEN a IS AN Appointment
+GIVETH A BOOLEAN
+DECIDE `section 9(1) permits` a IF
+        (NOT `has a disqualifying political affiliation on` (a's `appointee`) (a's `made on`))
+    AND (`section 9(2) applies to` a OR `section 9(3) applies to` a)
+
+§§ `9(4) and (5) Tabling requirement`
+
+-- s 9(4): "If a person is appointed to a designated diplomatic office because the Minister is
+-- satisfied in accordance with subparagraph (3)(c)(i), the Minister must table in each House of
+-- the Parliament a statement of reasons setting out why the Minister is so satisfied."
+-- FORK-12, reading A (taken): the appointment is made "because" the Minister is satisfied when it
+-- rests on s 9(3) (s 9(2) does not apply) and s 9(3)(c)(i) is met, whether or not both Houses have
+-- also resolved under s 9(3)(c)(ii).
+@ref s 9(4)
+GIVEN a IS AN Appointment
+GIVETH A BOOLEAN
+DECIDE `the Minister must table a statement of reasons for` a IF
+        (NOT `section 9(2) applies to` a)
+    AND `paragraphs 9(3)(a) and (b) are met for` a
+    AND `subparagraph 9(3)(c)(i) is met for` a
+
+-- FORK-12, reading B: when both Houses have also approved the appointment, it is made because of
+-- their resolutions, and no statement is required.
+@ref s 9(4)
+GIVEN a IS AN Appointment
+GIVETH A BOOLEAN
+DECIDE `the Minister must table a statement of reasons, reading B of FORK-12, for` a IF
+        `the Minister must table a statement of reasons for` a
+    AND (NOT `subparagraph 9(3)(c)(ii) is met for` a)
+
+-- s 9(5): "The statement must be tabled within 5 sitting days of that House after the appointment
+-- is made." A sitting day is a day the House actually sits (Acts Interpretation Act s 2M).
+-- FORK-13, reading A (taken): the sitting days counted are those after the day the appointment is
+-- made; a sitting on the day of the appointment does not count (s 36(1), item 6, by analogy).
+-- The statement is in time if it is tabled no later than the 5th such sitting day.
+@ref s 9(5); Acts Interpretation Act 1901 ss 2M, 36(1)
+GIVEN made IS A NUMBER, tabled IS A BOOLEAN, t IS A NUMBER, sittings IS A LIST OF NUMBER
+GIVETH A BOOLEAN
+DECIDE `a statement for an appointment made on` made `, tabled` tabled `on` t `, was in time given the sittings` sittings IF
+        tabled
+    AND t AT LEAST made
+    AND `the number of sitting days after` made `up to and including` t `among` sittings AT MOST 5
+
+-- FORK-13, reading B: a sitting on the day of the appointment, after it is made, counts as the
+-- first of the 5.
+@ref s 9(5); Acts Interpretation Act 1901 s 2M
+GIVEN made IS A NUMBER, tabled IS A BOOLEAN, t IS A NUMBER, sittings IS A LIST OF NUMBER
+GIVETH A BOOLEAN
+DECIDE `a statement for an appointment made on` made `, tabled` tabled `on` t `, was in time, reading B, given the sittings` sittings IF
+        tabled
+    AND t AT LEAST made
+    AND `the number of sitting days after` (made MINUS 1) `up to and including` t `among` sittings AT MOST 5
+
+@ref s 9(4), (5)
+GIVEN a IS AN Appointment, w IS A World
+GIVETH A BOOLEAN
+DECIDE `the statement was tabled in time in the Senate for` a `in` w IF
+    `a statement for an appointment made on` (a's `made on`) `, tabled` (a's `a statement of reasons was tabled in the Senate`) `on` (a's `the Senate statement was tabled on`) `, was in time given the sittings` (w's `Senate sitting days`)
+
+@ref s 9(4), (5)
+GIVEN a IS AN Appointment, w IS A World
+GIVETH A BOOLEAN
+DECIDE `the statement was tabled in time in the House for` a `in` w IF
+    `a statement for an appointment made on` (a's `made on`) `, tabled` (a's `a statement of reasons was tabled in the House`) `on` (a's `the House statement was tabled on`) `, was in time given the sittings` (w's `House of Representatives sitting days`)
+
+-- The requirement is breached in a House by the end of day d if a statement was required, that
+-- House has sat 5 times after the appointment by d, and no statement was tabled in time.
+@ref s 9(4), (5)
+GIVEN a IS AN Appointment, w IS A World, d IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the tabling requirement for` a `in` w `is breached in the Senate by the end of` d IF
+        `the Minister must table a statement of reasons for` a
+    AND `the number of sitting days after` (a's `made on`) `up to and including` d `among` (w's `Senate sitting days`) AT LEAST 5
+    AND (NOT (`the statement was tabled in time in the Senate for` a `in` w AND a's `the Senate statement was tabled on` AT MOST d))
+
+@ref s 9(4), (5)
+GIVEN a IS AN Appointment, w IS A World, d IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the tabling requirement for` a `in` w `is breached in the House by the end of` d IF
+        `the Minister must table a statement of reasons for` a
+    AND `the number of sitting days after` (a's `made on`) `up to and including` d `among` (w's `House of Representatives sitting days`) AT LEAST 5
+    AND (NOT (`the statement was tabled in time in the House for` a `in` w AND a's `the House statement was tabled on` AT MOST d))
+
+§ `11 Acting arrangements for designated diplomatic offices`
+
+-- s 11(1): "This section applies in relation to a person (the chargé d'affaires) acting in a
+-- designated diplomatic office: (a) during a vacancy in the office; or (b) during any period, or
+-- during all periods, when a person appointed to the office: (i) is absent from duty; or (ii) is,
+-- for any reason, unable to perform the duties of the office."
+@ref s 11(1)
+GIVEN x IS AN `acting arrangement`
+GIVETH A BOOLEAN
+DECIDE `section 11 applies to` x IF
+        `is a designated diplomatic office` (x's `office`)
+    AND (CONSIDER x's `occasion`
+         WHEN `none of these` THEN FALSE
+         OTHERWISE TRUE)
+
+-- s 11(2): "The chargé d'affaires must not have a disqualifying political affiliation or a
+-- significant political affiliation."
+-- FORK-14, reading A (taken): tested when the arrangement is made, which is what s 14(4) ("must
+-- not be made otherwise than in accordance with this Act") reads.
+@ref s 11(2)
+GIVEN x IS AN `acting arrangement`
+GIVETH A BOOLEAN
+DECIDE `section 11(2) is met for` x IF
+        (NOT `has a disqualifying political affiliation on` (x's `the chargé d’affaires`) (x's `made on`))
+    AND (NOT `has a significant political affiliation on` (x's `the chargé d’affaires`) (x's `made on`))
+
+-- FORK-14, reading B: s 11(2) is a continuing requirement, tested on each day d of the acting.
+@ref s 11(2)
+GIVEN x IS AN `acting arrangement`, d IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `section 11(2) is met, reading B of FORK-14, for` x `on` d IF
+        (NOT `has a disqualifying political affiliation on` (x's `the chargé d’affaires`) d)
+    AND (NOT `has a significant political affiliation on` (x's `the chargé d’affaires`) d)
+
+-- s 11(3): "To avoid doubt, this section applies to the chargé d'affaires instead of section 9."
+@ref s 11(3)
+GIVEN x IS AN `acting arrangement`
+GIVETH A BOOLEAN
+DECIDE `section 9 applies to the chargé d'affaires under` x IF
+    FALSE

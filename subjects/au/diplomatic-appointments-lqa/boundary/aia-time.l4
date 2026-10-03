@@ -1,0 +1,202 @@
+-- Boundary module: the Acts Interpretation Act 1901 (Cth) provisions on time that the
+-- Diplomatic Appointments (Selection Process) Bill 2026 reads.
+-- Source: Acts Interpretation Act 1901, Compilation No. 39, compilation date 28 March 2026,
+-- register ID C2026C00117 (0H item cth-acts-interpretation-act-1901).
+-- Reference register: REF-01 (ss 3, 3A), REF-09 (ss 36, 37), REF-20 (ss 2M, 36),
+-- REF-22 (s 36), REF-23 (ss 2G, 36), REF-31 (ss 3A, 2G, 36).
+--
+-- Two byte-identical copies of this file exist: aia-time.l4 in the subject folder, which the Bill's
+-- modules import, and boundary/aia-time.l4, the path the reference register names. The installed l4
+-- cannot import from another folder (ENCODING-NOTES.md, E-01).
+--
+-- Dates are day numbers: day 0 is 1 January 1970, and each later day is one more. The
+-- installed l4's daydate library provides nothing, so the calendar is built here by hand
+-- (proleptic Gregorian calendar; the civil calendar, not a provision of any Act).
+-- A day is a whole day. The Bill's periods are counted in days, months, years and sitting
+-- days, never in hours, so the time of day at which a thing happened is not modelled
+-- (s 37, legal time in each State, therefore decides nothing here).
+
+§ `The civil calendar (no provision)`
+
+DECLARE `civil date` HAS
+    `year`         IS A NUMBER
+    `month`        IS A NUMBER
+    `day of month` IS A NUMBER
+
+-- The day number of a civil date (days from 1 January 1970).
+GIVEN y IS A NUMBER, m IS A NUMBER, d IS A NUMBER
+GIVETH A NUMBER
+`the day` y m d MEANS
+    (era TIMES 146097) PLUS doe MINUS 719468
+    WHERE
+        yy  MEANS IF m AT MOST 2 THEN y MINUS 1 ELSE y
+        era MEANS FLOOR (yy DIVIDED BY 400)
+        yoe MEANS yy MINUS (era TIMES 400)
+        mp  MEANS IF m GREATER THAN 2 THEN m MINUS 3 ELSE m PLUS 9
+        doy MEANS FLOOR (((153 TIMES mp) PLUS 2) DIVIDED BY 5) PLUS d MINUS 1
+        doe MEANS (yoe TIMES 365) PLUS FLOOR (yoe DIVIDED BY 4) MINUS FLOOR (yoe DIVIDED BY 100) PLUS doy
+
+-- The civil date of a day number.
+GIVEN z IS A NUMBER
+GIVETH A `civil date`
+`the civil date of` z MEANS
+    `civil date` WITH
+        `year`         IS (IF mm AT MOST 2 THEN yy PLUS 1 ELSE yy)
+        `month`        IS mm
+        `day of month` IS dd
+    WHERE
+        zz  MEANS z PLUS 719468
+        era MEANS FLOOR (zz DIVIDED BY 146097)
+        doe MEANS zz MINUS (era TIMES 146097)
+        yoe MEANS FLOOR ((doe MINUS FLOOR (doe DIVIDED BY 1460) PLUS FLOOR (doe DIVIDED BY 36524) MINUS FLOOR (doe DIVIDED BY 146096)) DIVIDED BY 365)
+        yy  MEANS yoe PLUS (era TIMES 400)
+        doy MEANS doe MINUS ((365 TIMES yoe) PLUS FLOOR (yoe DIVIDED BY 4) MINUS FLOOR (yoe DIVIDED BY 100))
+        mp  MEANS FLOOR (((5 TIMES doy) PLUS 2) DIVIDED BY 153)
+        dd  MEANS doy MINUS FLOOR (((153 TIMES mp) PLUS 2) DIVIDED BY 5) PLUS 1
+        mm  MEANS IF mp LESS THAN 10 THEN mp PLUS 3 ELSE mp MINUS 9
+
+-- The first day of the calendar month that is n calendar months after the month of (y, m).
+GIVEN n IS A NUMBER, y IS A NUMBER, m IS A NUMBER
+GIVETH A NUMBER
+`the first day of the month` n `months after the month of` y m MEANS
+    `the day` (y PLUS FLOOR (t DIVIDED BY 12)) ((t MODULO 12) PLUS 1) 1
+    WHERE
+        t MEANS (m MINUS 1) PLUS n
+
+-- How many days the calendar month that is n months after the month of (y, m) has.
+GIVEN n IS A NUMBER, y IS A NUMBER, m IS A NUMBER
+GIVETH A NUMBER
+`the length of the month` n `months after the month of` y m MEANS
+        `the first day of the month` (n PLUS 1) `months after the month of` y m
+    MINUS `the first day of the month` n `months after the month of` y m
+
+-- The day with the same month and day of month n calendar years before day z; where that year
+-- has no such day (29 February), the next day, 1 March. The Acts Interpretation Act defines no
+-- "year", so this is the calendar, not a provision (ENCODING-NOTES.md, E-05).
+GIVEN n IS A NUMBER, z IS A NUMBER
+GIVETH A NUMBER
+`the same date` n `years before` z MEANS
+    IF     (c's `day of month`) AT MOST `the length of the month` 0 `months after the month of` ((c's `year`) MINUS n) (c's `month`)
+    THEN   `the day` ((c's `year`) MINUS n) (c's `month`) (c's `day of month`)
+    ELSE   `the first day of the month` 1 `months after the month of` ((c's `year`) MINUS n) (c's `month`)
+    WHERE
+        c MEANS `the civil date of` z
+
+-- The day of the week: 0 Sunday, 1 Monday, ..., 6 Saturday. 1 January 1970 was a Thursday.
+GIVEN z IS A NUMBER
+GIVETH A NUMBER
+`the weekday of` z MEANS (z PLUS 4) MODULO 7
+
+GIVEN z IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `is a Saturday or a Sunday` z IF
+        `the weekday of` z EQUALS 0
+     OR `the weekday of` z EQUALS 6
+
+GIVEN x IS A NUMBER, xs IS A LIST OF NUMBER
+GIVETH A BOOLEAN
+x `is listed in` xs MEANS
+    CONSIDER xs
+    WHEN EMPTY THEN FALSE
+    WHEN y FOLLOWED BY rest THEN (y EQUALS x) OR (x `is listed in` rest)
+
+§ `Acts Interpretation Act 1901 s 2G -- Months`
+
+-- s 2G(1): "month means a period: (a) starting at the start of any day of one of the calendar
+-- months; and (b) ending: (i) immediately before the start of the corresponding day of the next
+-- calendar month; or (ii) if there is no such day--at the end of the next calendar month."
+-- s 2G(2): "a reference to a period of 2 or more months is a reference to a period: (a) starting
+-- at the start of a day of one of the calendar months (the starting month); and (b) ending:
+-- (i) immediately before the start of the corresponding day of the calendar month that is that
+-- number of calendar months after the starting month; or (ii) if there is no such day--at the
+-- end of the calendar month that is that number of calendar months after the starting month."
+-- Both subsections give the same answer for n = 1, so one rule serves both.
+--
+-- The first day AFTER a period of n months that starts at the start of day s: the corresponding
+-- day where there is one (s 2G(2)(b)(i)); otherwise the first day of the month after the
+-- n-th month, because the period ends at the end of the n-th month (s 2G(2)(b)(ii)).
+@ref Acts Interpretation Act 1901 s 2G
+GIVEN n IS A NUMBER, s IS A NUMBER
+GIVETH A NUMBER
+`the first day after a period of` n `months starting on` s MEANS
+    IF     (c's `day of month`) AT MOST `the length of the month` n `months after the month of` (c's `year`) (c's `month`)
+    THEN   `the first day of the month` n `months after the month of` (c's `year`) (c's `month`) PLUS (c's `day of month`) MINUS 1
+    ELSE   `the first day of the month` (n PLUS 1) `months after the month of` (c's `year`) (c's `month`)
+    WHERE
+        c MEANS `the civil date of` s
+
+-- The last day of a period of n months starting on day s.
+@ref Acts Interpretation Act 1901 s 2G
+GIVEN n IS A NUMBER, s IS A NUMBER
+GIVETH A NUMBER
+`the last day of a period of` n `months starting on` s MEANS
+    `the first day after a period of` n `months starting on` s MINUS 1
+
+§ `Acts Interpretation Act 1901 ss 3 and 3A -- Commencement`
+
+-- s 3: "If an Act or a provision of an Act is expressed to come into operation on a particular
+-- day ... it comes into operation at the start of the day."
+-- s 3A(1): "This section does not apply to an Act so far as it provides for its commencement."
+-- The Bill provides for its own commencement (s 2(1), item 1), so s 3A(2) (the 28th day after
+-- Royal Assent) does not apply; s 3 puts commencement at the start of the day s 2 names.
+-- A day number stands for the whole day, so "at the start of the day" is that day number.
+@ref Acts Interpretation Act 1901 s 3
+GIVEN d IS A NUMBER
+GIVETH A NUMBER
+`the moment of operation of an Act expressed to commence on` d MEANS d
+
+-- s 3A(2), for completeness of the boundary only: an Act that does not provide for its
+-- commencement commences on the 28th day after Royal Assent. Not used by the Bill (s 3A(1)).
+@ref Acts Interpretation Act 1901 s 3A(2)
+GIVEN assent IS A NUMBER
+GIVETH A NUMBER
+`the default commencement day for an Act assented to on` assent MEANS assent PLUS 28
+
+§ `Acts Interpretation Act 1901 s 36 -- Calculating time`
+
+-- s 36(1), table item 6: a period "expressed to begin after a specified day ... does not include
+-- that day". Item 5 (begin from a specified day) is the same. So such a period's first day is
+-- the next day.
+@ref Acts Interpretation Act 1901 s 36(1) items 5 and 6
+GIVEN d IS A NUMBER
+GIVETH A NUMBER
+`the first day of a period beginning after` d MEANS d PLUS 1
+
+-- s 36(1), table item 2: a period "expressed to begin at, on or with a specified day ...
+-- includes that day".
+@ref Acts Interpretation Act 1901 s 36(1) item 2
+GIVEN d IS A NUMBER
+GIVETH A NUMBER
+`the first day of a period beginning on` d MEANS d
+
+-- s 36(2): "If: (a) an Act requires or allows a thing to be done; and (b) the last day for doing
+-- the thing is a Saturday, a Sunday or a holiday; then the thing may be done on the next day
+-- that is not a Saturday, a Sunday or a holiday."
+-- s 36(3): holiday means a public holiday in the place where the thing is to be done, or a day
+-- the office where it is to be done is closed for the whole day. Which days those are is a fact:
+-- the caller supplies them as a list of day numbers.
+@ref Acts Interpretation Act 1901 s 36(2), (3)
+GIVEN last IS A NUMBER, holidays IS A LIST OF NUMBER
+GIVETH A NUMBER
+`the last day for doing a thing, given s 36(2), when the stated last day is` last `and the holidays are` holidays MEANS
+    IF   `is a Saturday or a Sunday` last OR (last `is listed in` holidays)
+    THEN `the last day for doing a thing, given s 36(2), when the stated last day is` (last PLUS 1) `and the holidays are` holidays
+    ELSE last
+
+§ `Acts Interpretation Act 1901 s 2M -- Sitting day`
+
+-- s 2M(1): "a sitting day, in relation to a House of the Parliament, is a day on which the House
+-- actually sits." s 2M(2): a sitting that continues, without adjourning, onto a later day is part
+-- of the earlier sitting day. Which days a House sat is a fact (the Journals of each House); the
+-- caller supplies them as a list of day numbers, already reduced under s 2M(2), so a sitting
+-- carried past midnight appears once, on the day it began.
+-- How many sitting days of a House fall after day a and on or before day b.
+@ref Acts Interpretation Act 1901 s 2M
+GIVEN a IS A NUMBER, b IS A NUMBER, sittings IS A LIST OF NUMBER
+GIVETH A NUMBER
+`the number of sitting days after` a `up to and including` b `among` sittings MEANS
+    CONSIDER sittings
+    WHEN EMPTY THEN 0
+    WHEN s FOLLOWED BY rest THEN
+        (IF s GREATER THAN a AND s AT MOST b THEN 1 ELSE 0)
+        PLUS `the number of sitting days after` a `up to and including` b `among` rest
