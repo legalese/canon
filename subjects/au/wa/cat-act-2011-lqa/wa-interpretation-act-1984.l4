@@ -1,0 +1,338 @@
+-- Interpretation Act 1984 (WA): ss 61, 62, 71 and 72, the provisions the reference register
+-- of subjects/western-australia/cat-act-2011-lqa names (REF-39 to REF-42).
+-- Encoded from the 0H copy: _jurisdiction/sources/interpretation-act-1984.mrdoc_49111.txt,
+-- consolidated version 07-k0-00, currency start 18 Dec 2025 (sha256 706a64f0...ab54).
+-- Encoded 2026-10-01 at 4A of cat-act-2011-lqa. NOT YET THROUGH 6H, and not yet listed in
+-- _jurisdiction/reference-set.json "library" (listing it there is a 0H re-approval).
+--
+-- This module imports nothing. The installed l4 has no standard library (H-04 in
+-- subjects/western-australia/retail-barring-orders-bill-2025/INCIDENTS.md), so `daydate`
+-- is unavailable and the calendar below is built from date components. The day-number
+-- arithmetic is the proleptic Gregorian "days from civil" algorithm; day number 0 is
+-- 1 January 1970, a Thursday.
+--
+-- l4 cannot import across folders (an IMPORT names a module, and only the importing file's
+-- own folder and the library folders are searched), so a subject that uses this module
+-- holds a byte-identical copy beside its own modules. The copy is the thing compiled; this
+-- file is the original. See the subject's ENCODING-NOTES.md.
+
+§ `Calendar`
+
+DECLARE `Calendar date` HAS
+    `year`  IS A NUMBER
+    `month` IS A NUMBER
+    `day`   IS A NUMBER
+
+GIVEN y IS A NUMBER, m IS A NUMBER, d IS A NUMBER
+GIVETH A `Calendar date`
+`the date` y m d MEANS `Calendar date` WITH `year` IS y, `month` IS m, `day` IS d
+
+GIVEN y IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `is a leap year` y IF
+        (y MODULO 400) EQUALS 0
+    OR  (    (y MODULO 4) EQUALS 0
+         AND NOT (y MODULO 100) EQUALS 0)
+
+GIVEN m IS A NUMBER, y IS A NUMBER
+GIVETH A NUMBER
+`the number of days in month` m `of year` y MEANS
+    BRANCH
+        IF m EQUALS 2 THEN IF `is a leap year` y THEN 29 ELSE 28
+        IF m EQUALS 4 OR m EQUALS 6 OR m EQUALS 9 OR m EQUALS 11 THEN 30
+        OTHERWISE 31
+
+-- The day number of a date: days since 1 January 1970.
+GIVEN d IS A `Calendar date`
+GIVETH A NUMBER
+`the day number of` d MEANS
+    (era TIMES 146097) PLUS doe MINUS 719468
+    WHERE
+        y   MEANS IF d's `month` AT MOST 2 THEN d's `year` MINUS 1 ELSE d's `year`
+        era MEANS FLOOR (y / 400)
+        yoe MEANS y MINUS (era TIMES 400)
+        mp  MEANS IF d's `month` GREATER THAN 2 THEN d's `month` MINUS 3 ELSE d's `month` PLUS 9
+        doy MEANS FLOOR (((153 TIMES mp) PLUS 2) / 5) PLUS d's `day` MINUS 1
+        doe MEANS (yoe TIMES 365) PLUS FLOOR (yoe / 4) MINUS FLOOR (yoe / 100) PLUS doy
+
+-- The date of a day number: the inverse of `the day number of`.
+GIVEN n IS A NUMBER
+GIVETH A `Calendar date`
+`the date of day number` n MEANS
+    `Calendar date` WITH
+        `year`  IS (IF m AT MOST 2 THEN y PLUS 1 ELSE y)
+        `month` IS m
+        `day`   IS dd
+    WHERE
+        z   MEANS n PLUS 719468
+        era MEANS FLOOR (z / 146097)
+        doe MEANS z MINUS (era TIMES 146097)
+        yoe MEANS FLOOR ((doe MINUS FLOOR (doe / 1460) PLUS FLOOR (doe / 36524) MINUS FLOOR (doe / 146096)) / 365)
+        y   MEANS yoe PLUS (era TIMES 400)
+        doy MEANS doe MINUS ((365 TIMES yoe) PLUS FLOOR (yoe / 4) MINUS FLOOR (yoe / 100))
+        mp  MEANS FLOOR (((5 TIMES doy) PLUS 2) / 153)
+        dd  MEANS doy MINUS FLOOR (((153 TIMES mp) PLUS 2) / 5) PLUS 1
+        m   MEANS IF mp LESS THAN 10 THEN mp PLUS 3 ELSE mp MINUS 9
+
+GIVEN n IS A NUMBER, d IS A `Calendar date`
+GIVETH A `Calendar date`
+`the day` n `days after` d MEANS `the date of day number` (`the day number of` d PLUS n)
+
+GIVEN a IS A `Calendar date`, b IS A `Calendar date`
+GIVETH A BOOLEAN
+DECIDE a `is the same day as` b IF `the day number of` a EQUALS `the day number of` b
+
+GIVEN a IS A `Calendar date`, b IS A `Calendar date`
+GIVETH A BOOLEAN
+DECIDE a `is on or before` b IF `the day number of` a AT MOST `the day number of` b
+
+GIVEN a IS A `Calendar date`, b IS A `Calendar date`
+GIVETH A BOOLEAN
+DECIDE a `is before` b IF `the day number of` a LESS THAN `the day number of` b
+
+-- 0 Sunday, 1 Monday ... 6 Saturday. Day number 0 (1 January 1970) was a Thursday.
+GIVEN d IS A `Calendar date`
+GIVETH A NUMBER
+`the weekday number of` d MEANS (`the day number of` d PLUS 4) MODULO 7
+
+§ `Section 61 -- Time, computation of`
+
+-- s 61(2): "excluded day means Saturday, Sunday, public service holiday, and a bank holiday or
+-- public holiday throughout the State or in that part of the State which is relevant to the
+-- event, act, thing or proceeding concerned."
+-- Which days are public service, bank and public holidays is not in this Act: it is a fact,
+-- supplied as a list of dates for the part of the State concerned.
+GIVEN d IS A `Calendar date`, holidays IS A LIST OF `Calendar date`
+GIVETH A BOOLEAN
+d `is listed in` holidays MEANS
+    CONSIDER holidays
+    WHEN EMPTY THEN FALSE
+    WHEN h FOLLOWED BY rest THEN d `is the same day as` h OR d `is listed in` rest
+
+@ref Interpretation Act 1984 (WA) s 61(2)
+GIVEN d IS A `Calendar date`, holidays IS A LIST OF `Calendar date`
+GIVETH A BOOLEAN
+DECIDE `s 61(2) -- is an excluded day` d `given the holidays` holidays IF
+        "excluded day means"
+    ..  "Saturday" ...  `the weekday number of` d EQUALS 6
+    ..  "Sunday"   ...  `the weekday number of` d EQUALS 0
+    ..  "public service holiday, and a bank holiday or public holiday" ... d `is listed in` holidays
+
+-- s 61(1)(b): "where a period of time is expressed to be reckoned from, or after, a specified
+-- day, that day shall not be included in the period".
+-- A period of n days after day d therefore runs from the day after d, and its last day is d + n.
+@ref Interpretation Act 1984 (WA) s 61(1)(b)
+GIVEN n IS A NUMBER, d IS A `Calendar date`
+GIVETH A `Calendar date`
+`s 61(1)(b) -- the last day of a period of` n `days after` d MEANS `the day` n `days after` d
+
+-- s 61(1)(a): "where a period of time is expressed to begin at, on, or with a specified day,
+-- that day shall be included in the period". A period of n days beginning on d ends on d + n - 1.
+@ref Interpretation Act 1984 (WA) s 61(1)(a)
+GIVEN n IS A NUMBER, d IS A `Calendar date`
+GIVETH A `Calendar date`
+`s 61(1)(a) -- the last day of a period of` n `days beginning on` d MEANS `the day` (n MINUS 1) `days after` d
+
+-- s 61(1)(c): "where anything is to be done within a time before a specified day, the time
+-- shall not include that day". The first day of a time of n days before day d is d - n; the
+-- last is the day before d.
+@ref Interpretation Act 1984 (WA) s 61(1)(c)
+GIVEN n IS A NUMBER, d IS A `Calendar date`
+GIVETH A `Calendar date`
+`s 61(1)(c) -- the first day of a time of` n `days before` d MEANS `the day` (0 MINUS n) `days after` d
+
+@ref Interpretation Act 1984 (WA) s 61(1)(c)
+GIVEN n IS A NUMBER, d IS A `Calendar date`, t IS A `Calendar date`
+GIVETH A BOOLEAN
+DECIDE `s 61(1)(c) -- falls within a time of` n `days before` d `, on` t IF
+        "the time shall not include that day"
+    ... `first day` `is on or before` t
+    ... t `is before` d
+    WHERE
+        `first day` MEANS `s 61(1)(c) -- the first day of a time of` n `days before` d
+
+-- s 61(1)(e): "where the time limited for the doing of a thing expires or falls upon an excluded
+-- day, the thing may be done on the next day that is not an excluded day";
+-- s 61(1)(h): an act directed to be done on or before a day that is an excluded day is done in
+-- due time if done on the next day that is not an excluded day.
+-- At most a fortnight is searched; no run of excluded days in WA is that long.
+@ref Interpretation Act 1984 (WA) s 61(1)(e), (h)
+GIVEN d IS A `Calendar date`, holidays IS A LIST OF `Calendar date`
+GIVETH A `Calendar date`
+`s 61(1)(e) -- the last day for doing a thing whose time expires on` d `given the holidays` holidays MEANS
+    `the first day that is not an excluded day, from` d `given` holidays `searching` 14
+
+GIVEN d IS A `Calendar date`
+      holidays IS A LIST OF `Calendar date`
+      fuel IS A NUMBER
+GIVETH A `Calendar date`
+`the first day that is not an excluded day, from` d `given` holidays `searching` fuel MEANS
+    IF fuel AT MOST 0 OR NOT `s 61(2) -- is an excluded day` d `given the holidays` holidays
+    THEN d
+    ELSE `the first day that is not an excluded day, from` (`the day` 1 `days after` d) `given` holidays `searching` (fuel MINUS 1)
+
+-- The two together: the last day for a thing to be done "within n days after" day d.
+@ref Interpretation Act 1984 (WA) s 61(1)(b), (e)
+GIVEN n IS A NUMBER, d IS A `Calendar date`, holidays IS A LIST OF `Calendar date`
+GIVETH A `Calendar date`
+`s 61 -- the last day for a thing to be done within` n `days after` d `given the holidays` holidays MEANS
+    `s 61(1)(e) -- the last day for doing a thing whose time expires on` (`s 61(1)(b) -- the last day of a period of` n `days after` d) `given the holidays` holidays
+
+-- s 61(1)(g): "where there is a reference to a number of days not expressed to be clear days
+-- or 'at least' or 'not less than' a number of days between 2 events, in calculating the
+-- number of days there shall be excluded the day on which the first event happens and there
+-- shall be included the day on which the second event happens".
+@ref Interpretation Act 1984 (WA) s 61(1)(g)
+GIVEN first IS A `Calendar date`, second IS A `Calendar date`
+GIVETH A NUMBER
+`s 61(1)(g) -- the number of days between` first `and` second MEANS
+    `the day number of` second MINUS `the day number of` first
+
+-- s 61(1)(f): clear days, "at least" or "not less than": both event days excluded.
+@ref Interpretation Act 1984 (WA) s 61(1)(f)
+GIVEN first IS A `Calendar date`, second IS A `Calendar date`
+GIVETH A NUMBER
+`s 61(1)(f) -- the number of clear days between` first `and` second MEANS
+    `the day number of` second MINUS `the day number of` first MINUS 1
+
+§ `Section 62 -- Months, reckoning of`
+
+-- s 62(1): "In a written law, month means a calendar month, that is to say, a month reckoned
+-- according to the calendar."
+-- s 62(2): a period of one month beginning on a date other than the first of a month "shall be
+-- reckoned from the date on which it is to begin to the date in the next month numerically
+-- corresponding, less one, or, if there is no corresponding date, to the last day of that month."
+-- s 62(3): "If a period indicated in a written law is of 2, 3 or more months, it shall be
+-- reckoned from the date on which it is to begin to the date numerically corresponding, less
+-- one, in the second, third, or other successive month thereafter or, if there is no such
+-- corresponding date, to the last day of the latter month."
+-- One rule serves all three: a one-month period beginning on the 1st is the calendar month,
+-- which ends on the day before the 1st of the next month, as s 62(2)-(3)'s formula also gives.
+-- The Act's own examples are asserted in the subject's cases module.
+@ref Interpretation Act 1984 (WA) s 62
+GIVEN n IS A NUMBER, d IS A `Calendar date`
+GIVETH A `Calendar date`
+`s 62 -- the last day of a period of` n `months beginning on` d MEANS
+    IF d's `day` AT MOST `the number of days in month` tm `of year` ty
+    THEN `the day` (0 MINUS 1) `days after` (`the date` ty tm (d's `day`))
+    ELSE `the date` ty tm (`the number of days in month` tm `of year` ty)
+    WHERE
+        total MEANS (d's `year` TIMES 12) PLUS (d's `month` MINUS 1) PLUS n
+        ty    MEANS FLOOR (total / 12)
+        tm    MEANS total MINUS (ty TIMES 12) PLUS 1
+
+-- s 5 "year means a period of 12 months", so a period of years is reckoned under s 62(3).
+@ref Interpretation Act 1984 (WA) ss 5 ("year"), 62(3)
+GIVEN n IS A NUMBER, d IS A `Calendar date`
+GIVETH A `Calendar date`
+`s 62 -- the last day of a period of` n `years beginning on` d MEANS
+    `s 62 -- the last day of a period of` (n TIMES 12) `months beginning on` d
+
+§ `Section 71 -- Continuing offences`
+
+-- s 71(1): where an act is required to be done within a period, failure to do it within the
+-- period is an offence, and it is not done within the period —
+--   "(d) the obligation to do that act or thing continues, notwithstanding that that period
+--   has expired or that time has passed, until that act or thing is done; and
+--   (e) where a person is convicted of an offence that, by virtue of paragraph (d), is
+--   constituted by failure to do that act or thing after the expiration of that period ...,
+--   that person is guilty of a separate and further offence in respect of each day after the
+--   day of the conviction during which the failure to do that act or thing continues; and
+--   (f) unless otherwise provided, the penalty applicable to each separate and further offence
+--   is $50."
+@ref Interpretation Act 1984 (WA) s 71(1)(d)
+GIVEN t IS A `Calendar date`, `last day` IS A `Calendar date`, `done on` IS A MAYBE `Calendar date`
+GIVETH A BOOLEAN
+DECIDE `s 71(1)(d) -- on` t `the obligation still subsists, the period ending on` `last day` `and the thing done on` `done on` IF
+        "the obligation to do that act or thing continues ... until that act or thing is done"
+    ... `last day` `is before` t
+    ... (CONSIDER `done on`
+         WHEN NOTHING THEN TRUE
+         WHEN JUST x  THEN t `is on or before` x)
+
+-- s 71(1)(e) and s 71(2): the separate and further offences after a conviction, one for each
+-- day after the day of conviction during which the failure continues. The count runs to the
+-- day before the thing is done (on the day it is done the failure ends), or to day t if it is
+-- not yet done. This is the encoding's reading of "each day ... during which the failure
+-- continues"; see the subject's ENCODING-NOTES.md.
+@ref Interpretation Act 1984 (WA) s 71(1)(e), (2)
+GIVEN `convicted on` IS A `Calendar date`, `done on` IS A MAYBE `Calendar date`, t IS A `Calendar date`
+GIVETH A NUMBER
+`s 71 -- the number of separate and further offences, convicted on` `convicted on` `, done on` `done on` `, counted to` t MEANS
+    IF days GREATER THAN 0 THEN days ELSE 0
+    WHERE
+        `last day of failure` MEANS
+            CONSIDER `done on`
+            WHEN NOTHING THEN `the day number of` t
+            WHEN JUST x  THEN `the day number of` x MINUS 1
+        days MEANS `last day of failure` MINUS `the day number of` `convicted on`
+
+-- s 71(1)(f), (2): "unless otherwise provided, the penalty applicable to each separate and
+-- further offence is $50".
+@ref Interpretation Act 1984 (WA) s 71(1)(f), (2)
+GIVETH A NUMBER
+`s 71 -- the penalty for each separate and further offence` MEANS 50
+
+-- s 71(2): the same, where an act is required to be done but no period is specified, failure
+-- to do it is an offence, and a person is convicted of an offence in respect of the failure.
+DECLARE `Kind of duty` IS ONE OF
+    `a duty to do a thing within a period or before a time`
+    `a duty to do a thing with no period or time specified`
+
+@ref Interpretation Act 1984 (WA) s 71(1), (2)
+GIVEN k IS A `Kind of duty`
+GIVETH A STRING
+`s 71 -- the subsection that applies to` k MEANS
+    CONSIDER k
+    WHEN `a duty to do a thing within a period or before a time` THEN "s 71(1)"
+    WHEN `a duty to do a thing with no period or time specified` THEN "s 71(2)"
+
+§ `Section 72 -- Statutory penalties, construction of`
+
+-- s 72(1): "Where in an Act a penalty —
+--   (a) is specified without qualification at the foot of a section of the Act; or
+--   (b) is specified at the foot of a subsection of a section of the Act, but not at the foot
+--       of the section; or
+--   (c) is specified at the foot of a section of the Act and expressed to apply to a specified
+--       subsection or specified subsections of the section,
+-- then, unless the contrary is expressly provided, a contravention of the section or
+-- subsection, or, as the case may be, of any of the subsections, is an offence the penalty on
+-- conviction for which is the penalty specified."
+-- s 72(3): a section or subsection includes a clause or subclause of a schedule;
+-- s 72(4): the section applies, with necessary modifications, to subsidiary legislation.
+DECLARE `Placement of a penalty` IS ONE OF
+    `at the foot of a section, without qualification`
+    `at the foot of a subsection, but not at the foot of the section`
+    `at the foot of a section, expressed to apply to specified subsections`
+
+DECLARE `Penalty line` HAS
+    `in`                            IS A STRING
+    `placement`                     IS A `Placement of a penalty`
+    `the unit at whose foot it sits` IS A STRING
+    `subsections it is expressed to apply to` IS A LIST OF STRING
+    `maximum fine`                  IS A NUMBER
+    `the contrary is expressly provided` IS A BOOLEAN
+
+@ref Interpretation Act 1984 (WA) s 72(1)
+GIVEN p IS A `Penalty line`
+GIVETH A BOOLEAN
+DECIDE `s 72(1) -- a contravention is an offence under` p IF
+        "unless the contrary is expressly provided"
+    ... NOT p's `the contrary is expressly provided`
+
+-- Which units' contravention is the offence: (a) the section; (b) the subsection; (c) each of
+-- the subsections specified.
+@ref Interpretation Act 1984 (WA) s 72(1)(a)-(c)
+GIVEN p IS A `Penalty line`
+GIVETH A LIST OF STRING
+`s 72(1) -- the provisions whose contravention is the offence under` p MEANS
+    CONSIDER p's `placement`
+    WHEN `at the foot of a section, without qualification` THEN LIST (p's `the unit at whose foot it sits`)
+    WHEN `at the foot of a subsection, but not at the foot of the section` THEN LIST (p's `the unit at whose foot it sits`)
+    WHEN `at the foot of a section, expressed to apply to specified subsections` THEN p's `subsections it is expressed to apply to`
+
+@ref Interpretation Act 1984 (WA) s 72(1), (2)
+GIVEN p IS A `Penalty line`
+GIVETH A NUMBER
+`s 72(1) -- the penalty on conviction under` p MEANS
+    IF `s 72(1) -- a contravention is an offence under` p THEN p's `maximum fine` ELSE 0
