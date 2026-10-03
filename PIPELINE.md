@@ -87,6 +87,16 @@ result.
 Releasing any of it — sending findings to a ministry, a regulator or a drafting office, or
 publishing them — is an HG2 act, and HG2 has no waiver route.
 
+**The scheme console** at [`tools/scheme-console/`](tools/scheme-console/) runs a subject forward
+in time: actors, acts, clocks, and every consequence traced to the provision that produced it. It
+is a demonstration tool, not a pipeline stage — a finding it produces is demonstrated on stated
+facts, not by an assertion, so promoting one into a subject's modules is a separate step. Adding a
+statute to it means writing a scheme definition and changing no code;
+[`tools/scheme-console/AUTHORING.md`](tools/scheme-console/AUTHORING.md) is the vocabulary and
+`node tools/scheme-console/check.js` is the checker. Its most transferable idea is that every fact
+declares how it came to be true, which turns a fact the corpus reads but no provision can confer
+into a mechanically findable hole.
+
 **Where the authoritative text is not in the language the encoders worked in**, HG1 needs care the
 shipped machinery does not supply: the payload names corpus files, not a translation chain. The
 Israeli subjects are the live case — Hebrew governs, the consolidated text is unofficial, and an
