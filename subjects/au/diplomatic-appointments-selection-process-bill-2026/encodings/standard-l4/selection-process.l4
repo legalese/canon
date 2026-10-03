@@ -1,0 +1,457 @@
+-- selection-process.l4 — Diplomatic Appointments (Selection Process) Bill 2026 (Cth),
+-- Part 2 (ss 9–11, main provisions) and Part 3 (ss 12–13, procedural provisions).
+--
+-- Source: ../../sources/26S2721.txt. "ISSUE n" points into ISSUES.md.
+
+IMPORT support
+IMPORT definitions
+
+§ `Part 3 — Selection process: procedural provisions (ss 12–13)`
+
+-- Part 3 comes first in this file because Part 2 is stated in terms of the
+-- Selection Committees it establishes.
+
+§§ `s 12 — Minister may establish Selection Committees`
+
+-- s 10(3)(a)/(b): the two things a Committee's written notice can do.
+DECLARE `Committee decision` IS ONE OF
+    `recommending the appointment of` HAS `the candidate's name` IS A STRING
+    `referring the matter back to the Minister`
+
+DECLARE `Written notice` HAS
+    `given on`     IS A `Calendar date`
+    `the decision` IS A `Committee decision`
+
+-- s 10(2): an entry on the Minister's list. Reasons are required only for a
+-- candidate with a significant political affiliation (s 10(2)(d)).
+DECLARE `Proposed candidate` HAS
+    `the person`                                                          IS A `Person`
+    `reasons are set out despite a significant political affiliation`     IS A BOOLEAN
+
+DECLARE `Candidate list` HAS
+    `given on`                IS A `Calendar date`
+    `the proposed candidates` IS A LIST OF `Proposed candidate`
+
+-- One Selection Committee established under s 12(1) for an appointment to the
+-- office. `second or subsequent Committee` is the s 10(6) status: an earlier
+-- Committee for "that particular appointment" referred the matter back. What
+-- "that particular appointment" spans is ISSUE 3, so it is the caller's input.
+DECLARE `Selection Committee` HAS
+    `established on`                 IS A `Calendar date`
+    `the members`                    IS A LIST OF STRING
+    `second or subsequent Committee` IS A BOOLEAN
+    `the candidate list`             IS A MAYBE `Candidate list`
+    `the written notice`             IS A MAYBE `Written notice`
+
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 12(3)
+GIVEN `the Committee` IS A `Selection Committee`
+GIVETH A BOOLEAN
+`s 12(3) — the Committee consists of 3 members` `the Committee` MEANS
+    `the number of items in` (`the Committee`'s `the members`) EQUALS 3
+
+-- s 12(5) (an appropriate balance of expertise in diplomacy, foreign policy,
+-- international affairs, international relations, international trade and
+-- public administration) is a judgement about the members collectively. No
+-- rule here reads it, so it is not encoded. s 12(6) (rules about Committees)
+-- and s 12(7) (instruments are not legislative instruments) decide nothing.
+
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 10(5)
+GIVEN `the Committee` IS A `Selection Committee`
+      `the day`       IS A `Calendar date`
+GIVETH A BOOLEAN
+`s 10(5) — the Committee has been dissolved by` `the Committee` `the day` MEANS
+    CONSIDER `the Committee`'s `the written notice`
+    WHEN NOTHING THEN FALSE
+    WHEN JUST n  THEN n's `given on` `is on or before` `the day`
+
+GIVEN `the Committee` IS A `Selection Committee`
+      `the day`       IS A `Calendar date`
+GIVETH A BOOLEAN
+`the Committee is in existence on` `the Committee` `the day` MEANS
+        (`the Committee`'s `established on` `is on or before` `the day`)
+    AND NOT `s 10(5) — the Committee has been dissolved by` `the Committee` `the day`
+
+-- s 12(8): "No more than one Selection Committee for an appointment to a
+-- designated diplomatic office may be established at any one time (despite
+-- subsection (1))." A Committee that never receives a list, or never gives its
+-- notice, is never dissolved, so this blocks every later Committee: ISSUE 11.
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 12(1), 12(8)
+GIVEN `the Committees already established` IS A LIST OF `Selection Committee`
+      `the day`                             IS A `Calendar date`
+GIVETH A BOOLEAN
+`s 12(8) — the Minister may establish a Selection Committee, given` `the Committees already established` `on` `the day` MEANS
+    NOT `at least one of` `the Committees already established` `satisfies` inExistence
+    WHERE
+        inExistence c MEANS `the Committee is in existence on` c `the day`
+
+§§ `s 13 — Meetings of Selection Committees`
+
+DECLARE `Vote` IS ONE OF
+    `a vote for` HAS `the candidate's name` IS A STRING
+    `no vote`
+
+DECLARE `Meeting` HAS
+    `the number of members present` IS A NUMBER
+    `the votes`                     IS A LIST OF `Vote`
+
+DECLARE `Outcome of a meeting` IS ONE OF
+    `no decision: the meeting is not quorate`
+    `the Committee decides` HAS `the decision` IS A `Committee decision`
+
+-- s 13(3): "a majority of the votes of the members". Read as more than half of
+-- the 3 members' votes, i.e. 2 votes; the reading "a majority of the votes
+-- cast" gives a different answer when a member does not vote. And whether
+-- a majority is enough for the Committee to "agree on a candidate" (s 10(3)(a))
+-- is itself open: ISSUE 12.
+GIVEN `the name` IS A STRING
+      `the votes` IS A LIST OF `Vote`
+GIVETH A NUMBER
+`the number of votes for` `the name` `among` `the votes` MEANS
+    `how many of` `the votes` `satisfy` isForTheName
+    WHERE
+        isForTheName v MEANS v EQUALS `a vote for` `the name`
+
+GIVEN `the remaining votes` IS A LIST OF `Vote`
+      `all the votes`       IS A LIST OF `Vote`
+GIVETH A MAYBE STRING
+`the candidate with a majority, searching` `the remaining votes` `of` `all the votes` MEANS
+    CONSIDER `the remaining votes`
+    WHEN EMPTY THEN NOTHING
+    WHEN v FOLLOWED BY rest THEN
+        CONSIDER v
+        WHEN `a vote for` n THEN
+            IF `the number of votes for` n `among` `all the votes` AT LEAST 2
+            THEN JUST n
+            ELSE `the candidate with a majority, searching` rest `of` `all the votes`
+        OTHERWISE `the candidate with a majority, searching` rest `of` `all the votes`
+
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 13(1)-(3), s 10(3)
+GIVEN `the meeting` IS A `Meeting`
+GIVETH AN `Outcome of a meeting`
+`s 13 — the outcome of` `the meeting` MEANS
+    IF NOT `the meeting`'s `the number of members present` EQUALS 3
+    THEN `no decision: the meeting is not quorate`                                  -- s 13(2): all 3 members
+    ELSE CONSIDER `the candidate with a majority, searching` (`the meeting`'s `the votes`) `of` (`the meeting`'s `the votes`)
+         WHEN JUST n  THEN `the Committee decides` (`recommending the appointment of` n)   -- s 10(3)(a)
+         WHEN NOTHING THEN `the Committee decides` `referring the matter back to the Minister` -- s 10(3)(b) "otherwise"
+
+§ `Part 2 — Selection process: main provisions (ss 9–11)`
+
+§§ `s 10 — Recommendations by Selection Committees`
+
+-- s 10(1) and (6): how many candidates the list must propose.
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 10(1), 10(6)
+GIVEN `the Committee` IS A `Selection Committee`
+      `the number proposed` IS A NUMBER
+GIVETH A BOOLEAN
+`s 10(1),(6) — the list proposes a permitted number of candidates` `the Committee` `the number proposed` MEANS
+    IF `the Committee`'s `second or subsequent Committee`
+    THEN `the number proposed` AT LEAST 2 AND `the number proposed` AT MOST 3
+    ELSE `the number proposed` AT LEAST 2 AND `the number proposed` AT MOST 10
+
+-- s 10(2)(b) "may only propose 1" and (c) "may only propose up to 2" are both
+-- read as ceilings (ISSUE 13). The (b) ceiling also governs the 2-or-3 list
+-- that s 10(6) substitutes.
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 10(2)(b), (c)
+GIVEN `the number proposed` IS A NUMBER
+GIVETH A NUMBER
+`s 10(2)(b),(c) — the most candidates with a significant political affiliation, for a list of` `the number proposed` MEANS
+    IF `the number proposed` AT MOST 4 THEN 1 ELSE 2
+
+GIVEN `the list` IS A `Candidate list`
+GIVETH A NUMBER
+`the number of candidates with a significant political affiliation on` `the list` MEANS
+    `how many of` (`the list`'s `the proposed candidates`) `satisfy` significant
+    WHERE
+        significant c MEANS `s 8(2) — has a significant political affiliation` (c's `the person`) `on` (`the list`'s `given on`)
+
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 10(1)
+GIVEN `the Committee` IS A `Selection Committee`
+      `the list`      IS A `Candidate list`
+GIVETH A BOOLEAN
+`s 10(1) — the list was given within 7 days of establishing the Committee` `the Committee` `the list` MEANS
+        (`the Committee`'s `established on` `is on or before` (`the list`'s `given on`))
+    AND `the number of days from` (`the Committee`'s `established on`) `to` (`the list`'s `given on`) AT MOST 7
+
+-- Affiliations are tested on the day the list is given: ISSUE 4.
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 10(1), (2), (6)
+GIVEN `the Committee` IS A `Selection Committee`
+      `the list`      IS A `Candidate list`
+GIVETH A BOOLEAN
+`s 10(1),(2) — the list complies` `the Committee` `the list` MEANS
+        "(1)"    ... `s 10(1) — the list was given within 7 days of establishing the Committee` `the Committee` `the list`
+    ... "(1),(6)" ... `s 10(1),(6) — the list proposes a permitted number of candidates` `the Committee` n
+    ... "(2)(a)" ... NOT `at least one of` (`the list`'s `the proposed candidates`) `satisfies` disqualified
+    ... "(2)(b),(c)" ... `the number of candidates with a significant political affiliation on` `the list` AT MOST `s 10(2)(b),(c) — the most candidates with a significant political affiliation, for a list of` n
+    AND "(2)(d)" ... `every one of` (`the list`'s `the proposed candidates`) `satisfies` reasonsIfSignificant
+    WHERE
+        n MEANS `the number of items in` (`the list`'s `the proposed candidates`)
+        disqualified c MEANS
+            `s 8(1) — has a disqualifying political affiliation` (c's `the person`) `on` (`the list`'s `given on`)
+        reasonsIfSignificant c MEANS
+                NOT `s 8(2) — has a significant political affiliation` (c's `the person`) `on` (`the list`'s `given on`)
+            OR  c's `reasons are set out despite a significant political affiliation`
+
+-- s 10(3): the last day for the Committee's written notice. "Within 2 months
+-- after receiving the list": the list is taken to be received the day it is
+-- given; AIA s 2G calendar months.
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 10(3)
+GIVEN `the list` IS A `Candidate list`
+GIVETH A `Calendar date`
+`s 10(3) — the last day for the Committee's written notice` `the list` MEANS
+    (`the list`'s `given on`) `plus calendar months` 2
+
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 10(3)
+GIVEN `the Committee` IS A `Selection Committee`
+GIVETH A BOOLEAN
+`s 10(3) — the Committee gave its written notice in time` `the Committee` MEANS
+    CONSIDER `the Committee`'s `the candidate list`
+    WHEN NOTHING THEN FALSE
+    WHEN JUST l  THEN
+        CONSIDER `the Committee`'s `the written notice`
+        WHEN NOTHING THEN FALSE
+        WHEN JUST n  THEN n's `given on` `is on or before` (`s 10(3) — the last day for the Committee's written notice` l)
+
+-- s 10(7): "a Selection Committee's recommendation for an appointment to a
+-- designated diplomatic office is of no effect after an appointment to the
+-- office is made". Taken as: spent by any appointment to the office made on or
+-- after the day of the notice and before the day being tested.
+GIVEN `the notice`                 IS A `Written notice`
+      `earlier appointment dates`  IS A LIST OF `Calendar date`
+      `the day`                    IS A `Calendar date`
+GIVETH A BOOLEAN
+`s 10(7) — no appointment to the office has been made since` `the notice` `among` `earlier appointment dates` `before` `the day` MEANS
+    NOT `at least one of` `earlier appointment dates` `satisfies` spends
+    WHERE
+        spends a MEANS ((`the notice`'s `given on`) `is on or before` a) AND (a `is before` `the day`)
+
+§§ `s 9 — Appointments to designated diplomatic offices`
+
+-- One proposed (or actual) appointment to an office, with the history of the
+-- office that s 9 reads.
+DECLARE `Appointment case` HAS
+    `the office`                                     IS AN `Office of the Commonwealth`
+    `the appointee`                                  IS A `Person`
+    `the day the appointment is made`                IS A `Calendar date`
+    `the day the term of the appointment starts`     IS A `Calendar date`
+    `the Selection Committees established for an appointment to the office` IS A LIST OF `Selection Committee`
+    `the days of earlier appointments to the office` IS A LIST OF `Calendar date`
+    `the Minister is satisfied the appointee does not have a significant political affiliation` IS A BOOLEAN
+    `both Houses have passed a resolution approving the appointment`                          IS A BOOLEAN
+
+-- A written notice given by the day of the appointment.
+GIVEN `the kind of decision` IS A `Committee decision`
+      `the case`      IS AN `Appointment case`
+      `the Committee` IS A `Selection Committee`
+GIVETH A BOOLEAN
+`the Committee had given notice of` `the kind of decision` `by the appointment in` `the case` `the Committee` MEANS
+    CONSIDER `the Committee`'s `the written notice`
+    WHEN NOTHING THEN FALSE
+    WHEN JUST n  THEN
+            n's `the decision` EQUALS `the kind of decision`
+        AND (n's `given on` `is on or before` (`the case`'s `the day the appointment is made`))
+
+GIVEN `the case`      IS AN `Appointment case`
+      `the Committee` IS A `Selection Committee`
+GIVETH A BOOLEAN
+`the Committee's recommendation is still in effect for` `the case` `the Committee` MEANS
+    CONSIDER `the Committee`'s `the written notice`
+    WHEN NOTHING THEN FALSE
+    WHEN JUST n  THEN
+        CONSIDER n's `the decision`
+        WHEN `recommending the appointment of` name THEN
+                (n's `given on` `is on or before` (`the case`'s `the day the appointment is made`))
+            AND `s 10(7) — no appointment to the office has been made since` n `among` (`the case`'s `the days of earlier appointments to the office`) `before` (`the case`'s `the day the appointment is made`)
+        OTHERWISE FALSE
+
+-- s 9(2): "a Selection Committee recommends the person's appointment to the
+-- office". Nothing in s 9(2) or s 10 confines the recommendation to the
+-- Minister's list, so a recommended person who was never on it qualifies:
+-- ISSUE 2.
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 9(2), 10(7)
+GIVEN `the case` IS AN `Appointment case`
+GIVETH A BOOLEAN
+`s 9(2) applies to` `the case` MEANS
+    `at least one of` (`the case`'s `the Selection Committees established for an appointment to the office`) `satisfies` recommendsTheAppointee
+    WHERE
+        recommendsTheAppointee c MEANS
+                `the Committee had given notice of` (`recommending the appointment of` (`the case`'s `the appointee`'s `name`)) `by the appointment in` `the case` c
+            AND `the Committee's recommendation is still in effect for` `the case` c
+
+-- s 9(3)(a) and (b), read literally: every Committee ever established "for the
+-- purpose of making such a recommendation" (a recommendation for an
+-- appointment to the office) counts, whichever vacancy it was for. This is the
+-- operative reading here. ISSUE 3 sets out why it misfires in both
+-- directions, and the vacancy-scoped reading that follows is the alternative.
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 9(3)(a)
+GIVEN `the case` IS AN `Appointment case`
+GIVETH A BOOLEAN
+`s 9(3)(a) — no recommendation has been made, literal reading` `the case` MEANS
+    NOT `at least one of` (`the case`'s `the Selection Committees established for an appointment to the office`) `satisfies` recommended
+    WHERE
+        recommended c MEANS
+            CONSIDER c's `the written notice`
+            WHEN NOTHING THEN FALSE
+            WHEN JUST n  THEN
+                    (n's `given on` `is on or before` (`the case`'s `the day the appointment is made`))
+                AND NOT n's `the decision` EQUALS `referring the matter back to the Minister`
+
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 9(3)(b)
+GIVEN `the case` IS AN `Appointment case`
+GIVETH A BOOLEAN
+`s 9(3)(b) — at least two Committees referred the matter back, literal reading` `the case` MEANS
+    `how many of` (`the case`'s `the Selection Committees established for an appointment to the office`) `satisfy` referredBack AT LEAST 2
+    WHERE
+        referredBack c MEANS
+            `the Committee had given notice of` `referring the matter back to the Minister` `by the appointment in` `the case` c
+
+-- The alternative: only Committees whose notice post-dates the last earlier
+-- appointment to the office count (s 10(7) carried across to referrals).
+GIVEN `the case` IS AN `Appointment case`
+      `the Committee` IS A `Selection Committee`
+GIVETH A BOOLEAN
+`the Committee acted for the current vacancy in` `the case` `the Committee` MEANS
+    CONSIDER `the Committee`'s `the written notice`
+    WHEN NOTHING THEN TRUE
+    WHEN JUST n  THEN
+        `s 10(7) — no appointment to the office has been made since` n `among` (`the case`'s `the days of earlier appointments to the office`) `before` (`the case`'s `the day the appointment is made`)
+
+GIVEN `the case` IS AN `Appointment case`
+GIVETH A BOOLEAN
+`s 9(3)(a) — no recommendation has been made, vacancy-scoped reading` `the case` MEANS
+    NOT `at least one of` (`the case`'s `the Selection Committees established for an appointment to the office`) `satisfies` stillInEffect
+    WHERE
+        stillInEffect c MEANS `the Committee's recommendation is still in effect for` `the case` c
+
+GIVEN `the case` IS AN `Appointment case`
+GIVETH A BOOLEAN
+`s 9(3)(b) — at least two Committees referred the matter back, vacancy-scoped reading` `the case` MEANS
+    `how many of` (`the case`'s `the Selection Committees established for an appointment to the office`) `satisfy` referredBackThisVacancy AT LEAST 2
+    WHERE
+        referredBackThisVacancy c MEANS
+                `the Committee had given notice of` `referring the matter back to the Minister` `by the appointment in` `the case` c
+            AND `the Committee acted for the current vacancy in` `the case` c
+
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 9(3)(c)
+GIVEN `the case` IS AN `Appointment case`
+GIVETH A BOOLEAN
+`s 9(3)(c) — the Minister is satisfied or both Houses approve` `the case` MEANS
+        "(i)"  ... `the case`'s `the Minister is satisfied the appointee does not have a significant political affiliation`
+    OR  "(ii)" ... `the case`'s `both Houses have passed a resolution approving the appointment`
+
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 9(3)
+GIVEN `the case` IS AN `Appointment case`
+GIVETH A BOOLEAN
+`s 9(3) applies to` `the case` MEANS
+        "(a)" ... `s 9(3)(a) — no recommendation has been made, literal reading` `the case`
+    ... "(b)" ... `s 9(3)(b) — at least two Committees referred the matter back, literal reading` `the case`
+    AND "(c)" ... `s 9(3)(c) — the Minister is satisfied or both Houses approve` `the case`
+
+GIVEN `the case` IS AN `Appointment case`
+GIVETH A BOOLEAN
+`s 9(3) applies to, vacancy-scoped reading` `the case` MEANS
+        `s 9(3)(a) — no recommendation has been made, vacancy-scoped reading` `the case`
+    AND `s 9(3)(b) — at least two Committees referred the matter back, vacancy-scoped reading` `the case`
+    AND `s 9(3)(c) — the Minister is satisfied or both Houses approve` `the case`
+
+DECLARE `Route under section 9` IS ONE OF
+    `s 9(2) — on a Selection Committee's recommendation`
+    `s 9(3)(c)(i) — after two referrals, the Minister being satisfied`
+    `s 9(3)(c)(ii) — after two referrals, with the approval of both Houses`
+    `no route under section 9`
+
+-- If both (c)(i) and (c)(ii) are met, (i) is reported, and with it the
+-- tabling duty of s 9(4): whether the appointment is then made "because the
+-- Minister is satisfied" is ISSUE 15.
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 9(1)-(3)
+GIVEN `the case` IS AN `Appointment case`
+GIVETH A `Route under section 9`
+`s 9 — the route by which the appointment may be made` `the case` MEANS
+    BRANCH
+        IF `s 8(1) — has a disqualifying political affiliation` (`the case`'s `the appointee`) `on` (`the case`'s `the day the appointment is made`)
+            THEN `no route under section 9`                                              -- s 9(1)(a)
+        IF `s 9(2) applies to` `the case`
+            THEN `s 9(2) — on a Selection Committee's recommendation`
+        IF (`s 9(3) applies to` `the case`) AND `the case`'s `the Minister is satisfied the appointee does not have a significant political affiliation`
+            THEN `s 9(3)(c)(i) — after two referrals, the Minister being satisfied`
+        IF `s 9(3) applies to` `the case`
+            THEN `s 9(3)(c)(ii) — after two referrals, with the approval of both Houses`
+        OTHERWISE `no route under section 9`
+
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 9(1)
+GIVEN `the case` IS AN `Appointment case`
+GIVETH A BOOLEAN
+`s 9(1) — the person may be appointed to the office` `the case` MEANS
+    NOT `s 9 — the route by which the appointment may be made` `the case` EQUALS `no route under section 9`
+
+§§ `s 11 — Acting arrangements`
+
+DECLARE `Occasion for acting` IS ONE OF
+    `a vacancy in the office`                                          -- (1)(a)
+    `the appointee is absent from duty`                                -- (1)(b)(i)
+    `the appointee is unable to perform the duties of the office`      -- (1)(b)(ii)
+
+DECLARE `Acting arrangement` HAS
+    `the office`                IS AN `Office of the Commonwealth`
+    `the chargé d'affaires`     IS A `Person`
+    `the day the arrangement is made` IS A `Calendar date`
+    `the occasion`              IS AN `Occasion for acting`
+
+-- s 11(2): neither kind of affiliation. Section 11 puts no limit on how long
+-- an acting arrangement may last: ISSUE 14.
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 11(1)-(3)
+GIVEN `the arrangement` IS AN `Acting arrangement`
+GIVETH A BOOLEAN
+`s 11(2) — the chargé d'affaires may act` `the arrangement` MEANS
+    `the political affiliation of` (`the arrangement`'s `the chargé d'affaires`) `on` (`the arrangement`'s `the day the arrangement is made`) EQUALS `neither`
+
+§§ `Duties with deadlines (ss 9(4)-(5), 10(1), 10(3))`
+
+DECLARE `House of the Parliament` IS ONE OF `the Senate`, `the House of Representatives`
+
+DECLARE `Act under this Bill` IS ONE OF
+    `give the Selection Committee a list of proposed candidates`
+    `give the Minister a written notice`
+    `table a statement of reasons in` HAS `the House` IS A `House of the Parliament`
+    `terminate the appointment`
+    `terminate the arrangement`
+
+-- s 10(1). Clock: days, starting the day the Committee is established.
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 10(1)
+GIVETH A DEONTIC `Actor` `Act under this Bill`
+`s 10(1) — the Minister's duty to give the list` MEANS
+    PARTY `the Minister`
+    MUST  `give the Selection Committee a list of proposed candidates`
+    WITHIN 7
+    HENCE FULFILLED
+    LEST  BREACH BY `the Minister` BECAUSE "s 10(1): no list of proposed candidates within 7 days of establishing the Selection Committee"
+
+-- s 10(3). Clock: days, starting the day the list is received; the deadline
+-- is the number of days to the same date two calendar months later.
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 10(3)
+GIVEN `the list` IS A `Candidate list`
+GIVETH A DEONTIC `Actor` `Act under this Bill`
+`s 10(3) — the Committee's duty to give written notice` `the list` MEANS
+    PARTY `the Selection Committee`
+    MUST  `give the Minister a written notice`
+    WITHIN `the number of days from` (`the list`'s `given on`) `to` (`s 10(3) — the last day for the Committee's written notice` `the list`)
+    HENCE FULFILLED
+    LEST  BREACH BY `the Selection Committee` BECAUSE "s 10(3): no written notice to the Minister within 2 months after receiving the list"
+
+-- s 9(4)-(5). Clock: sitting days of the House concerned, starting the day
+-- the appointment is made. One duty per House, each on its own clock; in a
+-- single #TRACE the two clocks are necessarily one number line.
+@ref Diplomatic Appointments (Selection Process) Bill 2026 s 9(4), 9(5)
+GIVEN `the House` IS A `House of the Parliament`
+GIVETH A DEONTIC `Actor` `Act under this Bill`
+`s 9(4),(5) — the Minister's duty to table a statement of reasons in` `the House` MEANS
+    PARTY `the Minister`
+    MUST  EXACTLY `table a statement of reasons in` `the House`
+    WITHIN 5
+    HENCE FULFILLED
+    LEST  BREACH BY `the Minister` BECAUSE "s 9(5): statement of reasons not tabled within 5 sitting days of that House after the appointment"
+
+GIVETH A DEONTIC `Actor` `Act under this Bill`
+`s 9(4) — the Minister's duty to table in each House` MEANS
+        `s 9(4),(5) — the Minister's duty to table a statement of reasons in` `the Senate`
+    RAND `s 9(4),(5) — the Minister's duty to table a statement of reasons in` `the House of Representatives`

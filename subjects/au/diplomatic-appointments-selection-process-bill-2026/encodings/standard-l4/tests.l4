@@ -1,0 +1,346 @@
+-- tests.l4 — tests for the encoding of the Diplomatic Appointments (Selection
+-- Process) Bill 2026 (Cth). Every fact pattern is taken from the Bill's own
+-- words; the section each test exercises is named beside it. Tests marked
+-- "ISSUE n" pin down behaviour that ISSUES.md reports as a problem with the
+-- Bill: they pass because the encoding reproduces what the Bill says, not
+-- because the result is sensible.
+--
+-- Run from this folder:  l4 run tests.l4
+
+IMPORT support
+IMPORT definitions
+IMPORT `selection-process`
+IMPORT miscellaneous
+
+§ `Fixtures`
+
+GIVEN `the name`  IS A STRING
+      ms          IS A LIST OF `Period of membership`
+      mops        IS A LIST OF `Engagement under the MOP(S) Act`
+      states      IS A LIST OF `Engagement as State or Territory political staff`
+      roles       IS A LIST OF `Role with a political party`
+GIVETH A `Person`
+`a person called` `the name` `with` ms mops states roles MEANS `Person` WITH
+    `name`                                              IS `the name`
+    `periods of membership of a legislature`            IS ms
+    `engagements under the MOP(S) Act`                  IS mops
+    `engagements as State or Territory political staff` IS states
+    `roles with political parties`                      IS roles
+
+GIVEN `the name` IS A STRING
+      ms         IS A LIST OF `Period of membership`
+GIVETH A `Person`
+`a former member called` `the name` `with` ms MEANS
+    `a person called` `the name` `with` ms EMPTY EMPTY EMPTY
+
+GIVEN l  IS A `Legislature`
+      b  IS A `Calendar date`
+      e  IS A `Calendar date`
+GIVETH A `Period of membership`
+`a membership of` l `from` b `to` e MEANS
+    `Period of membership` WITH `legislature` IS l, `began` IS b, `ended` IS JUST e
+
+`the test day` MEANS `the date` 2028 6 1
+`Avery` MEANS `a person with no political history`
+
+-- A senator 2010-07-01 to 2016-06-30: left the Senate more than 10 years
+-- before the test day.
+`Blake` MEANS `a former member called` "Blake" `with` (LIST `a membership of` `the Parliament of the Commonwealth` `from` (`the date` 2010 7 1) `to` (`the date` 2016 6 30))
+
+-- A State MP 2011-03-26 to 2019-03-23: left within the last 10 years.
+`Casey` MEANS `a former member called` "Casey" `with` (LIST `a membership of` `the Parliament of a State` `from` (`the date` 2011 3 26) `to` (`the date` 2019 3 23))
+
+-- Membership ending exactly on, and the day before, the first day of the
+-- 10-year window that ends on the test day (2018-06-01).
+`Ellis` MEANS `a former member called` "Ellis" `with` (LIST `a membership of` `the legislature of a Territory` `from` (`the date` 2012 10 20) `to` (`the date` 2018 6 1))
+`Finley` MEANS `a former member called` "Finley" `with` (LIST `a membership of` `the legislature of a Territory` `from` (`the date` 2012 10 20) `to` (`the date` 2018 5 31))
+
+-- A sitting member.
+`Gray` MEANS `a former member called` "Gray" `with` (LIST `Period of membership` WITH `legislature` IS `the Parliament of the Commonwealth`, `began` IS `the date` 2022 5 21, `ended` IS NOTHING)
+
+-- A member whose term begins after the test day.
+`Harper` MEANS `a former member called` "Harper" `with` (LIST `Period of membership` WITH `legislature` IS `the Parliament of the Commonwealth`, `began` IS `the date` 2028 7 1, `ended` IS NOTHING)
+
+-- Staff and party history.
+`Drew` MEANS `a person called` "Drew" `with` EMPTY (LIST `Engagement under the MOP(S) Act` WITH `the position occupied by the employer` IS `a Minister (including the Prime Minister)`) EMPTY EMPTY
+`Jordan` MEANS `a person called` "Jordan" `with` EMPTY (LIST `Engagement under the MOP(S) Act` WITH `the position occupied by the employer` IS `a shadow Minister`) EMPTY EMPTY
+`Kendall` MEANS `a person called` "Kendall" `with` EMPTY (LIST `Engagement under the MOP(S) Act` WITH `the position occupied by the employer` IS `some other position`) EMPTY EMPTY
+`Logan` MEANS `a person called` "Logan" `with` EMPTY EMPTY (LIST `Engagement as State or Territory political staff` WITH `employed under a law of a State or Territory` IS TRUE, `the employer's position is equivalent or corresponds to one in (b)(i) to (vi)` IS TRUE) EMPTY
+`Morgan` MEANS `a person called` "Morgan" `with` EMPTY EMPTY (LIST `Engagement as State or Territory political staff` WITH `employed under a law of a State or Territory` IS FALSE, `the employer's position is equivalent or corresponds to one in (b)(i) to (vi)` IS TRUE) EMPTY
+`Quinn` MEANS `a person called` "Quinn" `with` EMPTY EMPTY EMPTY (LIST `Role with a political party` WITH `capacity` IS `an officer`, `the party is registered under the Commonwealth Electoral Act 1918` IS TRUE)
+`Reese` MEANS `a person called` "Reese" `with` EMPTY EMPTY EMPTY (LIST `Role with a political party` WITH `capacity` IS `an employee`, `the party is registered under the Commonwealth Electoral Act 1918` IS TRUE)
+`Sage` MEANS `a person called` "Sage" `with` EMPTY EMPTY EMPTY (LIST `Role with a political party` WITH `capacity` IS `a member only`, `the party is registered under the Commonwealth Electoral Act 1918` IS TRUE)
+`Taylor` MEANS `a person called` "Taylor" `with` EMPTY EMPTY EMPTY (LIST `Role with a political party` WITH `capacity` IS `an officer`, `the party is registered under the Commonwealth Electoral Act 1918` IS FALSE)
+`Uma` MEANS `a person called` "Uma" `with` EMPTY EMPTY EMPTY EMPTY
+`Vic` MEANS `a person called` "Vic" `with` EMPTY EMPTY EMPTY EMPTY
+`Wren` MEANS `a person called` "Wren" `with` EMPTY EMPTY EMPTY EMPTY
+`Yael` MEANS `a person called` "Yael" `with` EMPTY EMPTY EMPTY EMPTY
+`Zane` MEANS `a person called` "Zane" `with` EMPTY EMPTY EMPTY EMPTY
+
+GIVEN p IS A `Person`
+GIVETH A `Proposed candidate`
+`plainly` p MEANS `Proposed candidate` WITH `the person` IS p, `reasons are set out despite a significant political affiliation` IS FALSE
+
+GIVEN p IS A `Person`
+GIVETH A `Proposed candidate`
+`with reasons` p MEANS `Proposed candidate` WITH `the person` IS p, `reasons are set out despite a significant political affiliation` IS TRUE
+
+GIVEN d  IS A `Calendar date`
+      cs IS A LIST OF `Proposed candidate`
+GIVETH A `Candidate list`
+`a list given on` d `proposing` cs MEANS `Candidate list` WITH `given on` IS d, `the proposed candidates` IS cs
+
+GIVEN d IS A `Calendar date`
+      n IS A STRING
+GIVETH A `Written notice`
+`a notice on` d `recommending` n MEANS `Written notice` WITH `given on` IS d, `the decision` IS `recommending the appointment of` n
+
+GIVEN d IS A `Calendar date`
+GIVETH A `Written notice`
+`a referral notice on` d MEANS `Written notice` WITH `given on` IS d, `the decision` IS `referring the matter back to the Minister`
+
+GIVEN est      IS A `Calendar date`
+      second   IS A BOOLEAN
+      l        IS A MAYBE `Candidate list`
+      notice   IS A MAYBE `Written notice`
+GIVETH A `Selection Committee`
+`a Committee established on` est second l notice MEANS `Selection Committee` WITH
+    `established on`                 IS est
+    `the members`                    IS LIST "Member 1", "Member 2", "Member 3"
+    `second or subsequent Committee` IS second
+    `the candidate list`             IS l
+    `the written notice`             IS notice
+
+`the day of Royal Assent` MEANS `the date` 2026 12 1
+
+§ `s 8 — Political affiliations`
+
+-- s 8(1): a past member who left within the last 10 years.
+#ASSERT `s 8(1) — has a disqualifying political affiliation` `Casey` `on` `the test day`
+#ASSERT `the political affiliation of` `Casey` `on` `the test day` EQUALS `a disqualifying political affiliation`
+-- s 8(1): a sitting member ("is ... a member").
+#ASSERT `s 8(1) — has a disqualifying political affiliation` `Gray` `on` `the test day`
+-- s 8(1) / 8(2)(a): a member who left more than 10 years ago.
+#ASSERT NOT `s 8(1) — has a disqualifying political affiliation` `Blake` `on` `the test day`
+#ASSERT `the political affiliation of` `Blake` `on` `the test day` EQUALS `a significant political affiliation (and no disqualifying one)`
+-- The 10-year boundary (ISSUE 4: the encoding includes the first day of the window).
+#ASSERT `s 8(1) — has a disqualifying political affiliation` `Ellis` `on` `the test day`
+#ASSERT NOT `s 8(1) — has a disqualifying political affiliation` `Finley` `on` `the test day`
+#ASSERT `s 8(2) — has a significant political affiliation` `Finley` `on` `the test day`
+-- The same person changes category as time passes (ISSUE 4).
+#ASSERT `the political affiliation of` `Casey` `on` (`the date` 2029 3 24) EQUALS `a significant political affiliation (and no disqualifying one)`
+-- A membership that has not yet begun is not "is, or has been".
+#ASSERT `the political affiliation of` `Harper` `on` `the test day` EQUALS `neither`
+-- Every past member falls under s 8(1) or s 8(2)(a): there is no gap between them.
+#ASSERT NOT `the political affiliation of` `Blake` `on` (`the date` 2017 1 1) EQUALS `neither`
+#ASSERT NOT `the political affiliation of` `Finley` `on` (`the date` 2040 1 1) EQUALS `neither`
+-- s 8(2)(b): staff of a Minister, of a shadow Minister; not of a backbencher.
+#ASSERT `the political affiliation of` `Drew` `on` `the test day` EQUALS `a significant political affiliation (and no disqualifying one)`
+#ASSERT `s 8(2) — has a significant political affiliation` `Jordan` `on` `the test day`
+#ASSERT `the political affiliation of` `Kendall` `on` `the test day` EQUALS `neither`
+-- s 8(2)(c): State staff, only if employed "under a law of a State or Territory" (ISSUE 8).
+#ASSERT `s 8(2) — has a significant political affiliation` `Logan` `on` `the test day`
+#ASSERT NOT `s 8(2) — has a significant political affiliation` `Morgan` `on` `the test day`
+-- s 8(2)(d): officer or employee of a registered party; not a mere member;
+-- not an officer of a party registered only under State law (ISSUE 10).
+#ASSERT `s 8(2) — has a significant political affiliation` `Quinn` `on` `the test day`
+#ASSERT `s 8(2) — has a significant political affiliation` `Reese` `on` `the test day`
+#ASSERT NOT `s 8(2) — has a significant political affiliation` `Sage` `on` `the test day`
+#ASSERT NOT `s 8(2) — has a significant political affiliation` `Taylor` `on` `the test day`
+-- s 8(2)(b)-(d) have no time limit: staff work 40 years ago still counts.
+#ASSERT `s 8(2) — has a significant political affiliation` `Drew` `on` (`the date` 2068 1 1)
+
+§ `s 7 — Designated diplomatic offices`
+
+#ASSERT `s 7 — is a designated diplomatic office` `High Commissioner to the United Kingdom`
+#ASSERT `s 7 — is a designated diplomatic office` (`Ambassador and Permanent Representative to the United Nations` "Geneva")
+#ASSERT `s 7 — is a designated diplomatic office` (`another office of the Commonwealth` "Ambassador to France" TRUE TRUE)
+#ASSERT NOT `s 7 — is a designated diplomatic office` (`another office of the Commonwealth` "Ambassador to France" TRUE FALSE)
+#ASSERT NOT `s 7 — is a designated diplomatic office` (`another office of the Commonwealth` "a domestic office" FALSE TRUE)
+
+§ `s 10 — The Minister's list`
+
+`Committee 1` MEANS `a Committee established on` (`the date` 2028 1 10) FALSE NOTHING NOTHING
+`Committee 1, second or subsequent` MEANS `a Committee established on` (`the date` 2028 1 10) TRUE NOTHING NOTHING
+`day 5` MEANS `the date` 2028 1 15
+`four with one significant, reasons given` MEANS `a list given on` `day 5` `proposing` (LIST `plainly` `Avery`, `with reasons` `Blake`, `plainly` `Uma`, `plainly` `Vic`)
+
+-- s 10(1),(2): 4 candidates, 1 with a significant affiliation and reasons.
+#ASSERT `s 10(1),(2) — the list complies` `Committee 1` `four with one significant, reasons given`
+-- s 10(2)(b): 2 significant among 4 is too many.
+#ASSERT NOT `s 10(1),(2) — the list complies` `Committee 1` (`a list given on` `day 5` `proposing` (LIST `plainly` `Avery`, `with reasons` `Blake`, `with reasons` `Drew`, `plainly` `Uma`))
+-- s 10(2)(c): 2 significant among 5 is allowed; 3 among 6 is not.
+#ASSERT `s 10(1),(2) — the list complies` `Committee 1` (`a list given on` `day 5` `proposing` (LIST `plainly` `Avery`, `with reasons` `Blake`, `with reasons` `Drew`, `plainly` `Uma`, `plainly` `Vic`))
+#ASSERT NOT `s 10(1),(2) — the list complies` `Committee 1` (`a list given on` `day 5` `proposing` (LIST `plainly` `Avery`, `with reasons` `Blake`, `with reasons` `Drew`, `with reasons` `Quinn`, `plainly` `Uma`, `plainly` `Vic`))
+-- s 10(2)(a): a candidate with a disqualifying affiliation.
+#ASSERT NOT `s 10(1),(2) — the list complies` `Committee 1` (`a list given on` `day 5` `proposing` (LIST `plainly` `Avery`, `plainly` `Casey`, `plainly` `Uma`))
+-- s 10(2)(d): no reasons for the significant candidate.
+#ASSERT NOT `s 10(1),(2) — the list complies` `Committee 1` (`a list given on` `day 5` `proposing` (LIST `plainly` `Avery`, `plainly` `Blake`, `plainly` `Uma`))
+-- s 10(1): fewer than 2, more than 10.
+#ASSERT NOT `s 10(1),(2) — the list complies` `Committee 1` (`a list given on` `day 5` `proposing` (LIST `plainly` `Avery`))
+#ASSERT NOT `s 10(1),(2) — the list complies` `Committee 1` (`a list given on` `day 5` `proposing` (LIST `plainly` `Avery`, `plainly` `Uma`, `plainly` `Vic`, `plainly` `Wren`, `plainly` `Yael`, `plainly` `Zane`, `plainly` `Kendall`, `plainly` `Sage`, `plainly` `Taylor`, `plainly` `Morgan`, `plainly` `Harper`))
+#ASSERT `s 10(1),(2) — the list complies` `Committee 1` (`a list given on` `day 5` `proposing` (LIST `plainly` `Avery`, `plainly` `Uma`, `plainly` `Vic`, `plainly` `Wren`, `plainly` `Yael`, `plainly` `Zane`, `plainly` `Kendall`, `plainly` `Sage`, `plainly` `Taylor`, `plainly` `Morgan`))
+-- s 10(1): within 7 days of establishing the Committee (day 7 yes, day 8 no).
+#ASSERT `s 10(1),(2) — the list complies` `Committee 1` (`a list given on` (`the date` 2028 1 17) `proposing` (LIST `plainly` `Avery`, `plainly` `Uma`))
+#ASSERT NOT `s 10(1),(2) — the list complies` `Committee 1` (`a list given on` (`the date` 2028 1 18) `proposing` (LIST `plainly` `Avery`, `plainly` `Uma`))
+-- s 10(6): a second or subsequent Committee gets 2 or 3 candidates.
+#ASSERT NOT `s 10(1),(2) — the list complies` `Committee 1, second or subsequent` `four with one significant, reasons given`
+#ASSERT `s 10(1),(2) — the list complies` `Committee 1, second or subsequent` (`a list given on` `day 5` `proposing` (LIST `plainly` `Avery`, `with reasons` `Blake`, `plainly` `Uma`))
+-- s 10(3): two calendar months after the list (AIA s 2G), including into a leap February.
+#ASSERT (`s 10(3) — the last day for the Committee's written notice` `four with one significant, reasons given`) `is the same day as` (`the date` 2028 3 15)
+#ASSERT (`s 10(3) — the last day for the Committee's written notice` (`a list given on` (`the date` 2027 12 31) `proposing` EMPTY)) `is the same day as` (`the date` 2028 2 29)
+#ASSERT `s 10(3) — the Committee gave its written notice in time` (`a Committee established on` (`the date` 2028 1 10) FALSE (JUST `four with one significant, reasons given`) (JUST (`a referral notice on` (`the date` 2028 3 15))))
+#ASSERT NOT `s 10(3) — the Committee gave its written notice in time` (`a Committee established on` (`the date` 2028 1 10) FALSE (JUST `four with one significant, reasons given`) (JUST (`a referral notice on` (`the date` 2028 3 16))))
+
+§ `ss 12, 13 — Committees and their meetings`
+
+-- s 12(3).
+#ASSERT `s 12(3) — the Committee consists of 3 members` `Committee 1`
+-- s 12(8), s 10(5): while Committee 1 has given no notice it is not dissolved,
+-- and no second Committee may be established (ISSUE 11).
+#ASSERT NOT `s 12(8) — the Minister may establish a Selection Committee, given` (LIST `Committee 1`) `on` (`the date` 2029 1 1)
+#ASSERT `s 12(8) — the Minister may establish a Selection Committee, given` (LIST `a Committee established on` (`the date` 2028 1 10) FALSE NOTHING (JUST (`a referral notice on` (`the date` 2028 3 1)))) `on` (`the date` 2028 3 2)
+-- s 13: quorum of all 3; majority of the votes of the members.
+#ASSERT `s 13 — the outcome of` (`Meeting` WITH `the number of members present` IS 3, `the votes` IS LIST `a vote for` "Avery", `a vote for` "Avery", `a vote for` "Uma") EQUALS `the Committee decides` (`recommending the appointment of` "Avery")
+#ASSERT `s 13 — the outcome of` (`Meeting` WITH `the number of members present` IS 3, `the votes` IS LIST `a vote for` "Avery", `a vote for` "Uma", `a vote for` "Vic") EQUALS `the Committee decides` `referring the matter back to the Minister`
+#ASSERT `s 13 — the outcome of` (`Meeting` WITH `the number of members present` IS 2, `the votes` IS LIST `a vote for` "Avery", `a vote for` "Avery") EQUALS `no decision: the meeting is not quorate`
+-- ISSUE 12: one vote cast, two members not voting.
+#ASSERT `s 13 — the outcome of` (`Meeting` WITH `the number of members present` IS 3, `the votes` IS LIST `a vote for` "Avery", `no vote`, `no vote`) EQUALS `the Committee decides` `referring the matter back to the Minister`
+
+§ `s 9 — Appointments`
+
+GIVEN appointee IS A `Person`
+      made       IS A `Calendar date`
+      cs         IS A LIST OF `Selection Committee`
+      earlier    IS A LIST OF `Calendar date`
+      satisfied  IS A BOOLEAN
+      resolution IS A BOOLEAN
+GIVETH AN `Appointment case`
+`an appointment to Japan of` appointee `on` made cs earlier satisfied resolution MEANS `Appointment case` WITH
+    `the office`                                     IS `Ambassador to Japan`
+    `the appointee`                                  IS appointee
+    `the day the appointment is made`                IS made
+    `the day the term of the appointment starts`     IS made `plus calendar months` 1
+    `the Selection Committees established for an appointment to the office` IS cs
+    `the days of earlier appointments to the office` IS earlier
+    `the Minister is satisfied the appointee does not have a significant political affiliation` IS satisfied
+    `both Houses have passed a resolution approving the appointment` IS resolution
+
+`Committee 1 recommends Avery` MEANS `a Committee established on` (`the date` 2028 1 10) FALSE (JUST `four with one significant, reasons given`) (JUST (`a notice on` (`the date` 2028 3 1) `recommending` "Avery"))
+`Committee 1 refers back` MEANS `a Committee established on` (`the date` 2028 1 10) FALSE (JUST `four with one significant, reasons given`) (JUST (`a referral notice on` (`the date` 2028 3 1)))
+`Committee 2 refers back` MEANS `a Committee established on` (`the date` 2028 3 10) TRUE (JUST (`a list given on` (`the date` 2028 3 12) `proposing` (LIST `plainly` `Avery`, `plainly` `Uma`))) (JUST (`a referral notice on` (`the date` 2028 5 1)))
+`Committee 1 recommends Casey` MEANS `a Committee established on` (`the date` 2028 1 10) FALSE (JUST `four with one significant, reasons given`) (JUST (`a notice on` (`the date` 2028 3 1) `recommending` "Casey"))
+`Committee 1 recommends Drew, who is not on its list` MEANS `a Committee established on` (`the date` 2028 1 10) FALSE (JUST `four with one significant, reasons given`) (JUST (`a notice on` (`the date` 2028 3 1) `recommending` "Drew"))
+
+-- s 9(2): appointment of the recommended person.
+#ASSERT `s 9 — the route by which the appointment may be made` (`an appointment to Japan of` `Avery` `on` (`the date` 2028 4 1) (LIST `Committee 1 recommends Avery`) (LIST `the date` 2024 2 1) FALSE FALSE) EQUALS `s 9(2) — on a Selection Committee's recommendation`
+#ASSERT `the status of the appointment in` (`an appointment to Japan of` `Avery` `on` (`the date` 2028 4 1) (LIST `Committee 1 recommends Avery`) EMPTY FALSE FALSE) `given Royal Assent on` `the day of Royal Assent` EQUALS `the appointment may be made on a Selection Committee's recommendation (s 9(2))`
+-- s 9(2): someone else may not be appointed instead (no route).
+#ASSERT `the status of the appointment in` (`an appointment to Japan of` `Uma` `on` (`the date` 2028 4 1) (LIST `Committee 1 recommends Avery`) EMPTY TRUE TRUE) `given Royal Assent on` `the day of Royal Assent` EQUALS `the appointment must not be made (s 14(1)); if made it is valid (s 14(2)) but must be terminated as soon as practicable after the Minister becomes aware (s 14(3))`
+-- ISSUE 1: the recommended person need not be appointed; nothing in the Bill
+-- obliges it. Not appointing Avery is not a breach the encoding can see, and
+-- the recommendation blocks s 9(3) for the vacancy.
+#ASSERT NOT `s 9(3) applies to` (`an appointment to Japan of` `Uma` `on` (`the date` 2028 9 1) (LIST `Committee 1 recommends Avery`, `Committee 2 refers back`, `Committee 2 refers back`) EMPTY TRUE TRUE)
+-- s 10(7): a recommendation is spent once an appointment to the office is made.
+#ASSERT NOT `s 9(2) applies to` (`an appointment to Japan of` `Avery` `on` (`the date` 2028 9 1) (LIST `Committee 1 recommends Avery`) (LIST `the date` 2028 4 1) FALSE FALSE)
+-- s 9(1)(a): recommended, but with a disqualifying affiliation.
+#ASSERT `s 9 — the route by which the appointment may be made` (`an appointment to Japan of` `Casey` `on` (`the date` 2028 4 1) (LIST `Committee 1 recommends Casey`) EMPTY TRUE TRUE) EQUALS `no route under section 9`
+-- s 9(3): two referrals, then (c)(i) the Minister is satisfied / (c)(ii) both Houses.
+#ASSERT `s 9 — the route by which the appointment may be made` (`an appointment to Japan of` `Avery` `on` (`the date` 2028 6 1) (LIST `Committee 1 refers back`, `Committee 2 refers back`) EMPTY TRUE FALSE) EQUALS `s 9(3)(c)(i) — after two referrals, the Minister being satisfied`
+#ASSERT `s 9 — the route by which the appointment may be made` (`an appointment to Japan of` `Blake` `on` (`the date` 2028 6 1) (LIST `Committee 1 refers back`, `Committee 2 refers back`) EMPTY FALSE TRUE) EQUALS `s 9(3)(c)(ii) — after two referrals, with the approval of both Houses`
+#ASSERT `s 9 — the route by which the appointment may be made` (`an appointment to Japan of` `Blake` `on` (`the date` 2028 6 1) (LIST `Committee 1 refers back`, `Committee 2 refers back`) EMPTY FALSE FALSE) EQUALS `no route under section 9`
+-- s 9(3)(b): one referral is not enough.
+#ASSERT `s 9 — the route by which the appointment may be made` (`an appointment to Japan of` `Avery` `on` (`the date` 2028 6 1) (LIST `Committee 1 refers back`) EMPTY TRUE TRUE) EQUALS `no route under section 9`
+-- s 9(3) with both Houses' approval cannot rescue a disqualifying affiliation.
+#ASSERT `s 9 — the route by which the appointment may be made` (`an appointment to Japan of` `Casey` `on` (`the date` 2028 6 1) (LIST `Committee 1 refers back`, `Committee 2 refers back`) EMPTY FALSE TRUE) EQUALS `no route under section 9`
+-- ISSUE 2: a Committee recommends a person who was never on the Minister's
+-- list (and who has a significant affiliation, the list's one such slot being
+-- already used). s 9(2) is satisfied; only the broad reading of s 14(1) objects.
+#ASSERT `s 9 — the route by which the appointment may be made` (`an appointment to Japan of` `Drew` `on` (`the date` 2028 4 1) (LIST `Committee 1 recommends Drew, who is not on its list`) EMPTY FALSE FALSE) EQUALS `s 9(2) — on a Selection Committee's recommendation`
+#ASSERT NOT `s 14(1) — broad reading: the appointment is in accordance with this Act` (`an appointment to Japan of` `Drew` `on` (`the date` 2028 4 1) (LIST `Committee 1 recommends Drew, who is not on its list`) EMPTY FALSE FALSE)
+#ASSERT `s 14(1) — broad reading: the appointment is in accordance with this Act` (`an appointment to Japan of` `Avery` `on` (`the date` 2028 4 1) (LIST `Committee 1 recommends Avery`) EMPTY FALSE FALSE)
+
+§ `ISSUE 3 — s 9(3) is not confined to the current vacancy`
+
+-- (a) An earlier vacancy was filled on a recommendation in 2028. For the next
+-- vacancy, two Committees refer the matter back in 2031. Read literally,
+-- s 9(3)(a) fails forever, because a recommendation "has been made".
+`2031 Committee A refers back` MEANS `a Committee established on` (`the date` 2031 1 10) FALSE NOTHING (JUST (`a referral notice on` (`the date` 2031 3 1)))
+`2031 Committee B refers back` MEANS `a Committee established on` (`the date` 2031 3 10) TRUE NOTHING (JUST (`a referral notice on` (`the date` 2031 5 1)))
+`the second vacancy, after an earlier recommended appointment` MEANS `an appointment to Japan of` `Uma` `on` (`the date` 2031 7 1) (LIST `Committee 1 recommends Avery`, `2031 Committee A refers back`, `2031 Committee B refers back`) (LIST `the date` 2028 4 1) TRUE FALSE
+
+#ASSERT NOT `s 9(3) applies to` `the second vacancy, after an earlier recommended appointment`
+#ASSERT `s 9(3) applies to, vacancy-scoped reading` `the second vacancy, after an earlier recommended appointment`
+
+-- (b) An earlier vacancy was filled under s 9(3) in 2028 after two referrals.
+-- For the next vacancy in 2031 no Committee is established at all. Read
+-- literally, the 2028 referrals still count, so s 9(3) is open at once.
+`the second vacancy, with no Committee of its own` MEANS `an appointment to Japan of` `Uma` `on` (`the date` 2031 7 1) (LIST `Committee 1 refers back`, `Committee 2 refers back`) (LIST `the date` 2028 6 1) TRUE FALSE
+
+#ASSERT `s 9 — the route by which the appointment may be made` `the second vacancy, with no Committee of its own` EQUALS `s 9(3)(c)(i) — after two referrals, the Minister being satisfied`
+#ASSERT NOT `s 9(3) applies to, vacancy-scoped reading` `the second vacancy, with no Committee of its own`
+
+§ `s 15 — Appointments to which the Act applies`
+
+-- Royal Assent 2026-12-01; commencement 2026-12-02; 12 months on is 2027-12-02.
+GIVEN made  IS A `Calendar date`
+      start IS A `Calendar date`
+GIVETH AN `Appointment case`
+`an unrecommended appointment of Blake made on` made `starting` start MEANS `Appointment case` WITH
+    `the office`                                     IS `High Commissioner to India`
+    `the appointee`                                  IS `Blake`
+    `the day the appointment is made`                IS made
+    `the day the term of the appointment starts`     IS start
+    `the Selection Committees established for an appointment to the office` IS EMPTY
+    `the days of earlier appointments to the office` IS EMPTY
+    `the Minister is satisfied the appointee does not have a significant political affiliation` IS FALSE
+    `both Houses have passed a resolution approving the appointment` IS FALSE
+
+#ASSERT `the status of the appointment in` (`an unrecommended appointment of Blake made on` (`the date` 2027 6 1) `starting` (`the date` 2027 9 1)) `given Royal Assent on` `the day of Royal Assent` EQUALS `this Act does not apply to the appointment (s 15)`
+#ASSERT `the status of the appointment in` (`an unrecommended appointment of Blake made on` (`the date` 2027 6 1) `starting` (`the date` 2027 12 1)) `given Royal Assent on` `the day of Royal Assent` EQUALS `this Act does not apply to the appointment (s 15)`
+#ASSERT `the status of the appointment in` (`an unrecommended appointment of Blake made on` (`the date` 2027 6 1) `starting` (`the date` 2027 12 2)) `given Royal Assent on` `the day of Royal Assent` EQUALS `the appointment must not be made (s 14(1)); if made it is valid (s 14(2)) but must be terminated as soon as practicable after the Minister becomes aware (s 14(3))`
+-- Made the day before commencement, for a term starting years later: outside the Act.
+#ASSERT `the status of the appointment in` (`an unrecommended appointment of Blake made on` (`the date` 2026 12 1) `starting` (`the date` 2030 1 1)) `given Royal Assent on` `the day of Royal Assent` EQUALS `this Act does not apply to the appointment (s 15)`
+-- s 7: an office that is not designated.
+#ASSERT `the status of the appointment in` (`Appointment case` WITH `the office` IS `another office of the Commonwealth` "Ambassador to France" TRUE FALSE, `the appointee` IS `Blake`, `the day the appointment is made` IS `the date` 2028 1 1, `the day the term of the appointment starts` IS `the date` 2028 2 1, `the Selection Committees established for an appointment to the office` IS EMPTY, `the days of earlier appointments to the office` IS EMPTY, `the Minister is satisfied the appointee does not have a significant political affiliation` IS FALSE, `both Houses have passed a resolution approving the appointment` IS FALSE) `given Royal Assent on` `the day of Royal Assent` EQUALS `the office is not a designated diplomatic office (s 7), so this Act does not govern the appointment`
+
+§ `s 11 — Acting arrangements`
+
+GIVEN p IS A `Person`
+GIVETH AN `Acting arrangement`
+`an acting arrangement for` p MEANS `Acting arrangement` WITH
+    `the office`                      IS `High Commissioner to Canada`
+    `the chargé d'affaires`           IS p
+    `the day the arrangement is made` IS `the test day`
+    `the occasion`                    IS `a vacancy in the office`
+
+#ASSERT `the status of the acting arrangement` (`an acting arrangement for` `Avery`) EQUALS `the arrangement may be made (s 11)`
+#ASSERT `the status of the acting arrangement` (`an acting arrangement for` `Blake`) EQUALS `the arrangement must not be made (s 14(4)); if made it is valid (s 14(5)) but must be terminated as soon as practicable after the Minister becomes aware (s 14(6))`
+#ASSERT `the status of the acting arrangement` (`an acting arrangement for` `Casey`) EQUALS `the arrangement must not be made (s 14(4)); if made it is valid (s 14(5)) but must be terminated as soon as practicable after the Minister becomes aware (s 14(6))`
+#ASSERT `the status of the acting arrangement` (`an acting arrangement for` `Quinn`) EQUALS `the arrangement must not be made (s 14(4)); if made it is valid (s 14(5)) but must be terminated as soon as practicable after the Minister becomes aware (s 14(6))`
+
+§ `Duties with deadlines — traces`
+
+-- s 10(1): list given on day 7 (in time); none by day 8 (breach).
+#TRACE `s 10(1) — the Minister's duty to give the list` AT 0 WITH
+    PARTY `the Minister` DOES `give the Selection Committee a list of proposed candidates` AT 7
+#TRACE `s 10(1) — the Minister's duty to give the list` AT 0 WITH
+    (`WAIT UNTIL` 8)
+-- s 10(3): list given 2028-01-15; the deadline is 60 days (to 2028-03-15).
+#ASSERT `the number of days from` (`the date` 2028 1 15) `to` (`s 10(3) — the last day for the Committee's written notice` `four with one significant, reasons given`) EQUALS 60
+#TRACE `s 10(3) — the Committee's duty to give written notice` `four with one significant, reasons given` AT 0 WITH
+    PARTY `the Selection Committee` DOES `give the Minister a written notice` AT 60
+#TRACE `s 10(3) — the Committee's duty to give written notice` `four with one significant, reasons given` AT 0 WITH
+    (`WAIT UNTIL` 61)
+-- s 9(4)-(5): tabled in both Houses in time; tabled in the Senate only.
+#TRACE `s 9(4) — the Minister's duty to table in each House` AT 0 WITH
+    PARTY `the Minister` DOES `table a statement of reasons in` `the Senate` AT 2
+    PARTY `the Minister` DOES `table a statement of reasons in` `the House of Representatives` AT 5
+#TRACE `s 9(4) — the Minister's duty to table in each House` AT 0 WITH
+    PARTY `the Minister` DOES `table a statement of reasons in` `the Senate` AT 2
+    (`WAIT UNTIL` 6)
+-- s 14(3): no deadline; a year's delay is not, by the clock alone, a breach.
+#TRACE `s 14(3) — the duty to terminate a noncompliant appointment` AT 0 WITH
+    (`WAIT UNTIL` 365)
+#TRACE `s 14(3) — the duty to terminate a noncompliant appointment` AT 0 WITH
+    PARTY `the person who makes the appointment or arrangement` DOES `terminate the appointment` AT 400

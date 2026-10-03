@@ -1,0 +1,158 @@
+-- support.l4 — calendar dates and list helpers used by the encoding.
+--
+-- This module is NOT law. It exists because the l4 binary this encoding was
+-- built and tested against (C:\Users\micha\AppData\Local\Programs\l4\l4.exe,
+-- dated 2026-04-29) accepts `IMPORT prelude` and `IMPORT daydate` without
+-- error but makes none of their names available (`filter`, `any`, `length`,
+-- `Date`, `YMD`, `add months` are all reported undefined). The few helpers
+-- the Bill needs are therefore written here from the core language alone.
+--
+-- Periods of time follow the Acts Interpretation Act 1901 (Cth):
+--   * s 2G   — "month" means a calendar month; a period of months ending on a
+--              day with no corresponding date ends on the last day of the month;
+--   * s 36(1) — a period "from" or "after" a day excludes that day.
+
+§ `Support — calendar dates`
+
+DECLARE `Calendar date` HAS
+    `year`  IS A NUMBER
+    `month` IS A NUMBER
+    `day`   IS A NUMBER
+
+GIVEN y IS A NUMBER
+      m IS A NUMBER
+      d IS A NUMBER
+GIVETH A `Calendar date`
+`the date` y m d MEANS `Calendar date` WITH `year` IS y, `month` IS m, `day` IS d
+
+-- An order-preserving key: yyyymmdd. Used only to compare two dates.
+GIVEN dt IS A `Calendar date`
+GIVETH A NUMBER
+`the ordering key of` dt MEANS
+    dt's `year` * 10000 + dt's `month` * 100 + dt's `day`
+
+GIVEN a IS A `Calendar date`
+      b IS A `Calendar date`
+GIVETH A BOOLEAN
+a `is on or before` b MEANS `the ordering key of` a AT MOST `the ordering key of` b
+
+GIVEN a IS A `Calendar date`
+      b IS A `Calendar date`
+GIVETH A BOOLEAN
+a `is before` b MEANS `the ordering key of` a LESS THAN `the ordering key of` b
+
+GIVEN a IS A `Calendar date`
+      b IS A `Calendar date`
+GIVETH A BOOLEAN
+a `is the same day as` b MEANS `the ordering key of` a EQUALS `the ordering key of` b
+
+GIVEN x IS A NUMBER
+GIVETH A NUMBER
+`the whole part of` x MEANS TRUNC x 0
+
+GIVEN y IS A NUMBER
+GIVETH A BOOLEAN
+`is a leap year` y MEANS
+        (y MODULO 4 EQUALS 0 AND NOT y MODULO 100 EQUALS 0)
+    OR  y MODULO 400 EQUALS 0
+
+GIVEN m IS A NUMBER
+      y IS A NUMBER
+GIVETH A NUMBER
+`the number of days in month` m `of year` y MEANS
+    BRANCH
+        IF m EQUALS 2 THEN IF `is a leap year` y THEN 29 ELSE 28
+        IF m EQUALS 4 OR m EQUALS 6 OR m EQUALS 9 OR m EQUALS 11 THEN 30
+        OTHERWISE 31
+
+-- Day number of a date (days since 1970-01-01), by the civil-calendar
+-- algorithm; valid for every year from 1 onwards.
+GIVEN dt IS A `Calendar date`
+GIVETH A NUMBER
+`the day number of` dt MEANS
+    era * 146097 + doe - 719468
+    WHERE
+        y   MEANS IF dt's `month` AT MOST 2 THEN dt's `year` - 1 ELSE dt's `year`
+        era MEANS `the whole part of` (y / 400)
+        yoe MEANS y - era * 400
+        mp  MEANS IF dt's `month` GREATER THAN 2 THEN dt's `month` - 3 ELSE dt's `month` + 9
+        doy MEANS `the whole part of` ((153 * mp + 2) / 5) + dt's `day` - 1
+        doe MEANS yoe * 365 + `the whole part of` (yoe / 4) - `the whole part of` (yoe / 100) + doy
+
+GIVEN a IS A `Calendar date`
+      b IS A `Calendar date`
+GIVETH A NUMBER
+`the number of days from` a `to` b MEANS `the day number of` b - `the day number of` a
+
+-- AIA s 2G: n calendar months after a date; clamps to the last day of the
+-- month when the later month has no corresponding day.
+GIVEN dt IS A `Calendar date`
+      n  IS A NUMBER
+GIVETH A `Calendar date`
+dt `plus calendar months` n MEANS
+    `the date` y2 m2 (IF dt's `day` GREATER THAN lastDay THEN lastDay ELSE dt's `day`)
+    WHERE
+        total   MEANS dt's `year` * 12 + (dt's `month` - 1) + n
+        y2      MEANS `the whole part of` (total / 12)
+        m2      MEANS total - y2 * 12 + 1
+        lastDay MEANS `the number of days in month` m2 `of year` y2
+
+-- n years before a date, as the same day and month n years earlier. A
+-- 29 February with no counterpart is kept as the (non-existent) 29 February,
+-- which sorts between 28 February and 1 March: see ISSUES.md on where the
+-- ten-year window in s 8 begins and ends.
+GIVEN dt IS A `Calendar date`
+      n  IS A NUMBER
+GIVETH A `Calendar date`
+dt `minus calendar years` n MEANS `the date` (dt's `year` - n) (dt's `month`) (dt's `day`)
+
+§ `Support — lists`
+
+GIVEN a  IS A TYPE
+      xs IS A LIST OF a
+      p  IS A FUNCTION FROM a TO BOOLEAN
+GIVETH A BOOLEAN
+`at least one of` xs `satisfies` p MEANS
+    CONSIDER xs
+    WHEN EMPTY THEN FALSE
+    WHEN x FOLLOWED BY rest THEN p x OR `at least one of` rest `satisfies` p
+
+GIVEN a  IS A TYPE
+      xs IS A LIST OF a
+      p  IS A FUNCTION FROM a TO BOOLEAN
+GIVETH A BOOLEAN
+`every one of` xs `satisfies` p MEANS
+    CONSIDER xs
+    WHEN EMPTY THEN TRUE
+    WHEN x FOLLOWED BY rest THEN p x AND `every one of` rest `satisfies` p
+
+GIVEN a  IS A TYPE
+      xs IS A LIST OF a
+      p  IS A FUNCTION FROM a TO BOOLEAN
+GIVETH A NUMBER
+`how many of` xs `satisfy` p MEANS
+    CONSIDER xs
+    WHEN EMPTY THEN 0
+    WHEN x FOLLOWED BY rest THEN
+        (IF p x THEN 1 ELSE 0) + `how many of` rest `satisfy` p
+
+GIVEN a  IS A TYPE
+      xs IS A LIST OF a
+GIVETH A NUMBER
+`the number of items in` xs MEANS
+    CONSIDER xs
+    WHEN EMPTY THEN 0
+    WHEN x FOLLOWED BY rest THEN 1 + `the number of items in` rest
+
+§§ `Support — self-checks`
+
+#ASSERT `the day number of` (`the date` 1970 1 1) EQUALS 0
+#ASSERT `the number of days from` (`the date` 2027 1 25) `to` (`the date` 2027 2 1) EQUALS 7
+#ASSERT `the number of days from` (`the date` 2028 2 28) `to` (`the date` 2028 3 1) EQUALS 2
+#ASSERT `the number of days from` (`the date` 2027 12 31) `to` (`the date` 2028 1 1) EQUALS 1
+#ASSERT ((`the date` 2027 1 31) `plus calendar months` 1) `is the same day as` (`the date` 2027 2 28)
+#ASSERT ((`the date` 2027 11 30) `plus calendar months` 2) `is the same day as` (`the date` 2028 1 30)
+#ASSERT ((`the date` 2027 12 15) `plus calendar months` 12) `is the same day as` (`the date` 2028 12 15)
+#ASSERT (`the date` 2027 3 1) `is before` (`the date` 2027 3 2)
+#ASSERT NOT ((`the date` 2027 3 2) `is before` (`the date` 2027 3 2))
+#ASSERT `how many of` (LIST 1, 5, 7) `satisfy` (GIVEN n YIELD n GREATER THAN 3) EQUALS 2
