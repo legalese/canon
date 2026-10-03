@@ -1,0 +1,998 @@
+IMPORT prelude
+IMPORT `dog-act-domain`
+
+-- =============================================================================
+-- Dog Act 1976 (Western Australia) -- Part VI, Division 1, "Dogs generally"
+-- (non-dangerous-dog control provisions)
+--
+-- Isomorphic encoding of ss 28, 29, 30A, 30, 31, 32, 33, 33A, 33B, 33C, as at
+-- the compilation dated 28 Nov 2024 [version 08-b0-00], re-verified current
+-- 2026-09-09. STOPS before s 33D, which is already encoded in
+-- dog-act-1976.l4 (Division 1 s 33D "Dog attacks etc." and the whole of
+-- Division 2, "Dangerous dogs", ss 33E-33M). The shared s 3 definitions this
+-- file reads (LiableParty, DogProfile, Penalty) live in dog-act-domain.l4,
+-- imported above.
+--
+-- Source: lines 766-961 of the verbatim compilation
+-- (canon/subjects/western-australia/dog-act-1976/registers/source-bundle/mrdoc_47983.txt).
+--
+-- SCOPED OUT (cited at their site with @ref, never expanded): s. 3(1) "dog
+-- management facility" definition, s. 6/7 (registration), s. 18 (collar/tag
+-- compliance), s. 21/22 (microchipping), s. 26 (dog-number local laws) and
+-- s. 27 (kennel licences), s. 39 (destruction application procedure), the
+-- whole of Part VI Division 2 (ss 33D-33M, already encoded in
+-- dog-act-1976.l4 -- including s. 33G(1), s. 33G(2), s. 33G(6) and
+-- s. 33GA(6)-(8) specifically, and s. 33M), and external statutes (Racing
+-- and Wagering Western Australia Act 2003, Local Government Act 1995,
+-- Veterinary Practice Act 2021).
+--
+-- DESIGN NOTE: s 29(3)(ca) ("a dog is in a place in contravention of
+-- section 31, 32 or 33A") is a cross-reference to breach predicates this
+-- SAME file defines below (`s 31(1) or (2A) contravened`, `s 32(1) breach`,
+-- `s 33A(1) breach`). It is left as a single fact-supplied BOOLEAN on
+-- `S29(3) Grounds` rather than wired through those predicates directly,
+-- because doing so would require threading each of ss 31/32/33A's several
+-- GIVEN parameters (facts records, DogProfile, competent-person facts) into
+-- s 29(3)'s own signature purely to support one disjunct among seven. A
+-- caller with concrete s 31/32/33A facts can compute this boolean by calling
+-- those predicates directly and passing the result in.
+-- =============================================================================
+
+§ `Shared penalty preset for this module`
+
+-- The recurring flat $5,000-fine-no-minimum shape: ss 28(1), 30(2), 31(3),
+-- 32(4).
+`flat $5,000 fine penalty` MEANS
+    Penalty WITH fine IS JUST 5_000, `minimum fine` IS NOTHING, `imprisonment months` IS NOTHING, `further offence fine` IS NOTHING
+
+§ `Part VI, Division 1 -- Dogs generally`
+§§ `28. Obligation to identify dog's owner`
+
+DECLARE `S28 Facts` HAS
+    `identity of the owner of the dog was unknown to the operator when the dog entered the facility` IS A BOOLEAN
+    `operator made every reasonable attempt, other than scanning, to identify the owner as soon as practicable after the dog entered the facility` IS A BOOLEAN
+    `operator scanned the dog`                                                                         IS A BOOLEAN
+    `dog behaves aggressively towards the operator or another person`                                  IS A BOOLEAN
+    `operator believes on reasonable grounds that there is a danger to the health or safety of any person in attempting to scan the dog` IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 28(2)
+GIVEN f IS A `S28 Facts`
+GIVETH A BOOLEAN
+`s 28(2) -- scanning is not required` f MEANS
+    f's `dog behaves aggressively towards the operator or another person`
+    AND f's `operator believes on reasonable grounds that there is a danger to the health or safety of any person in attempting to scan the dog`
+
+@ref Dog Act 1976 (WA) s. 28(1) Penalty
+GIVEN f IS A `S28 Facts`
+GIVETH A BOOLEAN
+`s 28(1) offence -- operator fails to make every reasonable attempt to identify the dog's owner` f MEANS
+        f's `identity of the owner of the dog was unknown to the operator when the dog entered the facility`
+    AND NOT (   f's `operator made every reasonable attempt, other than scanning, to identify the owner as soon as practicable after the dog entered the facility`
+             AND (f's `operator scanned the dog` OR `s 28(2) -- scanning is not required` f))
+
+`s 28(1) penalty` MEANS `flat $5,000 fine penalty`
+
+§§ `29. Power to seize dogs`
+
+-- s 29(1a): a police officer may exercise any power this section confers on
+-- an authorised person. Purely definitional extension of who may act; every
+-- predicate below that reads "authorised person" already covers a police
+-- officer exercising the power by force of this subsection. No separate
+-- fact for a downstream rule to test.
+
+DECLARE `S29(2) Facts` HAS
+    `person assisted an authorised person or a police officer, at that officer's request and in accordance with their directions` IS A BOOLEAN
+    `person is the owner or occupier of premises for the time being used to detain a dog under this Act` IS A BOOLEAN
+    `the act, matter or thing was done or omitted to be done in good faith for the purposes of carrying out the provisions of this Act` IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 29(2)
+GIVEN f IS A `S29(2) Facts`
+GIVETH A BOOLEAN
+`the person is immune from proceedings under s 29(2)` f MEANS
+        (f's `person assisted an authorised person or a police officer, at that officer's request and in accordance with their directions`
+         OR f's `person is the owner or occupier of premises for the time being used to detain a dog under this Act`)
+    AND f's `the act, matter or thing was done or omitted to be done in good faith for the purposes of carrying out the provisions of this Act`
+
+-- AMBIGUITY (F-S29-SATISFACTION-STANDARDS): s 29's own subsections use a
+-- shifting register of evidentiary/subjective standards for an authorised
+-- person's (or a JP's) belief -- "it appears to" (s 29(3) chapeau),
+-- "reasonable grounds to believe" (s 29(3)(e), s 29(5b)(b)), "satisfied on
+-- the balance of probabilities" (s 29(5a)), "in the opinion of" (s 29(13)),
+-- and bare "satisfied" (s 29(10)(e)). It is unclear whether these denote
+-- different thresholds (e.g. "appears to" being lower than "reasonable
+-- grounds to believe") or are drafting variation for the one standard.
+-- Taken reading: model each as an independent fact-supplied BOOLEAN with no
+-- relative threshold ordering encoded -- the same convention this corpus
+-- uses for "satisfied"/"opinion of" provisions generally (cf.
+-- F-33H-SATISFACTION-STANDARD in dog-act-1976.l4). See ambiguities in the
+-- returned structured output.
+DECLARE `S29(3) Grounds` HAS
+    `it appears to the authorised person that an attack by a dog has occurred`      IS A BOOLEAN
+    `it appears to the authorised person that an attack by a dog is likely to occur` IS A BOOLEAN
+    `the dog is in a place in contravention of s 31, 32 or 33A`                     IS A BOOLEAN
+    `an offence against s 26(4) or 27(2) is being committed in respect of the dog`  IS A BOOLEAN
+        -- @ref Dog Act 1976 (WA) s. 26(4), s. 27(2) -- scoped out, fact-supplied
+    `an offence against Division 2 is being committed in respect of the dog`        IS A BOOLEAN
+        -- @ref Dog Act 1976 (WA) Part VI Division 2 (encoded in dog-act-1976.l4) -- scoped out, fact-supplied
+    `moneys are due to the local government in respect of a charge on the dog determined under s 33M` IS A BOOLEAN
+        -- @ref Dog Act 1976 (WA) s. 33M (encoded in dog-act-1976.l4) -- scoped out, fact-supplied
+    `the dog is not registered as required under s 7`                              IS A BOOLEAN
+        -- @ref Dog Act 1976 (WA) s. 7 -- scoped out, fact-supplied
+
+@ref Dog Act 1976 (WA) s. 29(3)
+GIVEN dog IS A DogProfile, g IS A `S29(3) Grounds`
+GIVETH A BOOLEAN
+`seizure of the dog under s 29(3) is authorised` dog g MEANS
+        g's `it appears to the authorised person that an attack by a dog has occurred`
+    OR  g's `it appears to the authorised person that an attack by a dog is likely to occur`
+    OR  g's `the dog is in a place in contravention of s 31, 32 or 33A`
+    OR  g's `an offence against s 26(4) or 27(2) is being committed in respect of the dog`
+    OR  g's `an offence against Division 2 is being committed in respect of the dog`
+    OR  (   `the dog is a dangerous dog` dog
+         AND g's `moneys are due to the local government in respect of a charge on the dog determined under s 33M`)
+    OR  (   `the dog is a dangerous dog` dog
+         AND g's `the dog is not registered as required under s 7`)
+
+@ref Dog Act 1976 (WA) s. 29(3)(e)
+GIVEN `authorised person is in pursuit of the dog for the purpose of seizing it, and has reasonable grounds to believe entry is necessary for that purpose` IS A BOOLEAN,
+      `the premises are a dwelling` IS A BOOLEAN,
+      `s 33G(1) applies` IS A BOOLEAN
+GIVETH A BOOLEAN
+`entry to premises under s 29(3)(e) is authorised` `authorised person is in pursuit of the dog for the purpose of seizing it, and has reasonable grounds to believe entry is necessary for that purpose` `the premises are a dwelling` `s 33G(1) applies` MEANS
+        `authorised person is in pursuit of the dog for the purpose of seizing it, and has reasonable grounds to believe entry is necessary for that purpose`
+    AND ((NOT `the premises are a dwelling`) OR `s 33G(1) applies`)
+        -- @ref Dog Act 1976 (WA) s. 33G(1) (encoded in dog-act-1976.l4) -- scoped out, fact-supplied
+
+-- s 29(4A): a narrower cap on how many dogs may be seized under the
+-- s 29(3)(cb) ground, keyed entirely to s 26 local-law/exemption/licence
+-- machinery that is outside this file's assigned range. No independent
+-- operative fact within scope; scoped out as inert prose.
+-- @ref Dog Act 1976 (WA) s. 26(1), s. 26(3), s. 26(4)(b)-(c), s. 27(2) -- scoped out
+
+@ref Dog Act 1976 (WA) s. 29(4)
+GIVEN `dog was seized under s 29` IS A BOOLEAN, `local government detaining the dog requires payment before the dog's return` IS A BOOLEAN
+GIVETH A BOOLEAN
+`the owner is liable to pay reasonable costs before the dog's return under s 29(4)` `dog was seized under s 29` `local government detaining the dog requires payment before the dog's return` MEANS
+    `dog was seized under s 29` AND `local government detaining the dog requires payment before the dog's return`
+
+-- s 29(5): moneys due under this Act may be recovered as a debt, by the
+-- person to whom they are due or by the detaining local government. A pure
+-- recovery mechanism -- not itself a fact a downstream rule tests -- so left
+-- as inert prose.
+
+@ref Dog Act 1976 (WA) s. 29(5a)
+GIVEN dog IS A DogProfile,
+      `JP satisfied on the balance of probabilities that an attack by a dog has or may have caused injury or damage` IS A BOOLEAN,
+      `JP satisfied on the balance of probabilities that the dog has given birth to one or more pups` IS A BOOLEAN
+GIVETH A BOOLEAN
+`a s 29(5a) warrant may be issued` dog `JP satisfied on the balance of probabilities that an attack by a dog has or may have caused injury or damage` `JP satisfied on the balance of probabilities that the dog has given birth to one or more pups` MEANS
+        `JP satisfied on the balance of probabilities that an attack by a dog has or may have caused injury or damage`
+    OR  (dog's `is a dangerous dog (restricted breed)` AND `JP satisfied on the balance of probabilities that the dog has given birth to one or more pups`)
+
+-- s 29(5a)(a)-(b): what happens to a warrant-seized dog after seizure
+-- (dealt with under s 33G if a dangerous dog or a restricted-breed pup;
+-- otherwise detained pending a s 39 application) cross-refers Division 2
+-- s 33G (already encoded in dog-act-1976.l4) and s 39 (outside both files'
+-- assigned ranges). No further fact of this file's own to test; the warrant
+-- test above is the operative gate.
+-- @ref Dog Act 1976 (WA) s. 33G (encoded in dog-act-1976.l4), s. 39 -- scoped out
+
+-- s 29(5b)(a): once a s 29(5a) warrant issues, the authorised person may
+-- seize and detain the dog (already the operative effect of `a s 29(5a)
+-- warrant may be issued` above -- the warrant's whole point is to authorise
+-- seizure) and, if s 33G(2) applies, shall give the notice required by that
+-- subsection. The s 33G(2) notice duty cross-refers Division 2 (already
+-- encoded in dog-act-1976.l4); no independent fact of this file's own to
+-- test.
+-- @ref Dog Act 1976 (WA) s. 33G(2) (encoded in dog-act-1976.l4) -- scoped out
+
+@ref Dog Act 1976 (WA) s. 29(5b)(b)
+GIVEN `authorised person has reasonable grounds to believe entry is necessary for the purpose of seizing the dog under the s 29(5a) warrant` IS A BOOLEAN
+GIVETH A BOOLEAN
+`entry to premises under a s 29(5a) warrant is authorised by s 29(5b)(b)` `authorised person has reasonable grounds to believe entry is necessary for the purpose of seizing the dog under the s 29(5a) warrant` MEANS
+    `authorised person has reasonable grounds to believe entry is necessary for the purpose of seizing the dog under the s 29(5a) warrant`
+
+-- s 29(6), (7): where a seized dog is detained, and who else may exercise
+-- an authorised person's/local government's powers over it (an officer of a
+-- prescribed dog-management-facility body). Pure administrative machinery;
+-- no fact a downstream rule in this file's scope would test.
+
+DECLARE `S29(8) Detention Facts` HAS
+    `dog is wearing a registration tag, or is microchipped, or the owner is otherwise readily identifiable` IS A BOOLEAN
+    `days elapsed since notice was given to the owner under s 29(8)(a)`             IS A NUMBER
+    `hours elapsed since the detention commenced`                                  IS A NUMBER
+
+@ref Dog Act 1976 (WA) s. 29(8)
+GIVEN f IS A `S29(8) Detention Facts`
+GIVETH A BOOLEAN
+`the minimum detention period under s 29(8) has elapsed` f MEANS
+    IF f's `dog is wearing a registration tag, or is microchipped, or the owner is otherwise readily identifiable`
+    THEN f's `days elapsed since notice was given to the owner under s 29(8)(a)` AT LEAST 7
+    ELSE f's `hours elapsed since the detention commenced` AT LEAST 72
+
+-- s 29(8) chapeau (tail): subject to this section, prior payment of any
+-- s 29(4) moneys, and s 33G, and unless the dog is required as evidence of
+-- an offence, the dog "shall be delivered up to a person who produces
+-- satisfactory evidence of ownership or of his authority to take delivery of
+-- it". The minimum-holding-period predicate above is this file's operative
+-- gate on that duty; the payment precondition (s 29(4), encoded above), the
+-- s 33G gate (Division 2, encoded in dog-act-1976.l4) and the
+-- evidence-of-offence exception are cross-references/administrative
+-- conditions with no further fact of this file's own to test.
+-- @ref Dog Act 1976 (WA) s. 33G (encoded in dog-act-1976.l4) -- scoped out
+
+DECLARE `S29(8A) Detention Facts` HAS
+    `dog was seized under a s 29(5a) warrant`                                                            IS A BOOLEAN
+    `an application for an order for the destruction of the dog was made within 7 days of the detention commencing` IS A BOOLEAN
+    `dog is wearing a registration tag, or is microchipped, or the owner is otherwise readily identifiable` IS A BOOLEAN
+    `days elapsed since notice was given to the owner under s 29(8A)(a)`                                  IS A NUMBER
+    `hours elapsed since the expiration of the 7-day detention period`                                    IS A NUMBER
+
+@ref Dog Act 1976 (WA) s. 29(8A)
+GIVEN f IS A `S29(8A) Detention Facts`
+GIVETH A BOOLEAN
+`s 29(8A) applies -- no timely destruction application for a warrant-seized dog` f MEANS
+        f's `dog was seized under a s 29(5a) warrant`
+    AND NOT f's `an application for an order for the destruction of the dog was made within 7 days of the detention commencing`
+
+@ref Dog Act 1976 (WA) s. 29(8A)(b)-(c)
+GIVEN f IS A `S29(8A) Detention Facts`
+GIVETH A BOOLEAN
+`the minimum post-detention-period holding period under s 29(8A) has elapsed` f MEANS
+    IF f's `dog is wearing a registration tag, or is microchipped, or the owner is otherwise readily identifiable`
+    THEN f's `days elapsed since notice was given to the owner under s 29(8A)(a)` AT LEAST 7
+    ELSE f's `hours elapsed since the expiration of the 7-day detention period` AT LEAST 72
+
+-- s 29(8b), (8c): procedural deeming (a court's declining to order
+-- destruction is treated as if the detention period had just expired, for
+-- the purposes of (8A)) and a cost-recovery cross-reference back to (5).
+-- Both are administrative wiring between provisions already encoded above;
+-- no independent fact to test.
+
+-- s 29(9): on a seized dog's return, production of the registration
+-- certificate (or registering it) may be required. Administrative
+-- machinery with no downstream fact to test.
+
+DECLARE `S29(10) Destruction Grounds` HAS
+    `the dog is not claimed`                                                       IS A BOOLEAN
+    `the person in whose name the dog is registered declines to resume possession of the dog` IS A BOOLEAN
+    `moneys due in relation to the dog are not paid`                                IS A BOOLEAN
+    `s 33G(6) applies`                                                              IS A BOOLEAN
+        -- @ref Dog Act 1976 (WA) s. 33G(6) (encoded in dog-act-1976.l4) -- scoped out, fact-supplied
+    `an authorised person is satisfied that delivering up the dog under s 29(8) or (8A) would create circumstances giving rise to an offence against this Act` IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 29(10)
+GIVEN g IS A `S29(10) Destruction Grounds`
+GIVETH A BOOLEAN
+`destruction of the dog under s 29(10) is authorised` g MEANS
+        g's `the dog is not claimed`
+    OR  g's `the person in whose name the dog is registered declines to resume possession of the dog`
+    OR  g's `moneys due in relation to the dog are not paid`
+    OR  g's `s 33G(6) applies`
+    OR  g's `an authorised person is satisfied that delivering up the dog under s 29(8) or (8A) would create circumstances giving rise to an offence against this Act`
+
+-- s 29(11): disposal/sale proceeds of a destroyed dog belong to the local
+-- government or prescribed body, and need not be accounted for to the
+-- owner. Ownership-of-proceeds bookkeeping with no fact a downstream rule
+-- in this file's scope would test.
+
+@ref Dog Act 1976 (WA) s. 29(12)
+GIVEN `authorised person's opinion is that the dog is suffering from injury, disease or sickness to such an extent that it is impracticable to maintain the dog, or that the disease is of a contagious or infectious kind` IS A BOOLEAN,
+      `written authority of a veterinarian or a medical practitioner has been given` IS A BOOLEAN
+GIVETH A BOOLEAN
+`destruction of the dog under s 29(12) is authorised` `authorised person's opinion is that the dog is suffering from injury, disease or sickness to such an extent that it is impracticable to maintain the dog, or that the disease is of a contagious or infectious kind` `written authority of a veterinarian or a medical practitioner has been given` MEANS
+        `authorised person's opinion is that the dog is suffering from injury, disease or sickness to such an extent that it is impracticable to maintain the dog, or that the disease is of a contagious or infectious kind`
+    AND `written authority of a veterinarian or a medical practitioner has been given`
+
+DECLARE `S29(13) Facts` HAS
+    `authorised person may seize the dog under s 29(3)`                                 IS A BOOLEAN
+    `it is, in the opinion of the authorised person, dangerous or impracticable to seize the dog because of its savagery, repeated evasion of attempts at seizure, or other sufficient cause` IS A BOOLEAN
+    `assistance of the owner or another person likely to be able to control the dog is not reasonably available` IS A BOOLEAN
+    `there is no other practicable way to enforce the provisions of this Act`            IS A BOOLEAN
+    `the dog is in a public place`                                                       IS A BOOLEAN
+    `the dog is on premises that are not a public place, and the occupier of those premises consents to the destruction` IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 29(13)-(13a)
+GIVEN f IS A `S29(13) Facts`
+GIVETH A BOOLEAN
+`destruction of the dog without seizure under s 29(13) is authorised` f MEANS
+        f's `authorised person may seize the dog under s 29(3)`
+    AND f's `it is, in the opinion of the authorised person, dangerous or impracticable to seize the dog because of its savagery, repeated evasion of attempts at seizure, or other sufficient cause`
+    AND f's `assistance of the owner or another person likely to be able to control the dog is not reasonably available`
+    AND f's `there is no other practicable way to enforce the provisions of this Act`
+    AND (   f's `the dog is in a public place`
+         OR f's `the dog is on premises that are not a public place, and the occupier of those premises consents to the destruction`)
+
+@ref Dog Act 1976 (WA) s. 29(14)
+GIVEN `owner of the dog requested its destruction` IS A BOOLEAN
+GIVETH A BOOLEAN
+`destruction of the dog at the owner's request under s 29(14) is authorised` `owner of the dog requested its destruction` MEANS
+    `owner of the dog requested its destruction`
+
+@ref Dog Act 1976 (WA) s. 29(15)
+GIVEN `the dog was destroyed under s 29` IS A BOOLEAN
+GIVETH A BOOLEAN
+`the owner is liable for the cost of destruction and disposal under s 29(15)` `the dog was destroyed under s 29` MEANS
+    `the dog was destroyed under s 29`
+
+§§ `30A. Operator of dog management facility may have dog microchipped at owner's expense`
+
+DECLARE `S30A Facts` HAS
+    `operator believes on reasonable grounds that the dog is required under s 21 or 22 to be microchipped but is not microchipped` IS A BOOLEAN
+        -- @ref Dog Act 1976 (WA) s. 21, s. 22 -- scoped out, fact-supplied
+    `operator has no reason to believe the dog is exempt from microchipping as referred to in s 21(4) or 22(4)` IS A BOOLEAN
+        -- @ref Dog Act 1976 (WA) s. 21(4), s. 22(4) -- scoped out, fact-supplied
+
+@ref Dog Act 1976 (WA) s. 30A(1)
+GIVEN f IS A `S30A Facts`
+GIVETH A BOOLEAN
+`the operator may microchip the dog at the owner's expense under s 30A(1)` f MEANS
+        f's `operator believes on reasonable grounds that the dog is required under s 21 or 22 to be microchipped but is not microchipped`
+    AND f's `operator has no reason to believe the dog is exempt from microchipping as referred to in s 21(4) or 22(4)`
+
+@ref Dog Act 1976 (WA) s. 30A(2)
+GIVEN `dog was microchipped by the operator under s 30A(1)` IS A BOOLEAN
+GIVETH A BOOLEAN
+`the owner is liable to pay the reasonable costs of microchipping under s 30A(2)` `dog was microchipped by the operator under s 30A(1)` MEANS
+    `dog was microchipped by the operator under s 30A(1)`
+
+-- s 30A(3): the operator may recover those costs in a court of competent
+-- jurisdiction. A recovery mechanism, not itself a further fact to test.
+
+§§ `30. Dogs to wear collars, registration tags etc.`
+
+DECLARE `S30 Facts` HAS
+    `dog is in a public place`                                                                     IS A BOOLEAN
+    `dog is wearing a collar to which is securely attached a registration tag that complies with s 18` IS A BOOLEAN
+        -- @ref Dog Act 1976 (WA) s. 18 -- scoped out, fact-supplied
+    `dog is a greyhound participating in a race or trial held under a licence issued under the Racing and Wagering Western Australia Act 2003` IS A BOOLEAN
+    `dog is being exhibited for show purposes`                                                      IS A BOOLEAN
+    `dog, under the control of a responsible person, is being trained for or is participating in retrieving, duck hunting or some other customary sporting purpose` IS A BOOLEAN
+        -- AMBIGUITY (F-CUSTOMARY-SPORTING-PURPOSE): the outer bound of "some
+        -- other customary sporting purpose" is undefined -- an ejusdem
+        -- generis question (is it confined to activities of the same kind as
+        -- retrieving/duck hunting, or open-ended?). Same construction
+        -- recurs verbatim at s 31(2)(h). Delegated to fact-supply; no
+        -- enumerated boundary is encoded. See ambiguities in the returned
+        -- structured output.
+    `dog is participating in an obedience trial or classes conducted under the auspices of the Canine Association of Western Australia (Inc.), or a body approved by the local government in whose district the trial or classes are conducted` IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 30(3)
+GIVEN f IS A `S30 Facts`
+GIVETH A BOOLEAN
+`the dog is exempt from s 30(1) under s 30(3)` f MEANS
+        f's `dog is a greyhound participating in a race or trial held under a licence issued under the Racing and Wagering Western Australia Act 2003`
+    OR  f's `dog is being exhibited for show purposes`
+    OR  f's `dog, under the control of a responsible person, is being trained for or is participating in retrieving, duck hunting or some other customary sporting purpose`
+    OR  f's `dog is participating in an obedience trial or classes conducted under the auspices of the Canine Association of Western Australia (Inc.), or a body approved by the local government in whose district the trial or classes are conducted`
+
+@ref Dog Act 1976 (WA) s. 30(2) Penalty
+GIVEN party IS A LiableParty, dog IS A DogProfile, f IS A `S30 Facts`, defenceFacts IS A `S33B Facts`
+GIVETH A BOOLEAN
+`s 30(2) offence -- dog not wearing a compliant collar and tag in a public place` party dog f defenceFacts MEANS
+        `the party is a person liable for the control of the dog` party
+    AND f's `dog is in a public place`
+    AND NOT f's `dog is wearing a collar to which is securely attached a registration tag that complies with s 18`
+    AND NOT `the dog is exempt from s 30(1) under s 30(3)` f
+    AND NOT `the dog is a dangerous dog` dog
+    AND NOT `a s 33B defence is established` party defenceFacts
+
+`s 30(2) penalty` MEANS `flat $5,000 fine penalty`
+
+§§ `31. Control of dogs in certain public places`
+
+DECLARE `S31 Facts` HAS
+    `dog is in a public place`                                                                              IS A BOOLEAN
+    `dog is held by a person capable of controlling the dog`                                                 IS A BOOLEAN
+    `dog is securely tethered for a temporary purpose by a chain, cord, leash or harness of sufficient strength not exceeding the prescribed length` IS A BOOLEAN
+    `place is specified under s 31(2B) as one where dogs are prohibited at all times`                         IS A BOOLEAN
+    `place is specified under s 31(2B) as one where dogs are prohibited at the relevant time`                 IS A BOOLEAN
+    `dog is in a dog exercise area specified under s 31(3A)`                                                  IS A BOOLEAN
+    `dog is in a public place in an area of the State outside the metropolitan region or outside a townsite, and not in a rural leashing area specified under s 31(3B)` IS A BOOLEAN
+    `dog is in or on a vehicle`                                                                               IS A BOOLEAN
+    `dog is being exhibited for show purposes`                                                                IS A BOOLEAN
+    `dog is participating in an obedience trial or classes conducted under the auspices of the Canine Association of Western Australia (Inc.), or a body approved by the local government in whose district the trial or classes are conducted` IS A BOOLEAN
+    `dog is registered as bona fide used in the droving or tending of stock and is being so used, or is going to or returning from a place where it will be or has been so used` IS A BOOLEAN
+    `dog is a foxhound in a pack bona fide engaged in hunting or hound exercise, or in going to or returning from hunting or hound exercise` IS A BOOLEAN
+    `dog is being used for retrieving, duck hunting or other customary sporting purposes`                     IS A BOOLEAN
+        -- AMBIGUITY (F-CUSTOMARY-SPORTING-PURPOSE): same undefined-scope
+        -- question as s 30(3)(e) above; see that field's comment.
+
+@ref Dog Act 1976 (WA) s. 31(2B)
+GIVEN f IS A `S31 Facts`
+GIVETH A BOOLEAN
+`the place is one where dogs are prohibited under s 31(2A)` f MEANS
+    f's `place is specified under s 31(2B) as one where dogs are prohibited at all times`
+    OR f's `place is specified under s 31(2B) as one where dogs are prohibited at the relevant time`
+
+@ref Dog Act 1976 (WA) s. 31(2)
+GIVEN f IS A `S31 Facts`
+GIVETH A BOOLEAN
+`the dog is exempt from s 31(1) under s 31(2)` f MEANS
+        f's `dog is in a dog exercise area specified under s 31(3A)`
+    OR  f's `dog is in a public place in an area of the State outside the metropolitan region or outside a townsite, and not in a rural leashing area specified under s 31(3B)`
+    OR  f's `dog is in or on a vehicle`
+    OR  f's `dog is being exhibited for show purposes`
+    OR  f's `dog is participating in an obedience trial or classes conducted under the auspices of the Canine Association of Western Australia (Inc.), or a body approved by the local government in whose district the trial or classes are conducted`
+    OR  f's `dog is registered as bona fide used in the droving or tending of stock and is being so used, or is going to or returning from a place where it will be or has been so used`
+    OR  f's `dog is a foxhound in a pack bona fide engaged in hunting or hound exercise, or in going to or returning from hunting or hound exercise`
+    OR  f's `dog is being used for retrieving, duck hunting or other customary sporting purposes`
+
+@ref Dog Act 1976 (WA) s. 31(1)
+GIVEN f IS A `S31 Facts`
+GIVETH A BOOLEAN
+`s 31(1) held-or-tethered requirement is satisfied` f MEANS
+    f's `dog is held by a person capable of controlling the dog`
+    OR f's `dog is securely tethered for a temporary purpose by a chain, cord, leash or harness of sufficient strength not exceeding the prescribed length`
+
+@ref Dog Act 1976 (WA) s. 31(1)-(2A)
+GIVEN f IS A `S31 Facts`
+GIVETH A BOOLEAN
+`s 31(1) or (2A) contravened` f MEANS
+    f's `dog is in a public place`
+    AND (   ((NOT `s 31(1) held-or-tethered requirement is satisfied` f) AND (NOT `the dog is exempt from s 31(1) under s 31(2)` f))
+         OR `the place is one where dogs are prohibited under s 31(2A)` f)
+
+@ref Dog Act 1976 (WA) s. 31(3C)
+GIVEN `days notice given before specifying the place` IS A NUMBER
+GIVETH A BOOLEAN
+`the s 31(3C) 28-day notice requirement is satisfied` `days notice given before specifying the place` MEANS
+    `days notice given before specifying the place` AT LEAST 28
+
+@ref Dog Act 1976 (WA) s. 31(3) Penalty
+GIVEN party IS A LiableParty, dog IS A DogProfile, f IS A `S31 Facts`, defenceFacts IS A `S33B Facts`
+GIVETH A BOOLEAN
+`s 31(3) offence -- dog uncontrolled, or in a prohibited place, in contravention of s 31(1) or (2A)` party dog f defenceFacts MEANS
+        `the party is a person liable for the control of the dog` party
+    AND `s 31(1) or (2A) contravened` f
+    AND NOT `the dog is a dangerous dog` dog
+    AND NOT `a s 33B defence is established` party defenceFacts
+
+`s 31(3) penalty` MEANS `flat $5,000 fine penalty`
+
+-- s 31(5): a local government must specify sufficient dog exercise areas,
+-- "in the opinion of the local government" -- a subjective administrative
+-- duty with no numeric deadline and no downstream fact in this file's scope
+-- that reads it. Recorded as inert prose.
+
+§§ `32. Control of dogs in exercise areas and rural areas`
+
+DECLARE `S32 Facts` HAS
+    `dog is in a dog exercise area specified under s 31(3A)`                                                  IS A BOOLEAN
+    `dog is in a public place in an area of the State outside the metropolitan region or outside a townsite, and not in a rural leashing area specified under s 31(3B)` IS A BOOLEAN
+    `dog is held in the way referred to in s 31(1)(a)`                                                        IS A BOOLEAN
+    `dog is tethered in the way referred to in s 31(1)(b)`                                                    IS A BOOLEAN
+    `dog is a greyhound`                                                                                      IS A BOOLEAN
+    `dog is in or on a vehicle`                                                                                IS A BOOLEAN
+    `dog is being exhibited for show purposes`                                                                 IS A BOOLEAN
+    `dog is participating in an obedience trial or classes conducted under the auspices of the Canine Association of Western Australia (Inc.), or a body approved by the local government in whose district the trial or classes are conducted` IS A BOOLEAN
+    `dog is registered as bona fide used in the droving or tending of stock and is being so used, or is going to or returning from a place where it will be or has been so used` IS A BOOLEAN
+    `dog is a foxhound in a pack bona fide engaged in hunting or hound exercise, or in going to or returning from hunting or hound exercise` IS A BOOLEAN
+    `dog is being used for retrieving, duck hunting or other customary sporting purposes`                      IS A BOOLEAN
+
+DECLARE `S32(2) Lead Facts` HAS
+    `capable of controlling the dog`                                                                           IS A BOOLEAN
+    `carrying, and capable of attaching to the dog for the purpose of controlling it, a chain, cord, leash or harness of sufficient strength not exceeding the prescribed length` IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 32(2)
+GIVEN party IS A LiableParty, lf IS A `S32(2) Lead Facts`
+GIVETH A BOOLEAN
+`party is a competent person for the purposes of s 32(1)` party lf MEANS
+        `the party is a person liable for the control of the dog` party
+    AND lf's `capable of controlling the dog`
+    AND lf's `carrying, and capable of attaching to the dog for the purpose of controlling it, a chain, cord, leash or harness of sufficient strength not exceeding the prescribed length`
+
+@ref Dog Act 1976 (WA) s. 32(1)
+GIVEN f IS A `S32 Facts`
+GIVETH A BOOLEAN
+`the dog is in a place to which s 32(1) applies` f MEANS
+    f's `dog is in a dog exercise area specified under s 31(3A)`
+    OR f's `dog is in a public place in an area of the State outside the metropolitan region or outside a townsite, and not in a rural leashing area specified under s 31(3B)`
+
+@ref Dog Act 1976 (WA) s. 32(3)
+GIVEN f IS A `S32 Facts`
+GIVETH A BOOLEAN
+`the dog is exempt from s 32(1) under s 32(3)` f MEANS
+        f's `dog is in or on a vehicle`
+    OR  f's `dog is being exhibited for show purposes`
+    OR  f's `dog is participating in an obedience trial or classes conducted under the auspices of the Canine Association of Western Australia (Inc.), or a body approved by the local government in whose district the trial or classes are conducted`
+    OR  f's `dog is registered as bona fide used in the droving or tending of stock and is being so used, or is going to or returning from a place where it will be or has been so used`
+    OR  f's `dog is a foxhound in a pack bona fide engaged in hunting or hound exercise, or in going to or returning from hunting or hound exercise`
+    OR  f's `dog is being used for retrieving, duck hunting or other customary sporting purposes`
+
+@ref Dog Act 1976 (WA) s. 32(1)(e)
+GIVEN f IS A `S32 Facts`, party IS A LiableParty, lf IS A `S32(2) Lead Facts`
+GIVETH A BOOLEAN
+`the dog is supervised by a competent person under s 32(1)(e)` f party lf MEANS
+    (NOT f's `dog is a greyhound`) AND `party is a competent person for the purposes of s 32(1)` party lf
+
+@ref Dog Act 1976 (WA) s. 32(1)
+GIVEN f IS A `S32 Facts`, party IS A LiableParty, lf IS A `S32(2) Lead Facts`
+GIVETH A BOOLEAN
+`s 32(1) compliance is satisfied` f party lf MEANS
+        f's `dog is held in the way referred to in s 31(1)(a)`
+    OR  f's `dog is tethered in the way referred to in s 31(1)(b)`
+    OR  `the dog is supervised by a competent person under s 32(1)(e)` f party lf
+
+@ref Dog Act 1976 (WA) s. 32(1)
+GIVEN f IS A `S32 Facts`, party IS A LiableParty, lf IS A `S32(2) Lead Facts`
+GIVETH A BOOLEAN
+`s 32(1) breach` f party lf MEANS
+        `the dog is in a place to which s 32(1) applies` f
+    AND NOT `s 32(1) compliance is satisfied` f party lf
+    AND NOT `the dog is exempt from s 32(1) under s 32(3)` f
+
+@ref Dog Act 1976 (WA) s. 32(4) Penalty
+GIVEN party IS A LiableParty, dog IS A DogProfile, f IS A `S32 Facts`, lf IS A `S32(2) Lead Facts`, defenceFacts IS A `S33B Facts`
+GIVETH A BOOLEAN
+`s 32(4) offence -- dog uncontrolled in an exercise or rural area` party dog f lf defenceFacts MEANS
+        `the party is a person liable for the control of the dog` party
+    AND `s 32(1) breach` f party lf
+    AND NOT `the dog is a dangerous dog` dog
+    AND NOT `a s 33B defence is established` party defenceFacts
+
+`s 32(4) penalty` MEANS `flat $5,000 fine penalty`
+
+§§ `33. Special provision for greyhounds`
+
+-- s 33(2) modifies s 31 for greyhounds: the s 31(2)(a)/(b) exemptions (dog
+-- exercise area, rural leashing area) do not apply; a greyhound is instead
+-- exempt from s 31(1) while participating in a licensed race or trial; and a
+-- person holding more than 2 greyhounds at one time is conclusively deemed
+-- incapable of controlling any of them for s 31(1)(a). Encoded as a
+-- standalone eligibility predicate -- the modified version of `s 31(1) or
+-- (2A) contravened`/`the dog is exempt from s 31(1) under s 31(2)` for a
+-- greyhound -- rather than threaded back into the s 31 offence predicate, to
+-- avoid parameter explosion; a full integration would gate that predicate on
+-- "dog is a greyhound" and substitute this test. s 33(4) means this test (and
+-- s 31 generally) is displaced entirely by Division 2 when the greyhound is
+-- itself a dangerous dog.
+DECLARE `S33 Greyhound Facts` HAS
+    `dog is held by a person, and that person holds 2 or fewer greyhounds at that time` IS A BOOLEAN
+    `dog is securely tethered for a temporary purpose by a chain, cord, leash or harness of sufficient strength not exceeding the prescribed length` IS A BOOLEAN
+    `dog is participating in a greyhound race or trial held under a licence issued under the Racing and Wagering Western Australia Act 2003` IS A BOOLEAN
+    `dog is in or on a vehicle`                                                          IS A BOOLEAN
+    `dog is being exhibited for show purposes`                                           IS A BOOLEAN
+    `dog is participating in an obedience trial or classes conducted under the auspices of the Canine Association of Western Australia (Inc.), or a body approved by the local government in whose district the trial or classes are conducted` IS A BOOLEAN
+    `dog is registered as bona fide used in the droving or tending of stock and is being so used, or is going to or returning from a place where it will be or has been so used` IS A BOOLEAN
+    `dog is a foxhound in a pack bona fide engaged in hunting or hound exercise, or in going to or returning from hunting or hound exercise` IS A BOOLEAN
+    `dog is being used for retrieving, duck hunting or other customary sporting purposes` IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 33(2)
+GIVEN f IS A `S33 Greyhound Facts`
+GIVETH A BOOLEAN
+`the greyhound satisfies s 31(1), as modified for greyhounds by s 33(2)` f MEANS
+        f's `dog is held by a person, and that person holds 2 or fewer greyhounds at that time`
+    OR  f's `dog is securely tethered for a temporary purpose by a chain, cord, leash or harness of sufficient strength not exceeding the prescribed length`
+    OR  f's `dog is participating in a greyhound race or trial held under a licence issued under the Racing and Wagering Western Australia Act 2003`
+    OR  f's `dog is in or on a vehicle`
+    OR  f's `dog is being exhibited for show purposes`
+    OR  f's `dog is participating in an obedience trial or classes conducted under the auspices of the Canine Association of Western Australia (Inc.), or a body approved by the local government in whose district the trial or classes are conducted`
+    OR  f's `dog is registered as bona fide used in the droving or tending of stock and is being so used, or is going to or returning from a place where it will be or has been so used`
+    OR  f's `dog is a foxhound in a pack bona fide engaged in hunting or hound exercise, or in going to or returning from hunting or hound exercise`
+    OR  f's `dog is being used for retrieving, duck hunting or other customary sporting purposes`
+
+§§ `33A. Control of dogs in places that are not public`
+
+DECLARE `S33A Facts` HAS
+    `dog is in a place that is not a public place`                                       IS A BOOLEAN
+    `consent to the dog being there has been given by the occupier (or a person apparently authorised on the occupier's behalf), or, if the place is unoccupied, by the owner (or a person apparently authorised on the owner's behalf), or, if the place is an enclosed field, paddock, yard or other place in which animals or birds are confined, by the owner of all such animals or birds` IS A BOOLEAN
+    `dog is controlled as required by s 33GA(6), (7) and (8)`                             IS A BOOLEAN
+        -- @ref Dog Act 1976 (WA) s. 33GA(6)-(8) (encoded in dog-act-1976.l4) -- scoped out, fact-supplied
+    `dog is held or tethered as required by s 31(1)`                                      IS A BOOLEAN
+    `dog is in veterinary premises as defined in the Veterinary Practice Act 2021 s 3`     IS A BOOLEAN
+    `dog is in or on a vehicle`                                                            IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 33A(2)
+GIVEN f IS A `S33A Facts`
+GIVETH A BOOLEAN
+`the dog is exempt from s 33A(1) under s 33A(2)` f MEANS
+    f's `dog is in veterinary premises as defined in the Veterinary Practice Act 2021 s 3` OR f's `dog is in or on a vehicle`
+
+@ref Dog Act 1976 (WA) s. 33A(1)
+GIVEN f IS A `S33A Facts`, dog IS A DogProfile
+GIVETH A BOOLEAN
+`s 33A(1) requirement is satisfied` f dog MEANS
+        f's `consent to the dog being there has been given by the occupier (or a person apparently authorised on the occupier's behalf), or, if the place is unoccupied, by the owner (or a person apparently authorised on the owner's behalf), or, if the place is an enclosed field, paddock, yard or other place in which animals or birds are confined, by the owner of all such animals or birds`
+    OR  (`the dog is a dangerous dog` dog AND f's `dog is controlled as required by s 33GA(6), (7) and (8)`)
+    OR  ((NOT `the dog is a dangerous dog` dog) AND f's `dog is held or tethered as required by s 31(1)`)
+
+@ref Dog Act 1976 (WA) s. 33A(1)
+GIVEN f IS A `S33A Facts`, dog IS A DogProfile
+GIVETH A BOOLEAN
+`s 33A(1) breach` f dog MEANS
+        f's `dog is in a place that is not a public place`
+    AND NOT `s 33A(1) requirement is satisfied` f dog
+    AND NOT `the dog is exempt from s 33A(1) under s 33A(2)` f
+
+@ref Dog Act 1976 (WA) s. 33A(3) Penalty
+GIVEN party IS A LiableParty, dog IS A DogProfile, f IS A `S33A Facts`, defenceFacts IS A `S33B Facts`
+GIVETH A BOOLEAN
+`s 33A(3) offence -- dog in a non-public place without required consent or control` party dog f defenceFacts MEANS
+        `the party is a person liable for the control of the dog` party
+    AND `s 33A(1) breach` f dog
+    AND NOT `a s 33B defence is established` party defenceFacts
+
+@ref Dog Act 1976 (WA) s. 33A(3)(a)-(b) Penalty
+GIVEN dog IS A DogProfile
+GIVETH A Penalty
+`s 33A(3) penalty` dog MEANS
+    IF `the dog is a dangerous dog` dog
+    THEN Penalty WITH fine IS JUST 10_000, `minimum fine` IS JUST 500, `imprisonment months` IS NOTHING, `further offence fine` IS NOTHING
+    ELSE Penalty WITH fine IS JUST 5_000,  `minimum fine` IS NOTHING,  `imprisonment months` IS NOTHING, `further offence fine` IS NOTHING
+
+§§ `33B. Defences applicable to offences under this Division`
+
+DECLARE `S33B Facts` HAS
+    `person took all reasonable precautions and exercised all due diligence to avoid the contravention` IS A BOOLEAN
+    `at the material time the dog was in fact owned by some other identified person over the age of 18 years` IS A BOOLEAN
+    `at the material time the dog was in the possession or control of some other person without the charged person's consent, express or implied` IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 33B
+GIVEN party IS A LiableParty, f IS A `S33B Facts`
+GIVETH A BOOLEAN
+`a s 33B defence is established` party f MEANS
+        f's `person took all reasonable precautions and exercised all due diligence to avoid the contravention`
+    OR  (   party's `is the occupier of premises where the dog is ordinarily kept or ordinarily permitted to live`
+         AND f's `at the material time the dog was in fact owned by some other identified person over the age of 18 years`)
+    OR  (   (party's `is the registered owner of the dog` OR party's `is the owner of the dog`)
+         AND f's `at the material time the dog was in the possession or control of some other person without the charged person's consent, express or implied`)
+
+§§ `33C. Saving`
+
+-- s 33C: nothing in this Part limits any other written law under which the
+-- entry or presence of dogs in a place is prohibited, controlled or
+-- restricted. A pure saving clause -- no fact for a downstream rule to test
+-- -- recorded here as inert prose, per the same convention as s 33D(3) in
+-- dog-act-1976.l4.
+
+-- =============================================================================
+-- Illustrations
+-- =============================================================================
+
+§ `Illustrations`
+
+`an ordinary dog owner` MEANS LiableParty WITH
+    `is the registered owner of the dog` IS TRUE
+    , `is the owner of the dog` IS TRUE
+    , `is the occupier of premises where the dog is ordinarily kept or ordinarily permitted to live` IS TRUE
+    , `has the dog in possession or under control` IS TRUE
+    , `is a veterinarian, or acting on a veterinarian's behalf, in professional practice` IS FALSE
+    , `is a police officer or other person acting under statutory duty or administering this Act` IS FALSE
+
+`an occupier only, not the owner` MEANS LiableParty WITH
+    `is the registered owner of the dog` IS FALSE
+    , `is the owner of the dog` IS FALSE
+    , `is the occupier of premises where the dog is ordinarily kept or ordinarily permitted to live` IS TRUE
+    , `has the dog in possession or under control` IS FALSE
+    , `is a veterinarian, or acting on a veterinarian's behalf, in professional practice` IS FALSE
+    , `is a police officer or other person acting under statutory duty or administering this Act` IS FALSE
+
+`a non-dangerous dog (illustration)` MEANS DogProfile WITH
+    `declared to be a dangerous dog (declared) under s 33E(1)` IS FALSE
+    , `is a dangerous dog (restricted breed)` IS FALSE
+    , `is a commercial security dog` IS FALSE
+
+`a dangerous dog (illustration)` MEANS DogProfile WITH
+    `declared to be a dangerous dog (declared) under s 33E(1)` IS TRUE
+    , `is a dangerous dog (restricted breed)` IS FALSE
+    , `is a commercial security dog` IS FALSE
+
+`a restricted-breed dangerous dog (illustration)` MEANS DogProfile WITH
+    `declared to be a dangerous dog (declared) under s 33E(1)` IS FALSE
+    , `is a dangerous dog (restricted breed)` IS TRUE
+    , `is a commercial security dog` IS FALSE
+
+`no s 33B defence` MEANS `S33B Facts` WITH
+    `person took all reasonable precautions and exercised all due diligence to avoid the contravention` IS FALSE
+    , `at the material time the dog was in fact owned by some other identified person over the age of 18 years` IS FALSE
+    , `at the material time the dog was in the possession or control of some other person without the charged person's consent, express or implied` IS FALSE
+
+§§ `28 -- illustrations`
+
+`owner unaware, made no attempt, aggressive dog` MEANS `S28 Facts` WITH
+    `identity of the owner of the dog was unknown to the operator when the dog entered the facility` IS TRUE
+    , `operator made every reasonable attempt, other than scanning, to identify the owner as soon as practicable after the dog entered the facility` IS FALSE
+    , `operator scanned the dog` IS FALSE
+    , `dog behaves aggressively towards the operator or another person` IS TRUE
+    , `operator believes on reasonable grounds that there is a danger to the health or safety of any person in attempting to scan the dog` IS TRUE
+
+`owner unaware, reasonable attempt made, scan exempt` MEANS `S28 Facts` WITH
+    `identity of the owner of the dog was unknown to the operator when the dog entered the facility` IS TRUE
+    , `operator made every reasonable attempt, other than scanning, to identify the owner as soon as practicable after the dog entered the facility` IS TRUE
+    , `operator scanned the dog` IS FALSE
+    , `dog behaves aggressively towards the operator or another person` IS TRUE
+    , `operator believes on reasonable grounds that there is a danger to the health or safety of any person in attempting to scan the dog` IS TRUE
+
+#ASSERT `s 28(1) offence -- operator fails to make every reasonable attempt to identify the dog's owner` `owner unaware, made no attempt, aggressive dog`
+#ASSERT NOT (`s 28(1) offence -- operator fails to make every reasonable attempt to identify the dog's owner` `owner unaware, reasonable attempt made, scan exempt`)
+
+§§ `29 -- illustrations`
+
+`assisted an authorised person, acted in good faith` MEANS `S29(2) Facts` WITH
+    `person assisted an authorised person or a police officer, at that officer's request and in accordance with their directions` IS TRUE
+    , `person is the owner or occupier of premises for the time being used to detain a dog under this Act` IS FALSE
+    , `the act, matter or thing was done or omitted to be done in good faith for the purposes of carrying out the provisions of this Act` IS TRUE
+
+`assisted an authorised person, but not in good faith` MEANS `S29(2) Facts` WITH
+    `person assisted an authorised person or a police officer, at that officer's request and in accordance with their directions` IS TRUE
+    , `person is the owner or occupier of premises for the time being used to detain a dog under this Act` IS FALSE
+    , `the act, matter or thing was done or omitted to be done in good faith for the purposes of carrying out the provisions of this Act` IS FALSE
+
+#ASSERT `the person is immune from proceedings under s 29(2)` `assisted an authorised person, acted in good faith`
+#ASSERT NOT (`the person is immune from proceedings under s 29(2)` `assisted an authorised person, but not in good faith`)
+
+`grounds -- attack occurred` MEANS `S29(3) Grounds` WITH
+    `it appears to the authorised person that an attack by a dog has occurred` IS TRUE
+    , `it appears to the authorised person that an attack by a dog is likely to occur` IS FALSE
+    , `the dog is in a place in contravention of s 31, 32 or 33A` IS FALSE
+    , `an offence against s 26(4) or 27(2) is being committed in respect of the dog` IS FALSE
+    , `an offence against Division 2 is being committed in respect of the dog` IS FALSE
+    , `moneys are due to the local government in respect of a charge on the dog determined under s 33M` IS FALSE
+    , `the dog is not registered as required under s 7` IS FALSE
+
+`grounds -- nothing applies` MEANS `S29(3) Grounds` WITH
+    `it appears to the authorised person that an attack by a dog has occurred` IS FALSE
+    , `it appears to the authorised person that an attack by a dog is likely to occur` IS FALSE
+    , `the dog is in a place in contravention of s 31, 32 or 33A` IS FALSE
+    , `an offence against s 26(4) or 27(2) is being committed in respect of the dog` IS FALSE
+    , `an offence against Division 2 is being committed in respect of the dog` IS FALSE
+    , `moneys are due to the local government in respect of a charge on the dog determined under s 33M` IS FALSE
+    , `the dog is not registered as required under s 7` IS FALSE
+
+#ASSERT `seizure of the dog under s 29(3) is authorised` `a non-dangerous dog (illustration)` `grounds -- attack occurred`
+#ASSERT NOT (`seizure of the dog under s 29(3) is authorised` `a non-dangerous dog (illustration)` `grounds -- nothing applies`)
+-- a dangerous dog with unpaid s 33M moneys is also a ground, even with no other ground made out:
+#ASSERT `seizure of the dog under s 29(3) is authorised` `a dangerous dog (illustration)` (`S29(3) Grounds` WITH `it appears to the authorised person that an attack by a dog has occurred` IS FALSE, `it appears to the authorised person that an attack by a dog is likely to occur` IS FALSE, `the dog is in a place in contravention of s 31, 32 or 33A` IS FALSE, `an offence against s 26(4) or 27(2) is being committed in respect of the dog` IS FALSE, `an offence against Division 2 is being committed in respect of the dog` IS FALSE, `moneys are due to the local government in respect of a charge on the dog determined under s 33M` IS TRUE, `the dog is not registered as required under s 7` IS FALSE)
+
+-- s 29(3)(e): entry to non-dwelling premises in pursuit is authorised on
+-- reasonable grounds; entry to a dwelling is authorised only if s 33G(1)
+-- applies.
+#ASSERT `entry to premises under s 29(3)(e) is authorised` TRUE FALSE FALSE
+#ASSERT NOT (`entry to premises under s 29(3)(e) is authorised` TRUE TRUE FALSE)
+#ASSERT `entry to premises under s 29(3)(e) is authorised` TRUE TRUE TRUE
+#ASSERT NOT (`entry to premises under s 29(3)(e) is authorised` FALSE FALSE FALSE)
+
+#ASSERT `a s 29(5a) warrant may be issued` `a restricted-breed dangerous dog (illustration)` FALSE TRUE
+#ASSERT NOT (`a s 29(5a) warrant may be issued` `a non-dangerous dog (illustration)` FALSE TRUE)
+#ASSERT `a s 29(5a) warrant may be issued` `a non-dangerous dog (illustration)` TRUE FALSE
+
+`detained, identifiable, 7 days elapsed` MEANS `S29(8) Detention Facts` WITH
+    `dog is wearing a registration tag, or is microchipped, or the owner is otherwise readily identifiable` IS TRUE
+    , `days elapsed since notice was given to the owner under s 29(8)(a)` IS 7
+    , `hours elapsed since the detention commenced` IS 0
+
+`detained, identifiable, 6 days elapsed` MEANS `S29(8) Detention Facts` WITH
+    `dog is wearing a registration tag, or is microchipped, or the owner is otherwise readily identifiable` IS TRUE
+    , `days elapsed since notice was given to the owner under s 29(8)(a)` IS 6
+    , `hours elapsed since the detention commenced` IS 0
+
+#ASSERT `the minimum detention period under s 29(8) has elapsed` `detained, identifiable, 7 days elapsed`
+#ASSERT NOT (`the minimum detention period under s 29(8) has elapsed` `detained, identifiable, 6 days elapsed`)
+
+`no claim, no other grounds` MEANS `S29(10) Destruction Grounds` WITH
+    `the dog is not claimed` IS TRUE
+    , `the person in whose name the dog is registered declines to resume possession of the dog` IS FALSE
+    , `moneys due in relation to the dog are not paid` IS FALSE
+    , `s 33G(6) applies` IS FALSE
+    , `an authorised person is satisfied that delivering up the dog under s 29(8) or (8A) would create circumstances giving rise to an offence against this Act` IS FALSE
+
+`claimed, all moneys paid, no grounds` MEANS `S29(10) Destruction Grounds` WITH
+    `the dog is not claimed` IS FALSE
+    , `the person in whose name the dog is registered declines to resume possession of the dog` IS FALSE
+    , `moneys due in relation to the dog are not paid` IS FALSE
+    , `s 33G(6) applies` IS FALSE
+    , `an authorised person is satisfied that delivering up the dog under s 29(8) or (8A) would create circumstances giving rise to an offence against this Act` IS FALSE
+
+#ASSERT `destruction of the dog under s 29(10) is authorised` `no claim, no other grounds`
+#ASSERT NOT (`destruction of the dog under s 29(10) is authorised` `claimed, all moneys paid, no grounds`)
+
+`savage dog, no assistance, public place` MEANS `S29(13) Facts` WITH
+    `authorised person may seize the dog under s 29(3)` IS TRUE
+    , `it is, in the opinion of the authorised person, dangerous or impracticable to seize the dog because of its savagery, repeated evasion of attempts at seizure, or other sufficient cause` IS TRUE
+    , `assistance of the owner or another person likely to be able to control the dog is not reasonably available` IS TRUE
+    , `there is no other practicable way to enforce the provisions of this Act` IS TRUE
+    , `the dog is in a public place` IS TRUE
+    , `the dog is on premises that are not a public place, and the occupier of those premises consents to the destruction` IS FALSE
+
+`savage dog, but assistance is available` MEANS `S29(13) Facts` WITH
+    `authorised person may seize the dog under s 29(3)` IS TRUE
+    , `it is, in the opinion of the authorised person, dangerous or impracticable to seize the dog because of its savagery, repeated evasion of attempts at seizure, or other sufficient cause` IS TRUE
+    , `assistance of the owner or another person likely to be able to control the dog is not reasonably available` IS FALSE
+    , `there is no other practicable way to enforce the provisions of this Act` IS TRUE
+    , `the dog is in a public place` IS TRUE
+    , `the dog is on premises that are not a public place, and the occupier of those premises consents to the destruction` IS FALSE
+
+#ASSERT `destruction of the dog without seizure under s 29(13) is authorised` `savage dog, no assistance, public place`
+#ASSERT NOT (`destruction of the dog without seizure under s 29(13) is authorised` `savage dog, but assistance is available`)
+
+#ASSERT `destruction of the dog under s 29(12) is authorised` TRUE TRUE
+#ASSERT NOT (`destruction of the dog under s 29(12) is authorised` TRUE FALSE)
+
+§§ `30A -- illustrations`
+
+`required and not exempt` MEANS `S30A Facts` WITH
+    `operator believes on reasonable grounds that the dog is required under s 21 or 22 to be microchipped but is not microchipped` IS TRUE
+    , `operator has no reason to believe the dog is exempt from microchipping as referred to in s 21(4) or 22(4)` IS TRUE
+
+`not required` MEANS `S30A Facts` WITH
+    `operator believes on reasonable grounds that the dog is required under s 21 or 22 to be microchipped but is not microchipped` IS FALSE
+    , `operator has no reason to believe the dog is exempt from microchipping as referred to in s 21(4) or 22(4)` IS TRUE
+
+#ASSERT `the operator may microchip the dog at the owner's expense under s 30A(1)` `required and not exempt`
+#ASSERT NOT (`the operator may microchip the dog at the owner's expense under s 30A(1)` `not required`)
+#ASSERT `the owner is liable to pay the reasonable costs of microchipping under s 30A(2)` TRUE
+#ASSERT NOT (`the owner is liable to pay the reasonable costs of microchipping under s 30A(2)` FALSE)
+
+§§ `30 -- illustrations`
+
+`unregistered dog in public, no exemption` MEANS `S30 Facts` WITH
+    `dog is in a public place` IS TRUE
+    , `dog is wearing a collar to which is securely attached a registration tag that complies with s 18` IS FALSE
+    , `dog is a greyhound participating in a race or trial held under a licence issued under the Racing and Wagering Western Australia Act 2003` IS FALSE
+    , `dog is being exhibited for show purposes` IS FALSE
+    , `dog, under the control of a responsible person, is being trained for or is participating in retrieving, duck hunting or some other customary sporting purpose` IS FALSE
+    , `dog is participating in an obedience trial or classes conducted under the auspices of the Canine Association of Western Australia (Inc.), or a body approved by the local government in whose district the trial or classes are conducted` IS FALSE
+
+`exhibition dog, no collar, exempt` MEANS `S30 Facts` WITH
+    `dog is in a public place` IS TRUE
+    , `dog is wearing a collar to which is securely attached a registration tag that complies with s 18` IS FALSE
+    , `dog is a greyhound participating in a race or trial held under a licence issued under the Racing and Wagering Western Australia Act 2003` IS FALSE
+    , `dog is being exhibited for show purposes` IS TRUE
+    , `dog, under the control of a responsible person, is being trained for or is participating in retrieving, duck hunting or some other customary sporting purpose` IS FALSE
+    , `dog is participating in an obedience trial or classes conducted under the auspices of the Canine Association of Western Australia (Inc.), or a body approved by the local government in whose district the trial or classes are conducted` IS FALSE
+
+#ASSERT `s 30(2) offence -- dog not wearing a compliant collar and tag in a public place` `an ordinary dog owner` `a non-dangerous dog (illustration)` `unregistered dog in public, no exemption` `no s 33B defence`
+#ASSERT NOT (`s 30(2) offence -- dog not wearing a compliant collar and tag in a public place` `an ordinary dog owner` `a non-dangerous dog (illustration)` `exhibition dog, no collar, exempt` `no s 33B defence`)
+#ASSERT NOT (`s 30(2) offence -- dog not wearing a compliant collar and tag in a public place` `an ordinary dog owner` `a dangerous dog (illustration)` `unregistered dog in public, no exemption` `no s 33B defence`)
+
+§§ `31 -- illustrations`
+
+`loose dog in public, no exemption, no prohibition` MEANS `S31 Facts` WITH
+    `dog is in a public place` IS TRUE
+    , `dog is held by a person capable of controlling the dog` IS FALSE
+    , `dog is securely tethered for a temporary purpose by a chain, cord, leash or harness of sufficient strength not exceeding the prescribed length` IS FALSE
+    , `place is specified under s 31(2B) as one where dogs are prohibited at all times` IS FALSE
+    , `place is specified under s 31(2B) as one where dogs are prohibited at the relevant time` IS FALSE
+    , `dog is in a dog exercise area specified under s 31(3A)` IS FALSE
+    , `dog is in a public place in an area of the State outside the metropolitan region or outside a townsite, and not in a rural leashing area specified under s 31(3B)` IS FALSE
+    , `dog is in or on a vehicle` IS FALSE
+    , `dog is being exhibited for show purposes` IS FALSE
+    , `dog is participating in an obedience trial or classes conducted under the auspices of the Canine Association of Western Australia (Inc.), or a body approved by the local government in whose district the trial or classes are conducted` IS FALSE
+    , `dog is registered as bona fide used in the droving or tending of stock and is being so used, or is going to or returning from a place where it will be or has been so used` IS FALSE
+    , `dog is a foxhound in a pack bona fide engaged in hunting or hound exercise, or in going to or returning from hunting or hound exercise` IS FALSE
+    , `dog is being used for retrieving, duck hunting or other customary sporting purposes` IS FALSE
+
+`held dog in public, no prohibition` MEANS `S31 Facts` WITH
+    `dog is in a public place` IS TRUE
+    , `dog is held by a person capable of controlling the dog` IS TRUE
+    , `dog is securely tethered for a temporary purpose by a chain, cord, leash or harness of sufficient strength not exceeding the prescribed length` IS FALSE
+    , `place is specified under s 31(2B) as one where dogs are prohibited at all times` IS FALSE
+    , `place is specified under s 31(2B) as one where dogs are prohibited at the relevant time` IS FALSE
+    , `dog is in a dog exercise area specified under s 31(3A)` IS FALSE
+    , `dog is in a public place in an area of the State outside the metropolitan region or outside a townsite, and not in a rural leashing area specified under s 31(3B)` IS FALSE
+    , `dog is in or on a vehicle` IS FALSE
+    , `dog is being exhibited for show purposes` IS FALSE
+    , `dog is participating in an obedience trial or classes conducted under the auspices of the Canine Association of Western Australia (Inc.), or a body approved by the local government in whose district the trial or classes are conducted` IS FALSE
+    , `dog is registered as bona fide used in the droving or tending of stock and is being so used, or is going to or returning from a place where it will be or has been so used` IS FALSE
+    , `dog is a foxhound in a pack bona fide engaged in hunting or hound exercise, or in going to or returning from hunting or hound exercise` IS FALSE
+    , `dog is being used for retrieving, duck hunting or other customary sporting purposes` IS FALSE
+
+`held dog in a place prohibited at all times` MEANS `S31 Facts` WITH
+    `dog is in a public place` IS TRUE
+    , `dog is held by a person capable of controlling the dog` IS TRUE
+    , `dog is securely tethered for a temporary purpose by a chain, cord, leash or harness of sufficient strength not exceeding the prescribed length` IS FALSE
+    , `place is specified under s 31(2B) as one where dogs are prohibited at all times` IS TRUE
+    , `place is specified under s 31(2B) as one where dogs are prohibited at the relevant time` IS FALSE
+    , `dog is in a dog exercise area specified under s 31(3A)` IS FALSE
+    , `dog is in a public place in an area of the State outside the metropolitan region or outside a townsite, and not in a rural leashing area specified under s 31(3B)` IS FALSE
+    , `dog is in or on a vehicle` IS FALSE
+    , `dog is being exhibited for show purposes` IS FALSE
+    , `dog is participating in an obedience trial or classes conducted under the auspices of the Canine Association of Western Australia (Inc.), or a body approved by the local government in whose district the trial or classes are conducted` IS FALSE
+    , `dog is registered as bona fide used in the droving or tending of stock and is being so used, or is going to or returning from a place where it will be or has been so used` IS FALSE
+    , `dog is a foxhound in a pack bona fide engaged in hunting or hound exercise, or in going to or returning from hunting or hound exercise` IS FALSE
+    , `dog is being used for retrieving, duck hunting or other customary sporting purposes` IS FALSE
+
+#ASSERT `s 31(3) offence -- dog uncontrolled, or in a prohibited place, in contravention of s 31(1) or (2A)` `an ordinary dog owner` `a non-dangerous dog (illustration)` `loose dog in public, no exemption, no prohibition` `no s 33B defence`
+#ASSERT NOT (`s 31(3) offence -- dog uncontrolled, or in a prohibited place, in contravention of s 31(1) or (2A)` `an ordinary dog owner` `a non-dangerous dog (illustration)` `held dog in public, no prohibition` `no s 33B defence`)
+-- s 31(2A) bites even on a dog that is properly held under s 31(1): the s 31(2)
+-- exemptions run only against subsection (1), not against a totally-prohibited
+-- place specified under (2B):
+#ASSERT `s 31(3) offence -- dog uncontrolled, or in a prohibited place, in contravention of s 31(1) or (2A)` `an ordinary dog owner` `a non-dangerous dog (illustration)` `held dog in a place prohibited at all times` `no s 33B defence`
+
+#ASSERT `the s 31(3C) 28-day notice requirement is satisfied` 28
+#ASSERT NOT (`the s 31(3C) 28-day notice requirement is satisfied` 27)
+
+§§ `32 -- illustrations`
+
+`competent handler` MEANS `S32(2) Lead Facts` WITH
+    `capable of controlling the dog` IS TRUE
+    , `carrying, and capable of attaching to the dog for the purpose of controlling it, a chain, cord, leash or harness of sufficient strength not exceeding the prescribed length` IS TRUE
+
+`incapable handler` MEANS `S32(2) Lead Facts` WITH
+    `capable of controlling the dog` IS FALSE
+    , `carrying, and capable of attaching to the dog for the purpose of controlling it, a chain, cord, leash or harness of sufficient strength not exceeding the prescribed length` IS FALSE
+
+`loose dog in exercise area, supervised by competent handler` MEANS `S32 Facts` WITH
+    `dog is in a dog exercise area specified under s 31(3A)` IS TRUE
+    , `dog is in a public place in an area of the State outside the metropolitan region or outside a townsite, and not in a rural leashing area specified under s 31(3B)` IS FALSE
+    , `dog is held in the way referred to in s 31(1)(a)` IS FALSE
+    , `dog is tethered in the way referred to in s 31(1)(b)` IS FALSE
+    , `dog is a greyhound` IS FALSE
+    , `dog is in or on a vehicle` IS FALSE
+    , `dog is being exhibited for show purposes` IS FALSE
+    , `dog is participating in an obedience trial or classes conducted under the auspices of the Canine Association of Western Australia (Inc.), or a body approved by the local government in whose district the trial or classes are conducted` IS FALSE
+    , `dog is registered as bona fide used in the droving or tending of stock and is being so used, or is going to or returning from a place where it will be or has been so used` IS FALSE
+    , `dog is a foxhound in a pack bona fide engaged in hunting or hound exercise, or in going to or returning from hunting or hound exercise` IS FALSE
+    , `dog is being used for retrieving, duck hunting or other customary sporting purposes` IS FALSE
+
+#ASSERT `s 32(4) offence -- dog uncontrolled in an exercise or rural area` `an occupier only, not the owner` `a non-dangerous dog (illustration)` `loose dog in exercise area, supervised by competent handler` `incapable handler` `no s 33B defence`
+#ASSERT NOT (`s 32(4) offence -- dog uncontrolled in an exercise or rural area` `an occupier only, not the owner` `a non-dangerous dog (illustration)` `loose dog in exercise area, supervised by competent handler` `competent handler` `no s 33B defence`)
+
+§§ `33 -- illustrations`
+
+`3 greyhounds held at once, not racing, no exemption` MEANS `S33 Greyhound Facts` WITH
+    `dog is held by a person, and that person holds 2 or fewer greyhounds at that time` IS FALSE
+    , `dog is securely tethered for a temporary purpose by a chain, cord, leash or harness of sufficient strength not exceeding the prescribed length` IS FALSE
+    , `dog is participating in a greyhound race or trial held under a licence issued under the Racing and Wagering Western Australia Act 2003` IS FALSE
+    , `dog is in or on a vehicle` IS FALSE
+    , `dog is being exhibited for show purposes` IS FALSE
+    , `dog is participating in an obedience trial or classes conducted under the auspices of the Canine Association of Western Australia (Inc.), or a body approved by the local government in whose district the trial or classes are conducted` IS FALSE
+    , `dog is registered as bona fide used in the droving or tending of stock and is being so used, or is going to or returning from a place where it will be or has been so used` IS FALSE
+    , `dog is a foxhound in a pack bona fide engaged in hunting or hound exercise, or in going to or returning from hunting or hound exercise` IS FALSE
+    , `dog is being used for retrieving, duck hunting or other customary sporting purposes` IS FALSE
+
+`1 of 2 greyhounds held, not racing, no exemption` MEANS `S33 Greyhound Facts` WITH
+    `dog is held by a person, and that person holds 2 or fewer greyhounds at that time` IS TRUE
+    , `dog is securely tethered for a temporary purpose by a chain, cord, leash or harness of sufficient strength not exceeding the prescribed length` IS FALSE
+    , `dog is participating in a greyhound race or trial held under a licence issued under the Racing and Wagering Western Australia Act 2003` IS FALSE
+    , `dog is in or on a vehicle` IS FALSE
+    , `dog is being exhibited for show purposes` IS FALSE
+    , `dog is participating in an obedience trial or classes conducted under the auspices of the Canine Association of Western Australia (Inc.), or a body approved by the local government in whose district the trial or classes are conducted` IS FALSE
+    , `dog is registered as bona fide used in the droving or tending of stock and is being so used, or is going to or returning from a place where it will be or has been so used` IS FALSE
+    , `dog is a foxhound in a pack bona fide engaged in hunting or hound exercise, or in going to or returning from hunting or hound exercise` IS FALSE
+    , `dog is being used for retrieving, duck hunting or other customary sporting purposes` IS FALSE
+
+#ASSERT NOT (`the greyhound satisfies s 31(1), as modified for greyhounds by s 33(2)` `3 greyhounds held at once, not racing, no exemption`)
+#ASSERT `the greyhound satisfies s 31(1), as modified for greyhounds by s 33(2)` `1 of 2 greyhounds held, not racing, no exemption`
+
+§§ `33A -- illustrations`
+
+`non-public place, no consent, no control` MEANS `S33A Facts` WITH
+    `dog is in a place that is not a public place` IS TRUE
+    , `consent to the dog being there has been given by the occupier (or a person apparently authorised on the occupier's behalf), or, if the place is unoccupied, by the owner (or a person apparently authorised on the owner's behalf), or, if the place is an enclosed field, paddock, yard or other place in which animals or birds are confined, by the owner of all such animals or birds` IS FALSE
+    , `dog is controlled as required by s 33GA(6), (7) and (8)` IS FALSE
+    , `dog is held or tethered as required by s 31(1)` IS FALSE
+    , `dog is in veterinary premises as defined in the Veterinary Practice Act 2021 s 3` IS FALSE
+    , `dog is in or on a vehicle` IS FALSE
+
+`non-public place, consent given` MEANS `S33A Facts` WITH
+    `dog is in a place that is not a public place` IS TRUE
+    , `consent to the dog being there has been given by the occupier (or a person apparently authorised on the occupier's behalf), or, if the place is unoccupied, by the owner (or a person apparently authorised on the owner's behalf), or, if the place is an enclosed field, paddock, yard or other place in which animals or birds are confined, by the owner of all such animals or birds` IS TRUE
+    , `dog is controlled as required by s 33GA(6), (7) and (8)` IS FALSE
+    , `dog is held or tethered as required by s 31(1)` IS FALSE
+    , `dog is in veterinary premises as defined in the Veterinary Practice Act 2021 s 3` IS FALSE
+    , `dog is in or on a vehicle` IS FALSE
+
+#ASSERT `s 33A(3) offence -- dog in a non-public place without required consent or control` `an ordinary dog owner` `a non-dangerous dog (illustration)` `non-public place, no consent, no control` `no s 33B defence`
+#ASSERT NOT (`s 33A(3) offence -- dog in a non-public place without required consent or control` `an ordinary dog owner` `a non-dangerous dog (illustration)` `non-public place, consent given` `no s 33B defence`)
+
+#ASSERT `s 33A(3) penalty` `a dangerous dog (illustration)` EQUALS Penalty WITH fine IS JUST 10_000, `minimum fine` IS JUST 500, `imprisonment months` IS NOTHING, `further offence fine` IS NOTHING
+#ASSERT `s 33A(3) penalty` `a non-dangerous dog (illustration)` EQUALS Penalty WITH fine IS JUST 5_000, `minimum fine` IS NOTHING, `imprisonment months` IS NOTHING, `further offence fine` IS NOTHING
+
+§§ `33B -- illustrations`
+
+`occupier, dog owned by another identified adult` MEANS `S33B Facts` WITH
+    `person took all reasonable precautions and exercised all due diligence to avoid the contravention` IS FALSE
+    , `at the material time the dog was in fact owned by some other identified person over the age of 18 years` IS TRUE
+    , `at the material time the dog was in the possession or control of some other person without the charged person's consent, express or implied` IS FALSE
+
+`owner, dog was with another without consent` MEANS `S33B Facts` WITH
+    `person took all reasonable precautions and exercised all due diligence to avoid the contravention` IS FALSE
+    , `at the material time the dog was in fact owned by some other identified person over the age of 18 years` IS FALSE
+    , `at the material time the dog was in the possession or control of some other person without the charged person's consent, express or implied` IS TRUE
+
+#ASSERT `a s 33B defence is established` `an occupier only, not the owner` `occupier, dog owned by another identified adult`
+#ASSERT `a s 33B defence is established` `an ordinary dog owner` `owner, dog was with another without consent`
+-- the (c) limb does not avail an occupier who is not also the owner:
+#ASSERT NOT (`a s 33B defence is established` `an occupier only, not the owner` `owner, dog was with another without consent`)

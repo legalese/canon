@@ -1,0 +1,94 @@
+IMPORT prelude
+
+-- =============================================================================
+-- Dog Act 1976 (Western Australia) -- shared domain module
+--
+-- The genuinely cross-cutting building blocks from s. 3 "Terms used" that
+-- more than one part of this Act's encoding reads: who counts as a "person
+-- liable for the control of the dog", what "dangerous dog" and "attack"
+-- mean, and the shared shape of a statutory Penalty. Every other module in
+-- this corpus IMPORTs this one rather than re-declaring these.
+--
+-- Deliberately NOT here: the DogActParty/DogActAction regulative-rule types
+-- and any dollar-amount Penalty presets. L4 sum types cannot be extended
+-- across modules, and the Act's remaining Parts introduce enough distinct
+-- actors (CEO, Minister, Registration Officer, State Administrative
+-- Tribunal, pet shop operators, ...) and distinct penalty amounts that
+-- forcing them through one shared enum or one shared preset would be a
+-- false economy -- each module declares its own, scoped to what it needs.
+-- =============================================================================
+
+§ `3. Terms used (extract, cross-cutting)`
+
+DECLARE LiableParty HAS
+    `is the registered owner of the dog`                                                      IS A BOOLEAN
+    `is the owner of the dog`                                                                  IS A BOOLEAN
+    `is the occupier of premises where the dog is ordinarily kept or ordinarily permitted to live` IS A BOOLEAN
+    `has the dog in possession or under control`                                               IS A BOOLEAN
+    `is a veterinarian, or acting on a veterinarian's behalf, in professional practice`         IS A BOOLEAN
+    `is a police officer or other person acting under statutory duty or administering this Act` IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 3 "person liable for the control of the dog"
+GIVEN party IS A LiableParty
+GIVETH A BOOLEAN
+`the party is a person liable for the control of the dog` party MEANS
+        (   party's `is the registered owner of the dog`
+         OR party's `is the owner of the dog`
+         OR party's `is the occupier of premises where the dog is ordinarily kept or ordinarily permitted to live`
+         OR party's `has the dog in possession or under control`)
+    AND NOT party's `is a veterinarian, or acting on a veterinarian's behalf, in professional practice`
+    AND NOT party's `is a police officer or other person acting under statutory duty or administering this Act`
+
+DECLARE DogProfile HAS
+    `declared to be a dangerous dog (declared) under s 33E(1)` IS A BOOLEAN
+    `is a dangerous dog (restricted breed)`                    IS A BOOLEAN
+    `is a commercial security dog`                             IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 3 "dangerous dog"
+GIVEN dog IS A DogProfile
+GIVETH A BOOLEAN
+`the dog is a dangerous dog` dog MEANS
+        dog's `declared to be a dangerous dog (declared) under s 33E(1)`
+    OR  dog's `is a dangerous dog (restricted breed)`
+    OR  dog's `is a commercial security dog`
+
+@ref Dog Act 1976 (WA) s. 3 "attack"
+-- AMBIGUITY (F-ATTACK-PROVOCATION-UNLESS): "does not include behaviour...
+-- induced by provocation, but includes (a)-(d)..., unless the owner
+-- establishes...reasonable cause". Taken reading: the provocation exclusion
+-- is a categorical carve-out; "unless...reasonable cause" qualifies only the
+-- (a)-(d) inclusion list. Rejected: the "unless" clause reopening the whole
+-- definition, including the provocation exclusion itself. See
+-- sources/fork-register.json entry F-ATTACK-PROVOCATION-UNLESS.
+DECLARE AttackFacts HAS
+    `behaviour was an immediate response to, and induced by, provocation` IS A BOOLEAN
+    `behaviour aggressively rushed at or harassed a person or animal`     IS A BOOLEAN
+    `behaviour bit or otherwise caused physical injury`                  IS A BOOLEAN
+    `behaviour tore clothing or caused damage to property`               IS A BOOLEAN
+    `behaviour was an attempt to attack, or would cause a reasonable person to fear physical injury` IS A BOOLEAN
+    `owner establishes the behaviour was justified by a reasonable cause` IS A BOOLEAN
+
+GIVEN facts IS AN AttackFacts
+GIVETH A BOOLEAN
+`the behaviour is an attack` facts MEANS
+    IF facts's `behaviour was an immediate response to, and induced by, provocation`
+    THEN FALSE
+    ELSE
+            (   facts's `behaviour aggressively rushed at or harassed a person or animal`
+             OR facts's `behaviour bit or otherwise caused physical injury`
+             OR facts's `behaviour tore clothing or caused damage to property`
+             OR facts's `behaviour was an attempt to attack, or would cause a reasonable person to fear physical injury`)
+        AND NOT facts's `owner establishes the behaviour was justified by a reasonable cause`
+
+-- Penalty: the shared shape for every fine/minimum/imprisonment/further-offence
+-- limb across the Act. `fine` and `imprisonment months` are MAYBE NUMBER
+-- (not NUMBER 0) because some crimes carry imprisonment with no fine at all,
+-- and many limbs carry no minimum and no further-offence add-on -- absence
+-- is a different fact from a zero. Modules construct their OWN dollar-amount
+-- presets; none are declared here.
+DECLARE Penalty HAS
+    fine                    IS A MAYBE NUMBER
+    `minimum fine`          IS A MAYBE NUMBER
+    `imprisonment months`   IS A MAYBE NUMBER
+    `further offence fine`  IS A MAYBE NUMBER
+        -- @ref Interpretation Act 1984 s. 71 -- "further offence" multiplier not computed; scoped out

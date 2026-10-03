@@ -1,0 +1,862 @@
+IMPORT prelude
+
+-- =============================================================================
+-- Dog Act 1976 (Western Australia) -- Dog attacks and dangerous dogs
+--
+-- Isomorphic encoding of s. 3 (extract, the defined terms this file reads)
+-- and Part VI Division 1 s. 33D ("Dog attacks etc.") and Division 2
+-- ("Dangerous dogs", ss 33E-33M), as at the compilation dated 28 Nov 2024
+-- [version 08-b0-00], re-verified current 2026-09-09.
+--
+-- Source, provenance and scope: source-s33.txt (this directory) and
+-- sources/source-bundle.json. External-modification sweep:
+-- sources/external-modifications.json. Ambiguity register:
+-- sources/fork-register.json. Five ambiguities were found; one
+-- (F-DANGEROUS-DOG-STATUS-TIMING) is materialised below as the
+-- `Interpretation` record's `dangerousDogStatusTiming` field.
+--
+-- SCOPED OUT (cited at their site with @ref, never expanded): s. 15
+-- (registration fees), s. 22 ("the relevant day" for microchipping), s. 29
+-- (power to seize dogs generally), s. 30(3) (working-dog exemption), s. 31(2B)
+-- (place declarations), Interpretation Act 1984 s. 71 (continuing/further
+-- offences -- recorded as a bare per-further-offence NUMBER, not computed).
+-- =============================================================================
+
+§ `3. Terms used (extract)`
+
+DECLARE LiableParty HAS
+    `is the registered owner of the dog`                                                      IS A BOOLEAN
+    `is the owner of the dog`                                                                  IS A BOOLEAN
+    `is the occupier of premises where the dog is ordinarily kept or ordinarily permitted to live` IS A BOOLEAN
+    `has the dog in possession or under control`                                               IS A BOOLEAN
+    `is a veterinarian, or acting on a veterinarian's behalf, in professional practice`         IS A BOOLEAN
+    `is a police officer or other person acting under statutory duty or administering this Act` IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 3 "person liable for the control of the dog"
+GIVEN party IS A LiableParty
+GIVETH A BOOLEAN
+`the party is a person liable for the control of the dog` party MEANS
+        (   party's `is the registered owner of the dog`
+         OR party's `is the owner of the dog`
+         OR party's `is the occupier of premises where the dog is ordinarily kept or ordinarily permitted to live`
+         OR party's `has the dog in possession or under control`)
+    AND NOT party's `is a veterinarian, or acting on a veterinarian's behalf, in professional practice`
+    AND NOT party's `is a police officer or other person acting under statutory duty or administering this Act`
+
+DECLARE DogProfile HAS
+    `declared to be a dangerous dog (declared) under s 33E(1)` IS A BOOLEAN
+    `is a dangerous dog (restricted breed)`                    IS A BOOLEAN
+    `is a commercial security dog`                             IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 3 "dangerous dog"
+GIVEN dog IS A DogProfile
+GIVETH A BOOLEAN
+`the dog is a dangerous dog` dog MEANS
+        dog's `declared to be a dangerous dog (declared) under s 33E(1)`
+    OR  dog's `is a dangerous dog (restricted breed)`
+    OR  dog's `is a commercial security dog`
+
+@ref Dog Act 1976 (WA) s. 3 "attack"
+-- AMBIGUITY (F-ATTACK-PROVOCATION-UNLESS): "does not include behaviour...
+-- induced by provocation, but includes (a)-(d)..., unless the owner
+-- establishes...reasonable cause". Taken reading: the provocation exclusion
+-- is a categorical carve-out; "unless...reasonable cause" qualifies only the
+-- (a)-(d) inclusion list. Rejected: the "unless" clause reopening the whole
+-- definition, including the provocation exclusion itself. See
+-- sources/fork-register.json entry F-ATTACK-PROVOCATION-UNLESS.
+DECLARE AttackFacts HAS
+    `behaviour was an immediate response to, and induced by, provocation` IS A BOOLEAN
+    `behaviour aggressively rushed at or harassed a person or animal`     IS A BOOLEAN
+    `behaviour bit or otherwise caused physical injury`                  IS A BOOLEAN
+    `behaviour tore clothing or caused damage to property`               IS A BOOLEAN
+    `behaviour was an attempt to attack, or would cause a reasonable person to fear physical injury` IS A BOOLEAN
+    `owner establishes the behaviour was justified by a reasonable cause` IS A BOOLEAN
+
+GIVEN facts IS AN AttackFacts
+GIVETH A BOOLEAN
+`the behaviour is an attack` facts MEANS
+    IF facts's `behaviour was an immediate response to, and induced by, provocation`
+    THEN FALSE
+    ELSE
+            (   facts's `behaviour aggressively rushed at or harassed a person or animal`
+             OR facts's `behaviour bit or otherwise caused physical injury`
+             OR facts's `behaviour tore clothing or caused damage to property`
+             OR facts's `behaviour was an attempt to attack, or would cause a reasonable person to fear physical injury`)
+        AND NOT facts's `owner establishes the behaviour was justified by a reasonable cause`
+
+-- Penalty: a shared shape for every fine/minimum/imprisonment/further-offence
+-- limb in ss 33D and 33E-33M. `fine` and `imprisonment months` are MAYBE
+-- NUMBER (not NUMBER 0) because s 33GA(11)'s crime carries imprisonment with
+-- no fine at all, and several limbs carry no minimum and no further-offence
+-- add-on -- absence is a different fact from a zero.
+DECLARE Penalty HAS
+    fine                     IS A MAYBE NUMBER
+    `minimum fine`           IS A MAYBE NUMBER
+    `imprisonment months`    IS A MAYBE NUMBER
+    `further offence fine`  IS A MAYBE NUMBER
+        @ref Interpretation Act 1984 s. 71 -- "further offence" multiplier not computed; scoped out
+
+-- The recurring $10,000 / $500 minimum / $500 further-offence shape: ss
+-- 33GA(1),(2),(4),(5),(6),(7),(8),(9); 33GB(1); 33K(1),(2),(3),(4),(5A).
+`standard dangerous dog offence penalty` MEANS
+    Penalty WITH fine IS JUST 10_000, `minimum fine` IS JUST 500, `imprisonment months` IS NOTHING, `further offence fine` IS JUST 500
+
+-- The recurring $10,000 / $500 minimum, no further-offence shape: ss
+-- 33GC(2),(3),(4),(5); 33GD; 33GE(2).
+`dangerous dog transfer offence penalty` MEANS
+    Penalty WITH fine IS JUST 10_000, `minimum fine` IS JUST 500, `imprisonment months` IS NOTHING, `further offence fine` IS NOTHING
+
+§ `Interpretation -- materialised ambiguity`
+
+-- R4: fork F-DANGEROUS-DOG-STATUS-TIMING (sources/fork-register.json) is
+-- materialised as this field. Taken reading: statusAtTimeOfOffence.
+DECLARE DangerousDogStatusTiming IS ONE OF
+    statusAtTimeOfOffence
+    statusAtTimeOfProsecution
+
+DECLARE Interpretation HAS
+    dangerousDogStatusTiming IS A DangerousDogStatusTiming
+
+§ `Part VI, Division 1 -- Dogs generally`
+§§ `33D. Dog attacks etc.`
+
+DECLARE AttackIncident HAS
+    `the behaviour is an attack (s 3)`                             IS A BOOLEAN
+    `physical injury was caused to the person or animal`           IS A BOOLEAN
+    `dog's dangerous-dog status at the time of this offence`       IS A DogProfile
+    `dog's dangerous-dog status now`                                IS A DogProfile
+
+@ref Dog Act 1976 (WA) s. 33D Penalty limbs; F-DANGEROUS-DOG-STATUS-TIMING
+GIVEN incident IS AN AttackIncident, interp IS AN Interpretation
+GIVETH A BOOLEAN
+`the dog counted as a dangerous dog for a s 33D penalty` incident interp MEANS
+    CONSIDER interp's dangerousDogStatusTiming
+    WHEN statusAtTimeOfOffence    THEN `the dog is a dangerous dog` (incident's `dog's dangerous-dog status at the time of this offence`)
+    WHEN statusAtTimeOfProsecution THEN `the dog is a dangerous dog` (incident's `dog's dangerous-dog status now`)
+
+@ref Dog Act 1976 (WA) s. 33D(1)
+GIVEN party IS A LiableParty, incident IS AN AttackIncident
+GIVETH A BOOLEAN
+`s 33D(1) offence -- attack or chase causing physical injury` party incident MEANS
+        `the party is a person liable for the control of the dog` party
+    AND incident's `the behaviour is an attack (s 3)`
+    AND incident's `physical injury was caused to the person or animal`
+
+@ref Dog Act 1976 (WA) s. 33D(1) Penalty
+GIVEN incident IS AN AttackIncident, interp IS AN Interpretation
+GIVETH A Penalty
+`s 33D(1) penalty` incident interp MEANS
+    IF `the dog counted as a dangerous dog for a s 33D penalty` incident interp
+    THEN Penalty WITH fine IS JUST 20_000, `minimum fine` IS JUST 1_000, `imprisonment months` IS NOTHING, `further offence fine` IS NOTHING
+    ELSE Penalty WITH fine IS JUST 10_000, `minimum fine` IS NOTHING,    `imprisonment months` IS NOTHING, `further offence fine` IS NOTHING
+
+@ref Dog Act 1976 (WA) s. 33D(2A)
+GIVEN party IS A LiableParty, incident IS AN AttackIncident
+GIVETH A BOOLEAN
+`s 33D(2A) offence -- attack or chase without physical injury` party incident MEANS
+        `the party is a person liable for the control of the dog` party
+    AND incident's `the behaviour is an attack (s 3)`
+    AND NOT incident's `physical injury was caused to the person or animal`
+
+@ref Dog Act 1976 (WA) s. 33D(2A) Penalty
+GIVEN incident IS AN AttackIncident, interp IS AN Interpretation
+GIVETH A Penalty
+`s 33D(2A) penalty` incident interp MEANS
+    IF `the dog counted as a dangerous dog for a s 33D penalty` incident interp
+    THEN Penalty WITH fine IS JUST 10_000, `minimum fine` IS JUST 500, `imprisonment months` IS NOTHING, `further offence fine` IS NOTHING
+    ELSE Penalty WITH fine IS JUST 3_000,  `minimum fine` IS NOTHING,  `imprisonment months` IS NOTHING, `further offence fine` IS NOTHING
+
+DECLARE AttackDefenceFacts HAS
+    `dog used in good faith in reasonable defence of a person or property, or for droving/removal of a trespassing animal` IS A BOOLEAN
+    `charged person is the occupier where the dog is ordinarily kept or permitted to live, and the dog was owned by an identified adult` IS A BOOLEAN
+    `charged person is the owner, and the dog was in another person's possession or control without the owner's consent` IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 33D(2B)
+GIVEN d IS AN AttackDefenceFacts
+GIVETH A BOOLEAN
+`a s 33D(1)/(2A) defence is established` d MEANS
+        d's `dog used in good faith in reasonable defence of a person or property, or for droving/removal of a trespassing animal`
+    OR  d's `charged person is the occupier where the dog is ordinarily kept or permitted to live, and the dog was owned by an identified adult`
+    OR  d's `charged person is the owner, and the dog was in another person's possession or control without the owner's consent`
+
+DECLARE SettingOnFacts HAS
+    `person set on or urged the dog to attack or chase a person or animal`             IS A BOOLEAN
+    `done in good faith in the reasonable defence of a person or property`             IS A BOOLEAN
+    `done in good faith for the droving or removal of a trespassing or consented-to animal` IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 33D(2)
+GIVEN party IS A LiableParty, f IS A SettingOnFacts
+GIVETH A BOOLEAN
+`s 33D(2) offence -- setting on or urging a dog to attack` party f MEANS
+        `the party is a person liable for the control of the dog` party
+    AND f's `person set on or urged the dog to attack or chase a person or animal`
+    AND NOT (   f's `done in good faith in the reasonable defence of a person or property`
+             OR f's `done in good faith for the droving or removal of a trespassing or consented-to animal`)
+
+@ref Dog Act 1976 (WA) s. 33D(2) Penalty
+GIVEN incident IS AN AttackIncident, interp IS AN Interpretation
+GIVETH A Penalty
+`s 33D(2) penalty` incident interp MEANS
+    IF `the dog counted as a dangerous dog for a s 33D penalty` incident interp
+    THEN Penalty WITH fine IS JUST 20_000, `minimum fine` IS JUST 1_000, `imprisonment months` IS JUST 24, `further offence fine` IS NOTHING
+    ELSE Penalty WITH fine IS JUST 10_000, `minimum fine` IS NOTHING,    `imprisonment months` IS JUST 12, `further offence fine` IS NOTHING
+
+-- s 33D(3) -- saving clause: this section does not affect the duty under The
+-- Criminal Code s 266(2), or that Code's Chapter XXVIII/XXIX, or any other
+-- law about the consequences of failing that duty. Not a computed rule --
+-- there is no fact this encoding derives from a saving clause -- so it is
+-- recorded here as inert prose, per the scope note above.
+
+§ `Part VI, Division 2 -- Dangerous dogs`
+§§ `33E. Individual dog may be declared to be dangerous dog (declared)`
+
+-- AMBIGUITY (F-REPEATEDLY-TENDENCY): "repeatedly" (s 33E(1)(b)) is
+-- undefined. Delegated to the declaring local government's/authorised
+-- person's own certified opinion, per s 33E(1)'s own "in the opinion of"
+-- language. See sources/fork-register.json entry F-REPEATEDLY-TENDENCY.
+DECLARE DeclarationGrounds HAS
+    `dog has caused injury or damage by an attack on, or chasing, a person, animal or vehicle` IS A BOOLEAN
+    `dog has repeatedly shown a tendency to attack or chase a person, animal or vehicle`        IS A BOOLEAN
+    `dog has repeatedly shown a tendency to threaten to attack`                                 IS A BOOLEAN
+    `behaviour meets other criteria prescribed for the purpose of s 33E`                        IS A BOOLEAN
+    `s 30(3) working-dog exemption applies to this behaviour`                                   IS A BOOLEAN
+        -- @ref Dog Act 1976 (WA) s. 30(3) -- scoped out, fact-supplied
+
+@ref Dog Act 1976 (WA) s. 33E(1)-(2)
+GIVEN g IS A DeclarationGrounds
+GIVETH A BOOLEAN
+`grounds exist to declare the dog a dangerous dog (declared)` g MEANS
+        g's `dog has caused injury or damage by an attack on, or chasing, a person, animal or vehicle`
+    OR  (NOT g's `s 30(3) working-dog exemption applies to this behaviour`
+         AND (   g's `dog has repeatedly shown a tendency to attack or chase a person, animal or vehicle`
+              OR g's `dog has repeatedly shown a tendency to threaten to attack`))
+    OR  g's `behaviour meets other criteria prescribed for the purpose of s 33E`
+
+§§ `33F. Owner to be notified of making of declaration`
+
+DECLARE `S33F Notice` HAS
+    `gives reasons for the making of the declaration`                             IS A BOOLEAN
+    `specifies the owner's right to object or apply for review within 7 days`     IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 33F(2)
+GIVEN n IS A `S33F Notice`
+GIVETH A BOOLEAN
+`the s 33F(1) notice satisfies its content requirements` n MEANS
+        n's `gives reasons for the making of the declaration`
+    AND n's `specifies the owner's right to object or apply for review within 7 days`
+
+@ref Dog Act 1976 (WA) s. 33F(3)
+GIVEN `days since notice given` IS A NUMBER
+GIVETH A BOOLEAN
+`the declaration has taken effect` `days since notice given` MEANS
+    `days since notice given` AT LEAST 7
+
+DECLARE DogActParty IS ONE OF
+    `Local Government`
+    `Dog Owner`
+    `A Person Liable For The Control Of The Dog`
+
+DECLARE DogActAction IS ONE OF
+    `lodge written objection with the local government`
+    `apply directly to the State Administrative Tribunal for review`
+    `notify the local government under s 33K(2)`
+
+@ref Dog Act 1976 (WA) s. 33F(2)(b)
+`s 33F(2)(b) -- owner's right to object or apply for review` MEANS
+    (PARTY `Dog Owner`
+     MAY   `lodge written objection with the local government`
+     WITHIN 7
+     HENCE FULFILLED
+     LEST  FULFILLED)
+    ROR
+    (PARTY `Dog Owner`
+     MAY   `apply directly to the State Administrative Tribunal for review`
+     WITHIN 7
+     HENCE FULFILLED
+     LEST  FULFILLED)
+
+-- s 33F(6)(b)/(7): if the local government has not notified its
+-- determination of a lodged objection within 35 days, the owner gains an
+-- extended (42-day) right to apply to SAT. Modelled as an eligibility
+-- predicate rather than a further deontic composition, since it is a
+-- conditionally-arising right rather than a standalone duty with its own
+-- WITHIN.
+@ref Dog Act 1976 (WA) s. 33F(6)
+GIVEN `objection was lodged` IS A BOOLEAN, `objection was dismissed` IS A BOOLEAN,
+      `days since notice of dismissal, if dismissed` IS A NUMBER,
+      `days since notice of the declaration, if not yet determined` IS A NUMBER
+GIVETH A BOOLEAN
+`the owner may apply to SAT under s 33F(6)` `objection was lodged` `objection was dismissed` `days since notice of dismissal, if dismissed` `days since notice of the declaration, if not yet determined` MEANS
+        `objection was lodged`
+    AND (   (`objection was dismissed` AND `days since notice of dismissal, if dismissed` AT MOST 7)
+         OR ((NOT `objection was dismissed`) AND `days since notice of the declaration, if not yet determined` AT LEAST 35 AND `days since notice of the declaration, if not yet determined` AT MOST 42))
+
+§§ `33GA. Offences relating to dangerous dogs`
+
+DECLARE CollarFacts HAS
+    `dog is a commercial security dog`                                                        IS A BOOLEAN
+    `dog wears a collar of the prescribed kind, with information attached or endorsed as required` IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 33GA(1)
+GIVEN party IS A LiableParty, f IS A CollarFacts
+GIVETH A BOOLEAN
+`s 33GA(1) offence -- dangerous dog not wearing the required collar` party f MEANS
+        `the party is a person liable for the control of the dog` party
+    AND NOT f's `dog wears a collar of the prescribed kind, with information attached or endorsed as required`
+
+DECLARE EnclosureFacts HAS
+    `dog is a commercial security dog`                                     IS A BOOLEAN
+    `commercial security dog is working (s 33GA(3))`                      IS A BOOLEAN
+    `enclosure prevents the dog from escaping`                             IS A BOOLEAN
+    `enclosure prevents removal or release without permission`            IS A BOOLEAN
+    `enclosure prevents entry by an unassisted child under 7`             IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 33GA(2)-(3)
+GIVEN party IS A LiableParty, f IS AN EnclosureFacts
+GIVETH A BOOLEAN
+`s 33GA(2) offence -- dangerous dog's enclosure not compliant` party f MEANS
+        `the party is a person liable for the control of the dog` party
+    AND NOT (f's `dog is a commercial security dog` AND f's `commercial security dog is working (s 33GA(3))`)
+    AND NOT (   f's `enclosure prevents the dog from escaping`
+             AND f's `enclosure prevents removal or release without permission`
+             AND f's `enclosure prevents entry by an unassisted child under 7`)
+
+DECLARE WorkingSecurityDogFacts HAS
+    `dog confined to the premises in a compliant enclosure`                                   IS A BOOLEAN
+    `a person other than the handler has lawful access to the working area`                   IS A BOOLEAN
+    `during that access, the dog is in a compliant enclosure`                                  IS A BOOLEAN
+    `during that access, the dog is held on a compliant lead by a capable adult`               IS A BOOLEAN
+    `during that access, the dog is securely, temporarily tethered on a compliant lead`         IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 33GA(4)
+GIVEN party IS A LiableParty, f IS A WorkingSecurityDogFacts
+GIVETH A BOOLEAN
+`s 33GA(4) offence -- working commercial security dog not compliantly confined` party f MEANS
+    LET `access is safeguarded` MEANS
+            (NOT f's `a person other than the handler has lawful access to the working area`)
+        OR  f's `during that access, the dog is in a compliant enclosure`
+        OR  f's `during that access, the dog is held on a compliant lead by a capable adult`
+        OR  f's `during that access, the dog is securely, temporarily tethered on a compliant lead`
+    IN
+            `the party is a person liable for the control of the dog` party
+        AND NOT (f's `dog confined to the premises in a compliant enclosure` AND `access is safeguarded`)
+
+@ref Dog Act 1976 (WA) s. 33GA(5)
+GIVEN party IS A LiableParty, `warning sign of the prescribed kind is displayed at each entrance` IS A BOOLEAN
+GIVETH A BOOLEAN
+`s 33GA(5) offence -- occupier fails to display the required warning sign` party `warning sign of the prescribed kind is displayed at each entrance` MEANS
+        `the party is a person liable for the control of the dog` party
+    AND NOT `warning sign of the prescribed kind is displayed at each entrance`
+
+DECLARE UnconfinedDogFacts HAS
+    `dog is confined in an enclosure`                                        IS A BOOLEAN
+    `dog wears a muzzle`                                                     IS A BOOLEAN
+    `dog is held by a compliant lead, by a capable adult`                    IS A BOOLEAN
+    `dog is securely, temporarily tethered on a compliant lead`              IS A BOOLEAN
+    `dog is controlled by a capable adult`                                   IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 33GA(6)
+GIVEN party IS A LiableParty, f IS AN UnconfinedDogFacts
+GIVETH A BOOLEAN
+`s 33GA(6) offence -- unconfined dangerous dog not muzzled` party f MEANS
+        `the party is a person liable for the control of the dog` party
+    AND NOT f's `dog is confined in an enclosure`
+    AND NOT f's `dog wears a muzzle`
+
+@ref Dog Act 1976 (WA) s. 33GA(7)
+GIVEN party IS A LiableParty, f IS AN UnconfinedDogFacts
+GIVETH A BOOLEAN
+`s 33GA(7) offence -- unconfined dangerous dog not held or tethered` party f MEANS
+        `the party is a person liable for the control of the dog` party
+    AND NOT f's `dog is confined in an enclosure`
+    AND NOT (f's `dog is held by a compliant lead, by a capable adult` OR f's `dog is securely, temporarily tethered on a compliant lead`)
+
+@ref Dog Act 1976 (WA) s. 33GA(8)
+GIVEN party IS A LiableParty, f IS AN UnconfinedDogFacts
+GIVETH A BOOLEAN
+`s 33GA(8) offence -- unconfined dangerous dog not controlled by a capable adult` party f MEANS
+        `the party is a person liable for the control of the dog` party
+    AND NOT f's `dog is confined in an enclosure`
+    AND NOT f's `dog is controlled by a capable adult`
+
+DECLARE PublicPlaceFacts HAS
+    `dog is in a public place`                                              IS A BOOLEAN
+    `place is specified under s 31(2B) as prohibited at all times`          IS A BOOLEAN
+        -- @ref Dog Act 1976 (WA) s. 31(2B) -- scoped out, fact-supplied
+    `place is specified under s 31(2B) as prohibited at this time`          IS A BOOLEAN
+        -- @ref Dog Act 1976 (WA) s. 31(2B) -- scoped out, fact-supplied
+
+@ref Dog Act 1976 (WA) s. 33GA(9)
+GIVEN party IS A LiableParty, f IS A PublicPlaceFacts
+GIVETH A BOOLEAN
+`s 33GA(9) offence -- dangerous dog in a prohibited public place` party f MEANS
+        `the party is a person liable for the control of the dog` party
+    AND f's `dog is in a public place`
+    AND (f's `place is specified under s 31(2B) as prohibited at all times` OR f's `place is specified under s 31(2B) as prohibited at this time`)
+
+@ref Dog Act 1976 (WA) s. 33GA(10)-(11)
+-- AMBIGUITY (F-ENDANGER-LIFE): "endanger the life of a person" (s 33GA(10)(b))
+-- is undefined. Delegated to fact-supply -- see
+-- sources/fork-register.json entry F-ENDANGER-LIFE.
+DECLARE DangerousDogControlFacts HAS
+    `the dog killed a person`                          IS A BOOLEAN
+    `the dog's behaviour endangered a person's life`    IS A BOOLEAN
+
+GIVEN party IS A LiableParty, f IS A DangerousDogControlFacts
+GIVETH A BOOLEAN
+`the crime under s 33GA(11) is committed` party f MEANS
+        `the party is a person liable for the control of the dog` party
+    AND (f's `the dog killed a person` OR f's `the dog's behaviour endangered a person's life`)
+
+`s 33GA(11) penalty` MEANS
+    Penalty WITH fine IS NOTHING, `minimum fine` IS NOTHING, `imprisonment months` IS JUST 120, `further offence fine` IS NOTHING
+
+§§ `33GB. Dangerous dogs (restricted breed) to be sterilised`
+
+@ref Dog Act 1976 (WA) s. 33GB(1)
+GIVEN `owner of a dangerous dog (restricted breed) that has reached 3 months of age` IS A BOOLEAN,
+      `the dog is sterilised` IS A BOOLEAN
+GIVETH A BOOLEAN
+`s 33GB(1) offence -- restricted-breed dog not sterilised` `owner of a dangerous dog (restricted breed) that has reached 3 months of age` `the dog is sterilised` MEANS
+        `owner of a dangerous dog (restricted breed) that has reached 3 months of age`
+    AND NOT `the dog is sterilised`
+
+@ref Dog Act 1976 (WA) s. 33GB(2)
+GIVEN `dog has a physical condition likely to cause death if sterilised` IS A BOOLEAN, `dog is sterile` IS A BOOLEAN
+GIVETH A BOOLEAN
+`a s 33GB(1) defence is established` `dog has a physical condition likely to cause death if sterilised` `dog is sterile` MEANS
+    `dog has a physical condition likely to cause death if sterilised` OR `dog is sterile`
+
+§§ `33GC. Restrictions on transferring ownership of dangerous dogs (restricted breed)`
+
+GIVEN `pup has at least one parent that is a dangerous dog (restricted breed)` IS A BOOLEAN, `pup is under 3 months of age` IS A BOOLEAN
+GIVETH A BOOLEAN
+`the pup is a restricted breed pup` `pup has at least one parent that is a dangerous dog (restricted breed)` `pup is under 3 months of age` MEANS
+    `pup has at least one parent that is a dangerous dog (restricted breed)` AND `pup is under 3 months of age`
+
+DECLARE TransferFacts HAS
+    `subject is a dangerous dog (restricted breed) or a restricted breed pup` IS A BOOLEAN
+    `forms part of a deceased estate, transferred by the executor or administrator` IS A BOOLEAN
+    `owner certified by a medical practitioner as incapable of caring for the dog or fulfilling an owner's responsibilities` IS A BOOLEAN
+    `Minister forms the view that extraordinary conditions justify the transfer, in his absolute discretion` IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 33GC(2)
+GIVEN f IS A TransferFacts, `subject was advertised as for sale or otherwise available for transfer` IS A BOOLEAN
+GIVETH A BOOLEAN
+`s 33GC(2) offence -- advertising a restricted-breed dog or pup for transfer` f `subject was advertised as for sale or otherwise available for transfer` MEANS
+    f's `subject is a dangerous dog (restricted breed) or a restricted breed pup` AND `subject was advertised as for sale or otherwise available for transfer`
+
+@ref Dog Act 1976 (WA) s. 33GC(3)
+GIVEN f IS A TransferFacts, `subject was sold` IS A BOOLEAN
+GIVETH A BOOLEAN
+`s 33GC(3) offence -- selling a restricted-breed dog or pup` f `subject was sold` MEANS
+    f's `subject is a dangerous dog (restricted breed) or a restricted breed pup` AND `subject was sold`
+
+@ref Dog Act 1976 (WA) s. 33GC(4)
+GIVEN f IS A TransferFacts, `ownership was otherwise transferred` IS A BOOLEAN
+GIVETH A BOOLEAN
+`s 33GC(4) offence -- transferring a restricted-breed dog or pup outside the permitted circumstances` f `ownership was otherwise transferred` MEANS
+        f's `subject is a dangerous dog (restricted breed) or a restricted breed pup`
+    AND `ownership was otherwise transferred`
+    AND NOT (   f's `forms part of a deceased estate, transferred by the executor or administrator`
+             OR f's `owner certified by a medical practitioner as incapable of caring for the dog or fulfilling an owner's responsibilities`
+             OR f's `Minister forms the view that extraordinary conditions justify the transfer, in his absolute discretion`)
+
+DECLARE ReceivingFacts HAS
+    `subject is a dangerous dog (restricted breed) or a restricted breed pup` IS A BOOLEAN
+    `bought the subject` IS A BOOLEAN
+    `otherwise accepted ownership of the subject` IS A BOOLEAN
+    `circumstances were within s 33GC(4)(a) or (b)` IS A BOOLEAN
+    `charged person neither knew nor had reasonable cause to believe the subject was a restricted breed pup` IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 33GC(5)-(6)
+GIVEN f IS A ReceivingFacts
+GIVETH A BOOLEAN
+`s 33GC(5) offence -- buying or accepting a restricted-breed dog or pup outside the permitted circumstances` f MEANS
+        f's `subject is a dangerous dog (restricted breed) or a restricted breed pup`
+    AND (f's `bought the subject` OR f's `otherwise accepted ownership of the subject`)
+    AND NOT f's `circumstances were within s 33GC(4)(a) or (b)`
+    AND NOT f's `charged person neither knew nor had reasonable cause to believe the subject was a restricted breed pup`
+
+§§ `33GD. Dangerous dogs (restricted breed) not to be bred`
+
+@ref Dog Act 1976 (WA) s. 33GD
+GIVEN `bred a dangerous dog (restricted breed)` IS A BOOLEAN, `bred from a dangerous dog (restricted breed)` IS A BOOLEAN
+GIVETH A BOOLEAN
+`s 33GD offence -- breeding a restricted-breed dangerous dog` `bred a dangerous dog (restricted breed)` `bred from a dangerous dog (restricted breed)` MEANS
+    `bred a dangerous dog (restricted breed)` OR `bred from a dangerous dog (restricted breed)`
+
+§§ `33GE. Prohibition on transfer of ownership of dangerous dogs (declared) to persons under 18`
+
+DECLARE UnderageTransferFacts HAS
+    `subject is a dangerous dog (declared)` IS A BOOLEAN
+    `sold, or ownership otherwise transferred, to the receiver` IS A BOOLEAN
+    `receiver had reached 18 years of age`  IS A BOOLEAN
+    `receiver produced evidence of having reached 18, before or at the relevant time` IS A BOOLEAN
+    `charged person had no reason to believe the receiver had not reached 18, at the relevant time` IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 33GE(2)
+GIVEN f IS AN UnderageTransferFacts
+GIVETH A BOOLEAN
+`s 33GE(2) offence -- transferring a declared dangerous dog to a person under 18` f MEANS
+        f's `subject is a dangerous dog (declared)`
+    AND f's `sold, or ownership otherwise transferred, to the receiver`
+    AND NOT f's `receiver had reached 18 years of age`
+
+@ref Dog Act 1976 (WA) s. 33GE(3)-(4)
+GIVEN f IS AN UnderageTransferFacts
+GIVETH A BOOLEAN
+`a s 33GE(2) defence is established` f MEANS
+    f's `receiver produced evidence of having reached 18, before or at the relevant time`
+    AND f's `charged person had no reason to believe the receiver had not reached 18, at the relevant time`
+
+§§ `33G. Seizure and destruction`
+
+@ref Dog Act 1976 (WA) s. 33G(1)-(2A)
+GIVEN `reasonable grounds to believe an attack by a dangerous dog occurred` IS A BOOLEAN,
+      `reasonable grounds to believe seizure is necessary` IS A BOOLEAN,
+      `reasonable grounds to believe a dangerous dog (restricted breed) has given birth` IS A BOOLEAN,
+      `entry was under a s 29(5a) warrant or an adult occupier's consent` IS A BOOLEAN
+GIVETH A BOOLEAN
+`seizure under s 33G is authorised` `reasonable grounds to believe an attack by a dangerous dog occurred` `reasonable grounds to believe seizure is necessary` `reasonable grounds to believe a dangerous dog (restricted breed) has given birth` `entry was under a s 29(5a) warrant or an adult occupier's consent` MEANS
+        (`reasonable grounds to believe an attack by a dangerous dog occurred` AND `reasonable grounds to believe seizure is necessary`)
+    OR  (`reasonable grounds to believe a dangerous dog (restricted breed) has given birth` AND `entry was under a s 29(5a) warrant or an adult occupier's consent`)
+        @ref Dog Act 1976 (WA) s. 29(3), (5), (5a) -- power to seize/detain generally, scoped out
+
+DECLARE `S33G Notice` HAS
+    `informs the owner of the seizure and the place of detention` IS A BOOLEAN
+    `gives reasons for the seizure`                                IS A BOOLEAN
+    `states the local government proposes destruction, not earlier than 10 days after the notice (absent consent)` IS A BOOLEAN
+    `specifies the owner's right to object or apply for review within 7 days` IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 33G(2)
+GIVEN n IS A `S33G Notice`
+GIVETH A BOOLEAN
+`the s 33G(2) seizure notice satisfies its content requirements` n MEANS
+        n's `informs the owner of the seizure and the place of detention`
+    AND n's `gives reasons for the seizure`
+    AND n's `states the local government proposes destruction, not earlier than 10 days after the notice (absent consent)`
+    AND n's `specifies the owner's right to object or apply for review within 7 days`
+
+@ref Dog Act 1976 (WA) s. 33G(2)(d)
+`s 33G(2)(d) -- owner's right to object or apply for review` MEANS
+    (PARTY `Dog Owner`
+     MAY   `lodge written objection with the local government`
+     WITHIN 7
+     HENCE FULFILLED
+     LEST  FULFILLED)
+    ROR
+    (PARTY `Dog Owner`
+     MAY   `apply directly to the State Administrative Tribunal for review`
+     WITHIN 7
+     HENCE FULFILLED
+     LEST  FULFILLED)
+
+DECLARE DestructionFacts HAS
+    `objection was dismissed and no review application was made, or the application was discontinued or dismissed for want of prosecution` IS A BOOLEAN
+    `SAT affirmed the proposal to destroy the dog on a review application` IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 33G(6)
+GIVEN f IS A DestructionFacts
+GIVETH A BOOLEAN
+`destruction under s 33G is authorised` f MEANS
+    f's `objection was dismissed and no review application was made, or the application was discontinued or dismissed for want of prosecution`
+    OR f's `SAT affirmed the proposal to destroy the dog on a review application`
+
+§§ `33H. Local government may revoke declaration or proposal to destroy`
+
+-- AMBIGUITY (F-33H-SATISFACTION-STANDARD): "satisfied that the dog can be
+-- kept without the likelihood of any contravention of this Act" (s 33H(1))
+-- states no test of its own. Delegated to fact-supply, informed by reported
+-- Tribunal guidance -- see sources/fork-register.json entry
+-- F-33H-SATISFACTION-STANDARD and sources/external-modifications.json entry
+-- EM-CASELAW-33H (Hunter v City of Joondalup [2025] WASAT 36, as reported).
+DECLARE RevocationApplication HAS
+    `application is by the local government's own motion, or by the owner subject to the 1-year bar` IS A BOOLEAN
+    `the local government is satisfied the dog can be kept without the likelihood of any contravention of this Act`
+        IS A BOOLEAN
+        -- @ref Hunter v City of Joondalup [2025] WASAT 36, as reported in sources/external-modifications.json EM-CASELAW-33H -- factors going to the dog and to the person liable for its control
+
+@ref Dog Act 1976 (WA) s. 33H(1)
+GIVEN app IS A RevocationApplication
+GIVETH A BOOLEAN
+`the local government may revoke the declaration or the proposal to destroy` app MEANS
+        app's `application is by the local government's own motion, or by the owner subject to the 1-year bar`
+    AND app's `the local government is satisfied the dog can be kept without the likelihood of any contravention of this Act`
+
+@ref Dog Act 1976 (WA) s. 33H(4)
+GIVEN `objection or review application in respect of the notice has been determined` IS A BOOLEAN,
+      `years elapsed since the notice, or since a preceding s 33H(1) application was determined` IS A NUMBER
+GIVETH A BOOLEAN
+`the owner is entitled to apply for revocation under s 33H(1)(a)` `objection or review application in respect of the notice has been determined` `years elapsed since the notice, or since a preceding s 33H(1) application was determined` MEANS
+    `objection or review application in respect of the notice has been determined`
+    OR `years elapsed since the notice, or since a preceding s 33H(1) application was determined` AT LEAST 1
+
+§§ `33I. Jurisdiction of State Administrative Tribunal`
+
+DECLARE SATApplicationFacts HAS
+    `an objection to a declaration, lodged under s 33F(2)(b)(i), was dismissed` IS A BOOLEAN
+    `an objection to a proposal to destroy, lodged under s 33G(2)(d)(i), was dismissed` IS A BOOLEAN
+    `an application to revoke a notice, lodged under s 33H(1), was dismissed` IS A BOOLEAN
+    `owner elected to proceed directly against a declaration under s 33F(2)(b)(ii)` IS A BOOLEAN
+    `owner elected to proceed directly against a proposal to destroy under s 33G(2)(d)(ii)` IS A BOOLEAN
+    `s 33F(6)(b), s 33G(4)(b) or s 33H(5)(b) applies (local government did not notify its determination in time)` IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 33I(1)
+GIVEN f IS A SATApplicationFacts
+GIVETH A BOOLEAN
+`an application to SAT under this Division is competent` f MEANS
+        f's `an objection to a declaration, lodged under s 33F(2)(b)(i), was dismissed`
+    OR  f's `an objection to a proposal to destroy, lodged under s 33G(2)(d)(i), was dismissed`
+    OR  f's `an application to revoke a notice, lodged under s 33H(1), was dismissed`
+    OR  f's `owner elected to proceed directly against a declaration under s 33F(2)(b)(ii)`
+    OR  f's `owner elected to proceed directly against a proposal to destroy under s 33G(2)(d)(ii)`
+    OR  f's `s 33F(6)(b), s 33G(4)(b) or s 33H(5)(b) applies (local government did not notify its determination in time)`
+
+@ref Dog Act 1976 (WA) s. 33I(2)
+GIVEN `the dog is detained` IS A BOOLEAN
+GIVETH A BOOLEAN
+`SAT may order the dog's release to the owner` `the dog is detained` MEANS `the dog is detained`
+
+@ref Dog Act 1976 (WA) s. 33I(2)(b)
+GIVEN `SAT is satisfied the dog will be kept without the likelihood of any contravention of this Act` IS A BOOLEAN
+GIVETH A BOOLEAN
+`SAT may cancel a previous order made in respect of the dog` `SAT is satisfied the dog will be kept without the likelihood of any contravention of this Act` MEANS
+    `SAT is satisfied the dog will be kept without the likelihood of any contravention of this Act`
+
+§§ `33J. Duration of declaration`
+
+DECLARE DeclarationStatusFacts HAS
+    `the dog has died`                                                    IS A BOOLEAN
+    `the notice has been revoked by the local government`                 IS A BOOLEAN
+    `the decision has been quashed by the State Administrative Tribunal`  IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 33J
+GIVEN facts IS A DeclarationStatusFacts
+GIVETH A BOOLEAN
+`the dangerous dog declaration remains in effect` facts MEANS
+    NOT (   facts's `the dog has died`
+         OR facts's `the notice has been revoked by the local government`
+         OR facts's `the decision has been quashed by the State Administrative Tribunal`)
+    -- effect survives a change of ownership: no ownership field is read above
+
+§§ `33K. Duty to notify persons`
+
+@ref Dog Act 1976 (WA) s. 33K(1)
+GIVEN `owner of a dangerous dog` IS A BOOLEAN, `every person liable for the dog's control is aware of their s 33 Division 2 responsibilities` IS A BOOLEAN
+GIVETH A BOOLEAN
+`s 33K(1) offence -- owner fails to ensure awareness of Division 2 responsibilities` `owner of a dangerous dog` `every person liable for the dog's control is aware of their s 33 Division 2 responsibilities` MEANS
+    `owner of a dangerous dog` AND NOT `every person liable for the dog's control is aware of their s 33 Division 2 responsibilities`
+
+DECLARE `S33K2 Event` IS ONE OF
+    `dog attacked`
+    `dog missing`
+    `ownership changed`
+    `relocated within the district`
+
+@ref Dog Act 1976 (WA) s. 33K(2)
+GIVEN event IS A `S33K2 Event`
+GIVETH A DEONTIC DogActParty DogActAction
+`s 33K(2) notification duty` event MEANS
+    PARTY `A Person Liable For The Control Of The Dog`
+    MUST  `notify the local government under s 33K(2)`
+    WITHIN 1
+    HENCE FULFILLED
+    LEST  BREACH BY `A Person Liable For The Control Of The Dog`
+          BECAUSE "the local government was not notified within 24 hours, as s 33K(2) requires"
+
+@ref Dog Act 1976 (WA) s. 33K(3)
+`s 33K(3) notification duty -- relocation to another district` MEANS
+    PARTY `A Person Liable For The Control Of The Dog`
+    MUST  `notify the local government under s 33K(2)`
+    WITHIN 1
+    HENCE FULFILLED
+    LEST  BREACH BY `A Person Liable For The Control Of The Dog`
+          BECAUSE "the local government of the new district was not notified within 24 hours of the dog commencing to be kept there, as s 33K(3) requires"
+
+@ref Dog Act 1976 (WA) s. 33K(4)
+GIVEN `change of ownership of a dangerous dog (declared)` IS A BOOLEAN,
+      `written notice given, on or before the change, that the dog is a dangerous dog` IS A BOOLEAN,
+      `copy of the s 33F(1) notice given, on or before the change` IS A BOOLEAN
+GIVETH A BOOLEAN
+`s 33K(4) offence -- transferring a declared dangerous dog without the required notices` `change of ownership of a dangerous dog (declared)` `written notice given, on or before the change, that the dog is a dangerous dog` `copy of the s 33F(1) notice given, on or before the change` MEANS
+        `change of ownership of a dangerous dog (declared)`
+    AND NOT (`written notice given, on or before the change, that the dog is a dangerous dog` AND `copy of the s 33F(1) notice given, on or before the change`)
+
+@ref Dog Act 1976 (WA) s. 33K(5A)
+GIVEN `change of ownership of a dangerous dog (restricted breed) or a commercial security dog` IS A BOOLEAN,
+      `written notice given, on or before the change, that the dog is a dangerous dog` IS A BOOLEAN
+GIVETH A BOOLEAN
+`s 33K(5A) offence -- transferring a restricted-breed or security dangerous dog without notice` `change of ownership of a dangerous dog (restricted breed) or a commercial security dog` `written notice given, on or before the change, that the dog is a dangerous dog` MEANS
+    `change of ownership of a dangerous dog (restricted breed) or a commercial security dog`
+    AND NOT `written notice given, on or before the change, that the dog is a dangerous dog`
+
+@ref Dog Act 1976 (WA) s. 33K(5)
+GIVEN `owner of a dangerous dog` IS A BOOLEAN, `dog relocated outside the local government's district, without notice` IS A BOOLEAN, `dog died, without notice` IS A BOOLEAN
+GIVETH A BOOLEAN
+`s 33K(5) offence -- owner fails to notify relocation or death` `owner of a dangerous dog` `dog relocated outside the local government's district, without notice` `dog died, without notice` MEANS
+    `owner of a dangerous dog` AND (`dog relocated outside the local government's district, without notice` OR `dog died, without notice`)
+
+`s 33K(5) penalty` MEANS
+    Penalty WITH fine IS JUST 5_000, `minimum fine` IS NOTHING, `imprisonment months` IS NOTHING, `further offence fine` IS NOTHING
+
+§§ `33L. Defences applicable to this Division`
+
+DECLARE DivisionDefenceFacts HAS
+    `person took all reasonable precautions and exercised all due diligence to avoid the contravention` IS A BOOLEAN
+    `person other than the dog's owner neither knew nor had reasonable cause to believe the dog was a dangerous dog` IS A BOOLEAN
+    `person is the occupier where the dog is ordinarily kept or permitted to live, and the dog was owned by an identified adult` IS A BOOLEAN
+    `person is the owner, and the dog was in another person's possession or control without the owner's consent` IS A BOOLEAN
+
+@ref Dog Act 1976 (WA) s. 33L
+GIVEN d IS A DivisionDefenceFacts
+GIVETH A BOOLEAN
+`a s 33L defence is established` d MEANS
+        d's `person took all reasonable precautions and exercised all due diligence to avoid the contravention`
+    OR  d's `person other than the dog's owner neither knew nor had reasonable cause to believe the dog was a dangerous dog`
+    OR  d's `person is the occupier where the dog is ordinarily kept or permitted to live, and the dog was owned by an identified adult`
+    OR  d's `person is the owner, and the dog was in another person's possession or control without the owner's consent`
+
+§§ `33M. Local government expenses to be recoverable`
+
+DECLARE `S33M Charge` IS ONE OF
+    `reasonable charge within the prescribed cap` HAS amount IS A NUMBER
+    `fixed charge determined by the local government, within the prescribed cap` HAS amount IS A NUMBER
+    `prescribed fixed charge` HAS amount IS A NUMBER
+
+@ref Dog Act 1976 (WA) s. 33M(1)
+GIVEN c IS A `S33M Charge`
+GIVETH A NUMBER
+`the amount recoverable under s 33M, in addition to the registration fee` c MEANS
+    CONSIDER c
+    WHEN `reasonable charge within the prescribed cap` amount THEN amount
+    WHEN `fixed charge determined by the local government, within the prescribed cap` amount THEN amount
+    WHEN `prescribed fixed charge` amount THEN amount
+
+@ref Dog Act 1976 (WA) s. 33M(2)
+GIVEN `charge due under s 33M(1) was not paid` IS A BOOLEAN
+GIVETH A BOOLEAN
+`the dog is liable to be seized, detained and disposed of under s 29 for an unpaid s 33M charge` `charge due under s 33M(1) was not paid` MEANS
+    `charge due under s 33M(1) was not paid`
+        @ref Dog Act 1976 (WA) s. 29 -- power to seize/detain generally, scoped out
+
+-- =============================================================================
+-- Illustrations
+-- =============================================================================
+
+§ `Illustrations`
+
+`the ordinary owner` MEANS LiableParty WITH
+    `is the registered owner of the dog` IS TRUE
+    , `is the owner of the dog` IS TRUE
+    , `is the occupier of premises where the dog is ordinarily kept or ordinarily permitted to live` IS TRUE
+    , `has the dog in possession or under control` IS TRUE
+    , `is a veterinarian, or acting on a veterinarian's behalf, in professional practice` IS FALSE
+    , `is a police officer or other person acting under statutory duty or administering this Act` IS FALSE
+
+`the attending veterinarian` MEANS LiableParty WITH
+    `is the registered owner of the dog` IS FALSE
+    , `is the owner of the dog` IS FALSE
+    , `is the occupier of premises where the dog is ordinarily kept or ordinarily permitted to live` IS FALSE
+    , `has the dog in possession or under control` IS TRUE
+    , `is a veterinarian, or acting on a veterinarian's behalf, in professional practice` IS TRUE
+    , `is a police officer or other person acting under statutory duty or administering this Act` IS FALSE
+
+#ASSERT `the party is a person liable for the control of the dog` `the ordinary owner`
+#ASSERT NOT (`the party is a person liable for the control of the dog` `the attending veterinarian`)
+
+`a non-dangerous dog` MEANS DogProfile WITH
+    `declared to be a dangerous dog (declared) under s 33E(1)` IS FALSE
+    , `is a dangerous dog (restricted breed)` IS FALSE
+    , `is a commercial security dog` IS FALSE
+
+`a declared dangerous dog` MEANS DogProfile WITH
+    `declared to be a dangerous dog (declared) under s 33E(1)` IS TRUE
+    , `is a dangerous dog (restricted breed)` IS FALSE
+    , `is a commercial security dog` IS FALSE
+
+#ASSERT NOT (`the dog is a dangerous dog` `a non-dangerous dog`)
+#ASSERT `the dog is a dangerous dog` `a declared dangerous dog`
+
+`a provoked immediate response` MEANS AttackFacts WITH
+    `behaviour was an immediate response to, and induced by, provocation` IS TRUE
+    , `behaviour aggressively rushed at or harassed a person or animal` IS TRUE
+    , `behaviour bit or otherwise caused physical injury` IS TRUE
+    , `behaviour tore clothing or caused damage to property` IS FALSE
+    , `behaviour was an attempt to attack, or would cause a reasonable person to fear physical injury` IS FALSE
+    , `owner establishes the behaviour was justified by a reasonable cause` IS FALSE
+
+`an unjustified biting` MEANS AttackFacts WITH
+    `behaviour was an immediate response to, and induced by, provocation` IS FALSE
+    , `behaviour aggressively rushed at or harassed a person or animal` IS FALSE
+    , `behaviour bit or otherwise caused physical injury` IS TRUE
+    , `behaviour tore clothing or caused damage to property` IS FALSE
+    , `behaviour was an attempt to attack, or would cause a reasonable person to fear physical injury` IS FALSE
+    , `owner establishes the behaviour was justified by a reasonable cause` IS FALSE
+
+-- F-ATTACK-PROVOCATION-UNLESS witness: the provoked response is excluded
+-- categorically, regardless of the (unproven) reasonable-cause proviso.
+#ASSERT NOT (`the behaviour is an attack` `a provoked immediate response`)
+#ASSERT `the behaviour is an attack` `an unjustified biting`
+
+`interpretation -- status at time of offence (taken)` MEANS Interpretation WITH
+    dangerousDogStatusTiming IS statusAtTimeOfOffence
+
+`interpretation -- status at time of prosecution (rejected)` MEANS Interpretation WITH
+    dangerousDogStatusTiming IS statusAtTimeOfProsecution
+
+-- F-DANGEROUS-DOG-STATUS-TIMING witness: a dog with no prior dangerous-dog
+-- status attacks, is declared dangerous BECAUSE of that attack, and by the
+-- time of prosecution carries the declared status.
+`the bootstrapping attack` MEANS AttackIncident WITH
+    `the behaviour is an attack (s 3)` IS TRUE
+    , `physical injury was caused to the person or animal` IS TRUE
+    , `dog's dangerous-dog status at the time of this offence` IS `a non-dangerous dog`
+    , `dog's dangerous-dog status now` IS `a declared dangerous dog`
+
+#ASSERT `s 33D(1) penalty` `the bootstrapping attack` `interpretation -- status at time of offence (taken)` EQUALS Penalty WITH fine IS JUST 10_000, `minimum fine` IS NOTHING, `imprisonment months` IS NOTHING, `further offence fine` IS NOTHING
+#ASSERT `s 33D(1) penalty` `the bootstrapping attack` `interpretation -- status at time of prosecution (rejected)` EQUALS Penalty WITH fine IS JUST 20_000, `minimum fine` IS JUST 1_000, `imprisonment months` IS NOTHING, `further offence fine` IS NOTHING
+
+`an already-dangerous dog's attack` MEANS AttackIncident WITH
+    `the behaviour is an attack (s 3)` IS TRUE
+    , `physical injury was caused to the person or animal` IS TRUE
+    , `dog's dangerous-dog status at the time of this offence` IS `a declared dangerous dog`
+    , `dog's dangerous-dog status now` IS `a declared dangerous dog`
+
+-- Both readings agree once the dog was already dangerous beforehand.
+#ASSERT `s 33D(1) penalty` `an already-dangerous dog's attack` `interpretation -- status at time of offence (taken)` EQUALS `s 33D(1) penalty` `an already-dangerous dog's attack` `interpretation -- status at time of prosecution (rejected)`
+
+#ASSERT `s 33D(1) offence -- attack or chase causing physical injury` `the ordinary owner` `the bootstrapping attack`
+#ASSERT NOT (`s 33D(1) offence -- attack or chase causing physical injury` `the attending veterinarian` `the bootstrapping attack`)
+
+`grounds from a single serious attack` MEANS DeclarationGrounds WITH
+    `dog has caused injury or damage by an attack on, or chasing, a person, animal or vehicle` IS TRUE
+    , `dog has repeatedly shown a tendency to attack or chase a person, animal or vehicle` IS FALSE
+    , `dog has repeatedly shown a tendency to threaten to attack` IS FALSE
+    , `behaviour meets other criteria prescribed for the purpose of s 33E` IS FALSE
+    , `s 30(3) working-dog exemption applies to this behaviour` IS FALSE
+
+`grounds from exempt working-dog behaviour only` MEANS DeclarationGrounds WITH
+    `dog has caused injury or damage by an attack on, or chasing, a person, animal or vehicle` IS FALSE
+    , `dog has repeatedly shown a tendency to attack or chase a person, animal or vehicle` IS TRUE
+    , `dog has repeatedly shown a tendency to threaten to attack` IS FALSE
+    , `behaviour meets other criteria prescribed for the purpose of s 33E` IS FALSE
+    , `s 30(3) working-dog exemption applies to this behaviour` IS TRUE
+
+#ASSERT `grounds exist to declare the dog a dangerous dog (declared)` `grounds from a single serious attack`
+#ASSERT NOT (`grounds exist to declare the dog a dangerous dog (declared)` `grounds from exempt working-dog behaviour only`)
+
+#ASSERT `the declaration has taken effect` 7
+#ASSERT NOT (`the declaration has taken effect` 6)
+
+#TRACE `s 33K(2) notification duty` `dog attacked` AT 0 WITH
+    PARTY `A Person Liable For The Control Of The Dog` DOES `notify the local government under s 33K(2)` AT 1
+-- Result: FULFILLED (notified within the 24-hour/1-day window)
+
+#TRACE `s 33K(2) notification duty` `dog missing` AT 0 WITH
+    (`WAIT UNTIL` 2)
+-- Result: DEONTIC BREACHED -- no notification within the 24-hour/1-day window
+
+`a compliant restricted-breed charge` MEANS `reasonable charge within the prescribed cap` 250
+
+#ASSERT `the amount recoverable under s 33M, in addition to the registration fee` `a compliant restricted-breed charge` EQUALS 250
