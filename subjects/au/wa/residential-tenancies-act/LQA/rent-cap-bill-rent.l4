@@ -1,0 +1,504 @@
+-- Residential Tenancies Amendment (Rent Cap) Bill 2026 (WA), Bill No. 70,
+-- as introduced in the Legislative Council on 7 May 2026 -- clauses 2, 4
+-- and proposed s.105. Encoded as the Residential Tenancies Act 1987 would
+-- read if the Bill were enacted unamended.
+--
+-- NOT LAW. The Bill is at second reading in the Legislative Council.
+-- Source: LQA/Bill+70-1+(2026).pdf, sha256 35266e07...f30e12; text
+-- extracted to LQA/sources/bill-70-1.txt. Act text: registers/
+-- source-bundle/mrdoc_49316.txt (retrieved 2026-09-07), CC BY 4.0.
+--
+-- Findings are numbered B-nn and are written up in LQA/INCIDENTS.md.
+-- No library imports: daydate does not resolve on this machine, so days
+-- are day-offsets and months are supplied as booleans.
+
+§ `Clause 2 - Commencement`
+
+-- cl.2(b): the operative clauses commence on 1 July 2026 if assent is
+-- before that day, otherwise on the day after assent. Offsets are days
+-- relative to 1 July 2026 (0 = 1 July 2026, negative = before).
+
+GIVEN `assent day relative to 1 July 2026` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `commencement day relative to 1 July 2026` IS
+    IF `assent day relative to 1 July 2026` LESS THAN 0
+    THEN 0
+    ELSE `assent day relative to 1 July 2026` PLUS 1
+
+§§ `Clause 2 -- illustrations`
+
+-- B-12: the Bill was introduced on 7 May 2026 and has not passed either
+-- House; at 30 September 2026 (offset 91) no assent before 1 July 2026 is
+-- still possible, so limb (b)(i) can no longer operate.
+
+#ASSERT `commencement day relative to 1 July 2026` (0 MINUS 30) EQUALS 0
+#ASSERT `commencement day relative to 1 July 2026` 91 EQUALS 92
+
+§ `Proposed section 31AA - Limit on increase in rent`
+
+-- The facts of one proposed increase. CPI figures are index numbers
+-- exactly as published (the Perth rents subgroup of the housing group).
+
+DECLARE `rent increase proposal` HAS
+    `the increase is proposed under section 30` IS A BOOLEAN
+    `the increase is proposed under section 31A` IS A BOOLEAN
+    `the rent change is made by entering into a new residential tenancy agreement` IS A BOOLEAN
+    `the current rent payable` IS A NUMBER
+    `the amount of the proposed increase` IS A NUMBER
+    `the amount of the proposed increase can be determined when the notice is given` IS A BOOLEAN
+    `CPI published most recently before the notice is given` IS A NUMBER
+    `CPI published most recently before the agreement commenced` IS A NUMBER
+    `the rent payable has been increased previously` IS A BOOLEAN
+    `CPI published most recently before notice of the previous increase was given` IS A NUMBER
+    `the agreement sets out the amount of the increase or the method of calculating it` IS A BOOLEAN
+    `after the notice the tenant agrees to the increase in writing` IS A BOOLEAN
+    `a competent court approves the amount of the increase` IS A BOOLEAN
+    `the notice states the amount of the proposed increase` IS A BOOLEAN
+    `the notice states whether the proposed increase is more than the increase limit` IS A BOOLEAN
+    `the notice states that without the tenant's agreement the increase needs court approval` IS A BOOLEAN
+    `the notice was given before commencement day` IS A BOOLEAN
+    `the tenancy is for a fixed term during its currency` IS A BOOLEAN
+
+§§ `31AA(1) - increase limit`
+
+GIVEN p IS A `rent increase proposal`
+GIVETH A NUMBER
+DECIDE `initial CPI` IS
+    IF p's `the rent payable has been increased previously`
+    THEN p's `CPI published most recently before notice of the previous increase was given`
+    ELSE p's `CPI published most recently before the agreement commenced`
+
+-- "current CPI" (b): if the most recent CPI is less than the initial CPI,
+-- the initial CPI is used, so the increase limit is never negative.
+
+GIVEN p IS A `rent increase proposal`
+GIVETH A NUMBER
+DECIDE `current CPI` IS
+    IF p's `CPI published most recently before the notice is given` LESS THAN `initial CPI` p
+    THEN `initial CPI` p
+    ELSE p's `CPI published most recently before the notice is given`
+
+@ref Residential Tenancies Amendment (Rent Cap) Bill 2026 (WA) cl.4, proposed s.31AA(1)
+@export The increase limit under proposed s.31AA(1): L = R x (current CPI - initial CPI) / initial CPI x 1.1
+GIVEN p IS A `rent increase proposal` @desc The proposed increase. Rent amounts in the same unit (for example AUD per week). CPI values are Perth rents-subgroup index numbers as published before the relevant day: before the notice, before the agreement commenced, and (if rent was increased previously) before notice of the previous increase.
+GIVETH A NUMBER
+DECIDE `the increase limit` IS
+    p's `the current rent payable`
+        TIMES ((`current CPI` p MINUS `initial CPI` p) DIVIDED BY `initial CPI` p)
+        TIMES 1.1
+
+§§ `31AA(2) - when an increase above the limit is allowed`
+
+GIVEN p IS A `rent increase proposal`
+GIVETH A BOOLEAN
+DECIDE `a section 31AA(2) exception applies` IF
+        p's `the agreement sets out the amount of the increase or the method of calculating it`
+    OR  p's `after the notice the tenant agrees to the increase in writing`
+    OR  p's `a competent court approves the amount of the increase`
+
+-- s.31AA governs only increases "under section 30 or 31A", and proposed
+-- s.105 takes out increases whose notice was given before commencement.
+
+GIVEN p IS A `rent increase proposal`
+GIVETH A BOOLEAN
+DECIDE `section 31AA governs the rent change` IF
+        (   p's `the increase is proposed under section 30`
+        OR  p's `the increase is proposed under section 31A`
+        )
+    AND NOT p's `the rent change is made by entering into a new residential tenancy agreement`
+    AND NOT p's `the notice was given before commencement day`
+
+@ref Residential Tenancies Amendment (Rent Cap) Bill 2026 (WA) cl.4, proposed s.31AA(2)
+@export Decide whether proposed s.31AA(2) allows the amount of a rent increase
+GIVEN p IS A `rent increase proposal` @desc The proposed increase. Allowed if s.31AA does not govern the change (a new agreement, or a notice given before commencement), if the amount does not exceed the increase limit, or if an exception applies: the agreement sets out the amount or method of increase, the tenant agreed in writing after the notice, or a competent court approved the amount.
+GIVETH A BOOLEAN
+DECIDE `the amount of the increase is allowed by section 31AA(2)` IF
+        NOT `section 31AA governs the rent change` p
+    OR  p's `the amount of the proposed increase` AT MOST `the increase limit` p
+    OR  `a section 31AA(2) exception applies` p
+
+§§ `31AA(3) - contents of the notice`
+
+GIVEN p IS A `rent increase proposal`
+GIVETH A BOOLEAN
+DECIDE `the notice contains the statements required by section 31AA(3)` IF
+        p's `the notice states the amount of the proposed increase`
+    AND p's `the notice states whether the proposed increase is more than the increase limit`
+    AND (
+            p's `the amount of the proposed increase` AT MOST `the increase limit` p
+        OR  p's `the notice states that without the tenant's agreement the increase needs court approval`
+        )
+
+-- B-03: a s.31A notice changes a *method* of calculating income-based
+-- rent. Where the resulting amount depends on income not yet known, the
+-- amount in s.31AA(3)(a) cannot truthfully be stated, and the comparison
+-- with the limit in (3)(b) cannot be made.
+
+GIVEN p IS A `rent increase proposal`
+GIVETH A BOOLEAN
+DECIDE `section 31AA(3) is capable of being complied with` IF
+    p's `the amount of the proposed increase can be determined when the notice is given`
+
+§§ `Interaction with section 30 (fork F-1)`
+
+-- The Bill does not amend s.30(3), which varies the agreement by any
+-- notice "given in accordance with this section" (s.30). Whether a notice
+-- that breaches s.31AA(2) or (3) still varies the agreement is fork F-1.
+-- Reading A (encoded): the s.31AA words "cannot increase" and "must
+-- state" make such a notice ineffective as a whole.
+
+GIVEN p IS A `rent increase proposal`
+GIVETH A BOOLEAN
+DECIDE `the increase takes effect under the amended Act (reading A)` IF
+        `the amount of the increase is allowed by section 31AA(2)` p
+    AND (
+            NOT `section 31AA governs the rent change` p
+        OR  `the notice contains the statements required by section 31AA(3)` p
+        )
+
+§§ `Section 31AA -- illustrations`
+
+-- Base case: periodic tenancy, $600 a week, CPI up 5% since the last
+-- increase notice. L = 600 x 0.05 x 1.1 = 33.
+
+`periodic, within limit` MEANS `rent increase proposal` WITH
+    `the increase is proposed under section 30` IS TRUE,
+    `the increase is proposed under section 31A` IS FALSE,
+    `the rent change is made by entering into a new residential tenancy agreement` IS FALSE,
+    `the current rent payable` IS 600,
+    `the amount of the proposed increase` IS 30,
+    `the amount of the proposed increase can be determined when the notice is given` IS TRUE,
+    `CPI published most recently before the notice is given` IS 210,
+    `CPI published most recently before the agreement commenced` IS 180,
+    `the rent payable has been increased previously` IS TRUE,
+    `CPI published most recently before notice of the previous increase was given` IS 200,
+    `the agreement sets out the amount of the increase or the method of calculating it` IS FALSE,
+    `after the notice the tenant agrees to the increase in writing` IS FALSE,
+    `a competent court approves the amount of the increase` IS FALSE,
+    `the notice states the amount of the proposed increase` IS TRUE,
+    `the notice states whether the proposed increase is more than the increase limit` IS TRUE,
+    `the notice states that without the tenant's agreement the increase needs court approval` IS FALSE,
+    `the notice was given before commencement day` IS FALSE,
+    `the tenancy is for a fixed term during its currency` IS FALSE
+
+`periodic, above limit` MEANS `rent increase proposal` WITH
+    `the increase is proposed under section 30` IS TRUE,
+    `the increase is proposed under section 31A` IS FALSE,
+    `the rent change is made by entering into a new residential tenancy agreement` IS FALSE,
+    `the current rent payable` IS 600,
+    `the amount of the proposed increase` IS 60,
+    `the amount of the proposed increase can be determined when the notice is given` IS TRUE,
+    `CPI published most recently before the notice is given` IS 210,
+    `CPI published most recently before the agreement commenced` IS 180,
+    `the rent payable has been increased previously` IS TRUE,
+    `CPI published most recently before notice of the previous increase was given` IS 200,
+    `the agreement sets out the amount of the increase or the method of calculating it` IS FALSE,
+    `after the notice the tenant agrees to the increase in writing` IS FALSE,
+    `a competent court approves the amount of the increase` IS FALSE,
+    `the notice states the amount of the proposed increase` IS TRUE,
+    `the notice states whether the proposed increase is more than the increase limit` IS TRUE,
+    `the notice states that without the tenant's agreement the increase needs court approval` IS TRUE,
+    `the notice was given before commencement day` IS FALSE,
+    `the tenancy is for a fixed term during its currency` IS FALSE
+
+#ASSERT `the increase limit` `periodic, within limit` EQUALS 33
+#ASSERT `the amount of the increase is allowed by section 31AA(2)` `periodic, within limit` EQUALS TRUE
+#ASSERT `the amount of the increase is allowed by section 31AA(2)` `periodic, above limit` EQUALS FALSE
+#ASSERT `the increase takes effect under the amended Act (reading A)` `periodic, above limit` EQUALS FALSE
+
+-- A falling CPI floors at the initial CPI: the limit is 0, not negative.
+
+`CPI fell` MEANS `rent increase proposal` WITH
+    `the increase is proposed under section 30` IS TRUE,
+    `the increase is proposed under section 31A` IS FALSE,
+    `the rent change is made by entering into a new residential tenancy agreement` IS FALSE,
+    `the current rent payable` IS 600,
+    `the amount of the proposed increase` IS 30,
+    `the amount of the proposed increase can be determined when the notice is given` IS TRUE,
+    `CPI published most recently before the notice is given` IS 195,
+    `CPI published most recently before the agreement commenced` IS 180,
+    `the rent payable has been increased previously` IS TRUE,
+    `CPI published most recently before notice of the previous increase was given` IS 200,
+    `the agreement sets out the amount of the increase or the method of calculating it` IS FALSE,
+    `after the notice the tenant agrees to the increase in writing` IS FALSE,
+    `a competent court approves the amount of the increase` IS FALSE,
+    `the notice states the amount of the proposed increase` IS TRUE,
+    `the notice states whether the proposed increase is more than the increase limit` IS TRUE,
+    `the notice states that without the tenant's agreement the increase needs court approval` IS FALSE,
+    `the notice was given before commencement day` IS FALSE,
+    `the tenancy is for a fixed term during its currency` IS FALSE
+
+#ASSERT `the increase limit` `CPI fell` EQUALS 0
+
+-- B-01: every fixed-term increase escapes the cap. s.30(2)(a) permits an
+-- increase during a fixed term only if the agreement sets out the amount
+-- or method; that same fact is exception s.31AA(2)(a). A 25% increase
+-- written into a fixed-term lease is allowed although L = 33.
+
+`fixed term, 25 percent written into the lease` MEANS `rent increase proposal` WITH
+    `the increase is proposed under section 30` IS TRUE,
+    `the increase is proposed under section 31A` IS FALSE,
+    `the rent change is made by entering into a new residential tenancy agreement` IS FALSE,
+    `the current rent payable` IS 600,
+    `the amount of the proposed increase` IS 150,
+    `the amount of the proposed increase can be determined when the notice is given` IS TRUE,
+    `CPI published most recently before the notice is given` IS 210,
+    `CPI published most recently before the agreement commenced` IS 180,
+    `the rent payable has been increased previously` IS TRUE,
+    `CPI published most recently before notice of the previous increase was given` IS 200,
+    `the agreement sets out the amount of the increase or the method of calculating it` IS TRUE,
+    `after the notice the tenant agrees to the increase in writing` IS FALSE,
+    `a competent court approves the amount of the increase` IS FALSE,
+    `the notice states the amount of the proposed increase` IS TRUE,
+    `the notice states whether the proposed increase is more than the increase limit` IS TRUE,
+    `the notice states that without the tenant's agreement the increase needs court approval` IS TRUE,
+    `the notice was given before commencement day` IS FALSE,
+    `the tenancy is for a fixed term during its currency` IS TRUE
+
+#ASSERT `the amount of the increase is allowed by section 31AA(2)` `fixed term, 25 percent written into the lease` EQUALS TRUE
+
+-- B-01 (periodic limb): the same term in a periodic agreement also
+-- switches the cap off; s.82 does not void it because s.31AA(2)(a) is a
+-- provision "under this Act".
+
+`periodic, 10 percent annual clause` MEANS `rent increase proposal` WITH
+    `the increase is proposed under section 30` IS TRUE,
+    `the increase is proposed under section 31A` IS FALSE,
+    `the rent change is made by entering into a new residential tenancy agreement` IS FALSE,
+    `the current rent payable` IS 600,
+    `the amount of the proposed increase` IS 60,
+    `the amount of the proposed increase can be determined when the notice is given` IS TRUE,
+    `CPI published most recently before the notice is given` IS 210,
+    `CPI published most recently before the agreement commenced` IS 180,
+    `the rent payable has been increased previously` IS TRUE,
+    `CPI published most recently before notice of the previous increase was given` IS 200,
+    `the agreement sets out the amount of the increase or the method of calculating it` IS TRUE,
+    `after the notice the tenant agrees to the increase in writing` IS FALSE,
+    `a competent court approves the amount of the increase` IS FALSE,
+    `the notice states the amount of the proposed increase` IS TRUE,
+    `the notice states whether the proposed increase is more than the increase limit` IS TRUE,
+    `the notice states that without the tenant's agreement the increase needs court approval` IS TRUE,
+    `the notice was given before commencement day` IS FALSE,
+    `the tenancy is for a fixed term during its currency` IS FALSE
+
+#ASSERT `the increase takes effect under the amended Act (reading A)` `periodic, 10 percent annual clause` EQUALS TRUE
+
+-- B-02: a renewal with the same parties at a higher rent is a new
+-- agreement, not an increase "under section 30 or 31A", so the cap does
+-- not reach it -- even where s.31B treats it as a continuation for
+-- working out when rent was last increased.
+
+`renewal at 20 percent more` MEANS `rent increase proposal` WITH
+    `the increase is proposed under section 30` IS FALSE,
+    `the increase is proposed under section 31A` IS FALSE,
+    `the rent change is made by entering into a new residential tenancy agreement` IS TRUE,
+    `the current rent payable` IS 600,
+    `the amount of the proposed increase` IS 120,
+    `the amount of the proposed increase can be determined when the notice is given` IS TRUE,
+    `CPI published most recently before the notice is given` IS 210,
+    `CPI published most recently before the agreement commenced` IS 180,
+    `the rent payable has been increased previously` IS TRUE,
+    `CPI published most recently before notice of the previous increase was given` IS 200,
+    `the agreement sets out the amount of the increase or the method of calculating it` IS FALSE,
+    `after the notice the tenant agrees to the increase in writing` IS FALSE,
+    `a competent court approves the amount of the increase` IS FALSE,
+    `the notice states the amount of the proposed increase` IS FALSE,
+    `the notice states whether the proposed increase is more than the increase limit` IS FALSE,
+    `the notice states that without the tenant's agreement the increase needs court approval` IS FALSE,
+    `the notice was given before commencement day` IS FALSE,
+    `the tenancy is for a fixed term during its currency` IS FALSE
+
+#ASSERT `section 31AA governs the rent change` `renewal at 20 percent more` EQUALS FALSE
+#ASSERT `the increase takes effect under the amended Act (reading A)` `renewal at 20 percent more` EQUALS TRUE
+
+-- B-03: an income-based rent (s.31A). The notice changes the method from
+-- 25% to 27% of assessable income; next year's income is unknown, so no
+-- amount can be stated.
+
+`income-based method change` MEANS `rent increase proposal` WITH
+    `the increase is proposed under section 30` IS FALSE,
+    `the increase is proposed under section 31A` IS TRUE,
+    `the rent change is made by entering into a new residential tenancy agreement` IS FALSE,
+    `the current rent payable` IS 600,
+    `the amount of the proposed increase` IS 30,
+    `the amount of the proposed increase can be determined when the notice is given` IS FALSE,
+    `CPI published most recently before the notice is given` IS 210,
+    `CPI published most recently before the agreement commenced` IS 180,
+    `the rent payable has been increased previously` IS TRUE,
+    `CPI published most recently before notice of the previous increase was given` IS 200,
+    `the agreement sets out the amount of the increase or the method of calculating it` IS FALSE,
+    `after the notice the tenant agrees to the increase in writing` IS FALSE,
+    `a competent court approves the amount of the increase` IS FALSE,
+    `the notice states the amount of the proposed increase` IS FALSE,
+    `the notice states whether the proposed increase is more than the increase limit` IS TRUE,
+    `the notice states that without the tenant's agreement the increase needs court approval` IS FALSE,
+    `the notice was given before commencement day` IS FALSE,
+    `the tenancy is for a fixed term during its currency` IS FALSE
+
+#ASSERT `section 31AA(3) is capable of being complied with` `income-based method change` EQUALS FALSE
+#ASSERT `the increase takes effect under the amended Act (reading A)` `income-based method change` EQUALS FALSE
+
+-- B-04: the formula divides index numbers "published most recently
+-- before" two different days. If the ABS re-references the series in
+-- between (it did so to 2011-12 = 100), the two numbers are on different
+-- bases. Here rents rose 5% in fact, but the series was re-referenced
+-- from about 200 to 100: the published current number (105) is below
+-- the old-base initial number (200), is floored to it, and L = 0.
+
+`CPI re-referenced between notices` MEANS `rent increase proposal` WITH
+    `the increase is proposed under section 30` IS TRUE,
+    `the increase is proposed under section 31A` IS FALSE,
+    `the rent change is made by entering into a new residential tenancy agreement` IS FALSE,
+    `the current rent payable` IS 600,
+    `the amount of the proposed increase` IS 30,
+    `the amount of the proposed increase can be determined when the notice is given` IS TRUE,
+    `CPI published most recently before the notice is given` IS 105,
+    `CPI published most recently before the agreement commenced` IS 180,
+    `the rent payable has been increased previously` IS TRUE,
+    `CPI published most recently before notice of the previous increase was given` IS 200,
+    `the agreement sets out the amount of the increase or the method of calculating it` IS FALSE,
+    `after the notice the tenant agrees to the increase in writing` IS FALSE,
+    `a competent court approves the amount of the increase` IS FALSE,
+    `the notice states the amount of the proposed increase` IS TRUE,
+    `the notice states whether the proposed increase is more than the increase limit` IS TRUE,
+    `the notice states that without the tenant's agreement the increase needs court approval` IS FALSE,
+    `the notice was given before commencement day` IS FALSE,
+    `the tenancy is for a fixed term during its currency` IS FALSE
+
+#ASSERT `the increase limit` `CPI re-referenced between notices` EQUALS 0
+#ASSERT `the amount of the increase is allowed by section 31AA(2)` `CPI re-referenced between notices` EQUALS FALSE
+
+-- Proposed s.105: a notice given before commencement is outside s.31AA.
+
+`notice given before commencement` MEANS `rent increase proposal` WITH
+    `the increase is proposed under section 30` IS TRUE,
+    `the increase is proposed under section 31A` IS FALSE,
+    `the rent change is made by entering into a new residential tenancy agreement` IS FALSE,
+    `the current rent payable` IS 600,
+    `the amount of the proposed increase` IS 60,
+    `the amount of the proposed increase can be determined when the notice is given` IS TRUE,
+    `CPI published most recently before the notice is given` IS 210,
+    `CPI published most recently before the agreement commenced` IS 180,
+    `the rent payable has been increased previously` IS TRUE,
+    `CPI published most recently before notice of the previous increase was given` IS 200,
+    `the agreement sets out the amount of the increase or the method of calculating it` IS FALSE,
+    `after the notice the tenant agrees to the increase in writing` IS FALSE,
+    `a competent court approves the amount of the increase` IS FALSE,
+    `the notice states the amount of the proposed increase` IS TRUE,
+    `the notice states whether the proposed increase is more than the increase limit` IS TRUE,
+    `the notice states that without the tenant's agreement the increase needs court approval` IS TRUE,
+    `the notice was given before commencement day` IS TRUE,
+    `the tenancy is for a fixed term during its currency` IS FALSE
+
+#ASSERT `the amount of the increase is allowed by section 31AA(2)` `notice given before commencement` EQUALS TRUE
+
+§ `Comparison with the ACT model (Residential Tenancies Act 1997 (ACT) s.64B)`
+
+-- The EM says s.31AA "corresponds with the system currently in place in
+-- the ACT". s.31AA(2)-(3) track ACT s.64B(1)-(2) nearly word for word,
+-- with two differences (sources/act-rta-1997-r84-part5-excerpt.txt):
+--   * ACT s.64B(1)(a) exempts only "a fixed term agreement to which
+--     section 64A applies" -- one entered into before 10 December 2024.
+--     It is a closing transitional. WA s.31AA(2)(a) exempts every
+--     agreement, fixed or periodic, for all time (B-01).
+--   * ACT s.64AE defines "rental rate increase" to include an increase
+--     under an existing or proposed "consecutive tenancy agreement". WA
+--     has no counterpart (B-02).
+
+GIVEN `the agreement sets out the increase` IS A BOOLEAN,
+      `the agreement is a fixed term agreement entered before the model's cut-off` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the ACT section 64B(1)(a) exception applies` IF
+        `the agreement sets out the increase`
+    AND `the agreement is a fixed term agreement entered before the model's cut-off`
+
+GIVEN `the agreement sets out the increase` IS A BOOLEAN,
+      `the agreement is a fixed term agreement entered before the model's cut-off` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the WA section 31AA(2)(a) exception applies` IF
+    `the agreement sets out the increase`
+
+GIVEN `the change is under a new agreement with the same parties` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the ACT cap reaches the change` IF
+    TRUE
+
+GIVEN `the change is under a new agreement with the same parties` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the WA cap reaches the change` IF
+    NOT `the change is under a new agreement with the same parties`
+
+§§ `ACT comparison -- illustrations`
+
+-- A lease signed after commencement with a 10% annual increase clause.
+
+#ASSERT `the ACT section 64B(1)(a) exception applies` TRUE FALSE EQUALS FALSE
+#ASSERT `the WA section 31AA(2)(a) exception applies` TRUE FALSE EQUALS TRUE
+
+-- A renewal with the same tenant at a higher rent.
+
+#ASSERT `the ACT cap reaches the change` TRUE EQUALS TRUE
+#ASSERT `the WA cap reaches the change` TRUE EQUALS FALSE
+
+§ `Proposed section 31AB - Lessor's application to increase rent above increase limit`
+
+-- s.31AB(5)-(6): if the court does not approve the increase requested it
+-- may order that the rent payable "under the residential tenancy
+-- agreement" not exceed a specified amount, for 1 year from the day the
+-- order takes effect. s.31AB(8) makes it an offence to demand or receive
+-- rent "from the residential premises" above that amount.
+
+DECLARE `rent demand after a section 31AB order` HAS
+    `the court made an order under section 31AB(5)` IS A BOOLEAN
+    `the maximum rent specified in the order` IS A NUMBER
+    `days after the order took effect that the rent is demanded` IS A NUMBER
+    `the rent demanded` IS A NUMBER
+    `the rent is demanded under the residential tenancy agreement the order was made about` IS A BOOLEAN
+
+GIVEN d IS A `rent demand after a section 31AB order`
+GIVETH A BOOLEAN
+DECIDE `the section 31AB(5) order is in effect` IF
+        d's `the court made an order under section 31AB(5)`
+    AND d's `days after the order took effect that the rent is demanded` AT LEAST 0
+    AND d's `days after the order took effect that the rent is demanded` LESS THAN 365
+
+-- The order itself limits rent under the agreement it was made about.
+
+GIVEN d IS A `rent demand after a section 31AB order`
+GIVETH A BOOLEAN
+DECIDE `the order limits the rent demanded` IF
+        `the section 31AB(5) order is in effect` d
+    AND d's `the rent is demanded under the residential tenancy agreement the order was made about`
+
+@ref Residential Tenancies Amendment (Rent Cap) Bill 2026 (WA) cl.4, proposed s.31AB(8)
+@export Decide whether a demand for rent contravenes proposed s.31AB(8) (penalty: fine of $5 000)
+GIVEN d IS A `rent demand after a section 31AB order` @desc A demand for or receipt of rent from premises subject to a s.31AB(5) order. Days are counted from the day the order takes effect; the order has effect for 1 year. Offence if the rent demanded exceeds the specified maximum while the order is in effect.
+GIVETH A BOOLEAN
+DECIDE `section 31AB(8) is contravened` IF
+        `the section 31AB(5) order is in effect` d
+    AND d's `the rent demanded` GREATER THAN d's `the maximum rent specified in the order`
+
+§§ `Section 31AB -- illustrations`
+
+`demand from the same tenant` MEANS `rent demand after a section 31AB order` WITH
+    `the court made an order under section 31AB(5)` IS TRUE,
+    `the maximum rent specified in the order` IS 620,
+    `days after the order took effect that the rent is demanded` IS 100,
+    `the rent demanded` IS 650,
+    `the rent is demanded under the residential tenancy agreement the order was made about` IS TRUE
+
+-- B-06: the tenant leaves after 3 months; the lessor lets to a new tenant
+-- at $700. The order no longer limits any agreement, yet s.31AB(8) makes
+-- demanding $700 "from the residential premises" an offence until the
+-- year ends. Compare s.32(5), whose order ends with the tenancy.
+
+`demand from a new tenant` MEANS `rent demand after a section 31AB order` WITH
+    `the court made an order under section 31AB(5)` IS TRUE,
+    `the maximum rent specified in the order` IS 620,
+    `days after the order took effect that the rent is demanded` IS 100,
+    `the rent demanded` IS 700,
+    `the rent is demanded under the residential tenancy agreement the order was made about` IS FALSE
+
+#ASSERT `section 31AB(8) is contravened` `demand from the same tenant` EQUALS TRUE
+#ASSERT `the order limits the rent demanded` `demand from a new tenant` EQUALS FALSE
+#ASSERT `section 31AB(8) is contravened` `demand from a new tenant` EQUALS TRUE
