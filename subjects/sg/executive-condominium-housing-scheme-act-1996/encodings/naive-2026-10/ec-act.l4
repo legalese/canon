@@ -1,0 +1,306 @@
+IMPORT prelude
+
+-- Executive Condominium Housing Scheme Act 1996 (Singapore), 2020 Revised
+-- Edition, informal consolidation in force from 1 December 2025.
+--
+-- Source: ../../registers/source-bundle/ECHSA1996.txt
+--
+-- NAIVE ENCODING. Straight from the text with the writing-l4-rules skill and
+-- nothing else: no pipeline, no coverage table, no independent test pass, no
+-- human gate. Observations, not checked findings.
+--
+-- SCOPE. ss 5, 6, 7 and 9 -- who may not buy, what happens when a disqualified
+-- person does, the two windows in which the accommodation may not be
+-- transferred, and the grounds on which it may be compulsorily acquired.
+--
+-- NOT ENCODED: ss 1-4 (short title, interpretation, the scheme itself, the
+-- appointment of developers), s 8 (transmission on death), ss 10-14 (premium on
+-- resale, service, immunity, the Residential Property Act and the Minister's
+-- general power). The regulations under s 3(2), which carry the real
+-- eligibility conditions, were not retrieved.
+--
+-- "Minimum occupation period" is defined by reference to what is prescribed, so
+-- every rule that reads it takes "within the minimum occupation period" as a
+-- fact rather than computing a date. That is also why no DATE type appears:
+-- the periods in this Act are prescribed elsewhere or are fact questions.
+
+§ `Executive Condominium Housing Scheme Act 1996`
+
+§§ `5 -- Eligibility to purchase`
+
+-- s 5(1): "a person is not entitled to purchase any housing accommodation under
+-- the executive condominium scheme if THE PERSON OR HIS OR HER SPOUSE has at
+-- any time -- (a) ... owned or purchased any flat, house, building or land ...;
+-- (b) ... sold any flat ... or divested himself or herself of any estate or
+-- interest therein; (c) made any misrepresentation of a material fact or false
+-- statement in a material particular, WHETHER INNOCENTLY OR OTHERWISE ...; or
+-- (d) ... become ineligible ... by virtue of any regulations made under
+-- section 3(2)."
+--
+-- Every limb attaches to the person OR the spouse, so each fact is recorded for
+-- the couple rather than the applicant. The windows differ between limbs and
+-- are part of each fact's name:
+--   (a) between application and the temporary occupation permit;
+--   (b) 30 months before application, OR between application and the permit;
+--   (c) no window at all;
+--   (d) between application and the permit.
+DECLARE Applicant HAS
+    `name`  IS A STRING
+    -- (a)
+    `the person or spouse owned or purchased property between application and the temporary occupation permit` IS A BOOLEAN
+    -- (b), first window
+    `the person or spouse sold or divested property within 30 months before the application` IS A BOOLEAN
+    -- (b), second window
+    `the person or spouse sold or divested property between application and the temporary occupation permit` IS A BOOLEAN
+    -- (c)
+    `the person or spouse made a misrepresentation of material fact or a false statement in a material particular relating to the purchase` IS A BOOLEAN
+    -- (d)
+    `the person or spouse became ineligible under regulations made under section 3(2) between application and the permit` IS A BOOLEAN
+    -- s 5(9): the commercial-property saving.
+    `the property concerned is commercial property acquired with the Minister's prior written consent` IS A BOOLEAN
+    `the value of that commercial property at the time of purchase in dollars` IS A NUMBER
+    `the Minister has allowed a higher value than $250,000` IS A BOOLEAN
+
+-- s 5(9): "Nothing in subsection (1) disqualifies a person ... if the person or
+-- his or her spouse has purchased or acquired, WITH THE MINISTER'S PRIOR
+-- WRITTEN CONSENT, any commercial property not exceeding $250,000 in value, or
+-- such higher value as the Minister may allow, at the time of purchase."
+--
+-- Three cumulative conditions: commercial property, prior written consent, and
+-- the value cap. The cap is $250,000 unless the Minister has allowed more, and
+-- whether more has been allowed is a fact.
+`the commercial property value cap in dollars` MEANS 250000
+
+GIVEN `the applicant` IS AN Applicant
+GIVETH A BOOLEAN
+DECIDE `the section 5(9) saving applies` IF
+        `the applicant`'s `the property concerned is commercial property acquired with the Minister's prior written consent`
+    AND `the value is within the cap` `the applicant`
+
+GIVEN `the applicant` IS AN Applicant
+GIVETH A BOOLEAN
+DECIDE `the value is within the cap` IF
+        `the applicant`'s `the value of that commercial property at the time of purchase in dollars`
+            AT MOST `the commercial property value cap in dollars`
+    OR  `the applicant`'s `the Minister has allowed a higher value than $250,000`
+
+-- The four limbs of s 5(1), joined by "or".
+GIVEN `the applicant` IS AN Applicant
+GIVETH A BOOLEAN
+DECIDE `a ground in section 5(1) applies` IF
+        `the applicant`'s `the person or spouse owned or purchased property between application and the temporary occupation permit`
+    ..  `section 5(1)(b) applies` `the applicant`
+    ..  `the applicant`'s `the person or spouse made a misrepresentation of material fact or a false statement in a material particular relating to the purchase`
+    OR  `the applicant`'s `the person or spouse became ineligible under regulations made under section 3(2) between application and the permit`
+
+-- (b) itself has two windows, joined by "or".
+GIVEN `the applicant` IS AN Applicant
+GIVETH A BOOLEAN
+DECIDE `section 5(1)(b) applies` IF
+        `the applicant`'s `the person or spouse sold or divested property within 30 months before the application`
+    OR  `the applicant`'s `the person or spouse sold or divested property between application and the temporary occupation permit`
+
+GIVEN `the applicant` IS AN Applicant
+GIVETH A BOOLEAN
+DECIDE `the person is not entitled to purchase under section 5(1)` IF
+        `a ground in section 5(1) applies` `the applicant`
+    AND NOT `the section 5(9) saving applies` `the applicant`
+
+-- s 5(2): "Where any person purchases ... in contravention of subsection (1),
+-- he or she must not present for registration under the Land Titles Act 1993
+-- the assurance of the housing accommodation."
+GIVEN `the applicant` IS AN Applicant
+GIVETH A BOOLEAN
+DECIDE `the purchaser must not present the assurance for registration` IF
+    `the person is not entitled to purchase under section 5(1)` `the applicant`
+
+-- s 5(3): where, BEFORE the temporary occupation permit issues, the developer
+-- is satisfied that a purchaser has contravened s 5(1) or s 7(1)(a), the
+-- developer MUST serve one of two notices: (a) of intention to lodge a vesting
+-- instrument, or (b) where no assurance has been registered, of intention to
+-- terminate the sale and purchase agreement.
+DECLARE DeveloperSituation HAS
+    `the applicant`                         IS AN Applicant
+    `the temporary occupation permit has issued` IS A BOOLEAN
+    `the developer is satisfied of a contravention of section 5(1) or section 7(1)(a)` IS A BOOLEAN
+    `an assurance has been registered in favour of the purchaser` IS A BOOLEAN
+    -- s 5(4): "within 14 days after service of the notice, appeal to the
+    -- Minister whose decision is final".
+    `the purchaser appealed to the Minister within 14 days after service` IS A BOOLEAN
+    `the appeal has been disposed of`       IS A BOOLEAN
+
+GIVEN `the situation` IS A DeveloperSituation
+GIVETH A BOOLEAN
+DECIDE `the developer must serve a section 5(3) notice` IF
+        NOT `the situation`'s `the temporary occupation permit has issued`
+    AND `the situation`'s `the developer is satisfied of a contravention of section 5(1) or section 7(1)(a)`
+
+-- (a) or (b): which notice depends on whether an assurance has been registered.
+GIVEN `the situation` IS A DeveloperSituation
+GIVETH A BOOLEAN
+DECIDE `the notice is one of intention to terminate the agreement under section 5(3)(b)` IF
+        `the developer must serve a section 5(3) notice` `the situation`
+    AND NOT `the situation`'s `an assurance has been registered in favour of the purchaser`
+
+GIVEN `the situation` IS A DeveloperSituation
+GIVETH A BOOLEAN
+DECIDE `the notice is one of intention to lodge a vesting instrument under section 5(3)(a)` IF
+        `the developer must serve a section 5(3) notice` `the situation`
+    AND `the situation`'s `an assurance has been registered in favour of the purchaser`
+
+-- s 5(5): "Where an appeal has been made to the Minister under subsection (4),
+-- the developer MUST NOT proceed to lodge any instrument ... until the appeal
+-- has been disposed of."
+GIVEN `the situation` IS A DeveloperSituation
+GIVETH A BOOLEAN
+DECIDE `the developer must not lodge the vesting instrument yet` IF
+        `the situation`'s `the purchaser appealed to the Minister within 14 days after service`
+    AND NOT `the situation`'s `the appeal has been disposed of`
+
+-- s 5(8): "The Government must, after deducting a penalty NOT EXCEEDING $10,000
+-- as may be prescribed, distribute the remainder ..." A ceiling, so the rule
+-- states the ceiling and the prescribed figure is a fact.
+`the maximum section 5(8) penalty in dollars` MEANS 10000
+
+§§ `6 -- Death of applicant before issue of temporary occupation permit`
+
+-- s 6: "Where any applicant ... dies before the issue of the temporary
+-- occupation permit ..., the developer MUST, UNLESS THE MINISTER OTHERWISE
+-- DIRECTS, cancel the application and terminate the sale and purchase agreement
+-- (if any), and all moneys paid or deposited, less any administrative and legal
+-- costs reasonably incurred by the developer, must be refunded ..."
+GIVEN `the applicant died before the permit issued` IS A BOOLEAN
+    , `the Minister has otherwise directed` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the developer must cancel the application under section 6` IF
+        `the applicant died before the permit issued`
+    AND NOT `the Minister has otherwise directed`
+
+GIVEN `the moneys paid or deposited` IS A NUMBER
+    , `the administrative and legal costs reasonably incurred` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the amount refundable under section 6` IS
+    `the moneys paid or deposited` MINUS `the administrative and legal costs reasonably incurred`
+
+§§ `7 -- Prohibition of transfers`
+
+-- s 7(1): "EXCEPT WITH THE MINISTER'S PRIOR WRITTEN CONSENT, a person must
+-- not -- (a) between the date an application to purchase ... is made ... and the
+-- date of issue of the temporary occupation permit ...; or (b) within the
+-- minimum occupation period, transfer the housing accommodation ... or create
+-- any trust for sale ..."
+--
+-- Two windows, one prohibition, one consent that lifts it.
+DECLARE Transfer HAS
+    `a transfer of the accommodation or an estate or interest, or the creation of a trust for sale` IS A BOOLEAN
+    `made between the application and the issue of the temporary occupation permit` IS A BOOLEAN   -- (a)
+    `made within the minimum occupation period` IS A BOOLEAN                                        -- (b)
+    `the Minister gave prior written consent` IS A BOOLEAN
+
+GIVEN `the transfer` IS A Transfer
+GIVETH A BOOLEAN
+DECIDE `the transfer falls in a prohibited window` IF
+        `the transfer`'s `made between the application and the issue of the temporary occupation permit`
+    OR  `the transfer`'s `made within the minimum occupation period`
+
+GIVEN `the transfer` IS A Transfer
+GIVETH A BOOLEAN
+DECIDE `the transfer contravenes section 7(1)` IF
+        `the transfer`'s `a transfer of the accommodation or an estate or interest, or the creation of a trust for sale`
+    AND `the transfer falls in a prohibited window` `the transfer`
+    AND NOT `the transfer`'s `the Minister gave prior written consent`
+
+-- s 7(2): "Any transfer made or trust created in contravention of
+-- subsection (1) is VOID." Not voidable, and not merely an offence: the
+-- transfer does not happen at all.
+GIVEN `the transfer` IS A Transfer
+GIVETH A BOOLEAN
+DECIDE `the transfer is void under section 7(2)` IF
+    `the transfer contravenes section 7(1)` `the transfer`
+
+-- s 7(3): an offence, fine not exceeding $10,000.
+GIVEN `the transfer` IS A Transfer
+GIVETH A BOOLEAN
+DECIDE `the person is guilty of an offence under section 7(3)` IF
+    `the transfer contravenes section 7(1)` `the transfer`
+
+`the maximum section 7(3) fine in dollars` MEANS 10000
+
+§§ `9 -- Compulsory acquisition`
+
+-- s 9(1): "the Minister MAY direct the Board to compulsorily acquire the
+-- housing accommodation if the Minister is satisfied that -- (a) any purchaser
+-- ... or spouse has ceased to occupy ... within the minimum occupation period;
+-- (b) ... has at any time acquired ... any title to, or an estate or interest
+-- in, any flat, house, building or land; (c) the housing accommodation has been
+-- used otherwise than as a housing accommodation within the minimum occupation
+-- period; (d) ... assigned, underlet or parted with possession ... within the
+-- minimum occupation period without the Minister's prior written consent;
+-- (e) ... failed to perform or observe any term or condition ... AFTER the
+-- Board or the developer has served ... a written notice ...; (f) ... made a
+-- misleading or false statement in his or her application ...; (g) ... made a
+-- misrepresentation of a material fact, whether innocently or otherwise ...;
+-- (h) ... has contravened section 7(1)(b); or (i) ... has, within the minimum
+-- occupation period, ceased to be a citizen of Singapore".
+--
+-- Nine grounds, any one of which opens the power. The power is "may", so what
+-- is decided is whether it ARISES, not whether it is exercised.
+DECLARE AcquisitionGrounds HAS
+    `ceased to occupy within the minimum occupation period`                     IS A BOOLEAN   -- (a)
+    `acquired title to or an interest in any flat, house, building or land`     IS A BOOLEAN   -- (b)
+    `used otherwise than as a housing accommodation within the minimum occupation period` IS A BOOLEAN   -- (c)
+    `assigned, underlet or parted with possession within the minimum occupation period without consent` IS A BOOLEAN   -- (d)
+    `failed to perform a term or condition after written notice drawing attention to it` IS A BOOLEAN   -- (e)
+    `made a misleading or false statement in the application`                   IS A BOOLEAN   -- (f)
+    `made a misrepresentation of a material fact, whether innocently or otherwise` IS A BOOLEAN   -- (g)
+    `contravened section 7(1)(b)`                                               IS A BOOLEAN   -- (h)
+    `ceased to be a citizen of Singapore within the minimum occupation period`  IS A BOOLEAN   -- (i)
+    -- s 9(10): the same commercial-property saving as s 5(9), but applied only
+    -- to limb (b). Word for word the same test: commercial property acquired
+    -- with the Minister's prior written consent, not exceeding $250,000 or such
+    -- higher value as the Minister may allow.
+    `the property acquired is commercial property acquired with the Minister's prior written consent` IS A BOOLEAN
+    `the value of that commercial property at the time of purchase in dollars`  IS A NUMBER
+    `the Minister has allowed a higher value for this acquisition`              IS A BOOLEAN
+
+-- s 9(10): "Subsection (1)(b) does not apply to a purchaser ... who has
+-- purchased or acquired, with the Minister's prior written consent, any
+-- commercial property not exceeding $250,000 in value, or such higher value as
+-- the Minister may allow, at the time of purchase."
+GIVEN `the grounds` IS AN AcquisitionGrounds
+GIVETH A BOOLEAN
+DECIDE `the section 9(10) saving applies` IF
+        `the grounds`'s `the property acquired is commercial property acquired with the Minister's prior written consent`
+    AND `the acquisition value is within the cap` `the grounds`
+
+GIVEN `the grounds` IS AN AcquisitionGrounds
+GIVETH A BOOLEAN
+DECIDE `the acquisition value is within the cap` IF
+        `the grounds`'s `the value of that commercial property at the time of purchase in dollars`
+            AT MOST `the commercial property value cap in dollars`
+    OR  `the grounds`'s `the Minister has allowed a higher value for this acquisition`
+
+-- Limb (b) as it actually operates, with s 9(10) read in.
+GIVEN `the grounds` IS AN AcquisitionGrounds
+GIVETH A BOOLEAN
+DECIDE `section 9(1)(b) is made out` IF
+        `the grounds`'s `acquired title to or an interest in any flat, house, building or land`
+    AND NOT `the section 9(10) saving applies` `the grounds`
+
+GIVEN `the grounds` IS AN AcquisitionGrounds
+GIVETH A BOOLEAN
+DECIDE `a ground in section 9(1) is made out` IF
+        `the grounds`'s `ceased to occupy within the minimum occupation period`
+    ..  `section 9(1)(b) is made out` `the grounds`
+    ..  `the grounds`'s `used otherwise than as a housing accommodation within the minimum occupation period`
+    ..  `the grounds`'s `assigned, underlet or parted with possession within the minimum occupation period without consent`
+    ..  `the grounds`'s `failed to perform a term or condition after written notice drawing attention to it`
+    ..  `the grounds`'s `made a misleading or false statement in the application`
+    ..  `the grounds`'s `made a misrepresentation of a material fact, whether innocently or otherwise`
+    ..  `the grounds`'s `contravened section 7(1)(b)`
+    OR  `the grounds`'s `ceased to be a citizen of Singapore within the minimum occupation period`
+
+GIVEN `the grounds` IS AN AcquisitionGrounds
+GIVETH A BOOLEAN
+DECIDE `the Minister may direct compulsory acquisition` IF
+    `a ground in section 9(1) is made out` `the grounds`
