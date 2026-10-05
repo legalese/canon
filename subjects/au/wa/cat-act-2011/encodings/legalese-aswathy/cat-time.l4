@@ -1,0 +1,185 @@
+IMPORT prelude
+IMPORT daydate
+
+-- TIME, for the Cat Act 2011 (WA).
+--
+-- The Cat Act counts days ("within 7 days after"), working days ("within 3
+-- working days of the cat entering"), months ("within the period of 12
+-- months before") and years ("within the previous 3 years", "6 months of
+-- age", "under 18 years of age"). It defines none of them. The rules below
+-- come from the Interpretation Act 1984 ss 5, 61 and 62
+-- (inputs/interpretation-act-1984-extract.txt), which apply to every
+-- written law, and one is an encoding choice recorded as fork F-01.
+--
+-- Public holidays are an INPUT: a list of dates. No library ships the WA
+-- calendar (Public and Bank Holidays Act 1972), and "a public holiday
+-- throughout the State or in that part of the State which is relevant"
+-- (s 61(2)) depends on where the event happened.
+
+§ `Time`
+
+§§ `The period this encoding states the law for`
+
+-- inputs/PROVENANCE.md: the Act consolidation 00-l0-01 is current from
+-- 25 September 2025 and the Regulations consolidation 02-b0-00 from
+-- 24 July 2025. Earlier versions were not fetched, so for an earlier date
+-- this encoding has no source. That is the encoder's answer, not the law's,
+-- and so it is a refusal (phrasebook 11.5), never the current text answering
+-- for a past date.
+@ref inputs/PROVENANCE.md, "In-force statements"
+GIVETH A DATE
+`the first date this encoding states the law for` MEANS YMD 2025 9 25
+
+@ref inputs/PROVENANCE.md, "In-force statements"
+GIVETH A BOOLEAN
+`no source is encoded for a date before 25 September 2025` MEANS
+    REFUSE "no source is encoded for a date before 25 September 2025: this encoding states the Cat Act 2011 as consolidated from 25 September 2025 and the Cat Regulations 2012 as consolidated from 24 July 2025"
+
+-- Every decision that is about a day reads it through this gate.
+GIVEN d IS A DATE
+GIVETH A BOOLEAN
+`the law is encoded for` d MEANS
+    IF d AT LEAST `the first date this encoding states the law for`
+    THEN TRUE
+    ELSE `no source is encoded for a date before 25 September 2025`
+
+§§ `Interpretation Act 1984 s 61 — days`
+
+-- s 61(2): "excluded day means Saturday, Sunday, public service holiday,
+-- and a bank holiday or public holiday throughout the State or in that part
+-- of the State which is relevant ..." Public service, bank and public
+-- holidays all arrive in the one input list.
+@ref Interpretation Act 1984 (WA) s 61(2)
+GIVEN d        IS A DATE
+      holidays IS A LIST OF DATE
+GIVETH A BOOLEAN
+DECIDE `an excluded day` d `given` holidays IF
+        `is weekend` d
+    OR  elem d holidays
+
+-- s 61(1)(e): "where the time limited for the doing of a thing expires or
+-- falls upon an excluded day, the thing may be done on the next day that is
+-- not an excluded day".
+@ref Interpretation Act 1984 (WA) s 61(1)(e)
+GIVEN d        IS A DATE
+      holidays IS A LIST OF DATE
+GIVETH A DATE
+`the first day from` d `that is not excluded, given` holidays MEANS
+    IF   `an excluded day` d `given` holidays
+    THEN `the first day from` (d PLUS 1) `that is not excluded, given` holidays
+    ELSE d
+
+-- s 61(1)(b): "where a period of time is expressed to be reckoned from, or
+-- after, a specified day, that day shall not be included in the period";
+-- then s 61(1)(e). So "within 7 days after X" closes at the end of X + 7,
+-- moved forward past any excluded day.
+@ref Interpretation Act 1984 (WA) s 61(1)(b), (e)
+GIVEN n        IS A NUMBER
+      d        IS A DATE
+      holidays IS A LIST OF DATE
+GIVETH A DATE
+`the last day to act within` n `days after` d `given` holidays MEANS
+    `the first day from` (d PLUS n) `that is not excluded, given` holidays
+
+§§ `Working days — fork F-01`
+
+-- "working day" is used in Cat Act ss 32(b) and 34(1)(a), (b)(i) and is
+-- defined nowhere that reaches the Cat Act. The Local Government Act 1995
+-- defines it only "In this Schedule" (Sch 4.1A cl 1,
+-- inputs/local-government-act-1995-extract.txt), so Cat Act s 3(2) does not
+-- carry it across. FORK F-01: this encoding takes the ordinary meaning, a
+-- day that is not a Saturday, a Sunday or a holiday in the input list —
+-- which happens to be the same set of days as s 61(2)'s excluded days, and
+-- the same as the LG Act Sch 4.1A wording.
+@ref Cat Act 2011 s 32(b), s 34(1); fork F-01 in NOTES.md
+GIVEN d        IS A DATE
+      holidays IS A LIST OF DATE
+GIVETH A BOOLEAN
+DECIDE `a working day` d `given` holidays IF
+    NOT `an excluded day` d `given` holidays
+
+-- The n-th working day after d, d itself not counted (s 61(1)(b)).
+GIVEN n        IS A NUMBER
+      d        IS A DATE
+      holidays IS A LIST OF DATE
+GIVETH A DATE
+`the date` n `working days after` d `given` holidays MEANS
+    IF   n AT MOST 0
+    THEN d
+    ELSE `the date` (n MINUS `one if a working day`) `working days after` (d PLUS 1) `given` holidays
+    WHERE
+        `one if a working day` MEANS IF `a working day` (d PLUS 1) `given` holidays THEN 1 ELSE 0
+
+§§ `Interpretation Act 1984 s 62 — months and years`
+
+-- s 62(3): a period of n months "shall be reckoned from the date on which
+-- it is to begin to the date numerically corresponding, less one, in the
+-- ... successive month thereafter or, if there is no such corresponding
+-- date, to the last day of the latter month." s 5: "year means a period of
+-- 12 months".
+--
+-- What the Act needs is the FIRST DAY AFTER such a period: the day a cat
+-- "has reached 6 months of age", the day a person is no longer "under 18
+-- years of age". That is the numerically corresponding date where there is
+-- one, and otherwise the first day of the next month (a cat born on
+-- 31 August reaches 6 months on 1 March, because the 6 months ran to the
+-- last day of February). `add months` would answer 28 February — a day early.
+@ref Interpretation Act 1984 (WA) s 62(2), (3); s 5 "year"
+GIVEN n IS A NUMBER
+      d IS A DATE
+GIVETH A DATE
+`the day after a period of` n `months beginning on` d MEANS
+    IF   DATE_DAY d AT MOST `Days in month` (DATE_MONTH `first of the latter month`) (DATE_YEAR `first of the latter month`)
+    THEN Date (DATE_DAY d) (DATE_MONTH `first of the latter month`) (DATE_YEAR `first of the latter month`)
+    ELSE Date 1 (DATE_MONTH `first of the latter month` PLUS 1) (DATE_YEAR `first of the latter month`)
+    WHERE
+        -- Date rolls a month past 12 into the next year, which is wanted here.
+        `first of the latter month` MEANS Date 1 (DATE_MONTH d PLUS n) (DATE_YEAR d)
+
+-- A being born on b has reached n months of age on d.
+GIVEN n IS A NUMBER
+      b IS A DATE
+      d IS A DATE
+GIVETH A BOOLEAN
+DECIDE `reached` n `months of age, if born on` b `, on` d IF
+    d AT LEAST `the day after a period of` n `months beginning on` b
+
+GIVEN n IS A NUMBER
+      b IS A DATE
+      d IS A DATE
+GIVETH A BOOLEAN
+DECIDE `under` n `years of age, if born on` b `, on` d IF
+    NOT `reached` (n TIMES 12) `months of age, if born on` b `, on` d
+
+-- "within the previous 3 years", "within the period of 12 months before":
+-- an event on e falls within the n months before d when it is on or before d
+-- and after the date n months before d. FORK F-02 records the one-day edge:
+-- an event on the very anniversary is outside.
+GIVEN n IS A NUMBER
+      d IS A DATE
+      e IS A DATE
+GIVETH A BOOLEAN
+DECIDE `within the` n `months before` d `, an event on` e IF
+        e AT MOST d
+    AND d LESS THAN `the day after a period of` n `months beginning on` e
+
+§§ `A thing to be done within n days after an event`
+
+-- Used by every "within 7 days after ..." duty in the Act (ss 13, 15, 20,
+-- 24, 25, 40). On day d, the duty has been contravened when the thing was
+-- not done by the last day for doing it (s 61(1)(b), (e)) — either it was
+-- done later, or it has not been done and that last day has passed.
+GIVEN n        IS A NUMBER
+      e        IS A DATE
+      done     IS A MAYBE DATE
+      d        IS A DATE
+      holidays IS A LIST OF DATE
+GIVETH A BOOLEAN
+DECIDE `not done within` n `days after` e `, done on` done `, as at` d `given` holidays IF
+    CONSIDER done
+    WHEN JUST m  THEN IF   m AT MOST d
+                      THEN m GREATER THAN `the last day`
+                      ELSE d GREATER THAN `the last day`     -- done, but only after d
+    WHEN NOTHING THEN d GREATER THAN `the last day`
+    WHERE
+        `the last day` MEANS `the last day to act within` n `days after` e `given` holidays
