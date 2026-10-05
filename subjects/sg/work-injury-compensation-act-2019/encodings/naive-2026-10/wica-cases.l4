@@ -1,0 +1,142 @@
+IMPORT prelude
+IMPORT `wica-compensation`
+
+-- Work Injury Compensation Act 2019 -- worked cases.
+
+§ `Fixtures`
+
+GIVEN `in course` IS A BOOLEAN
+    , `contrary evidence` IS A BOOLEAN
+    , `drink or drugs` IS A BOOLEAN
+    , `self injury` IS A BOOLEAN
+GIVETH AN Accident
+DECIDE `an accident` `in course` `contrary evidence` `drink or drugs` `self injury` IS
+    Accident WITH
+        `personal injury was caused to an employee by an accident` IS TRUE
+        `the accident arose in the course of the employment` IS `in course`
+        `there is evidence that it did not arise out of the employment` IS `contrary evidence`
+        `the injury is directly attributable to the employee being under the influence of alcohol or a drug at the time` IS `drink or drugs`
+        `deliberate self-injury or deliberate aggravation of an accidental injury by the employee` IS `self injury`
+        `the injury was suffered in a fight or an assault` IS FALSE
+        `the employee did not assault anyone, or did so in private defence under Penal Code sections 97 to 106A` IS FALSE
+        `the employee was breaking up or preventing the fight or assault` IS FALSE
+        `the employee was safeguarding life or property or maintaining law and order` IS FALSE
+
+`an ordinary workplace accident` MEANS `an accident` TRUE FALSE FALSE FALSE
+
+§§ `7 -- liability, and the section 7(4) presumption`
+
+#ASSERT `the employer is liable to pay compensation` `an ordinary workplace accident`
+
+-- Not in the course of employment: nothing else matters.
+#ASSERT NOT `the employer is liable to pay compensation` (`an accident` FALSE FALSE FALSE FALSE)
+
+-- In the course of employment, but the employer adduces evidence that it did
+-- not arise OUT OF the employment. s 7(4) is rebuttable, and this is the
+-- rebuttal doing its work.
+#ASSERT `the accident is taken to arise out of the employment` `an ordinary workplace accident`
+#ASSERT NOT `the accident is taken to arise out of the employment` (`an accident` TRUE TRUE FALSE FALSE)
+#ASSERT NOT `the employer is liable to pay compensation` (`an accident` TRUE TRUE FALSE FALSE)
+
+-- s 7(2)(a) and (b).
+#ASSERT NOT `the employer is liable to pay compensation` (`an accident` TRUE FALSE TRUE FALSE)
+#ASSERT NOT `the employer is liable to pay compensation` (`an accident` TRUE FALSE FALSE TRUE)
+
+§§ `7(2)(c) -- the fight exclusion and its exceptions`
+
+GIVEN `assaulted nobody or private defence` IS A BOOLEAN
+    , `breaking up` IS A BOOLEAN
+    , `safeguarding` IS A BOOLEAN
+GIVETH AN Accident
+DECIDE `an injury in a fight where the employee` `assaulted nobody or private defence` `breaking up` `safeguarding` IS
+    Accident WITH
+        `personal injury was caused to an employee by an accident` IS TRUE
+        `the accident arose in the course of the employment` IS TRUE
+        `there is evidence that it did not arise out of the employment` IS FALSE
+        `the injury is directly attributable to the employee being under the influence of alcohol or a drug at the time` IS FALSE
+        `deliberate self-injury or deliberate aggravation of an accidental injury by the employee` IS FALSE
+        `the injury was suffered in a fight or an assault` IS TRUE
+        `the employee did not assault anyone, or did so in private defence under Penal Code sections 97 to 106A` IS `assaulted nobody or private defence`
+        `the employee was breaking up or preventing the fight or assault` IS `breaking up`
+        `the employee was safeguarding life or property or maintaining law and order` IS `safeguarding`
+
+-- A fight with no exception: excluded.
+#ASSERT `the fight exclusion in section 7(2)(c) applies` (`an injury in a fight where the employee` FALSE FALSE FALSE)
+#ASSERT NOT `the employer is liable to pay compensation` (`an injury in a fight where the employee` FALSE FALSE FALSE)
+
+-- Any one of the three exceptions restores liability.
+#ASSERT `the employer is liable to pay compensation` (`an injury in a fight where the employee` TRUE FALSE FALSE)
+#ASSERT `the employer is liable to pay compensation` (`an injury in a fight where the employee` FALSE TRUE FALSE)
+#ASSERT `the employer is liable to pay compensation` (`an injury in a fight where the employee` FALSE FALSE TRUE)
+
+§§ `First Schedule paragraph 1 -- death`
+
+GIVEN `ame` IS A NUMBER, `factor` IS A NUMBER, `on or after` IS A BOOLEAN
+GIVETH AN Injury
+DECIDE `an injury with` `ame` `factor` `on or after` IS
+    Injury WITH
+        `the average monthly earnings` IS `ame`
+        `the multiplying factor from the applicable Table` IS `factor`
+        `the accident took place on or after 1 November 2025` IS `on or after`
+        `the percentage of loss of earning capacity` IS 1
+
+-- An ordinary case: $3,000 AME, factor 120, accident in 2026. 3000 x 120 =
+-- 360,000, above the $269,000 cap, so the cap governs.
+#ASSERT `the unadjusted death compensation` (`an injury with` 3000 120 TRUE) EQUALS 360000
+#ASSERT `the compensation for death` (`an injury with` 3000 120 TRUE) EQUALS 269000
+
+-- The same accident a day earlier, before 1 November 2025: the older, lower cap.
+#ASSERT `the compensation for death` (`an injury with` 3000 120 FALSE) EQUALS 225000
+
+-- A low earner: $400 AME, factor 120 = 48,000, below the floor, so the floor
+-- governs. The floor is what most low-paid workers' families actually receive.
+#ASSERT `the unadjusted death compensation` (`an injury with` 400 120 TRUE) EQUALS 48000
+#ASSERT `the compensation for death` (`an injury with` 400 120 TRUE) EQUALS 91000
+#ASSERT `the compensation for death` (`an injury with` 400 120 FALSE) EQUALS 76000
+
+-- Between the floor and the cap, the product governs untouched.
+#ASSERT `the compensation for death` (`an injury with` 1500 120 TRUE) EQUALS 180000
+
+-- The boundaries themselves: at exactly the floor and exactly the cap, the
+-- product stands, because the Schedule says "less than" and "more than".
+#ASSERT `the compensation for death` (`an injury with` 910 100 TRUE) EQUALS 91000
+#ASSERT `the compensation for death` (`an injury with` 2690 100 TRUE) EQUALS 269000
+
+§§ `First Schedule paragraph 2 -- total incapacity, and the order of operations`
+
+-- THE ORDER MATTERS. The floor and cap bite on C, the product, and the formula
+-- C + 0.25C is applied afterwards. So the final sum EXCEEDS the stated cap by a
+-- quarter: a capped C of $346,000 pays out $432,500.
+#ASSERT `C` (`an injury with` 5000 120 TRUE) EQUALS 346000
+#ASSERT `the compensation for total incapacity` (`an injury with` 5000 120 TRUE) EQUALS 432500
+
+-- Likewise at the floor: a clamped C of $116,000 pays out $145,000.
+#ASSERT `C` (`an injury with` 100 120 TRUE) EQUALS 116000
+#ASSERT `the compensation for total incapacity` (`an injury with` 100 120 TRUE) EQUALS 145000
+
+-- Before 1 November 2025, the older figures.
+#ASSERT `C` (`an injury with` 5000 120 FALSE) EQUALS 289000
+#ASSERT `the compensation for total incapacity` (`an injury with` 5000 120 FALSE) EQUALS 361250
+
+-- Unclamped, the uplift is plain.
+#ASSERT `C` (`an injury with` 2000 100 TRUE) EQUALS 200000
+#ASSERT `the compensation for total incapacity` (`an injury with` 2000 100 TRUE) EQUALS 250000
+
+§§ `First Schedule paragraph 3 -- partial incapacity`
+
+GIVEN `ame` IS A NUMBER, `factor` IS A NUMBER, `pct` IS A NUMBER
+GIVETH AN Injury
+DECIDE `a partial injury with` `ame` `factor` `pct` IS
+    Injury WITH
+        `the average monthly earnings` IS `ame`
+        `the multiplying factor from the applicable Table` IS `factor`
+        `the accident took place on or after 1 November 2025` IS TRUE
+        `the percentage of loss of earning capacity` IS `pct`
+
+-- Paragraph 3 multiplies C, not the paragraph 2 figure.
+#ASSERT `the compensation for partial incapacity` (`a partial injury with` 2000 100 0.5) EQUALS 100000
+
+-- AT 100% LOSS OF EARNING CAPACITY the partial and total figures still differ,
+-- by exactly the quarter that paragraph 2 adds and paragraph 3 does not.
+#ASSERT `the compensation for partial incapacity` (`a partial injury with` 2000 100 1) EQUALS 200000
+#ASSERT `the compensation for total incapacity` (`a partial injury with` 2000 100 1) EQUALS 250000

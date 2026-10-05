@@ -1,0 +1,216 @@
+IMPORT prelude
+
+-- Work Injury Compensation Act 2019 (Singapore), 2020 Revised Edition,
+-- informal consolidation in force from 1 December 2025.
+--
+-- Source: ../../registers/source-bundle/WICA2019.txt
+--
+-- NAIVE ENCODING. Straight from the text with the writing-l4-rules skill and
+-- nothing else: no pipeline, no coverage table, no independent test pass, no
+-- human gate. Observations, not checked findings.
+--
+-- SCOPE. s 7 (the employer's liability and its three exclusions) and the
+-- FIRST SCHEDULE paragraphs 1 to 3 (how much is payable for death, for total
+-- incapacity and for partial incapacity). The Act has 8 Parts and about
+-- 333,000 characters; everything else -- the platform-worker Part 3A, insurance,
+-- claims procedure, appeals -- is not encoded.
+--
+-- THE MULTIPLYING TABLES ARE NOT ENCODED, and could not be: Tables A and B of
+-- the First Schedule are misaligned in the deposited text, so the factor for a
+-- given age cannot be read from it reliably. See the note at the foot of this
+-- file. The factor is therefore a fact supplied, and everything built on it --
+-- the caps, the floors, the formula, the partial-incapacity percentage -- is
+-- encoded exactly as the Schedule states it.
+
+§ `Work Injury Compensation Act 2019`
+
+§§ `7 -- Employer's liability to compensate for work injury`
+
+-- s 7(1): "Where personal injury is caused to an employee by an accident
+-- ARISING OUT OF AND IN THE COURSE OF the employee's employment with an
+-- employer, that employer is liable to pay compensation under this Act."
+--
+-- s 7(4): "For the purposes of this Act, an accident arising IN THE COURSE OF
+-- an employee's employment is deemed, IN THE ABSENCE OF EVIDENCE TO THE
+-- CONTRARY, to have arisen OUT OF that employment."
+--
+-- So the two limbs are not independent in practice: proving the second supplies
+-- the first unless the employer displaces it. That is the whole architecture of
+-- the section and it is why the record below separates "in the course of",
+-- "out of", and the rebutting evidence.
+DECLARE Accident HAS
+    `personal injury was caused to an employee by an accident` IS A BOOLEAN
+    `the accident arose in the course of the employment`       IS A BOOLEAN
+    `there is evidence that it did not arise out of the employment` IS A BOOLEAN
+    -- s 7(2)(a)
+    `the injury is directly attributable to the employee being under the influence of alcohol or a drug at the time` IS A BOOLEAN
+    -- s 7(2)(b)
+    `deliberate self-injury or deliberate aggravation of an accidental injury by the employee` IS A BOOLEAN
+    -- s 7(2)(c): injury in a fight or assault, with its own exceptions
+    `the injury was suffered in a fight or an assault`         IS A BOOLEAN
+    `the employee did not assault anyone, or did so in private defence under Penal Code sections 97 to 106A` IS A BOOLEAN
+    `the employee was breaking up or preventing the fight or assault` IS A BOOLEAN
+    `the employee was safeguarding life or property or maintaining law and order` IS A BOOLEAN
+
+-- s 7(4), as a rule rather than as an assumption.
+GIVEN `the accident` IS AN Accident
+GIVETH A BOOLEAN
+DECIDE `the accident is taken to arise out of the employment` IF
+        `the accident`'s `the accident arose in the course of the employment`
+    AND NOT `the accident`'s `there is evidence that it did not arise out of the employment`
+
+-- s 7(2)(c): the injury in a fight is excluded UNLESS one of the listed things
+-- is true. The limbs are (i) the employee did not assault anyone or acted in
+-- private defence; or (ii) the employee was breaking up the fight, or
+-- safeguarding life, property or order.
+GIVEN `the accident` IS AN Accident
+GIVETH A BOOLEAN
+DECIDE `an exception to the fight exclusion applies` IF
+        `the accident`'s `the employee did not assault anyone, or did so in private defence under Penal Code sections 97 to 106A`
+    ..  `the accident`'s `the employee was breaking up or preventing the fight or assault`
+    OR  `the accident`'s `the employee was safeguarding life or property or maintaining law and order`
+
+GIVEN `the accident` IS AN Accident
+GIVETH A BOOLEAN
+DECIDE `the fight exclusion in section 7(2)(c) applies` IF
+        `the accident`'s `the injury was suffered in a fight or an assault`
+    AND NOT `an exception to the fight exclusion applies` `the accident`
+
+GIVEN `the accident` IS AN Accident
+GIVETH A BOOLEAN
+DECIDE `an exclusion in section 7(2) applies` IF
+        `the accident`'s `the injury is directly attributable to the employee being under the influence of alcohol or a drug at the time`
+    ..  `the accident`'s `deliberate self-injury or deliberate aggravation of an accidental injury by the employee`
+    OR  `the fight exclusion in section 7(2)(c) applies` `the accident`
+
+GIVEN `the accident` IS AN Accident
+GIVETH A BOOLEAN
+DECIDE `the employer is liable to pay compensation` IF
+        `the accident`'s `personal injury was caused to an employee by an accident`
+    AND `the accident`'s `the accident arose in the course of the employment`
+    AND `the accident is taken to arise out of the employment` `the accident`
+    AND NOT `an exclusion in section 7(2) applies` `the accident`
+
+§§ `First Schedule -- the amount of compensation`
+
+-- The Schedule's amounts were raised with effect from 1 November 2025
+-- (S 694/2025), and the Act keeps BOTH sets, selected by the date of the
+-- accident rather than the date of the claim. No DATE type is available on this
+-- toolchain, so which set applies is a fact.
+DECLARE Injury HAS
+    -- "AME" -- average monthly earnings, computed under the Schedule's own
+    -- paragraphs. Not encoded: the computation has six sub-paragraphs of its own
+    -- and several Commissioner discretions.
+    `the average monthly earnings`      IS A NUMBER
+    -- The factor from Table A (death) or Table B (incapacity), by age on next
+    -- birthday. SUPPLIED, because the tables cannot be read from the deposit.
+    `the multiplying factor from the applicable Table` IS A NUMBER
+    `the accident took place on or after 1 November 2025` IS A BOOLEAN
+    -- Paragraph 3: the percentage of loss of earning capacity, from the Fourth
+    -- Schedule where the injury is listed there and otherwise assessed.
+    `the percentage of loss of earning capacity` IS A NUMBER
+
+-- The clamp the Schedule applies twice, with different numbers each time.
+GIVEN `the amount` IS A NUMBER, `the floor` IS A NUMBER, `the cap` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the amount held between the floor and the cap` IS
+    BRANCH
+        IF `the amount` LESS THAN `the floor`    THEN `the floor`
+        IF `the amount` GREATER THAN `the cap`   THEN `the cap`
+        OTHERWISE `the amount`
+
+§§§ `paragraph 1 -- death`
+
+-- Para 1(1): "where death results from a work injury, the amount of
+-- compensation payable must be paid in a lump sum, obtained by multiplying the
+-- AME of the deceased employee by the appropriate factor in the second column
+-- of Table A according to the age on the next birthday of the deceased employee
+-- at the time of the accident".
+GIVEN `the injury` IS AN Injury
+GIVETH A NUMBER
+DECIDE `the unadjusted death compensation` IS
+    `the injury`'s `the average monthly earnings`
+        TIMES `the injury`'s `the multiplying factor from the applicable Table`
+
+-- Para 1(2): accident before 1 November 2025 -- floor $76,000, cap $225,000.
+-- Para 1(3): accident on or after -- floor $91,000, cap $269,000.
+GIVEN `the injury` IS AN Injury
+GIVETH A NUMBER
+DECIDE `the death compensation floor` IS
+    IF `the injury`'s `the accident took place on or after 1 November 2025` THEN 91000 ELSE 76000
+
+GIVEN `the injury` IS AN Injury
+GIVETH A NUMBER
+DECIDE `the death compensation cap` IS
+    IF `the injury`'s `the accident took place on or after 1 November 2025` THEN 269000 ELSE 225000
+
+GIVEN `the injury` IS AN Injury
+GIVETH A NUMBER
+DECIDE `the compensation for death` IS
+    `the amount held between the floor and the cap`
+        (`the unadjusted death compensation` `the injury`)
+        (`the death compensation floor` `the injury`)
+        (`the death compensation cap` `the injury`)
+
+§§§ `paragraph 2 -- permanent or current total incapacity`
+
+-- Para 2: "the amount of compensation calculated in accordance with the formula
+-- C + 0.25C must be paid in a lump sum, where C is -- (a) ... AME ... multiplied
+-- by the appropriate factor in ... Table B ...; (b) where the accident takes
+-- place before 1 November 2025 -- (i) if the amount obtained under
+-- sub-paragraph (a) is less than $97,000 -- $97,000; or (ii) if ... more than
+-- $289,000 -- $289,000; and (c) where the accident takes place on or after
+-- 1 November 2025 -- (i) ... less than $116,000 -- $116,000; or (ii) ... more
+-- than $346,000 -- $346,000."
+--
+-- NOTE THE ORDER. The floor and the cap bite on C, which is the product BEFORE
+-- the formula is applied. So the uplift of a quarter is applied to the clamped
+-- figure, and the final sum can exceed the stated cap by 25%.
+GIVEN `the injury` IS AN Injury
+GIVETH A NUMBER
+DECIDE `the total incapacity floor` IS
+    IF `the injury`'s `the accident took place on or after 1 November 2025` THEN 116000 ELSE 97000
+
+GIVEN `the injury` IS AN Injury
+GIVETH A NUMBER
+DECIDE `the total incapacity cap` IS
+    IF `the injury`'s `the accident took place on or after 1 November 2025` THEN 346000 ELSE 289000
+
+-- C, as the Schedule defines it: the product, then clamped.
+GIVEN `the injury` IS AN Injury
+GIVETH A NUMBER
+DECIDE `C` IS
+    `the amount held between the floor and the cap`
+        (`the injury`'s `the average monthly earnings`
+            TIMES `the injury`'s `the multiplying factor from the applicable Table`)
+        (`the total incapacity floor` `the injury`)
+        (`the total incapacity cap` `the injury`)
+
+-- C + 0.25C.
+GIVEN `the injury` IS AN Injury
+GIVETH A NUMBER
+DECIDE `the compensation for total incapacity` IS
+    `C` `the injury` PLUS (0.25 TIMES (`C` `the injury`))
+
+§§§ `paragraph 3 -- permanent or current partial incapacity`
+
+-- Para 3(1): "the amount of compensation is to be calculated -- (a) in the case
+-- of an injury specified in the Fourth Schedule -- by multiplying C (mentioned
+-- in paragraph 2) by the percentage of loss of earning capacity caused by the
+-- injury as specified in that Schedule; and (b) in the case of an injury not
+-- specified in the Fourth Schedule -- by multiplying C ... by the percentage of
+-- loss of earning capacity ... in every employment which the employee was
+-- capable of undertaking at the time of the accident".
+--
+-- Both limbs do the same arithmetic; they differ only in where the percentage
+-- comes from. So the percentage is one supplied fact and the rule is one rule.
+--
+-- IT MULTIPLIES C, NOT THE PARAGRAPH 2 FIGURE. A partially incapacitated
+-- employee therefore does not get a fraction of what a totally incapacitated
+-- one gets: they get a fraction of C, and the totally incapacitated employee
+-- gets C plus a quarter. At 100% loss of earning capacity the two differ by
+-- that quarter.
+GIVEN `the injury` IS AN Injury
+GIVETH A NUMBER
+DECIDE `the compensation for partial incapacity` IS
+    `C` `the injury` TIMES (`the injury`'s `the percentage of loss of earning capacity`)
