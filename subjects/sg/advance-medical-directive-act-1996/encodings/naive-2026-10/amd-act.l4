@@ -1,0 +1,416 @@
+IMPORT prelude
+
+-- Advance Medical Directive Act 1996 (Singapore), 2020 Revised Edition,
+-- informal consolidation in force from 1 May 2023.
+--
+-- Source: ../../registers/source-bundle/AMDA1996.txt
+--
+-- NAIVE ENCODING. Written straight from the text with the writing-l4-rules
+-- skill and nothing else: no pipeline, no coverage table, no independent test
+-- pass, no human gate. Treat every finding below as an observation made while
+-- encoding, not as a checked result.
+--
+-- SCOPE. ss 2 to 10 -- the decision procedures: who may make a directive, how
+-- it must be witnessed, when it may be acted on, and how terminal illness is
+-- certified. Not encoded: ss 11 to 22 (savings, offences, composition,
+-- regulations), which state consequences rather than decide anything.
+--
+-- Everything the Act leaves to the prescribed form, to the register, or to a
+-- medical judgment is a fact supplied. Nothing here decides whether a person
+-- is in fact terminally ill; s 9 decides who gets to say so, and that is what
+-- is encoded.
+
+§ `Advance Medical Directive Act 1996`
+
+§§ `2 -- Interpretation`
+
+DECLARE Person HAS
+    `name`                  IS A STRING
+    -- s 2 "patient", s 3(1): "who is not mentally disordered, who has attained
+    -- 21 years of age". Both limbs are facts about the person at the moment the
+    -- test is applied.
+    `age in years`          IS A NUMBER
+    `mentally disordered`   IS A BOOLEAN
+
+-- The disqualifying-interest limbs. The Act states them THREE times with
+-- THREE different lists -- s 3(3) for a witness, s 9(9) for certifying terminal
+-- illness, s 10(4) for acting on the directive -- so the limbs are recorded
+-- once here and each section takes the subset it actually names. The
+-- differences are the subject of a note at the foot of this file.
+DECLARE Interests HAS
+    -- s 3(3)(a), s 9(9)(a), s 10(4)(a)
+    `a beneficiary under the patient's will or any policy of insurance` IS A BOOLEAN
+    -- s 3(3)(b), s 9(9)(b), s 10(4)(b)
+    `has an interest under an instrument under which the patient is donor, settlor or grantor` IS A BOOLEAN
+    -- s 3(3)(c) ONLY
+    `would be entitled to an interest in the estate on the patient's intestacy` IS A BOOLEAN
+    -- s 3(3)(d), s 9(9)(c), s 10(4)(c)
+    `would be entitled to the patient's provident fund moneys on death` IS A BOOLEAN
+    -- s 3(3)(e), s 9(9)(d)
+    `has registered an objection under section 10(1)` IS A BOOLEAN
+
+DECLARE Witness HAS
+    `who`                                   IS A Person
+    `is a medical practitioner`             IS A BOOLEAN
+    -- s 3(2)(a): "the patient's family medical practitioner or any other
+    -- practitioner of the patient's choice".
+    `is the patient's own or chosen practitioner` IS A BOOLEAN
+    `interests`                             IS AN Interests
+
+DECLARE MedicalPractitioner HAS
+    `who`                       IS A Person
+    -- s 2 "specialist": a medical practitioner with postgraduate
+    -- qualifications the Director-General recognises. Recognition is a fact
+    -- supplied; nothing in this Act decides it.
+    `is a specialist`           IS A BOOLEAN
+    `interests`                 IS AN Interests
+    -- s 10(1): an objection registered with the Registrar.
+    `has registered an objection under section 10(1)` IS A BOOLEAN
+
+§§ `3 -- Power to make advance medical directive`
+
+-- s 3(1): "A person who is not mentally disordered, who has attained 21 years
+-- of age and who desires not to be subjected to extraordinary life-sustaining
+-- treatment in the event of his or her suffering from a terminal illness, may
+-- at any time make an advance medical directive in the prescribed form."
+--
+-- Capacity only. Whether the person desires it, and whether the prescribed
+-- form was used, are facts about the instrument and live on Directive below.
+GIVEN `the person` IS A Person
+GIVETH A BOOLEAN
+DECIDE `the person may make a directive` IF
+        NOT `the person`'s `mentally disordered`
+    AND `the person`'s `age in years` AT LEAST 21
+
+DECLARE Directive HAS
+    `the patient`                   IS A Person
+    `in the prescribed form`        IS A BOOLEAN
+    -- s 3(2): "witnessed by 2 witnesses present at the same time".
+    `first witness`                 IS A Witness
+    `second witness`                IS A Witness
+    `the witnesses were present at the same time` IS A BOOLEAN
+    -- s 5(1): registration is a duty of the maker; s 5(3) makes it the
+    -- precondition of acting. Whether the Registrar has it is a fact.
+    `registered under section 5`    IS A BOOLEAN
+    -- s 7: revocation, and s 10(2)(a)-(b), which read a revocation that has
+    -- been made or merely communicated.
+    `revoked under section 7`       IS A BOOLEAN
+
+-- s 3(3): "A witness must be a person who to the best of his or her knowledge
+-- (a) is not a beneficiary ... (b) has no interest ... (c) would not be
+-- entitled to an interest in the estate ... (d) would not be entitled to an
+-- interest in the moneys ... and (e) has not registered an objection".
+--
+-- Five limbs, all negative and joined by "and", so the witness is competent
+-- only if none of them holds.
+GIVEN `the witness` IS A Witness
+GIVETH A BOOLEAN
+DECIDE `the witness is competent under section 3(3)` IF
+        NOT `the witness`'s `interests`'s `a beneficiary under the patient's will or any policy of insurance`
+    AND NOT `the witness`'s `interests`'s `has an interest under an instrument under which the patient is donor, settlor or grantor`
+    AND NOT `the witness`'s `interests`'s `would be entitled to an interest in the estate on the patient's intestacy`
+    AND NOT `the witness`'s `interests`'s `would be entitled to the patient's provident fund moneys on death`
+    AND NOT `the witness`'s `interests`'s `has registered an objection under section 10(1)`
+
+-- s 3(2)(a)-(b): the two witnesses have different qualifications. (a) one must
+-- be the patient's own or chosen practitioner; (b) "the other" must be 21 or
+-- over. The Act does not say which of the two is which, so either arrangement
+-- satisfies it -- that is why this reads both ways round.
+GIVEN `the directive` IS A Directive
+GIVETH A BOOLEAN
+DECIDE `the witnesses answer section 3(2)(a) and (b)` IF
+        `one is the chosen practitioner and the other is 21`
+            (`the directive`'s `first witness`) (`the directive`'s `second witness`)
+    OR  `one is the chosen practitioner and the other is 21`
+            (`the directive`'s `second witness`) (`the directive`'s `first witness`)
+
+GIVEN `the one` IS A Witness, `the other` IS A Witness
+GIVETH A BOOLEAN
+DECIDE `one is the chosen practitioner and the other is 21` IF
+        `the one`'s `is the patient's own or chosen practitioner`
+    AND `the other`'s `who`'s `age in years` AT LEAST 21
+
+-- The whole of s 3 as a single question: is this a directive made in
+-- accordance with section 3? s 5(1) and s 10(2) both turn on that phrase.
+GIVEN `the directive` IS A Directive
+GIVETH A BOOLEAN
+DECIDE `the directive was made in accordance with section 3` IF
+        `the person may make a directive` (`the directive`'s `the patient`)
+    AND `the directive`'s `in the prescribed form`
+    AND `the directive`'s `the witnesses were present at the same time`
+    AND `the witnesses answer section 3(2)(a) and (b)` `the directive`
+    AND `both witnesses are competent` `the directive`
+
+GIVEN `the directive` IS A Directive
+GIVETH A BOOLEAN
+DECIDE `both witnesses are competent` IF
+        `the witness is competent under section 3(3)` (`the directive`'s `first witness`)
+    AND `the witness is competent under section 3(3)` (`the directive`'s `second witness`)
+
+§§ `4 -- Duty of witness`
+
+-- s 4: "Before witnessing the execution of the directive on the prescribed
+-- form, a witness who is a medical practitioner must take reasonable steps in
+-- the circumstances to ensure that the patient (a) is not mentally disordered;
+-- (b) has attained 21 years of age; (c) has made the directive voluntarily and
+-- without inducement or compulsion; and (d) has been informed of the nature
+-- and consequences of making the directive."
+--
+-- The duty lies on a witness who IS a medical practitioner, and on no other
+-- witness. Whether reasonable steps were taken is a fact supplied: it is a
+-- standard of conduct, not a computation.
+DECLARE WitnessingSteps HAS
+    `satisfied that the patient is not mentally disordered`  IS A BOOLEAN   -- (a)
+    `satisfied that the patient has attained 21 years`       IS A BOOLEAN   -- (b)
+    `satisfied that the directive was made voluntarily and without inducement or compulsion` IS A BOOLEAN   -- (c)
+    `satisfied that the patient was informed of the nature and consequences`  IS A BOOLEAN   -- (d)
+
+GIVEN `the witness` IS A Witness, `the steps` IS A WitnessingSteps
+GIVETH A BOOLEAN
+DECIDE `section 4 imposes a duty on this witness` IF
+    `the witness`'s `is a medical practitioner`
+
+GIVEN `the witness` IS A Witness, `the steps` IS A WitnessingSteps
+GIVETH A BOOLEAN
+DECIDE `the witness has discharged the section 4 duty` IF
+        `the steps`'s `satisfied that the patient is not mentally disordered`
+    AND `the steps`'s `satisfied that the patient has attained 21 years`
+    AND `the steps`'s `satisfied that the directive was made voluntarily and without inducement or compulsion`
+    AND `the steps`'s `satisfied that the patient was informed of the nature and consequences`
+
+GIVEN `the witness` IS A Witness, `the steps` IS A WitnessingSteps
+GIVETH A BOOLEAN
+DECIDE `the witness contravenes section 4` IF
+        `section 4 imposes a duty on this witness` `the witness` `the steps`
+    AND NOT `the witness has discharged the section 4 duty` `the witness` `the steps`
+
+§§ `5 -- Registration of directives`
+
+-- s 5(3): "A person must not act on a directive if it has not been registered
+-- in accordance with this section." A flat prohibition, and the only one in
+-- the Act expressed as "must not act".
+GIVEN `the directive` IS A Directive
+GIVETH A BOOLEAN
+DECIDE `section 5(3) forbids acting on the directive` IF
+    NOT `the directive`'s `registered under section 5`
+
+§§ `9 -- Certification of terminal illness`
+
+-- s 9(1): the trigger. "Where a medical practitioner, who is responsible for
+-- the treatment of any person, has reason to believe that the person (a) is
+-- suffering from a terminal illness; (b) requires extraordinary life-sustaining
+-- treatment; and (c) is unconscious or incapable of exercising rational
+-- judgment, the medical practitioner must (d) determine and certify ... and
+-- (e) forward the certificate to the Registrar".
+DECLARE Belief HAS
+    `is suffering from a terminal illness`                    IS A BOOLEAN   -- (a)
+    `requires extraordinary life-sustaining treatment`        IS A BOOLEAN   -- (b)
+    `is unconscious or incapable of exercising rational judgment` IS A BOOLEAN   -- (c)
+
+GIVEN `the belief` IS A Belief
+GIVETH A BOOLEAN
+DECIDE `section 9(1) requires certification and a search` IF
+        `the belief`'s `is suffering from a terminal illness`
+    AND `the belief`'s `requires extraordinary life-sustaining treatment`
+    AND `the belief`'s `is unconscious or incapable of exercising rational judgment`
+
+-- s 9(9): "A medical practitioner must not certify or participate in the
+-- determination or certification that the patient is terminally ill if the
+-- medical practitioner (a) is a beneficiary ... (b) has an interest ...
+-- (c) would be entitled to an interest in the moneys ... or (d) has registered
+-- an objection under section 10(1)."
+--
+-- FOUR limbs, joined by "or", so any one disqualifies. Note what is absent
+-- against s 3(3): entitlement on intestacy, limb (c) there, is not here.
+GIVEN `the practitioner` IS A MedicalPractitioner
+GIVETH A BOOLEAN
+DECIDE `section 9(9) disqualifies the practitioner from certifying` IF
+        `the practitioner`'s `interests`'s `a beneficiary under the patient's will or any policy of insurance`
+    OR  `the practitioner`'s `interests`'s `has an interest under an instrument under which the patient is donor, settlor or grantor`
+    OR  `the practitioner`'s `interests`'s `would be entitled to the patient's provident fund moneys on death`
+    OR  `the practitioner`'s `has registered an objection under section 10(1)`
+
+-- s 9(4): the composition of the two second opinions depends on whether the
+-- treating practitioner is a specialist.
+--   (a) not a specialist -> both of the other two must be specialists;
+--   (b) a specialist     -> at least one of the other two must be a specialist.
+GIVEN `the treating practitioner` IS A MedicalPractitioner
+    , `the first opinion` IS A MedicalPractitioner
+    , `the second opinion` IS A MedicalPractitioner
+GIVETH A BOOLEAN
+DECIDE `the second opinions answer section 9(4)` IF
+    IF   `the treating practitioner`'s `is a specialist`
+    THEN `at least one is a specialist` `the first opinion` `the second opinion`
+    ELSE `both are specialists` `the first opinion` `the second opinion`
+
+GIVEN `the one` IS A MedicalPractitioner, `the other` IS A MedicalPractitioner
+GIVETH A BOOLEAN
+DECIDE `both are specialists` IF
+        `the one`'s `is a specialist`
+    AND `the other`'s `is a specialist`
+
+GIVEN `the one` IS A MedicalPractitioner, `the other` IS A MedicalPractitioner
+GIVETH A BOOLEAN
+DECIDE `at least one is a specialist` IF
+        `the one`'s `is a specialist`
+    OR  `the other`'s `is a specialist`
+
+-- s 9(5)-(7): the determination.
+--   (3) two further opinions are obtained;
+--   (5) if they are not unanimously in agreement, the issue goes to a
+--       committee of 3 specialists;
+--   (6) on a reference, the patient is determined terminally ill ONLY on the
+--       committee's unanimous decision;
+--   (7) if the committee cannot reach a unanimous decision, the patient is
+--       PRESUMED NOT terminally ill.
+--
+-- (6) and (7) point the same way, so the committee route has one outcome:
+-- unanimity for, or nothing.
+DECLARE Determination HAS
+    `the treating practitioner`         IS A MedicalPractitioner
+    `the first opinion`                 IS A MedicalPractitioner
+    `the second opinion`                IS A MedicalPractitioner
+    -- s 9(3): each of the two opinions either agrees with the determination or
+    -- does not.
+    `the first opinion agrees`          IS A BOOLEAN
+    `the second opinion agrees`         IS A BOOLEAN
+    -- s 9(5)-(6): reached only where the two are not unanimous.
+    `the committee was unanimous that the patient is terminally ill` IS A BOOLEAN
+
+GIVEN `the determination` IS A Determination
+GIVETH A BOOLEAN
+DECIDE `the two opinions are unanimously in agreement` IF
+        `the determination`'s `the first opinion agrees`
+    AND `the determination`'s `the second opinion agrees`
+
+GIVEN `the determination` IS A Determination
+GIVETH A BOOLEAN
+DECIDE `the issue must be referred to a committee` IF
+    NOT `the two opinions are unanimously in agreement` `the determination`
+
+-- The question the rest of the Act turns on.
+GIVEN `the determination` IS A Determination
+GIVETH A BOOLEAN
+DECIDE `the patient is determined to be terminally ill under section 9` IF
+    IF   `the issue must be referred to a committee` `the determination`
+    THEN `the determination`'s `the committee was unanimous that the patient is terminally ill`
+    ELSE TRUE
+
+§§ `10 -- Duty of medical practitioner`
+
+-- s 10(4): "A medical practitioner must not act in accordance with a directive
+-- if the medical practitioner (a) is a beneficiary ... (b) has an interest ...
+-- or (c) would be entitled to an interest in the moneys ..."
+--
+-- THREE limbs. Neither intestacy (s 3(3)(c)) nor a registered objection
+-- (s 3(3)(e), s 9(9)(d)) appears. The objection is handled separately, by
+-- s 10(2)'s parenthesis, which is why this rule does not read it.
+GIVEN `the practitioner` IS A MedicalPractitioner
+GIVETH A BOOLEAN
+DECIDE `section 10(4) disqualifies the practitioner from acting` IF
+        `the practitioner`'s `interests`'s `a beneficiary under the patient's will or any policy of insurance`
+    OR  `the practitioner`'s `interests`'s `has an interest under an instrument under which the patient is donor, settlor or grantor`
+    OR  `the practitioner`'s `interests`'s `would be entitled to the patient's provident fund moneys on death`
+
+-- s 10(2): the central duty. "Where a person who has made a directive in
+-- accordance with section 3 has been determined in accordance with section 9 to
+-- be suffering from a terminal illness, it is the duty of the medical
+-- practitioner responsible for his or her treatment (unless he or she has
+-- registered his or her objection under subsection (1)) to act in accordance
+-- with the directive unless there is reasonable ground to believe --
+--   (a) that a notice of revocation under section 7 has been received ...;
+--   (b) that the person has ... communicated ... an intention to revoke ...; or
+--   (c) that the person was not, at the time of making the directive, capable
+--       of understanding the nature and consequences of the directive."
+DECLARE ActingSituation HAS
+    `the directive`                 IS A Directive
+    `the determination`             IS A Determination
+    `the practitioner`              IS A MedicalPractitioner
+    -- s 10(2)(a)
+    `reasonable ground to believe a notice of revocation has been received or sent` IS A BOOLEAN
+    -- s 10(2)(b)
+    `reasonable ground to believe the patient communicated an intention to revoke` IS A BOOLEAN
+    -- s 10(2)(c)
+    `reasonable ground to believe the patient could not understand the directive when made` IS A BOOLEAN
+    -- s 10(3)(a)-(c), the three things to be done BEFORE acting
+    `ascertained from the Registrar that the directive is registered and in force` IS A BOOLEAN
+    `ensured the patient has been certified terminally ill under section 9` IS A BOOLEAN
+    `determined and certified whether the patient is pregnant`  IS A BOOLEAN
+    -- s 10(6): the pregnancy override
+    `the patient is known to the practitioner to be pregnant`   IS A BOOLEAN
+    `it is probable the foetus will develop to the point of live birth with continued treatment` IS A BOOLEAN
+
+-- The three "unless there is reasonable ground to believe" limbs of s 10(2),
+-- joined by "or": any one of them lifts the duty.
+GIVEN `the situation` IS AN ActingSituation
+GIVETH A BOOLEAN
+DECIDE `a section 10(2) reasonable ground is present` IF
+        `the situation`'s `reasonable ground to believe a notice of revocation has been received or sent`
+    OR  `the situation`'s `reasonable ground to believe the patient communicated an intention to revoke`
+    OR  `the situation`'s `reasonable ground to believe the patient could not understand the directive when made`
+
+-- The two conditions that open s 10(2) at all.
+GIVEN `the situation` IS AN ActingSituation
+GIVETH A BOOLEAN
+DECIDE `section 10(2) is engaged` IF
+        `the directive was made in accordance with section 3` (`the situation`'s `the directive`)
+    AND `the patient is determined to be terminally ill under section 9` (`the situation`'s `the determination`)
+
+GIVEN `the situation` IS AN ActingSituation
+GIVETH A BOOLEAN
+DECIDE `the practitioner has a duty to act in accordance with the directive` IF
+        `section 10(2) is engaged` `the situation`
+    AND NOT `the situation`'s `the practitioner`'s `has registered an objection under section 10(1)`
+    AND NOT `a section 10(2) reasonable ground is present` `the situation`
+
+-- s 10(3): "Before a medical practitioner acts in accordance with a directive,
+-- he or she must (a) ascertain ... (b) ensure ... and (c) as far as may be
+-- practicable determine and certify in writing whether the patient is
+-- pregnant".
+GIVEN `the situation` IS AN ActingSituation
+GIVETH A BOOLEAN
+DECIDE `the section 10(3) preconditions are met` IF
+        `the situation`'s `ascertained from the Registrar that the directive is registered and in force`
+    AND `the situation`'s `ensured the patient has been certified terminally ill under section 9`
+    AND `the situation`'s `determined and certified whether the patient is pregnant`
+
+-- s 10(6): "Extraordinary life-sustaining treatment must not be withheld or
+-- withdrawn pursuant to this section from a patient known to the medical
+-- practitioner to be pregnant so long as it is probable that the foetus will
+-- develop to the point of live birth with continued application of
+-- extraordinary life-sustaining treatment."
+--
+-- An override, not an exception to the duty: it bites on the withholding
+-- itself, whatever s 10(2) says.
+GIVEN `the situation` IS AN ActingSituation
+GIVETH A BOOLEAN
+DECIDE `section 10(6) forbids withholding treatment` IF
+        `the situation`'s `the patient is known to the practitioner to be pregnant`
+    AND `the situation`'s `it is probable the foetus will develop to the point of live birth with continued treatment`
+
+-- Everything above, as the one question a practitioner at the bedside has.
+GIVEN `the situation` IS AN ActingSituation
+GIVETH A BOOLEAN
+DECIDE `the practitioner may lawfully act on the directive` IF
+        `the practitioner has a duty to act in accordance with the directive` `the situation`
+    AND NOT `section 10(4) disqualifies the practitioner from acting` (`the situation`'s `the practitioner`)
+    AND NOT `section 5(3) forbids acting on the directive` (`the situation`'s `the directive`)
+    AND NOT `section 10(6) forbids withholding treatment` `the situation`
+    AND `the section 10(3) preconditions are met` `the situation`
+
+-- s 10(5): "Where a medical practitioner has registered his or her objection
+-- under subsection (1) or is disqualified under subsection (4), he or she must,
+-- in the circumstances referred to in subsection (2), take all reasonable steps
+-- as soon as practicable for the care of the patient to be transferred to
+-- another medical practitioner who has not registered such an objection."
+GIVEN `the situation` IS AN ActingSituation
+GIVETH A BOOLEAN
+DECIDE `the practitioner must transfer the patient's care under section 10(5)` IF
+        `section 10(2) is engaged` `the situation`
+    AND `the practitioner is objecting or disqualified` `the situation`
+
+GIVEN `the situation` IS AN ActingSituation
+GIVETH A BOOLEAN
+DECIDE `the practitioner is objecting or disqualified` IF
+        `the situation`'s `the practitioner`'s `has registered an objection under section 10(1)`
+    OR  `section 10(4) disqualifies the practitioner from acting` (`the situation`'s `the practitioner`)
