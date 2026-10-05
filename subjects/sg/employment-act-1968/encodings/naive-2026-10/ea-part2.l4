@@ -1,0 +1,294 @@
+IMPORT prelude
+
+-- Employment Act 1968 (Singapore), 2020 Revised Edition, informal
+-- consolidation in force from 5 December 2025 -- PART 2, CONTRACTS OF SERVICE.
+--
+-- Source: ../../registers/source-bundle/EmA1968.txt
+--
+-- NAIVE ENCODING. Straight from the text with the writing-l4-rules skill and
+-- nothing else: no pipeline, no coverage table, no independent test pass, no
+-- human gate. Observations, not checked findings.
+--
+-- SCOPE. Part 2 only -- ss 8 to 14. The Act has 16 Parts and 275,000 characters;
+-- Part 2 is the one an ordinary employee meets, because it decides how a job
+-- ends and how much notice is owed. Parts 3 (salary), 4 (rest days and hours),
+-- 9 (maternity) and 10 (leave) are each at least as useful and none is encoded.
+--
+-- NOT ENCODED within Part 2: ss 15 to 19 (termination where the employee is
+-- threatened by danger, liability on breach, trade union rights, change of
+-- employer, transfer of employment, and the offence provision).
+--
+-- NO DATE TYPE. See the note on service length below: the Act's own thresholds
+-- are not in one unit, so the encoding asks the questions the Act asks rather
+-- than computing them from dates.
+
+§ `Employment Act 1968 -- Part 2, Contracts of Service`
+
+§§ `10(3) -- how long notice must be`
+
+-- s 10(3): "The notice to terminate the service of a person who is employed
+-- under a contract of service must be at least --
+--   (a) one day's notice if the person has been so employed for LESS THAN
+--       26 WEEKS;
+--   (b) one week's notice if the person has been so employed for 26 WEEKS OR
+--       MORE but less than 2 YEARS;
+--   (c) 2 weeks' notice if the person has been so employed for 2 YEARS OR MORE
+--       but less than 5 YEARS; and
+--   (d) 4 weeks' notice if the person has been so employed for 5 YEARS OR MORE."
+--
+-- The three thresholds are 26 weeks, 2 years and 5 years. Those are not in one
+-- unit and the Act supplies no conversion, so the encoding does not invent one:
+-- each threshold is asked as the Act asks it. Deriving all three from a single
+-- day count would require deciding how many days are in two years, which is a
+-- question the Act does not answer and which differs across leap years.
+DECLARE ServiceLength HAS
+    `employed for 26 weeks or more`  IS A BOOLEAN
+    `employed for 2 years or more`   IS A BOOLEAN
+    `employed for 5 years or more`   IS A BOOLEAN
+
+-- The statutory minimum, in days. One week is 7 days and the Act's own units
+-- are weeks, so the table converts only within the week/day pair it states.
+GIVEN `the service` IS A ServiceLength
+GIVETH A NUMBER
+DECIDE `the minimum notice in days under section 10(3)` IS
+    BRANCH
+        IF `the service`'s `employed for 5 years or more`  THEN 28   -- (d) 4 weeks
+        IF `the service`'s `employed for 2 years or more`  THEN 14   -- (c) 2 weeks
+        IF `the service`'s `employed for 26 weeks or more` THEN 7    -- (b) 1 week
+        OTHERWISE 1                                                  -- (a) 1 day
+
+§§ `8 and 10(2) -- the contract, and what happens when it is less favourable`
+
+-- s 10(2): "The length of the notice must be the same for both employer and
+-- employee and is to be determined by any provision made for the notice in the
+-- terms of the contract of service, or, IN THE ABSENCE OF SUCH PROVISION, must
+-- be in accordance with subsection (3)."
+--
+-- s 8: "Every term of a contract of service which provides a condition of
+-- service which is less favourable to an employee than any of the conditions of
+-- service prescribed by this Act is ILLEGAL AND VOID to the extent that it is
+-- so less favourable."
+--
+-- Read together these produce a three-step chain, which is the most interesting
+-- thing in Part 2:
+--   1. the contract's notice period governs (s 10(2));
+--   2. unless it is less favourable to the employee than s 10(3), in which case
+--      s 8 makes it void to that extent;
+--   3. and once it is void there is no provision in the contract, so s 10(2)'s
+--      own words -- "in the absence of such provision" -- send the question back
+--      to s 10(3).
+-- The employee therefore gets the statutory minimum, by a route that passes
+-- through three subsections and is nowhere stated in one place.
+DECLARE ContractTerms HAS
+    `the contract makes provision for notice`   IS A BOOLEAN
+    `the notice period the contract provides, in days` IS A NUMBER
+    -- s 10(2) first limb: the length "must be the same for both employer and
+    -- employee". A contract giving the employer a shorter notice than the
+    -- employee is contrary to this, whatever the figures.
+    `the contract provides the same length for both parties` IS A BOOLEAN
+
+-- Less favourable TO THE EMPLOYEE means shorter than the statutory minimum.
+GIVEN `the terms` IS A ContractTerms, `the service` IS A ServiceLength
+GIVETH A BOOLEAN
+DECIDE `the contractual notice is less favourable than the Act` IF
+        `the terms`'s `the contract makes provision for notice`
+    AND `the terms`'s `the notice period the contract provides, in days`
+            LESS THAN `the minimum notice in days under section 10(3)` `the service`
+
+-- s 8 voids it to the extent it is less favourable.
+GIVEN `the terms` IS A ContractTerms, `the service` IS A ServiceLength
+GIVETH A BOOLEAN
+DECIDE `the contractual notice term is void under section 8` IF
+    `the contractual notice is less favourable than the Act` `the terms` `the service`
+
+-- The length that actually governs, after the chain above.
+GIVEN `the terms` IS A ContractTerms, `the service` IS A ServiceLength
+GIVETH A NUMBER
+DECIDE `the notice period that governs, in days` IS
+    IF   `the contract provision stands`  `the terms` `the service`
+    THEN `the terms`'s `the notice period the contract provides, in days`
+    ELSE `the minimum notice in days under section 10(3)` `the service`
+
+GIVEN `the terms` IS A ContractTerms, `the service` IS A ServiceLength
+GIVETH A BOOLEAN
+DECIDE `the contract provision stands` IF
+        `the terms`'s `the contract makes provision for notice`
+    AND NOT `the contractual notice term is void under section 8` `the terms` `the service`
+
+-- s 10(2), first limb, on its own: a term that is not symmetrical does not
+-- answer the subsection even if it is generous.
+GIVEN `the terms` IS A ContractTerms
+GIVETH A BOOLEAN
+DECIDE `the contract breaches the equal-length requirement in section 10(2)` IF
+        `the terms`'s `the contract makes provision for notice`
+    AND NOT `the terms`'s `the contract provides the same length for both parties`
+
+§§ `10(4) and 10(5) -- waiver and the form of the notice`
+
+-- s 10(4): "This section does not prevent either party from waiving that
+-- party's right to notice on any occasion."
+-- s 10(5): "The notice must be written and may be given at any time, and the
+-- day on which the notice is given is INCLUDED in the period of the notice."
+--
+-- The inclusion rule is why a one-day notice given on Monday expires on Monday:
+-- the day of giving counts. Encoded as the arithmetic the subsection states.
+DECLARE Notice HAS
+    `the notice is in writing`      IS A BOOLEAN
+    `the length given, in days`     IS A NUMBER
+    `the receiving party waived the right to notice` IS A BOOLEAN
+
+GIVEN `the notice` IS A Notice
+GIVETH A BOOLEAN
+DECIDE `the notice satisfies section 10(5)` IF
+    `the notice`'s `the notice is in writing`
+
+-- The number of further days after the day of giving, s 10(5) counting the day
+-- of giving itself.
+GIVEN `the notice` IS A Notice
+GIVETH A NUMBER
+DECIDE `days remaining after the day the notice is given` IS
+    `the notice`'s `the length given, in days` MINUS 1
+
+GIVEN `the notice` IS A Notice, `the terms` IS A ContractTerms, `the service` IS A ServiceLength
+GIVETH A BOOLEAN
+DECIDE `the notice is long enough` IF
+        `the notice`'s `the receiving party waived the right to notice`
+    OR  `the notice`'s `the length given, in days`
+            AT LEAST `the notice period that governs, in days` `the terms` `the service`
+
+§§ `11 -- Termination without notice`
+
+-- s 11(1): either party may terminate without notice "by paying to the other
+-- party a sum equal to the amount of salary at the gross rate of pay which
+-- would have accrued to the employee during the period of the notice".
+GIVEN `the gross daily rate of pay` IS A NUMBER
+    , `the terms` IS A ContractTerms
+    , `the service` IS A ServiceLength
+GIVETH A NUMBER
+DECIDE `the payment in lieu of notice` IS
+    `the gross daily rate of pay` TIMES (`the notice period that governs, in days` `the terms` `the service`)
+
+-- s 11(2): "Either party ... may terminate the contract of service without
+-- notice in the event of any WILFUL BREACH by the other party of a condition of
+-- the contract of service." No payment, and no inquiry required -- contrast
+-- s 14(1), which does require one.
+GIVEN `there was a wilful breach by the other party of a condition of the contract` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the party may terminate without notice and without payment under section 11(2)` IF
+    `there was a wilful breach by the other party of a condition of the contract`
+
+§§ `13 -- When the contract is deemed broken`
+
+-- s 13(1): "An employer is deemed to have broken the employer's contract of
+-- service with the employee if the employer fails to pay salary in accordance
+-- with Part 3." One fact, no qualification, no excuse.
+GIVEN `the employer failed to pay salary in accordance with Part 3` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the employer is deemed to have broken the contract` IF
+    `the employer failed to pay salary in accordance with Part 3`
+
+-- s 13(2): "An employee is deemed to have broken the employee's contract of
+-- service with the employer if the employee is absent from work for MORE THAN
+-- 2 DAYS CONTINUOUSLY without prior leave from the employer AND --
+--   (a) the employee has no reasonable excuse for the absence; or
+--   (b) the employee does not inform and does not attempt to inform the
+--       employer of the excuse for the absence."
+--
+-- Note the asymmetry with s 13(1): the employer's deemed breach has one
+-- element, the employee's has three, and limb (b) is itself a double negative.
+DECLARE Absence HAS
+    `days absent continuously`                      IS A NUMBER
+    `with prior leave from the employer`            IS A BOOLEAN
+    `the employee has a reasonable excuse for the absence` IS A BOOLEAN   -- (a)
+    `the employee informed or attempted to inform the employer of the excuse` IS A BOOLEAN   -- (b)
+
+GIVEN `the absence` IS AN Absence
+GIVETH A BOOLEAN
+DECIDE `a limb of section 13(2) is made out` IF
+        NOT `the absence`'s `the employee has a reasonable excuse for the absence`
+    OR  NOT `the absence`'s `the employee informed or attempted to inform the employer of the excuse`
+
+GIVEN `the absence` IS AN Absence
+GIVETH A BOOLEAN
+DECIDE `the employee is deemed to have broken the contract` IF
+        `the absence`'s `days absent continuously` GREATER THAN 2
+    AND NOT `the absence`'s `with prior leave from the employer`
+    AND `a limb of section 13(2) is made out` `the absence`
+
+§§ `14 -- Dismissal`
+
+-- s 14(1): "An employer may AFTER DUE INQUIRY dismiss without notice an
+-- employee ... on the grounds of misconduct inconsistent with the fulfilment of
+-- the express or implied conditions of the employee's service, except that
+-- instead of dismissing an employee an employer may -- (a) instantly down-grade
+-- the employee; or (b) instantly suspend the employee from work without payment
+-- of salary for a period NOT EXCEEDING ONE WEEK."
+DECLARE DismissalFacts HAS
+    `there was misconduct inconsistent with the conditions of service` IS A BOOLEAN
+    `the employer held a due inquiry`           IS A BOOLEAN
+    `the employee was instead down-graded`      IS A BOOLEAN   -- (a)
+    `the employee was instead suspended without salary` IS A BOOLEAN   -- (b)
+    `the days of suspension`                    IS A NUMBER
+
+GIVEN `the facts` IS A DismissalFacts
+GIVETH A BOOLEAN
+DECIDE `the employer may dismiss without notice under section 14(1)` IF
+        `the facts`'s `there was misconduct inconsistent with the conditions of service`
+    AND `the facts`'s `the employer held a due inquiry`
+
+-- The lesser measures are alternatives to dismissal and share its precondition:
+-- "instead of dismissing an employee an employer may", so due inquiry is needed
+-- for these too.
+GIVEN `the facts` IS A DismissalFacts
+GIVETH A BOOLEAN
+DECIDE `the suspension is within the section 14(1)(b) limit` IF
+    `the facts`'s `the days of suspension` AT MOST 7
+
+GIVEN `the facts` IS A DismissalFacts
+GIVETH A BOOLEAN
+DECIDE `the suspension is lawful under section 14(1)(b)` IF
+        `the employer may dismiss without notice under section 14(1)` `the facts`
+    AND `the facts`'s `the employee was instead suspended without salary`
+    AND `the suspension is within the section 14(1)(b) limit` `the facts`
+
+-- s 14(2A): who may bring a wrongful-dismissal claim. "relevant employee"
+-- means --
+--   (a) an employee in a managerial or executive position who is dismissed with
+--       notice, or without notice but with salary in lieu, AFTER HAVING SERVED
+--       THAT EMPLOYER FOR AT LEAST 6 MONTHS in any position;
+--   (b) an employee in a managerial or executive position dismissed without
+--       notice and without salary in lieu;
+--   (c) [the remaining limb, for employees not in such a position, continues in
+--       the text beyond what this encoding reads -- see NOTES.md].
+DECLARE Dismissed HAS
+    `in a managerial or an executive position`  IS A BOOLEAN
+    `dismissed with notice`                     IS A BOOLEAN
+    `dismissed without notice but paid salary in lieu` IS A BOOLEAN
+    `served that employer for at least 6 months in any position` IS A BOOLEAN
+
+GIVEN `the employee` IS A Dismissed
+GIVETH A BOOLEAN
+DECIDE `the employee is a relevant employee under section 14(2A)(a)` IF
+        `the employee`'s `in a managerial or an executive position`
+    AND `dismissed with notice or with salary in lieu` `the employee`
+    AND `the employee`'s `served that employer for at least 6 months in any position`
+
+GIVEN `the employee` IS A Dismissed
+GIVETH A BOOLEAN
+DECIDE `dismissed with notice or with salary in lieu` IF
+        `the employee`'s `dismissed with notice`
+    OR  `the employee`'s `dismissed without notice but paid salary in lieu`
+
+-- (b): the manager dismissed without notice AND without salary in lieu is a
+-- relevant employee with NO service qualification at all.
+GIVEN `the employee` IS A Dismissed
+GIVETH A BOOLEAN
+DECIDE `the employee is a relevant employee under section 14(2A)(b)` IF
+        `the employee`'s `in a managerial or an executive position`
+    AND NOT `dismissed with notice or with salary in lieu` `the employee`
+
+GIVEN `the employee` IS A Dismissed
+GIVETH A BOOLEAN
+DECIDE `the employee may lodge a wrongful dismissal claim` IF
+        `the employee is a relevant employee under section 14(2A)(a)` `the employee`
+    OR  `the employee is a relevant employee under section 14(2A)(b)` `the employee`
