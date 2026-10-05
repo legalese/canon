@@ -7,7 +7,7 @@ pass, no human gate.
 **Edition:** 2020 Revised Edition, informal consolidation in force from
 5 December 2025.
 
-**Checks:** `l4 run ea-part2-cases.l4` — 47 assertions satisfied, 0 errors,
+**Checks:** `l4 run ea-part2-cases.l4` — 52 assertions satisfied, 0 errors,
 0 warnings.
 
 ## Read this before using it: the scope is a small fraction of the Act
@@ -84,19 +84,25 @@ given proper notice in week one may not. There is a coherent policy reading
 but the drafting produces it as a side effect of two limbs rather than stating
 it. Asserted as the pair in § `14(2A)`.
 
-## A gap I know about
+## The s 14(2A) point, completed
 
-s 14(2A) continues past limb (b) into a limb (c) for employees **not** in a
-managerial or executive position, with its own service qualification. The
-deposited text was followed only as far as (b); limb (c) is **not encoded**, so
-`the employee may lodge a wrongful dismissal claim` returns FALSE for every
-non-managerial employee, which is **wrong as a statement of the law**. The rule
-is correct for managers and executives and must not be used for anyone else
-until (c) is read and added.
+Limb (c) of s 14(2A) is the whole of its own text: "an employee not employed in
+a managerial or an executive position." No service qualification, no condition
+about notice. It is now encoded, and it sharpens observation 4 rather than
+softening it:
+
+- a **non-managerial** employee is a relevant employee from the first day,
+  however they were dismissed;
+- a **manager or executive** dismissed *with* notice must have served 6 months;
+- a **manager or executive** dismissed *without* notice and *without* salary in
+  lieu is a relevant employee from the first day, like the non-manager.
+
+So the 6-month threshold applies to exactly one group — managers and executives
+who were dismissed in the proper manner. Asserted as a pair on the same facts,
+one a manager and one not.
 
 ## What would need doing before this is worth anything
 
-- Finish s 14(2A), as above. This is the one known defect.
 - ss 15–19 of Part 2.
 - Parts 3, 4, 9 and 10, which is where most of the Act's value to an employee is.
 - The Employment Claims Act 2016, which s 14(2) routes the remedy through.
