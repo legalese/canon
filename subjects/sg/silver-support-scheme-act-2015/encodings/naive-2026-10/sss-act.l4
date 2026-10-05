@@ -1,0 +1,282 @@
+IMPORT prelude
+
+-- Silver Support Scheme Act 2015 (Singapore), 2020 Revised Edition,
+-- informal consolidation in force from 1 December 2025.
+--
+-- Source: ../../registers/source-bundle/SSSA2015.txt
+--
+-- NAIVE ENCODING. Straight from the text with the writing-l4-rules skill and
+-- nothing else: no pipeline, no coverage table, no independent test pass, no
+-- human gate. Observations, not checked findings.
+--
+-- SCOPE. ss 6, 7, 10, 11 and 12 -- who is an eligible individual, including the
+-- four deeming rules about attaining 65; what they are eligible for; when money
+-- is recoverable as a debt; and the offence of obtaining a benefit dishonestly.
+--
+-- NOT ENCODED: ss 1-5 (purpose, administration, establishment of the Scheme),
+-- ss 8-9 (access to means information), ss 13-20 (certificates, powers to
+-- obtain information, obstruction, bodies corporate, composition, prosecutions,
+-- immunity, regulations). Those constitute and empower; they decide nothing
+-- about an individual.
+--
+-- NO daydate. The `l4` on this machine imports `prelude` but not `daydate`, so
+-- there is no DATE type here. A date is carried as its three components and
+-- compared as a single ordered number, which is enough for s 6(2) because every
+-- rule in it is about calendar components rather than elapsed time.
+
+§ `Silver Support Scheme Act 2015`
+
+§§ `6 -- Who is an eligible individual?`
+
+-- s 6(2)(c): "where the day of the month in which an individual was born cannot
+-- be ascertained, that individual is deemed to be born on the first day of that
+-- month";
+-- s 6(2)(d): "where the month in which an individual was born cannot be
+-- ascertained, that individual is deemed to be born in January."
+--
+-- Both are about a fact that cannot be ascertained, so each component is MAYBE
+-- and the absence is what triggers the deeming. The year is not deemed: the Act
+-- assumes it is always known.
+DECLARE BirthRecord HAS
+    `year of birth`     IS A NUMBER
+    `month of birth`    IS A MAYBE NUMBER
+    `day of birth`      IS A MAYBE NUMBER
+
+GIVEN `the birth` IS A BirthRecord
+GIVETH A NUMBER
+DECIDE `the deemed month of birth` IS
+    CONSIDER `the birth`'s `month of birth`
+    WHEN JUST `the month` THEN `the month`
+    OTHERWISE 1                      -- s 6(2)(d): deemed born in January
+
+GIVEN `the birth` IS A BirthRecord
+GIVETH A NUMBER
+DECIDE `the deemed day of birth` IS
+    CONSIDER `the birth`'s `day of birth`
+    WHEN JUST `the day` THEN `the day`
+    OTHERWISE 1                      -- s 6(2)(c): deemed born on the first day
+
+-- s 6(2)(a): "an individual attains 65 years of age on the 65th anniversary of
+-- the date of that individual's birth";
+-- s 6(2)(b): "where an individual was born on 29 February, the 65th anniversary
+-- of the date of that individual's birth is deemed to occur on 1 March."
+--
+-- (b) is applied to the DEEMED date, not the recorded one. That matters only in
+-- the case the Act does not address -- see the note at the foot of this file.
+GIVEN `the birth` IS A BirthRecord
+GIVETH A BOOLEAN
+DECIDE `the deemed date of birth is 29 February` IF
+        `the deemed month of birth` `the birth` EQUALS 2
+    AND `the deemed day of birth` `the birth` EQUALS 29
+
+GIVEN `the birth` IS A BirthRecord
+GIVETH A NUMBER
+DECIDE `the month of the 65th anniversary` IS
+    IF   `the deemed date of birth is 29 February` `the birth`
+    THEN 3                                            -- s 6(2)(b): 1 March
+    ELSE `the deemed month of birth` `the birth`
+
+GIVEN `the birth` IS A BirthRecord
+GIVETH A NUMBER
+DECIDE `the day of the 65th anniversary` IS
+    IF   `the deemed date of birth is 29 February` `the birth`
+    THEN 1                                            -- s 6(2)(b): 1 March
+    ELSE `the deemed day of birth` `the birth`
+
+GIVEN `the birth` IS A BirthRecord
+GIVETH A NUMBER
+DECIDE `the year of the 65th anniversary` IS
+    `the birth`'s `year of birth` PLUS 65
+
+-- A calendar date as one ordered number, so that "on or after" is a single
+-- comparison. yyyymmdd, which orders correctly because each component is
+-- bounded.
+GIVEN `the year` IS A NUMBER, `the month` IS A NUMBER, `the day` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the date as an ordered number` IS
+    (`the year` TIMES 10000) PLUS (`the month` TIMES 100) PLUS `the day`
+
+GIVEN `the birth` IS A BirthRecord
+GIVETH A NUMBER
+DECIDE `the 65th anniversary as an ordered number` IS
+    `the date as an ordered number`
+        (`the year of the 65th anniversary` `the birth`)
+        (`the month of the 65th anniversary` `the birth`)
+        (`the day of the 65th anniversary` `the birth`)
+
+-- The individual, and the day the question is asked on.
+DECLARE Individual HAS
+    `name`                          IS A STRING
+    `a citizen of Singapore`        IS A BOOLEAN       -- s 6(1)(a)
+    `birth`                         IS A BirthRecord   -- s 6(1)(b)
+    -- s 6(1)(c): "satisfies all other eligibility criteria that may be
+    -- prescribed". The criteria are in regulations that were not retrieved, so
+    -- this is a fact supplied -- and it is the fact that does most of the real
+    -- work, see the note below.
+    `satisfies all other prescribed eligibility criteria` IS A BOOLEAN
+
+DECLARE AssessmentDay HAS
+    `year`  IS A NUMBER
+    `month` IS A NUMBER
+    `day`   IS A NUMBER
+
+GIVEN `the day` IS AN AssessmentDay
+GIVETH A NUMBER
+DECIDE `the assessment day as an ordered number` IS
+    `the date as an ordered number` (`the day`'s `year`) (`the day`'s `month`) (`the day`'s `day`)
+
+-- s 6(2)(a): attainment is ON the anniversary, so the anniversary day itself
+-- counts.
+GIVEN `the individual` IS AN Individual, `the day` IS AN AssessmentDay
+GIVETH A BOOLEAN
+DECIDE `the individual has attained 65 years of age` IF
+        `the assessment day as an ordered number` `the day`
+    AT LEAST `the 65th anniversary as an ordered number` (`the individual`'s `birth`)
+
+-- s 6(1): "an eligible individual is an individual who -- (a) is a citizen of
+-- Singapore; (b) has attained 65 years of age; and (c) satisfies all other
+-- eligibility criteria that may be prescribed."
+GIVEN `the individual` IS AN Individual, `the day` IS AN AssessmentDay
+GIVETH A BOOLEAN
+DECIDE `the individual is an eligible individual` IF
+        `the individual`'s `a citizen of Singapore`
+    AND `the individual has attained 65 years of age` `the individual` `the day`
+    AND `the individual`'s `satisfies all other prescribed eligibility criteria`
+
+§§ `7 -- Benefits`
+
+-- s 7(1): "An eligible individual is eligible to receive such benefits in such
+-- manner and of such amounts as may be prescribed."
+-- s 7(2): different benefits and amounts may be prescribed for different
+-- classes of eligible individuals.
+--
+-- There is no amount in the Act. Everything about what is actually received is
+-- prescribed, so the only question s 7 decides is the one below, and the amount
+-- is a fact.
+GIVEN `the individual` IS AN Individual, `the day` IS AN AssessmentDay
+GIVETH A BOOLEAN
+DECIDE `the individual is eligible to receive benefits under section 7` IF
+    `the individual is an eligible individual` `the individual` `the day`
+
+§§ `10 -- Recovery of sums overpaid`
+
+-- s 10(1): "If any benefit under the Scheme is disbursed as a cash grant, and --
+--   (a) the recipient -- (i) is not an eligible individual; or (ii) is an
+--       eligible individual, but is not eligible for that cash grant; or
+--   (b) the amount paid is in excess of the amount the recipient is eligible to
+--       receive by way of that cash grant,
+-- the amount paid or paid in excess (as the case may be) is recoverable from
+-- the recipient as a debt due to the Government."
+DECLARE Disbursement HAS
+    `the recipient`                     IS AN Individual
+    `disbursed as a cash grant`         IS A BOOLEAN
+    `the amount paid`                   IS A NUMBER
+    `the amount the recipient is eligible to receive`  IS A NUMBER
+    -- s 10(1)(a)(ii): eligible as an individual, but not for THIS grant. A
+    -- separate question from eligibility under s 6, and prescribed.
+    `eligible for this particular cash grant` IS A BOOLEAN
+    -- s 10(2)(a)-(b)
+    `obtained by knowingly or recklessly making a false or misleading statement` IS A BOOLEAN
+    `obtained by producing a document known or which ought reasonably to be known to be false in a material particular` IS A BOOLEAN
+
+GIVEN `the disbursement` IS A Disbursement, `the day` IS AN AssessmentDay
+GIVETH A BOOLEAN
+DECIDE `section 10(1)(a) applies` IF
+        NOT `the individual is an eligible individual` (`the disbursement`'s `the recipient`) `the day`
+    OR  NOT `the disbursement`'s `eligible for this particular cash grant`
+
+GIVEN `the disbursement` IS A Disbursement
+GIVETH A BOOLEAN
+DECIDE `section 10(1)(b) applies` IF
+    `the disbursement`'s `the amount paid`
+        GREATER THAN `the disbursement`'s `the amount the recipient is eligible to receive`
+
+GIVEN `the disbursement` IS A Disbursement, `the day` IS AN AssessmentDay
+GIVETH A BOOLEAN
+DECIDE `an amount is recoverable under section 10(1)` IF
+        `the disbursement`'s `disbursed as a cash grant`
+    AND `either limb of section 10(1) applies` `the disbursement` `the day`
+
+GIVEN `the disbursement` IS A Disbursement, `the day` IS AN AssessmentDay
+GIVETH A BOOLEAN
+DECIDE `either limb of section 10(1) applies` IF
+        `section 10(1)(a) applies` `the disbursement` `the day`
+    OR  `section 10(1)(b) applies` `the disbursement`
+
+-- "the amount paid or paid in excess (as the case may be)". Where (a) applies
+-- the whole payment goes back; where only (b) applies, the excess does.
+GIVEN `the disbursement` IS A Disbursement, `the day` IS AN AssessmentDay
+GIVETH A NUMBER
+DECIDE `the amount recoverable under section 10(1)` IS
+    IF   `section 10(1)(a) applies` `the disbursement` `the day`
+    THEN `the disbursement`'s `the amount paid`
+    ELSE `the disbursement`'s `the amount paid`
+             MINUS `the disbursement`'s `the amount the recipient is eligible to receive`
+
+-- s 10(2): recovery where the benefit was obtained by a false statement or a
+-- false document. Note "whether or not an eligible individual" -- this limb does
+-- not care about s 6 at all, and it recovers the WHOLE amount obtained.
+GIVEN `the disbursement` IS A Disbursement
+GIVETH A BOOLEAN
+DECIDE `an amount is recoverable under section 10(2)` IF
+        `the disbursement`'s `obtained by knowingly or recklessly making a false or misleading statement`
+    OR  `the disbursement`'s `obtained by producing a document known or which ought reasonably to be known to be false in a material particular`
+
+§§ `11 -- Obtaining benefit through false or misleading statements`
+
+-- s 11(1): "A person -- (a) who -- (i) knowingly or recklessly makes any false
+-- or misleading statement; or (ii) produces or provides ... any document which
+-- the person knows, or ought reasonably to know, is false in a material
+-- particular; and (b) who, with the intention of dishonestly inducing another
+-- person to accept the statement or document as genuine, dishonestly obtains
+-- any cash grant or other benefit under the Scheme, shall be guilty of an
+-- offence ..."
+--
+-- Limb (a) is a disjunction, limb (b) is a conjunction with it, and (b) carries
+-- TWO mental elements of its own: the intention to induce, and dishonest
+-- obtaining.
+DECLARE AllegedOffence HAS
+    `knowingly or recklessly made a false or misleading statement` IS A BOOLEAN   -- (a)(i)
+    `produced or provided a document known or which ought reasonably to be known to be false in a material particular` IS A BOOLEAN   -- (a)(ii)
+    `acted with the intention of dishonestly inducing another person to accept it as genuine` IS A BOOLEAN   -- (b)
+    `dishonestly obtained a cash grant or other benefit under the Scheme` IS A BOOLEAN   -- (b)
+
+GIVEN `the allegation` IS AN AllegedOffence
+GIVETH A BOOLEAN
+DECIDE `paragraph (a) of section 11(1) is made out` IF
+        `the allegation`'s `knowingly or recklessly made a false or misleading statement`
+    OR  `the allegation`'s `produced or provided a document known or which ought reasonably to be known to be false in a material particular`
+
+GIVEN `the allegation` IS AN AllegedOffence
+GIVETH A BOOLEAN
+DECIDE `paragraph (b) of section 11(1) is made out` IF
+        `the allegation`'s `acted with the intention of dishonestly inducing another person to accept it as genuine`
+    AND `the allegation`'s `dishonestly obtained a cash grant or other benefit under the Scheme`
+
+GIVEN `the allegation` IS AN AllegedOffence
+GIVETH A BOOLEAN
+DECIDE `the person is guilty of an offence under section 11` IF
+        `paragraph (a) of section 11(1) is made out` `the allegation`
+    AND `paragraph (b) of section 11(1) is made out` `the allegation`
+
+-- s 11(1): "liable on conviction to a fine not exceeding $5,000 or to
+-- imprisonment for a term not exceeding 12 months or to both." Maxima, so the
+-- encoding states the ceiling and decides nothing about sentence.
+`the maximum fine under section 11 in dollars` MEANS 5000
+`the maximum imprisonment under section 11 in months` MEANS 12
+
+§§ `12 -- Recovery of cash grant upon conviction`
+
+-- s 12: "Where -- (a) a person has received any cash grant or other benefit ...
+-- and (b) the person is convicted of an offence under this Act in connection
+-- with the cash grant or other benefit, the court ... MAY, in addition to
+-- imposing any penalty ..., order that the person pay ... the amount certified
+-- by the administrator to be recoverable".
+--
+-- "may", so this is a power, not a duty. The rule says when the power arises.
+GIVEN `the received a benefit` IS A BOOLEAN
+    , `the convicted in connection with it` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may make a section 12 order` IF
+        `the received a benefit`
+    AND `the convicted in connection with it`
