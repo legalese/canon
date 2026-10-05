@@ -1,0 +1,521 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `cat-domain`
+IMPORT `cat-time`
+IMPORT `cat-part1-preliminary`
+IMPORT `cat-part2-div1-registration`
+IMPORT `cat-part2-div2-3-microchip-sterilise`
+IMPORT `cat-part2-div4-5-transfer`
+IMPORT `cat-part3-management`
+IMPORT `cat-part4-enforcement`
+IMPORT `cat-part5-7-subsidiary-misc`
+IMPORT `cat-regs-sch3-fees`
+IMPORT `tests-fixtures`
+
+-- INDEPENDENT TESTS. Expected values were decided from BRIEF.md and inputs/
+-- alone, before any .l4 file was opened (expectations recorded separately,
+-- with the provision each comes from). A failing assertion here is a finding;
+-- expected values have not been changed to match the code.
+--
+-- Calendar facts (checked with `date`, not computed by the encoding):
+-- 2026-10-03 Sat, 2026-10-05 Mon, 2026-10-08 Thu, 2026-10-10 Sat,
+-- 2026-10-31 Sat, 2026-11-02 Mon, 2026-12-18 Fri, 2026-12-23 Wed,
+-- 2026-12-25 Fri, 2026-12-28 Mon, 2027-10-01 Fri, 2027-10-02 Sat, 2027-10-04 Mon.
+-- Holiday input: Christmas Day 2026 and the Boxing Day substitute 28 Dec 2026.
+
+§ `Independent tests`
+
+§§ `Helpers`
+
+GIVETH A LIST OF DATE
+`xmas 2026` MEANS LIST YMD 2026 12 25, YMD 2026 12 28
+
+GIVEN name IS A STRING
+      dob IS A DATE
+      resident IS A DATE
+      convs IS A LIST OF Conviction
+      notices IS A LIST OF `Infringement notice record`
+      pensioner IS A BOOLEAN
+      members IS A LIST OF `Cat fancy body`
+      approved IS A BOOLEAN
+GIVETH A Person
+mkperson name dob resident convs notices pensioner members approved MEANS
+    Person OF name, dob, EMPTY, resident, convs, notices, pensioner, members, FALSE, FALSE, EMPTY, EMPTY, approved
+
+GIVEN dob IS A DATE
+      keepings IS A LIST OF Keeping
+      reg IS A MAYBE Registration
+      dev IS A MAYBE `Implanted device`
+      sp IS A MAYBE `Sterilising procedure`
+      cc IS A MAYBE `Veterinary certificate`
+      cs IS A MAYBE `Veterinary certificate`
+      cust IS A MAYBE Custodian
+      fp IS A MAYBE `Foster placement`
+      breeding IS A BOOLEAN
+      death IS A MAYBE DATE
+      instate IS A BOOLEAN
+      another IS A BOOLEAN
+GIVETH A Cat
+mkcat dob keepings reg dev sp cc cs cust fp breeding death instate another MEANS
+    Cat OF "Tom", dob, "City of Perth", instate, death, reg, another, dev, sp, cc, cs, keepings, NOTHING, cust, fp, breeding, FALSE
+
+`chip` MEANS JUST (`a compliant microchip implanted by` `the vet` `on` (YMD 2024 3 1))
+`desex` MEANS JUST (`a desexing by a vet on` (YMD 2024 3 1))
+`adult dob` MEANS YMD 2024 1 1
+`Alex since 2024` MEANS LIST (`kept by` `Alex` `since` (YMD 2024 3 1))
+
+-- An adult cat kept by Alex since 2024, unregistered, with the custodian / foster placement given.
+GIVEN cust IS A MAYBE Custodian
+      fp IS A MAYBE `Foster placement`
+GIVETH A Cat
+`Alex's adult cat in` cust `foster` fp MEANS
+    mkcat `adult dob` `Alex since 2024` NOTHING `chip` `desex` NOTHING NOTHING cust fp FALSE NOTHING TRUE FALSE
+
+`plain cat` MEANS `Alex's adult cat in` NOTHING `foster` NOTHING
+
+GIVEN p IS A Person
+      g IS A `Grant or renewal`
+      t IS A `Registration term`
+      dm IS A DATE
+      dd IS A DATE
+GIVETH A `Registration application`
+regapp p g t dm dd MEANS `Registration application` OF p, g, t, dm, dd
+
+GIVEN d IS A `Registration determination`
+GIVETH A BOOLEAN
+DECIDE `must refuse` d IF
+    CONSIDER d
+    WHEN `the local government must refuse the application` g THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN d IS A `Registration determination`
+GIVETH A NUMBER
+`reg grounds` d MEANS
+    CONSIDER d
+    WHEN `the local government must refuse the application` g THEN count g
+    OTHERWISE 0
+
+GIVEN d IS A `Registration determination`
+GIVETH A BOOLEAN
+DECIDE `must grant` d IF
+    CONSIDER d
+    WHEN `the local government must grant or renew the registration` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN d IS A `Registration determination`
+GIVETH A BOOLEAN
+DECIDE `may refuse to consider reg` d IF
+    CONSIDER d
+    WHEN `the local government may refuse to consider the application` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN app IS A `Registration application`
+      cat IS A Cat
+      people IS A LIST OF Person
+GIVETH A `Registration determination`
+s9 app cat people MEANS `the s 9 determination of` app `for` cat `, its owners among` people `, after the request` NOTHING
+
+GIVEN b IS A BOOLEAN
+      c IS A BOOLEAN
+      e IS A BOOLEAN
+GIVETH A `Breeding application findings`
+findings b c e MEANS `Breeding application findings` OF b, c, e
+
+`no findings` MEANS findings FALSE FALSE FALSE
+
+GIVEN p IS A Person
+      n IS A NUMBER
+      f IS A `Breeding application findings`
+GIVETH A `Breeding application`
+breedapp p n f MEANS `Breeding application` OF p, `a grant`, YMD 2026 10 5, YMD 2026 10 5, n, f
+
+GIVEN d IS A `Breeding approval determination`
+GIVETH A BOOLEAN
+DECIDE `may refuse breeding` d IF
+    CONSIDER d
+    WHEN `the local government may refuse the application` g THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN d IS A `Breeding approval determination`
+GIVETH A NUMBER
+`breeding grounds` d MEANS
+    CONSIDER d
+    WHEN `the local government may refuse the application` g THEN count g
+    OTHERWISE 0
+
+GIVEN d IS A `Breeding approval determination`
+GIVETH A BOOLEAN
+DECIDE `is to grant breeding` d IF
+    CONSIDER d
+    WHEN `the local government is to grant or renew the approval` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN d IS A `Breeding approval determination`
+GIVETH A BOOLEAN
+DECIDE `not to refuse breeding` d IF
+    CONSIDER d
+    WHEN `the local government is not to refuse the application` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN d IS A `Breeding approval determination`
+GIVETH A BOOLEAN
+DECIDE `may defer breeding` d IF
+    CONSIDER d
+    WHEN `the local government may defer consideration until the infringement notice is resolved` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN app IS A `Breeding application`
+GIVETH A `Breeding approval determination`
+s37 app MEANS `the s 37 determination of` app `, after the request` NOTHING
+
+GIVEN m IS A MAYBE `Review window`
+GIVETH A DATE
+`first of` m MEANS
+    CONSIDER m
+    WHEN JUST w THEN w's `first day`
+    WHEN NOTHING THEN YMD 1900 1 1
+
+GIVEN m IS A MAYBE `Review window`
+GIVETH A DATE
+`last of` m MEANS
+    CONSIDER m
+    WHEN JUST w THEN w's `last day`
+    WHEN NOTHING THEN YMD 1900 1 1
+
+§§ `People`
+
+`Adult` MEANS mkperson "Adult" (YMD 1980 1 1) (YMD 1980 1 1) EMPTY EMPTY FALSE EMPTY FALSE
+-- Turns 18 on 2026-10-05.
+`Teen` MEANS mkperson "Teen" (YMD 2008 10 5) (YMD 2008 10 5) EMPTY EMPTY FALSE EMPTY FALSE
+`Pensioner` MEANS mkperson "Pensioner" (YMD 1950 1 1) (YMD 1970 1 1) EMPTY EMPTY TRUE EMPTY FALSE
+`Two in 3y` MEANS mkperson "Two" (YMD 1980 1 1) (YMD 1980 1 1) (LIST `a conviction on` (YMD 2023 10 6) `under` `the Cat Act 2011`, `a conviction on` (YMD 2025 1 1) `under` `the Dog Act 1976`) EMPTY FALSE EMPTY FALSE
+`One in 3y` MEANS mkperson "One" (YMD 1980 1 1) (YMD 1980 1 1) (LIST `a conviction on` (YMD 2023 10 4) `under` `the Cat Act 2011`, `a conviction on` (YMD 2025 1 1) `under` `the Animal Welfare Act 2002`) EMPTY FALSE EMPTY FALSE
+`Two in 12m` MEANS mkperson "Alex" (YMD 1980 1 1) (YMD 1980 1 1) (LIST `a conviction on` (YMD 2025 10 6) `under` `the Cat Act 2011`, `a conviction on` (YMD 2026 3 1) `under` `the Cat Act 2011`) EMPTY FALSE EMPTY FALSE
+`One in 12m` MEANS mkperson "Alex" (YMD 1980 1 1) (YMD 1980 1 1) (LIST `a conviction on` (YMD 2025 10 4) `under` `the Cat Act 2011`, `a conviction on` (YMD 2026 3 1) `under` `the Cat Act 2011`) EMPTY FALSE EMPTY FALSE
+`Breeder` MEANS mkperson "Breeder" (YMD 1980 1 1) (YMD 1980 1 1) EMPTY EMPTY FALSE EMPTY TRUE
+`Unapproved` MEANS mkperson "Breeder" (YMD 1980 1 1) (YMD 1980 1 1) EMPTY EMPTY FALSE EMPTY FALSE
+`Teen breeder` MEANS mkperson "TB" (YMD 2008 10 6) (YMD 2008 10 6) EMPTY EMPTY FALSE EMPTY FALSE
+`Convicted once breeder` MEANS mkperson "CB" (YMD 1980 1 1) (YMD 1980 1 1) (LIST `a conviction on` (YMD 2024 1 1) `under` `the Dog Act 1976`) EMPTY FALSE EMPTY FALSE
+`Paid notice breeder` MEANS mkperson "PB" (YMD 1980 1 1) (YMD 1980 1 1) EMPTY (LIST `Infringement notice record` OF (YMD 2026 3 1), `paid`) FALSE EMPTY FALSE
+`Unresolved notice breeder` MEANS mkperson "UB" (YMD 1980 1 1) (YMD 1980 1 1) EMPTY (LIST `Infringement notice record` OF (YMD 2026 3 1), `not yet resolved`) FALSE EMPTY FALSE
+`Member breeder` MEANS mkperson "MB" (YMD 1980 1 1) (YMD 1980 1 1) EMPTY EMPTY FALSE (LIST `Cats United WA Incorporated`) FALSE
+
+§§ `A. Vintage gate (brief)`
+
+#ASSERT REFUSED `the registration fee payable for` (regapp `Adult` `a renewal` `one year` (YMD 2025 9 24) (YMD 2025 9 24))
+#ASSERT `the registration fee payable for` (regapp `Adult` `a renewal` `one year` (YMD 2025 9 25) (YMD 2025 9 25)) EQUALS 20
+#ASSERT REFUSED `s 5(1) is contravened on` (YMD 2025 9 24) `by` `Alex` `as to` (mkcat `adult dob` `Alex since 2024` NOTHING `chip` `desex` NOTHING NOTHING NOTHING NOTHING FALSE NOTHING TRUE FALSE)
+#ASSERT REFUSED `on` (YMD 2025 9 20) `the CEO may withdraw` (`Infringement notice` OF (YMD 2025 9 1), (YMD 2025 9 1), 200, 0, NOTHING, NOTHING) `given` `WA holidays 2025-26`
+#ASSERT REFUSED `paying under` (`Infringement notice` OF (YMD 2025 8 1), (YMD 2025 8 5), 200, 0, JUST (YMD 2025 8 20), NOTHING) `bars proceedings for the offence, given` `no holidays`
+#ASSERT REFUSED `the objection in` (`Objection history` OF `refusal to grant registration`, (YMD 2025 8 1), JUST (YMD 2025 8 1), JUST (YMD 2025 8 20), 0, NOTHING, NOTHING) `was lodged in time, given` `no holidays`
+#ASSERT REFUSED `first of` (`the s 71 review window for` (`Objection history` OF `refusal to grant registration`, (YMD 2025 8 1), JUST (YMD 2025 8 1), NOTHING, 0, NOTHING, NOTHING) `given` `no holidays`)
+#ASSERT REFUSED `a renewal may take effect from the next 1 November, if made on` (YMD 2025 9 20)
+#ASSERT REFUSED `the last day of effect of an approval granted on` (YMD 2025 9 1)
+#ASSERT REFUSED `the court may make an additional order under s 74 on` (`Conviction before the court` OF (mkperson "R" (YMD 1980 1 1) (YMD 1980 1 1) (LIST `a conviction on` (YMD 2020 1 1) `under` `the Cat Act 2011`, `a conviction on` (YMD 2021 1 1) `under` `the Cat Act 2011`) EMPTY FALSE EMPTY FALSE), (YMD 2025 9 1), TRUE)
+
+§§ `B. Schedule 3 fees`
+
+-- item 1(a): grant, 1 year, made after 31 May
+#ASSERT `the registration fee payable for` (regapp `Adult` `a grant` `one year` (YMD 2026 6 1) (YMD 2026 6 1)) EQUALS 10
+-- item 1(b): made on 31 May is not "after 31 May"
+#ASSERT `the registration fee payable for` (regapp `Adult` `a grant` `one year` (YMD 2026 5 31) (YMD 2026 5 31)) EQUALS 20
+-- item 1(b): a renewal is never item 1(a)
+#ASSERT `the registration fee payable for` (regapp `Adult` `a renewal` `one year` (YMD 2026 10 15) (YMD 2026 10 15)) EQUALS 20
+-- item 1(b): January grant
+#ASSERT `the registration fee payable for` (regapp `Adult` `a grant` `one year` (YMD 2026 1 10) (YMD 2026 1 10)) EQUALS 20
+#ASSERT `the registration fee payable for` (regapp `Adult` `a grant` `3 years` (YMD 2026 7 1) (YMD 2026 7 1)) EQUALS 42.50
+#ASSERT `the registration fee payable for` (regapp `Adult` `a renewal` `3 years` (YMD 2026 1 1) (YMD 2026 1 1)) EQUALS 42.50
+#ASSERT `the registration fee payable for` (regapp `Adult` `a grant` `the life of the cat` (YMD 2026 7 1) (YMD 2026 7 1)) EQUALS 100
+#ASSERT `the breeding approval fee payable for` (breedapp `Adult` 3 `no findings`) EQUALS 300
+#ASSERT `the breeding approval fee payable for` (breedapp `Adult` 1 `no findings`) EQUALS 100
+-- cl 1(3) pensioner: 50% of the registration fee
+#ASSERT `the registration fee payable for` (regapp `Pensioner` `a renewal` `one year` (YMD 2026 1 10) (YMD 2026 1 10)) EQUALS 10
+#ASSERT `the registration fee payable for` (regapp `Pensioner` `a grant` `one year` (YMD 2026 6 1) (YMD 2026 6 1)) EQUALS 5
+#ASSERT `the registration fee payable for` (regapp `Pensioner` `a grant` `3 years` (YMD 2026 1 10) (YMD 2026 1 10)) EQUALS 21.25
+#ASSERT `the registration fee payable for` (regapp `Pensioner` `a renewal` `the life of the cat` (YMD 2026 1 10) (YMD 2026 1 10)) EQUALS 50
+-- cl 1(3) does not reach item 4
+#ASSERT `the breeding approval fee payable for` (breedapp `Pensioner` 2 `no findings`) EQUALS 200
+
+§§ `C. Schedule 2 modified penalties, maxima, s 63(3)`
+
+#ASSERT `the Schedule 2 entry for` `s 5(1) — cat not registered` EQUALS `prescribed in Schedule 2` 1 200
+#ASSERT `the Schedule 2 entry for` `s 6(1) — registered cat in a public place not wearing its tag` EQUALS `prescribed in Schedule 2` 2 200
+#ASSERT `the Schedule 2 entry for` `s 7 — removing or interfering with a registration tag` EQUALS `prescribed in Schedule 2` 3 200
+#ASSERT `the Schedule 2 entry for` `s 14(1) — cat not microchipped` EQUALS `prescribed in Schedule 2` 4 200
+#ASSERT `the Schedule 2 entry for` `s 17 — removing or interfering with a microchip` EQUALS `prescribed in Schedule 2` 5 200
+#ASSERT `the Schedule 2 entry for` `s 18(1) — cat not sterilised` EQUALS `prescribed in Schedule 2` 6 200
+#ASSERT `the Schedule 2 entry for` `s 19 — identifying as sterilised a cat that is not` EQUALS `prescribed in Schedule 2` 7 200
+#ASSERT `the Schedule 2 entry for` `s 23(1) — transferring a cat that is not microchipped` EQUALS `prescribed in Schedule 2` 8 200
+#ASSERT `the Schedule 2 entry for` `s 23(2) — transferring a cat that is not sterilised` EQUALS `prescribed in Schedule 2` 9 200
+#ASSERT `the Schedule 2 entry for` `s 24 — seller not giving notice of a transfer` EQUALS `prescribed in Schedule 2` 10 200
+#ASSERT `the Schedule 2 entry for` `s 25 — owner not giving notice of a change to recorded information` EQUALS `prescribed in Schedule 2` 11 200
+#ASSERT `the Schedule 2 entry for` `s 35(1) — breeding cats without approval` EQUALS `prescribed in Schedule 2` 12 200
+#ASSERT `the Schedule 2 entry for` `s 41 — offering a cat as a prize` EQUALS `prescribed in Schedule 2` 13 200
+#ASSERT `the Schedule 2 entry for` `s 50(2) — refusing to give name, residence and date of birth` EQUALS `prescribed in Schedule 2` 14 200
+#ASSERT `the Schedule 2 entry for` `s 15 — implanter not giving the database company the prescribed information` EQUALS `not prescribed by the Cat Regulations 2012; a local law may prescribe it`
+#ASSERT `the Schedule 2 entry for` `s 54 — obstructing an authorised person` EQUALS `not prescribed by the Cat Regulations 2012; a local law may prescribe it`
+#ASSERT `the Schedule 2 entry for` `s 85 — false or misleading information` EQUALS `not prescribed by the Cat Regulations 2012; a local law may prescribe it`
+#ASSERT `the maximum fine for` `s 5(1) — cat not registered` EQUALS 5000
+#ASSERT `the maximum fine for` `reg 5(3) — implanting a non-complying microchip` EQUALS 5000
+#ASSERT `s 63(3) is met by the modified penalty for` `s 50(2) — refusing to give name, residence and date of birth`
+#ASSERT `s 63(3) is met by the modified penalty for` `s 5(1) — cat not registered`
+
+§§ `D. Thresholds`
+
+-- s 5(1) 6 months of age: born 15 Aug 2025, kept by Alex since 1 Oct 2025, unregistered
+`Aug 15 cat` MEANS mkcat (YMD 2025 8 15) (LIST `kept by` `Alex` `since` (YMD 2025 10 1)) NOTHING `chip` `desex` NOTHING NOTHING NOTHING NOTHING FALSE NOTHING TRUE FALSE
+#ASSERT NOT `s 5(1) is contravened on` (YMD 2026 2 14) `by` `Alex` `as to` `Aug 15 cat`
+#ASSERT `s 5(1) is contravened on` (YMD 2026 2 15) `by` `Alex` `as to` `Aug 15 cat`
+#ASSERT NOT `s 14(1) is contravened on` (YMD 2026 2 14) `by` `Alex` `as to` (mkcat (YMD 2025 8 15) (LIST `kept by` `Alex` `since` (YMD 2025 10 1)) NOTHING NOTHING `desex` NOTHING NOTHING NOTHING NOTHING FALSE NOTHING TRUE FALSE)
+#ASSERT `s 14(1) is contravened on` (YMD 2026 2 15) `by` `Alex` `as to` (mkcat (YMD 2025 8 15) (LIST `kept by` `Alex` `since` (YMD 2025 10 1)) NOTHING NOTHING `desex` NOTHING NOTHING NOTHING NOTHING FALSE NOTHING TRUE FALSE)
+#ASSERT `s 18(1) is contravened on` (YMD 2026 2 15) `by` `Alex` `as to` (mkcat (YMD 2025 8 15) (LIST `kept by` `Alex` `since` (YMD 2025 10 1)) NOTHING `chip` NOTHING NOTHING NOTHING NOTHING NOTHING FALSE NOTHING TRUE FALSE) `, its owners among` (LIST `Alex`)
+#ASSERT NOT `s 18(1) is contravened on` (YMD 2026 2 14) `by` `Alex` `as to` (mkcat (YMD 2025 8 15) (LIST `kept by` `Alex` `since` (YMD 2025 10 1)) NOTHING `chip` NOTHING NOTHING NOTHING NOTHING NOTHING FALSE NOTHING TRUE FALSE) `, its owners among` (LIST `Alex`)
+-- s 5(2)(a): kept 13 days vs 14 days (kept from 1 Mar 2026)
+`March cat` MEANS mkcat `adult dob` (LIST `kept by` `Alex` `since` (YMD 2026 3 1)) NOTHING `chip` `desex` NOTHING NOTHING NOTHING NOTHING FALSE NOTHING TRUE FALSE
+#ASSERT NOT `s 5(1) is contravened on` (YMD 2026 3 14) `by` `Alex` `as to` `March cat`
+#ASSERT `s 5(1) is contravened on` (YMD 2026 3 15) `by` `Alex` `as to` `March cat`
+-- s 5(2)(b): resident since 20 Nov 2025, keeping the cat since 1 Jan 2025
+`Newcomer's cat` MEANS mkcat `adult dob` (LIST `kept by` `Newcomer` `since` (YMD 2025 1 1)) NOTHING `chip` `desex` NOTHING NOTHING NOTHING NOTHING FALSE NOTHING TRUE FALSE
+#ASSERT NOT `s 5(1) is contravened on` (YMD 2025 12 3) `by` `Newcomer` `as to` `Newcomer's cat`
+#ASSERT `s 5(1) is contravened on` (YMD 2025 12 4) `by` `Newcomer` `as to` `Newcomer's cat`
+-- s 5(1) applies to the plain adult unregistered cat
+#ASSERT `s 5(1) is contravened on` (YMD 2026 10 5) `by` `Alex` `as to` `plain cat`
+-- s 9(2)(a), 18 years: applicant turns 18 on 2026-10-05
+#ASSERT `must refuse` (s9 (regapp `Teen` `a grant` `one year` (YMD 2026 10 4) (YMD 2026 10 4)) `plain cat` (LIST `Alex`))
+#ASSERT `reg grounds` (s9 (regapp `Teen` `a grant` `one year` (YMD 2026 10 4) (YMD 2026 10 4)) `plain cat` (LIST `Alex`)) EQUALS 1
+#ASSERT `must grant` (s9 (regapp `Teen` `a grant` `one year` (YMD 2026 10 5) (YMD 2026 10 5)) `plain cat` (LIST `Alex`))
+-- reg 9(3)(b): SAFE-entity foster care, 12 weeks vs 85 days
+#ASSERT NOT `s 5(1) is contravened on` (YMD 2026 10 5) `by` `Alex` `as to` (`Alex's adult cat in` NOTHING `foster` (JUST (`Foster placement` OF `S.A.F.E. Hedland Inc`, 12)))
+#ASSERT `s 5(1) is contravened on` (YMD 2026 10 5) `by` `Alex` `as to` (`Alex's adult cat in` NOTHING `foster` (JUST (`Foster placement` OF `Saving Animals from Euthanasia Incorporated`, 85 DIVIDED BY 7)))
+#ASSERT NOT `s 5(1) is contravened on` (YMD 2026 10 5) `by` `Alex` `as to` (`Alex's adult cat in` NOTHING `foster` (JUST (`Foster placement` OF `Cat Welfare Society Inc., trading as Cat Haven`, 30)))
+#ASSERT NOT `s 5(1) is contravened on` (YMD 2026 10 5) `by` `Alex` `as to` (`Alex's adult cat in` NOTHING `foster` (JUST (`Foster placement` OF `The Royal Society for the Prevention of Cruelty to Animals, Western Australia`, 30)))
+#ASSERT `s 5(1) is contravened on` (YMD 2026 10 5) `by` `Alex` `as to` (`Alex's adult cat in` NOTHING `foster` (JUST (`Foster placement` OF `another organisation`, 1)))
+-- s 9(5)/(6): request of 21 days unanswered -> may refuse to consider; 22 days is not a valid request
+#ASSERT `may refuse to consider reg` (`the s 9 determination of` (regapp `Adult` `a grant` `one year` (YMD 2026 10 5) (YMD 2026 10 5)) `for` `plain cat` `, its owners among` (LIST `Alex`) `, after the request` (JUST (`Information request` OF 21, FALSE)))
+#ASSERT NOT `may refuse to consider reg` (`the s 9 determination of` (regapp `Adult` `a grant` `one year` (YMD 2026 10 5) (YMD 2026 10 5)) `for` `plain cat` `, its owners among` (LIST `Alex`) `, after the request` (JUST (`Information request` OF 22, FALSE)))
+#ASSERT NOT `may refuse to consider reg` (`the s 9 determination of` (regapp `Adult` `a grant` `one year` (YMD 2026 10 5) (YMD 2026 10 5)) `for` `plain cat` `, its owners among` (LIST `Alex`) `, after the request` (JUST (`Information request` OF 21, TRUE)))
+-- s 37(3)/(4) the same cap
+#ASSERT NOT `may refuse breeding` (`the s 37 determination of` (breedapp `Adult` 2 `no findings`) `, after the request` (JUST (`Information request` OF 22, FALSE)))
+-- s 51(2)(c): objection period not less than 24 hours
+#ASSERT `a notice in accordance with s 51(2)` (`Entry notice` OF TRUE, TRUE, TRUE, 24, TRUE, (YMD 2026 10 5), FALSE, NOTHING)
+#ASSERT NOT `a notice in accordance with s 51(2)` (`Entry notice` OF TRUE, TRUE, TRUE, 23, TRUE, (YMD 2026 10 5), FALSE, NOTHING)
+-- s 32(b): holding period not less than 7 working days
+#ASSERT null (`what the s 32 notice` (`Section 32 notice` OF TRUE, TRUE, 7, TRUE, TRUE, TRUE) `lacks, where microchipping is relevant:` TRUE `and sterilisation:` TRUE)
+#ASSERT count (`what the s 32 notice` (`Section 32 notice` OF TRUE, TRUE, 6, TRUE, TRUE, TRUE) `lacks, where microchipping is relevant:` TRUE `and sterilisation:` TRUE) EQUALS 1
+-- s 74(1)(b): previously convicted of 2 or more offences against this Act
+#ASSERT `the court may make an additional order under s 74 on` (`Conviction before the court` OF (mkperson "R" (YMD 1980 1 1) (YMD 1980 1 1) (LIST `a conviction on` (YMD 2024 1 1) `under` `the Cat Act 2011`, `a conviction on` (YMD 2025 1 1) `under` `the Cat Act 2011`) EMPTY FALSE EMPTY FALSE), (YMD 2026 10 5), TRUE)
+#ASSERT NOT `the court may make an additional order under s 74 on` (`Conviction before the court` OF (mkperson "R" (YMD 1980 1 1) (YMD 1980 1 1) (LIST `a conviction on` (YMD 2024 1 1) `under` `the Cat Act 2011`) EMPTY FALSE EMPTY FALSE), (YMD 2026 10 5), TRUE)
+
+§§ `E. Dates`
+
+-- s 13: 7 days after the decision (Interpretation Act s 61(1)(b), (e))
+#ASSERT NOT `the s 13 notice is late, as at` (YMD 2026 10 20) `, for` (`Objection history` OF `refusal to grant registration`, (YMD 2026 10 5), JUST (YMD 2026 10 12), NOTHING, 0, NOTHING, NOTHING) `given` `no holidays`
+#ASSERT `the s 13 notice is late, as at` (YMD 2026 10 20) `, for` (`Objection history` OF `refusal to grant registration`, (YMD 2026 10 5), JUST (YMD 2026 10 13), NOTHING, 0, NOTHING, NOTHING) `given` `no holidays`
+-- weekend: decision Sat 3 Oct, day 7 is Sat 10 Oct -> Mon 12 Oct
+#ASSERT NOT `the s 13 notice is late, as at` (YMD 2026 10 20) `, for` (`Objection history` OF `cancellation of registration`, (YMD 2026 10 3), JUST (YMD 2026 10 12), NOTHING, 0, NOTHING, NOTHING) `given` `no holidays`
+#ASSERT `the s 13 notice is late, as at` (YMD 2026 10 20) `, for` (`Objection history` OF `cancellation of registration`, (YMD 2026 10 3), JUST (YMD 2026 10 13), NOTHING, 0, NOTHING, NOTHING) `given` `no holidays`
+-- public holiday: decision Fri 18 Dec, day 7 is Christmas -> Tue 29 Dec
+#ASSERT NOT `the s 13 notice is late, as at` (YMD 2027 1 10) `, for` (`Objection history` OF `refusal to renew registration`, (YMD 2026 12 18), JUST (YMD 2026 12 29), NOTHING, 0, NOTHING, NOTHING) `given` `xmas 2026`
+#ASSERT `the s 13 notice is late, as at` (YMD 2027 1 10) `, for` (`Objection history` OF `refusal to renew registration`, (YMD 2026 12 18), JUST (YMD 2026 12 30), NOTHING, 0, NOTHING, NOTHING) `given` `xmas 2026`
+-- s 40 likewise
+#ASSERT NOT `the s 40 notice is late, as at` (YMD 2026 10 20) `, for` (`Objection history` OF `refusal to grant an approval to breed`, (YMD 2026 10 5), JUST (YMD 2026 10 12), NOTHING, 0, NOTHING, NOTHING) `given` `no holidays`
+#ASSERT `the s 40 notice is late, as at` (YMD 2026 10 20) `, for` (`Objection history` OF `refusal to grant an approval to breed`, (YMD 2026 10 5), JUST (YMD 2026 10 13), NOTHING, 0, NOTHING, NOTHING) `given` `no holidays`
+-- s 15: implant 5 Oct 2026
+#ASSERT NOT `s 15 is contravened on` (YMD 2026 10 20) `as to` (`a compliant microchip implanted by` `the vet` `on` (YMD 2026 10 5)) `, notice given on` (JUST (YMD 2026 10 12)) `given` `no holidays`
+#ASSERT `s 15 is contravened on` (YMD 2026 10 20) `as to` (`a compliant microchip implanted by` `the vet` `on` (YMD 2026 10 5)) `, notice given on` (JUST (YMD 2026 10 13)) `given` `no holidays`
+#ASSERT NOT `s 15 is contravened on` (YMD 2026 10 12) `as to` (`a compliant microchip implanted by` `the vet` `on` (YMD 2026 10 5)) `, notice given on` NOTHING `given` `no holidays`
+#ASSERT `s 15 is contravened on` (YMD 2026 10 13) `as to` (`a compliant microchip implanted by` `the vet` `on` (YMD 2026 10 5)) `, notice given on` NOTHING `given` `no holidays`
+-- s 24: transfer Sat 3 Oct 2026 of a registered, microchipped cat; deadline Mon 12 Oct
+`a sale on` MEANS GIVEN d YIELD `Transfer` OF d, `Alex`, `Adult`, FALSE, FALSE, FALSE, FALSE, FALSE, NOTHING, NOTHING
+`registered chipped cat` MEANS mkcat `adult dob` `Alex since 2024` (JUST (`registered with` "City of Perth" `to` "Alex" `for` `the life of the cat` `from` (YMD 2025 11 1))) `chip` `desex` NOTHING NOTHING NOTHING NOTHING FALSE NOTHING TRUE FALSE
+#ASSERT NOT `s 24 is contravened, as at` (YMD 2026 10 20) `, by` (`a sale on` (YMD 2026 10 3)) `of` `registered chipped cat` `, notices given on` (JUST (YMD 2026 10 12)) `and` (JUST (YMD 2026 10 12)) `given` `no holidays`
+#ASSERT `s 24 is contravened, as at` (YMD 2026 10 20) `, by` (`a sale on` (YMD 2026 10 3)) `of` `registered chipped cat` `, notices given on` (JUST (YMD 2026 10 12)) `and` (JUST (YMD 2026 10 13)) `given` `no holidays`
+#ASSERT `s 24 is contravened, as at` (YMD 2026 10 20) `, by` (`a sale on` (YMD 2026 10 3)) `of` `registered chipped cat` `, notices given on` (JUST (YMD 2026 10 13)) `and` (JUST (YMD 2026 10 12)) `given` `no holidays`
+-- s 25: change on 5 Oct 2026
+#ASSERT NOT `s 25 is contravened as to` `registered chipped cat` `after` (`Change to recorded information` OF (YMD 2026 10 5), TRUE, TRUE) `by` `Alex` `, notices given on` (JUST (YMD 2026 10 12)) `and` (JUST (YMD 2026 10 12)) `, as at` (YMD 2026 10 20) `given` `no holidays`
+#ASSERT `s 25 is contravened as to` `registered chipped cat` `after` (`Change to recorded information` OF (YMD 2026 10 5), TRUE, TRUE) `by` `Alex` `, notices given on` (JUST (YMD 2026 10 13)) `and` (JUST (YMD 2026 10 12)) `, as at` (YMD 2026 10 20) `given` `no holidays`
+-- s 34(1)(a): 3 working days after entry
+`unknown stay` MEANS GIVEN d YIELD `Facility stay` OF d, FALSE, FALSE, NOTHING, NOTHING, 0, NOTHING, FALSE, FALSE, FALSE
+#ASSERT NOT `on` (YMD 2026 10 8) `the operator may transfer or humanely destroy the cat in` (`unknown stay` (YMD 2026 10 5)) `given` `no holidays`
+#ASSERT `on` (YMD 2026 10 9) `the operator may transfer or humanely destroy the cat in` (`unknown stay` (YMD 2026 10 5)) `given` `no holidays`
+#ASSERT NOT `on` (YMD 2026 10 13) `the operator may transfer or humanely destroy the cat in` (`unknown stay` (YMD 2026 10 8)) `given` `no holidays`
+#ASSERT `on` (YMD 2026 10 14) `the operator may transfer or humanely destroy the cat in` (`unknown stay` (YMD 2026 10 8)) `given` `no holidays`
+-- entered Wed 23 Dec 2026: working days 24, 29, 30 Dec -> may act from 31 Dec
+#ASSERT NOT `on` (YMD 2026 12 30) `the operator may transfer or humanely destroy the cat in` (`unknown stay` (YMD 2026 12 23)) `given` `xmas 2026`
+#ASSERT `on` (YMD 2026 12 31) `the operator may transfer or humanely destroy the cat in` (`unknown stay` (YMD 2026 12 23)) `given` `xmas 2026`
+-- s 34(1)(b): notice Mon 5 Oct; 7 working days end Wed 14 Oct; later of that and the holding period
+`notified stay` MEANS GIVEN hp YIELD `Facility stay` OF (YMD 2026 10 5), FALSE, TRUE, NOTHING, JUST (YMD 2026 10 5), hp, NOTHING, FALSE, FALSE, FALSE
+#ASSERT NOT `on` (YMD 2026 10 14) `the operator may transfer or humanely destroy the cat in` (`notified stay` 7) `given` `no holidays`
+#ASSERT `on` (YMD 2026 10 15) `the operator may transfer or humanely destroy the cat in` (`notified stay` 7) `given` `no holidays`
+#ASSERT NOT `on` (YMD 2026 10 15) `the operator may transfer or humanely destroy the cat in` (`notified stay` 10) `given` `no holidays`
+#ASSERT NOT `on` (YMD 2026 10 19) `the operator may transfer or humanely destroy the cat in` (`notified stay` 10) `given` `no holidays`
+#ASSERT `on` (YMD 2026 10 20) `the operator may transfer or humanely destroy the cat in` (`notified stay` 10) `given` `no holidays`
+-- s 34(1)(c): surrendered -> at once
+#ASSERT `on` (YMD 2026 10 5) `the operator may transfer or humanely destroy the cat in` (`Facility stay` OF (YMD 2026 10 5), FALSE, TRUE, NOTHING, NOTHING, 0, NOTHING, TRUE, FALSE, FALSE) `given` `no holidays`
+-- s 29: kept temporarily at the owner's request -> Division does not apply
+#ASSERT NOT `on` (YMD 2026 10 5) `the operator may transfer or humanely destroy the cat in` (`Facility stay` OF (YMD 2026 10 5), TRUE, TRUE, NOTHING, NOTHING, 0, NOTHING, TRUE, FALSE, FALSE) `given` `no holidays`
+-- s 62(1): 28 days after the alleged offence
+`ranger` MEANS Officer OF `appointed under the Local Government Act 1995 s 9.10(2) for the purposes of the Cat Act`, TRUE
+`police non-employee` MEANS Officer OF `a police officer`, FALSE
+GIVEN off IS A DATE
+      given IS A DATE
+      pen IS A NUMBER
+GIVETH AN `Infringement notice`
+`IN` off given pen MEANS `Infringement notice` OF off, given, pen, 0, NOTHING, NOTHING
+#ASSERT `s 62 permits` `ranger` `to give notice` (`IN` (YMD 2026 10 1) (YMD 2026 10 29) 200) `for` `s 5(1) — cat not registered` `, a local law prescribing` NOTHING `given` `no holidays`
+#ASSERT NOT `s 62 permits` `ranger` `to give notice` (`IN` (YMD 2026 10 1) (YMD 2026 10 30) 200) `for` `s 5(1) — cat not registered` `, a local law prescribing` NOTHING `given` `no holidays`
+#ASSERT `s 62 permits` `ranger` `to give notice` (`IN` (YMD 2026 10 3) (YMD 2026 11 2) 200) `for` `s 5(1) — cat not registered` `, a local law prescribing` NOTHING `given` `no holidays`
+#ASSERT NOT `s 62 permits` `ranger` `to give notice` (`IN` (YMD 2026 10 3) (YMD 2026 11 3) 200) `for` `s 5(1) — cat not registered` `, a local law prescribing` NOTHING `given` `no holidays`
+#ASSERT NOT `s 62 permits` `ranger` `to give notice` (`IN` (YMD 2026 10 1) (YMD 2026 10 2) 250) `for` `s 5(1) — cat not registered` `, a local law prescribing` NOTHING `given` `no holidays`
+#ASSERT NOT `s 62 permits` `police non-employee` `to give notice` (`IN` (YMD 2026 10 1) (YMD 2026 10 2) 200) `for` `s 5(1) — cat not registered` `, a local law prescribing` NOTHING `given` `no holidays`
+#ASSERT NOT `s 62 permits` `ranger` `to give notice` (`IN` (YMD 2026 10 1) (YMD 2026 10 2) 200) `for` `s 54 — obstructing an authorised person` `, a local law prescribing` NOTHING `given` `no holidays`
+-- s 63(1)(b), s 64, s 66
+#ASSERT `the last day to pay the modified penalty under` (`IN` (YMD 2026 9 30) (YMD 2026 10 1) 200) `given` `no holidays` EQUALS YMD 2026 10 29
+#ASSERT `the last day to pay the modified penalty under` (`Infringement notice` OF (YMD 2026 9 30), (YMD 2026 10 1), 200, 14, NOTHING, NOTHING) `given` `no holidays` EQUALS YMD 2026 11 12
+#ASSERT `paying under` (`Infringement notice` OF (YMD 2026 9 30), (YMD 2026 10 1), 200, 0, JUST (YMD 2026 10 29), NOTHING) `bars proceedings for the offence, given` `no holidays`
+#ASSERT NOT `paying under` (`Infringement notice` OF (YMD 2026 9 30), (YMD 2026 10 1), 200, 0, JUST (YMD 2026 10 30), NOTHING) `bars proceedings for the offence, given` `no holidays`
+#ASSERT NOT `paying under` (`Infringement notice` OF (YMD 2026 9 30), (YMD 2026 10 1), 200, 0, JUST (YMD 2026 10 29), JUST (YMD 2026 11 15)) `bars proceedings for the offence, given` `no holidays`
+#ASSERT `s 65(2) requires a refund under` (`Infringement notice` OF (YMD 2026 9 30), (YMD 2026 10 1), 200, 0, JUST (YMD 2026 10 29), JUST (YMD 2026 11 15))
+-- s 65(1): within one year after the notice was given
+#ASSERT `on` (YMD 2027 10 1) `the CEO may withdraw` (`IN` (YMD 2026 9 30) (YMD 2026 10 1) 200) `given` `WA holidays 2025-26`
+#ASSERT NOT `on` (YMD 2027 10 2) `the CEO may withdraw` (`IN` (YMD 2026 9 30) (YMD 2026 10 1) 200) `given` `WA holidays 2025-26`
+-- given Fri 2 Oct 2026: the year ends Sat 2 Oct 2027 -> s 61(1)(e) carries it to Mon 4 Oct 2027
+#ASSERT `on` (YMD 2027 10 4) `the CEO may withdraw` (`IN` (YMD 2026 9 30) (YMD 2026 10 2) 200) `given` `WA holidays 2025-26`
+-- s 69(2): 28 days after notice
+#ASSERT `the objection in` (`Objection history` OF `refusal to grant registration`, (YMD 2026 10 1), JUST (YMD 2026 10 1), JUST (YMD 2026 10 29), 0, NOTHING, NOTHING) `was lodged in time, given` `no holidays`
+#ASSERT NOT `the objection in` (`Objection history` OF `refusal to grant registration`, (YMD 2026 10 1), JUST (YMD 2026 10 1), JUST (YMD 2026 10 30), 0, NOTHING, NOTHING) `was lodged in time, given` `no holidays`
+#ASSERT `the objection in` (`Objection history` OF `refusal to grant registration`, (YMD 2026 10 1), JUST (YMD 2026 10 1), JUST (YMD 2026 10 30), 7, NOTHING, NOTHING) `was lodged in time, given` `no holidays`
+-- s 71
+#ASSERT `last of` (`the s 71 review window for` (`Objection history` OF `refusal to grant registration`, (YMD 2026 10 1), JUST (YMD 2026 10 1), NOTHING, 0, NOTHING, NOTHING) `given` `no holidays`) EQUALS YMD 2026 11 12
+#ASSERT `first of` (`the s 71 review window for` (`Objection history` OF `refusal to grant registration`, (YMD 2026 9 25), JUST (YMD 2026 9 26), JUST (YMD 2026 10 1), 0, NOTHING, NOTHING) `given` `no holidays`) EQUALS YMD 2026 11 6
+#ASSERT `last of` (`the s 71 review window for` (`Objection history` OF `refusal to grant registration`, (YMD 2026 9 25), JUST (YMD 2026 9 26), JUST (YMD 2026 10 1), 0, NOTHING, NOTHING) `given` `no holidays`) EQUALS YMD 2026 12 17
+#ASSERT `last of` (`the s 71 review window for` (`Objection history` OF `refusal to grant registration`, (YMD 2026 9 25), JUST (YMD 2026 9 26), JUST (YMD 2026 10 1), 0, JUST (YMD 2026 10 20), NOTHING) `given` `no holidays`) EQUALS YMD 2026 12 1
+-- reg 12(2)(a) expiry
+#ASSERT `the last day of the registration period` (`registered with` "City of Perth" `to` "Alex" `for` `one year` `from` (YMD 2026 11 1)) EQUALS JUST (YMD 2027 10 31)
+#ASSERT `the last day of the registration period` (`registered with` "City of Perth" `to` "Alex" `for` `one year` `from` (YMD 2026 6 1)) EQUALS JUST (YMD 2026 10 31)
+#ASSERT `the last day of the registration period` (`registered with` "City of Perth" `to` "Alex" `for` `3 years` `from` (YMD 2026 11 1)) EQUALS JUST (YMD 2029 10 31)
+#ASSERT `the last day of the registration period` (`registered with` "City of Perth" `to` "Alex" `for` `the life of the cat` `from` (YMD 2026 11 1)) EQUALS NOTHING
+-- reg 12(2)(b) renewal window: 21 days preceding 1 November
+#ASSERT `a renewal may take effect from the next 1 November, if made on` (YMD 2026 10 11)
+#ASSERT `a renewal may take effect from the next 1 November, if made on` (YMD 2026 10 31)
+#ASSERT NOT `a renewal may take effect from the next 1 November, if made on` (YMD 2026 10 10)
+#ASSERT NOT `a renewal may take effect from the next 1 November, if made on` (YMD 2026 11 1)
+-- s 9(2)(e): 2 convictions in the previous 3 years
+#ASSERT `must refuse` (s9 (regapp `Two in 3y` `a renewal` `one year` (YMD 2026 10 5) (YMD 2026 10 5)) `plain cat` (LIST `Alex`))
+#ASSERT `must grant` (s9 (regapp `One in 3y` `a renewal` `one year` (YMD 2026 10 5) (YMD 2026 10 5)) `plain cat` (LIST `Alex`))
+-- s 10(b): 2 convictions in the 12 months before cancellation
+#ASSERT `the local government may cancel the registration of` `registered chipped cat` `on` (YMD 2026 10 5) `, its owner being` `Two in 12m`
+#ASSERT NOT `the local government may cancel the registration of` `registered chipped cat` `on` (YMD 2026 10 5) `, its owner being` `One in 12m`
+-- reg 24: one year
+#ASSERT `the last day of effect of an approval granted on` (YMD 2026 10 5) EQUALS YMD 2027 10 4
+-- s 51(3)(a)(ii): effect until 7 days after the objection period ends
+#ASSERT `s 51(1) permits` `ranger` `to enter, on` (`after a notice` (`Entry notice` OF TRUE, TRUE, TRUE, 24, TRUE, (YMD 2026 10 5), FALSE, NOTHING)) `, on` (YMD 2026 10 12)
+#ASSERT NOT `s 51(1) permits` `ranger` `to enter, on` (`after a notice` (`Entry notice` OF TRUE, TRUE, TRUE, 24, TRUE, (YMD 2026 10 5), FALSE, NOTHING)) `, on` (YMD 2026 10 13)
+#ASSERT NOT `s 51(1) permits` `ranger` `to enter, on` (`after a notice` (`Entry notice` OF TRUE, TRUE, TRUE, 24, TRUE, (YMD 2026 10 5), TRUE, NOTHING)) `, on` (YMD 2026 10 6)
+
+§§ `F. Grounds, limb by limb`
+
+-- s 5(2)(c) / reg 9(2)(a)-(e)
+#ASSERT NOT `s 5(1) is contravened on` (YMD 2026 10 5) `by` `Alex` `as to` (`Alex's adult cat in` (JUST (`an organisation` `Cat Welfare Society Inc., trading as Cat Haven`)) `foster` NOTHING)
+#ASSERT NOT `s 5(1) is contravened on` (YMD 2026 10 5) `by` `Alex` `as to` (`Alex's adult cat in` (JUST (`an organisation` `The Royal Society for the Prevention of Cruelty to Animals, Western Australia`)) `foster` NOTHING)
+#ASSERT NOT `s 5(1) is contravened on` (YMD 2026 10 5) `by` `Alex` `as to` (`Alex's adult cat in` (JUST (`an organisation` `the Commonwealth Department administering the Biosecurity Act 2015`)) `foster` NOTHING)
+#ASSERT NOT `s 5(1) is contravened on` (YMD 2026 10 5) `by` `Alex` `as to` (`Alex's adult cat in` (JUST `veterinary premises`) `foster` NOTHING)
+#ASSERT `s 5(1) is contravened on` (YMD 2026 10 5) `by` `Alex` `as to` (`Alex's adult cat in` (JUST `a private person`) `foster` NOTHING)
+-- s 9(2)(b): exempt class -> must refuse
+#ASSERT `must refuse` (s9 (regapp `Adult` `a grant` `one year` (YMD 2026 10 5) (YMD 2026 10 5)) (`Alex's adult cat in` (JUST `veterinary premises`) `foster` NOTHING) (LIST `Alex`))
+-- s 9(2)(c) not microchipped
+`unchipped cat` MEANS mkcat `adult dob` `Alex since 2024` NOTHING NOTHING `desex` NOTHING NOTHING NOTHING NOTHING FALSE NOTHING TRUE FALSE
+#ASSERT `reg grounds` (s9 (regapp `Adult` `a grant` `one year` (YMD 2026 10 5) (YMD 2026 10 5)) `unchipped cat` (LIST `Alex`)) EQUALS 1
+-- s 9(3): vet certificate under s 14(2)
+#ASSERT `must grant` (s9 (regapp `Adult` `a grant` `one year` (YMD 2026 10 5) (YMD 2026 10 5)) (mkcat `adult dob` `Alex since 2024` NOTHING NOTHING `desex` (JUST `a vet certificate`) NOTHING NOTHING NOTHING FALSE NOTHING TRUE FALSE) (LIST `Alex`))
+-- s 14(3): a certificate cannot apply to a cat under 6 months (kitten born 1 Jun 2026)
+#ASSERT `must refuse` (s9 (regapp `Adult` `a grant` `one year` (YMD 2026 10 5) (YMD 2026 10 5)) (mkcat (YMD 2026 6 1) `Alex since 2024` NOTHING NOTHING `desex` (JUST `a vet certificate`) NOTHING NOTHING NOTHING FALSE NOTHING TRUE FALSE) (LIST `Alex`))
+-- s 9(2)(d) not sterilised
+`entire cat` MEANS mkcat `adult dob` `Alex since 2024` NOTHING `chip` NOTHING NOTHING NOTHING NOTHING NOTHING FALSE NOTHING TRUE FALSE
+#ASSERT `reg grounds` (s9 (regapp `Adult` `a grant` `one year` (YMD 2026 10 5) (YMD 2026 10 5)) `entire cat` (LIST `Alex`)) EQUALS 1
+-- s 9(4) with s 18(2)(a) certificate
+#ASSERT `must grant` (s9 (regapp `Adult` `a grant` `one year` (YMD 2026 10 5) (YMD 2026 10 5)) (mkcat `adult dob` `Alex since 2024` NOTHING `chip` NOTHING NOTHING (JUST `a vet certificate`) NOTHING NOTHING FALSE NOTHING TRUE FALSE) (LIST `Alex`))
+-- s 9(4) with s 18(2)(b): owned for breeding by an approved cat breeder
+`breeder's entire cat` MEANS mkcat `adult dob` (LIST `kept by` `Breeder` `since` (YMD 2024 3 1)) NOTHING `chip` NOTHING NOTHING NOTHING NOTHING NOTHING TRUE NOTHING TRUE FALSE
+#ASSERT `must grant` (s9 (regapp `Breeder` `a grant` `one year` (YMD 2026 10 5) (YMD 2026 10 5)) `breeder's entire cat` (LIST `Breeder`))
+#ASSERT `must refuse` (s9 (regapp `Unapproved` `a grant` `one year` (YMD 2026 10 5) (YMD 2026 10 5)) `breeder's entire cat` (LIST `Unapproved`))
+-- s 18(1) with its exemptions
+#ASSERT NOT `s 18(1) is contravened on` (YMD 2026 10 5) `by` `Breeder` `as to` `breeder's entire cat` `, its owners among` (LIST `Breeder`)
+#ASSERT `s 18(1) is contravened on` (YMD 2026 10 5) `by` `Unapproved` `as to` `breeder's entire cat` `, its owners among` (LIST `Unapproved`)
+#ASSERT NOT `s 18(1) is contravened on` (YMD 2026 10 5) `by` `Alex` `as to` (mkcat `adult dob` `Alex since 2024` NOTHING `chip` NOTHING NOTHING (JUST `a vet certificate`) NOTHING NOTHING FALSE NOTHING TRUE FALSE) `, its owners among` (LIST `Alex`)
+#ASSERT `s 18(1) is contravened on` (YMD 2026 10 5) `by` `Alex` `as to` `entire cat` `, its owners among` (LIST `Alex`)
+-- s 14(1)/(2)
+#ASSERT `s 14(1) is contravened on` (YMD 2026 10 5) `by` `Alex` `as to` `unchipped cat`
+#ASSERT NOT `s 14(1) is contravened on` (YMD 2026 10 5) `by` `Alex` `as to` (mkcat `adult dob` `Alex since 2024` NOTHING NOTHING `desex` (JUST `a vet certificate`) NOTHING NOTHING NOTHING FALSE NOTHING TRUE FALSE)
+-- s 10(a)(i)-(iii), (b)
+#ASSERT `the local government may cancel the registration of` (mkcat `adult dob` `Alex since 2024` NOTHING `chip` `desex` NOTHING NOTHING NOTHING NOTHING FALSE (JUST (YMD 2026 9 30)) TRUE FALSE) `on` (YMD 2026 10 5) `, its owner being` `Alex`
+#ASSERT `the local government may cancel the registration of` (mkcat `adult dob` `Alex since 2024` NOTHING `chip` `desex` NOTHING NOTHING NOTHING NOTHING FALSE NOTHING FALSE FALSE) `on` (YMD 2026 10 5) `, its owner being` `Alex`
+#ASSERT `the local government may cancel the registration of` (mkcat `adult dob` `Alex since 2024` NOTHING `chip` `desex` NOTHING NOTHING NOTHING NOTHING FALSE NOTHING TRUE TRUE) `on` (YMD 2026 10 5) `, its owner being` `Alex`
+#ASSERT NOT `the local government may cancel the registration of` `registered chipped cat` `on` (YMD 2026 10 5) `, its owner being` `Alex`
+-- s 6 and reg 10
+`Alex's registered tagged cat` MEANS mkcat `adult dob` `Alex since 2024` (JUST (`registered with` "City of Perth" `to` "Alex" `for` `one year` `from` (YMD 2025 11 1))) `chip` `desex` NOTHING NOTHING NOTHING NOTHING FALSE NOTHING TRUE FALSE
+#ASSERT `s 6(1) is contravened on` (Occasion OF (YMD 2026 3 1), TRUE, FALSE, NOTHING) `by` `Alex` `as to` `Alex's registered tagged cat`
+#ASSERT NOT `s 6(1) is contravened on` (Occasion OF (YMD 2026 3 1), FALSE, FALSE, NOTHING) `by` `Alex` `as to` `Alex's registered tagged cat`
+#ASSERT NOT `s 6(1) is contravened on` (Occasion OF (YMD 2026 3 1), TRUE, FALSE, JUST (`one of the cat fancy bodies` `Cats United WA Incorporated`)) `by` `Alex` `as to` `Alex's registered tagged cat`
+#ASSERT NOT `s 6(1) is contravened on` (Occasion OF (YMD 2026 3 1), TRUE, FALSE, JUST (`a body affiliated with` `Australian National Cats Incorporated`)) `by` `Alex` `as to` `Alex's registered tagged cat`
+#ASSERT `s 6(1) is contravened on` (Occasion OF (YMD 2026 3 1), TRUE, FALSE, JUST `another show organiser`) `by` `Alex` `as to` `Alex's registered tagged cat`
+#ASSERT `the s 6(3) defence is established` (`Section 6(3) findings` OF FALSE, TRUE, FALSE, TRUE, TRUE)
+#ASSERT `the s 6(3) defence is established` (`Section 6(3) findings` OF TRUE, FALSE, FALSE, TRUE, TRUE)
+#ASSERT `the s 6(3) defence is established` (`Section 6(3) findings` OF FALSE, FALSE, TRUE, TRUE, TRUE)
+#ASSERT NOT `the s 6(3) defence is established` (`Section 6(3) findings` OF FALSE, TRUE, FALSE, FALSE, TRUE)
+#ASSERT NOT `the s 6(3) defence is established` (`Section 6(3) findings` OF FALSE, FALSE, FALSE, TRUE, TRUE)
+-- s 23(1)
+GIVEN chipcert IS A BOOLEAN
+      stercert IS A BOOLEAN
+      brd IS A BOOLEAN
+      voucher IS A BOOLEAN
+      to IS A MAYBE Custodian
+GIVETH A Transfer
+tr chipcert stercert brd voucher to MEANS Transfer OF (YMD 2026 10 5), `Alex`, `Adult`, brd, chipcert, stercert, brd, voucher, to, NOTHING
+#ASSERT `s 23(1) is contravened by` (tr FALSE FALSE FALSE FALSE NOTHING) `of` `unchipped cat`
+#ASSERT NOT `s 23(1) is contravened by` (tr TRUE FALSE FALSE FALSE NOTHING) `of` `unchipped cat`
+#ASSERT NOT `s 23(1) is contravened by` (tr FALSE FALSE FALSE FALSE NOTHING) `of` `plain cat`
+#ASSERT NOT `s 23(1) is contravened by` (tr FALSE FALSE FALSE FALSE (JUST (`an organisation` `The Royal Society for the Prevention of Cruelty to Animals, Western Australia`))) `of` `unchipped cat`
+#ASSERT NOT `s 23(1) is contravened by` (tr FALSE FALSE FALSE FALSE (JUST (`an organisation` `Saving Animals from Euthanasia Busselton Inc`))) `of` `unchipped cat`
+#ASSERT `s 23(1) is contravened by` (tr FALSE FALSE FALSE FALSE (JUST (`an organisation` `another organisation`))) `of` `unchipped cat`
+-- s 23(2)
+#ASSERT `s 23(2) is contravened by` (tr FALSE FALSE FALSE FALSE NOTHING) `of` `entire cat`
+#ASSERT NOT `s 23(2) is contravened by` (tr FALSE TRUE FALSE FALSE NOTHING) `of` `entire cat`
+#ASSERT NOT `s 23(2) is contravened by` (tr FALSE FALSE TRUE FALSE NOTHING) `of` `entire cat`
+#ASSERT NOT `s 23(2) is contravened by` (tr FALSE FALSE FALSE TRUE NOTHING) `of` `entire cat`
+#ASSERT NOT `s 23(2) is contravened by` (tr FALSE FALSE FALSE FALSE (JUST `veterinary premises`)) `of` `entire cat`
+#ASSERT NOT `s 23(2) is contravened by` (tr FALSE FALSE FALSE FALSE NOTHING) `of` `plain cat`
+-- s 34(2)
+#ASSERT `the operator may immediately destroy the cat in` (`Facility stay` OF (YMD 2026 10 5), FALSE, FALSE, NOTHING, NOTHING, 0, NOTHING, FALSE, TRUE, TRUE)
+#ASSERT NOT `the operator may immediately destroy the cat in` (`Facility stay` OF (YMD 2026 10 5), FALSE, FALSE, NOTHING, NOTHING, 0, NOTHING, FALSE, TRUE, FALSE)
+#ASSERT NOT `the operator may immediately destroy the cat in` (`Facility stay` OF (YMD 2026 10 5), FALSE, FALSE, NOTHING, NOTHING, 0, NOTHING, FALSE, FALSE, TRUE)
+-- s 30(2)
+#ASSERT NOT `s 30(1) is contravened during` (`unknown stay` (YMD 2026 10 5)) `by` (`Identification attempt` OF TRUE, TRUE, FALSE, TRUE, TRUE)
+#ASSERT `s 30(1) is contravened during` (`unknown stay` (YMD 2026 10 5)) `by` (`Identification attempt` OF TRUE, TRUE, FALSE, TRUE, FALSE)
+#ASSERT `s 30(1) is contravened during` (`unknown stay` (YMD 2026 10 5)) `by` (`Identification attempt` OF TRUE, TRUE, FALSE, FALSE, TRUE)
+-- s 37(2)(a)-(f): "may refuse ... only if"
+#ASSERT `may refuse breeding` (s37 (breedapp `Teen breeder` 1 `no findings`))
+#ASSERT `breeding grounds` (s37 (breedapp `Teen breeder` 1 `no findings`)) EQUALS 1
+#ASSERT `breeding grounds` (s37 (breedapp `Adult` 1 (findings TRUE FALSE FALSE))) EQUALS 1
+#ASSERT `breeding grounds` (s37 (breedapp `Adult` 1 (findings FALSE TRUE FALSE))) EQUALS 1
+#ASSERT `breeding grounds` (s37 (breedapp `Convicted once breeder` 1 `no findings`)) EQUALS 1
+#ASSERT `breeding grounds` (s37 (breedapp `Adult` 1 (findings FALSE FALSE TRUE))) EQUALS 1
+#ASSERT `breeding grounds` (s37 (breedapp `Paid notice breeder` 1 `no findings`)) EQUALS 1
+#ASSERT `is to grant breeding` (s37 (breedapp `Adult` 1 `no findings`))
+#ASSERT `may defer breeding` (s37 (breedapp `Unresolved notice breeder` 1 `no findings`))
+-- s 37(5) / reg 23: 18+, no conviction, current member -> not to refuse even with (b) and (e) found
+#ASSERT `not to refuse breeding` (s37 (breedapp `Member breeder` 1 (findings TRUE FALSE TRUE)))
+-- reg 23 fails on (c) without membership -> may refuse
+#ASSERT `may refuse breeding` (s37 (breedapp `Adult` 1 (findings TRUE FALSE TRUE)))
+-- reg 23(b): a member with a conviction in 3 years is not protected
+#ASSERT `may refuse breeding` (s37 (breedapp (mkperson "MC" (YMD 1980 1 1) (YMD 1980 1 1) (LIST `a conviction on` (YMD 2024 1 1) `under` `the Cat Act 2011`) EMPTY FALSE (LIST `Cats United WA Incorporated`) FALSE) 1 `no findings`))
+-- s 72
+#ASSERT `the decision in` (`Objection history` OF `refusal to renew registration`, (YMD 2026 10 1), JUST (YMD 2026 10 1), JUST (YMD 2026 10 5), 0, NOTHING, NOTHING) `is suspended, pending:` TRUE `, Tribunal order against:` FALSE
+#ASSERT NOT `the decision in` (`Objection history` OF `refusal to grant registration`, (YMD 2026 10 1), JUST (YMD 2026 10 1), JUST (YMD 2026 10 5), 0, NOTHING, NOTHING) `is suspended, pending:` TRUE `, Tribunal order against:` FALSE
+#ASSERT `the decision in` (`Objection history` OF `cancellation of an approval to breed`, (YMD 2026 10 1), JUST (YMD 2026 10 1), NOTHING, 0, NOTHING, JUST (YMD 2026 10 5)) `is suspended, pending:` TRUE `, Tribunal order against:` FALSE
+#ASSERT NOT `the decision in` (`Objection history` OF `cancellation of registration`, (YMD 2026 10 1), JUST (YMD 2026 10 1), JUST (YMD 2026 10 5), 0, NOTHING, NOTHING) `is suspended, pending:` TRUE `, Tribunal order against:` TRUE
+-- s 4(1)(c): a child keeper's parent is an owner
+`Bea's cat` MEANS mkcat `adult dob` (LIST `kept by` `Bea` `since` (YMD 2024 3 1)) NOTHING `chip` `desex` NOTHING NOTHING NOTHING NOTHING FALSE NOTHING TRUE FALSE
+#ASSERT `an owner of` `Bea's cat` `on` (YMD 2026 10 5) `:` `Carl`
+-- s 4(1)(a): a registered cat's owner is its registered owner
+#ASSERT `an owner of` `registered chipped cat` `on` (YMD 2026 10 5) `:` `Alex`

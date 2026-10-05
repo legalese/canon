@@ -243,7 +243,7 @@ A renewal may take effect from 1 November if made in the 21 days before it, 11�
 
 ## 5. What `check.sh` prints
 
-Run with `L4=~/.local/bin/l4 ./check.sh`, on `l4` built from `legalese/l4-ide` `unstable` at `7768812fa` (2 October 2026). Recorded on 2026-10-05:
+Run with `L4=~/.local/bin/l4 ./check.sh`, on `l4` built from `legalese/l4-ide` `unstable` at `7768812fa` (2 October 2026). Recorded on 2026-10-05, after the independent test pass's repairs:
 
 ```
 module                                    errors satisfied  failed
@@ -258,19 +258,40 @@ cat-part5-7-subsidiary-misc.l4                 0         0       0
 cat-regs-sch3-fees.l4                          0         0       0
 cat-time.l4                                    0         0       0
 tests-fixtures.l4                              0         0       0
+tests-independent.l4                           0       212       0
 tests-part1-time.l4                            0        71       0
 tests-part2-identification-transfer.l4         0        57       0
 tests-part2-registration.l4                    0        77       0
 tests-part3-management.l4                      0        69       0
-tests-part4-enforcement.l4                     0       113       0
+tests-part4-enforcement.l4                     0       115       0
 tests-part5-7.l4                               0        29       0
 tests-sch3-fees.l4                             0        16       0
-TOTAL (18 modules)                             0       432       0
+TOTAL (19 modules)                             0       646       0
 ```
 
 **No assertion is expected to fail.** There is no "expected red" file: the source has no worked examples or draft-stage expectations that the enacted text fails to meet.
 
 **One finding the tests made.** On its first run `tests-part2-identification-transfer.l4` failed one assertion: a plain transfer of an unchipped kitten did not contravene s 23(1). The cause was layout. The rule wrote the inert label `"unless … satisfied that a … certificate applies"` after `NOT` on one line and its operand on the next. The parser attached the operand to the enclosing `AND` chain instead of to the `NOT`, so the rule *required* the seller to be satisfied, which inverts s 23(1). The fix put label and operand on one line; the assertion now passes, and a search found no other `NOT "…"` label with its operand on a following line. The checker separately caught three places where `NOT` would have swallowed an `OR` (`cat-part3-management.l4`, s 32), all fixed with brackets before any test ran.
+
+### The independent test pass (2026-10-05)
+
+A separate session read only `BRIEF.md` and `inputs/`, wrote its expected answers down **before** opening any `.l4` file (`independent-expectations.md`, kept here as the record), then wrote `tests-independent.l4` against the encoding's names.
+First run: **212 assertions, 204 satisfied, 8 failed.** Every failure was triaged against the source, and every one was an **encoding error**. None was a test-author error or a genuine ambiguity:
+
+| # | failure | cause | repair |
+| --- | --- | --- | --- |
+| 1–7 | s 65(1), s 66, s 69, s 71, reg 12(2)(b), reg 24 and s 74 answered for dates before 25 September 2025 instead of refusing, as the brief requires | those rules never read the date gate in `cat-time.l4` | the gate was added to them, and also to the rules the tester named but had not probed: reg 12(2)(a) expiry, s 34(2), s 46, s 47, s 51(3), the s 63/64 payment deadline, s 72 and s 88 |
+| 8 | s 65(1): a notice given Fri 2 Oct 2026 could not be withdrawn on Mon 4 Oct 2027, although its year ended on Sat 2 Oct | the rule did not apply Interpretation Act s 61(1)(e), which every other time limit in the encoding applies | s 65(1) now takes the holiday list and applies s 61(1)(e). `tests-part4-enforcement.l4` has the case on both sides. |
+
+After the repairs: **212 of 212 satisfied.** No expected value in `tests-independent.l4` was changed. Only the four s 65 call sites gained the new holiday argument.
+
+Things the tester could not express against the encoding's names, kept so they are not lost:
+- the s 63(3) cap at an arbitrary amount ($500 against $501), because the rule reads Schedule 2;
+- the date gate on rules that take no date (ss 6(3), 7, 16, 17, 19, 41, the Schedule 2 lookup);
+- s 71(1)(a) with the decision and the notice on different days (fork F-16);
+- a mid-year 3-year registration (fork F-04).
+
+**s 86 deliberately answers before 25 September 2025.** Its review points (1 Nov 2018, 2023, 2028, …) are dates the current text itself fixes from s 2(c). They are not the law as it stood on a past day, so they are not gated.
 
 ## 6. Open questions for a domain expert
 
@@ -298,4 +319,6 @@ TOTAL (18 modules)                             0       432       0
 | `cat-part5-7-subsidiary-misc.l4` | ss 76–88 |
 | `cat-regs-sch3-fees.l4` | Sch 3 |
 | `tests-*.l4` | tests, from the source; `tests-fixtures.l4` holds shared people, cats and the holiday list |
+| `tests-independent.l4` | the independent test pass (§5) |
+| `independent-expectations.md` | that pass's expected answers, written before it read the encoding |
 | `check.sh` | the self-check |

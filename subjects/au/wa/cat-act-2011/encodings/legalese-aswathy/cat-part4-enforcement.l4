@@ -97,7 +97,8 @@ GIVEN made      IS A DATE
       d         IS A DATE
 GIVETH A BOOLEAN
 DECIDE `a delegation made on` made `and ending on` `ends on` `has effect on` d IF
-        d AT LEAST made
+        `the law is encoded for` d
+    AND d AT LEAST made
     AND CONSIDER `ends on`
         WHEN NOTHING THEN TRUE          -- "indefinitely"
         WHEN JUST e  THEN d AT MOST e
@@ -112,9 +113,13 @@ GIVEN `the year it ends in` IS A NUMBER
       reviews              IS A LIST OF DATE
 GIVETH A BOOLEAN
 DECIDE `the delegations were reviewed in the financial year ending 30 June` `the year it ends in` `, reviewed on` reviews IF
-    any (GIVEN r YIELD     r AT LEAST YMD (`the year it ends in` MINUS 1) 7 1
-                       AND r AT MOST  YMD `the year it ends in` 6 30)
-        reviews
+    `the law is encoded for` (YMD `the year it ends in` 6 30)
+    AND `a review in the year`
+    WHERE
+        `a review in the year` MEANS
+            any (GIVEN r YIELD     r AT LEAST YMD (`the year it ends in` MINUS 1) 7 1
+                               AND r AT MOST  YMD `the year it ends in` 6 30)
+                reviews
 
 §§ `Division 3 — Authorised persons`
 
@@ -211,9 +216,11 @@ DECIDE `a notice in accordance with s 51(2)` n IF
 GIVEN n IS AN `Entry notice`
 GIVETH A DATE
 `the last day of effect of the entry notice` n MEANS
-    CONSIDER n's `date the purpose was effected`
-    WHEN NOTHING THEN `(ii)`
-    WHEN JUST e  THEN IF e LESS THAN `(ii)` THEN e ELSE `(ii)`
+    IF   NOT `the law is encoded for` (n's `date the objection period ends`)
+    THEN REFUSE "no source is encoded for a date before 25 September 2025"
+    ELSE CONSIDER n's `date the purpose was effected`
+         WHEN NOTHING THEN `(ii)`
+         WHEN JUST e  THEN IF e LESS THAN `(ii)` THEN e ELSE `(ii)`
     WHERE
         `(ii)` MEANS n's `date the objection period ends` PLUS 7
 
@@ -466,18 +473,29 @@ GIVEN n        IS AN `Infringement notice`
       holidays IS A LIST OF DATE
 GIVETH A DATE
 `the last day to pay the modified penalty under` n `given` holidays MEANS
-    `the last day to act within` (28 PLUS n's `extended time to pay, in days`) `days after` (n's `date given`) `given` holidays
+    IF   NOT `the law is encoded for` (n's `date given`)
+    THEN REFUSE "no source is encoded for a date before 25 September 2025"
+    ELSE `the last day to act within` (28 PLUS n's `extended time to pay, in days`) `days after` (n's `date given`) `given` holidays
 
 -- s 65(1): "Within one year after the notice was given the CEO of the local
 -- government may, whether or not the modified penalty has been paid,
 -- withdraw an infringement notice". (2): a paid penalty is refunded.
-@ref Cat Act 2011 s 65(1)
-GIVEN d IS A DATE
-      n IS AN `Infringement notice`
+-- The year is reckoned after the day of giving (Interpretation Act s 61(1)(b),
+-- s 62); if its last day is an excluded day, the withdrawal may be made on the
+-- next day that is not (s 61(1)(e)) — as for every other time limit here.
+-- (Added 2026-10-05 after the independent test pass; NOTES.md section 5.)
+@ref Cat Act 2011 s 65(1); Interpretation Act 1984 s 61(1)(b), (e)
+GIVEN d        IS A DATE
+      n        IS AN `Infringement notice`
+      holidays IS A LIST OF DATE
 GIVETH A BOOLEAN
-DECIDE `on` d `the CEO may withdraw` n IF
-        d AT LEAST n's `date given`
-    AND d LESS THAN `the day after a period of` 12 `months beginning on` (n's `date given` PLUS 1)
+DECIDE `on` d `the CEO may withdraw` n `given` holidays IF
+        `the law is encoded for` (n's `date given`)
+    AND d AT LEAST n's `date given`
+    AND d AT MOST `the first day from` `the last day of the year` `that is not excluded, given` holidays
+    WHERE
+        `the last day of the year` MEANS
+            `the day after a period of` 12 `months beginning on` (n's `date given` PLUS 1) MINUS 1
 
 @ref Cat Act 2011 s 65(2)
 GIVEN n IS AN `Infringement notice`
@@ -499,7 +517,8 @@ GIVEN n        IS AN `Infringement notice`
       holidays IS A LIST OF DATE
 GIVETH A BOOLEAN
 DECIDE `paying under` n `bars proceedings for the offence, given` holidays IF
-        `paid in time`
+        `the law is encoded for` (n's `date given`)
+    AND `paid in time`
     AND `not withdrawn`
     WHERE
         `paid in time` MEANS
@@ -549,7 +568,8 @@ GIVEN h        IS AN `Objection history`
       holidays IS A LIST OF DATE
 GIVETH A BOOLEAN
 DECIDE `the objection in` h `was lodged in time, given` holidays IF
-        `Division 5 applies to` (h's `decision`)
+        `the law is encoded for` (h's `date of the decision`)
+    AND `Division 5 applies to` (h's `decision`)
     AND `no review applied for before it`
     AND CONSIDER h's `date objection lodged`
         WHEN NOTHING THEN FALSE
@@ -628,27 +648,31 @@ GIVEN h        IS AN `Objection history`
       holidays IS A LIST OF DATE
 GIVETH A MAYBE `Review window`
 `the s 71 review window for` h `given` holidays MEANS
-    IF NOT `Division 5 applies to` (h's `decision`)
-    THEN NOTHING
-    ELSE CONSIDER h's `date objection lodged`
-         WHEN NOTHING THEN                                                              -- (1)(a)
-             CONSIDER h's `date notice of the decision was given`
-             WHEN NOTHING THEN NOTHING
-             WHEN JUST n  THEN JUST (`Review window` WITH
-                                        `route`     IS "s 71(1)(a): no objection lodged"
-                                        `first day` IS n
-                                        `last day`  IS `the last day to act within` 42 `days after` n `given` holidays)
-         WHEN JUST l THEN
-             CONSIDER h's `date notice of disposal of the objection given`
-             WHEN JUST disposed THEN                                                     -- (2), or (1)(b) if disposal came late
-                 IF   disposed AT MOST (l PLUS 35)
-                 THEN JUST (`Review window` WITH
-                               `route`     IS "s 71(2): review of the decision on the objection"
-                               `first day` IS disposed
-                               `last day`  IS `the last day to act within` 42 `days after` disposed `given` holidays)
-                 ELSE JUST (`(1)(b) window from` l)
-             WHEN NOTHING THEN JUST (`(1)(b) window from` l)                             -- (1)(b)
+    IF   NOT `the law is encoded for` (h's `date of the decision`)
+    THEN REFUSE "no source is encoded for a date before 25 September 2025"
+    ELSE `the window, where Division 5 applies`
     WHERE
+        `the window, where Division 5 applies` MEANS
+            IF NOT `Division 5 applies to` (h's `decision`)
+            THEN NOTHING
+            ELSE CONSIDER h's `date objection lodged`
+                 WHEN NOTHING THEN                                                              -- (1)(a)
+                     CONSIDER h's `date notice of the decision was given`
+                     WHEN NOTHING THEN NOTHING
+                     WHEN JUST n  THEN JUST (`Review window` WITH
+                                                `route`     IS "s 71(1)(a): no objection lodged"
+                                                `first day` IS n
+                                                `last day`  IS `the last day to act within` 42 `days after` n `given` holidays)
+                 WHEN JUST l THEN
+                     CONSIDER h's `date notice of disposal of the objection given`
+                     WHEN JUST disposed THEN                                                     -- (2), or (1)(b) if disposal came late
+                         IF   disposed AT MOST (l PLUS 35)
+                         THEN JUST (`Review window` WITH
+                                       `route`     IS "s 71(2): review of the decision on the objection"
+                                       `first day` IS disposed
+                                       `last day`  IS `the last day to act within` 42 `days after` disposed `given` holidays)
+                         ELSE JUST (`(1)(b) window from` l)
+                     WHEN NOTHING THEN JUST (`(1)(b) window from` l)                             -- (1)(b)
         `(1)(b) window from` l MEANS
             `Review window` WITH
                 `route`     IS "s 71(1)(b): objection not disposed of within 35 days"
@@ -674,7 +698,8 @@ GIVEN h                          IS AN `Objection history`
       `the Tribunal ordered no suspension` IS A BOOLEAN
 GIVETH A BOOLEAN
 DECIDE `the decision in` h `is suspended, pending:` `still pending` `, Tribunal order against:` `the Tribunal ordered no suspension` IF
-        "(a)-(d)" ... `a decision s 72 lists`
+        `the law is encoded for` (h's `date of the decision`)
+    AND "(a)-(d)" ... `a decision s 72 lists`
     AND `an objection or application has been made`
     AND `still pending`
     AND NOT `the Tribunal ordered no suspension`
@@ -724,7 +749,8 @@ DECIDE `may prosecute an offence against the Act:` `acting as an employee of a l
 GIVEN c IS A `Conviction before the court`
 GIVETH A BOOLEAN
 DECIDE `the court may make an additional order under s 74 on` c IF
-        "(a)" ... c's `against the Act`
+        `the law is encoded for` (c's `date of the conviction`)
+    AND "(a)" ... c's `against the Act`
     AND "(b)" ... count (filter `a previous conviction against this Act` (c's `offender`'s `convictions`)) AT LEAST 2
     WHERE
         `a previous conviction against this Act` x MEANS
