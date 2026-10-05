@@ -1,0 +1,167 @@
+IMPORT prelude
+
+-- Central Provident Fund Act 1953 (Singapore), 2020 Revised Edition,
+-- informal consolidation in force from 1 July 2026.
+--
+-- Source: ../../registers/source-bundle/CPFA1953.txt
+--
+-- NAIVE ENCODING. Straight from the text with the writing-l4-rules skill and
+-- nothing else: no pipeline, no coverage table, no independent test pass, no
+-- human gate. Observations, not checked findings.
+--
+-- SCOPE. SECTION 15 ONLY, subsections (1) to (6) -- when money may come out of
+-- the Fund. The Act is about 911,000 characters across 8 Parts and more than a
+-- hundred sections; this is a few pages of it. Contributions (ss 7-9D), the
+-- subsidiary accounts (s 13), housing and investment charges, nominations
+-- (s 25), the Retirement Sum Scheme machinery in s 15AA and the whole of
+-- Parts 3A onwards are NOT encoded.
+--
+-- Everything prescribed -- the retirement sum itself, the classes of person
+-- prescribed as "applicable", the conditions the Board may impose -- is a fact
+-- supplied. Those carry most of the practical content, and the regulations were
+-- not retrieved.
+
+§ `Central Provident Fund Act 1953 -- section 15`
+
+§§ `2 -- "applicable person"`
+
+-- s 2: "'applicable person' means -- (a) a citizen or permanent resident of
+-- Singapore; or (b) for the purposes of a provision of this Act ..., any other
+-- person of a class prescribed by regulations made under section 77(1) for the
+-- purposes of that provision."
+--
+-- The second limb is prescribed and not retrieved, so it arrives as a fact.
+DECLARE Member HAS
+    `name`                                      IS A STRING
+    `a citizen or permanent resident of Singapore` IS A BOOLEAN
+    `of a class prescribed under section 77(1) as an applicable person` IS A BOOLEAN
+    `has attained the age of 55 years`           IS A BOOLEAN
+    -- s 15(3): a further withdrawal arises on each anniversary of the date of
+    -- birth AFTER a withdrawal made on the 55 ground. Whether an anniversary
+    -- has come round is a date question this toolchain cannot compute, so it is
+    -- a fact; what the encoding decides is whether the entitlement exists.
+    `has already withdrawn on the ground of having attained 55` IS A BOOLEAN
+    `an anniversary of the date of birth has since passed, or the Minister has directed another period` IS A BOOLEAN
+    -- s 15(6): the retirement sum set-aside.
+    `the sum standing to the member's credit`    IS A NUMBER
+    `the prescribed retirement sum applicable to the member` IS A NUMBER
+    `a reserved amount standing to the member's credit` IS A NUMBER
+
+GIVEN `the member` IS A Member
+GIVETH A BOOLEAN
+DECIDE `the member is an applicable person` IF
+        `the member`'s `a citizen or permanent resident of Singapore`
+    OR  `the member`'s `of a class prescribed under section 77(1) as an applicable person`
+
+§§ `15(1) -- nothing comes out without the Board`
+
+-- s 15(1): "NO sum of money standing to the credit of a member of the Fund may
+-- be withdrawn from the Fund EXCEPT WITH THE AUTHORITY OF THE BOARD."
+--
+-- A flat prohibition, and the premise of everything below: the subsections that
+-- follow create entitlements, and an entitlement is still not a withdrawal
+-- until the Board authorises it.
+GIVEN `the Board has given its authority under section 15(1)` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `money may lawfully be withdrawn` IF
+    `the Board has given its authority under section 15(1)`
+
+§§ `15(2) -- the two grounds of entitlement`
+
+-- s 15(2): "Subject to section 16, a member of the Fund is entitled to withdraw
+-- the sum standing to the credit of the member in the Fund at any time after
+-- the Board is satisfied that the member -- (a) has attained the age of
+-- 55 years; or (b) IS NOT AN APPLICABLE PERSON."
+--
+-- Paragraphs (c) to (g) were repealed between 2021 and 2024, so what is left is
+-- a two-way choice: reach 55, or stop being a citizen or permanent resident.
+GIVEN `the member` IS A Member
+GIVETH A BOOLEAN
+DECIDE `the member is entitled to withdraw under section 15(2)(a)` IF
+    `the member`'s `has attained the age of 55 years`
+
+GIVEN `the member` IS A Member
+GIVETH A BOOLEAN
+DECIDE `the member is entitled to withdraw under section 15(2)(b)` IF
+    NOT `the member is an applicable person` `the member`
+
+GIVEN `the member` IS A Member
+GIVETH A BOOLEAN
+DECIDE `the member is entitled to withdraw under section 15(2)` IF
+        `the member is entitled to withdraw under section 15(2)(a)` `the member`
+    OR  `the member is entitled to withdraw under section 15(2)(b)` `the member`
+
+§§ `15(3) -- the annual further withdrawal`
+
+-- s 15(3): "Subject to subsection (6) and section 16, a member of the Fund who
+-- has withdrawn any money from the Fund ON THE GROUND THAT HE OR SHE HAS
+-- ATTAINED 55 YEARS OF AGE is entitled to make a further withdrawal of the sum
+-- standing to his or her credit in the Fund on or after EACH SUBSEQUENT
+-- ANNIVERSARY of his or her date of birth or such other period as the Minister
+-- may direct."
+--
+-- Note which ground it attaches to. A member who withdrew under (2)(b),
+-- because they ceased to be a citizen or permanent resident, is not within
+-- s 15(3) at all -- see the note in NOTES.md.
+GIVEN `the member` IS A Member
+GIVETH A BOOLEAN
+DECIDE `the member is entitled to a further withdrawal under section 15(3)` IF
+        `the member`'s `has already withdrawn on the ground of having attained 55`
+    AND `the member`'s `an anniversary of the date of birth has since passed, or the Minister has directed another period`
+
+§§ `15(6) -- the retirement sum must be set aside first`
+
+-- s 15(6): "where a member of the Fund is entitled under subsection (2)(a)
+-- or (3), or is allowed under subsection (4), to withdraw the sum standing to
+-- the member's credit in the Fund, at the time of the withdrawal ... (a) such
+-- retirement sum applicable to the member as may be prescribed must be set
+-- aside or topped-up -- (i) by the member; or (ii) from the sum standing to the
+-- member's credit in the Fund, AFTER EXCLUDING ANY RESERVED AMOUNT ..."
+--
+-- The set-aside attaches to (2)(a), (3) and (4). It does NOT attach to (2)(b).
+GIVEN `the member` IS A Member
+GIVETH A BOOLEAN
+DECIDE `the retirement sum must be set aside` IF
+        `the member is entitled to withdraw under section 15(2)(a)` `the member`
+    OR  `the member is entitled to a further withdrawal under section 15(3)` `the member`
+
+-- What is actually available once the retirement sum is set aside out of the
+-- credit, the reserved amount having been excluded from the sum it is taken
+-- from.
+GIVEN `the member` IS A Member
+GIVETH A NUMBER
+DECIDE `the sum available to set the retirement sum aside from` IS
+    `the member`'s `the sum standing to the member's credit`
+        MINUS `the member`'s `a reserved amount standing to the member's credit`
+
+GIVEN `the member` IS A Member
+GIVETH A BOOLEAN
+DECIDE `the credit is enough to set aside the retirement sum` IF
+    `the sum available to set the retirement sum aside from` `the member`
+        AT LEAST `the member`'s `the prescribed retirement sum applicable to the member`
+
+-- The amount a member entitled under (2)(a) or (3) can actually take out: what
+-- is left after the retirement sum is set aside. Where the credit will not
+-- cover the retirement sum, nothing is withdrawable and the whole credit is set
+-- aside -- hence the floor at nought rather than a negative figure.
+GIVEN `the member` IS A Member
+GIVETH A NUMBER
+DECIDE `the amount withdrawable after the set-aside` IS
+    IF   `the credit is enough to set aside the retirement sum` `the member`
+    THEN `the sum available to set the retirement sum aside from` `the member`
+             MINUS `the member`'s `the prescribed retirement sum applicable to the member`
+    ELSE 0
+
+-- The whole of s 15 as one question, for a member who is not relying on the
+-- Board's discretion under (4). The Board's authority under (1) is required on
+-- top of any entitlement.
+GIVEN `the member` IS A Member, `the Board has given its authority` IS A BOOLEAN
+GIVETH A NUMBER
+DECIDE `the amount this member may withdraw` IS
+    BRANCH
+        IF NOT `the Board has given its authority` THEN 0
+        IF `the member is entitled to withdraw under section 15(2)(b)` `the member`
+            THEN `the member`'s `the sum standing to the member's credit`
+        IF `the retirement sum must be set aside` `the member`
+            THEN `the amount withdrawable after the set-aside` `the member`
+        OTHERWISE 0
