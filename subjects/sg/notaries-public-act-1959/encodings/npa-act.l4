@@ -1,0 +1,278 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `npa-types`
+
+-- Notaries Public Act 1959 (Singapore) — ss 1-8, the whole Act.
+--
+-- Source: ../source/NPA1959.txt lines 47-147 (SSO PDF, current version as at
+-- 05 Oct 2026, 2020 Revised Edition). The Act was last amended by Act 20 of
+-- 2007, in force 1 June 2007 (Legislative History). Earlier texts were not
+-- supplied, so every rule that is about a day refuses for a day before
+-- 1 June 2007 rather than let today's text answer for it.
+
+§ `Notaries Public Act 1959`
+
+§§ `The period this encoding states the law for`
+
+GIVETH A BOOLEAN
+`no source is encoded for a date before 1 June 2007` MEANS
+    REFUSE "no source is encoded for a date before 1 June 2007: this encoding states the Notaries Public Act 1959 as last amended by Act 20 of 2007"
+
+GIVEN d IS A DATE
+GIVETH A BOOLEAN
+`the law is encoded for` d MEANS
+    IF d AT LEAST YMD 2007 6 1 THEN TRUE ELSE `no source is encoded for a date before 1 June 2007`
+
+§§ `Long title, and 1. Short title`
+
+-- INERT. "An Act relating to notaries public." [18 March 1965]
+GIVETH A STRING
+`s 1 — short title` MEANS "This Act is the Notaries Public Act 1959."
+
+§§ `3. Appointment of notaries public`
+
+-- s 3(2): "No person shall be appointed as a notary public unless he is a
+-- practising advocate and solicitor in Singapore and has so practised for
+-- not less than 7 years."
+@ref Notaries Public Act 1959 s 3(2)
+GIVEN l IS A Lawyer
+GIVETH A BOOLEAN
+DECIDE `qualified under s 3(2):` l IF
+        l's `a practising advocate and solicitor in Singapore`
+    AND "not less than 7 years" ... l's `years practised as an advocate and solicitor in Singapore` AT LEAST 7
+
+-- s 3(1): "The Senate may, from time to time, appoint fit and proper persons
+-- to be notaries public for a period not exceeding 12 months."
+-- s 3(3): "The Senate shall not make any appointment under this section
+-- without consulting the Council of the Law Society of Singapore".
+-- s 3(4): the Senate "shall have regard to the number of notaries public
+-- already practising in the place where the applicant proposes to practise
+-- and to the convenience of the inhabitants of that place, but, subject to
+-- this, the Senate shall have absolute discretion in making or refusing to
+-- make any such appointment and there shall be no appeal from its decision."
+-- The s 3(4) considerations are the Senate's to weigh: the outcome says only
+-- whether it MAY appoint.
+@ref Notaries Public Act 1959 s 3(1)-(4)
+GIVEN l      IS A Lawyer
+      months IS A NUMBER
+      `the Council has been consulted` IS A BOOLEAN
+GIVETH AN `Appointment decision`
+`the s 3(1) decision on` l `for` months `months, the Council consulted:` `the Council has been consulted` MEANS
+    IF   null `reasons`
+    THEN `the Senate may appoint, in its absolute discretion, and there is no appeal`
+    ELSE `the Senate may not appoint` `reasons`
+    WHERE
+        `if not` holds label MEANS IF holds THEN EMPTY ELSE LIST label
+        `reasons` MEANS
+            concat (LIST
+                (`if not` (l's `found by the Senate to be fit and proper`) "s 3(1): not a fit and proper person")
+              , (`if not` (months AT MOST 12) "s 3(1): a period exceeding 12 months")
+              , (`if not` (l's `a practising advocate and solicitor in Singapore`) "s 3(2): not a practising advocate and solicitor in Singapore")
+              , (`if not` (l's `years practised as an advocate and solicitor in Singapore` AT LEAST 7) "s 3(2): has practised for less than 7 years")
+              , (`if not` `the Council has been consulted` "s 3(3): the Council of the Law Society has not been consulted"))
+
+-- s 3(5): "If it appears to the Senate that any notary public is about to be
+-- absent from Singapore for a period exceeding one month, the Senate may
+-- appoint any person, being a practising advocate and solicitor in
+-- Singapore, to be a notary public temporarily during the absence". The
+-- 7-year rule of s 3(2) is not repeated here.
+--
+-- FORK F1: "a period exceeding one month" is a month by the calendar: an
+-- absence from 1 March returning on 1 April is one month, and only a later
+-- return exceeds it.
+-- s 3(3) reaches this too: "The Senate shall not make any appointment under
+-- this section without consulting the Council of the Law Society". (The first
+-- version of this rule omitted it; the independent test pass found the gap.)
+@ref Notaries Public Act 1959 s 3(3), (5)
+GIVEN l         IS A Lawyer
+      leaves    IS A DATE
+      returns   IS A DATE
+      consulted IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Senate may temporarily appoint` l `for an absence from` leaves `to` returns `, the Council consulted:` consulted IF
+        `the law is encoded for` leaves
+    AND "for a period exceeding one month" ... returns GREATER THAN `add months` leaves 1
+    AND "being a practising advocate and solicitor in Singapore" ... l's `a practising advocate and solicitor in Singapore`
+    AND "s 3(3)" ... consulted
+
+-- When an appointment has effect.
+-- s 3(1): "for a period not exceeding 12 months".
+-- s 3(6): "No temporary appointment ... shall have effect for a period longer
+-- than 12 months and any such appointment shall lapse on the death or on the
+-- return to Singapore of the notary public on account of whose departure from
+-- Singapore the appointment was made."
+-- s 5 and s 6: revocation ends it.
+--
+-- FORK F2: a period of n months from the day it takes effect runs to the day
+-- before the same date n months on.
+-- FORK F3: s 2 excludes from "notary public" a person whose appointment was
+-- revoked "under section 5" and says nothing of s 6. A revocation under s 6
+-- is read as ending the appointment all the same — "revoke the appointment"
+-- has no other meaning.
+@ref Notaries Public Act 1959 ss 2, 3(1), 3(6), 5, 6
+GIVEN a IS AN Appointment
+      d IS A DATE
+GIVETH A BOOLEAN
+DECIDE `the appointment` a `has effect on` d IF
+        `the law is encoded for` d
+    AND d AT LEAST a's `takes effect on`
+    AND d LESS THAN `add months` (a's `takes effect on`) `the months it can run`
+    AND `not ended by` (a's `revoked under s 5 on`)
+    AND `not ended by` (a's `revoked under s 6 on`)
+    AND `not lapsed under s 3(6)`
+    WHERE
+        `the months it can run` MEANS
+            IF a's `period in months` AT MOST 12 THEN a's `period in months` ELSE 12
+        `not ended by` m MEANS
+            CONSIDER m
+            WHEN NOTHING THEN TRUE
+            WHEN JUST e  THEN d LESS THAN e
+        `not lapsed under s 3(6)` MEANS
+            CONSIDER a's `kind`
+            WHEN `an appointment under s 3(1)` THEN TRUE
+            WHEN `a temporary appointment under s 3(5)` who THEN
+                    `not ended by` (a's `the absent notary returned on`)
+                AND `not ended by` (a's `the absent notary died on`)
+
+§§ `2. Interpretation`
+
+-- s 2: "'notary public' means a person who has been appointed as a notary
+-- public under section 3 but does not include any person whose appointment
+-- has been revoked under section 5". "Senate" is the Senate of the Singapore
+-- Academy of Law.
+@ref Notaries Public Act 1959 s 2
+GIVEN name         IS A STRING
+      appointments IS A LIST OF Appointment
+      d            IS A DATE
+GIVETH A BOOLEAN
+DECIDE `a notary public:` name `, by the appointments` appointments `, on` d IF
+    any (GIVEN a YIELD a's `appointee` EQUALS name AND `the appointment` a `has effect on` d) appointments
+
+-- s 3(7): "Every appointment under subsection (1) or subsection (5) and the
+-- lapse of every temporary appointment under subsection (6) shall be
+-- published in the Gazette." A duty with no time fixed; whether it was done
+-- is an input on the appointment.
+
+§§ `4. Privileges of notaries public`
+
+-- s 4(1): every notary public "shall have and may exercise within Singapore
+-- all the powers and functions which are ordinarily exercised by notaries
+-- public in England." What those are is not in this source.
+-- s 4(2): "Except for the purposes of and to the extent necessary to give
+-- effect to subsection (3), powers under subsection (1) shall not include
+-- power to administer any oath or affirmation in connection with any
+-- affidavit or statutory declaration which is executed for the purpose of
+-- being used in any court or place within Singapore or to take or attest any
+-- such affidavit or statutory declaration."
+-- s 4(3): "(a) administer any oath or affirmation in connection with any
+-- affidavit or statutory declaration which is executed — (i) for the purpose
+-- of confirming or proving the due execution of any document; (ii) by any
+-- master or member of the crew of any vessel in respect of any matter
+-- concerning the vessel; or (iii) for the purpose of being used in any court
+-- or place outside Singapore; (b) take or attest any [such] affidavit or
+-- statutory declaration ...; and (c) have and exercise such other powers and
+-- functions as may be prescribed."
+--
+-- An affidavit that is neither for use in Singapore nor within (3)(a) turns
+-- on the powers of notaries in England (s 4(1)) or on rules under s 8, and
+-- neither source is here: that is a refusal, not a "no".
+@ref Notaries Public Act 1959 s 4(1)-(3)
+GIVEN aff IS AN Affidavit
+GIVETH AN `Oath power`
+`the s 4 answer for` aff MEANS
+    BRANCH IF aff's `purpose` EQUALS `confirming or proving the due execution of a document`
+              THEN `the notary may administer the oath, and take or attest the document` "s 4(3)(a)(i), (b)"
+           IF aff's `purpose` EQUALS `executed by the master or a crew member of a vessel about the vessel`
+              THEN `the notary may administer the oath, and take or attest the document` "s 4(3)(a)(ii), (b)"
+           IF aff's `to be used in a court or place outside Singapore`
+              THEN `the notary may administer the oath, and take or attest the document` "s 4(3)(a)(iii), (b)"
+           IF aff's `to be used in a court or place within Singapore`
+              THEN `the notary may not, under s 4(2)`
+           OTHERWISE REFUSE "this turns on the powers of notaries public in England (s 4(1)) or on rules under s 4(3)(c) and s 8, which this encoding does not have"
+
+§§ `5. Misconduct of notaries public`
+
+-- s 5: "If it appears to the Senate that any person being a notary public —
+-- (a) has become a bankrupt or has made an arrangement with his creditors;
+-- (b) has been struck off the roll of advocates and solicitors of Singapore;
+-- or (c) has been found to be guilty of such professional or other
+-- misconduct as, in the opinion of the Senate, renders him unfit to practise
+-- as a notary public, the Senate shall by order revoke the appointment of the
+-- person and shall cause the order to be published in the Gazette."
+-- A duty ("shall"), not a discretion.
+@ref Notaries Public Act 1959 s 5
+GIVEN f IS A `Section 5 findings`
+GIVETH A BOOLEAN
+DECIDE `the Senate must revoke the appointment, on` f IF
+        "(a)" ... f's `has become a bankrupt or made an arrangement with creditors`
+    ..  "(b)" ... f's `has been struck off the roll of advocates and solicitors`
+    OR  "(c)" ... f's `guilty of misconduct the Senate thinks renders the person unfit to practise as a notary`
+
+§§ `6. Revocation of appointment of notary public under special circumstances`
+
+-- s 6: "The Senate may, by notification in the Gazette, revoke the
+-- appointment of a notary public if the notary public requests that his
+-- appointment be revoked." A power, opened only by the notary's request.
+@ref Notaries Public Act 1959 s 6
+GIVEN `the notary has requested revocation` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Senate may revoke under s 6, the notary having requested it:` `the notary has requested revocation` IF
+    `the notary has requested revocation`
+
+§§ `7. Penalty for exercise of functions of notary public by unauthorised persons`
+
+-- s 7: "Any person who exercises within Singapore any of the functions of a
+-- notary public otherwise than in accordance with the provisions of this Act
+-- shall be guilty of an offence and shall be liable on conviction before a
+-- District Judge to a fine not exceeding $10,000." [20/2007]
+-- Two ways of acting "otherwise than in accordance with" the Act are
+-- encoded: not being a notary public that day, and acting beyond s 4.
+@ref Notaries Public Act 1959 s 7
+GIVEN name               IS A STRING
+      appointments       IS A LIST OF Appointment
+      d                  IS A DATE
+      `exercised a notarial function within Singapore` IS A BOOLEAN
+      `the function was within the s 4 powers`         IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `s 7 is contravened by` name `, by the appointments` appointments `, on` d `, having` `exercised a notarial function within Singapore` `, within powers:` `the function was within the s 4 powers` IF
+        `the law is encoded for` d
+    AND `exercised a notarial function within Singapore`
+    AND NOT (    `a notary public:` name `, by the appointments` appointments `, on` d
+             AND `the function was within the s 4 powers`)
+
+@ref Notaries Public Act 1959 s 7
+GIVETH A NUMBER
+`s 7 — maximum fine` MEANS 10000
+
+@ref Notaries Public Act 1959 s 7
+GIVETH A STRING
+`s 7 — the court` MEANS "on conviction before a District Judge"
+
+§§ `8. Rules`
+
+-- s 8(1): "The Chief Justice, after consultation with the Senate, may make
+-- rules — (a) for the guidance and control of persons entitled to exercise
+-- the functions of a notary public under this Act; (b) to fix the fees
+-- payable to notaries public; (c) to fix the fees payable to the Singapore
+-- Academy of Law by any person on appointment as a notary public, and on
+-- renewal of such appointment; and (d) prescribing the powers and functions
+-- of notaries public."
+-- s 8(2): "All rules made under this section shall be published in the
+-- Gazette, and shall come into force on the date of such publication or on
+-- such later date as may be specified in the rules."
+@ref Notaries Public Act 1959 s 8
+GIVEN r IS A Rules
+GIVETH A BOOLEAN
+DECIDE `made within s 8(1):` r IF
+        r's `made by the Chief Justice`
+    AND "after consultation with the Senate" ... r's `after consulting the Senate`
+
+@ref Notaries Public Act 1959 s 8(2)
+GIVEN r IS A Rules
+GIVETH A MAYBE DATE
+`the day s 8(2) brings into force` r MEANS
+    CONSIDER r's `published in the Gazette on`
+    WHEN NOTHING THEN NOTHING                  -- not published: not in force
+    WHEN JUST p  THEN CONSIDER r's `later commencement date specified`
+                      WHEN NOTHING THEN JUST p
+                      WHEN JUST l  THEN IF l GREATER THAN p THEN JUST l ELSE JUST p

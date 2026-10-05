@@ -1,0 +1,169 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `npa-types`
+IMPORT `npa-act`
+
+-- TESTS — Notaries Public Act 1959. Expected values are worked from the
+-- Act; the working is beside each.
+
+§ `Tests — Notaries Public Act 1959`
+
+GIVEN name      IS A STRING
+      practising IS A BOOLEAN
+      years     IS A NUMBER
+      fit       IS A BOOLEAN
+GIVETH A Lawyer
+`a lawyer named` name `, practising:` practising `, years` years `, fit:` fit MEANS
+    Lawyer WITH
+        `name`                                                    IS name
+        `a practising advocate and solicitor in Singapore`        IS practising
+        `years practised as an advocate and solicitor in Singapore` IS years
+        `found by the Senate to be fit and proper`                IS fit
+
+`Lim`  MEANS `a lawyer named` "Lim"  `, practising:` TRUE  `, years` 10 `, fit:` TRUE
+`Wong` MEANS `a lawyer named` "Wong" `, practising:` TRUE  `, years` 7  `, fit:` TRUE
+`Tan`  MEANS `a lawyer named` "Tan"  `, practising:` TRUE  `, years` 6  `, fit:` TRUE
+`Ng`   MEANS `a lawyer named` "Ng"   `, practising:` FALSE `, years` 20 `, fit:` TRUE
+`Ho`   MEANS `a lawyer named` "Ho"   `, practising:` TRUE  `, years` 12 `, fit:` FALSE
+
+§§ `s 3 — appointment`
+
+-- (2) "not less than 7 years": 7 is enough, 6 is not.
+#ASSERT     `qualified under s 3(2):` `Wong`
+#ASSERT NOT `qualified under s 3(2):` `Tan`
+#ASSERT NOT `qualified under s 3(2):` `Ng`
+
+#ASSERT `the s 3(1) decision on` `Lim` `for` 12 `months, the Council consulted:` TRUE EQUALS `the Senate may appoint, in its absolute discretion, and there is no appeal`
+-- (1) "a period not exceeding 12 months".
+#ASSERT `the s 3(1) decision on` `Lim` `for` 13 `months, the Council consulted:` TRUE EQUALS `the Senate may not appoint` (LIST "s 3(1): a period exceeding 12 months")
+#ASSERT `the s 3(1) decision on` `Tan` `for` 12 `months, the Council consulted:` TRUE EQUALS `the Senate may not appoint` (LIST "s 3(2): has practised for less than 7 years")
+#ASSERT `the s 3(1) decision on` `Ng`  `for` 12 `months, the Council consulted:` TRUE EQUALS `the Senate may not appoint` (LIST "s 3(2): not a practising advocate and solicitor in Singapore")
+#ASSERT `the s 3(1) decision on` `Ho`  `for` 12 `months, the Council consulted:` TRUE EQUALS `the Senate may not appoint` (LIST "s 3(1): not a fit and proper person")
+-- (3) the Council of the Law Society must be consulted.
+#ASSERT `the s 3(1) decision on` `Lim` `for` 6 `months, the Council consulted:` FALSE EQUALS `the Senate may not appoint` (LIST "s 3(3): the Council of the Law Society has not been consulted")
+
+-- (5) temporary appointment: an absence "exceeding one month" (fork F1);
+-- the appointee must be practising, but the 7 years of (2) are not required.
+#ASSERT NOT `the Senate may temporarily appoint` `Tan` `for an absence from` (YMD 2026 3 1) `to` (YMD 2026 4 1) `, the Council consulted:` TRUE
+#ASSERT     `the Senate may temporarily appoint` `Tan` `for an absence from` (YMD 2026 3 1) `to` (YMD 2026 4 2) `, the Council consulted:` TRUE
+#ASSERT NOT `the Senate may temporarily appoint` `Ng`  `for an absence from` (YMD 2026 3 1) `to` (YMD 2026 6 1) `, the Council consulted:` TRUE
+-- (3) applies to "any appointment under this section", temporary ones too.
+#ASSERT NOT `the Senate may temporarily appoint` `Tan` `for an absence from` (YMD 2026 3 1) `to` (YMD 2026 4 2) `, the Council consulted:` FALSE
+#ASSERT REFUSED `the Senate may temporarily appoint` `Tan` `for an absence from` (YMD 2006 3 1) `to` (YMD 2006 6 1) `, the Council consulted:` TRUE
+
+§§ `When an appointment has effect`
+
+GIVEN who     IS A STRING
+      kind    IS A `Kind of appointment`
+      start   IS A DATE
+      months  IS A NUMBER
+      rev5    IS A MAYBE DATE
+      rev6    IS A MAYBE DATE
+      back    IS A MAYBE DATE
+      died    IS A MAYBE DATE
+GIVETH AN Appointment
+`an appointment of` who `,` kind `, from` start `for` months `months; revoked s 5` rev5 `, s 6` rev6 `; absent notary back` back `, died` died MEANS
+    Appointment WITH
+        `appointee`                         IS who
+        `kind`                              IS kind
+        `takes effect on`                   IS start
+        `period in months`                  IS months
+        `Council of the Law Society consulted` IS TRUE
+        `published in the Gazette`          IS TRUE
+        `revoked under s 5 on`              IS rev5
+        `revoked under s 6 on`              IS rev6
+        `the absent notary returned on`     IS back
+        `the absent notary died on`         IS died
+
+`Lim's appointment` MEANS `an appointment of` "Lim" `,` `an appointment under s 3(1)` `, from` (YMD 2026 1 1) `for` 12 `months; revoked s 5` NOTHING `, s 6` NOTHING `; absent notary back` NOTHING `, died` NOTHING
+
+-- 12 months from 1 Jan 2026 run to 31 Dec 2026 (fork F2).
+#ASSERT     `the appointment` `Lim's appointment` `has effect on` (YMD 2026 12 31)
+#ASSERT NOT `the appointment` `Lim's appointment` `has effect on` (YMD 2027 1 1)
+#ASSERT NOT `the appointment` `Lim's appointment` `has effect on` (YMD 2025 12 31)
+-- An appointment stated for 18 months still cannot run past 12.
+#ASSERT NOT `the appointment` (`an appointment of` "Lim" `,` `an appointment under s 3(1)` `, from` (YMD 2026 1 1) `for` 18 `months; revoked s 5` NOTHING `, s 6` NOTHING `; absent notary back` NOTHING `, died` NOTHING) `has effect on` (YMD 2027 1 1)
+-- Revoked under s 5 on 1 Jun 2026.
+#ASSERT     `the appointment` (`an appointment of` "Lim" `,` `an appointment under s 3(1)` `, from` (YMD 2026 1 1) `for` 12 `months; revoked s 5` (JUST (YMD 2026 6 1)) `, s 6` NOTHING `; absent notary back` NOTHING `, died` NOTHING) `has effect on` (YMD 2026 5 31)
+#ASSERT NOT `the appointment` (`an appointment of` "Lim" `,` `an appointment under s 3(1)` `, from` (YMD 2026 1 1) `for` 12 `months; revoked s 5` (JUST (YMD 2026 6 1)) `, s 6` NOTHING `; absent notary back` NOTHING `, died` NOTHING) `has effect on` (YMD 2026 6 1)
+-- Revoked under s 6 at the notary's request (fork F3): ended too.
+#ASSERT NOT `the appointment` (`an appointment of` "Lim" `,` `an appointment under s 3(1)` `, from` (YMD 2026 1 1) `for` 12 `months; revoked s 5` NOTHING `, s 6` (JUST (YMD 2026 6 1)) `; absent notary back` NOTHING `, died` NOTHING) `has effect on` (YMD 2026 6 1)
+-- (6) a temporary appointment lapses on the absent notary's return, or death.
+`Tan's stand-in appointment` MEANS `an appointment of` "Tan" `,` (`a temporary appointment under s 3(5)` "Lim") `, from` (YMD 2026 3 1) `for` 12 `months; revoked s 5` NOTHING `, s 6` NOTHING `; absent notary back` (JUST (YMD 2026 5 15)) `, died` NOTHING
+#ASSERT     `the appointment` `Tan's stand-in appointment` `has effect on` (YMD 2026 5 14)
+#ASSERT NOT `the appointment` `Tan's stand-in appointment` `has effect on` (YMD 2026 5 15)
+#ASSERT NOT `the appointment` (`an appointment of` "Tan" `,` (`a temporary appointment under s 3(5)` "Lim") `, from` (YMD 2026 3 1) `for` 12 `months; revoked s 5` NOTHING `, s 6` NOTHING `; absent notary back` NOTHING `, died` (JUST (YMD 2026 4 1))) `has effect on` (YMD 2026 4 2)
+
+-- s 2 "notary public".
+#ASSERT     `a notary public:` "Lim" `, by the appointments` (LIST `Lim's appointment`) `, on` (YMD 2026 3 1)
+#ASSERT NOT `a notary public:` "Tan" `, by the appointments` (LIST `Lim's appointment`) `, on` (YMD 2026 3 1)
+#ASSERT REFUSED `a notary public:` "Lim" `, by the appointments` (LIST `Lim's appointment`) `, on` (YMD 2006 3 1)
+
+§§ `s 4 — oaths, affidavits and statutory declarations`
+
+GIVEN purpose IS A `Purpose of the affidavit`
+      inside  IS A BOOLEAN
+      outside IS A BOOLEAN
+GIVETH AN Affidavit
+`an affidavit for` purpose `, for use in Singapore:` inside `, abroad:` outside MEANS
+    Affidavit WITH
+        `purpose`                                          IS purpose
+        `to be used in a court or place within Singapore`  IS inside
+        `to be used in a court or place outside Singapore` IS outside
+
+#ASSERT `the s 4 answer for` (`an affidavit for` `confirming or proving the due execution of a document` `, for use in Singapore:` FALSE `, abroad:` FALSE) EQUALS `the notary may administer the oath, and take or attest the document` "s 4(3)(a)(i), (b)"
+#ASSERT `the s 4 answer for` (`an affidavit for` `executed by the master or a crew member of a vessel about the vessel` `, for use in Singapore:` TRUE `, abroad:` FALSE) EQUALS `the notary may administer the oath, and take or attest the document` "s 4(3)(a)(ii), (b)"
+#ASSERT `the s 4 answer for` (`an affidavit for` `another purpose` `, for use in Singapore:` FALSE `, abroad:` TRUE) EQUALS `the notary may administer the oath, and take or attest the document` "s 4(3)(a)(iii), (b)"
+-- (2): for use in a Singapore court, and not within (3)(a)(i) or (ii) — no.
+#ASSERT `the s 4 answer for` (`an affidavit for` `another purpose` `, for use in Singapore:` TRUE `, abroad:` FALSE) EQUALS `the notary may not, under s 4(2)`
+-- (2) gives way to (3): proving due execution, even of a Singapore document.
+#ASSERT `the s 4 answer for` (`an affidavit for` `confirming or proving the due execution of a document` `, for use in Singapore:` TRUE `, abroad:` FALSE) EQUALS `the notary may administer the oath, and take or attest the document` "s 4(3)(a)(i), (b)"
+-- Neither for use in Singapore nor within (3)(a): turns on English practice (s 4(1)).
+#ASSERT REFUSED `the s 4 answer for` (`an affidavit for` `another purpose` `, for use in Singapore:` FALSE `, abroad:` FALSE)
+
+§§ `ss 5, 6 — revocation`
+
+GIVEN a IS A BOOLEAN
+      b IS A BOOLEAN
+      c IS A BOOLEAN
+GIVETH A `Section 5 findings`
+`findings:` a `,` b `,` c MEANS `Section 5 findings` OF a, b, c
+
+#ASSERT     `the Senate must revoke the appointment, on` (`findings:` TRUE  `,` FALSE `,` FALSE)
+#ASSERT     `the Senate must revoke the appointment, on` (`findings:` FALSE `,` TRUE  `,` FALSE)
+#ASSERT     `the Senate must revoke the appointment, on` (`findings:` FALSE `,` FALSE `,` TRUE)
+#ASSERT NOT `the Senate must revoke the appointment, on` (`findings:` FALSE `,` FALSE `,` FALSE)
+#ASSERT     `the Senate may revoke under s 6, the notary having requested it:` TRUE
+#ASSERT NOT `the Senate may revoke under s 6, the notary having requested it:` FALSE
+
+§§ `s 7 — the offence`
+
+-- Lim, a notary on 1 Mar 2026, acting within s 4: no offence.
+#ASSERT NOT `s 7 is contravened by` "Lim" `, by the appointments` (LIST `Lim's appointment`) `, on` (YMD 2026 3 1) `, having` TRUE `, within powers:` TRUE
+-- Lim acting beyond s 4 (e.g. a Singapore-court affidavit, s 4(2)): offence.
+#ASSERT     `s 7 is contravened by` "Lim" `, by the appointments` (LIST `Lim's appointment`) `, on` (YMD 2026 3 1) `, having` TRUE `, within powers:` FALSE
+-- Tan, never appointed: offence.
+#ASSERT     `s 7 is contravened by` "Tan" `, by the appointments` (LIST `Lim's appointment`) `, on` (YMD 2026 3 1) `, having` TRUE `, within powers:` TRUE
+-- Lim after the appointment ran out (1 Jan 2027): offence.
+#ASSERT     `s 7 is contravened by` "Lim" `, by the appointments` (LIST `Lim's appointment`) `, on` (YMD 2027 1 1) `, having` TRUE `, within powers:` TRUE
+#ASSERT NOT `s 7 is contravened by` "Tan" `, by the appointments` (LIST `Lim's appointment`) `, on` (YMD 2026 3 1) `, having` FALSE `, within powers:` TRUE
+-- Before 1 June 2007 the maximum was different (Act 20 of 2007); no source.
+#ASSERT REFUSED `s 7 is contravened by` "Tan" `, by the appointments` (LIST `Lim's appointment`) `, on` (YMD 2007 5 31) `, having` TRUE `, within powers:` TRUE
+#ASSERT `s 7 — maximum fine` EQUALS 10000
+
+§§ `s 8 — rules`
+
+GIVEN cj         IS A BOOLEAN
+      consulted  IS A BOOLEAN
+      published  IS A MAYBE DATE
+      later      IS A MAYBE DATE
+GIVETH A Rules
+`rules: by the Chief Justice` cj `, consulted` consulted `, published` published `, from` later MEANS
+    Rules OF cj, consulted, published, later
+
+#ASSERT     `made within s 8(1):` (`rules: by the Chief Justice` TRUE `, consulted` TRUE  `, published` NOTHING `, from` NOTHING)
+#ASSERT NOT `made within s 8(1):` (`rules: by the Chief Justice` TRUE `, consulted` FALSE `, published` NOTHING `, from` NOTHING)
+-- (2): in force on publication, or a later date the rules specify.
+#ASSERT `the day s 8(2) brings into force` (`rules: by the Chief Justice` TRUE `, consulted` TRUE `, published` (JUST (YMD 2026 2 1)) `, from` NOTHING)               EQUALS JUST (YMD 2026 2 1)
+#ASSERT `the day s 8(2) brings into force` (`rules: by the Chief Justice` TRUE `, consulted` TRUE `, published` (JUST (YMD 2026 2 1)) `, from` (JUST (YMD 2026 3 1))) EQUALS JUST (YMD 2026 3 1)
+#ASSERT `the day s 8(2) brings into force` (`rules: by the Chief Justice` TRUE `, consulted` TRUE `, published` NOTHING `, from` (JUST (YMD 2026 3 1)))             EQUALS NOTHING

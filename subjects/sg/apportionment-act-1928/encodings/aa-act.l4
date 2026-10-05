@@ -1,0 +1,189 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `aa-types`
+
+-- Apportionment Act 1928 (Singapore) — ss 1-7, the whole Act.
+--
+-- Source: ../source/AA1928.txt lines 48-110 (SSO PDF, current version as at
+-- 05 Oct 2026, 2020 Revised Edition). The Legislative History lists no
+-- amending Act since 1928, only revised editions, so no date is gated.
+
+§ `Apportionment Act 1928`
+
+§§ `Long title`
+
+-- INERT. "An Act for the better apportionment of rents and other periodical
+-- payments." [28 December 1928]
+GIVETH A STRING
+`long title` MEANS "An Act for the better apportionment of rents and other periodical payments."
+
+§§ `1. Short title`
+
+-- INERT. "This Act is the Apportionment Act 1928."
+GIVETH A STRING
+`s 1 — short title` MEANS "This Act is the Apportionment Act 1928."
+
+§§ `2. Interpretation, and 3. Rents, etc., to accrue from day to day`
+
+-- s 3: "All rents, annuities, dividends and other periodical payments in the
+-- nature of income (whether reserved or made payable under an instrument in
+-- writing or otherwise) shall, like interest on money lent, be considered as
+-- accruing from day to day, and shall be apportionable in respect of time
+-- accordingly."
+-- s 2: "dividends" ... "does not include payments in the nature of a return
+-- or reimbursement of capital".
+-- s 6: "Nothing in this Act shall render apportionable any annual sums made
+-- payable in policies of assurance of any description."
+-- s 7: "This Act shall not extend to any case in which it is expressly
+-- stipulated that no apportionment shall take place."
+@ref Apportionment Act 1928 s 3
+GIVEN p IS A Payment
+GIVETH A BOOLEAN
+DECIDE `periodical income within s 3` p IF
+    CONSIDER p's `kind`
+    WHEN `rent`                                              THEN TRUE
+    WHEN `annuity`                                           THEN TRUE
+    WHEN `dividend`                                          THEN NOT "s 2: not a return or reimbursement of capital" ... p's `a return or reimbursement of capital`
+    WHEN `another periodical payment in the nature of income` THEN TRUE
+    WHEN `a payment that is not periodical income`           THEN FALSE
+
+@ref Apportionment Act 1928 ss 3, 6, 7
+GIVEN p IS A Payment
+GIVETH A BOOLEAN
+DECIDE `apportionable under the Act` p IF
+        "s 3" ... `periodical income within s 3` p
+    AND NOT "s 6" ... p's `an annual sum payable under a policy of assurance`
+    AND NOT "s 7" ... p's `expressly stipulated that no apportionment shall take place`
+
+-- Why a payment is not apportionable, in the Act's terms. A total enum: the
+-- Act names each exclusion.
+-- (type declared in aa-types.l4)
+
+§§ `The accrued part — "accruing from day to day"`
+
+-- "like interest on money lent, ... accruing from day to day": the part that
+-- has accrued at a cut-off day is the entire portion times the days of the
+-- accrual period that have run, over the days in the period.
+-- s 2 says the same for dividends in terms: "deemed to have accrued by equal
+-- daily increment during and within the period for or in respect of which
+-- the payment ... is declared".
+--
+-- FORK F1: days are counted as whole days elapsed since the period began —
+-- the first day not counted, the cut-off day counted — so a period from
+-- 1 January to 1 April has 90 days and a cut-off on 1 February is 31 of them.
+-- The Act does not say how to count; this is the reading that makes the
+-- whole period add up to the entire portion.
+@ref Apportionment Act 1928 s 3; s 2 "dividends"
+GIVEN p      IS A Payment
+      cutoff IS A DATE
+GIVETH A NUMBER
+`the part of` p `accrued at` cutoff MEANS
+    IF   cutoff LESS THAN p's `accrual period begins` OR cutoff GREATER THAN p's `accrual period ends`
+    THEN REFUSE "the cut-off day is outside the accrual period of this portion; apportion the portion that was running on that day"
+    ELSE IF   `days in the period` AT MOST 0
+         THEN REFUSE "the accrual period has no days in it"
+         ELSE p's `amount of the entire portion` TIMES `days run` DIVIDED BY `days in the period`
+    WHERE
+        `days in the period` MEANS Day (p's `accrual period ends`) MINUS Day (p's `accrual period begins`)
+        `days run`           MEANS Day cutoff MINUS Day (p's `accrual period begins`)
+
+-- s 5(1): the remedies are "allowing proportionate parts of all just
+-- allowances": the same fraction of the allowances comes off.
+@ref Apportionment Act 1928 s 5(1)
+GIVEN p      IS A Payment
+      cutoff IS A DATE
+GIVETH A NUMBER
+`the recoverable part of` p `accrued at` cutoff MEANS
+        `the part of` p `accrued at` cutoff
+    MINUS p's `just allowances against the entire portion` TIMES `the fraction`
+    WHERE
+        `the fraction` MEANS
+            IF   p's `amount of the entire portion` EQUALS 0
+            THEN 0
+            ELSE `the part of` p `accrued at` cutoff DIVIDED BY p's `amount of the entire portion`
+
+§§ `4. Apportioned part of rent, etc., to be payable when next entire portion due`
+
+-- s 4: "The apportioned part ... shall be payable or recoverable — (a) in the
+-- case of a continuing rent, annuity, or other such payment, when the entire
+-- portion of which such apportioned part forms part becomes due and payable,
+-- and not before; and (b) in the case of a rent, annuity, or other such
+-- payment determined by re-entry, death, or otherwise, when the next entire
+-- portion of the same would have been payable if the same had not so
+-- determined, and not before."
+-- Either way the day is the day the entire portion is (or would have been)
+-- due; the limb is recorded so a reader sees which applies.
+@ref Apportionment Act 1928 s 4
+GIVEN p IS A Payment
+GIVETH A STRING
+`the s 4 limb for` p MEANS
+    CONSIDER p's `state`
+    WHEN `continuing`                                THEN "s 4(a): when the entire portion becomes due and payable, and not before"
+    WHEN `determined by re-entry, death or otherwise` THEN "s 4(b): when the next entire portion would have been payable, and not before"
+
+@ref Apportionment Act 1928 s 4
+GIVEN p IS A Payment
+      d IS A DATE
+GIVETH A BOOLEAN
+DECIDE `the apportioned part of` p `is payable on` d IF
+    d AT LEAST p's `entire portion due on`
+
+§§ `The whole question`
+
+@ref Apportionment Act 1928 ss 2-7
+GIVEN p      IS A Payment
+      cutoff IS A DATE
+GIVETH AN `Apportionment outcome`
+`the apportionment of` p `at` cutoff MEANS
+    BRANCH IF NOT `periodical income within s 3` p
+              THEN IF   p's `kind` EQUALS `dividend`
+                   THEN `not apportionable: a return or reimbursement of capital (s 2)`
+                   ELSE `not apportionable: not periodical income within s 3`
+           IF p's `an annual sum payable under a policy of assurance`
+              THEN `not apportionable: an annual sum under a policy of assurance (s 6)`
+           IF p's `expressly stipulated that no apportionment shall take place`
+              THEN `not apportionable: apportionment expressly excluded (s 7)`
+           OTHERWISE `apportioned` (`the recoverable part of` p `accrued at` cutoff)
+                                   (p's `entire portion due on`)
+                                   (`the s 4 limb for` p)
+
+§§ `5. Remedies for recovering apportioned parts`
+
+-- s 5(1): "All persons and their respective executors, administrators and
+-- assigns, and also the executors, administrators and assigns respectively of
+-- persons whose interests determine with their own deaths, shall have such
+-- or the same remedies for recovering such apportioned parts ... as they
+-- respectively would have had for recovering the entire portions".
+@ref Apportionment Act 1928 s 5(1)
+GIVEN c IS A Claimant
+GIVETH A BOOLEAN
+DECIDE `s 5(1) gives remedies to` c IF
+    NOT c EQUALS `someone else`
+
+-- s 5(2): "Persons liable to pay rents reserved out of or charged on lands or
+-- tenements, and the same lands or tenements, shall not be resorted to for
+-- any such apportioned part forming part of an entire or continuing rent ...
+-- specifically, but the entire or continuing rent, including such apportioned
+-- part, shall be recovered and received by the person who, if the rent had
+-- not been apportionable ..., would have been entitled to the entire or
+-- continuing rent, and the apportioned part shall be recoverable from such
+-- person by the executors or other parties entitled under this Act to the
+-- same by suit."
+-- (type declared in aa-types.l4)
+
+-- FORK F2 (revised 2026-10-05 after the independent test pass): s 5(2)
+-- reaches rent reserved out of or charged on land whether it is continuing
+-- or has determined. "an entire or continuing rent" is disjunctive: "entire"
+-- does its work in the s 4(b) case, the classic one being a life-tenant
+-- landlord who dies mid-period — the rent is "determined by ... death" as to
+-- them, the next entire rent is received by their successor, and their
+-- executors recover the apportioned part from that person by suit. The first
+-- reading (continuing rent only) left "entire" with nothing to do.
+@ref Apportionment Act 1928 s 5
+GIVEN p IS A Payment
+GIVETH A `Route of recovery`
+`the route for recovering the apportioned part of` p MEANS
+    IF       p's `kind` EQUALS `rent`
+         AND p's `reserved out of or charged on lands or tenements`
+    THEN `by suit against the person entitled to the entire rent, not against the tenant or the land`
+    ELSE `the same remedies as for the entire portion`
