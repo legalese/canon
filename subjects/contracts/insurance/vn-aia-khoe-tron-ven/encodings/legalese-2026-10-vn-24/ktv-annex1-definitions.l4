@@ -1,0 +1,481 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `ktv-nouns`
+
+-- AIA Khoe Tron Ven V012022 — the preamble and Annex 1 (Phụ lục 1: Giải thích từ ngữ), the
+-- definitions. Quotations (`src:N`) are generated from line N of
+-- ../../source/raw/aia-khoe-tron-ven.txt by tools/vnsrc.py.
+--
+-- WHAT THIS MODULE DOES. It turns the definitions that carry a test into predicates (who may
+-- be insured, who may own the policy, what a Hospital, an intensive care unit, a Doctor, an
+-- Accident and total and permanent disability are), and the definitions that fix a date into
+-- date arithmetic (the effective date, policy and monthly anniversaries, contract years, ages).
+-- Definitions that only name a sum of money are encoded as the sum they name.
+--
+-- DAYS, MONTHS, YEARS. The document never says whether a "ngày" is a calendar or a working day:
+-- every day here is a calendar day (fork F4). A period "trong vòng 90 ngày kể từ ngày" D
+-- (within N days or months from day D) does not count day D and ends on day D + N, or on the
+-- same date N months later (fork F5).
+
+§ `Preamble and Annex 1 — definitions`
+
+§§ `Preamble — the Company and the customer`
+
+-- src:36 | SẢN PHẨM KHỎE TRỌN VẸN
+-- src:38 | (Được phê chuẩn theo công văn số 14632/BTC-QLBH ngày 23/12/2021 của Bộ Tài chính)
+-- (src 34-45: 6 further line(s) not quoted; read them in the source)
+-- "Khách hàng" (the customer) is "Bên mua bảo hiểm và/hoặc Người được bảo hiểm": the
+-- policyowner and/or the insured. Where the two are different people, an article that gives a
+-- right to "Khách hàng" does not say which of them holds it (fork F1, finding X1). No rule here
+-- needs the answer: the rules below name the role they test.
+
+§§ `The insured person`
+
+-- src:1305 | Người được là cá nhân có quyền lợi có thể được bảo hiểm với Bên mua bảo hiểm, được
+-- src:1306 | bảo hiểm Công ty chấp thuận bảo hiểm, hiện đang sinh sống tại Việt Nam tại thời điểm
+-- (src 1305-1309: 3 further line(s) not quoted; read them in the source)
+@ref Annex 1, "Người được bảo hiểm" (src 1305-1309)
+GIVEN `the date of birth` IS A DATE
+      `the date`          IS A DATE
+GIVETH A NUMBER
+`the age in completed years, of a person born on` `the date of birth` `, on` `the date` MEANS
+    IF   `add years` `the date of birth` `years by the calendar` AT MOST `the date`
+    THEN `years by the calendar`
+    ELSE `years by the calendar` MINUS 1
+    WHERE
+        `years by the calendar` MEANS DATE_YEAR `the date` MINUS DATE_YEAR `the date of birth`
+
+-- "đạt 85 tuổi" (reaches age 85), and the like, is the birthday of that number. A person born on 29 February reaches it on
+-- 28 February in a common year: `add years` clamps (fork F2).
+@ref Annex 1, "tuổi"; Articles 3, 6, 13, 24 and Annex 5(4), Annex 7(35)-(45) use "đạt 85 tuổi" and the like
+GIVEN `the date of birth` IS A DATE
+      `the age`           IS A NUMBER
+GIVETH A DATE
+`the day a person born on` `the date of birth` `reaches age` `the age` MEANS
+    `add years` `the date of birth` `the age`
+
+-- "từ 30 ngày tuổi đến 65 tuổi tại Ngày có hiệu lực của hợp đồng": at least 30 days old, and
+-- no older than 65 in completed years (so a 65-year-old qualifies until the 66th birthday, as
+-- the Annex 4 row "65" presupposes) (fork F2).
+@ref Annex 1, "Người được bảo hiểm" (src 1305-1309)
+GIVEN `the policy` IS A Policy
+GIVETH A BOOLEAN
+`Annex 1 — the insured person qualifies on the effective date of` `the policy` MEANS
+        `the insured`'s `one in whom the policyowner has an insurable interest`
+    AND `the insured`'s `accepted for insurance by the Company`
+    AND `the insured`'s `living in Vietnam when the application was submitted`
+    AND `days old on the effective date` AT LEAST 30
+    AND `the age in completed years, of a person born on` (`the insured`'s `date of birth`) `, on` (`the policy`'s `effective date`) AT MOST 65
+    WHERE
+        `the insured` MEANS `the policy`'s `the insured`
+        `days old on the effective date` MEANS
+            Day (`the policy`'s `effective date`) MINUS Day (`the insured`'s `date of birth`)
+
+-- "Tuổi tối đa của Người được bảo hiểm khi kết thúc hợp đồng là 100 tuổi." Article 17 ends the
+-- contract on the policy anniversary after the 100th birthday, when the insured is 100.
+@ref Annex 1, "Người được bảo hiểm" (src 1308-1309)
+GIVETH A NUMBER
+`Annex 1 — the maximum age of the insured when the contract ends` MEANS 100
+
+§§ `The policyowner`
+
+-- src:1311 | Bên mua bảo là cá nhân từ 18 tuổi trở lên và có năng lực hành vi dân sự đầy đủ hoặc tổ
+-- src:1312 | hiểm chức được thành lập và hoạt động hợp pháp tại Việt Nam.
+@ref Annex 1, "Bên mua bảo hiểm" (src 1311-1312)
+GIVEN `the policyowner` IS A Policyowner
+GIVETH A BOOLEAN
+`Annex 1 — the policyowner qualifies` `the policyowner` MEANS
+    CONSIDER `the policyowner`'s `kind`
+    WHEN `an individual`   THEN     `the policyowner`'s `age in completed years` AT LEAST 18
+                                AND `the policyowner`'s `full civil legal capacity`
+    WHEN `an organisation` THEN `the policyowner`'s `lawfully established and operating in Vietnam`
+
+§§ `The beneficiary, the application, the contract and the certificate`
+
+-- src:1314 | Người thụ là cá nhân hoặc tổ chức được Bên mua bảo hiểm chỉ định để nhận quyền lợi
+-- src:1315 | hưởng bảo hiểm theo Quy tắc và Điều khoản này.
+-- src:1321 | Hồ sơ yêu cầu là mẫu yêu cầu tham gia bảo hiểm do Công ty phát hành, trong đó có ghi các
+-- src:1340 | Hợp đồng bảo là thỏa thuận giữa Công ty và Khách hàng trên cơ sở yêu cầu bảo hiểm của
+-- src:1342 | hiểm Khách hàng. Hợp đồng bảo hiểm được thể hiện bằng Hồ sơ yêu cầu bảo
+-- src:1360 | Giấy chứng là chấp thuận bảo hiểm của Công ty, thể hiện các thông tin chính về các
+-- Inert: these definitions name documents and roles; no rule in the document turns on more than
+-- their existence. The "Hồ sơ yêu cầu bảo hiểm" (application) is part of the contract, which is
+-- why Article 30 can reach a misstatement made in it.
+
+§§ `The sum insured`
+
+-- src:1372 | Số tiền bảo là số tiền mà Khách hàng đã chọn làm căn cứ để chi trả các quyền lợi bảo
+-- The amount the customer chose as the basis of the benefits: an input, chosen
+-- by the customer within the Annex 4 limits. It is `sum insured` on `Account snapshot`.
+
+§§ `The effective date`
+
+-- src:1384 | Ngày có hiệu là ngày Khách hàng hoàn tất Hồ sơ yêu cầu bảo hiểm và nộp đủ khoản phí
+-- src:1385 | lực của hợp bảo hiểm đầu tiên với điều kiện Khách hàng phải còn sống vào thời điểm Hồ
+-- (src 1384-1386: 1 further line(s) not quoted; read them in the source)
+-- The effective date is the day the application was completed and the first premium paid in
+-- full, but only if the customer is alive when the application is accepted. The date itself is
+-- on the certificate (`Policy`'s `effective date`); the condition is this predicate.
+@ref Annex 1, "Ngày có hiệu lực của hợp đồng" (src 1384-1386)
+GIVEN `the customer alive when the application is accepted` IS A BOOLEAN
+GIVETH A BOOLEAN
+`Annex 1 — the effective date stands, the customer being alive at acceptance:` `the customer alive when the application is accepted` MEANS
+    `the customer alive when the application is accepted`
+
+§§ `Policy anniversaries and monthly anniversaries`
+
+-- src:1388 | Ngày kỷ niệm là ngày lặp lại hàng năm của Ngày có hiệu lực của hợp đồng.
+-- src:1389 | hợp đồng
+-- src:1391 | Ngày kỷ niệm là ngày lặp lại vào mỗi tháng của Ngày có hiệu lực của hợp đồng. Nếu tháng
+-- src:1392 | tháng không có ngày này, ngày cuối tháng sẽ là Ngày kỷ niệm tháng.
+-- A monthly anniversary is the effective date's day of the month, or the last day of a month
+-- that has no such day: `add months` from the effective date, which clamps to the end of the
+-- month, is exactly that. Each is counted from the effective date, never from the previous
+-- monthly anniversary (31 January, 28 February, 31 March).
+@ref Annex 1, "Ngày kỷ niệm tháng" (src 1391-1392)
+GIVEN `the number`         IS A NUMBER
+      `the effective date` IS A DATE
+GIVETH A DATE
+`monthly anniversary number` `the number` `of a policy effective on` `the effective date` MEANS
+    `add months` `the effective date` `the number`
+
+-- "ngày lặp lại hàng năm" does not say what happens to a 29 February effective date in a common
+-- year. Every policy anniversary is also the twelfth monthly anniversary after the last, and
+-- the monthly definition answers: the last day of February (fork F3).
+@ref Annex 1, "Ngày kỷ niệm hợp đồng" (src 1388-1389), read with "Ngày kỷ niệm tháng" (src 1391-1392)
+GIVEN `the number`         IS A NUMBER
+      `the effective date` IS A DATE
+GIVETH A DATE
+`policy anniversary number` `the number` `of a policy effective on` `the effective date` MEANS
+    `monthly anniversary number` (12 TIMES `the number`) `of a policy effective on` `the effective date`
+
+-- The first policy anniversary strictly after a date. Articles 3, 6, 17, 24 and Annexes 5 and
+-- 7 cut cover off at "Ngày kỷ niệm hợp đồng kế tiếp" / "ngay sau" a birthday: the next
+-- anniversary AFTER the day, so an anniversary falling on the birthday itself is not it
+-- (fork F6).
+@ref Annex 1, "Ngày kỷ niệm hợp đồng" (src 1388); used by Articles 3, 6, 17, 24
+GIVEN `the date`           IS A DATE
+      `the effective date` IS A DATE
+GIVETH A NUMBER
+`the number of the first policy anniversary after` `the date` `, for a policy effective on` `the effective date` MEANS
+    IF   `whole years apart` AT MOST 0
+    THEN 1
+    ELSE IF   `policy anniversary number` `whole years apart` `of a policy effective on` `the effective date` GREATER THAN `the date`
+         THEN `whole years apart`
+         ELSE `whole years apart` PLUS 1
+    WHERE
+        `whole years apart` MEANS DATE_YEAR `the date` MINUS DATE_YEAR `the effective date`
+
+GIVEN `the date`           IS A DATE
+      `the effective date` IS A DATE
+GIVETH A DATE
+`the first policy anniversary after` `the date` `, for a policy effective on` `the effective date` MEANS
+    `policy anniversary number` (`the number of the first policy anniversary after` `the date` `, for a policy effective on` `the effective date`) `of a policy effective on` `the effective date`
+
+-- The first monthly anniversary strictly after a date (Articles 13(c), 15(b): "Ngày kỷ niệm
+-- tháng tiếp theo", "Ngày kỷ niệm tháng ngay sau").
+@ref Annex 1, "Ngày kỷ niệm tháng" (src 1391-1392); Articles 13(c), 15(b)
+GIVEN `the date`           IS A DATE
+      `the effective date` IS A DATE
+GIVETH A DATE
+`the first monthly anniversary after` `the date` `, for a policy effective on` `the effective date` MEANS
+    IF   `months apart` AT MOST 0
+    THEN `monthly anniversary number` 1 `of a policy effective on` `the effective date`
+    ELSE IF   `monthly anniversary number` `months apart` `of a policy effective on` `the effective date` GREATER THAN `the date`
+         THEN `monthly anniversary number` `months apart` `of a policy effective on` `the effective date`
+         ELSE `monthly anniversary number` (`months apart` PLUS 1) `of a policy effective on` `the effective date`
+    WHERE
+        `months apart` MEANS
+                12 TIMES (DATE_YEAR `the date` MINUS DATE_YEAR `the effective date`)
+            PLUS DATE_MONTH `the date` MINUS DATE_MONTH `the effective date`
+
+§§ `Contract years and premium years`
+
+-- src:1408 | Năm hợp đồng là khoảng thời gian một năm kể từ Ngày có hiệu lực của hợp đồng hoặc Ngày
+-- src:1409 | kỷ niệm hợp đồng.
+-- Contract year n runs from policy anniversary n-1 (anniversary 0 being the effective date) up
+-- to the day before anniversary n, so the contract year of a date is the number of the first
+-- anniversary after it.
+@ref Annex 1, "Năm hợp đồng" (src 1408-1409)
+GIVEN `the date`           IS A DATE
+      `the effective date` IS A DATE
+GIVETH A NUMBER
+`the contract year in which` `the date` `falls, for a policy effective on` `the effective date` MEANS
+    `the number of the first policy anniversary after` `the date` `, for a policy effective on` `the effective date`
+
+-- "Ngày cuối cùng của Năm hợp đồng thứ n" (Articles 5, 8): the day before anniversary n.
+@ref Annex 1, "Năm hợp đồng" (src 1408-1409); Articles 5 and 8
+GIVEN `the number`         IS A NUMBER
+      `the effective date` IS A DATE
+GIVETH A DATE
+`the last day of contract year` `the number` `of a policy effective on` `the effective date` MEANS
+    `policy anniversary number` `the number` `of a policy effective on` `the effective date` MINUS 1
+
+-- src:1411 | Năm đóng phí là khoảng thời gian 12 tháng liên tục tính từ Ngày kỷ niệm hợp đồng theo đó
+-- src:1412 | Bên mua bảo hiểm đã đóng đủ Phí bảo hiểm cơ bản trong khoảng thời gian
+-- (src 1411-1413: 1 further line(s) not quoted; read them in the source)
+-- "Năm đóng phí" (premium year) counts only the 12-month periods from a policy anniversary in
+-- which the basic premium was paid in full. Which premium year a payment counts towards is in
+-- the Company's books, so it is an input (`Premium payment`'s `premium year`). The definition
+-- does not say how the first premium year, which starts on the effective date and not on an
+-- anniversary, is counted (finding X17).
+
+-- src:1415 | Định kỳ đóng là thời hạn Bên mua bảo hiểm lựa chọn để đóng Phí bảo hiểm cho hợp đồng.
+-- src:1416 | phí Định kỳ đóng phí có thể là hàng tháng, hàng quý, nửa năm, năm tùy theo yêu
+-- (src 1415-1417: 1 further line(s) not quoted; read them in the source)
+-- Inert: the frequency is an input (`Policy`'s `premium frequency`).
+
+-- src:1394 | Ngày đến hạn là ngày Bên mua bảo hiểm phải đóng Phí bảo hiểm cơ bản theo định kỳ
+-- src:1395 | đóng phí đóng phí được ghi trên Giấy chứng nhận bảo hiểm hoặc các sửa đổi, bổ
+-- (src 1394-1396: 1 further line(s) not quoted; read them in the source)
+-- src:1399 | Ngày đáo hạn là ngày kết thúc thời hạn của Hợp đồng bảo hiểm và được thể hiện trên Giấy
+-- Inert: due dates and the maturity date are on the certificate. Article 17 computes the
+-- maturity date (ktv-part3-premiums-and-account.l4).
+
+§§ `Ages that run to the next policy anniversary`
+
+-- "trước khi đạt 85 tuổi hoặc từ ngày đạt 85 tuổi đến trước Ngày kỷ niệm hợp đồng kế tiếp" (85, 75 or 18)
+-- (Articles 3, 6, Annex 5(4)(b)(ii), Annex 7(35)-(45)): before the N-th birthday, or from it
+-- until the day before the next policy anniversary. Together: before the first policy
+-- anniversary after the N-th birthday.
+@ref Articles 3(b)(i), 6(a)(i); Annex 5(4)(b)(ii); Annex 7(35)-(45)
+GIVEN `the date`    IS A DATE
+      `the age`     IS A NUMBER
+      `the policy`  IS A Policy
+GIVETH A BOOLEAN
+`on` `the date` `the insured has not passed the policy anniversary after reaching age` `the age` `under` `the policy` MEANS
+    `the date` LESS THAN
+        `the first policy anniversary after` (`the day a person born on` (`the policy`'s `the insured`'s `date of birth`) `reaches age` `the age`)
+                                              `, for a policy effective on` (`the policy`'s `effective date`)
+
+§§ `Premiums, account values and charges`
+
+-- src:1423 | Phí bảo hiểm là khoản tiền được Bên mua bảo hiểm xác định phù hợp với nhu cầu của
+-- src:1424 | cơ bản mình và đóng đủ cho mỗi Năm đóng phí của sản phẩm chính và được quy
+-- src:1436 | Phí đóng thêm là khoản tiền còn lại sau khi đóng đủ Phí bảo hiểm cơ bản hàng năm và các
+-- src:1443 | Phí dự tính là khoản tiền bao gồm Phí bảo hiểm cơ bản và Phí đóng thêm (nếu có).
+@ref Annex 1, "Phí dự tính" (src 1443)
+GIVEN `the basic premium`  IS A NUMBER
+      `the top-up premium` IS A NUMBER
+GIVETH A NUMBER
+`Annex 1 — the planned premium of` `the basic premium` `and` `the top-up premium` MEANS
+    `the basic premium` PLUS `the top-up premium`
+
+-- src:1447 | Giá trị tài là số tiền tích lũy từ các khoản Phí bảo hiểm cơ bản được phân bổ và được
+-- src:1453 | Giá trị tài là số tiền tích lũy từ các khoản Phí đóng thêm được phân bổ và được xác định
+-- src:1466 | Giá trị tài là tổng Giá trị tài khoản cơ bản cộng với Giá trị tài khoản đóng thêm.
+@ref Annex 1, "Giá trị tài khoản hợp đồng" (src 1466)
+GIVEN `the account` IS AN `Account snapshot`
+GIVETH A NUMBER
+`Annex 1 — the contract account value of` `the account` MEANS
+    `the account`'s `basic account value` PLUS `the account`'s `top-up account value`
+
+-- src:1480 | Chi phí ban là khoản tiền mà Công ty sẽ khấu trừ từ Phí bảo hiểm cơ bản và Phí đóng
+-- src:1481 | đầu thêm trước khi phân bổ vào Quỹ liên kết chung.
+-- src:1483 | Chi phí bảo là khoản chi phí được khấu trừ hàng tháng để Công ty đảm bảo chi trả quyền
+-- src:1484 | hiểm rủi ro lợi bảo hiểm theo Quy tắc và Điều khoản của sản phẩm bảo hiểm này.
+-- src:1486 | Chi phí quản lý là khoản chi phí được khấu trừ hàng tháng để Công ty thực hiện công việc
+-- src:1487 | hợp đồng liên quan đến quản lý, duy trì và cung cấp các thông tin liên quan đến Hợp
+-- src:1490 | Khoản khấu là khoản tiền bao gồm Chi phí bảo hiểm rủi ro và Chi phí quản lý hợp đồng.
+@ref Annex 1, "Khoản khấu trừ hàng tháng" (src 1490)
+GIVEN `the cost of insurance`     IS A NUMBER
+      `the administration charge` IS A NUMBER
+GIVETH A NUMBER
+`Annex 1 — the monthly deduction of` `the cost of insurance` `and` `the administration charge` MEANS
+    `the cost of insurance` PLUS `the administration charge`
+
+-- src:1496 | Chi phí quản lý là khoản tiền được dùng để chi trả cho các hoạt động quản lý Quỹ liên kết
+-- src:1497 | quỹ chung.
+-- src:1499 | Lãi suất tích là mức lãi suất từ kết quả đầu tư thực tế của Quỹ liên kết chung sau khi trừ đi
+-- src:1500 | lũy Chi phí quản lý quỹ, được áp dụng để tính lãi vào Giá trị tài khoản hợp đồng.
+-- (src 1499-1502: 2 further line(s) not quoted; read them in the source)
+-- src:1504 | Quỹ liên kết là quỹ được hình thành từ nguồn phí bảo hiểm của các hợp đồng bảo hiểm
+-- src:1505 | chung liên kết chung.
+-- src:1507 | Khoản nợ là các khoản phí, chi phí đến hạn và các khoản khác mà Bên mua bảo hiểm
+-- src:1508 | nợ Công ty theo quy định của Hợp đồng bảo hiểm này.
+-- The fund-management charge, the crediting rate and the fund are encoded in
+-- ktv-annex3-fund.l4; "Khoản nợ" (debts) is an input (`Account snapshot`'s `debts`).
+
+§§ `Insurance fraud`
+
+-- src:1514 | Hành vi gian là hành vi của Bên mua bảo hiểm, Người được bảo hiểm, Người thụ hưởng
+-- src:1515 | lận bảo hiểm (i) sử dụng các chứng từ, tài liệu giả mạo hoặc cố ý làm sai lệch thông tin
+-- (src 1514-1528: 3 further line(s) not quoted; read them in the source)
+@ref Annex 1, "Hành vi gian lận bảo hiểm" (src 1514-1528)
+GIVEN `the act` IS AN `Act of insurance fraud`
+GIVETH A BOOLEAN
+`Annex 1 — the act is insurance fraud` `the act` MEANS
+        "(i)"  ... `the act`'s `using forged documents or deliberately falsifying the claim file`
+    OR  "(ii)" ... `the act`'s `harming the life or health of the insured to claim a benefit`
+
+§§ `Cancer and critical illness`
+
+-- src:1530 | Bệnh ung thư
+-- src:1532 | bao gồm Ung thư giai đoạn sớm, Ung thư biểu mô tại chỗ, Ung thư nghiêm
+-- (src 1530-1534: 1 further line(s) not quoted; read them in the source)
+-- Encoded in ktv-annex5-cancer.l4.
+
+-- src:1536 | Bệnh hiểm là bệnh hay phẫu thuật hay thủ thuật hay tình trạng bất thường phát sinh lần
+-- src:1540 | nghèo đầu tiên đối với Người được bảo hiểm và thỏa các điều kiện được quy định tại
+-- (src 1536-1541: 1 further line(s) not quoted; read them in the source)
+-- src:1546 | thủ thuật hay tình trạng bất thường phải được thực hiện tại Bệnh viện và phù
+-- src:1547 | hợp với các tiêu chuẩn thông thường về thực hành y khoa.
+@ref Annex 1, "Bệnh hiểm nghèo" (src 1536-1547)
+GIVEN `the diagnosis` IS A `Diagnosis of an early-stage critical illness`
+GIVETH A BOOLEAN
+`Annex 1 — the general conditions of a critical illness hold for the early-stage diagnosis` `the diagnosis` MEANS
+        `the diagnosis`'s `arising for the first time for the insured`
+    AND `the diagnosis`'s `diagnosed or treated at a Hospital`
+    AND `the diagnosis`'s `in line with usual standards of medical practice`
+
+@ref Annex 1, "Bệnh hiểm nghèo" (src 1536-1547)
+GIVEN `the diagnosis` IS A `Diagnosis of a severe-stage critical illness`
+GIVETH A BOOLEAN
+`Annex 1 — the general conditions of a critical illness hold for the severe-stage diagnosis` `the diagnosis` MEANS
+        `the diagnosis`'s `arising for the first time for the insured`
+    AND `the diagnosis`'s `diagnosed or treated at a Hospital`
+    AND `the diagnosis`'s `in line with usual standards of medical practice`
+
+§§ `The intensive care unit`
+
+-- src:1553 | Phòng Chăm là một bộ phận của Bệnh viện, và phải đáp ứng tất cả các điều kiện sau:
+-- src:1560 | - được thành lập để chăm sóc và điều trị đặc biệt;
+-- src:1567 | - dành riêng cho các bệnh nhân trong điều kiện nguy kịch, cần sự theo dõi
+-- src:1568 | và kiểm tra y tế liên tục của Bác sĩ;
+-- src:1574 | - được trang bị các thiết bị, thuốc, phương tiện khác cần thiết cho việc cứu
+-- src:1580 | sống bệnh nhân một cách nhanh chóng;
+-- (src 1574-1581: 1 further line(s) not quoted; read them in the source)
+@ref Annex 1, "Phòng Chăm sóc đặc biệt (ICU)" (src 1553-1581)
+GIVEN `the unit` IS AN `Intensive care unit`
+GIVETH A BOOLEAN
+`Annex 1 — the unit is an intensive care unit` `the unit` MEANS
+        `Annex 1 — the facility is a Hospital` (`the unit`'s `the hospital it belongs to`)
+    AND `the unit`'s `established for special care and treatment`
+    AND `the unit`'s `reserved for critically ill patients needing a Doctor's continuous monitoring`
+    AND `the unit`'s `equipped to save patients' lives quickly`
+    AND NOT `the unit`'s `a post-operative recovery room or an emergency room`
+
+§§ `Total and permanent disability`
+
+-- src:1583 | Tàn tật toàn bộ là khi Người được bảo hiểm:
+-- src:1584 | và vĩnh viễn a) Bị mất hoặc liệt hoàn toàn và không thể phục hồi chức năng của:
+-- (src 1583-1591: 7 further line(s) not quoted; read them in the source)
+-- src:1597 | Mất thị lực hoàn toàn và vĩnh viễn được hiểu là mất hẳn mắt hoặc mù hoàn
+-- src:1598 | toàn và không thể phục hồi chức năng của mắt; mất tay được tính từ cổ
+-- (src 1597-1610: 6 further line(s) not quoted; read them in the source)
+-- A physical loss of a hand counts from the wrist up, of a foot from the ankle up, and of an
+-- eye is its removal; it may be confirmed as soon as the insured event happens. Paralysis, or
+-- blindness without removal, may be confirmed no earlier than 6 months after it.
+@ref Annex 1, "TTTB&VV", (a) and the paragraph after it (src 1583-1610)
+GIVEN `the date of the insured event` IS A DATE
+      `the loss`                      IS A `Loss of a hand, a foot or an eye`
+GIVETH A BOOLEAN
+`Annex 1 — the loss counts towards TPD (a), the insured event having happened on` `the date of the insured event` `:` `the loss` MEANS
+    CONSIDER `the loss`'s `the manner`
+    WHEN `physical loss`
+        THEN     `the loss`'s `date confirmed` AT LEAST `the date of the insured event`
+             AND (   `the loss`'s `the part` EQUALS `an eye`
+                  OR `the loss`'s `at or above the wrist or the ankle`)
+    WHEN `complete and irrecoverable paralysis or blindness`
+        THEN `the loss`'s `date confirmed` AT LEAST `add months` `the date of the insured event` 6
+
+GIVEN `the part`        IS A `Part of the body`
+      `the disablement` IS A Disablement
+GIVETH A NUMBER
+`the number of counted losses of` `the part` `in` `the disablement` MEANS
+    count (filter `counted, of that part` (`the disablement`'s `the losses`))
+    WHERE
+        `counted, of that part` l MEANS
+                l's `the part` EQUALS `the part`
+            AND `Annex 1 — the loss counts towards TPD (a), the insured event having happened on` (`the disablement`'s `date of the insured event`) `:` l
+
+@ref Annex 1, "TTTB&VV" (a)(i)-(vi) (src 1584-1591)
+GIVEN `the disablement` IS A Disablement
+GIVETH A BOOLEAN
+`Annex 1 — TPD (a), loss or paralysis of limbs or sight` `the disablement` MEANS
+        "(i)"   ... `hands` AT LEAST 2
+    OR  "(ii)"  ... `feet` AT LEAST 2
+    OR  "(iii)" ... `hands` AT LEAST 1 AND `feet` AT LEAST 1
+    OR  "(iv)"  ... `eyes` AT LEAST 2
+    OR  "(v)"   ... `hands` AT LEAST 1 AND `eyes` AT LEAST 1
+    OR  "(vi)"  ... `feet` AT LEAST 1 AND `eyes` AT LEAST 1
+    WHERE
+        `hands` MEANS `the number of counted losses of` `a hand` `in` `the disablement`
+        `feet`  MEANS `the number of counted losses of` `a foot` `in` `the disablement`
+        `eyes`  MEANS `the number of counted losses of` `an eye` `in` `the disablement`
+
+-- src:1611 | b) Được xác nhận có tỷ lệ tổn thương cơ thể hoặc mất sức lao động vĩnh viễn
+-- src:1612 | từ 81% trở lên bởi Hội Đồng Giám Định Y Khoa cấp tỉnh, thành phố trực
+-- (src 1611-1615: 3 further line(s) not quoted; read them in the source)
+@ref Annex 1, "TTTB&VV" (b) (src 1611-1615)
+GIVEN `the disablement` IS A Disablement
+GIVETH A BOOLEAN
+`Annex 1 — TPD (b), an assessed rate of 81% or more` `the disablement` MEANS
+    CONSIDER `the disablement`'s `assessed percentage of bodily injury or permanent loss of working capacity`
+    WHEN NOTHING THEN FALSE
+    WHEN JUST `the rate`
+        THEN     `the rate` AT LEAST 81
+             AND `the disablement`'s `assessed by a provincial Medical Assessment Council or a lawful medical organisation the Company approves`
+             AND `the disablement`'s `date of the assessment` AT LEAST `add months` (`the disablement`'s `date of the insured event`) 6
+
+@ref Annex 1, "TTTB&VV" (src 1583-1615)
+GIVEN `the disablement` IS A Disablement
+GIVETH A BOOLEAN
+`Annex 1 — the insured is totally and permanently disabled` `the disablement` MEANS
+        "a)" ... `Annex 1 — TPD (a), loss or paralysis of limbs or sight` `the disablement`
+    OR  "b)" ... `Annex 1 — TPD (b), an assessed rate of 81% or more` `the disablement`
+
+§§ `The Doctor`
+
+-- src:1617 | Bác sĩ là người có bằng cấp chuyên môn y khoa trong lĩnh vực tây y được cơ quan
+-- src:1623 | có thẩm quyền cấp phép hoặc thừa nhận được hành nghề y hợp pháp trong
+-- (src 1617-1625: 2 further line(s) not quoted; read them in the source)
+@ref Annex 1, "Bác sĩ" (src 1617-1625)
+GIVEN `the doctor` IS A Doctor
+GIVETH A BOOLEAN
+`Annex 1 — the person is a Doctor` `the doctor` MEANS
+        `the doctor`'s `medically qualified in western medicine`
+    AND `the doctor`'s `licensed or recognised to practise medicine lawfully`
+    AND `the doctor`'s `acting within the scope of the licence where the examination or treatment takes place`
+
+§§ `The Accident`
+
+-- src:1631 | Tai nạn
+-- src:1637 | là một sự kiện hoặc một chuỗi sự kiện liên tục, khách quan, xảy ra do tác
+-- (src 1631-1646: 6 further line(s) not quoted; read them in the source)
+@ref Annex 1, "Tai nạn" (src 1631-1646)
+GIVEN `the accident` IS AN Accident
+GIVETH A BOOLEAN
+`Annex 1 — the event is an Accident` `the accident` MEANS
+        `the accident`'s `an objective event or continuous chain of events`
+    AND `the accident`'s `caused by a sudden external force or object`
+    AND `the accident`'s `unintended and against the insured's will`
+    AND `the accident`'s `caused injury or death to the insured`
+    AND `the accident`'s `the direct and sole cause, unrelated to any other cause`
+    AND `the accident`'s `days from the event to the injury or death` AT MOST 180
+
+§§ `The Hospital`
+
+-- src:1650 | Bệnh viện là cơ sở khám chữa bệnh được thành lập và hoạt động theo pháp luật của
+-- src:1655 | Việt Nam hoặc nước sở tại. Cơ sở đó phải được cấp phép như một Bệnh viện
+-- (src 1650-1656: 1 further line(s) not quoted; read them in the source)
+-- src:1662 | Đối với Bệnh viện trong lãnh thổ Việt Nam, tư cách của Bệnh viện phải được
+-- src:1663 | thể hiện bằng chữ “Bệnh viện” trên con dấu chính thức. Đối với Bệnh viện
+-- (src 1662-1670: 2 further line(s) not quoted; read them in the source)
+-- src:1676 | Các Bệnh viện được thành lập và hoạt động cho mục đích điều dưỡng, dưỡng
+-- src:1677 | bệnh, người già an dưỡng, cai nghiện rượu hay cai nghiện ma túy hay một tổ
+-- (src 1676-1683: 1 further line(s) not quoted; read them in the source)
+-- The last sentence puts a facility for convalescence, nursing, care of the elderly or alcohol
+-- or drug rehabilitation "outside the cover of this product", not outside the word "Bệnh viện";
+-- the effect on every rule that asks for a Hospital is the same, so it is a limb here.
+@ref Annex 1, "Bệnh viện" (src 1650-1683)
+GIVEN `the facility` IS A `Medical facility`
+GIVETH A BOOLEAN
+`Annex 1 — the facility is a Hospital` `the facility` MEANS
+        `the facility`'s `established and operating under the law of Vietnam or of the host country`
+    AND `the facility`'s `licensed as a hospital under the rules of Vietnam or of the host country`
+    AND (    IF   `the facility`'s `in Vietnam`
+             THEN `the facility`'s `its official seal shows the word for hospital`
+             ELSE `the facility`'s `its status is shown in the local language by a word understood as hospital`)
+    AND NOT `the facility`'s `established for convalescence, nursing, elderly care, or alcohol or drug rehabilitation, or a similar purpose`
