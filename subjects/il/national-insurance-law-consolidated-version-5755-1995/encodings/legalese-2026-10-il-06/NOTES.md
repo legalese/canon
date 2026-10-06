@@ -228,3 +228,207 @@ The claim in A1 that s 1 paragraph (2) is word for word the 5776 Law's was check
 - **HG1**, a human who knows Israeli social-security law reading the modules against the Hebrew, has not been sought.
 - **s 69A and s 71** are reachable and declined; encoding them is the obvious next unit, and the refusals mark exactly where they would plug in.
 - **Performance.** The tests module takes about 40 seconds; the count of every child is recomputed for each person. Nothing here depends on that, but a deployment would want the counts computed once.
+
+## Comparison with Axiom's RuleSpec (2026-10-06)
+
+Written by `lad-il-06` on 2026-10-07, after this row's encoding and its independent test pass were deposited, under the semi-cleanroom ruling of 2026-10-06, which allows the Axiom encoding to be read for this row once ours is deposited.
+Line numbers are lines of `../../registers/source-bundle/national-insurance-law-consolidated-version-5755-1995.he.wiki.txt` (sha256 `78bf47ee…552a97`, re-hashed before use and matching).
+A divergence is recorded as a finding, not a fix: nothing in this encoding was changed.
+
+### What was read
+
+**Commit.** A local clone of `TheAxiomFoundation/rulespec-il` at `95c6f32c87c75e318631cbd77c14b840bc536c15` (2026-10-03, "Merge pull request #8 … encode/il-nii-contributions"), read in place, not pulled or modified.
+
+**Files read in full** (sha256 of each matches the one its encoding manifest records):
+
+| file | sha256 |
+| --- | --- |
+| `il/statutes/national-insurance-law-1995/section-66.yaml` | `3720f4f2…5f49` |
+| `il/statutes/national-insurance-law-1995/section-66.test.yaml` | `b323aaf8…650d` |
+| `il/statutes/national-insurance-law-1995/section-67.yaml` | `f179fe16…efed7` |
+| `il/statutes/national-insurance-law-1995/section-67.test.yaml` | `136ee4a0…8dec` |
+| `il/statutes/national-insurance-law-1995/section-68.yaml` | `a9f74b43…309d` |
+| `il/statutes/national-insurance-law-1995/section-68.test.yaml` | `0c0da31c…984d` |
+| `il/statutes/national-insurance-law-1995/section-1.yaml` | `ec1a280a…ddec1` |
+| `il/statutes/national-insurance-law-1995/section-1.test.yaml` | `37517e5f…b570` (the empty list `[]`) |
+| `.axiom/encoding-manifests/il/statutes/national-insurance-law-1995/section-{1,66,67,68}.json` | — |
+
+`section-68.yaml` imports three rules from `section-1.yaml`, and those three rules are the whole of that file, so it was read in full.
+There is no `section-65.yaml` (a directory listing shows none; Axiom's own gaps file says so).
+The manifests name the generating runner for each file (`codex-gpt-5.6-terra` for ss 1 and 68, `codex-gpt-6-astra` for ss 66 and 67) and a chain of three to six superseded earlier runs.
+
+**Entries read from the gap and coverage files:** `docs/ENCODING-GAPS.md` entries `child-allowance-surtax-exclusion-vs-oecd` (line 253), `nii-68c-increment-not-reconcilable-with-the-published-figure` (340), `nii-section-1-paragraphs-1-and-3` (462), `nii-section-68-repealed-and-unencoded-subsections` (467), `nii-section-67-relations-are-facts` (471), `nii-section-67a-is-audited-not-enforced` (482), `nii-section-67a-proof-atom-has-no-excerpt` (494), `nii-section-65-child-definition-partial` (543), and the two rows for the child-allowance basic amounts in its table "Amounts supplied rather than encoded" (lines 369-370).
+`known-missing-money-atoms.yaml` and `known-validation-gaps.yaml` have no entry for the National Insurance Law (counted with `grep -c`).
+From `data/coverage/tax-benefit-source-map.json`, only the National Insurance Law instrument's entries for ss 1 and 65-68: `temporal_coverage: current_expression_only`, expression date 2026-06-15 (Hebrew Wikisource), `encoded_sections` including 1, 66, 67, 68, and s 65 listed as not encoded as a module.
+
+**Read outside the allowed list, said plainly.** A line range I printed from `ENCODING-GAPS.md` (253-339) ran past the s 66 entry and printed three entries that are not this row's: `additional-tax-threshold-is-the-statute-s-nominal-figure` and `section-121b-a1-capital-charge-not-dated-from-2025` (both on Income Tax Ordinance s 121B), and `section-66-proof-excerpts-quote-the-earlier-corpus-render` (on Income Tax Ordinance s 66, credit points, which I had expected to be NII s 66).
+Those three entries, the s 65 and s 66 entries and lines 372-373 (printed by a filter) mention Axiom's composed pipeline in passing.
+Nothing from them about the composition or about another provision is used below, and no file under `composed/` was opened.
+The entry `composed-capstone-does-not-apply-nii-67-or-68b-c` (line 536) was not read beyond its heading.
+
+**Licence.** `NOTICE` at that commit: encodings, companion test cases, parameter values and provenance metadata are CC BY 4.0 (`LICENSE` is the CC BY 4.0 legal code); incidental tooling is Apache 2.0 (`LICENSE-CODE`); the statutes are public domain.
+This agrees with what earlier comparison agents found.
+Snippets below are short and attributed: "Axiom Foundation RuleSpec corpus (CC BY 4.0), https://github.com/TheAxiomFoundation".
+No Axiom file was copied into this directory.
+
+**Same text.** Each of Axiom's 19 proof excerpts for these provisions occurs verbatim in the deposited source once the wiki markup is stripped (checked by script), so the two encodings read the same Hebrew for ss 1(2), 66, 67 and 68 (Axiom's corpus expression is dated 2026-06-15; ours was retrieved 2026-10-06).
+
+### How each is built, in one paragraph each
+
+**Axiom.** Four modules, one per section, with no Child entity.
+s 66 is one Judgment over two Boolean inputs (`person_is_insured_parent`, `insured_parent_has_income_subject_to_additional_tax_under_section_121b`).
+s 67 is two Judgments for one child and one "current" insured parent, over six Boolean inputs (`child_has_two_parents`, `current_insured_parent_is_father`, `child_is_with_mother_alone`, `child_has_natural_and_other_parent`, `child_other_parent_is_insured`, `child_is_with_current_insured_parent`) and a caller-supplied count for s 67(a).
+s 68 is two Money values for one child, over its position in the count, the parent's count, a Boolean "born before the statutory cutoff date", entitlement for that child, and the two payment flags.
+s 1 is three parameters: 150, 188, 140.
+Every rule has `effective_from: '0001-01-01'` and `period: Month`.
+
+**Ours.** One question, a family on a day, through s 65 (both limbs of "insured", both limbs of "child", the proviso, s 65(b)), s 1 "ילד", s 66, s 67 (count computed for every child, ordered eldest first), s 68, a period gate from 1 May 2015, and the Institute's published amounts by year in a module marked not-law; named refusals where the text is silent and for s 69A and s 71.
+
+### Divergence table
+
+Classes: **ours wrong**, **theirs wrong**, **genuine ambiguity** (the text supports both), **scope difference**, **representational difference**.
+"No count" means Axiom's `child_counted_with_insured_parent` is `not_holds` for every parent of the child.
+
+| id | provision | ours | theirs | source lines | class | proposed repair to ours |
+| --- | --- | --- | --- | --- | --- | --- |
+| D1 | s 67(b), a child with one parent only | that parent's count (`nii-s67-count-of-children.l4:169`, one candidate) | no count: the case `father_default_requires_two_parents` asserts `not_holds` for the child's only, insured, parent | 814 "בעד כל ילד"; 818 | **theirs wrong.** s 66 entitles the insured parent for each child; s 67(b)'s two limbs only choose between two parents, and neither they nor s 67(a) say that a child no limb reaches is in no count. Axiom's reading treats s 67(b) as the exhaustive list of ways into a count, which leaves every sole parent without an allowance. | none |
+| D2 | s 67(b) first limb, two parents and only one insured (our F7) | the insured parent's count, wherever the child is | (a) father insured, mother not, child with the mother only: no count; (b) mother insured, father not, child not with the mother only: no count | 818 "יבוא במנין האב המבוטח זולת אם הוא נמצא עם האם בלבד" | **genuine ambiguity**, recorded as our F7. Axiom takes our reading (ii), as the independent tester did for (a) (INDEPENDENT-FINDINGS, finding 1). (b) leans our way: no word of the limb excludes the mother there; the child is sent to an "insured father" who does not exist. | none; add Axiom as a second reading under F7 and open question 2 |
+| D3 | s 67(b), a natural parent and another parent, only one of them insured | the insured one's count | no count (cases `natural_and_other_parent_limb_requires_other_parent_insured`, `overlapping_parent_facts_require_other_parent_insured`, `natural_and_other_parent_situation_displaces_father_default`) | 818 "והם מבוטחים" | **theirs wrong.** The second limb applies by its own words only when both are insured, so it cannot be what excludes the child; and in the two "overlapping" cases the first limb, which Axiom switches off whenever the natural-and-other flag holds, gives the insured father, since the child is not with the mother only. The first case (natural mother insured, step-father not, no second natural parent) is D1's shape. | none |
+| D4 | s 67(a) with s 67(b): the same child in two counts | impossible by construction, and asserted (`nii-s67-count-of-children.l4:223-227`) | a natural parent and another parent, both insured, child with both: `holds` for each (by the formula; the case `natural_and_other_insured_parents_child_counts_where_present` does not say whether the child is also with the other); two insured fathers: `holds` for each. Axiom's s 67(a) judgment checks a caller-supplied number against 1 and does not constrain the s 67(b) judgment (its own entry `nii-section-67a-is-audited-not-enforced`) | 817 "לא יבוא ילד, בפרק זמן אחד, במנין ילדים של יותר מהורה מבוטח אחד" | **theirs wrong** (recorded by Axiom). Which parent the child goes to in these shapes is D5/D6. | none |
+| D5 | s 67(b) second limb, both insured, child with both or with neither (our F9) | named refusal | with both: both counts (D4); with neither: no count | 818 "אותו הורה אשר עמו הוא נמצא" | **genuine ambiguity**: the limb names one parent "with whom he is" and the facts give two or none. Ours declines; theirs defaults. | none |
+| D6 | s 67(b) first limb, two fathers or two mothers (our F10) | named refusal | two mothers, child with both: no count; two fathers: both counts (D4). No Axiom case covers it; read off the formula | 818 "האב … האם" | **genuine ambiguity**. | none |
+| D7 | s 67(b), two insured parents fitting neither limb (our F11) | named refusal | no count (case `presence_alone_does_not_establish_natural_and_other_parent_limb`) | 818 | **genuine ambiguity**: the text does not say. | none |
+| D8 | s 67(b), which limb applies when a family fits both, and where an adopter falls (our F8) | by the standing of the two insured candidates: the child's own parents (natural or adoptive) take the first limb, a natural parent with a step-parent or supporter the second | the caller sets both flags; when both hold, the second limb displaces the first; adoption is not addressed | 818; 170 "וילד מאומץ" | **representational difference**, with F8's ambiguity on adopters left to Axiom's caller. Its consequence for one-insured families is D3. | none |
+| D9 | s 1 "הסכום הבסיסי" (2) and its updating clause: the amount in force | the 2015 base kept as the printed figure (`nii-s1-basic-amount.l4:34-52`); the amount in force on a day from the Institute's table [nii-basic] (`nii-il06-published-figures.l4:58-72`) | 150 / 188 / 140 for every period. Its own s 68 cases, dated 2024-01, assert 188, 98, 336 and 354, which are the 2015 base; at the amounts in force in January 2024 (169 / 214 / 158) the same inputs give 214, 110.6, 378.56 and 398.84 | 187-189; 192; 197 "ב־1 בינואר של כל שנה, לפי שיעור עליית המדד" | **theirs wrong** for any period from 1 January 2018 ((2)(b) became 189) and for all three amounts from 1 January 2019; right for 1 May 2015 to 31 December 2017. Recorded by Axiom: the update mechanism is not encoded (`nii-section-1-paragraphs-1-and-3`), and the current figures are not carried in its repository. | none |
+| D10 | s 68(c), the Institute's published supplement | 70% of the (2)(c) amount in force: 110.6 in 2024-2025, 113.4 in 2026, which the Institute publishes rounded as 111 and 113 (NOTES section 5) | `nii-68c-increment-not-reconcilable-with-the-published-figure` calls 111 and 113 `unexplained`, because only the nominal 140 was captured; it also says the OECD's "0.7*153" cannot reach 111 | 189; 197; 826 "70% מן הסכום הבסיסי הקבוע בפסקה (2)(ג)" | **theirs wrong** (a recorded gap that the updating clause and [nii-basic] close): the figure is 70% of the indexed (2)(c) amount. The 153 Axiom quotes is the Institute's (2)(c) amount from 1 January 2023 (`nii-il06-published-figures.l4:34`), so it is a 2023 figure compared with a 2025 one. | none |
+| D11 | the period answered | days from 1 May 2015 (`nii-il06-period.l4:55-56`, on s 29(a) of the 5776 Law [sh-5776-247]); a day from 1 January 2027 is declined where an amount is needed | every period (`effective_from: '0001-01-01'`; coverage map `current_expression_only`), at the 2015 base | 820 (latest tag תשע״ו־3); the date itself is from [sh-5776-247], not the deposited text | **scope difference.** The deposited source alone does not date the text; on [sh-5776-247] Axiom answers days before 1 May 2015 with a text not then in force. | none (but see "incidental finding" below on our 2027 wording) |
+| D12 | s 65 and s 1 "ילד" | encoded: both limbs of "insured", both limbs of "child", the proviso (in Israel, under 18 by the day), s 65(b), s 1's stepchild, adopted child and married-minor rules | not encoded as a module: `person_is_insured_parent` and the relation flags are inputs; Axiom's gaps entry says the supporter limb (806) and s 65(b) (809) are not modelled and age and presence in Israel are supplied, not computed | 170; 801-809 | **scope difference.** | none |
+| D13 | s 69A and s 71 | named refusals consulted before s 67 answers | not encoded and not gated: s 67 answers for a family s 69A or s 71 governs | 843 "על אף האמור בכל מקום אחר בסימן זה"; 845 (the children in the father's count unless the mother proves a separate household); 851 | **scope difference**, with the consequence that Axiom's s 67 answer for an insured man with children by several women is the one s 69A displaces. | none |
+| D14 | s 68(b) "born before 1 June 2003" | computed from the date of birth, strictly before (`nii-s68-amount.l4:43-49`) | a Boolean input, `child_was_born_before_statutory_cutoff_date` | 822 "לפני יום א׳ בסיון התשס״ג (1 ביוני 2003)" | **representational difference**: the caller decides "before" against "on". | none |
+| D15 | the order of the count (our F4) | eldest first by date of birth, same-day births in list order | a caller-supplied position | 187-188, 821-826 | **representational difference** (Axiom silent on F4). | none |
+| D16 | s 66 with s 68: an insured parent who is not entitled | no allowance lines at all (`nii-s68-amount.l4:156-159`) | the per-child amount is still computed (case `third_child_when_parent_is_not_entitled`: 188), only the supplement is gated | 814 | **representational difference**: Axiom's per-child amount is "the amount if paid"; entitlement is gated elsewhere. | none |
+| D17 | the unit asked about | a day; s 72 (the months paid) is not encoded | a Month | 814 "חודשית"; 821 "לחודש"; 826 "בעד חודש מסוים" | **representational difference**; neither encodes s 72. | none |
+| D18 | Axiom's s 68 companion cases | — | two cases put a child at place 4 in a count of 3 (`pre_cutoff_fourth_child_with_income_support`, `post_cutoff_fourth_child_with_maintenance_payment`); two put a child born before 1 June 2003 in a count in January 2024, when every such child had reached 18 (by 31 May 2021) | 807 "ולא מלאו לו 18 שנים"; 822 | **theirs wrong** (inconsistent fixtures, not a legal reading). Our interface cannot state these facts, because the place is derived from the count. | none |
+
+**Totals: 18 divergences. Ours wrong 0; theirs wrong 6 (D1, D3, D4, D9, D10, D18); genuine ambiguity 4 (D2, D5, D6, D7); scope difference 3 (D11, D12, D13); representational difference 5 (D8, D14, D15, D16, D17).**
+
+**Where the two agree.** Every number the text prints: 150, 188, 140 as the base (187-189); places 1 and 5-onward at (2)(a), 2-4 at (2)(b); the multipliers 2.24 and 2.36 applied to (2)(a) (824-825); 70% of (2)(c), for the third and fourth child, when entitled for three or more and paid an Income Support benefit or a maintenance payment (826).
+s 66 in full (814), including that the exception is of an insured parent.
+The plain first-limb cases: father insured, child not with the mother only, the father's count; child with the mother only, the mother's count, when she is insured (818).
+Neither encodes s 381 rounding; both give 70% × (2)(c) unrounded.
+
+### Our 17 forks against Axiom
+
+| fork | Axiom |
+| --- | --- |
+| F1 s 1 "ילד" read into s 65 | silent: s 1 "ילד" and s 65 are not encoded; the relation flags are inputs |
+| F2 29 February, three months from the 30th | silent: no date arithmetic in these files |
+| F3 an absence not yet ended | silent: s 65(b) not modelled |
+| F4 the order of the count | silent: the position is an input (D15) |
+| F5 which tax year for s 66's exception | silent: the exception is an input. Axiom records a different question, `unexplained`: whether the exception is applied at all, since the OECD TaxBEN description calls the allowance "not means-tested" |
+| F6 the excluded father keeps the count | agrees, implicitly: its s 67 does not consult s 66, so a father with additional-tax income is still the "current insured parent" and the child stays with him; not recorded |
+| F7 one insured parent | disagrees: reading (ii), extended to a sole parent (D1, D2, D3) |
+| F8 what "two parents" and "a natural parent and another parent" are | different structure: caller-set flags, second limb first (D8) |
+| F9 natural and other parent, with both or neither | disagrees: both counts or no count, never a refusal (D4, D5) |
+| F10 two fathers or two mothers | disagrees: no count or both counts (D6) |
+| F11 three parents, or neither limb | disagrees: no count (D7); three parents cannot be stated |
+| F12 "with the mother only" | silent: `child_is_with_mother_alone` is an input |
+| F13 s 69A "נשים" | not reached: s 69A is not encoded (D13) |
+| F14 Income Support paid to the other parent | agrees, implicitly: the s 68(c) inputs are those of the parent whose count is priced |
+| F15 the supporter must be insured | silent: s 65 "child" (2) not modelled |
+| F16 the absence limb as one input | silent: "insured" is an input |
+| F17 the count for s 68(c) includes (b) children | silent: `parent_child_count` is an input |
+
+Agree 2 (F6, F14), disagree 5 (F7, F9, F10, F11, and F8 by structure), silent or not reached 10.
+Axiom records none of F1-F17 as a fork; its gap entries on s 67's relations, on s 67(a) and on s 65 touch F8-F12, F1-F3 and F15 only to say that the caller supplies the fact or that the limb is not modelled.
+
+### Axiom's own cases, put through our encoding
+
+Run on 2026-10-07 in a scratch copy of our ten modules plus one scratch module (`lad-il-06/run/axiom-cases.l4`), with `/Users/mengwong/.local/bin/l4 run`, `JL4_LIBRARY_PATH` unset: type-check succeeded, every `#EVAL` produced a value or a named refusal.
+Axiom's expected values were checked against Axiom's formulas by hand (its runner was not run); all 20 are what its formulas give.
+Each Axiom case was realised as a family; where Axiom's inputs leave open a fact ours needs (is the other parent insured? is the child also with the other parent?), each realisation is shown.
+s 67 cases are asked on 15 September 2026 (Axiom period 2026-09); "Avi", "Batya" natural father and mother, "Gadi" step-father, "Dina" step-mother, "Ezra" a supporter whose support is proven.
+
+| # | Axiom case | Axiom expects | our realisation and answer | result |
+| --- | --- | --- | --- | --- |
+| 66-1 | `insured_parent_without_additional_tax_income_is_eligible` | holds | insured, no additional tax: entitled TRUE | match |
+| 66-2 | `insured_parent_with_additional_tax_income_is_excluded` | not_holds | FALSE | match |
+| 66-3 | `person_who_is_not_an_insured_parent_is_not_eligible` | not_holds | FALSE | match |
+| 67-1 | `insured_father_counts_child_not_with_mother_alone` | father: holds; s 67(a) holds | Avi insured, child with both: `JUST "Avi"`, with Batya insured or not; s 67(a) TRUE | match |
+| 67-2 | `mother_alone_exception_blocks_insured_father` | father: not_holds | child with Batya only: Batya insured, `JUST "Batya"`; Batya not insured, `JUST "Avi"` | match / **diverge** (D2, F7) |
+| 67-3 | `insured_mother_counts_child_with_mother_alone` | mother: holds | child with Batya only: `JUST "Batya"`, with Avi insured or not | match |
+| 67-4 | `insured_mother_does_not_count_child_when_not_with_mother_alone` | mother: not_holds | child with both: Avi insured, `JUST "Avi"`; Avi not insured, `JUST "Batya"` | match / **diverge** (D2, F7) |
+| 67-5 | `natural_and_other_insured_parents_child_counts_where_present` | current (Batya): holds | Batya and Gadi insured: child with Batya only, `JUST "Batya"`; child with both, refusal (F9) | match / **diverge** (D4, D5) |
+| 67-6 | `natural_and_other_parent_limb_requires_other_parent_insured` | not_holds | Batya insured, Gadi not, child with Batya: `JUST "Batya"` | **diverge** (D1/D3) |
+| 67-7 | `natural_and_other_parent_limb_requires_child_present` | current (Batya): not_holds | child with Gadi only, `JUST "Gadi"`; with neither, refusal (F9) | match / **diverge** (D5) |
+| 67-8 | `presence_alone_does_not_establish_natural_and_other_parent_limb` | not_holds; s 67(a) not_holds (caller says 2) | Gadi and Ezra insured, child with Gadi: refusal (F11); our s 67(a) refuses with it, and a caller's count cannot be supplied | **diverge** (D7); s 67(a) could not be run (our s 67(a) is computed, not supplied) |
+| 67-9 | `overlapping_parent_facts_require_other_parent_insured` | not_holds | Avi insured, Dina not, child with both: `JUST "Avi"` | **diverge** (D3) |
+| 67-10 | `overlapping_parent_facts_require_child_with_current_parent` | not_holds | Avi and Dina insured, child with neither: refusal (F9). (A child with Dina only would make `child_is_with_mother_alone` arguably true, against Axiom's input) | **diverge** (D5) |
+| 67-11 | `overlapping_parent_facts_count_child_with_current_insured_parent` | holds | Avi and Dina insured, child with Avi: `JUST "Avi"` | match |
+| 67-12 | `natural_and_other_parent_situation_displaces_father_default` | not_holds | Avi insured, Dina not, child with neither: `JUST "Avi"` | **diverge** (D3) |
+| 67-13 | `father_default_requires_two_parents` | not_holds | Avi insured, the child's only parent: `JUST "Avi"`; s 67(a) TRUE | **diverge** (D1) |
+| 68-1 | `pre_cutoff_fourth_child_with_income_support` | 336; supplement 98 | as given (place 4 in a count of 3, a pre-2003 child in 2024): could not be run at family level (D18). Function level, at the printed amounts: 336, 98; at the amounts in force in January 2024: 378.56, 110.6. Nearest consistent family (four children, the fourth born 10 Feb 2003, father paid Income Support, 15 Jan 2016): fourth line 336 + 98 | match at the 2015 amounts; **diverge** for the stated period (D9) |
+| 68-2 | `pre_cutoff_fifth_child_without_supplement_conditions` | 354; 0 | as given: impossible in 2024 (D18). Function level: 354, 0 printed; 398.84, 0 in January 2024. Five pre-2003 children on 15 Jan 2016: fifth line 354, 0 | match at the 2015 amounts; **diverge** for the stated period (D9) |
+| 68-3 | `post_cutoff_fourth_child_with_maintenance_payment` | 188; 98 | place 4 in a count of 3 cannot be stated (D18). Function level: 188, 98 printed; 214, 110.6 in January 2024. Four children, father paid maintenance, 15 Jan 2024: fourth line 214 + 110.6; the same on 15 Jan 2016: 188 + 98 | match at the 2015 amounts; **diverge** for the stated period (D9) |
+| 68-4 | `third_child_when_parent_is_not_entitled` | 188; 0 | father with additional-tax income, paid Income Support, three children, 15 Jan 2024: "no child allowance, being an insured parent with income chargeable to additional tax", no lines | supplement: match (0). Allowance: not comparable (D16); our s 68(a) amount at (2)(b) is 188 printed, 214 in January 2024 |
+
+**Results: 6 match outright (66-1 to 66-3, 67-1, 67-3, 67-11); 4 match or diverge on a fact Axiom does not take (67-2, 67-4, 67-5, 67-7); 6 diverge (67-6, 67-8, 67-9, 67-10, 67-12, 67-13); the 4 s 68 cases match at the 2015 base and diverge at the amounts in force in their stated period, 2024-01, and three of them cannot be run at family level as given because their facts are inconsistent.**
+Every s 67 divergence is one where Axiom answers "not counted" and ours either counts the child with its only insured parent or declines by name.
+
+### Our independent-test findings against Axiom
+
+| finding (INDEPENDENT-FINDINGS.md) | Axiom |
+| --- | --- |
+| 1. Father insured, mother not, child with the mother only | no count (case 67-2 with the mother uninsured): the tester's literal reading, delivered as an answer, not a refusal or a recorded fork |
+| 2. Born 29 February, day 28 February | silent: no date arithmetic in these files; its gaps entry says age is supplied, not computed |
+| 3. Six-month trip, with and without a return day | silent: s 65(b) not modelled; presence in Israel is supplied as a conclusion |
+| 4. The s 238 housewife under s 65(a)(2) | silent: "insured" is an input; s 65 "מבוטח" not encoded |
+| 5. A finished absence still leaving the child abroad | silent: no absence facts |
+
+Axiom gives no evidence on findings 2 to 5, so the repairs the independent tester proposed for 4 (open a fork) and 5 (reject or ignore a finished absence) stand as they were.
+
+### What Axiom covers that we do not, and the reverse
+
+**Axiom, not us.**
+Proof atoms tying each formula to a verbatim excerpt, and a manifest chain recording the generating run.
+Each multiplier and threshold as a named parameter rule.
+A per-child amount callable for one child without building a family.
+An s 67(a) judgment over a caller-supplied number (an audit; see D4).
+A recorded open question on whether s 66's exception is applied, given the OECD TaxBEN description (`child-allowance-surtax-exclusion-vs-oecd`); our NOTES do not raise it.
+
+**Us, not Axiom.**
+s 65 in full and s 1 "ילד" (D12).
+The dates the text turns on: the 18th birthday, 1 June 2003, three months abroad (D14, findings 2-3).
+The order of the count (D15) and the attribution of s 68(b) and (c) by a computed place.
+s 67(a) by construction (D4).
+The amounts in force by year with provenance (D9, D10).
+The period gate (D11).
+Named refusals where the text is silent (D5-D7) and for s 69A and s 71 (D13).
+Validation of facts that cannot describe a case.
+An independent test pass.
+
+### Incidental finding about our own notes (not an Axiom divergence)
+
+NOTES assumption A3 and the answer table say days from 1 January 2027 "are declined".
+In the scratch run, a family on 15 January 2027 whose only child had turned 18 on 10 January 2027 got `RIGHT`, an allowance with no lines, not a refusal; the same family with a child of 11 was refused ("the basic amounts … from 1 January 2027 had not been published …").
+The refusal is reached only where an amount is needed.
+That answer is right (it needs no figure), but the sentence overstates.
+**Proposed repair:** reword A3 and the table row to "a day from 1 January 2027 is declined wherever an amount is needed".
+
+### Proposed repairs to our encoding
+
+None is required by the Hebrew: no divergence found ours wrong.
+To NOTES only:
+(1) under F7 and open question 2, record that a second encoding (Axiom) takes reading (ii) and extends it to sole parents (D1-D3);
+(2) under F9-F11, record that Axiom defaults to "not counted" or counts twice where ours declines (D4-D7);
+(3) add an open question: is s 66's exception for additional-tax income applied by the Institute (Axiom's `unexplained` entry against the OECD description)?
+(4) the A3 wording above.
+
+### Bottom line
+
+The two encodings read the same Hebrew and agree on every printed number, on s 66, on the s 68 arithmetic and on the plain first-limb cases.
+They part where the text does not plainly decide s 67: Axiom answers every such shape "not counted" (or counts a child twice), while ours counts the child with its only insured parent or declines by name.
+In two of those places (a sole parent, D1; a natural-and-other family with one insured parent, D3) Axiom's answer has no support in lines 814 and 818; in the others the text supports both, and ours already records the fork.
+Axiom's amounts are the 2015 base for every period, and its own 2024-dated cases assert them; our use of the Institute's table also explains the published 111 and 113 supplements that Axiom records as unexplained.
+The comparison found nothing in the Hebrew that shows our encoding wrong.
+It does add weight to open question 2: two independent readers (the tester and Axiom) now take the literal reading of F7, though the count of readers is not the text.
