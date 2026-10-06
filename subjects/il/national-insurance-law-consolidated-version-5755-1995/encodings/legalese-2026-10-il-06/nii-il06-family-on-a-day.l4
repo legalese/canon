@@ -1,0 +1,100 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `nii-il06-nouns`
+IMPORT `nii-il06-period`
+IMPORT `nii-s65-interpretation`
+IMPORT `nii-s66-entitlement`
+IMPORT `nii-s67-count-of-children`
+IMPORT `nii-s68-amount`
+IMPORT `nii-il06-published-figures`
+
+-- National Insurance Law, ss 65-68, answered for a family on a day: the child allowance of
+-- every person in the family for the month in which the day falls, at the rate in force on
+-- the day. s 72 (which months are paid) is not encoded; the answer is the monthly amount the
+-- family's facts on that day produce.
+--
+-- Order of the answer:
+--   1. a day before 1 May 2015 is declined (nii-il06-period.l4);
+--   2. facts that cannot describe a case are returned as a problem (LEFT), for the caller to
+--      fix (phrasebook 11.4);
+--   3. every child's count is settled, through s 67(a), so that any refusal in s 67 reaches
+--      the caller before an answer is handed back (phrasebook 11.8);
+--   4. one answer per person, in the order of the family's list (RIGHT).
+
+§ `A family on a day — the answer`
+
+§§ `Facts that cannot describe a case`
+
+GIVEN `the names` IS A LIST OF STRING
+GIVETH A BOOLEAN
+`no name repeats in` `the names` MEANS
+    count (nub `the names`) EQUALS count `the names`
+
+GIVEN `the family` IS A `A family on a day`
+GIVETH A MAYBE `A problem with the facts`
+`a problem with the facts of` `the family` MEANS
+    BRANCH IF NOT `no name repeats in` (map (GIVEN p YIELD p's `name`) `the persons`)
+           THEN JUST `two persons have the same name`
+           IF any (GIVEN c YIELD any (GIVEN e YIELD null (`the persons named` (e's `name of the person`) `in` `the family`)) (c's `parents`)) `the children`
+           THEN JUST `a child's record names a parent who is not among the persons`
+           IF NOT `no name repeats in` (map (GIVEN c YIELD c's `name`) `the children`)
+           THEN JUST `two children have the same name`
+           IF any (GIVEN c YIELD c's `date of birth` GREATER THAN `the day`) `the children`
+           THEN JUST `a child is born after the day`
+           IF any `an absence that cannot be` `the children`
+           THEN JUST `an absence from Israel begins after the day, or ends before it begins`
+           OTHERWISE NOTHING
+    WHERE
+        `the persons`  MEANS `the family`'s `the persons`
+        `the children` MEANS `the family`'s `the children`
+        `the day`      MEANS `the family`'s `the day`
+        `an absence that cannot be` c MEANS
+            CONSIDER c's `absence from Israel`
+            WHEN NOTHING THEN FALSE
+            WHEN JUST a  THEN     a's `the day the child left Israel` GREATER THAN `the day`
+                              OR (CONSIDER a's `the day the child returned to Israel`
+                                  WHEN NOTHING THEN FALSE
+                                  WHEN JUST r  THEN r LESS THAN a's `the day the child left Israel`)
+
+§§ `The answer, at basic amounts the caller supplies`
+
+@ref National Insurance Law s 67(a) (source line 817): the counts of this model break it only if the construction in nii-s67-count-of-children.l4 is wrong
+GIVEN a IS A TYPE
+GIVETH AN a
+`the counts this model computed break section 67(a), which its construction is meant to rule out` MEANS
+    REFUSE "the counts this model computed break section 67(a), which its construction is meant to rule out"
+
+@ref National Insurance Law ss 65-68 (source lines 799-834)
+GIVEN `the family`  IS A `A family on a day`
+      `the amounts` IS A `The basic amounts for the child allowance`
+GIVETH AN EITHER `A problem with the facts` (LIST OF `A person's child allowance for the month`)
+`the child allowance of each person, in` `the family` `, at` `the amounts` MEANS
+    BRANCH IF NOT `the deposited text of sections 65 to 68 was in force on` (`the family`'s `the day`)
+           THEN `this model answers days from 1 May 2015, when sections 1 and 68 took their present wording; the text in force before then is not in its sources`
+           OTHERWISE
+               CONSIDER `a problem with the facts of` `the family`
+               WHEN JUST `the problem` THEN LEFT `the problem`
+               WHEN NOTHING
+               THEN IF   `s 67(a) — no child is counted with more than one insured parent, in` `the family`
+                    THEN RIGHT (map `the answer for` (`the family`'s `the persons`))
+                    ELSE `the counts this model computed break section 67(a), which its construction is meant to rule out`
+    WHERE
+        `the answer for` p MEANS
+            `A person's child allowance for the month` WITH
+                `name of the person` IS p's `name`
+                `the answer`         IS `s 68 — the child allowance, in` `the family` `, at` `the amounts` `, of` p
+
+§§ `The answer, at the basic amounts the Institute published`
+
+@ref National Insurance Law ss 65-68; the basic amounts from nii-il06-published-figures.l4 (not encoded law)
+GIVEN `the family` IS A `A family on a day`
+GIVETH AN EITHER `A problem with the facts` (LIST OF `A person's child allowance for the month`)
+`the child allowance of each person, at the basic amounts the Institute published for the day, in` `the family` MEANS
+    `the child allowance of each person, in` `the family` `, at` (`the basic amounts for the child allowance the Institute published for` (`the family`'s `the day`))
+
+-- The family's total for the month, before rounding: the sum of every person's total.
+GIVEN `the answers` IS A LIST OF `A person's child allowance for the month`
+GIVETH A NUMBER
+`the family's total, before rounding, of` `the answers` MEANS
+    sum (map (GIVEN a YIELD `the total, before rounding, of` (a's `the answer`)) `the answers`)
