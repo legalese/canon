@@ -343,3 +343,233 @@ Section 6 lists what to delete or join at IL-07.
 - **The independent test pass** (skill step 8) was not run: the brief for this row is one session with no sub-agents. Every expected value was worked out before it was asserted, by a computation that does not use this encoding; no second reader has derived them.
 - **HG1**, a human who knows Israeli national insurance reading the modules against the Hebrew, has not been sought.
 - **Semi-cleanroom** (ruled 2026-10-06): nothing from the Axiom Foundation, any RuleSpec repository, or the paths the brief lists was read, searched or fetched in this session. IL-04's and IL-06's deposits were read for names only, read-only; IL-04's `tests-independent.l4`, `DECIDED-ANSWERS.md` and `INDEPENDENT-FINDINGS.md` were not opened.
+
+## Comparison with Axiom's RuleSpec (2026-10-06)
+
+Written 2026-10-07 by the comparison author (`lad-il-05`), working alone, after this row was deposited and independently tested, under Meng's semi-cleanroom ruling of 2026-10-06 as the lead relayed it for this row.
+Nothing in this row's modules, tests or other sections was changed; every divergence below is a finding, and every repair is proposed, not made.
+
+### What was read
+
+**Axiom.** A local clone of `TheAxiomFoundation/rulespec-il` at `/Volumes/transcend/src/Axiom/rulespec-il`, commit `95c6f32c87c75e318631cbd77c14b840bc536c15` ("Merge pull request #8 from TheAxiomFoundation/encode/il-nii-contributions", 2026-10-03), read-only; nothing was pulled or modified.
+Files read in full, each sha256 matching the `applied_files` hash in its own encoding manifest:
+
+| file | sha256 |
+| --- | --- |
+| `il/statutes/national-insurance-law-1995/section-342.yaml` | `689a3057…08de2` |
+| `il/statutes/national-insurance-law-1995/section-342.test.yaml` | `fca4179d…3ca87` |
+| `il/statutes/national-insurance-law-1995/section-348.yaml` | `57e9af0d…6c66ec` |
+| `il/statutes/national-insurance-law-1995/section-348.test.yaml` | `c3ba4ea3…11ba3b` |
+| `il/statutes/national-insurance-law-1995/schedule-k/sign-1.yaml` (the only file under `schedule-k/` besides its test) | `139f54a0…a7f29` |
+| `il/statutes/national-insurance-law-1995/schedule-k/sign-1.test.yaml` | `85c9b1f2…f102` |
+
+Also read, only the parts about these provisions: `.axiom/encoding-manifests/il/statutes/national-insurance-law-1995/section-342.json`, `section-348.json` and `schedule-k/sign-1.json` (whole; provenance only: model `gpt-6-astra` for s 342 and Schedule K, a deterministic import-hash repair for s 348, all generated 2026-09-29); `docs/ENCODING-GAPS.md` lines 638-650 (`schedule-k-monthly-minimum-and-section-348-b`) and 651-665 (`nii-schedule-a1-part-d-not-encoded`, about s 342(c)(2)); `data/coverage/tax-benefit-source-map.json`, only the values naming s 342, s 348 or Schedule K, and the instrument's `temporal_coverage` (`current_expression_only`) and the file's `validation_year` (2025).
+`known-missing-money-atoms.yaml` and `known-validation-gaps.yaml` were searched with a count and contain nothing about these provisions.
+The s 348 module imports one value from `schedule-k/sign-1` (read); no other file was needed to understand a value, except Schedule J's column D figures (below, under "Schedule J column D"), for which I stopped short.
+What else was seen, outside that list, is set out at the end of this section.
+
+**Ours.** The five rule modules as deposited (sha256 `nii-il05-nouns.l4` `b62351d5…e013`, `nii-il05-published-figures.l4` `05e8472d…09d`, `nii-schedule-k.l4` `d73fd96d…c975`, `nii-s348-maximum-minimum.l4` `45ea8d42…39c2`, `nii-s342-liability-and-deduction.l4` `058282cb…5691`), `nii-il05-tests.l4`, `nii-il05-tests-expected-red.l4`, `tests-independent.l4`, `NOTES.md`, `BRIEF.md`, `DECIDED-ANSWERS.md`, `INDEPENDENT-FINDINGS.md`, `check.sh`.
+Row IL-04's `NOTES.md` "Repair 2026-10-07" section only (its lines 1-80), as background.
+
+**Sources.** The consolidation (sha256 `78bf47ee…2a97`, verified): s 1 (lines 186-228), s 2 (230-239), s 245 (2464-2477), s 342 (3658-3675), s 348 (3762-3769), Schedule A1 Part D's last rows (4450-4453), Schedule J (4709-4749), Schedule K (4751-4773).
+The deposited amending Laws (`registers/source-bundle/amending-laws/`, sha256 of all three verified against `SOURCES.json`), text by `pdftotext -raw`: Amendment 252 (all four pages) and the 2025 Budget-year Law's Part E, ss 19-21 (PDF pages 11-12).
+Neither amends s 348 or Schedule K; the Budget-year Law s 19(4) amends s 342 ("60% of the average wage" becomes the reduced collection threshold, "everywhere"), from 1 January 2026 (s 21); Amendment 252 s 7(a)(3) replaces only the lower sub-columns of Schedule J's columns C and D.
+The 2023 Economic Efficiency Law was not opened: nothing in this comparison turns on Schedule J's item 4.
+The National Insurance Institute's figures are taken from this row's `NOTES.md` section 7 (the encoder's fetch, 14:49-14:53 UTC on 2026-10-06) and `DECIDED-ANSWERS.md` section 1 (the independent tester's fetch through the Israeli proxy, 21:41-21:43 UTC); they agree, and nothing was re-fetched.
+
+Toolchain: `/Users/mengwong/.local/bin/l4` → `jl4-0.1-0ee0100b`, sha256 `64bbcb15…e118` (the binary of section 0), `JL4_LIBRARY_PATH` unset.
+
+### Licence
+
+`NOTICE` in the clone: "Encodings, companion test cases, parameter values, and provenance metadata in this repository are licensed under the Creative Commons Attribution 4.0 International license (CC BY 4.0)"; "incidental tooling and scripts" under Apache 2.0 (`LICENSE-CODE`); the statutes themselves are not licensed.
+`LICENSE` is the CC BY 4.0 legal code, `LICENSE-CODE` the Apache 2.0 text; this confirms what the earlier comparison authors found.
+Quotations from Axiom's files below are short and attributed; nothing of theirs is copied into this row.
+Suggested attribution, from `NOTICE`: "Axiom Foundation RuleSpec corpus (CC BY 4.0), https://github.com/TheAxiomFoundation".
+
+### What each encoding does, in one paragraph each
+
+**Axiom** executes, for s 342: (a) as a person-level judgment, `liable_for_own_insurance_contributions`, from booleans `person_is_insured`, `person_is_employee`, `person_is_self_employed` and the Chapter C wife flag; (d)(1) and (d)(2) as `multiple_employer_contribution_shortfall` and `…_refund`, from a boolean `insured_employee_has_multiple_employers` and two caller-supplied amounts, `coordinated_contributions` and `actual_total_monthly_deductions`; and the man's age, 70, as a parameter.
+It defers, with a reason each, (b), (c)(1), (c)(2) (the age limb, the employer's reduction, the police and prison item 6 limb), the computation of coordinated contributions, (e), (e1) and (f).
+For s 348 it executes (a) only as `employee_monthly_income_after_contribution_ceiling` (the employee's monthly wage against item 1's monthly maximum) and (a1) as the excluded amount, each gated by a boolean `contributions_payable_under_section_335`; it defers (b), (d) and (e), and gives (c) as summary text only.
+For Schedule K it executes the arithmetic of all four items for a month (item 1 only), a quarter and a year, with the item (`insured_item`, 1 to 4), the basic amount, the minimum wage, the average wages of January, April, July and October and the quarter (`quarter_begins_in_october`) all supplied by the caller.
+Every rule is `effective_from: '0001-01-01'`.
+
+**Ours** encodes s 342(a), (b), (c)(1), (c)(2) in all its limbs, (d) with coordinated contributions computed from (c), (e1) and (f)(1)-(2), with (e) inert and a deduction it governs refused; s 348(a), (a1), (b), (c), (d) where its readings agree, (e) in both texts; Schedule K in full, with the item derived from the person's column and the (d)/(e) classes; contribution periods from January 2026, with the Institute's 2026 figures built in (NOTES sections 1-4).
+
+### Divergence table
+
+Lines are lines of the deposited consolidation unless marked.
+
+| id | provision | ours | Axiom's | source | classification | proposed repair (ours) |
+| --- | --- | --- | --- | --- | --- | --- |
+| X1 | s 348(a1), how much non-work income is disregarded | a deduction: the part up to 25% of the average wage (F3 (ii)); the all-or-nothing reading is encoded beside it, unused | all or nothing: `if nonwork_income… <= nonwork_income_exclusion_threshold: max(0, nonwork_income…) else: 0`; its test `nonwork_income_above_threshold_receives_no_partial_exclusion` asserts 0 on 3,000 against a sum of 2,500 | 3764; 3763 for the comparison F3 relies on | genuine ambiguity: see below | none to the answer; restate F3's reason (P1) |
+| X2 | Schedule K, a monthly minimum for items 2-4 | a third of the quarter's (F2): 3,442.25, 688.45, 2,065.35 a month in 2026 | `employee_monthly_minimum_insurable_income` is `if insured_item == 1: applicable_minimum_wage_first_month_of_quarter else: 0`; its test asserts 0 for item 3 | 4761-4766 print no monthly cell for items 2-4 | theirs wrong: 0 has no source, and Axiom's own gap entry says so ("The text sets no monthly minimum for those items, which is not the same as a minimum of zero", `docs/ENCODING-GAPS.md` lines 641-643). Between ours and a refusal (the independent tester's E8), F2 stays a genuine ambiguity, already recorded | none |
+| X3 | s 342(c)(2), "subject to s 245(b2)" | repealed, so no effect; checked red (F10) | a live dependency: (c)(1) and (c)(2) are deferred for want of "the operative qualification in section 245(b2)", and the deferral says a "repeal assertion" cannot replace "the required legal dependencies" | 3662 (בכפוף להוראות סעיף 245(ב2)); 2474, where (b2) reads בוטל | theirs wrong on the deposited text. Not checked against Axiom's own copy of s 245, which is out of row. No Axiom output turns on it, because the limbs it blocks are deferred | none |
+| X4 | s 342(e)(3)-(4), "column E" for deduction rates | flagged red: the deduction is column D (F22) | not noticed: (e) is deferred as "upper-band withholding and Institute approvals", with no mention of a column | 3669-3670 (טור ה׳); 4717 | representational: neither computes (e); only ours tests the source against itself | none |
+| X5 | s 342(a)-(b), an employee who is also self-employed | one column per call, so such a person takes two calls (the independent tester's A7) | one call, two booleans: `person_is_self_employed or not person_is_employee`, so a dual-status person is liable for himself | 3659; 3673 names the dual case | representational, with the interface gap on our side | optional (P3) |
+| X6 | s 342(a), "an insured person" | presupposed: the record has no "not insured" | `person_is_insured` is an input, and false gives not liable | 3659 (מבוטח) | scope difference | optional (P4) |
+| X7 | s 348(a) and (a1), "for contributions payable under s 335" | presupposed: every s 348 rule is for such contributions; the limb is not an input and not in the coverage table | `contributions_payable_under_section_335` gates both rules; false passes the wage through uncapped and excludes nothing | 3763-3764 | scope difference | state the presupposition (P2) |
+| X8 | s 348(a), whose income the maximum caps | the whole income taken into account (income from work plus non-work income after (a1)), for every item and period | the employee's monthly wage only, "solely the effect of subsection (a), not a complete contribution base" (its own deferral note) | 3763: סכום ההכנסה של המבוטח העולה על הסכום המרבי | scope difference | none |
+| X9 | Schedule K, the yearly maximum | one basic amount per tax year | four, one per quarter: `5 × 3 × (basic_amount_for_january_quarter… + …october_quarter…)`; its test sums 10,000, 11,000, 12,000 and 13,000 | 4760, 4762 (the sum over quarters); s 1's update clause, 192 and 196, moves the paragraph (3) amount only on 1 January | representational: the same answer for every input the deposited s 1 can produce; Axiom's test case is one it cannot | none |
+| X10 | which Schedule K item applies | derived from the column and the (d)/(e) classes (F6, F7) | `insured_item` is a caller input | 4757-4765; 3765-3769 | representational; Axiom is silent on F6 and F7 | none |
+| X11 | "quarter" and the average wage of a month | derived from the month (4771) and the update days (225) | caller-supplied: `quarter_begins_in_october`, `average_wage_first_month_of_quarter`, and the four monthly figures, which a caller can make inconsistent with each other | 4771; 222-225 | representational | none |
+| X12 | which "average wage" | the figure calculated under s 2, 13,769 for 2026 (F1) | a bare input, `average_wage` in s 348 and `average_wage_<month>` in Schedule K; tests use invented figures (10,000 to 14,000) | 222-226; 236 | scope difference: Axiom leaves F1 to whoever supplies the figure | none |
+| X13 | s 342(b), (c), (e1), (f) and coordinated contributions | computed (with refusals where the text is silent) | deferred | 3660-3662, 3664, 3672-3674 | scope difference | none |
+| X14 | s 348(b), (c), (d), (e) | encoded | deferred; (c) summary text only. Axiom's own gap entry says the (b) deferral's stated reason ("no applicable monthly minimum") "is no longer true" for an employee (`docs/ENCODING-GAPS.md` lines 644-647) | 3765-3769 | scope difference | none |
+| X15 | the periods answered | from January 2026 (A1); earlier periods refused, later ones only on caller figures | `effective_from: '0001-01-01'`, "current_expression_only", tests dated 2024 and January 2026 | tags at 3658, 3762, 4755 | scope difference (see "Periods") | none |
+| X16 | s 342(d) with one employer, or none | a named outcome: "does not apply: the insured person works for one employer" | 0 and 0 | 3663 | representational | none |
+| X17 | coordinated contributions | (c) applied to the total monthly income as one employer's wage, with (c)(2) (F14) | an input | 3664 | scope difference | none |
+| X18 | s 342(c)(2), a woman's age | the Part D age is a caller input in months (F19) | deferred: Part D is not encoded (its gap entry, lines 651-664); both cite 70 for a woman born in May 1950 or later | 3662; 4453 | scope difference | none |
+| X19 | the text each carries of s 342(d)(2) | quoted from line 3665 | the module summary ends (d)(2) "…לבין סכום דמי הביטוח המתואמים", one word more than line 3665's "…לבין דמי הביטוח המתואמים"; the longer phrase is (e)(2)'s, line 3668 | 3665, 3668 | theirs wrong, immaterial: no rule reads the summary. Not checked against Axiom's own copy of the consolidation, which may be a different revision | none |
+
+**Counts.** 19 divergences: ours wrong 0; theirs wrong 3 (X2, X3, X19, the last immaterial); genuine ambiguity 1 (X1); scope difference 9 (X6, X7, X8, X12, X13, X14, X15, X17, X18); representational 6 (X4, X5, X9, X10, X11, X16).
+Where both encodings compute the same quantity, they agree on every number except X1 and X2.
+
+**X1 in detail.** Line 3764 says the non-work income "which is not exempt … and does not exceed (ואינה עולה על סכום השווה ל־25% מהשכר הממוצע)" a sum equal to 25% of the average wage "shall not be taken into account".
+Our F3 reads (a1) as a deduction "because (a)'s 'the amount of the income exceeding the maximum' is read as the part above it, and (a1) is the same construction from below".
+The two are not the same construction.
+In (a) the subject is "the amount" of the income, masculine, with יבוא (line 3763); in (a1) it is "the income" itself, feminine, with תובא, qualified by a relative clause (line 3764).
+Read as all or nothing, (a) would disregard the whole income of anyone above the maximum, which cannot be meant, so (a) must mean the part above; (a1) read as all or nothing gives a cliff at 3,442.25 (2026), which is odd but not absurd.
+So on the words alone Axiom's reading is at least as natural as ours, and the text does not decide.
+What supports ours is the regulator: the Institute's January 2026 example charges rent of 12,000 on 8,558, "income up to 3,442 a month is exempt" (both fetches agree; NOTES section 7, DECIDED-ANSWERS G5), which is a deduction.
+This row's own tests show the readings part exactly where Axiom's case does (`nii-il05-tests.l4` lines 404-406), and our all-or-nothing rule reproduces Axiom's 0 on Axiom's own case (scratch run, below).
+
+### Our 22 forks, and what Axiom does
+
+| fork | ours | Axiom | verdict |
+| --- | --- | --- | --- |
+| F1 which average wage | s 2's, 13,769 | bare inputs; no figure | silent |
+| F2 a month for items 2-4 | a third of the quarter | minimum 0 for items 2-4 (disowned by its gap entry); monthly maximum `basic × 5` whatever the item, which equals ours (51,910 at 10,382); s 348(b), (d), (e) deferred | disagrees |
+| F3 (a1) deduction or all or nothing | deduction | all or nothing | disagrees (X1) |
+| F4 (a1)'s sum has no period | a month's; other periods refused | the rule is declared `period: Month` and the average wage is a monthly input | agrees in effect |
+| F5 (d) deeming or floor | answered only where they agree | deferred; the reason speaks of "deeming income equal to the Schedule XI item 3 minimum", with no floor condition | silent (prose leans to deeming) |
+| F6 item 3: the classes, or the classes with the income condition | the classes | `insured_item` is an input | silent |
+| F7 an employee or self-employed person also in (d)/(e) | item 1 or 2, with refusals | — | silent |
+| F8 the temporary text's date and edges | 31.8.2026; "before" strict; straddling periods refused | deferral prose: "until expiry on 2026-08-31, continuing until completion for persons who began service before expiry" | agrees on the date; edges not executed |
+| F9 a month split by the age or the pension | refused | deferred | silent |
+| F10 s 245(b2) | repealed, no effect | live and blocking | disagrees (X3) |
+| F11 whose minimum wage | the particular employee's, an input | `applicable_minimum_wage_first_month_of_quarter`, an input | agrees |
+| F12 the branches of (c)(1) | six branches from s 335 | (c)(1) deferred | silent |
+| F13 a branch with no column D amount | refused | — | silent |
+| F14 (c)(2) inside coordinated contributions | yes | coordinated contributions is an input | silent |
+| F15 kibbutz: the other employer deducted more | refused | deferred; prose: the kibbutz pays "the coordinated contributions less deductions" | silent |
+| F16 (f)(2) "lower than" | strict | deferred | silent |
+| F17 several employers and (b)'s floor | not modelled | — | silent |
+| F18 s 350(c) reaches (b) only | yes | s 350 appears only as (a1)'s "not exempt" input | silent |
+| F19 the day an age is reached | `add months` | deferred; the man's age 70 is a parameter | silent |
+| F20 part of a year in a category | not modelled | one `insured_item` per call | agrees in effect |
+| F21 item 6 of Schedule J | unemployment | names "the Schedule J item 6 deduction for police and prison officers" without the branch | silent, consistent |
+| F22 "column E" | not resolved; red | not mentioned | silent |
+
+Agree 4 (F4, F8's date, F11, F20); disagree 3 (F2, F3, F10); silent 15.
+
+### The three places the source contradicts itself
+
+| expected-red check | ours | Axiom |
+| --- | --- | --- |
+| s 342(e)(3) names column E for a deduction rate (line 3669; column D is the deduction, 4717) | red | not noticed: (e) deferred as "upper-band withholding" |
+| s 342(e)(4) the same (line 3670) | red | not noticed |
+| s 342(c)(2) is "subject to s 245(b2)" (3662), which is repealed (2474) | red; no effect on any answer | treated as an operative dependency; with Part D's absence, the reason (c)(1) and (c)(2) are deferred |
+
+### Schedule J column D: 4.67 or 7.00
+
+The independent tester found column D's rows above the threshold summing to 4.67 against a printed total of 7.00 (lines 4720-4730, and 4738-4748), with the Institute printing 7%.
+Within the files I may read, Axiom uses neither figure: its s 342(c)(1) is deferred, and its gap entry says "the deduction's rates are encoded in `schedule-j/sign-1`" (`docs/ENCODING-GAPS.md` lines 660-661).
+That file is out of this row and I did not open it, so I cannot say which figure Axiom's Schedule J carries; I stop short there.
+On our side, IL-05 takes column D amounts as inputs; IL-04 as repaired on 2026-10-07 computes them from the rows, so the composed answer would use 4.67 (IL-04's repair asserts 80.1579 at a wage of 7,704: 7,703 × 1.04% + 1 × 4.67%).
+
+### Where the text is silent
+
+Ours refuses by name, case by case (18 named refusals across the three rule modules: 4 in Schedule K, 8 in s 348, 6 in s 342, counted by `grep -c 'REFUSE "'`).
+Axiom defers whole outputs, each with a written reason, and inside the rules it executes it fills silence with a value: 0 for the monthly minimum of items 2-4 (X2); 0 and 0 for (d) without several employers (X16); 0 excluded and the wage uncapped when contributions are not under s 335 (X7); and any period at all, by `effective_from: '0001-01-01'` (X15).
+Of these, only the first is a value the source does not support, and Axiom's own gap file says so.
+
+### Periods
+
+Ours answers contribution periods from January 2026, because s 342 as deposited is the text from 1 January 2026 (the 2025 Budget-year Law s 19(4) and s 21, verified again from the deposited PDF), and refuses earlier ones.
+Axiom answers every period with the current text ("current_expression_only"); its coverage map's `validation_year` is 2025, its Schedule K tests are dated 2024 and its s 342 and s 348 tests January 2026.
+For the limbs Axiom executes this makes no difference that I could find: s 342(a) and (d) do not contain the words the 2026 change replaced, and Schedule K's last tag is תשע״ב־2 (line 4755).
+Whether every limb of s 348 as deposited, (a1) included, was in force in 2024 was not checked.
+
+### Interface
+
+| | ours | Axiom |
+| --- | --- | --- |
+| s 342 in | `An insured person, for section 342(a)-(b)` (column, wife flag); `An employee's month under section 342(c)` (year, month, branches, column D amounts, pension, person and age, date of birth, police, regulations flag); a list of each employer's deduction; `A renewed kibbutz member's month…`; `An employee who is also self-employed, in a month` | seven flat inputs: four booleans of status, the several-employers boolean, `coordinated_contributions`, `actual_total_monthly_deductions` |
+| s 342 out | who is liable (three-way); the deduction; the employer's permitted reduction; the (d) outcome (four-way, with the amount); the kibbutz's contributions; the two parts of the self-employed income | a judgment (holds / not_holds); shortfall and refund amounts; the parameter 70 |
+| s 348 in | `An insured person's period under section 348` (year, period, column, incomes by kind, minimum wage, the (d) and (e) statuses, s 350(c), an order under (c)), optionally the figures for a year | monthly wage, non-work income not exempt under s 350, the average wage, the s 335 boolean; the basic amount through Schedule K |
+| s 348 out | the income on which contributions are computed, or a named refusal | the wage after the ceiling; the 25% sum; the amount excluded |
+| Schedule K | item and period types; the figures for a tax year; the employee's four minimum wages; the 2026 figures published, with provenance | `insured_item` and every figure, per quarter, as inputs |
+
+### Axiom's test cases through our encoding
+
+Run in a scratch copy (`lad-il-05/run/`, the five rule modules byte-identical to the deposit, plus `axiom-cases.l4`), 2026-10-07, with the binary above: 30 assertions, each carrying **Axiom's** expected value, 28 satisfied and 2 failed, no other diagnostic; 8 `#EVAL`s printing ours.
+The two failures were written as expected-to-fail before the run (scratch lines 115 and 161).
+Where our interface differs, the adapter is named in the row.
+
+| case | Axiom expects | ours | result |
+| --- | --- | --- | --- |
+| s342 `insured_dual_status_worker_owes_own_contributions_and_shortfall` | liable for own; shortfall 100; refund 0 | as a self-employed column, "the insured person, for himself"; deductions 200 and 200 against a month whose (c) deduction is 500 (one maternity column D amount of 500): "the employee pays the difference" 100 | match, 3 of 3 (adapted: one column per call, X5; coordinated contributions built, X17) |
+| s342 `own_contribution_liability_requires_insurance` | not liable (not insured); 0; 0 | (a): could not be run, no input for an uninsured person (X6); (d) with one employer: "does not apply" | 2 match, 1 could not be run |
+| s342 `nonworking_insured_person_owes_own_contributions` | liable for own; 0; 0 | "the insured person, for himself"; (d) with no employer: "does not apply" | match, 3 of 3 |
+| s342 `chapter_three_only_wife_exemption` | not liable; 0; 0 | "no one: … is not liable"; (d): "does not apply" | match, 3 of 3 |
+| s342 `employee_only_receives_excess_deduction_refund` | not liable for own; shortfall 0; refund 150 | "the employer, for the employee"; deductions 325 and 325 against 500: refund 150 | match, 3 of 3 |
+| s348 `employee_income_below_ceiling_and_nonwork_income_below_threshold` (average wage 10,000, basic amount 10,382) | 15,000; 2,500; 2,000 | 15,000; 2,500; 2,000 (the whole of s 348: 15,000) | match, 3 of 3 |
+| s348 `employee_income_above_ceiling_and_nonwork_income_at_threshold` | 51,910; 2,500; 2,500 | the same (the whole of s 348: 51,910) | match, 3 of 3 |
+| s348 `nonwork_income_above_threshold_receives_no_partial_exclusion` | 51,910; 2,500; **0** | 51,910; 2,500; **2,500** (our all-or-nothing rule: 0; the whole of s 348: 51,910) | 2 match, 1 diverges (X1) |
+| s348 `ceiling_and_exclusion_do_not_operate_outside_section_335` | 60,000; 2,500; 0 | the 25% sum 2,500; the other two could not be run, no input for contributions not under s 335 (X7) | 1 match, 2 could not be run |
+| schedK `Employee monthly minimum uses the first month of the quarter` (2024) | 50,000; 6,000; 150,000; 18,000 | the same, through the Schedule K rules with figures for 2024; our s 348 entry refuses 2024 ("this row answers contribution periods from January 2026 only", scratch line 189) | match, 4 of 4 |
+| schedK `Item three October minimum uses October average wage` (2024) | monthly minimum **0**; 165,000; 2,100 | item 3's monthly minimum **700** (F2); 165,000; 2,100 | 2 match, 1 diverges (X2) |
+| schedK `Self-employed annual limits preserve quarterly changes` (2024) | 690,000; 36,750 | maximum: could not be run, four basic amounts in one tax year (X9; with one basic amount of 10,000 ours gives 600,000, which is not Axiom's input); minimum 36,750 | 1 match, 1 could not be run |
+| schedK `Other insured annual minimum retains January wage for the first three quarters` (2024) | 690,000; 19,800 | maximum: could not be run (X9); minimum 19,800 | 1 match, 1 could not be run |
+
+**13 cases, 38 expected outputs: 31 match, 2 diverge, 5 could not be run.**
+Every Axiom case uses invented figures (an average wage of 10,000, basic amounts of 10,000 to 13,000), except the s 348 cases' basic amount, 10,382, which is the Institute's 2026 figure and gives its 51,910.
+
+### Our independent-test findings, and how Axiom treats each
+
+| finding (INDEPENDENT-FINDINGS.md) | Axiom |
+| --- | --- |
+| Root cause 1: column D's rows sum to 4.67 above the threshold, the total says 7.00 | (c)(1) deferred; its rates are in `schedule-j/sign-1`, out of row and not opened: cannot say |
+| Root cause 2: s 342(c) does not apply the s 348(a) cap | the same gap: its s 348(a) output is an employee wage ceiling not wired to any s 342 output, and its (d) takes coordinated contributions as an input |
+| Root cause 3: monthly figures for items 2-4 | 0 for the minimum (X2, disowned by its gap entry); s 348(b), (d), (e) deferred, which is the tester's refusal in effect |
+| Root cause 4: s 348(d) for a quarter | deferred; its reason speaks only of a monthly item 3 minimum |
+| Root cause 5: the 2027 deduction, and an order under Amendment 252 s 7(b) | (c)(1) deferred; Schedule J out of row: silent |
+
+### What Axiom covers that we do not, and the reverse
+
+**Axiom, not ours:** an uninsured person under s 342(a) (X6); the "contributions payable under s 335" limb of s 348(a) and (a1) as an input (X7); a dual-status person in one call (X5); a basic amount that differs between quarters (X9, which the deposited s 1 does not produce); answers for periods before 2026 (X15).
+
+**Ours, not Axiom:** s 342(b); (c)(1) with its branch mapping; (c)(2) in every limb (pension, the man's and the woman's age, police and prison officers, the employer's reduction); coordinated contributions computed; (e) as a refusal; (e1); (f)(1)-(2); s 348(a) for every item and period on the whole income; (b) with s 350(c); (c)'s power test and refusal; (d) where its readings agree; (e) in both texts with the dated arm; the item derived from the case; the quarter and the average wage of a month derived from the text; a month for items 2-4; the 2026 figures with provenance; the expected-red checks of the source against itself.
+
+### Proposed repairs to our encoding (not made)
+
+- **P1 (X1; NOTES.md only).** Fork F3's reason says (a1) is "the same construction from below" as (a); the constructions differ (line 3763: "the amount" with יבוא; line 3764: "the income" with תובא and a qualifying clause).
+  Restate F3: the text reads at least as naturally as all or nothing; the deduction is taken because the Institute's published example applies it; a second encoder (Axiom) took the other reading.
+  Keep the answer; add the point to open question 2.
+- **P2 (X7; NOTES.md only).** Say in section 1 or assumption A5 that every s 348 rule presupposes contributions payable under s 335, the limb with which (a) and (a1) open (lines 3763-3764), and that the limb is not an input.
+- **P3 (X5; optional, interface).** A person who is both employee and self-employed (s 342(f), line 3673) cannot be put to `s 342(a)-(b)` in one call; consider a rule that takes both statuses and returns both liabilities (the independent tester's A7 points the same way).
+- **P4 (X6; optional).** Say that s 342(a)'s "insured person" is presupposed by the record.
+
+No expected value in any of our test modules should change on this comparison.
+
+### Bottom line
+
+Axiom executes a much smaller slice of these three provisions: s 342(a), and (d) given the coordinated contributions; s 348(a) for an employee's wage and (a1); and Schedule K's arithmetic with the item and every figure supplied by the caller.
+It defers the rest, each with a written reason.
+Where both compute, they agree, except on two points.
+One is s 348(a1) (X1), where the words lean to Axiom's all-or-nothing reading and the regulator's published practice supports ours; the text does not decide it.
+The other is the monthly minimum of items 2-4 (X2), where Axiom returns 0 and its own gap file says that is wrong.
+Axiom's deferral treats the repealed s 245(b2) as live (X3), and it does not notice the "column E" slips in s 342(e)(3)-(4).
+Nothing in the comparison shows an answer of ours wrong.
+One reason in our fork register (F3) is overstated, and two presuppositions should be stated.
+Of Axiom's 38 expected outputs, 31 match through our encoding, 2 diverge, and 5 cannot be put to our interface.
+
+### Read outside the allowed list, said plainly
+
+- While locating the `ENCODING-GAPS.md` entries, I printed by `awk` the heading lines of two entries not about these provisions: line 11 (`bootstrap-encoder-ref`, about the encoder build) and line 289 (`section-121b-a1-capital-charge-not-dated-from-2025`, an Income Tax Ordinance entry); heading text only, no body.
+- I printed four lines of the `bootstrap-encoder-ref` entry (24, 36, 37, 39), because each mentions s 342 or s 348; they say the encoder was a local build that reached s 342 "twice" and deferred (c)(1) on an unresolved import. That entry is about tooling, not these provisions.
+- `ls -R .axiom` printed the file names (not contents) of every encoding manifest, including other NII sections, Schedule J and Income Tax Ordinance sections; `ls` of the clone's top level printed its file names.
+- From the coverage map I also printed its top-level key names, the NII instrument's key names, `id` and `official_name`, and one `not_encoded` value that names s 337(a)(2) beside s 342(a).
+- In this repository: the headings (not bodies) of IL-04's `NOTES.md`, including the sub-headings of its "Comparison with Axiom's RuleSpec" section; its "Repair 2026-10-07" section, which I was allowed, refers by label to that comparison's items R1, R2, D11 and N3.
+- Not opened: Axiom's README, AGENTS.md, any other `docs/` file, any `composed/`, Income Tax Ordinance, s 1, s 334, s 337, Schedule J or ss 65-68 file, and anything under `l4-ide/specs/research/AXIOM-*`. No grep printed lines of any other Axiom file.
