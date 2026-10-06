@@ -1,0 +1,328 @@
+IMPORT prelude
+
+-- Silver Support Scheme Act 2015 (Singapore) -- ss 8, 9 and 13 to 19.
+--
+-- The rest of the Act, after the eligibility and recovery rules in sss-act.l4.
+-- Two very different things sit here: the INFORMATION regime in ss 8 and 9,
+-- which is the machinery that makes an automatic means-tested scheme possible,
+-- and the ordinary administrative provisions in ss 13 to 19.
+--
+-- ss 8 and 9 deserve the attention. The Scheme pays people without their
+-- applying, which means the Government must assemble means information about
+-- them from other departments. s 8 compels that disclosure and s 9 limits what
+-- may then be done with it. Those two sections are where the privacy of every
+-- recipient is decided.
+--
+-- NAIVE ENCODING. Straight from the text with the writing-l4-rules skill. No
+-- pipeline, no independent test pass, no human gate.
+--
+-- NOT ENCODED: ss 1 to 5 (purpose, administration, the Board's functions),
+-- s 18 (conduct of prosecutions) and s 20 (regulations).
+
+§ `Silver Support Scheme Act 2015 -- sections 8, 9 and 13 to 19`
+
+§§ `8 -- Compelled disclosure between departments`
+
+-- s 8(1): where the MINISTER CERTIFIES IN WRITING that it is necessary for an
+-- authorised person to have access to a particular class of MEANS INFORMATION
+-- held by a Government department or public authority, in order to facilitate
+-- the administration or enforcement of the Act or the administration of the
+-- Scheme, then the Minister responsible for that department "MAY ... DIRECT"
+-- it to provide "SO MUCH OF the means information AS IS NECESSARY for that
+-- purpose"; and that department "IS TO COMPLY ..., DESPITE ANY OTHER WRITTEN
+-- LAW, AND WHETHER OR NOT IT IS UNDER ANY OBLIGATION ... NOT TO DISCLOSE such
+-- information."
+--
+-- s 8(2) is the same machinery for CONFIDENTIAL INFORMATION other than means
+-- information, to an "information recipient" rather than an authorised person.
+--
+-- Three safeguards are built in, and all three are conditions rather than
+-- discretions: a written certificate of necessity, a limit to what is
+-- necessary, and a stated purpose. The duty to comply is absolute once they
+-- are met.
+DECLARE InformationKind IS ONE OF
+    `means information`                                 -- s 8(1)
+    `confidential information other than means information` -- s 8(2)
+
+DECLARE DisclosureDirection HAS
+    `the kind`                                  IS AN InformationKind
+    `the Minister certified in writing that access is necessary` IS A BOOLEAN
+    `the purpose is the administration or enforcement of this Act or the administration of the Scheme` IS A BOOLEAN
+    `the responsible Minister directed the department or public authority` IS A BOOLEAN
+    `no more than is necessary for that purpose was directed to be provided` IS A BOOLEAN
+    `the recipient is an authorised person`     IS A BOOLEAN
+    `the recipient is an information recipient` IS A BOOLEAN
+
+-- The recipient differs between the two subsections: (1) goes to an authorised
+-- person, (2) to an information recipient.
+GIVEN `the direction` IS A DisclosureDirection
+GIVETH A BOOLEAN
+DECIDE `the recipient matches the subsection` IF
+    CONSIDER `the direction`'s `the kind`
+    WHEN `means information` THEN `the direction`'s `the recipient is an authorised person`
+    OTHERWISE `the direction`'s `the recipient is an information recipient`
+
+GIVEN `the direction` IS A DisclosureDirection
+GIVETH A BOOLEAN
+DECIDE `the direction is validly given` IF
+        `the direction`'s `the Minister certified in writing that access is necessary`
+    AND `the direction`'s `the purpose is the administration or enforcement of this Act or the administration of the Scheme`
+    AND `the direction`'s `the responsible Minister directed the department or public authority`
+    AND `the direction`'s `no more than is necessary for that purpose was directed to be provided`
+    AND `the recipient matches the subsection` `the direction`
+
+-- The department must comply "DESPITE ANY OTHER WRITTEN LAW, AND WHETHER OR
+-- NOT IT IS UNDER ANY OBLIGATION ... NOT TO DISCLOSE". So an existing duty of
+-- confidence is no answer -- but only where the direction was validly given.
+GIVEN `the direction` IS A DisclosureDirection
+    , `the department is under an obligation not to disclose the information` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the department must comply with the direction` IF
+    `the direction is validly given` `the direction`
+
+§§ `9 -- What may then be done with the information`
+
+-- s 9(2): use or disclosure of information obtained under s 8, WITHOUT THE
+-- CONSENT of the individual, "is AUTHORISED ONLY IF the purpose ... is to
+-- communicate or manage the information as part of -- (a) the administration or
+-- enforcement of this Act; or (b) the administration of the Scheme."
+--
+-- A closed purpose test. Anything else needs consent.
+DECLARE UsePurpose IS ONE OF
+    `the administration or enforcement of this Act`     -- (a)
+    `the administration of the Scheme`                  -- (b)
+    `some other purpose`
+
+GIVEN `the purpose` IS A UsePurpose, `the individual consented` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the use or disclosure is authorised by section 9(2)` IF
+        `the individual consented`
+    OR  `the purpose is one section 9(2) names` `the purpose`
+
+GIVEN `the purpose` IS A UsePurpose
+GIVETH A BOOLEAN
+DECIDE `the purpose is one section 9(2) names` IF
+    CONSIDER `the purpose`
+    WHEN `some other purpose` THEN FALSE
+    OTHERWISE TRUE
+
+-- s 9(3): DESPITE s 9(2), information DERIVED FROM what was obtained under s 8
+-- may go to a public officer, public authority or any other person or
+-- organisation, for the development or implementation of a PRESCRIBED public
+-- scheme --
+--   (a) only at their request AND with the Minister's approval; and
+--   (b) only in the form of a REPORT stating (i) whether the individual
+--       satisfies the eligibility criteria for a benefit, and (ii) the
+--       description and amount of each benefit they are eligible for or have
+--       received up to the date of the report.
+--
+-- So the carve-out is tightly shaped: derived information only, a prescribed
+-- scheme only, on request, with approval, and only in that two-item form.
+DECLARE OnwardReport HAS
+    `the information is derived from information obtained under section 8` IS A BOOLEAN
+    `the receiving scheme is prescribed for the purposes of section 9(3)` IS A BOOLEAN
+    `it was requested by the recipient`         IS A BOOLEAN
+    `the Minister approved`                     IS A BOOLEAN
+    `it is in the form of a report stating only the two matters in section 9(3)(b)` IS A BOOLEAN
+    `the individual has opted out and the Commissioner, Board or administrator has been notified` IS A BOOLEAN
+    `the individual consented despite having opted out` IS A BOOLEAN
+
+GIVEN `the report` IS AN OnwardReport
+GIVETH A BOOLEAN
+DECIDE `the section 9(3) conditions are met` IF
+        `the report`'s `the information is derived from information obtained under section 8`
+    AND `the report`'s `the receiving scheme is prescribed for the purposes of section 9(3)`
+    AND `the report`'s `it was requested by the recipient`
+    AND `the report`'s `the Minister approved`
+    AND `the report`'s `it is in the form of a report stating only the two matters in section 9(3)(b)`
+
+-- s 9(5): if an individual OPTS OUT, "in the manner determined by the
+-- Commissioner", then from the time of notification the report "MUST NOT" be
+-- provided about them, "EXCEPT WITH THE CONSENT of the individual."
+--
+-- An opt-out, not an opt-in: the reports flow unless the person stops them, and
+-- the burden is on the individual to find out that they can.
+GIVEN `the report` IS AN OnwardReport
+GIVETH A BOOLEAN
+DECIDE `section 9(5) forbids providing the report` IF
+        `the report`'s `the individual has opted out and the Commissioner, Board or administrator has been notified`
+    AND NOT `the report`'s `the individual consented despite having opted out`
+
+GIVEN `the report` IS AN OnwardReport
+GIVETH A BOOLEAN
+DECIDE `the report may lawfully be provided` IF
+        `the section 9(3) conditions are met` `the report`
+    AND NOT `section 9(5) forbids providing the report` `the report`
+
+-- s 9(7): contravening s 9(2), (3) or (5) is an offence -- a fine not exceeding
+-- $5,000 or imprisonment not exceeding 12 months or both. Note that the same
+-- maximum attaches to misusing a recipient's private information as attaches,
+-- under s 11, to obtaining a grant by a dishonest lie.
+`the maximum fine under section 9(7) in dollars` MEANS 5000
+`the maximum imprisonment under section 9(7) in months` MEANS 12
+
+§§ `13 -- The administrator's certificate`
+
+-- s 13: a certificate purporting to be issued by an administrator certifying
+-- (a) the amount received, or (b) the amount recoverable, "is PRIMA FACIE
+-- EVIDENCE that the amount so stated was received by that person or is
+-- recoverable from that person ... as at that date."
+--
+-- Prima facie, so rebuttable -- but the burden has moved. The recipient must
+-- displace the administrator's own figure.
+DECLARE Certificate IS ONE OF
+    `the amount of benefit received as at a date`       -- (a)
+    `the amount recoverable as at a date`               -- (b)
+    `something else`
+
+GIVEN `the certificate` IS A Certificate
+    , `it purports to be issued by an administrator` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the certificate is prima facie evidence of the amount` IF
+        `it purports to be issued by an administrator`
+    AND `the certificate is of a kind section 13 names` `the certificate`
+
+GIVEN `the certificate` IS A Certificate
+GIVETH A BOOLEAN
+DECIDE `the certificate is of a kind section 13 names` IF
+    CONSIDER `the certificate`
+    WHEN `something else` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `14 and 15 -- The powers to obtain information, and obstruction`
+
+-- s 14(4): a person required to provide information or produce a document who
+-- "REFUSES OR FAILS, WITHOUT REASONABLE EXCUSE, to do so WITHIN THE TIME
+-- ALLOWED" commits an offence -- a fine not exceeding $10,000 or imprisonment
+-- not exceeding 6 months or both.
+DECLARE InformationRequirement HAS
+    `the Commissioner or an investigator required information or a document under section 14(1)(b)` IS A BOOLEAN
+    `the person provided it within the time allowed` IS A BOOLEAN
+    `the person had a reasonable excuse`        IS A BOOLEAN
+
+GIVEN `the requirement` IS AN InformationRequirement
+GIVETH A BOOLEAN
+DECIDE `an offence under section 14(4) is committed` IF
+        `the requirement`'s `the Commissioner or an investigator required information or a document under section 14(1)(b)`
+    AND NOT `the requirement`'s `the person provided it within the time allowed`
+    AND NOT `the requirement`'s `the person had a reasonable excuse`
+
+`the maximum fine under section 14(4) in dollars` MEANS 10000
+`the maximum imprisonment under section 14(4) in months` MEANS 6
+
+-- s 15: obstructing, hindering or impeding the Commissioner or an investigator
+-- "WITHOUT REASONABLE EXCUSE" -- a fine not exceeding $20,000 or imprisonment
+-- not exceeding 12 months or both.
+--
+-- The HIGHEST maximum fine in the Act is for obstruction, at $20,000. Obtaining
+-- a benefit dishonestly under s 11 carries $5,000. See NOTES.md.
+`the maximum fine under section 15 in dollars` MEANS 20000
+`the maximum imprisonment under section 15 in months` MEANS 12
+
+GIVEN `the person obstructed, hindered or impeded the Commissioner or an investigator` IS A BOOLEAN
+    , `the person had a reasonable excuse` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `an offence under section 15 is committed` IF
+        `the person obstructed, hindered or impeded the Commissioner or an investigator`
+    AND NOT `the person had a reasonable excuse`
+
+§§ `16 -- Officers of bodies corporate and others`
+
+-- s 16(1): where an offence by a BODY CORPORATE is proved (a) to have been
+-- committed with the CONSENT OR CONNIVANCE of an officer, or (b) to be
+-- ATTRIBUTABLE TO ANY NEGLECT on the officer's part, "the officer AS WELL AS
+-- the body corporate shall be guilty".
+--
+-- ss 16(2) to (4) extend the same two limbs to members managing a body
+-- corporate, to partners of a partnership, and to officers or governing-body
+-- members of an unincorporated association. One rule, four bodies.
+DECLARE BodyKind IS ONE OF
+    `a body corporate`                          -- (1)
+    `a body corporate managed by its members`   -- (2)
+    `a partnership`                             -- (3)
+    `an unincorporated association other than a partnership` -- (4)
+
+DECLARE AttributionFacts HAS
+    `the kind`                                  IS A BodyKind
+    `an offence under this Act by the body is proved` IS A BOOLEAN
+    `committed with the consent or connivance of the individual` IS A BOOLEAN   -- (a)
+    `attributable to neglect on the individual's part` IS A BOOLEAN             -- (b)
+
+GIVEN `the facts` IS AN AttributionFacts
+GIVETH A BOOLEAN
+DECIDE `the individual is also guilty of the offence` IF
+        `the facts`'s `an offence under this Act by the body is proved`
+    AND `a limb of section 16 is made out` `the facts`
+
+GIVEN `the facts` IS AN AttributionFacts
+GIVETH A BOOLEAN
+DECIDE `a limb of section 16 is made out` IF
+        `the facts`'s `committed with the consent or connivance of the individual`
+    OR  `the facts`'s `attributable to neglect on the individual's part`
+
+§§ `17 -- Composition`
+
+-- s 17(1): the Board may compound a prescribed compoundable offence "by
+-- collecting ... a sum NOT EXCEEDING THE LOWER of the following: (a) ONE HALF
+-- of the amount of the maximum fine that is prescribed for the offence;
+-- (b) $1,000."
+--
+-- A double ceiling, and $1,000 binds for every offence in the Act whose maximum
+-- fine is above $2,000 -- which is all of them except none. The half-the-fine
+-- limb can therefore never bite except on an offence with a maximum of $2,000
+-- or less, and the Act creates none.
+`the composition absolute ceiling in dollars` MEANS 1000
+
+GIVEN `the maximum fine prescribed for the offence` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the composition ceiling` IS
+    IF   (0.5 TIMES `the maximum fine prescribed for the offence`)
+             LESS THAN `the composition absolute ceiling in dollars`
+    THEN 0.5 TIMES `the maximum fine prescribed for the offence`
+    ELSE `the composition absolute ceiling in dollars`
+
+GIVEN `the offence is prescribed as compoundable` IS A BOOLEAN
+    , `the maximum fine prescribed for the offence` IS A NUMBER
+    , `the sum collected` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the offence may be compounded for that sum` IF
+        `the offence is prescribed as compoundable`
+    AND `the sum collected` AT MOST `the composition ceiling` `the maximum fine prescribed for the offence`
+
+§§ `19 -- Protection from personal liability`
+
+-- s 19(1): "NO liability is to lie personally against any of the following
+-- individuals who, ACTING IN GOOD FAITH AND WITH REASONABLE CARE, does or omits
+-- to do anything in the execution or purported execution of this Act" --
+-- the Commissioner, Deputy and Assistant Commissioners, public officers acting
+-- under the Commissioner's direction, members, officers and employees of the
+-- Board, and investigators.
+--
+-- Two conditions, both required, and the same shape as s 19(1) of the Advance
+-- Medical Directive Act: good faith is not enough without reasonable care.
+DECLARE ProtectedIndividual IS ONE OF
+    `the Commissioner for Silver Support`                       -- (a)
+    `a Deputy Commissioner for Silver Support`                  -- (b)
+    `an Assistant Commissioner for Silver Support`              -- (c)
+    `a public officer or employee acting under the Commissioner's direction` -- (d)
+    `a member, officer or employee of the Board`                -- (e)
+    `an investigator`                                           -- (f)
+    `someone outside the section 19(1) list`
+
+GIVEN `the individual` IS A ProtectedIndividual
+GIVETH A BOOLEAN
+DECIDE `the individual is within the section 19(1) list` IF
+    CONSIDER `the individual`
+    WHEN `someone outside the section 19(1) list` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the individual` IS A ProtectedIndividual
+    , `acting in good faith` IS A BOOLEAN
+    , `acting with reasonable care` IS A BOOLEAN
+    , `in the execution or purported execution of this Act` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `no personal liability lies` IF
+        `the individual is within the section 19(1) list` `the individual`
+    AND `acting in good faith`
+    AND `acting with reasonable care`
+    AND `in the execution or purported execution of this Act`

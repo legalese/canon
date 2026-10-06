@@ -7,8 +7,8 @@ pass, no human gate.
 **Edition:** 2020 Revised Edition, informal consolidation in force from
 1 December 2025.
 
-**Checks:** `l4 run sss-cases.l4` — 47 assertions satisfied, 0 errors,
-0 warnings.
+**Checks:** `l4 run sss-cases.l4` and `l4 run sss-administration-cases.l4` —
+102 assertions satisfied, 0 errors, 0 warnings.
 
 **No `daydate`.** The `l4` on this machine imports `prelude` but not `daydate`,
 so there is no `DATE` type. A date is carried as its three components and
@@ -88,3 +88,68 @@ under (1).
 - The three observations above are observations. The second in particular needs
   someone who can say how the Central Provident Fund Board actually applies the
   deeming rules in practice.
+
+
+---
+
+# Added with sections 8, 9 and 13 to 19
+
+## The information regime is the interesting half
+
+The Scheme pays people **without their applying**. That only works if the
+Government can assemble means information about them from other departments, and
+ss 8 and 9 are where that is arranged. They decide the privacy of every
+recipient, and they are more consequential than anything in the eligibility
+sections.
+
+**s 8 compels disclosure, and an existing duty of confidence is no answer.** A
+department directed under s 8 must comply "**despite any other written law, and
+whether or not it is under any obligation ... not to disclose**". Three
+safeguards are built in and all three are conditions rather than discretions: a
+**written** ministerial certificate of necessity, a limit to "**so much ... as is
+necessary**", and a stated purpose. Asserted as a pair on the
+duty-of-confidence fact, where the answer deliberately does not move.
+
+**s 9(5) is an opt-out, not an opt-in.** Reports about an individual flow to
+other prescribed public schemes unless that individual opts out "in the manner
+determined by the Commissioner". The burden is on the person to discover that
+the reports exist and that they may be stopped. Nothing in the Act requires
+anyone to tell them.
+
+## The penalty ranking
+
+Set the four maxima side by side:
+
+| offence | maximum fine |
+|---|---|
+| s 15 obstructing the Commissioner or an investigator | **$20,000** |
+| s 14(4) failing to produce information or a document | $10,000 |
+| s 9(7) misusing a recipient's private information | $5,000 |
+| s 11 dishonestly obtaining a benefit | $5,000 |
+
+Obstructing the investigation is worth four times as much as misusing the
+information the investigation gathered, and four times as much as the fraud the
+Act exists to prevent. That is a choice, and the Act does not explain it.
+Asserted directly.
+
+## Two smaller observations
+
+**s 17's half-the-fine limb can never bite.** Composition is capped at "the
+lower of (a) one half of the maximum fine ... (b) $1,000". The half-limb only
+governs where the maximum fine is $2,000 or less, and **the Act creates no such
+offence** — its lowest maximum is $5,000. So limb (a) is inoperative on the
+Act's own offences as it stands. It would come alive only for an offence created
+by regulations with a maximum under $2,000.
+
+**Neglect alone makes an officer personally guilty.** s 16 attributes a body's
+offence to an officer either on "consent or connivance" **or** on neglect. No
+knowledge is needed for the second limb. The same two limbs reach members
+managing a body corporate, partners, and officers of unincorporated
+associations.
+
+## What would still need doing
+
+- ss 1–5, s 18 and s 20.
+- The regulations under s 20, which carry the whole of the real eligibility test
+  and every benefit amount. This remains the gap that matters most.
+- No case law was searched, and no human gate has been sought.
