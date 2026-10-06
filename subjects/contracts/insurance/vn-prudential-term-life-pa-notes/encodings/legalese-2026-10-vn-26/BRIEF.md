@@ -22,6 +22,10 @@ The deliverable is a faithful, reviewable, bilingual (Vietnamese source, English
 
 **Những lưu ý đối với quy tắc, điều khoản sản phẩm bảo hiểm** — Prudential's notes for its term life product with a personal accident benefit, 24 pages. It says of itself: "LƯU Ý: Các Quy định dưới đây chỉ mang tính chất tham khảo. Chi tiết về các điều khoản của Hợp đồng bảo hiểm được quy định cụ thể trong Quy tắc, Điều khoản của sản phẩm." (the rules below are for reference only; the contract's terms are in the product's Rules and Terms). It covers, among other things, the duty to declare information accurately (item 1) and the benefits (item 2: accidental death paid at up to 300% of the sum insured; permanent injury as a percentage of it, at most 100% over the term).
 
+## Correction by the lead, 2026-10-06 23:10
+
+This brief below describes the file as a summary of notes that defers to rules and terms the team does not hold. **That is wrong.** The same PDF holds both: pages 1-2 (text lines 1-97) are the notes, and pages 3-24 (about lines 98-1103) are the full `QUY TẮC VÀ ĐIỀU KHOẢN SẢN PHẨM BẢO HIỂM TỬ KỲ VỚI QUYỀN LỢI BẢO HIỂM TAI NẠN CÁ NHÂN`, found by the encoder. The scope below ("the whole document") therefore covers both layers. Encode both, keep them apart, label each rule with its layer, resolve the notes' deferrals only to the rules and terms in this file, and record every disagreement between the layers as a finding. Where the text below says the team does not hold the terms, read it as superseded by this paragraph.
+
 ## Scope: pinned, do not widen or narrow
 
 **The whole document**: every Part, Article, clause, definition, schedule, table and annex it contains. Nothing is deliberately left out.

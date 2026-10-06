@@ -1,0 +1,509 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+
+-- Prudential Vietnam: term life insurance with a personal accident benefit.
+-- THE NOUNS: DECLARE and nothing else. Every rule module imports this one.
+--
+-- Source: ../../source/raw/prudential-notes.txt, the `pdftotext -layout` rendering of the
+-- 24-page PDF retrieved 2026-10-06 (PDF sha256 ae0b1f9a...2d792c). `src:N` is line N of it,
+-- quoted mechanically. The PDF holds TWO documents (NOTES.md section 1):
+--   lines 1-97     the summary notes, 2 pages ("from the summary notes");
+--   lines 98-1103  the product's Rules and Terms, 22 pages ("from the Rules and Terms").
+--
+-- Money is Vietnamese dong (VND), a bare NUMBER. Dates are calendar dates (IMPORT daydate).
+-- Membership test for this module: a witness of ordinary competence could testify to the
+-- fact, or the certificate, the application, a medical record or a police report records
+-- it. Whether the fact makes a benefit payable is a rule, and lives in a rule module.
+
+§ `Nouns`
+
+§§ `The parties`
+
+-- Prudential (Article 1.1), the policyholder ("Bên mua bảo hiểm", 1.2), the insured
+-- ("Người được bảo hiểm", 1.3), and whoever receives a benefit ("người nhận quyền lợi bảo
+-- hiểm", Articles 10 and 11), called here the claimant.
+DECLARE `A party` IS ONE OF
+    `Prudential`
+    `the policyholder`
+    `the insured`
+    `the claimant`
+
+-- Article 1.2: an organisation lawfully established and operating in Vietnam, or an
+-- individual aged 18 or more, residing in Vietnam, with full civil act capacity.
+DECLARE `The policyholder` IS ONE OF
+    `an organisation` HAS
+        `lawfully established and operating in Vietnam` IS A BOOLEAN
+    `an individual` HAS
+        `date of birth`                IS A DATE
+        `residing in Vietnam`          IS A BOOLEAN
+        `with full civil act capacity` IS A BOOLEAN
+
+-- Article 1.2, the four bullets of insurable interest, plus a member for none of them.
+DECLARE `The insured's relationship to the policyholder` IS ONE OF
+    `the insured is the policyholder`
+    `a lawful spouse, child or parent of the policyholder, natural or adoptive`
+    `a sibling of the policyholder, or a person in a lawful nurturing, maintenance or guardianship relationship with the policyholder`
+    `another person in whom the policyholder has an insurable interest`
+    `none of these`
+
+§§ `The application and the policy`
+
+-- What the application ("Hồ sơ yêu cầu bảo hiểm") records at entry.
+DECLARE `The application` HAS
+    `the policyholder`                               IS A `The policyholder`
+    `the insured's relationship to the policyholder` IS A `The insured's relationship to the policyholder`
+    `written consent of the insured`                 IS A BOOLEAN
+    `the insured's date of birth`                    IS A DATE
+    `the insured residing in Vietnam`                IS A BOOLEAN
+    `date of entry into the contract`                IS A DATE
+    `chosen contract term in years`                  IS A NUMBER
+
+-- What the certificate ("Giấy Chứng nhận bảo hiểm nhân thọ") and the contract's history
+-- record. The sum insured, the term and the effective date are written on the certificate
+-- (Articles 1.7, 1.11, 2.2): inputs, never defaults.
+-- `date the contract last ceased to be in force`: the date of the latest lapse (Article
+-- 15.1) or termination, NOTHING if it never ceased. `date of the latest reinstatement`:
+-- Article 12.1(h), NOTHING if never reinstated.
+DECLARE `The policy` HAS
+    `sum insured`                                  IS A NUMBER
+    `chosen contract term in years`                IS A NUMBER
+    `effective date`                               IS A DATE
+    `the insured's date of birth`                  IS A DATE
+    `date the contract last ceased to be in force` IS A MAYBE DATE
+    `date of the latest reinstatement`             IS A MAYBE DATE
+
+-- Money on the contract at the time a payment is worked out. Each "if any" ("nếu có") in
+-- the source is a MAYBE: NOTHING is the source's own absent case.
+-- `surrender value` (Giá trị hoàn lại, 1.13) is computed on a technical basis approved by
+-- the Ministry of Finance that the document does not contain: always an input.
+-- `debts` (Khoản nợ, 1.15): unpaid premium, advances from the surrender value, and the
+-- investment income reduction (1.14), as a total.
+DECLARE `The accounts` HAS
+    `total premiums paid`                           IS A NUMBER
+    `total premiums paid up to the insured event`   IS A NUMBER
+    `surrender value`                               IS A MAYBE NUMBER
+    `debts`                                         IS A MAYBE NUMBER
+    `medical examination and test costs`            IS A MAYBE NUMBER
+
+-- Benefits already paid during the contract term, for the caps of Articles 8.2-8.6.
+DECLARE `Benefits already paid` HAS
+    `permanent-injury benefit paid during the term`                IS A NUMBER
+    `internal-organ benefit paid during the term`                  IS A NUMBER
+    `fracture benefit paid during the term`                        IS A NUMBER
+    `burn benefit paid during the term`                            IS A NUMBER
+    `ambulance benefit paid in the contract year of the accident`  IS A NUMBER
+    `injury benefits under Articles 8.2-8.5 paid for this accident` IS A NUMBER
+
+§§ `The accident and its causes`
+
+-- How an event is linked to a cause. The three documents use three different tests:
+-- Article 11.1 "directly caused by"; Article 3 "directly or indirectly caused by"; the
+-- summary notes, item 3, "related to". So the link is recorded, not a yes/no.
+DECLARE `A link to a cause` IS ONE OF
+    `directly caused by it`
+    `indirectly caused by it`
+    `related to it, but not caused by it`
+    `not related to it`
+
+-- The causes the exclusions name (Article 11.1(a)-(f), (h); Article 3; notes item 3), each
+-- as the link between the insured event and that cause. Pre-existence (11.1(g)) is worked
+-- out from dates, not recorded here.
+-- `a competent State authority concluded it was a crime`: the parenthesis in Article
+-- 11.1(b) and Article 3; the notes omit it.
+-- `the substance was prescribed by a Doctor` and `the influence was the cause of the
+-- Accident`: the two limbs of the exception to Article 11.1(e).
+-- `the intentional act was that of one of several beneficiaries`: the case of Article 11.3.
+DECLARE `The causes of the event` HAS
+    `war, belligerent acts, rebellion, civil disorder or riot`                IS A `A link to a cause`
+    `a crime of the policyholder, the insured or the claimant`               IS A `A link to a cause`
+    `a competent State authority concluded it was a crime`                   IS A BOOLEAN
+    `suicide or self-inflicted injury of the insured`                        IS A `A link to a cause`
+    `a dangerous activity of the insured`                                    IS A `A link to a cause`
+    `the influence of addictive substances, psychiatric drugs, alcohol, poison, gas, similar substances or narcotics` IS A `A link to a cause`
+    `the substance was prescribed by a Doctor`                               IS A BOOLEAN
+    `the influence was the cause of the Accident`                            IS A BOOLEAN
+    `illegal use of narcotics or stimulants`                                 IS A `A link to a cause`
+    `driving with a blood alcohol level above the legal limit`               IS A `A link to a cause`
+    `an intentional act of the policyholder, the insured or the claimant`    IS A `A link to a cause`
+    `the intentional act was that of one of several beneficiaries`           IS A BOOLEAN
+    `an illness (such as osteoporosis or a bone disease), or medical treatment` IS A `A link to a cause`
+
+-- An event claimed as an Accident ("Tai nạn", Article 1.16), with the four limbs of the
+-- definition as facts, and its causes.
+DECLARE `An accident` HAS
+    `date of the accident`                                           IS A DATE
+    `caused by the impact of a sudden external force or object`      IS A BOOLEAN
+    `involuntary and unintended`                                     IS A BOOLEAN
+    `at a determinate time and place`                                IS A BOOLEAN
+    `the sole and direct cause, unrelated to any other cause such as illness` IS A BOOLEAN
+    `causes`                                                         IS A `The causes of the event`
+
+§§ `Death`
+
+-- Article 8.1(b) and (c): the two modes of travel that raise the death benefit.
+DECLARE `A mode of travel at the time of death` IS ONE OF
+    `a ticketed passenger on licensed public commercial land transport on a regular schedule and an established route`
+    `a ticketed passenger on a licensed commercial flight on a regular schedule and an established route`
+    `any other circumstance`
+
+-- `the event that caused it`: JUST the event if the death resulted from an event claimed as
+-- an Accident (whether it is one is a rule, Article 1.16); NOTHING for a death from illness
+-- or any other cause with no such event.
+DECLARE `A death of the insured` HAS
+    `date of death`                     IS A DATE
+    `the event that caused it`          IS A MAYBE `An accident`
+    `mode of travel`                    IS A `A mode of travel at the time of death`
+
+§§ `Injuries: the rows of the payout-rate table (PHỤ LỤC)`
+
+-- Article 1.19, brain injury ("Chấn thương sọ não"): two alternative conditions.
+DECLARE `A head injury` HAS
+    `continuous coma, in hours`                                         IS A NUMBER
+    `Glasgow score of 6 or less throughout 96 hours of hospital treatment` IS A BOOLEAN
+    `needed life support`                                               IS A BOOLEAN
+    `coma directly caused by alcohol, an addictive substance or illness` IS A BOOLEAN
+    `depressed skull fracture`                                          IS A BOOLEAN
+    `dural tear with acute subdural haematoma shown on CT or MRI`        IS A BOOLEAN
+    `needed brain surgery`                                              IS A BOOLEAN
+    `only a linear vault fracture or a skull-base fracture`             IS A BOOLEAN
+
+-- Section 1 of the table, one constructor per row, in the table's order.
+-- `an injury the table does not list`: e.g. total blindness with the eyeballs intact.
+DECLARE `A permanent injury` IS ONE OF
+    `loss of both hands`
+    `loss of both legs`
+    `loss of both eyes`
+    `loss of one hand and one leg`
+    `loss of one hand and one eye`
+    `loss of one leg and one eye`
+    `brain injury` HAS `the head injury` IS A `A head injury`
+    `loss of one hand`
+    `loss of one leg`
+    `loss of one eye`
+    `loss of one thumb`
+    `loss of one finger`
+    `loss of all the fingers of one hand`
+    `loss of one toe`
+    `an injury the table does not list` HAS `description` IS A STRING
+
+-- Section 2 of the table.
+DECLARE `An internal organ injury` IS ONE OF
+    `pneumothorax or haemothorax from external trauma`
+    `ruptured spleen`
+    `ruptured liver`
+    `perforated stomach, small intestine or colon`
+    `ruptured pancreas`
+    `kidney injury with one of the listed conditions`
+    `torn or severed urethra`
+    `torn bladder wall`
+    `severed ureter`
+    `injury to both kidneys in the same Accident`
+    `an organ injury the table does not list` HAS `description` IS A STRING
+
+-- Section 3 of the table. Which row a break belongs to is a medical classification, so it is
+-- an input (NOTES.md, finding on the ankle). Grouping read from the page image, p.24.
+DECLARE `A bone in the fracture table` IS ONE OF
+    `the spine, except the coccyx`
+    `the pelvis`
+    `the sternum`
+    `one or more leg bones: femur, patella, tibia, fibula`
+    `the clavicle`
+    `the elbow`
+    `a wrist bone`
+    `the ankle`
+    `one or more arm bones: humerus, radius, ulna`
+    `a rib`
+    `the coccyx`
+    `one or more of: hand, finger, foot, thumb, toe or nose bones, or a bone not listed above`
+
+-- A medical practitioner, for the definition of Doctor (Article 1.25).
+DECLARE `A relation that disqualifies a Doctor` IS ONE OF
+    `the policyholder, the insured or a beneficiary`
+    `a business partner of the policyholder or the insured`
+    `an insurance agent, employer or employee of the policyholder or the insured`
+    `an immediate family member of the policyholder or the insured`
+    `no such relation`
+
+DECLARE `A medical practitioner` HAS
+    `a university degree in Western medicine or higher`  IS A BOOLEAN
+    `lawfully licensed locally to examine, treat and operate` IS A BOOLEAN
+    `relation to the parties`                             IS A `A relation that disqualifies a Doctor`
+
+-- Article 1.20: one break. `date of the previous fracture of the same bone`: NOTHING if
+-- this bone had not broken before (the 10-month rule, Article 8.4).
+DECLARE `A fracture` HAS
+    `the bone`                                            IS A `A bone in the fracture table`
+    `a complete break, not a hairline crack or greenstick fracture` IS A BOOLEAN
+    `confirmed on X-ray, CT or MRI by`                    IS A `A medical practitioner`
+    `date of the fracture`                                IS A DATE
+    `date of the previous fracture of the same bone`      IS A MAYBE DATE
+
+-- Section 4 of the table: one burn event, by area and degree.
+DECLARE `A burn` HAS
+    `percent of body skin area with third-degree burns`   IS A NUMBER
+    `percent of body skin area with second-degree burns`  IS A NUMBER
+
+§§ `Facilities (Articles 1.23 and 1.24)`
+
+-- Article 1.23, the kinds of facility that are never a Hospital, plus the ordinary case.
+DECLARE `A kind of medical facility` IS ONE OF
+    `a hospital`
+    `a preventive medicine centre`
+    `a medical assessment facility`
+    `a general clinic`
+    `a specialist clinic or family doctor`
+    `a traditional medicine hospital, institute or clinic`
+    `a maternity home`
+    `a diagnostic facility`
+    `a medical services facility`
+    `a commune-level health station or equivalent`
+    `a nursing home, rehabilitation centre or convalescent home`
+
+DECLARE `A medical facility` HAS
+    `kind`                                                     IS A `A kind of medical facility`
+    `established and operating under Vietnamese law to examine and treat patients` IS A BOOLEAN
+    `inpatient treatment`                                      IS A BOOLEAN
+    `operating 24/7 with licensed doctors, physicians and nurses` IS A BOOLEAN
+    `managed by persons licensed by a competent authority`     IS A BOOLEAN
+    `keeping and providing medical and financial records as the law requires` IS A BOOLEAN
+
+DECLARE `A care unit` HAS
+    `in`                                                      IS A `A medical facility`
+    `a post-operative room or an emergency room`               IS A BOOLEAN
+    `with inpatient accommodation`                            IS A BOOLEAN
+    `set up for an intensive care and treatment programme`     IS A BOOLEAN
+    `reserved for patients whose vital functions are threatened, needing a Doctor's monitoring` IS A BOOLEAN
+    `equipped on site for immediate intervention`             IS A BOOLEAN
+
+-- Article 8.6: what happened after the accident.
+DECLARE `The emergency treatment` HAS
+    `treated overnight in`               IS A MAYBE `A care unit`
+    `transferred to another hospital`    IS A BOOLEAN
+
+§§ `Total and permanent disability (Article 1.17)`
+
+DECLARE `A pair of body parts` IS ONE OF
+    `both hands`
+    `both legs`
+    `one hand and one leg`
+    `both eyes`
+    `one hand and one eye`
+    `one leg and one eye`
+
+-- `loss or complete irrecoverable paralysis of`: limb (a); NOTHING if not claimed.
+-- `loss of working capacity, in percent`: limb (b); NOTHING if not assessed.
+DECLARE `A disability` HAS
+    `loss or complete irrecoverable paralysis of`              IS A MAYBE `A pair of body parts`
+    `by paralysis`                                             IS A BOOLEAN
+    `only a weakening of the limbs`                            IS A BOOLEAN
+    `loss of working capacity, in percent`                     IS A MAYBE NUMBER
+    `confirmed by a provincial-level or higher medical authority or assessment council` IS A BOOLEAN
+    `date of the accident or of the definitive diagnosis`      IS A DATE
+    `date of certification`                                    IS A DATE
+
+§§ `Before and around the contract (Articles 3, 5, 6 and 7)`
+
+-- Article 3, temporary cover. `date the cover was decided`: the date Prudential issued the
+-- certificate, postponed, or decided to refuse; NOTHING while none of these has happened.
+DECLARE `The temporary cover` HAS
+    `date the valid application was submitted and the first premium paid in full` IS A DATE
+    `date the cover was decided`                                    IS A MAYBE DATE
+    `total sum insured of the main product in the new applications` IS A NUMBER
+
+DECLARE `What Article 3 pays` IS ONE OF
+    `the temporary cover benefit`                                HAS `the amount` IS A NUMBER
+    `the premiums paid, refunded instead of the temporary cover benefit` HAS `the amount` IS A NUMBER
+    `the premiums paid, refunded less medical examination costs, for an excluded death` HAS `the amount` IS A NUMBER
+    `nothing under Article 3: the death was outside the temporary cover period`
+
+-- Article 5, a misstated date of birth or sex. The premium at the correct age and sex, and
+-- the sum insured that the premium paid would buy, come from Prudential's premium rates,
+-- which the document does not contain: inputs.
+DECLARE `A misstated age or sex` HAS
+    `premium paid, per period`                                  IS A NUMBER
+    `premium at the correct age and sex, per period`            IS A NUMBER
+    `total premium paid in excess of the correct premium`       IS A NUMBER
+    `sum insured that the premium paid buys at the correct age and sex` IS A NUMBER
+    `the insured acceptable at the correct age and sex`         IS A BOOLEAN
+    `benefits already paid`                                     IS A NUMBER
+
+DECLARE `The adjustment for a misstated age or sex` IS ONE OF
+    `the sum insured is adjusted to`                    HAS `the new sum insured` IS A NUMBER
+    `Prudential refunds the excess premium`             HAS `the amount` IS A NUMBER
+    `the contract is cancelled and Prudential pays`     HAS `the amount` IS A NUMBER
+    `no adjustment is needed`
+
+-- Article 6: a misstatement Prudential discovers.
+-- `material`: had Prudential known, it would not have accepted the cover.
+DECLARE `A misstatement` HAS
+    `material`                         IS A BOOLEAN
+    `date Prudential raises it`        IS A DATE
+
+-- Article 7: the policyholder dies, or the organisation ceases to exist.
+DECLARE `A change in the policyholder` HAS
+    `the policyholder died while the contract was in force`                     IS A BOOLEAN
+    `the heir meets the conditions for a policyholder`                          IS A BOOLEAN
+    `the organisation dissolved, went bankrupt or ceased operating while the contract was in force` IS A BOOLEAN
+    `the contract had been assigned`                                            IS A BOOLEAN
+
+DECLARE `What Article 7 does` IS ONE OF
+    `the lawful heir inherits the policyholder's rights and obligations`
+    `the contract terminates early and Prudential pays` HAS `the amount` IS A NUMBER
+    `the insured becomes the new policyholder; the original policyholder's beneficiaries are cancelled`
+    `Article 7 does not apply`
+
+§§ `Occupation and claims (Articles 9 and 10)`
+
+-- Article 9. Each MAYBE is NOTHING where the thing has not happened.
+DECLARE `The occupation history` HAS
+    `date the occupation changed`                         IS A MAYBE DATE
+    `date the change was notified`                        IS A MAYBE DATE
+    `the insured under 18 at entry`                       IS A BOOLEAN
+    `date the occupation was notified after turning 18`   IS A MAYBE DATE
+
+-- Article 10: which benefit the claim is for, and so which of 10.2-10.5 applies.
+DECLARE `A kind of claim` IS ONE OF
+    `death, or total and permanent disability, not caused by an Accident (10.2)`
+    `death caused by an Accident (10.3)`
+    `permanent injury, internal organ injury, fracture or burn caused by an Accident (10.4)`
+    `emergency transport after an Accident (10.5)`
+    `maturity (10.8.1)`
+
+-- Article 10.1-10.5: the documents in the file, one field per item. `accident papers exist`:
+-- the police and accident reports are required only "nếu có", if any exist.
+DECLARE `The claim documents` HAS
+    `claim form, completed fully, truthfully and accurately`                     IS A BOOLEAN
+    `proof of the right to receive the benefit`                                  IS A BOOLEAN
+    `other documents the law requires`                                           IS A BOOLEAN
+    `original certificate and endorsement letters`                               IS A BOOLEAN
+    `medical record summary or copy, with tests and any surgery certificate`     IS A BOOLEAN
+    `death certificate or death notice`                                          IS A BOOLEAN
+    `evidence of the total and permanent disability`                             IS A BOOLEAN
+    `accident papers exist`                                                      IS A BOOLEAN
+    `accident papers`                                                            IS A BOOLEAN
+    `tests prescribed by a Doctor at the Hospital, with an X-ray for a fracture` IS A BOOLEAN
+    `hospital invoice`                                                           IS A BOOLEAN
+    `hospital treatment documents`                                               IS A BOOLEAN
+    `hospital diagnosis papers for the Accident`                                 IS A BOOLEAN
+    `hospital transfer paper certified by the treating Hospital`                 IS A BOOLEAN
+
+§§ `The contract over its life (Articles 12 to 17)`
+
+-- Article 16: the events that end the contract, each NOTHING if it has not happened.
+-- `date of an early termination`: under 12.1(d), 12.1(h), 15.1 "or any other provision".
+DECLARE `The termination events` HAS
+    `date of an early termination`                                      IS A MAYBE DATE
+    `date the latest lapse began`                                       IS A MAYBE DATE
+    `date of the insured's death`                                       IS A MAYBE DATE
+    `date the disability benefit (8.8) was approved`                    IS A MAYBE DATE
+    `date the permanent-injury benefit (8.2) reached its maximum`        IS A MAYBE DATE
+    `date of another ground in law`                                     IS A MAYBE DATE
+
+-- Article 12.1(h): a request to reinstate a lapsed contract.
+DECLARE `A reinstatement request` HAS
+    `date the contract lapsed`                                   IS A DATE
+    `date of the written request`                                IS A DATE
+    `the reinstatement amount paid in full`                      IS A BOOLEAN
+    `the insurability conditions met`                            IS A BOOLEAN
+    `date of Prudential's confirmation letter`                   IS A MAYBE DATE
+    `the policyholder and the insured alive on that date`        IS A BOOLEAN
+    `the insured totally and permanently disabled on that date`  IS A BOOLEAN
+
+-- Article 13.2(b)(i): the purposes for which personal information may be passed on without
+-- consent, as one list, and anything else.
+DECLARE `A purpose of passing on personal information` IS ONE OF
+    `a request of a competent State authority`
+    `a request of the group or its member companies`
+    `an insurance operation the clause lists`
+    `another purpose`
+
+§§ `Deontic vocabulary`
+
+DECLARE `An act` IS ONE OF
+    `give written notice refusing to continue the contract`
+    `refund the premiums paid, less medical examination costs`
+    `notify the change of occupation`
+    `decide on the change of occupation`
+    `notify the occupation on the insured turning 18`
+    `decline to pay a claim`
+    `provide the claim documents`
+    `resolve the claim`
+    `pay the approved claim with late-payment interest`
+    `request a change of premium frequency in writing`
+    `pay the premium`
+
+§§ `Other enumerations`
+
+-- Article 14.
+DECLARE `A premium frequency` IS ONE OF
+    `monthly`
+    `quarterly`
+    `half-yearly`
+    `yearly`
+
+-- Article 17.
+DECLARE `A court` IS ONE OF
+    `the court where Prudential has its head office`
+    `the court where the insured resides`
+    `any other court`
+
+-- Notes item 1: the three things Prudential may do on a breach of the duty to declare.
+DECLARE `An option open to Prudential on a misdeclaration` IS ONE OF
+    `bear no liability`
+    `accept the cover on conditions`
+    `accept the cover nonetheless`
+
+-- Articles 9 and 12.2(d): Prudential's three options when the risk changes.
+DECLARE `An option open to Prudential on a change of risk` IS ONE OF
+    `continue the cover at the same premium`
+    `increase the premium`
+    `terminate and pay the surrender value, less deductions`
+
+-- Article 12.2(a): the two consequences of breaching the duty to declare.
+DECLARE `The consequence of a misdeclaration` IS ONE OF
+    `the contract or the reinstatement is cancelled; no benefit is paid and no premium is refunded`
+    `benefits are paid; Prudential may collect additional premium for the increased risk`
+
+-- Article 10.8: who may receive a benefit.
+DECLARE `A beneficiary` HAS
+    `name`                                         IS A STRING
+    `designated share, in percent`                 IS A NUMBER
+    `alive or in existence when the insured event occurred` IS A BOOLEAN
+    `intentionally harmed the insured`             IS A BOOLEAN
+
+DECLARE `A recipient` IS ONE OF
+    `the policyholder as recipient`
+    `the designated beneficiary` HAS `who` IS A STRING
+    `the lawful heirs of the policyholder`
+    `the lawful heirs of the insured`
+
+-- Why nothing is payable, where the Rules and Terms say so.
+DECLARE `A reason nothing is payable` IS ONE OF
+    `the event is not an Accident as Article 1.16 defines it`
+    `the death was more than 180 days after the accident`
+    `the contract was not in force`
+    `excluded by Article 11.1`
+    `the injury is not one the payout-rate table lists`
+    `the maximum for the contract term has already been paid`
+    `the maximum for the contract year has already been paid`
+    `the same bone broke less than 10 months after its previous fracture`
+    `the break is not a Fracture as Article 1.20 defines it`
+    `neither an overnight stay in an intensive care unit nor a hospital transfer`
+    `the death was caused by an Accident`
+    `the disability was caused by an Accident`
+    `the disability is not total and permanent as Article 1.17 defines it`
+    `the insured was not alive at the end of the contract term`
+
+DECLARE `What Prudential pays` IS ONE OF
+    `Prudential pays` HAS `the amount` IS A NUMBER
+    `Prudential pays nothing, because` HAS `the reason` IS A `A reason nothing is payable`
+
+-- On a death, the Rules and Terms provide three different payments, and on a reading of
+-- Article 8.1 and 8.7 together, sometimes none (NOTES.md, finding F-01).
+DECLARE `What is paid on the death of the insured` IS ONE OF
+    `the accidental death benefit, Article 8.1`        HAS `the amount` IS A NUMBER
+    `the excluded-death payment, Article 11.2`         HAS `the amount` IS A NUMBER
+    `the non-accidental death benefit, Article 8.7`    HAS `the amount` IS A NUMBER
+    `no Article of the Rules and Terms pays for this death`
+    `nothing, because the contract was not in force at the death`
