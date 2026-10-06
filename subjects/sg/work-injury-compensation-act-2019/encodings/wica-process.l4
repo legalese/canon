@@ -1,0 +1,397 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `wica-types`
+
+-- Work Injury Compensation Act 2019 — GOAL 5: IS THE CLAIM ALIVE, AND WHERE
+-- IS IT IN THE PROCESS? GOAL 6: CAN THE WORKER SUE INSTEAD, OR AS WELL?
+--
+-- Part 4 (ss 35-58): the deemed claim and its withdrawal, the medical
+-- examination, the claim for permanent or current incapacity, withdrawal and
+-- resumption, when a notice of computation or assessment becomes an order,
+-- objections, the platform reimbursement objections, reassessment, settlement
+-- and appeal; s 35A and s 47A on concurrent and multiple-operator claims; and
+-- Division 6 (ss 63-64), damages. Part 4 applies to platform workers with the
+-- words exchanged (s 35B); the rules are written once.
+--
+-- Times: "within N days after the date of service" and "on the 15th day after"
+-- are counted from the day after the event, as the Act's own figures (14 / 15,
+-- 28 / 29) show. The Interpretation Act 1965's rule moving a deadline off a
+-- Sunday or public holiday is not in the source and is not applied (FORK F6).
+--
+-- Source: ../source/WICA2019.txt lines 1995-3058, 3167-3267.
+
+§ `Goals 5 and 6 — the claim process, and damages`
+
+§§ `Goal 5a — is the claim alive?`
+
+-- s 35(1): a claim is deemed made when the employer (or platform operator)
+-- first has notice of the accident (s 35(2), (2A)).
+-- s 35(5): "A claim ... is deemed to be withdrawn if the employer or platform
+-- operator ... does not have notice of the claimant's accident at the end of
+-- whichever period ... ends last: (a) one year after the date of the
+-- claimant's accident; (b) if the claimant dies within the period mentioned in
+-- paragraph (a), one year after the date of the claimant's death; (c) any
+-- period ending on a later date specified under subsection (6)."
+@ref s 35(5)
+GIVEN h IS A `Claim history`
+GIVETH A DATE
+`the last day for the employer to have notice, in` h MEANS
+    `the later of` `(a) or (b)` (h's `later date specified by the Commissioner`)
+    WHERE
+        `(a)` MEANS `add years` (h's `accident on`) 1
+        `(a) or (b)` MEANS
+            CONSIDER h's `claimant died on`
+            WHEN NOTHING THEN `(a)`
+            WHEN JUST d  THEN IF d AT MOST `(a)` THEN `add years` d 1 ELSE `(a)`
+        `the later of` x m MEANS
+            CONSIDER m
+            WHEN NOTHING THEN x
+            WHEN JUST y  THEN IF y GREATER THAN x THEN y ELSE x
+
+DECLARE `Claim status` IS ONE OF
+    `the claim is alive`
+    `deemed withdrawn under s 35(5)`
+    `withdrawn under s 41(1)`
+    `no claim yet: the employer has no notice`
+
+-- s 41(1): the worker may withdraw "before any order of compensation is made
+-- or takes effect". s 41(2): a withdrawn or deemed-withdrawn claim may be
+-- resumed "(a) not later than one year after the date of the accident — by
+-- giving a notice of resumption ...; or (b) more than one year after ... — if
+-- the Commissioner approves". s 42: no compensation while withdrawn.
+@ref ss 35(1), 35(5), 41, 42
+GIVEN d IS A DATE
+      h IS A `Claim history`
+GIVETH A `Claim status`
+`the status on` d `of the claim in` h MEANS
+    BRANCH IF `validly resumed`
+              THEN `the claim is alive`
+           IF `withdrawn by notice`
+              THEN `withdrawn under s 41(1)`
+           IF `no notice in time`
+              THEN `deemed withdrawn under s 35(5)`
+           IF `no notice yet`
+              THEN `no claim yet: the employer has no notice`
+           OTHERWISE `the claim is alive`
+    WHERE
+        `no notice yet` MEANS
+            CONSIDER h's `employer first had notice on`
+            WHEN NOTHING THEN TRUE
+            WHEN JUST n  THEN n GREATER THAN d
+        `no notice in time` MEANS
+                d GREATER THAN `the last day for the employer to have notice, in` h
+            AND CONSIDER h's `employer first had notice on`
+                WHEN NOTHING THEN TRUE
+                WHEN JUST n  THEN n GREATER THAN `the last day for the employer to have notice, in` h
+        `withdrawn by notice` MEANS
+            CONSIDER h's `withdrawn on`
+            WHEN NOTHING THEN FALSE
+            WHEN JUST w  THEN w AT MOST d
+        `validly resumed` MEANS
+            CONSIDER h's `resumed on`
+            WHEN NOTHING THEN FALSE
+            WHEN JUST r  THEN     r AT MOST d
+                              AND (`withdrawn by notice` OR `no notice in time`)
+                              AND (    "(2)(a)" ... r AT MOST `add years` (h's `accident on`) 1
+                                   OR  "(2)(b)" ... h's `the Commissioner approved a late resumption`)
+
+-- s 35(6)-(7), s 41(3)-(4): the Commissioner may extend the notice period, or
+-- approve a late resumption, "only if ... the delay was caused by mistake,
+-- absence from Singapore or other reasonable cause", and "must not" if the
+-- delay was caused by an action for damages brought for the accident.
+@ref s 35(6)-(7); s 41(3)-(4)
+GIVEN `mistake, absence from Singapore or other reasonable cause` IS A BOOLEAN
+      `caused by an action for damages`                          IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Commissioner may excuse the delay:` `mistake, absence from Singapore or other reasonable cause` `, a damages action causing it:` `caused by an action for damages` IF
+        `mistake, absence from Singapore or other reasonable cause`
+    AND NOT `caused by an action for damages`
+
+-- s 39: "Any employee or platform worker who has made a deemed claim ... and
+-- who wishes to claim compensation for permanent incapacity or current
+-- incapacity ... must make the claim, not later than one year after the date
+-- of the accident", in the required form and "accompanied by a written
+-- statement from a health professional certifying that ... the injury ...
+-- could give rise to permanent incapacity" (s 39(3)), unless the insurer or
+-- the Commissioner "notifies the [worker] that [they are] being assessed for
+-- permanent incapacity or current incapacity" (s 39(2)). s 39(4): otherwise
+-- not payable. (The PDF prints two subsections (2); the newer contains the
+-- older.)
+@ref s 39
+GIVEN h IS A `Claim history`
+GIVETH A BOOLEAN
+DECIDE `compensation for permanent or current incapacity is open under s 39 in` h IF
+        "(2)" ... h's `notified of assessment for permanent or current incapacity`
+    OR  "(1), (3)" ... `claimed in time with a statement`
+    WHERE
+        `claimed in time with a statement` MEANS
+            CONSIDER h's `incapacity claim made on`
+            WHEN NOTHING THEN FALSE
+            WHEN JUST m  THEN     m AT MOST `add years` (h's `accident on`) 1
+                              AND h's `incapacity claim had a health professional's statement`
+
+§§ `Goal 5b — the medical examination (s 37)`
+
+-- s 37(1): the employer "must offer the employee a medical examination by a
+-- health professional before the expiry of the 5th day after the employer
+-- first has notice of the accident".
+@ref s 37(1)
+GIVEN notice IS A DATE
+GIVETH A DATE
+`the last day to offer a medical examination, notice having come on` notice MEANS
+    notice PLUS 5
+
+-- s 37(4)-(7): the right to compensation is suspended while the worker fails
+-- to submit to an examination reasonably required (or cannot be contacted),
+-- and nothing is payable for the suspension; the Commissioner may lift it.
+-- s 37(7): a failure to attend an examination required by the Commissioner
+-- that "continues beyond 3 months after the date fixed ..." means no
+-- compensation at all "unless — (a) the work injury results in the death of
+-- the employee; or (b) the Commissioner is satisfied that there was reasonable
+-- cause".
+@ref s 37(7)
+GIVEN d                     IS A DATE
+      `date fixed`          IS A DATE
+      `still not submitted` IS A BOOLEAN
+      `died of the injury`  IS A BOOLEAN
+      `reasonable cause`    IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `s 37(7) bars compensation on` d `, the examination fixed for` `date fixed` `, still not attended:` `still not submitted` `, death:` `died of the injury` `, reasonable cause:` `reasonable cause` IF
+        `still not submitted`
+    AND d GREATER THAN `add months` `date fixed` 3
+    AND NOT "(a)" ... `died of the injury`
+    AND NOT "(b)" ... `reasonable cause`
+
+§§ `Goal 5c — when a notice becomes an order, and objections`
+
+-- s 44(5), s 47B(5), s 48(3): a notice of computation (or assessment) "is
+-- deemed to have been agreed upon ... and has the effect of an order of
+-- compensation — (a) where no notice of objection ... is received by the
+-- Commissioner within a period of 14 days after the date of service ... — on
+-- the 15th day after the date of service ...; or (b) where all notices of
+-- objection so received ... are withdrawn within a period of 28 days after the
+-- date of service ... — on the 29th day after the date of service". Otherwise
+-- the Commissioner reviews it (s 54). s 44(6), s 47B(6): an insurer is served
+-- on the day it issues the notice.
+@ref ss 44(5), 47B(5), 48(3)
+GIVEN n IS A `Notice and objections`
+GIVETH A MAYBE DATE
+`the day the notice takes effect as an order, if it does:` n MEANS
+    BRANCH IF null `objections in time`
+              THEN JUST (n's `served on` PLUS 15)                                    -- (a)
+           IF `all withdrawn within 28 days`
+              THEN JUST (n's `served on` PLUS 29)                                    -- (b)
+           OTHERWISE NOTHING                                                         -- reviewed under s 54
+    WHERE
+        `objections in time` MEANS filter (GIVEN o YIELD o AT MOST n's `served on` PLUS 14) (n's `objections received on`)
+        `all withdrawn within 28 days` MEANS
+            CONSIDER n's `all objections withdrawn on`
+            WHEN NOTHING THEN FALSE
+            WHEN JUST w  THEN w AT MOST n's `served on` PLUS 28
+
+-- s 46(2), s 47D(2), s 49(2): an objection must be given "(a) before the
+-- expiry of — (i) 14 days after the date of service ...; or (ii) if the
+-- Commissioner is satisfied that the notice of objection was delayed by any
+-- error or fraud, other than by the person giving [it] — 90 days after the
+-- period mentioned in sub-paragraph (i) expires". s 46(3): a change due to the
+-- Medical Board's assessment is not an "error".
+@ref s 46(2), s 47D(2), s 49(2)
+GIVEN `objection on`                        IS A DATE
+      `served on`                           IS A DATE
+      `delayed by another's error or fraud` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `an objection on` `objection on` `to a notice served on` `served on` `is in time, delayed by another's error or fraud:` `delayed by another's error or fraud` IF
+        "(a)(i)"  ... `objection on` AT MOST `served on` PLUS 14
+    OR  "(a)(ii)" ... (`delayed by another's error or fraud` AND `objection on` AT MOST `served on` PLUS 14 PLUS 90)
+
+-- s 47E (platform operators other than the relevant one, Z, and their insurer
+-- Y): Y or Z must notify the relevant PO's insurer "before the expiry of 7
+-- days after the date of service" (2); that insurer must object to the
+-- Commissioner "before the expiry of 14 days after the date the notice of
+-- computation is issued" (3); and if it fails through its own error or fraud,
+-- Y or Z may object directly "before the expiry of 30 days after the period
+-- mentioned in subsection (2)" (5).
+@ref s 47E(2), (3), (5)
+GIVEN `served on Y or Z` IS A DATE
+GIVETH A DATE
+`the last day for Y or Z to notify the relevant PO's insurer, served on` `served on Y or Z` MEANS
+    `served on Y or Z` PLUS 7
+
+@ref s 47E(3)
+GIVEN `issued on` IS A DATE
+GIVETH A DATE
+`the last day for the relevant PO's insurer to object, the notice issued on` `issued on` MEANS
+    `issued on` PLUS 14
+
+@ref s 47E(5)
+GIVEN `served on Y or Z` IS A DATE
+GIVETH A DATE
+`the last day for Y or Z to object directly, served on` `served on Y or Z` MEANS
+    `served on Y or Z` PLUS 7 PLUS 30
+
+-- s 48(4): for an occupational disease, the Commissioner may reassess "at any
+-- time within 3 years after the date of the notice of computation or the
+-- notice of assessment ... if ... (a) there has been an aggravation of the
+-- result of the occupational disease after [that date]; and (b) the amount ...
+-- originally computed or assessed is substantially inadequate."
+@ref s 48(4)
+GIVEN d                          IS A DATE
+      `notice dated`             IS A DATE
+      aggravated                 IS A BOOLEAN
+      `substantially inadequate` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Commissioner may reassess on` d `a disease notice dated` `notice dated` `, aggravated:` aggravated `, substantially inadequate:` `substantially inadequate` IF
+        d AT MOST `add years` `notice dated` 3
+    AND "(a)" ... aggravated
+    AND "(b)" ... `substantially inadequate`
+
+§§ `Goal 5d — settlement, review and appeal`
+
+-- s 51(3): a recorded settlement may be set aside on an application within the
+-- prescribed period if "(i) the Commissioner is satisfied that the order
+-- should be set aside due to any error or fraud, other than by the applicant;
+-- and (ii) there is no pending appeal under section 58".
+@ref s 51(3)
+GIVEN `error or fraud not by the applicant` IS A BOOLEAN
+      `an appeal is pending`                IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Commissioner may set aside the settlement order, error or fraud:` `error or fraud not by the applicant` `, appeal pending:` `an appeal is pending` IF
+        "(a)(i)"  ... `error or fraud not by the applicant`
+    AND "(a)(ii)" ... NOT `an appeal is pending`
+
+-- s 58(1): appeal to the General Division of the High Court "if — (a) the
+-- appeal involves a substantial question of law; and (b) the order is for
+-- refusal of compensation or for payment of compensation of an amount of
+-- compensation of $1,000 or more." s 58(5): "No appeal ... lies against ...
+-- (a) a notice of computation that, under section 44(5), has the effect of an
+-- order ...; (b) a notice of assessment that, under section 48(3), has [that]
+-- effect ...; (c) an order made under section 51(2)(a) to give effect to a
+-- settlement agreement that has not been set aside". s 58(3): final.
+@ref s 58(1), (5)
+GIVEN o                        IS A `Kind of order`
+      `a refusal`              IS A BOOLEAN
+      amount                   IS A NUMBER
+      `a substantial question of law` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `an appeal lies against` o `, a refusal:` `a refusal` `, of` amount `, a substantial question of law:` `a substantial question of law` IF
+        NOT "(5)" ... `an order (5) excludes`
+    AND "(1)(a)" ... `a substantial question of law`
+    AND "(1)(b)" ... (`a refusal` OR amount AT LEAST 1000)
+    WHERE
+        `an order (5) excludes` MEANS
+                "(a)" ... o EQUALS `a notice of computation in effect as an order`
+            ..  "(b)" ... o EQUALS `a notice of assessment in effect as an order`
+            OR  "(c)" ... o EQUALS `a settlement order not set aside`
+
+§§ `Goal 5e — concurrent work, and several platform operators (s 35A, s 47A)`
+
+-- s 35A(4): where the worker was "concurrently at work as an employee and as a
+-- platform worker", the Commissioner MAY treat the claim as an employee's if
+-- the AME as an employee is higher, or as a platform worker's if the AME as a
+-- platform worker is higher, or process it under s 35A(4)(c). Equal AMEs fall
+-- to (c).
+DECLARE `Concurrent treatment` IS ONE OF
+    `may be treated as an employee's claim`
+    `may be treated as a platform worker's claim`
+    `processed by the Commissioner under s 35A(4)(c)`
+
+@ref s 35A(4)
+GIVEN `AME as an employee`      IS A NUMBER
+      `AME as a platform worker` IS A NUMBER
+GIVETH A `Concurrent treatment`
+`the s 35A(4) treatment, AME as employee` `AME as an employee` `, as platform worker` `AME as a platform worker` MEANS
+    BRANCH IF `AME as an employee` GREATER THAN `AME as a platform worker`
+              THEN `may be treated as an employee's claim`                    -- (a)
+           IF `AME as a platform worker` GREATER THAN `AME as an employee`
+              THEN `may be treated as a platform worker's claim`              -- (b)
+           OTHERWISE `processed by the Commissioner under s 35A(4)(c)`
+
+-- s 36(2), s 35A(5): the Commissioner must process the claim if there is no
+-- insurer insuring the liability, or decides to in a particular case.
+@ref s 36(2), s 35A(5)
+GIVEN `an insurer insures the liability` IS A BOOLEAN
+      `the Commissioner decides to`      IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Commissioner must process the claim, insured:` `an insurer insures the liability` `, deciding to:` `the Commissioner decides to` IF
+        NOT "(a)" ... `an insurer insures the liability`
+    OR  "(b)" ... `the Commissioner decides to`
+
+§§ `Goal 6 — damages instead of, or as well as, compensation (ss 63-64)`
+
+-- s 63(1): the Act "does not confer any right to compensation ... if — (a) an
+-- action ... has been instituted ... for damages ... against his or her
+-- employer; or (b) damages have been recovered ... from his or her employer."
+-- (s 63(6) is the exception, below.)
+@ref s 63(1)
+GIVEN h IS A `Damages history`
+GIVETH A BOOLEAN
+DECIDE `s 63(1) bars compensation, given` h IF
+        "(a)" ... h's `sued the employer for damages`
+    OR  "(b)" ... h's `recovered damages from the employer`
+
+-- s 63(2): "no action for damages may be maintained ... against the employer
+-- ... if — (a) the employee has recovered damages ... from any other person;
+-- (b) [a settlement order is made]; (c) a notice of computation, or a notice of
+-- assessment, ... has ... the effect of an order of compensation; (d) the
+-- employee does not withdraw [the] claim ... within 28 days after the date of
+-- service of the notice ... or the claim, if so withdrawn, does not remain
+-- withdrawn; or (e) an order for the payment of compensation ... is made under
+-- section 54(1)(c)" — subject to (3) (the route after a reduced review order,
+-- notified within 28 days, no compensation kept, no appeal) and (5) (refusal,
+-- or an appeal lost because the injury was outside the Act).
+@ref s 63(2), (3), (5)
+GIVEN h IS A `Damages history`
+GIVETH A BOOLEAN
+DECIDE `s 63(2) bars an action for damages against the employer, given` h IF
+        `a bar in (2)`
+    AND NOT "(3)" ... h's `the s 63(3) route was followed`
+    AND NOT "(5)" ... h's `compensation refused, or appeal failed on scope`
+    WHERE
+        `a bar in (2)` MEANS
+                "(a)" ... h's `recovered damages from someone else`
+            ..  "(b)" ... h's `a settlement order made`
+            ..  "(c)" ... h's `a notice took effect as an order`
+            ..  "(d)" ... h's `failed to withdraw within 28 days of service, or withdrawal not kept`
+            OR  "(e)" ... h's `an order to pay compensation made after review`
+
+-- s 63(6): an action "instituted ... within one year after the date of the
+-- accident ... to recover damages independently of this Act", in which "it is
+-- determined ... that the injury is one for which the employer is not liable,
+-- but that the employer would have been liable to pay compensation under this
+-- Act": the court "must ... dismiss the action; and ... if the employee so
+-- chooses, proceed to assess the compensation ... (despite subsection (1))".
+@ref s 63(6)
+GIVEN accident                          IS A DATE
+      `action instituted on`            IS A DATE
+      `not liable in damages but liable under the Act` IS A BOOLEAN
+      `the employee so chooses`         IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court assesses compensation under s 63(6), accident on` accident `, action on` `action instituted on` `, found` `not liable in damages but liable under the Act` `, chosen:` `the employee so chooses` IF
+        "(a)" ... `action instituted on` AT MOST `add years` accident 1
+    AND "(b)" ... `not liable in damages but liable under the Act`
+    AND "(d)" ... `the employee so chooses`
+
+-- s 64(1)(a): against a liable third party, the worker "may take proceedings
+-- ... and may claim against any person liable to pay compensation under this
+-- Act, but ... is not entitled to recover both damages and compensation".
+-- s 64(1)(b), (3): whoever paid the compensation (or an employer who
+-- indemnified a principal) is indemnified by the third party — where the
+-- worker's damages are reduced by the employer's or worker's own wilful act or
+-- negligence, only for the part of the compensation "appropriate to the degree
+-- to which the injury was attributable to the act, default or negligence of
+-- the third party" (the court's proportion, an input).
+@ref s 64(1)(a)
+GIVEN `has recovered damages from the third party` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `compensation may still be recovered, damages having been recovered from the third party:` `has recovered damages from the third party` IF
+    NOT `has recovered damages from the third party`
+
+@ref s 64(1)(b), (2)-(3)
+GIVEN `compensation paid`               IS A NUMBER
+      `damages reduced by contributory fault` IS A BOOLEAN
+      `the third party's proportion`    IS A NUMBER    -- 0 to 1, as the court determines
+GIVETH A NUMBER
+`the indemnity from the third party, compensation` `compensation paid` `, reduced:` `damages reduced by contributory fault` `, proportion` `the third party's proportion` MEANS
+    IF   `damages reduced by contributory fault`
+    THEN `compensation paid` TIMES `the third party's proportion`
+    ELSE `compensation paid`

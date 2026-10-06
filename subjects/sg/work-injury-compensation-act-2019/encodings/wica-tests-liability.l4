@@ -1,0 +1,1602 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `wica-types`
+IMPORT `wica-schedules`
+IMPORT `wica-liability`
+
+-- Work Injury Compensation Act 2019 — TESTS FOR GOALS 1 AND 2: coverage and
+-- liability (accidents, platform operators' shares, the principal, disease).
+--
+-- Every expected value is worked from ../source/WICA2019.txt; the section
+-- or Schedule item is on each assertion. The records below are a base case
+-- (an employee, born 10 March 1996, hurt at work in Singapore on 2 March
+-- 2026) and one change per scenario.
+
+§ `Tests — Goals 1 and 2`
+
+§§ `Helpers`
+
+GIVEN c IS A `Coverage`
+GIVETH A BOOLEAN
+DECIDE `covered:` c IF
+    CONSIDER c
+    WHEN `not covered` r THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN l IS A `Liability`
+GIVETH A BOOLEAN
+DECIDE `liable:` l IF
+    CONSIDER l
+    WHEN `liable to pay compensation` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN d IS A `Disease liability`
+GIVETH A BOOLEAN
+DECIDE `compensable:` d IF
+    CONSIDER d
+    WHEN `compensable as if a work injury` u THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN who IS A STRING, shares IS A LIST OF `Operator share`
+GIVETH A NUMBER
+`the share of` who `among` shares MEANS
+    sum (map (GIVEN s YIELD s's `share`) (filter (GIVEN s YIELD s's `operator` EQUALS who) shares))
+
+GIVEN who IS A STRING, st IS A `Work stage`, earned IS A NUMBER
+GIVETH A `Platform engagement`
+`engaged with` who `at` st `earning` earned MEANS
+    `Platform engagement` WITH `operator` IS who, `stage` IS st, `earnings in the lookback period` IS earned
+
+§§ `Claimants`
+
+-- the base case: an employee under a contract of service, in no Third Schedule class
+`an employee` MEANS Claimant WITH
+    `name` IS "Tan"
+    `date of birth` IS YMD 1996 3 10
+    `capacity` IS `as an employee`
+    `works under a contract of service` IS TRUE
+    `works under a platform work agreement` IS FALSE
+    `class` IS `none of the Third Schedule classes`
+    `a Government employee` IS FALSE
+    `in a class the President has declared` IS FALSE
+    `the contract was illegal at the time of the accident` IS FALSE
+    `ordinarily resident in Singapore` IS TRUE
+    `employed by an employer in Singapore` IS TRUE
+    `required by the employment to work outside Singapore` IS FALSE
+    `employed as crew of a Singapore ship` IS FALSE
+
+-- Third Schedule item 1
+`a soldier` MEANS Claimant WITH
+    `name` IS "Tan"
+    `date of birth` IS YMD 1996 3 10
+    `capacity` IS `as an employee`
+    `works under a contract of service` IS TRUE
+    `works under a platform work agreement` IS FALSE
+    `class` IS `a member of the Singapore Armed Forces`
+    `a Government employee` IS FALSE
+    `in a class the President has declared` IS FALSE
+    `the contract was illegal at the time of the accident` IS FALSE
+    `ordinarily resident in Singapore` IS TRUE
+    `employed by an employer in Singapore` IS TRUE
+    `required by the employment to work outside Singapore` IS FALSE
+    `employed as crew of a Singapore ship` IS FALSE
+
+-- Third Schedule item 2
+`a police officer` MEANS Claimant WITH
+    `name` IS "Tan"
+    `date of birth` IS YMD 1996 3 10
+    `capacity` IS `as an employee`
+    `works under a contract of service` IS TRUE
+    `works under a platform work agreement` IS FALSE
+    `class` IS `an officer of the Police Force, Civil Defence Force, Central Narcotics Bureau or Prisons Service`
+    `a Government employee` IS FALSE
+    `in a class the President has declared` IS FALSE
+    `the contract was illegal at the time of the accident` IS FALSE
+    `ordinarily resident in Singapore` IS TRUE
+    `employed by an employer in Singapore` IS TRUE
+    `required by the employment to work outside Singapore` IS FALSE
+    `employed as crew of a Singapore ship` IS FALSE
+
+-- Third Schedule item 3
+`a domestic worker` MEANS Claimant WITH
+    `name` IS "Tan"
+    `date of birth` IS YMD 1996 3 10
+    `capacity` IS `as an employee`
+    `works under a contract of service` IS TRUE
+    `works under a platform work agreement` IS FALSE
+    `class` IS `a domestic worker employed in the domestic services of private premises`
+    `a Government employee` IS FALSE
+    `in a class the President has declared` IS FALSE
+    `the contract was illegal at the time of the accident` IS FALSE
+    `ordinarily resident in Singapore` IS TRUE
+    `employed by an employer in Singapore` IS TRUE
+    `required by the employment to work outside Singapore` IS FALSE
+    `employed as crew of a Singapore ship` IS FALSE
+
+-- s 3(1): no contract of service
+`an independent contractor` MEANS Claimant WITH
+    `name` IS "Tan"
+    `date of birth` IS YMD 1996 3 10
+    `capacity` IS `as an employee`
+    `works under a contract of service` IS FALSE
+    `works under a platform work agreement` IS FALSE
+    `class` IS `none of the Third Schedule classes`
+    `a Government employee` IS FALSE
+    `in a class the President has declared` IS FALSE
+    `the contract was illegal at the time of the accident` IS FALSE
+    `ordinarily resident in Singapore` IS TRUE
+    `employed by an employer in Singapore` IS TRUE
+    `required by the employment to work outside Singapore` IS FALSE
+    `employed as crew of a Singapore ship` IS FALSE
+
+-- s 3(1)(a): a Government employee in no declared class
+`an undeclared civil servant` MEANS Claimant WITH
+    `name` IS "Tan"
+    `date of birth` IS YMD 1996 3 10
+    `capacity` IS `as an employee`
+    `works under a contract of service` IS TRUE
+    `works under a platform work agreement` IS FALSE
+    `class` IS `none of the Third Schedule classes`
+    `a Government employee` IS TRUE
+    `in a class the President has declared` IS FALSE
+    `the contract was illegal at the time of the accident` IS FALSE
+    `ordinarily resident in Singapore` IS TRUE
+    `employed by an employer in Singapore` IS TRUE
+    `required by the employment to work outside Singapore` IS FALSE
+    `employed as crew of a Singapore ship` IS FALSE
+
+-- s 3(1)(a): a Government employee in a declared class
+`a declared civil servant` MEANS Claimant WITH
+    `name` IS "Tan"
+    `date of birth` IS YMD 1996 3 10
+    `capacity` IS `as an employee`
+    `works under a contract of service` IS TRUE
+    `works under a platform work agreement` IS FALSE
+    `class` IS `none of the Third Schedule classes`
+    `a Government employee` IS TRUE
+    `in a class the President has declared` IS TRUE
+    `the contract was illegal at the time of the accident` IS FALSE
+    `ordinarily resident in Singapore` IS TRUE
+    `employed by an employer in Singapore` IS TRUE
+    `required by the employment to work outside Singapore` IS FALSE
+    `employed as crew of a Singapore ship` IS FALSE
+
+-- s 9: resident, employed by a Singapore employer, required to work abroad
+`an employee posted abroad` MEANS Claimant WITH
+    `name` IS "Tan"
+    `date of birth` IS YMD 1996 3 10
+    `capacity` IS `as an employee`
+    `works under a contract of service` IS TRUE
+    `works under a platform work agreement` IS FALSE
+    `class` IS `none of the Third Schedule classes`
+    `a Government employee` IS FALSE
+    `in a class the President has declared` IS FALSE
+    `the contract was illegal at the time of the accident` IS FALSE
+    `ordinarily resident in Singapore` IS TRUE
+    `employed by an employer in Singapore` IS TRUE
+    `required by the employment to work outside Singapore` IS TRUE
+    `employed as crew of a Singapore ship` IS FALSE
+
+-- s 9(a) fails: not ordinarily resident
+`a non-resident posted abroad` MEANS Claimant WITH
+    `name` IS "Tan"
+    `date of birth` IS YMD 1996 3 10
+    `capacity` IS `as an employee`
+    `works under a contract of service` IS TRUE
+    `works under a platform work agreement` IS FALSE
+    `class` IS `none of the Third Schedule classes`
+    `a Government employee` IS FALSE
+    `in a class the President has declared` IS FALSE
+    `the contract was illegal at the time of the accident` IS FALSE
+    `ordinarily resident in Singapore` IS FALSE
+    `employed by an employer in Singapore` IS TRUE
+    `required by the employment to work outside Singapore` IS TRUE
+    `employed as crew of a Singapore ship` IS FALSE
+
+-- s 65(2): crew of a Singapore ship
+`a seafarer` MEANS Claimant WITH
+    `name` IS "Tan"
+    `date of birth` IS YMD 1996 3 10
+    `capacity` IS `as an employee`
+    `works under a contract of service` IS TRUE
+    `works under a platform work agreement` IS FALSE
+    `class` IS `none of the Third Schedule classes`
+    `a Government employee` IS FALSE
+    `in a class the President has declared` IS FALSE
+    `the contract was illegal at the time of the accident` IS FALSE
+    `ordinarily resident in Singapore` IS FALSE
+    `employed by an employer in Singapore` IS TRUE
+    `required by the employment to work outside Singapore` IS FALSE
+    `employed as crew of a Singapore ship` IS TRUE
+
+-- s 3(3): the contract was illegal
+`an illegally employed worker` MEANS Claimant WITH
+    `name` IS "Tan"
+    `date of birth` IS YMD 1996 3 10
+    `capacity` IS `as an employee`
+    `works under a contract of service` IS TRUE
+    `works under a platform work agreement` IS FALSE
+    `class` IS `none of the Third Schedule classes`
+    `a Government employee` IS FALSE
+    `in a class the President has declared` IS FALSE
+    `the contract was illegal at the time of the accident` IS TRUE
+    `ordinarily resident in Singapore` IS TRUE
+    `employed by an employer in Singapore` IS TRUE
+    `required by the employment to work outside Singapore` IS FALSE
+    `employed as crew of a Singapore ship` IS FALSE
+
+-- s 2, s 34B: under a platform work agreement
+`a platform worker` MEANS Claimant WITH
+    `name` IS "Tan"
+    `date of birth` IS YMD 1996 3 10
+    `capacity` IS `as a platform worker`
+    `works under a contract of service` IS FALSE
+    `works under a platform work agreement` IS TRUE
+    `class` IS `none of the Third Schedule classes`
+    `a Government employee` IS FALSE
+    `in a class the President has declared` IS FALSE
+    `the contract was illegal at the time of the accident` IS FALSE
+    `ordinarily resident in Singapore` IS TRUE
+    `employed by an employer in Singapore` IS TRUE
+    `required by the employment to work outside Singapore` IS FALSE
+    `employed as crew of a Singapore ship` IS FALSE
+
+-- s 2: no platform work agreement
+`a platform worker without an agreement` MEANS Claimant WITH
+    `name` IS "Tan"
+    `date of birth` IS YMD 1996 3 10
+    `capacity` IS `as a platform worker`
+    `works under a contract of service` IS FALSE
+    `works under a platform work agreement` IS FALSE
+    `class` IS `none of the Third Schedule classes`
+    `a Government employee` IS FALSE
+    `in a class the President has declared` IS FALSE
+    `the contract was illegal at the time of the accident` IS FALSE
+    `ordinarily resident in Singapore` IS TRUE
+    `employed by an employer in Singapore` IS TRUE
+    `required by the employment to work outside Singapore` IS FALSE
+    `employed as crew of a Singapore ship` IS FALSE
+
+§§ `Accidents`
+
+-- the base case: in Singapore, in the course of the work, on 2 March 2026
+`at work` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- outside Singapore, in the course of the work
+`abroad` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS FALSE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- outside Singapore, on a Singapore ship
+`on a ship abroad` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS FALSE
+    `on a Singapore ship` IS TRUE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- 31 August 2020: the repealed Act (s 83(1))
+`before the Act` MEANS Accident WITH
+    `date` IS YMD 2020 8 31
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- 1 September 2020: this Act, but before the 2025 amendments
+`on the Act's first day` MEANS Accident WITH
+    `date` IS YMD 2020 9 1
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- 1 June 2024: this Act, but before the 2025 amendments
+`in 2024` MEANS Accident WITH
+    `date` IS YMD 2024 6 1
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- the first day of the text encoded
+`on 1 January 2025` MEANS Accident WITH
+    `date` IS YMD 2025 1 1
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- not in the course of the work
+`off duty` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS FALSE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- s 7(4): evidence to the contrary
+`at work, but shown otherwise` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS TRUE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- s 8(1): a passenger with permission on the employer's transport, not public transport
+`on the company bus` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS FALSE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS TRUE
+    `transport operated by or for the employer, or by arrangement with the employer` IS TRUE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- s 8(1)(b)(ii) fails: a public transport service
+`on a public bus the employer arranged` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS FALSE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS TRUE
+    `transport operated by or for the employer, or by arrangement with the employer` IS TRUE
+    `transport operated in the ordinary course of a public transport service` IS TRUE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- s 8(2): steps in an emergency at the workplace
+`in an emergency` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS FALSE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS TRUE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS TRUE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- s 8(3): against instructions, but for the business
+`breaking a rule for the business` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS FALSE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS TRUE
+    `would otherwise have arisen out of and in the course of the work` IS TRUE
+    `the act was done for the purposes of and in connection with the business or service` IS TRUE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- s 8(3) fails: not for the business
+`breaking a rule for oneself` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS FALSE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS TRUE
+    `would otherwise have arisen out of and in the course of the work` IS TRUE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- s 7(2)(a): proven to be directly attributable to alcohol
+`drunk` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS TRUE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- s 7(2)(b)
+`self-inflicted` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS TRUE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- s 7(2)(c)(i): did not assault anyone
+`assaulted, not fighting back` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS TRUE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- s 7(2)(c): assaulted another, not in private defence
+`in a fight, hitting back` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS TRUE
+    `assaulted another person in the fight` IS TRUE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- s 7(2)(c)(i): the assault was private defence
+`in a fight, in private defence` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS TRUE
+    `assaulted another person in the fight` IS TRUE
+    `any assault was in the exercise of the right of private defence` IS TRUE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- s 7(2)(c)(ii)(A)
+`breaking up a fight, with consent` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS TRUE
+    `assaulted another person in the fight` IS TRUE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS TRUE
+    `under the instruction or with the consent of the employer or platform operator` IS TRUE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- s 7(2)(c)(ii): no instruction or consent
+`breaking up a fight, without consent` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS TRUE
+    `assaulted another person in the fight` IS TRUE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS TRUE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- s 34D(1), Fifth Schedule Part 1 para 1(2): at work stage 1 for Alpha
+`a delivery at stage 1` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS LIST (`engaged with` "Alpha" `at` `work stage 1` `earning` 3000)
+
+-- Fifth Schedule Part 1 para 1(2): not at a work stage
+`a delivery between jobs` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS LIST (`engaged with` "Alpha" `at` `not at a work stage` `earning` 3000)
+
+-- s 34D(2)(a)(ii): a proven Sixth Schedule Part 1 contravention
+`a delivery against a Part 1 law` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS TRUE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS LIST (`engaged with` "Alpha" `at` `work stage 1` `earning` 3000)
+
+-- s 34D(2)(a)(iii): a Part 2 contravention that caused the accident
+`a delivery on a defective bike, causing it` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS TRUE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS TRUE
+    `proven that contravention caused or contributed to the accident` IS TRUE
+    `platform engagements` IS LIST (`engaged with` "Alpha" `at` `work stage 1` `earning` 3000)
+
+-- s 34D(2)(a)(iii) fails: the contravention did not cause or contribute
+`a delivery on a defective bike, not causing it` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS TRUE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS TRUE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS LIST (`engaged with` "Alpha" `at` `work stage 1` `earning` 3000)
+
+-- the Sixth Schedule exclusions are for platform workers only
+`an employee breaking a Part 1 law` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS TRUE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS EMPTY
+
+-- s 8(1) is for employees only
+`a platform worker on the platform's bus` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS FALSE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS TRUE
+    `transport operated by or for the employer, or by arrangement with the employer` IS TRUE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS LIST (`engaged with` "Alpha" `at` `work stage 1` `earning` 3000)
+
+-- outside Singapore, at stage 1
+`a platform worker abroad` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS FALSE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS LIST (`engaged with` "Alpha" `at` `work stage 1` `earning` 3000)
+
+-- s 34E(2)(a): only the stage 2 operator
+`stage 2 for one, stage 1 for another` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS LIST (`engaged with` "Alpha" `at` `work stage 2` `earning` 600), (`engaged with` "Beta" `at` `work stage 1` `earning` 400)
+
+-- s 34E(2)(b), (3): both, in proportion to earnings
+`stage 1 for two` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS LIST (`engaged with` "Alpha" `at` `work stage 1` `earning` 300), (`engaged with` "Beta" `at` `work stage 1` `earning` 100), (`engaged with` "Gamma" `at` `not at a work stage` `earning` 900)
+
+-- s 34E(3): nil aggregate earnings
+`stage 2 for two, no earnings` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS LIST (`engaged with` "Alpha" `at` `work stage 2` `earning` 0), (`engaged with` "Beta" `at` `work stage 2` `earning` 0)
+
+-- s 34D(1): a single operator, whatever it paid
+`stage 1 for one, no earnings` MEANS Accident WITH
+    `date` IS YMD 2026 3 2
+    `in Singapore` IS TRUE
+    `on a Singapore ship` IS FALSE
+    `in the course of the work` IS TRUE
+    `evidence it did not arise out of the work` IS FALSE
+    `travelling as a passenger to or from the workplace with the employer's permission` IS FALSE
+    `transport operated by or for the employer, or by arrangement with the employer` IS FALSE
+    `transport operated in the ordinary course of a public transport service` IS FALSE
+    `in or about the workplace, or at work providing the platform service` IS FALSE
+    `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS FALSE
+    `acting in contravention of law, regulations or orders, or without instructions` IS FALSE
+    `would otherwise have arisen out of and in the course of the work` IS FALSE
+    `the act was done for the purposes of and in connection with the business or service` IS FALSE
+    `proven the injury is directly attributable to alcohol or a drug` IS FALSE
+    `deliberate self-injury or deliberate aggravation` IS FALSE
+    `injured in a fight or an assault` IS FALSE
+    `assaulted another person in the fight` IS FALSE
+    `any assault was in the exercise of the right of private defence` IS FALSE
+    `breaking up or preventing the fight, or safeguarding life, property or law and order` IS FALSE
+    `under the instruction or with the consent of the employer or platform operator` IS FALSE
+    `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS FALSE
+    `used a vehicle in providing the platform service` IS FALSE
+    `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS FALSE
+    `proven that contravention caused or contributed to the accident` IS FALSE
+    `platform engagements` IS LIST (`engaged with` "Alpha" `at` `work stage 1` `earning` 0)
+
+§§ `Goal 1 — coverage`
+
+-- s 3(1), Third Schedule
+#ASSERT `the coverage of` `an employee` `for the accident` `at work` EQUALS `covered as an employee`
+#ASSERT NOT `covered:` (`the coverage of` `a soldier` `for the accident` `at work`)
+#ASSERT NOT `covered:` (`the coverage of` `a police officer` `for the accident` `at work`)
+#ASSERT NOT `covered:` (`the coverage of` `a domestic worker` `for the accident` `at work`)
+#ASSERT NOT `covered:` (`the coverage of` `an independent contractor` `for the accident` `at work`)
+-- s 3(1)(a)
+#ASSERT NOT `covered:` (`the coverage of` `an undeclared civil servant` `for the accident` `at work`)
+#ASSERT `the coverage of` `a declared civil servant` `for the accident` `at work` EQUALS `covered as an employee`
+-- s 9: abroad
+#ASSERT NOT `covered:` (`the coverage of` `an employee` `for the accident` `abroad`)
+#ASSERT `the coverage of` `an employee posted abroad` `for the accident` `abroad` EQUALS `covered as an employee`
+#ASSERT NOT `covered:` (`the coverage of` `a non-resident posted abroad` `for the accident` `abroad`)
+-- s 65(2): a seafarer on a Singapore ship
+#ASSERT `the coverage of` `a seafarer` `for the accident` `on a ship abroad` EQUALS `covered as an employee`
+#ASSERT NOT `covered:` (`the coverage of` `a seafarer` `for the accident` `abroad`)
+-- s 3(3): an illegal contract is for the Commissioner or court to save
+#ASSERT NOT `covered:` (`the coverage of` `an illegally employed worker` `for the accident` `at work`)
+-- s 2, s 34B: platform workers
+#ASSERT `the coverage of` `a platform worker` `for the accident` `a delivery at stage 1` EQUALS `covered as a platform worker`
+#ASSERT NOT `covered:` (`the coverage of` `a platform worker without an agreement` `for the accident` `a delivery at stage 1`)
+#ASSERT `a platform worker within the Act:` `a platform worker`
+#ASSERT `an employee within the Act:` `an employee`
+#ASSERT NOT `an employee within the Act:` `a domestic worker`
+-- FORK F1: the Act does not say whether it reaches a platform worker abroad
+#ASSERT REFUSED `the coverage of` `a platform worker` `for the accident` `a platform worker abroad`
+-- s 83(1) and the vintage the text is stated at
+#ASSERT REFUSED `the coverage of` `an employee` `for the accident` `before the Act`
+#ASSERT REFUSED `the coverage of` `an employee` `for the accident` `on the Act's first day`
+#ASSERT REFUSED `the coverage of` `an employee` `for the accident` `in 2024`
+#ASSERT `the coverage of` `an employee` `for the accident` `on 1 January 2025` EQUALS `covered as an employee`
+
+§§ `Goal 2a, 2b — the accident and the exclusions`
+
+-- s 7(1)
+#ASSERT `liable:` (`the liability for` `an employee` `in the accident` `at work`)
+#ASSERT NOT `liable:` (`the liability for` `an employee` `in the accident` `off duty`)
+-- s 7(4): the presumption yields to evidence
+#ASSERT NOT `liable:` (`the liability for` `an employee` `in the accident` `at work, but shown otherwise`)
+-- s 8(1)
+#ASSERT `liable:` (`the liability for` `an employee` `in the accident` `on the company bus`)
+#ASSERT NOT `liable:` (`the liability for` `an employee` `in the accident` `on a public bus the employer arranged`)
+#ASSERT NOT `liable:` (`the liability for` `a platform worker` `in the accident` `a platform worker on the platform's bus`)
+-- s 8(2), s 8(3)
+#ASSERT `liable:` (`the liability for` `an employee` `in the accident` `in an emergency`)
+#ASSERT `liable:` (`the liability for` `an employee` `in the accident` `breaking a rule for the business`)
+#ASSERT NOT `liable:` (`the liability for` `an employee` `in the accident` `breaking a rule for oneself`)
+-- s 7(2)(a), (b)
+#ASSERT NOT `liable:` (`the liability for` `an employee` `in the accident` `drunk`)
+#ASSERT NOT `liable:` (`the liability for` `an employee` `in the accident` `self-inflicted`)
+-- s 7(2)(c)
+#ASSERT `liable:` (`the liability for` `an employee` `in the accident` `assaulted, not fighting back`)
+#ASSERT NOT `liable:` (`the liability for` `an employee` `in the accident` `in a fight, hitting back`)
+#ASSERT `liable:` (`the liability for` `an employee` `in the accident` `in a fight, in private defence`)
+#ASSERT `liable:` (`the liability for` `an employee` `in the accident` `breaking up a fight, with consent`)
+#ASSERT NOT `liable:` (`the liability for` `an employee` `in the accident` `breaking up a fight, without consent`)
+#ASSERT count (`the exclusions that apply to` `as an employee` `:` `in a fight, hitting back`) EQUALS 1
+-- s 34D(1), Fifth Schedule Part 1 para 1(2)
+#ASSERT `liable:` (`the liability for` `a platform worker` `in the accident` `a delivery at stage 1`)
+#ASSERT NOT `liable:` (`the liability for` `a platform worker` `in the accident` `a delivery between jobs`)
+-- s 34D(2)(a)(ii)-(iii), Sixth Schedule
+#ASSERT NOT `liable:` (`the liability for` `a platform worker` `in the accident` `a delivery against a Part 1 law`)
+#ASSERT NOT `liable:` (`the liability for` `a platform worker` `in the accident` `a delivery on a defective bike, causing it`)
+#ASSERT `liable:` (`the liability for` `a platform worker` `in the accident` `a delivery on a defective bike, not causing it`)
+#ASSERT `liable:` (`the liability for` `an employee` `in the accident` `an employee breaking a Part 1 law`)
+-- a person outside the Act is never liable-to
+#ASSERT NOT `liable:` (`the liability for` `a soldier` `in the accident` `at work`)
+#ASSERT REFUSED `the liability for` `an employee` `in the accident` `before the Act`
+
+§§ `Goal 2c — platform operators' shares (s 34E)`
+
+#ASSERT `the share of` "Alpha" `among` (`the liable platform operators and their shares for` `stage 2 for one, stage 1 for another`) EQUALS 1
+#ASSERT `the share of` "Beta"  `among` (`the liable platform operators and their shares for` `stage 2 for one, stage 1 for another`) EQUALS 0
+#ASSERT count (`the liable platform operators and their shares for` `stage 2 for one, stage 1 for another`) EQUALS 1
+-- 300 / (300 + 100) and 100 / 400; Gamma is at no work stage
+#ASSERT `the share of` "Alpha" `among` (`the liable platform operators and their shares for` `stage 1 for two`) EQUALS 0.75
+#ASSERT `the share of` "Beta"  `among` (`the liable platform operators and their shares for` `stage 1 for two`) EQUALS 0.25
+#ASSERT `the share of` "Gamma" `among` (`the liable platform operators and their shares for` `stage 1 for two`) EQUALS 0
+#ASSERT `the share of` "Alpha" `among` (`the liable platform operators and their shares for` `stage 1 for one, no earnings`) EQUALS 1
+#ASSERT REFUSED `the share of` "Alpha" `among` (`the liable platform operators and their shares for` `stage 2 for two, no earnings`)
+
+§§ `Goal 2d — the principal (s 13)`
+
+`a principal's site` MEANS `Principal arrangement` WITH
+    `contracted in the course of or for the principal's trade or business`      IS TRUE
+    `for execution of work, or supply of labour, undertaken by the principal`   IS TRUE
+    `the employee was employed in executing the work`                           IS TRUE
+    `accident at a place where the principal undertook to execute work, or under the principal's control` IS TRUE
+    `the Commissioner has directed the principal`                               IS FALSE
+
+`a principal's site, directed` MEANS `Principal arrangement` WITH
+    `contracted in the course of or for the principal's trade or business`      IS TRUE
+    `for execution of work, or supply of labour, undertaken by the principal`   IS TRUE
+    `the employee was employed in executing the work`                           IS TRUE
+    `accident at a place where the principal undertook to execute work, or under the principal's control` IS TRUE
+    `the Commissioner has directed the principal`                               IS TRUE
+
+`elsewhere, directed` MEANS `Principal arrangement` WITH
+    `contracted in the course of or for the principal's trade or business`      IS TRUE
+    `for execution of work, or supply of labour, undertaken by the principal`   IS TRUE
+    `the employee was employed in executing the work`                           IS TRUE
+    `accident at a place where the principal undertook to execute work, or under the principal's control` IS FALSE
+    `the Commissioner has directed the principal`                               IS TRUE
+
+`outside the principal's business` MEANS `Principal arrangement` WITH
+    `contracted in the course of or for the principal's trade or business`      IS FALSE
+    `for execution of work, or supply of labour, undertaken by the principal`   IS TRUE
+    `the employee was employed in executing the work`                           IS TRUE
+    `accident at a place where the principal undertook to execute work, or under the principal's control` IS TRUE
+    `the Commissioner has directed the principal`                               IS TRUE
+
+-- s 13(1): the Commissioner MAY direct; s 13(2): liable once directed
+#ASSERT `the Commissioner may direct the principal under s 13, the worker being` `as an employee` `:` `a principal's site`
+#ASSERT NOT `the principal is liable under s 13, the worker being` `as an employee` `:` `a principal's site`
+#ASSERT `the principal is liable under s 13, the worker being` `as an employee` `:` `a principal's site, directed`
+-- s 13(5)
+#ASSERT NOT `the principal is liable under s 13, the worker being` `as an employee` `:` `elsewhere, directed`
+#ASSERT NOT `the principal is liable under s 13, the worker being` `as an employee` `:` `outside the principal's business`
+-- s 34B(c): not for platform workers
+#ASSERT NOT `the principal is liable under s 13, the worker being` `as a platform worker` `:` `a principal's site, directed`
+
+§§ `Goal 2e — disease (ss 10-12, 34G-34I; Second Schedule)`
+
+-- s 10(1)(a): item 6, contracted while in the occupation
+`noise-induced hearing loss at work` MEANS `Disease facts` WITH
+    `Second Schedule item` IS JUST 6
+    `worked in the specified occupation when it was contracted` IS TRUE
+    `ceased working in the specified occupation on` IS NOTHING
+    `contracted on` IS YMD 2026 1 1
+    `directly attributable to a chemical or biological exposure at work` IS FALSE
+    `exposure ceased on` IS NOTHING
+    `employed in that occupation by this employer on or after 1 June 2012` IS TRUE
+    `incapacity commenced on` IS JUST (YMD 2026 2 1)
+    `died on` IS NOTHING
+    `certified as suffering from the disease on` IS NOTHING
+    `last day working for this employer or operator` IS YMD 2026 6 30
+    `death preceded by compensable incapacity` IS FALSE
+    `directly attributable to a specific work injury` IS FALSE
+
+-- s 10(1)(b): item 31 (36 months); ceased 1 March 2025; contracted and incapacitated 1 December 2027
+`asbestosis within 36 months` MEANS `Disease facts` WITH
+    `Second Schedule item` IS JUST 31
+    `worked in the specified occupation when it was contracted` IS FALSE
+    `ceased working in the specified occupation on` IS JUST (YMD 2025 3 1)
+    `contracted on` IS YMD 2027 12 1
+    `directly attributable to a chemical or biological exposure at work` IS FALSE
+    `exposure ceased on` IS NOTHING
+    `employed in that occupation by this employer on or after 1 June 2012` IS TRUE
+    `incapacity commenced on` IS JUST (YMD 2027 12 1)
+    `died on` IS NOTHING
+    `certified as suffering from the disease on` IS NOTHING
+    `last day working for this employer or operator` IS YMD 2026 6 30
+    `death preceded by compensable incapacity` IS FALSE
+    `directly attributable to a specific work injury` IS FALSE
+
+-- s 10(3)(a): item 31; contracted and incapacitated 1 June 2028, after the period ended on 1 March 2028
+`asbestosis after 36 months` MEANS `Disease facts` WITH
+    `Second Schedule item` IS JUST 31
+    `worked in the specified occupation when it was contracted` IS FALSE
+    `ceased working in the specified occupation on` IS JUST (YMD 2025 3 1)
+    `contracted on` IS YMD 2028 6 1
+    `directly attributable to a chemical or biological exposure at work` IS FALSE
+    `exposure ceased on` IS NOTHING
+    `employed in that occupation by this employer on or after 1 June 2012` IS TRUE
+    `incapacity commenced on` IS JUST (YMD 2028 6 1)
+    `died on` IS NOTHING
+    `certified as suffering from the disease on` IS NOTHING
+    `last day working for this employer or operator` IS YMD 2026 6 30
+    `death preceded by compensable incapacity` IS FALSE
+    `directly attributable to a specific work injury` IS FALSE
+
+-- s 10(3)(a): item 6 (12 months); ceased 10 January 2026, contracted 1 December 2026, incapacity 1 February 2027
+`hearing loss, incapacity late` MEANS `Disease facts` WITH
+    `Second Schedule item` IS JUST 6
+    `worked in the specified occupation when it was contracted` IS FALSE
+    `ceased working in the specified occupation on` IS JUST (YMD 2026 1 10)
+    `contracted on` IS YMD 2026 12 1
+    `directly attributable to a chemical or biological exposure at work` IS FALSE
+    `exposure ceased on` IS NOTHING
+    `employed in that occupation by this employer on or after 1 June 2012` IS TRUE
+    `incapacity commenced on` IS JUST (YMD 2027 2 1)
+    `died on` IS NOTHING
+    `certified as suffering from the disease on` IS NOTHING
+    `last day working for this employer or operator` IS YMD 2026 6 30
+    `death preceded by compensable incapacity` IS FALSE
+    `directly attributable to a specific work injury` IS FALSE
+
+-- s 10(4): (3) does not apply to a death preceded by compensable incapacity
+`hearing loss, incapacity late, then death` MEANS `Disease facts` WITH
+    `Second Schedule item` IS JUST 6
+    `worked in the specified occupation when it was contracted` IS FALSE
+    `ceased working in the specified occupation on` IS JUST (YMD 2026 1 10)
+    `contracted on` IS YMD 2026 12 1
+    `directly attributable to a chemical or biological exposure at work` IS FALSE
+    `exposure ceased on` IS NOTHING
+    `employed in that occupation by this employer on or after 1 June 2012` IS TRUE
+    `incapacity commenced on` IS JUST (YMD 2027 2 1)
+    `died on` IS NOTHING
+    `certified as suffering from the disease on` IS NOTHING
+    `last day working for this employer or operator` IS YMD 2026 6 30
+    `death preceded by compensable incapacity` IS TRUE
+    `directly attributable to a specific work injury` IS FALSE
+
+-- s 10(1)(c): not in the Schedule; a chemical exposure ceasing 1 December 2025; incapacity 1 February 2026
+`a solvent disease` MEANS `Disease facts` WITH
+    `Second Schedule item` IS NOTHING
+    `worked in the specified occupation when it was contracted` IS FALSE
+    `ceased working in the specified occupation on` IS NOTHING
+    `contracted on` IS YMD 2026 1 1
+    `directly attributable to a chemical or biological exposure at work` IS TRUE
+    `exposure ceased on` IS JUST (YMD 2025 12 1)
+    `employed in that occupation by this employer on or after 1 June 2012` IS TRUE
+    `incapacity commenced on` IS JUST (YMD 2026 2 1)
+    `died on` IS NOTHING
+    `certified as suffering from the disease on` IS NOTHING
+    `last day working for this employer or operator` IS YMD 2026 6 30
+    `death preceded by compensable incapacity` IS FALSE
+    `directly attributable to a specific work injury` IS FALSE
+
+-- s 10(3)(b): incapacity on 2 December 2026, more than one year after the exposure ceased
+`a solvent disease, incapacity late` MEANS `Disease facts` WITH
+    `Second Schedule item` IS NOTHING
+    `worked in the specified occupation when it was contracted` IS FALSE
+    `ceased working in the specified occupation on` IS NOTHING
+    `contracted on` IS YMD 2026 1 1
+    `directly attributable to a chemical or biological exposure at work` IS TRUE
+    `exposure ceased on` IS JUST (YMD 2025 12 1)
+    `employed in that occupation by this employer on or after 1 June 2012` IS TRUE
+    `incapacity commenced on` IS JUST (YMD 2026 12 2)
+    `died on` IS NOTHING
+    `certified as suffering from the disease on` IS NOTHING
+    `last day working for this employer or operator` IS YMD 2026 6 30
+    `death preceded by compensable incapacity` IS FALSE
+    `directly attributable to a specific work injury` IS FALSE
+
+-- s 10(3)(b) not met: incapacity on 1 December 2026, exactly one year after
+`a solvent disease, incapacity at one year` MEANS `Disease facts` WITH
+    `Second Schedule item` IS NOTHING
+    `worked in the specified occupation when it was contracted` IS FALSE
+    `ceased working in the specified occupation on` IS NOTHING
+    `contracted on` IS YMD 2026 1 1
+    `directly attributable to a chemical or biological exposure at work` IS TRUE
+    `exposure ceased on` IS JUST (YMD 2025 12 1)
+    `employed in that occupation by this employer on or after 1 June 2012` IS TRUE
+    `incapacity commenced on` IS JUST (YMD 2026 12 1)
+    `died on` IS NOTHING
+    `certified as suffering from the disease on` IS NOTHING
+    `last day working for this employer or operator` IS YMD 2026 6 30
+    `death preceded by compensable incapacity` IS FALSE
+    `directly attributable to a specific work injury` IS FALSE
+
+-- s 10(1)(c): contracted before 1 June 2012
+`a solvent disease from 2011` MEANS `Disease facts` WITH
+    `Second Schedule item` IS NOTHING
+    `worked in the specified occupation when it was contracted` IS FALSE
+    `ceased working in the specified occupation on` IS NOTHING
+    `contracted on` IS YMD 2011 5 1
+    `directly attributable to a chemical or biological exposure at work` IS TRUE
+    `exposure ceased on` IS NOTHING
+    `employed in that occupation by this employer on or after 1 June 2012` IS TRUE
+    `incapacity commenced on` IS NOTHING
+    `died on` IS NOTHING
+    `certified as suffering from the disease on` IS NOTHING
+    `last day working for this employer or operator` IS YMD 2026 6 30
+    `death preceded by compensable incapacity` IS FALSE
+    `directly attributable to a specific work injury` IS FALSE
+
+-- s 12: not in s 10 but attributable to a specific work injury
+`an infection from a wound` MEANS `Disease facts` WITH
+    `Second Schedule item` IS NOTHING
+    `worked in the specified occupation when it was contracted` IS FALSE
+    `ceased working in the specified occupation on` IS NOTHING
+    `contracted on` IS YMD 2026 1 1
+    `directly attributable to a chemical or biological exposure at work` IS FALSE
+    `exposure ceased on` IS NOTHING
+    `employed in that occupation by this employer on or after 1 June 2012` IS TRUE
+    `incapacity commenced on` IS NOTHING
+    `died on` IS NOTHING
+    `certified as suffering from the disease on` IS NOTHING
+    `last day working for this employer or operator` IS YMD 2026 6 30
+    `death preceded by compensable incapacity` IS FALSE
+    `directly attributable to a specific work injury` IS TRUE
+
+-- s 12: neither
+`an unrelated illness` MEANS `Disease facts` WITH
+    `Second Schedule item` IS NOTHING
+    `worked in the specified occupation when it was contracted` IS FALSE
+    `ceased working in the specified occupation on` IS NOTHING
+    `contracted on` IS YMD 2026 1 1
+    `directly attributable to a chemical or biological exposure at work` IS FALSE
+    `exposure ceased on` IS NOTHING
+    `employed in that occupation by this employer on or after 1 June 2012` IS TRUE
+    `incapacity commenced on` IS NOTHING
+    `died on` IS NOTHING
+    `certified as suffering from the disease on` IS NOTHING
+    `last day working for this employer or operator` IS YMD 2026 6 30
+    `death preceded by compensable incapacity` IS FALSE
+    `directly attributable to a specific work injury` IS FALSE
+
+-- s 34G(1)(c): contracted 1 October 2024, before 1 January 2025; incapacity (the s 11(2) date, and so the s 83 date) 1 March 2025
+`a platform worker's 2024 solvent disease` MEANS `Disease facts` WITH
+    `Second Schedule item` IS NOTHING
+    `worked in the specified occupation when it was contracted` IS FALSE
+    `ceased working in the specified occupation on` IS NOTHING
+    `contracted on` IS YMD 2024 10 1
+    `directly attributable to a chemical or biological exposure at work` IS TRUE
+    `exposure ceased on` IS NOTHING
+    `employed in that occupation by this employer on or after 1 June 2012` IS TRUE
+    `incapacity commenced on` IS JUST (YMD 2025 3 1)
+    `died on` IS NOTHING
+    `certified as suffering from the disease on` IS NOTHING
+    `last day working for this employer or operator` IS YMD 2026 6 30
+    `death preceded by compensable incapacity` IS FALSE
+    `directly attributable to a specific work injury` IS FALSE
+
+-- s 83(1): incapacity (the date of the accident) 1 July 2019
+`a 2019 noise-induced hearing loss` MEANS `Disease facts` WITH
+    `Second Schedule item` IS JUST 6
+    `worked in the specified occupation when it was contracted` IS TRUE
+    `ceased working in the specified occupation on` IS NOTHING
+    `contracted on` IS YMD 2019 6 1
+    `directly attributable to a chemical or biological exposure at work` IS FALSE
+    `exposure ceased on` IS NOTHING
+    `employed in that occupation by this employer on or after 1 June 2012` IS TRUE
+    `incapacity commenced on` IS JUST (YMD 2019 7 1)
+    `died on` IS NOTHING
+    `certified as suffering from the disease on` IS NOTHING
+    `last day working for this employer or operator` IS YMD 2026 6 30
+    `death preceded by compensable incapacity` IS FALSE
+    `directly attributable to a specific work injury` IS FALSE
+
+-- item 34 (36 months)
+`silicosis, ceased 15 May 2025` MEANS `Disease facts` WITH
+    `Second Schedule item` IS JUST 34
+    `worked in the specified occupation when it was contracted` IS FALSE
+    `ceased working in the specified occupation on` IS JUST (YMD 2025 5 15)
+    `contracted on` IS YMD 2026 1 1
+    `directly attributable to a chemical or biological exposure at work` IS FALSE
+    `exposure ceased on` IS NOTHING
+    `employed in that occupation by this employer on or after 1 June 2012` IS TRUE
+    `incapacity commenced on` IS NOTHING
+    `died on` IS NOTHING
+    `certified as suffering from the disease on` IS NOTHING
+    `last day working for this employer or operator` IS YMD 2026 6 30
+    `death preceded by compensable incapacity` IS FALSE
+    `directly attributable to a specific work injury` IS FALSE
+
+-- s 11: last day 30 June 2026; incapacity 10 April 2026; certified 1 March 2026
+`a disease with dates` MEANS `Disease facts` WITH
+    `Second Schedule item` IS NOTHING
+    `worked in the specified occupation when it was contracted` IS FALSE
+    `ceased working in the specified occupation on` IS NOTHING
+    `contracted on` IS YMD 2026 1 1
+    `directly attributable to a chemical or biological exposure at work` IS FALSE
+    `exposure ceased on` IS NOTHING
+    `employed in that occupation by this employer on or after 1 June 2012` IS TRUE
+    `incapacity commenced on` IS JUST (YMD 2026 4 10)
+    `died on` IS NOTHING
+    `certified as suffering from the disease on` IS JUST (YMD 2026 3 1)
+    `last day working for this employer or operator` IS YMD 2026 6 30
+    `death preceded by compensable incapacity` IS FALSE
+    `directly attributable to a specific work injury` IS FALSE
+
+-- s 11(2)(b): no incapacity; died 1 July 2026
+`a fatal disease without incapacity` MEANS `Disease facts` WITH
+    `Second Schedule item` IS NOTHING
+    `worked in the specified occupation when it was contracted` IS FALSE
+    `ceased working in the specified occupation on` IS NOTHING
+    `contracted on` IS YMD 2026 1 1
+    `directly attributable to a chemical or biological exposure at work` IS FALSE
+    `exposure ceased on` IS NOTHING
+    `employed in that occupation by this employer on or after 1 June 2012` IS TRUE
+    `incapacity commenced on` IS NOTHING
+    `died on` IS JUST (YMD 2026 7 1)
+    `certified as suffering from the disease on` IS NOTHING
+    `last day working for this employer or operator` IS YMD 2026 6 30
+    `death preceded by compensable incapacity` IS FALSE
+    `directly attributable to a specific work injury` IS FALSE
+
+
+#ASSERT `compensable:` (`the liability for the disease of a worker` `as an employee` `:` `noise-induced hearing loss at work`)
+#ASSERT `compensable:` (`the liability for the disease of a worker` `as an employee` `:` `asbestosis within 36 months`)
+#ASSERT NOT `compensable:` (`the liability for the disease of a worker` `as an employee` `:` `asbestosis after 36 months`)
+#ASSERT NOT `compensable:` (`the liability for the disease of a worker` `as an employee` `:` `hearing loss, incapacity late`)
+#ASSERT `compensable:` (`the liability for the disease of a worker` `as an employee` `:` `hearing loss, incapacity late, then death`)
+#ASSERT `compensable:` (`the liability for the disease of a worker` `as an employee` `:` `a solvent disease`)
+#ASSERT NOT `compensable:` (`the liability for the disease of a worker` `as an employee` `:` `a solvent disease, incapacity late`)
+#ASSERT `compensable:` (`the liability for the disease of a worker` `as an employee` `:` `a solvent disease, incapacity at one year`)
+-- s 83(1): a disease whose date of accident is before 1 September 2020 is under the repealed Act
+-- (corrected after the independent test pass: first written as "not compensable")
+#ASSERT REFUSED `the liability for the disease of a worker` `as an employee` `:` `a solvent disease from 2011`
+#ASSERT REFUSED `the liability for the disease of a worker` `as an employee` `:` `a 2019 noise-induced hearing loss`
+#ASSERT `compensable:` (`the liability for the disease of a worker` `as an employee` `:` `an infection from a wound`)
+#ASSERT NOT `compensable:` (`the liability for the disease of a worker` `as an employee` `:` `an unrelated illness`)
+-- s 34G(1)(c): the platform workers' cut-off is 1 January 2025; the employees' is 1 June 2012
+#ASSERT NOT `compensable:` (`the liability for the disease of a worker` `as a platform worker` `:` `a platform worker's 2024 solvent disease`)
+#ASSERT `compensable:` (`the liability for the disease of a worker` `as an employee` `:` `a platform worker's 2024 solvent disease`)
+#ASSERT `compensable:` (`the liability for the disease of a worker` `as a platform worker` `:` `noise-induced hearing loss at work`)
+-- s 10(5) and the Second Schedule third column (FORK F2: calendar months)
+#ASSERT `the last day of the limitation period for` `silicosis, ceased 15 May 2025` EQUALS JUST (YMD 2028 5 15)
+#ASSERT `the last day of the limitation period for` `noise-induced hearing loss at work` EQUALS NOTHING
+-- Second Schedule: 38 items; items 31 and 34 are 36 months
+#ASSERT `the Second Schedule row` 39 EQUALS NOTHING
+#ASSERT `the Second Schedule row` 6 EQUALS JUST (`Second Schedule row` OF "Noise-induced hearing loss", 12)
+-- s 11(1): the earliest of the last day, the incapacity and the death
+#ASSERT `the date of the accident for computing earnings, for the disease` `a disease with dates` EQUALS YMD 2026 4 10
+#ASSERT `the date of the accident for computing earnings, for the disease` `an unrelated illness` EQUALS YMD 2026 6 30
+-- s 11(2)(a): the earlier of the incapacity and the certification; (b) the death
+#ASSERT `the date of the accident for other purposes, for the disease` `a disease with dates` EQUALS YMD 2026 3 1
+#ASSERT `the date of the accident for other purposes, for the disease` `a fatal disease without incapacity` EQUALS YMD 2026 7 1
+#ASSERT REFUSED `the date of the accident for other purposes, for the disease` `an unrelated illness`
+-- s 11A
+#ASSERT `the apportioned amounts` (LIST 30000, 20000) `are within s 11A(a) of a single amount of` 50000
+#ASSERT NOT `the apportioned amounts` (LIST 30000, 25000) `are within s 11A(a) of a single amount of` 50000
+#ASSERT REFUSED `s 11A(b) — the prescribed apportionment`

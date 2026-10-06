@@ -1,0 +1,260 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `wica-types`
+IMPORT `wica-payment`
+IMPORT `wica-process`
+
+-- Work Injury Compensation Act 2019 — TESTS FOR GOALS 4, 5 AND 6: payment,
+-- the claim process, and actions for damages.
+--
+-- Expected values are worked from ../source/WICA2019.txt, ss 18-23, 35-64.
+-- The base accident is on 2 March 2026; notices are served on 4 May 2026.
+
+§ `Tests — Goals 4, 5 and 6`
+
+§§ `Helpers`
+
+GIVEN died IS A BOOLEAN, exec IS A BOOLEAN, incap IS A BOOLEAN, deputy IS A BOOLEAN, minor IS A BOOLEAN, pi IS A BOOLEAN, rel IS A BOOLEAN, dep IS A BOOLEAN
+GIVETH A `Payee facts`
+`payee facts` died exec incap deputy minor pi rel dep MEANS
+    `Payee facts` WITH
+        `the claimant has died`                                   IS died
+        `an executor or administrator is known to be appointed`    IS exec
+        `the claimant lacks capacity in property and affairs`      IS incap
+        `a donee or deputy with power to receive the payment`      IS deputy
+        `the claimant is below 18`                                 IS minor
+        `for permanent or current incapacity`                      IS pi
+        `the Commissioner has directed payment to relatives`       IS rel
+        `the Commissioner has directed a deposit`                  IS dep
+
+--                                   died   exec   incap  deputy minor  PI     rel    deposit
+`an adult`                MEANS `payee facts` FALSE  FALSE  FALSE  FALSE  FALSE  TRUE   FALSE  FALSE
+`a minor, PI`             MEANS `payee facts` FALSE  FALSE  FALSE  FALSE  TRUE   TRUE   FALSE  FALSE
+`a minor, temporary`      MEANS `payee facts` FALSE  FALSE  FALSE  FALSE  TRUE   FALSE  FALSE  FALSE
+`dead, executor known`    MEANS `payee facts` TRUE   TRUE   FALSE  FALSE  FALSE  FALSE  FALSE  FALSE
+`dead, no executor`       MEANS `payee facts` TRUE   FALSE  FALSE  FALSE  FALSE  FALSE  FALSE  FALSE
+`incapable, deputy`       MEANS `payee facts` FALSE  FALSE  TRUE   TRUE   FALSE  TRUE   FALSE  FALSE
+`incapable, no deputy`    MEANS `payee facts` FALSE  FALSE  TRUE   FALSE  FALSE  TRUE   FALSE  FALSE
+`dead, relatives directed` MEANS `payee facts` TRUE  TRUE   FALSE  FALSE  FALSE  FALSE  TRUE   FALSE
+`a deposit directed`      MEANS `payee facts` FALSE  FALSE  FALSE  FALSE  FALSE  TRUE   FALSE  TRUE
+
+GIVEN w IS A BOOLEAN, r IS A BOOLEAN, e IS A BOOLEAN, applied IS A BOOLEAN, reps IS A BOOLEAN, fema IS A BOOLEAN
+GIVETH A `Refund facts`
+`refund facts` w r e applied reps fema MEANS
+    `Refund facts` WITH
+        `the claim was withdrawn and not resumed`                 IS w
+        `an order of refusal has been made or taken effect`       IS r
+        `paid on the basis of an error or false or misleading information` IS e
+        `the payer applied in time, in the required form`         IS applied
+        `the claimant had a reasonable opportunity to make representations` IS reps
+        `a medical payment the employer owes under the Employment of Foreign Manpower Act 1990` IS fema
+
+GIVEN died IS A MAYBE DATE, notice IS A MAYBE DATE, later IS A MAYBE DATE, wd IS A MAYBE DATE, res IS A MAYBE DATE, approved IS A BOOLEAN, claim IS A MAYBE DATE, notified IS A BOOLEAN, stmt IS A BOOLEAN
+GIVETH A `Claim history`
+`history` died notice later wd res approved claim notified stmt MEANS
+    `Claim history` WITH
+        `accident on`                                IS YMD 2026 3 2
+        `claimant died on`                           IS died
+        `employer first had notice on`               IS notice
+        `later date specified by the Commissioner`   IS later
+        `withdrawn on`                               IS wd
+        `resumed on`                                 IS res
+        `the Commissioner approved a late resumption` IS approved
+        `incapacity claim made on`                   IS claim
+        `notified of assessment for permanent or current incapacity` IS notified
+        `incapacity claim had a health professional's statement` IS stmt
+
+`notified 3 March 2026` MEANS JUST (YMD 2026 3 3)
+
+GIVEN objections IS A LIST OF DATE
+      withdrawn  IS A MAYBE DATE
+GIVETH A `Notice and objections`
+`a notice served 4 May 2026, objections` objections `, withdrawn` withdrawn MEANS
+    `Notice and objections` WITH
+        `served on`                                  IS YMD 2026 5 4
+        `objections received on`                     IS objections
+        `all objections withdrawn on`                IS withdrawn
+        `objection delayed by another's error or fraud` IS FALSE
+
+GIVEN sued IS A BOOLEAN, recE IS A BOOLEAN, recO IS A BOOLEAN, settle IS A BOOLEAN, notice IS A BOOLEAN, nowd IS A BOOLEAN, review IS A BOOLEAN, route IS A BOOLEAN, refused IS A BOOLEAN
+GIVETH A `Damages history`
+`damages history` sued recE recO settle notice nowd review route refused MEANS
+    `Damages history` WITH
+        `sued the employer for damages`                          IS sued
+        `recovered damages from the employer`                    IS recE
+        `recovered damages from someone else`                    IS recO
+        `a settlement order made`                                IS settle
+        `a notice took effect as an order`                       IS notice
+        `failed to withdraw within 28 days of service, or withdrawal not kept` IS nowd
+        `an order to pay compensation made after review`         IS review
+        `the s 63(3) route was followed`                         IS route
+        `compensation refused, or appeal failed on scope`        IS refused
+
+§§ `Goal 4 — whom the insurer pays (s 18)`
+
+#ASSERT `whom the insurer pays, under s 18:` `an adult` EQUALS `the claimant`                              -- (2)(a)
+#ASSERT `whom the insurer pays, under s 18:` `a minor, PI` EQUALS `the Public Trustee`                     -- (2)(b)
+#ASSERT `whom the insurer pays, under s 18:` `a minor, temporary` EQUALS `the claimant`                    -- (2)(b)(i) not met
+#ASSERT `whom the insurer pays, under s 18:` `dead, executor known` EQUALS `the executor or administrator`  -- (2)(c)
+#ASSERT `whom the insurer pays, under s 18:` `dead, no executor` EQUALS `no one until the Commissioner directs (s 20, s 21)`
+#ASSERT `whom the insurer pays, under s 18:` `incapable, deputy` EQUALS `the donee or deputy`               -- (2)(d)
+#ASSERT `whom the insurer pays, under s 18:` `incapable, no deputy` EQUALS `no one until the Commissioner directs (s 20, s 21)`
+#ASSERT `whom the insurer pays, under s 18:` `dead, relatives directed` EQUALS `the claimant's relatives, as the Commissioner directs` -- (2)(e)
+#ASSERT `whom the insurer pays, under s 18:` `a deposit directed` EQUALS `a deposit with the Commissioner`    -- (3)
+
+§§ `Goal 4 — whom the employer pays (s 19)`
+
+#ASSERT `whom the employer pays, under s 19:` `an adult` EQUALS `the claimant`                              -- (1)(a)
+#ASSERT `whom the employer pays, under s 19:` `dead, executor known` EQUALS `a deposit with the Commissioner` -- (2)(a)(i)
+#ASSERT `whom the employer pays, under s 19:` `incapable, deputy` EQUALS `a deposit with the Commissioner`  -- (2)(a)(ii)
+#ASSERT `whom the employer pays, under s 19:` `a minor, PI` EQUALS `a deposit with the Commissioner`        -- (2)(b)
+#ASSERT `whom the employer pays, under s 19:` `a minor, temporary` EQUALS `the claimant`
+#ASSERT `whom the employer pays, under s 19:` `a deposit directed` EQUALS `a deposit with the Commissioner` -- (2)(c)
+#ASSERT `whom the employer pays, under s 19:` `dead, relatives directed` EQUALS `the claimant's relatives, as the Commissioner directs` -- (1)(b)
+
+§§ `Goal 4 — discharge, contracting out, interest, refunds`
+
+-- s 22(1)-(3)
+#ASSERT `paying` `the claimant` `discharges the compensation, the Act naming` `the claimant`
+#ASSERT NOT `paying` `the claimant` `discharges the compensation, the Act naming` `the Public Trustee`
+#ASSERT NOT `paying` `the claimant` `discharges the compensation, the Act naming` `no one until the Commissioner directs (s 20, s 21)`
+-- s 23(1)
+#ASSERT `the agreement is void under s 23(1):` TRUE `, recorded as a settlement:` FALSE
+#ASSERT NOT `the agreement is void under s 23(1):` TRUE `, recorded as a settlement:` TRUE
+#ASSERT `s 23(2) forbids it:` TRUE
+-- s 59(2): interest at most 50% of the compensation paid late
+#ASSERT `the interest payable, at the prescribed rate` 800 `, on late compensation of` 1000 EQUALS 500
+#ASSERT `the interest payable, at the prescribed rate` 300 `, on late compensation of` 1000 EQUALS 300
+-- ss 16(5)-(7), 17(5)-(6), 34M, 34N
+--                                                                              withdrawn refused error applied reps  FEMA
+#ASSERT     `the Commissioner may order a refund or reimbursement to the payer:` (`refund facts` TRUE  FALSE FALSE TRUE  TRUE  FALSE)
+#ASSERT     `the Commissioner may order a refund or reimbursement to the payer:` (`refund facts` FALSE TRUE  FALSE TRUE  TRUE  FALSE)
+#ASSERT     `the Commissioner may order a refund or reimbursement to the payer:` (`refund facts` FALSE FALSE TRUE  TRUE  TRUE  FALSE)
+#ASSERT NOT `the Commissioner may order a refund or reimbursement to the payer:` (`refund facts` FALSE FALSE FALSE TRUE  TRUE  FALSE)
+#ASSERT NOT `the Commissioner may order a refund or reimbursement to the payer:` (`refund facts` TRUE  FALSE FALSE FALSE TRUE  FALSE)
+#ASSERT NOT `the Commissioner may order a refund or reimbursement to the payer:` (`refund facts` TRUE  FALSE FALSE TRUE  FALSE FALSE)
+#ASSERT NOT `the Commissioner may order a refund or reimbursement to the payer:` (`refund facts` TRUE  FALSE FALSE TRUE  TRUE  TRUE)
+-- s 54(4)
+#ASSERT     `the Commissioner may order an overpayment refunded on review:` (`refund facts` FALSE FALSE TRUE  FALSE FALSE FALSE)
+#ASSERT NOT `the Commissioner may order an overpayment refunded on review:` (`refund facts` TRUE  FALSE FALSE TRUE  TRUE  FALSE)
+
+§§ `Goal 5a — notice, withdrawal and resumption (ss 35, 39, 41)`
+
+-- s 35(5)(a): one year after the accident
+#ASSERT `the last day for the employer to have notice, in` (`history` NOTHING NOTHING NOTHING NOTHING NOTHING FALSE NOTHING FALSE FALSE) EQUALS YMD 2027 3 2
+-- (b): death within that year — one year after the death
+#ASSERT `the last day for the employer to have notice, in` (`history` (JUST (YMD 2026 9 1)) NOTHING NOTHING NOTHING NOTHING FALSE NOTHING FALSE FALSE) EQUALS YMD 2027 9 1
+-- (b) does not apply to a death after that year
+#ASSERT `the last day for the employer to have notice, in` (`history` (JUST (YMD 2027 6 1)) NOTHING NOTHING NOTHING NOTHING FALSE NOTHING FALSE FALSE) EQUALS YMD 2027 3 2
+-- (c): a later date specified by the Commissioner
+#ASSERT `the last day for the employer to have notice, in` (`history` NOTHING NOTHING (JUST (YMD 2028 1 1)) NOTHING NOTHING FALSE NOTHING FALSE FALSE) EQUALS YMD 2028 1 1
+
+#ASSERT `the status on` (YMD 2026 6 1) `of the claim in` (`history` NOTHING `notified 3 March 2026` NOTHING NOTHING NOTHING FALSE NOTHING FALSE FALSE) EQUALS `the claim is alive`
+#ASSERT `the status on` (YMD 2026 6 1) `of the claim in` (`history` NOTHING NOTHING NOTHING NOTHING NOTHING FALSE NOTHING FALSE FALSE) EQUALS `no claim yet: the employer has no notice`
+#ASSERT `the status on` (YMD 2027 3 2) `of the claim in` (`history` NOTHING NOTHING NOTHING NOTHING NOTHING FALSE NOTHING FALSE FALSE) EQUALS `no claim yet: the employer has no notice`
+#ASSERT `the status on` (YMD 2027 3 3) `of the claim in` (`history` NOTHING NOTHING NOTHING NOTHING NOTHING FALSE NOTHING FALSE FALSE) EQUALS `deemed withdrawn under s 35(5)`
+-- s 41(1): withdrawn 1 May 2026
+#ASSERT `the status on` (YMD 2026 6 1) `of the claim in` (`history` NOTHING `notified 3 March 2026` NOTHING (JUST (YMD 2026 5 1)) NOTHING FALSE NOTHING FALSE FALSE) EQUALS `withdrawn under s 41(1)`
+-- s 41(2)(a): resumed within a year of the accident
+#ASSERT `the status on` (YMD 2026 9 1) `of the claim in` (`history` NOTHING `notified 3 March 2026` NOTHING (JUST (YMD 2026 5 1)) (JUST (YMD 2026 8 1)) FALSE NOTHING FALSE FALSE) EQUALS `the claim is alive`
+-- s 41(2)(b): resumed after a year — only with the Commissioner's approval
+#ASSERT `the status on` (YMD 2027 5 1) `of the claim in` (`history` NOTHING `notified 3 March 2026` NOTHING (JUST (YMD 2026 5 1)) (JUST (YMD 2027 4 1)) FALSE NOTHING FALSE FALSE) EQUALS `withdrawn under s 41(1)`
+#ASSERT `the status on` (YMD 2027 5 1) `of the claim in` (`history` NOTHING `notified 3 March 2026` NOTHING (JUST (YMD 2026 5 1)) (JUST (YMD 2027 4 1)) TRUE NOTHING FALSE FALSE) EQUALS `the claim is alive`
+-- s 41(2): a deemed withdrawal under s 35(5) can be resumed too
+#ASSERT `the status on` (YMD 2027 6 1) `of the claim in` (`history` NOTHING NOTHING NOTHING NOTHING (JUST (YMD 2027 5 1)) TRUE NOTHING FALSE FALSE) EQUALS `the claim is alive`
+-- s 35(6)-(7), s 41(3)-(4)
+#ASSERT `the Commissioner may excuse the delay:` TRUE `, a damages action causing it:` FALSE
+#ASSERT NOT `the Commissioner may excuse the delay:` TRUE `, a damages action causing it:` TRUE
+#ASSERT NOT `the Commissioner may excuse the delay:` FALSE `, a damages action causing it:` FALSE
+-- s 39: notified of assessment; or claimed within a year with a health professional's statement
+#ASSERT `compensation for permanent or current incapacity is open under s 39 in` (`history` NOTHING `notified 3 March 2026` NOTHING NOTHING NOTHING FALSE NOTHING TRUE FALSE)
+#ASSERT `compensation for permanent or current incapacity is open under s 39 in` (`history` NOTHING `notified 3 March 2026` NOTHING NOTHING NOTHING FALSE (JUST (YMD 2027 3 2)) FALSE TRUE)
+#ASSERT NOT `compensation for permanent or current incapacity is open under s 39 in` (`history` NOTHING `notified 3 March 2026` NOTHING NOTHING NOTHING FALSE (JUST (YMD 2027 3 3)) FALSE TRUE)
+#ASSERT NOT `compensation for permanent or current incapacity is open under s 39 in` (`history` NOTHING `notified 3 March 2026` NOTHING NOTHING NOTHING FALSE (JUST (YMD 2027 1 10)) FALSE FALSE)
+#ASSERT NOT `compensation for permanent or current incapacity is open under s 39 in` (`history` NOTHING `notified 3 March 2026` NOTHING NOTHING NOTHING FALSE NOTHING FALSE FALSE)
+
+§§ `Goal 5b — the medical examination (s 37)`
+
+-- s 37(1): before the expiry of the 5th day after notice on 3 March 2026
+#ASSERT `the last day to offer a medical examination, notice having come on` (YMD 2026 3 3) EQUALS YMD 2026 3 8
+-- s 37(7): fixed for 1 April 2026; 3 months is 1 July 2026; "beyond" is after
+#ASSERT     `s 37(7) bars compensation on` (YMD 2026 7 2) `, the examination fixed for` (YMD 2026 4 1) `, still not attended:` TRUE `, death:` FALSE `, reasonable cause:` FALSE
+#ASSERT NOT `s 37(7) bars compensation on` (YMD 2026 7 1) `, the examination fixed for` (YMD 2026 4 1) `, still not attended:` TRUE `, death:` FALSE `, reasonable cause:` FALSE
+#ASSERT NOT `s 37(7) bars compensation on` (YMD 2026 9 1) `, the examination fixed for` (YMD 2026 4 1) `, still not attended:` TRUE `, death:` TRUE  `, reasonable cause:` FALSE
+#ASSERT NOT `s 37(7) bars compensation on` (YMD 2026 9 1) `, the examination fixed for` (YMD 2026 4 1) `, still not attended:` TRUE `, death:` FALSE `, reasonable cause:` TRUE
+#ASSERT NOT `s 37(7) bars compensation on` (YMD 2026 9 1) `, the examination fixed for` (YMD 2026 4 1) `, still not attended:` FALSE `, death:` FALSE `, reasonable cause:` FALSE
+
+§§ `Goal 5c — notices, orders and objections (ss 44-49)`
+
+-- s 44(5)(a): no objection within 14 days — an order on the 15th day after service
+#ASSERT `the day the notice takes effect as an order, if it does:` (`a notice served 4 May 2026, objections` EMPTY `, withdrawn` NOTHING) EQUALS JUST (YMD 2026 5 19)
+-- an objection on the 16th day is not "received within 14 days"
+#ASSERT `the day the notice takes effect as an order, if it does:` (`a notice served 4 May 2026, objections` (LIST YMD 2026 5 20) `, withdrawn` NOTHING) EQUALS JUST (YMD 2026 5 19)
+-- (b): all objections withdrawn within 28 days — the 29th day
+#ASSERT `the day the notice takes effect as an order, if it does:` (`a notice served 4 May 2026, objections` (LIST YMD 2026 5 10) `, withdrawn` (JUST (YMD 2026 6 1))) EQUALS JUST (YMD 2026 6 2)
+-- withdrawn on the 32nd day: no deemed order; the Commissioner reviews
+#ASSERT `the day the notice takes effect as an order, if it does:` (`a notice served 4 May 2026, objections` (LIST YMD 2026 5 10) `, withdrawn` (JUST (YMD 2026 6 5))) EQUALS NOTHING
+#ASSERT `the day the notice takes effect as an order, if it does:` (`a notice served 4 May 2026, objections` (LIST YMD 2026 5 10) `, withdrawn` NOTHING) EQUALS NOTHING
+-- s 46(2)(a): 14 days; or, delayed by another's error or fraud, 90 days after that
+#ASSERT     `an objection on` (YMD 2026 5 18) `to a notice served on` (YMD 2026 5 4) `is in time, delayed by another's error or fraud:` FALSE
+#ASSERT NOT `an objection on` (YMD 2026 5 19) `to a notice served on` (YMD 2026 5 4) `is in time, delayed by another's error or fraud:` FALSE
+#ASSERT     `an objection on` (YMD 2026 8 16) `to a notice served on` (YMD 2026 5 4) `is in time, delayed by another's error or fraud:` TRUE
+#ASSERT NOT `an objection on` (YMD 2026 8 17) `to a notice served on` (YMD 2026 5 4) `is in time, delayed by another's error or fraud:` TRUE
+-- s 47E(2), (3), (5)
+#ASSERT `the last day for Y or Z to notify the relevant PO's insurer, served on` (YMD 2026 5 4) EQUALS YMD 2026 5 11
+#ASSERT `the last day for the relevant PO's insurer to object, the notice issued on` (YMD 2026 5 4) EQUALS YMD 2026 5 18
+#ASSERT `the last day for Y or Z to object directly, served on` (YMD 2026 5 4) EQUALS YMD 2026 6 10
+-- s 48(4): within 3 years, aggravated and substantially inadequate
+#ASSERT     `the Commissioner may reassess on` (YMD 2029 1 15) `a disease notice dated` (YMD 2026 1 15) `, aggravated:` TRUE `, substantially inadequate:` TRUE
+#ASSERT NOT `the Commissioner may reassess on` (YMD 2029 1 16) `a disease notice dated` (YMD 2026 1 15) `, aggravated:` TRUE `, substantially inadequate:` TRUE
+#ASSERT NOT `the Commissioner may reassess on` (YMD 2027 1 15) `a disease notice dated` (YMD 2026 1 15) `, aggravated:` FALSE `, substantially inadequate:` TRUE
+
+§§ `Goal 5d — settlement, appeal, and who processes (ss 35A, 36, 51, 58)`
+
+#ASSERT     `the Commissioner may set aside the settlement order, error or fraud:` TRUE `, appeal pending:` FALSE
+#ASSERT NOT `the Commissioner may set aside the settlement order, error or fraud:` TRUE `, appeal pending:` TRUE
+#ASSERT NOT `the Commissioner may set aside the settlement order, error or fraud:` FALSE `, appeal pending:` FALSE
+-- s 58(1): a substantial question of law, and a refusal or $1,000 or more
+#ASSERT     `an appeal lies against` `an order of the Commissioner after review` `, a refusal:` TRUE  `, of` 0    `, a substantial question of law:` TRUE
+#ASSERT     `an appeal lies against` `an order of the Commissioner after review` `, a refusal:` FALSE `, of` 1000 `, a substantial question of law:` TRUE
+#ASSERT NOT `an appeal lies against` `an order of the Commissioner after review` `, a refusal:` FALSE `, of` 999  `, a substantial question of law:` TRUE
+#ASSERT NOT `an appeal lies against` `an order of the Commissioner after review` `, a refusal:` TRUE  `, of` 0    `, a substantial question of law:` FALSE
+#ASSERT     `an appeal lies against` `an order of refusal at a pre-hearing conference` `, a refusal:` TRUE `, of` 0 `, a substantial question of law:` TRUE
+-- s 58(5)
+#ASSERT NOT `an appeal lies against` `a notice of computation in effect as an order` `, a refusal:` FALSE `, of` 50000 `, a substantial question of law:` TRUE
+#ASSERT NOT `an appeal lies against` `a notice of assessment in effect as an order` `, a refusal:` FALSE `, of` 50000 `, a substantial question of law:` TRUE
+#ASSERT NOT `an appeal lies against` `a settlement order not set aside` `, a refusal:` FALSE `, of` 50000 `, a substantial question of law:` TRUE
+-- s 35A(4)
+#ASSERT `the s 35A(4) treatment, AME as employee` 3000 `, as platform worker` 2000 EQUALS `may be treated as an employee's claim`
+#ASSERT `the s 35A(4) treatment, AME as employee` 2000 `, as platform worker` 3000 EQUALS `may be treated as a platform worker's claim`
+#ASSERT `the s 35A(4) treatment, AME as employee` 2000 `, as platform worker` 2000 EQUALS `processed by the Commissioner under s 35A(4)(c)`
+-- s 36(2)
+#ASSERT     `the Commissioner must process the claim, insured:` FALSE `, deciding to:` FALSE
+#ASSERT NOT `the Commissioner must process the claim, insured:` TRUE  `, deciding to:` FALSE
+#ASSERT     `the Commissioner must process the claim, insured:` TRUE  `, deciding to:` TRUE
+
+§§ `Goal 6 — actions for damages (ss 63, 64)`
+
+--                                                              sued  recE  recO  settle notice nowd  review route refused
+#ASSERT     `s 63(1) bars compensation, given` (`damages history` TRUE  FALSE FALSE FALSE  FALSE  FALSE FALSE  FALSE FALSE)
+#ASSERT     `s 63(1) bars compensation, given` (`damages history` FALSE TRUE  FALSE FALSE  FALSE  FALSE FALSE  FALSE FALSE)
+#ASSERT NOT `s 63(1) bars compensation, given` (`damages history` FALSE FALSE TRUE  FALSE  FALSE  FALSE FALSE  FALSE FALSE)
+#ASSERT     `s 63(2) bars an action for damages against the employer, given` (`damages history` FALSE FALSE TRUE  FALSE  FALSE  FALSE FALSE  FALSE FALSE)
+#ASSERT     `s 63(2) bars an action for damages against the employer, given` (`damages history` FALSE FALSE FALSE TRUE   FALSE  FALSE FALSE  FALSE FALSE)
+#ASSERT     `s 63(2) bars an action for damages against the employer, given` (`damages history` FALSE FALSE FALSE FALSE  TRUE   FALSE FALSE  FALSE FALSE)
+#ASSERT     `s 63(2) bars an action for damages against the employer, given` (`damages history` FALSE FALSE FALSE FALSE  FALSE  TRUE  FALSE  FALSE FALSE)
+#ASSERT     `s 63(2) bars an action for damages against the employer, given` (`damages history` FALSE FALSE FALSE FALSE  FALSE  FALSE TRUE   FALSE FALSE)
+#ASSERT NOT `s 63(2) bars an action for damages against the employer, given` (`damages history` FALSE FALSE FALSE FALSE  FALSE  FALSE TRUE   TRUE  FALSE)
+#ASSERT NOT `s 63(2) bars an action for damages against the employer, given` (`damages history` FALSE FALSE FALSE FALSE  TRUE   FALSE FALSE  FALSE TRUE)
+#ASSERT NOT `s 63(2) bars an action for damages against the employer, given` (`damages history` FALSE FALSE FALSE FALSE  FALSE  FALSE FALSE  FALSE FALSE)
+-- s 63(6): action within a year of the accident on 2 March 2026
+#ASSERT     `the court assesses compensation under s 63(6), accident on` (YMD 2026 3 2) `, action on` (YMD 2027 3 2) `, found` TRUE `, chosen:` TRUE
+#ASSERT NOT `the court assesses compensation under s 63(6), accident on` (YMD 2026 3 2) `, action on` (YMD 2027 3 3) `, found` TRUE `, chosen:` TRUE
+#ASSERT NOT `the court assesses compensation under s 63(6), accident on` (YMD 2026 3 2) `, action on` (YMD 2026 9 1) `, found` TRUE `, chosen:` FALSE
+#ASSERT NOT `the court assesses compensation under s 63(6), accident on` (YMD 2026 3 2) `, action on` (YMD 2026 9 1) `, found` FALSE `, chosen:` TRUE
+-- s 64(1)(a): not both damages and compensation
+#ASSERT NOT `compensation may still be recovered, damages having been recovered from the third party:` TRUE
+#ASSERT     `compensation may still be recovered, damages having been recovered from the third party:` FALSE
+-- s 64(1)(b), (3)
+#ASSERT `the indemnity from the third party, compensation` 10000 `, reduced:` TRUE `, proportion` 0.6 EQUALS 6000
+#ASSERT `the indemnity from the third party, compensation` 10000 `, reduced:` FALSE `, proportion` 0.6 EQUALS 10000

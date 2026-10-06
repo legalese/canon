@@ -1,0 +1,238 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `wica-types`
+IMPORT `wica-insurance-offences`
+IMPORT `wica-administration`
+
+-- Work Injury Compensation Act 2019 — TESTS FOR GOALS 7 AND 8: insurance and
+-- offences, and the small rules among the administrative provisions.
+--
+-- Expected values are worked from ../source/WICA2019.txt: ss 24-34, 34O-34P,
+-- 35(8)-(9), 40, 47-47G, 50(4), 60-62, 68(6)-(7), 70, 72-73, 76-77, 82(3).
+
+§ `Tests — Goals 7 and 8`
+
+§§ `Helpers`
+
+GIVEN insured IS A BOOLEAN, excluded IS A BOOLEAN, mlc IS A BOOLEAN, steps IS A BOOLEAN
+GIVETH AN `Insurance position`
+`insurance` insured excluded mlc steps MEANS
+    `Insurance position` WITH
+        `insured under approved policies with designated insurers for every worker` IS insured
+        `in an excluded class prescribed under s 24(2)(a)`           IS excluded
+        `a seafarer covered by Maritime Labour Convention security`  IS mlc
+        `took all reasonable steps to ascertain the matters in s 25(3)` IS steps
+
+GIVEN a IS A BOOLEAN, wu IS A BOOLEAN, rec IS A BOOLEAN, deb IS A BOOLEAN, recon IS A BOOLEAN, void IS A BOOLEAN, told IS A BOOLEAN
+GIVETH AN `Insolvency facts`
+`insolvency` a wu rec deb recon void told MEANS
+    `Insolvency facts` WITH
+        `bankrupt, or a composition or scheme with creditors`       IS a
+        `winding-up proceedings commenced`                          IS wu
+        `a receiver or manager appointed`                           IS rec
+        `debenture holders took possession under a floating charge` IS deb
+        `only a voluntary winding up for reconstruction or amalgamation` IS recon
+        `the contract is void or voidable other than for premiums`  IS void
+        `the employee gave the insurer notice as soon as practicable` IS told
+
+GIVEN o IS AN Offence
+GIVETH AN `Earlier conviction`
+`a conviction for` o MEANS
+    `Earlier conviction` WITH `offence` IS o, `under the repealed Act` IS FALSE, `repealed Act provision` IS "", `under the old regulation 3(5)` IS FALSE
+
+-- the offence field is not read for a repealed-Act conviction; any value will do
+GIVEN p IS A STRING
+GIVETH AN `Earlier conviction`
+`a conviction under the repealed Act, s` p MEANS
+    `Earlier conviction` WITH `offence` IS `s 82(3) — contravening the regulations`, `under the repealed Act` IS TRUE, `repealed Act provision` IS p, `under the old regulation 3(5)` IS FALSE
+
+`a conviction under the old regulation 3(5)` MEANS
+    `Earlier conviction` WITH `offence` IS `s 82(3) — contravening the regulations`, `under the repealed Act` IS FALSE, `repealed Act provision` IS "", `under the old regulation 3(5)` IS TRUE
+
+GIVEN o IS AN Offence, r IS A BOOLEAN
+GIVETH A NUMBER
+`fine for` o r MEANS (`the maximum penalty for` o `, a repeat offender:` r)'s `fine`
+
+GIVEN o IS AN Offence, r IS A BOOLEAN
+GIVETH A NUMBER
+`months for` o r MEANS (`the maximum penalty for` o `, a repeat offender:` r)'s `imprisonment in months`
+
+GIVEN pos IS A BOOLEAN, a IS A BOOLEAN, b IS A BOOLEAN, c IS A BOOLEAN
+GIVETH AN `Officer facts`
+`officer` pos a b c MEANS
+    `Officer facts` WITH
+        `an officer, partner, or manager able to influence the conduct` IS pos
+        `consented, connived or conspired`                               IS a
+        `knowingly concerned in or party to it`                          IS b
+        `knew or ought to have known, and did not take all reasonable steps` IS c
+
+§§ `Goal 7a — the duty to insure (ss 24, 25, 34O, 34P, 67(4))`
+
+--                                          insured excluded MLC   steps
+#ASSERT     `the insurance duty is met:` (`insurance` TRUE  FALSE FALSE FALSE)
+#ASSERT     `the insurance duty is met:` (`insurance` FALSE TRUE  FALSE FALSE)
+#ASSERT     `the insurance duty is met:` (`insurance` FALSE FALSE TRUE  FALSE)
+#ASSERT NOT `the insurance duty is met:` (`insurance` FALSE FALSE FALSE FALSE)
+-- s 25(3): not knowing is no defence unless all reasonable steps were taken
+#ASSERT     `the s 25(1) / 34P(1) offence is made out on` (`insurance` FALSE FALSE FALSE FALSE) `, ignorance pleaded:` TRUE
+#ASSERT NOT `the s 25(1) / 34P(1) offence is made out on` (`insurance` FALSE FALSE FALSE TRUE)  `, ignorance pleaded:` TRUE
+#ASSERT     `the s 25(1) / 34P(1) offence is made out on` (`insurance` FALSE FALSE FALSE TRUE)  `, ignorance pleaded:` FALSE
+#ASSERT NOT `the s 25(1) / 34P(1) offence is made out on` (`insurance` TRUE  FALSE FALSE FALSE) `, ignorance pleaded:` FALSE
+
+§§ `Goal 7b — the policy (ss 26, 27)`
+
+#ASSERT     `an approved policy, compulsory terms:` TRUE `, derogating term:` FALSE
+#ASSERT NOT `an approved policy, compulsory terms:` TRUE `, derogating term:` TRUE
+#ASSERT NOT `an approved policy, compulsory terms:` FALSE `, derogating term:` FALSE
+-- s 26(3)-(4): as if compliant, but not beyond the prescribed minimum
+#ASSERT `what the insurer of a purported policy must pay, of compensation` 500000 `, the minimum` (JUST 300000) EQUALS 300000
+#ASSERT `what the insurer of a purported policy must pay, of compensation` 200000 `, the minimum` (JUST 300000) EQUALS 200000
+#ASSERT `what the insurer of a purported policy must pay, of compensation` 500000 `, the minimum` NOTHING EQUALS 500000
+-- s 27(1)
+#ASSERT NOT `the insurer may raise the defence, it being double insurance:` TRUE
+
+§§ `Goal 7c — insolvency (ss 28, 29)`
+
+--                                                                           bankrupt w-up  recv  deb   recon void  told
+#ASSERT     `the employer's rights against the insurer pass to the worker:` (`insolvency` TRUE  FALSE FALSE FALSE FALSE FALSE FALSE)
+#ASSERT     `the employer's rights against the insurer pass to the worker:` (`insolvency` FALSE TRUE  FALSE FALSE FALSE FALSE FALSE)
+#ASSERT     `the employer's rights against the insurer pass to the worker:` (`insolvency` FALSE FALSE TRUE  FALSE FALSE FALSE FALSE)
+#ASSERT     `the employer's rights against the insurer pass to the worker:` (`insolvency` FALSE FALSE FALSE TRUE  FALSE FALSE FALSE)
+#ASSERT NOT `the employer's rights against the insurer pass to the worker:` (`insolvency` FALSE TRUE  FALSE FALSE TRUE  FALSE FALSE)
+#ASSERT NOT `the employer's rights against the insurer pass to the worker:` (`insolvency` TRUE  FALSE FALSE FALSE FALSE TRUE  FALSE)
+#ASSERT     `the employer's rights against the insurer pass to the worker:` (`insolvency` TRUE  FALSE FALSE FALSE FALSE TRUE  TRUE)
+#ASSERT NOT `the employer's rights against the insurer pass to the worker:` (`insolvency` FALSE FALSE FALSE FALSE FALSE FALSE FALSE)
+-- s 28(2)(b), (3)
+#ASSERT `the balance the worker may prove for, liability` 100000 `, insurer's liability` 60000 EQUALS 40000
+#ASSERT `the balance the worker may prove for, liability` 50000 `, insurer's liability` 60000 EQUALS 0
+
+§§ `Goal 7d, 7e — providers and designated insurers (ss 30, 31, 34)`
+
+#ASSERT     `providing it is an offence under s 30, provider` `anyone else` `, approved:` TRUE `, within the Act:` TRUE
+#ASSERT NOT `providing it is an offence under s 30, provider` `a designated insurer of the right kind, not suspended` `, approved:` TRUE `, within the Act:` TRUE
+#ASSERT NOT `providing it is an offence under s 30, provider` `an insurance intermediary for such an insurer` `, approved:` TRUE `, within the Act:` TRUE
+#ASSERT     `providing it is an offence under s 30, provider` `a designated insurer of the right kind, not suspended` `, approved:` FALSE `, within the Act:` TRUE
+-- s 30(5): health or accident cover, or excess-only cover, is not within s 30
+#ASSERT NOT `providing it is an offence under s 30, provider` `anyone else` `, approved:` FALSE `, within the Act:` FALSE
+-- s 34(1)(b): $30,000 per failure
+#ASSERT `the most the Commissioner may impose on a designated insurer, failures being` 3 EQUALS 90000
+-- s 31(6)
+#ASSERT     `the designation, until` (JUST (YMD 2027 12 31)) `, cancelled` NOTHING `, is in force on` (YMD 2027 12 31)
+#ASSERT NOT `the designation, until` (JUST (YMD 2027 12 31)) `, cancelled` NOTHING `, is in force on` (YMD 2028 1 1)
+#ASSERT     `the designation, until` NOTHING `, cancelled` (JUST (YMD 2026 6 1)) `, is in force on` (YMD 2026 5 31)
+#ASSERT NOT `the designation, until` NOTHING `, cancelled` (JUST (YMD 2026 6 1)) `, is in force on` (YMD 2026 6 1)
+
+§§ `Goal 8a — repeat offenders`
+
+-- s 25(2): (a) s 25(1), (b) s 34P(1), (c) repealed Act s 35(1)(b)
+#ASSERT     `a repeat offender for` `s 25(1) — employer not insured` `, with earlier convictions` (LIST `a conviction for` `s 25(1) — employer not insured`)
+#ASSERT     `a repeat offender for` `s 25(1) — employer not insured` `, with earlier convictions` (LIST `a conviction for` `s 34P(1) — platform operator not insured`)
+#ASSERT     `a repeat offender for` `s 25(1) — employer not insured` `, with earlier convictions` (LIST `a conviction under the repealed Act, s` "35(1)(b)")
+#ASSERT NOT `a repeat offender for` `s 25(1) — employer not insured` `, with earlier convictions` (LIST `a conviction under the repealed Act, s` "35(1)(a)")
+#ASSERT NOT `a repeat offender for` `s 25(1) — employer not insured` `, with earlier convictions` (LIST `a conviction for` `s 25(4) — employer deducting insurance cost from earnings`)
+#ASSERT NOT `a repeat offender for` `s 25(1) — employer not insured` `, with earlier convictions` EMPTY
+-- s 34P(5): (i) s 34P(4), (ii) s 25(4), (iii) repealed s 35(1)(a)
+#ASSERT     `a repeat offender for` `s 34P(4) — platform operator deducting insurance cost from earnings` `, with earlier convictions` (LIST `a conviction for` `s 25(4) — employer deducting insurance cost from earnings`)
+#ASSERT     `a repeat offender for` `s 34P(4) — platform operator deducting insurance cost from earnings` `, with earlier convictions` (LIST `a conviction under the repealed Act, s` "35(1)(a)")
+-- s 30(2C): s 30(1) or (2A), either way; s 30(3A): only s 30(3)
+#ASSERT     `a repeat offender for` `s 30(2A) — unauthorised provider of platform operator insurance` `, with earlier convictions` (LIST `a conviction for` `s 30(1) — unauthorised provider of employer insurance`)
+#ASSERT NOT `a repeat offender for` `s 30(3) — insurance that is not an approved policy` `, with earlier convictions` (LIST `a conviction for` `s 30(1) — unauthorised provider of employer insurance`)
+#ASSERT     `a repeat offender for` `s 30(3) — insurance that is not an approved policy` `, with earlier convictions` (LIST `a conviction for` `s 30(3) — insurance that is not an approved policy`)
+-- s 35(9): s 35(8), or regulation 3(5) of the old Regulations
+#ASSERT     `a repeat offender for` `s 35(8) — failing to give the Commissioner notice of an accident` `, with earlier convictions` (LIST `a conviction under the old regulation 3(5)`)
+#ASSERT NOT `a repeat offender for` `s 61(1) — failing to pay compensation` `, with earlier convictions` (LIST `a conviction under the old regulation 3(5)`)
+-- s 61(2), (4): repealed s 35(2)(a), (b)
+#ASSERT     `a repeat offender for` `s 61(1) — failing to pay compensation` `, with earlier convictions` (LIST `a conviction under the repealed Act, s` "35(2)(a)")
+#ASSERT NOT `a repeat offender for` `s 61(1) — failing to pay compensation` `, with earlier convictions` (LIST `a conviction under the repealed Act, s` "35(2)(b)")
+#ASSERT     `a repeat offender for` `s 61(3) — failing to deposit interest` `, with earlier convictions` (LIST `a conviction under the repealed Act, s` "35(2)(b)")
+-- s 61(5) and s 50(4): "a second or subsequent conviction"
+#ASSERT     `a repeat offender for` `s 61(5) — failing to make a directed deposit` `, with earlier convictions` (LIST `a conviction for` `s 61(5) — failing to make a directed deposit`)
+#ASSERT     `a repeat offender for` `s 50(4) — failing to comply with a direction` `, with earlier convictions` (LIST `a conviction for` `s 50(4) — failing to comply with a direction`)
+-- s 62(2): repealed s 35(2)(c)
+#ASSERT     `a repeat offender for` `s 62(1) — false or misleading information` `, with earlier convictions` (LIST `a conviction under the repealed Act, s` "35(2)(c)")
+-- s 62(4): (a) for s 62(3)(a), s 62(3)(a) or (b), or repealed s 35(2)(f); (b) for s 62(3)(b), only s 62(3)(a) or (b)
+#ASSERT     `a repeat offender for` `s 62(3)(a) — dishonestly obtaining compensation` `, with earlier convictions` (LIST `a conviction under the repealed Act, s` "35(2)(f)")
+#ASSERT NOT `a repeat offender for` `s 62(3)(b) — dishonestly avoiding liability to pay compensation` `, with earlier convictions` (LIST `a conviction under the repealed Act, s` "35(2)(f)")
+#ASSERT     `a repeat offender for` `s 62(3)(b) — dishonestly avoiding liability to pay compensation` `, with earlier convictions` (LIST `a conviction for` `s 62(3)(a) — dishonestly obtaining compensation`)
+-- s 68(7): repealed s 35(2)(e)
+#ASSERT     `a repeat offender for` `s 68(6) — obstructing the Commissioner or an investigation officer` `, with earlier convictions` (LIST `a conviction under the repealed Act, s` "35(2)(e)")
+-- s 82(3): no repeat tier
+#ASSERT NOT `a repeat offender for` `s 82(3) — contravening the regulations` `, with earlier convictions` (LIST `a conviction for` `s 82(3) — contravening the regulations`)
+
+§§ `Goal 8b — maximum penalties`
+
+#ASSERT `fine for` `s 25(1) — employer not insured` FALSE EQUALS 10000
+#ASSERT `months for` `s 25(1) — employer not insured` FALSE EQUALS 12
+#ASSERT `fine for` `s 25(1) — employer not insured` TRUE EQUALS 20000
+#ASSERT `months for` `s 25(1) — employer not insured` TRUE EQUALS 12
+#ASSERT `fine for` `s 25(4) — employer deducting insurance cost from earnings` FALSE EQUALS 5000
+#ASSERT `months for` `s 25(4) — employer deducting insurance cost from earnings` TRUE EQUALS 6
+#ASSERT `fine for` `s 34P(1) — platform operator not insured` TRUE EQUALS 20000
+#ASSERT `fine for` `s 34P(4) — platform operator deducting insurance cost from earnings` TRUE EQUALS 10000
+-- s 30: per insurance policy, no imprisonment
+#ASSERT `fine for` `s 30(1) — unauthorised provider of employer insurance` FALSE EQUALS 80000
+#ASSERT `fine for` `s 30(2A) — unauthorised provider of platform operator insurance` TRUE EQUALS 160000
+#ASSERT `fine for` `s 30(3) — insurance that is not an approved policy` TRUE EQUALS 160000
+#ASSERT `months for` `s 30(3) — insurance that is not an approved policy` TRUE EQUALS 0
+-- s 35(8): a fine only, the first time; imprisonment only for a repeat
+#ASSERT `fine for` `s 35(8) — failing to give the Commissioner notice of an accident` FALSE EQUALS 5000
+#ASSERT `months for` `s 35(8) — failing to give the Commissioner notice of an accident` FALSE EQUALS 0
+#ASSERT `fine for` `s 35(8) — failing to give the Commissioner notice of an accident` TRUE EQUALS 10000
+#ASSERT `months for` `s 35(8) — failing to give the Commissioner notice of an accident` TRUE EQUALS 6
+#ASSERT `fine for` `s 50(4) — failing to comply with a direction` TRUE EQUALS 10000
+#ASSERT `months for` `s 50(4) — failing to comply with a direction` FALSE EQUALS 6
+#ASSERT `fine for` `s 61(1) — failing to pay compensation` FALSE EQUALS 15000
+#ASSERT `fine for` `s 61(3) — failing to deposit interest` TRUE EQUALS 30000
+#ASSERT `fine for` `s 61(5) — failing to make a directed deposit` TRUE EQUALS 30000
+#ASSERT `months for` `s 61(5) — failing to make a directed deposit` FALSE EQUALS 12
+#ASSERT `fine for` `s 62(1) — false or misleading information` FALSE EQUALS 5000
+#ASSERT `fine for` `s 62(3)(a) — dishonestly obtaining compensation` FALSE EQUALS 15000
+#ASSERT `fine for` `s 62(3)(b) — dishonestly avoiding liability to pay compensation` TRUE EQUALS 30000
+#ASSERT `months for` `s 62(3)(b) — dishonestly avoiding liability to pay compensation` TRUE EQUALS 12
+#ASSERT `fine for` `s 68(6) — obstructing the Commissioner or an investigation officer` TRUE EQUALS 10000
+#ASSERT `months for` `s 68(6) — obstructing the Commissioner or an investigation officer` FALSE EQUALS 6
+#ASSERT `fine for` `s 82(3) — contravening the regulations` FALSE EQUALS 10000
+#ASSERT `months for` `s 82(3) — contravening the regulations` FALSE EQUALS 6
+
+§§ `Goal 8c — composition, officers, the Government (ss 72, 73, 76, 77)`
+
+-- s 76(1): the lower of half the maximum fine and $5,000
+#ASSERT `the composition limit for an offence with a maximum fine of` 5000 EQUALS 2500
+#ASSERT `the composition limit for an offence with a maximum fine of` 10000 EQUALS 5000
+#ASSERT `the composition limit for an offence with a maximum fine of` 15000 EQUALS 5000
+-- ss 72(2), 73(2)
+#ASSERT     `the officer is guilty of the same offence:` (`officer` TRUE  TRUE  FALSE FALSE) `, the body having committed it:` TRUE
+#ASSERT     `the officer is guilty of the same offence:` (`officer` TRUE  FALSE FALSE TRUE)  `, the body having committed it:` TRUE
+#ASSERT NOT `the officer is guilty of the same offence:` (`officer` TRUE  TRUE  FALSE FALSE) `, the body having committed it:` FALSE
+#ASSERT NOT `the officer is guilty of the same offence:` (`officer` FALSE TRUE  TRUE  TRUE)  `, the body having committed it:` TRUE
+#ASSERT NOT `the officer is guilty of the same offence:` (`officer` TRUE  FALSE FALSE FALSE) `, the body having committed it:` TRUE
+-- s 77
+#ASSERT NOT `may be prosecuted under the Act, the accused being the Government:` TRUE
+
+§§ `Administration (ss 18(1), 21, 40, 47-47G, 60, 70)`
+
+#ASSERT `what the insurer pays of an order of` 500000 `, insured for` 300000 EQUALS 300000
+#ASSERT `what the insurer pays of an order of` 200000 `, insured for` 300000 EQUALS 200000
+-- s 40(2)
+#ASSERT `the employer's indemnity to its insurer, assistance given:` FALSE `, insurer paid` 20000 EQUALS 20000
+#ASSERT `the employer's indemnity to its insurer, assistance given:` TRUE  `, insurer paid` 20000 EQUALS 0
+-- s 47A
+#ASSERT `the relevant platform operator, serving` (LIST "Alpha") `, designated` NOTHING EQUALS "Alpha"
+#ASSERT `the relevant platform operator, serving` (LIST "Alpha", "Beta") `, designated` (JUST "Beta") EQUALS "Beta"
+#ASSERT REFUSED `the relevant platform operator, serving` (LIST "Alpha", "Beta") `, designated` NOTHING
+-- s 47C(6)-(7)
+#ASSERT `who reimburses the relevant PO's insurer, Z insured:` TRUE  EQUALS `the other operator's insurer (Y), s 47C(6)`
+#ASSERT `who reimburses the relevant PO's insurer, Z insured:` FALSE EQUALS `the other operator itself (Z), s 47C(7)`
+#ASSERT `the reimbursement for a share of` 0.25 `of compensation of` 80000 EQUALS 20000
+-- s 47G(3): the later of the end of the prescribed period and the s 47E(9)(b) order
+#ASSERT `the day recovery may begin, period ending` (YMD 2026 6 30) `, order on` (JUST (YMD 2026 8 1)) EQUALS YMD 2026 8 1
+#ASSERT `the day recovery may begin, period ending` (YMD 2026 6 30) `, order on` (JUST (YMD 2026 6 1)) EQUALS YMD 2026 6 30
+#ASSERT `the day recovery may begin, period ending` (YMD 2026 6 30) `, order on` NOTHING EQUALS YMD 2026 6 30
+-- s 70
+#ASSERT     `an ex gratia payment of` 5000 `is within s 70, entitled to` 6000
+#ASSERT NOT `an ex gratia payment of` 7000 `is within s 70, entitled to` 6000
+-- s 21(2)(b)(i)
+#ASSERT `the funeral expenses payable from a deposit, of` 8000 `, capped at` 6000 EQUALS 6000
+-- s 60(2)
+#ASSERT `the court that may order the enforcement step, a sale of immovable property:` TRUE EQUALS "the General Division of the High Court"
+#ASSERT `the court that may order the enforcement step, a sale of immovable property:` FALSE EQUALS "a District Court"

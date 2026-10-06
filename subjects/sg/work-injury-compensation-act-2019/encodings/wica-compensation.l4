@@ -1,0 +1,438 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `wica-types`
+IMPORT `wica-schedules`
+IMPORT `wica-liability`
+
+-- Work Injury Compensation Act 2019 — GOAL 3: HOW MUCH COMPENSATION?
+--
+-- Earnings (First Schedule para 6; Fifth Schedule Part 3 paras 6-7), the
+-- incapacity (ss 4, 15, 34L), and the five heads: death, total incapacity,
+-- partial incapacity (with the Fourth Schedule), temporary incapacity
+-- (ss 17, 34N), medical treatment (ss 16, 34M) — for employees (ss 14-17,
+-- First Schedule) and platform workers (ss 34K-34N, Fifth Schedule), and the
+-- seafarer adjustments of s 67.
+--
+-- Source: ../source/WICA2019.txt lines 418-456, 682-788, 1831-1938,
+-- 3294-3315, 3707-4001, 4260-4724. The three formulas printed as images are
+-- transcribed in ../source/PROVENANCE.md.
+
+§ `Goal 3 — the amount of compensation`
+
+§§ `Earnings — AME for an employee (First Schedule para 6)`
+
+-- para 6(1): continuously employed by the same employer "for more than one
+-- whole calendar month immediately before the date of the accident" — AME is
+-- A / P: A the actual earnings in the computation period, the whole calendar
+-- months immediately before the accident "(up to a maximum of 12 such months
+-- ...)", and P the number of those months.
+-- para 6(2): employed "for one whole calendar month or less" — AME is
+-- (D x W x 52) / 12: D the average earnings per working day, W the average
+-- working days in a week.
+-- para 6(3) and (6) (the Commissioner may disregard or adjust a month, or
+-- estimate earnings without reliable evidence) are discretions: their result,
+-- if used, is what the caller supplies as A, D or W.
+@ref First Schedule para 6(1), (2)
+GIVEN e IS AN `Employee earnings`
+GIVETH A NUMBER
+`the employee's AME from` e MEANS
+    IF   e's `continuously employed for more than one whole calendar month`
+    THEN IF   `P` AT MOST 0
+         THEN REFUSE "para 6(1): no whole calendar month in the computation period"
+         ELSE e's `actual earnings in the computation period` DIVIDED BY `P`
+    ELSE e's `average earnings per working day` TIMES e's `average working days per week` TIMES 52 DIVIDED BY 12
+    WHERE
+        `P` MEANS IF e's `whole calendar months continuously employed before the accident` GREATER THAN 12
+                  THEN 12
+                  ELSE e's `whole calendar months continuously employed before the accident`
+
+§§ `Earnings — ADE and AME for a platform worker (Fifth Schedule Part 3 para 6)`
+
+-- para 6(1)(c): relevant daily earnings R = E / P; P is the days at work
+-- providing the service before the accident if fewer than 90, otherwise 90.
+-- para 6(1)(b): ADE = R x (100% - F); F is 20% on foot, by public transport or
+-- by unpowered bicycle; 35% by personal mobility device, power-assisted
+-- bicycle or motorcycle; 60% by any other motor vehicle.
+-- para 6(1)(a): AME = ADE x 30.
+@ref Fifth Schedule Part 3 para 6(1)(b)
+GIVEN m IS A `Mode of transport`
+GIVETH A NUMBER
+`the deduction F for` m MEANS
+    CONSIDER m
+    WHEN `on foot, by public transport or by a bicycle that is not power assisted` THEN 20%   -- (A)
+    WHEN `by personal mobility device, power-assisted bicycle or motorcycle`       THEN 35%   -- (B)
+    WHEN `by motor vehicle other than a motorcycle`                                THEN 60%   -- (C)
+
+@ref Fifth Schedule Part 3 para 6(1)
+GIVEN e IS A `Platform earnings`
+GIVETH A NUMBER
+`the platform worker's ADE from` e MEANS
+    IF   `P` AT MOST 0
+    THEN REFUSE "para 6(1)(c): no days at work providing the service before the accident"
+    ELSE e's `relevant earnings in the lookback period` DIVIDED BY `P` TIMES (100% MINUS `the deduction F for` (e's `mode`))
+    WHERE
+        `P` MEANS IF e's `days at work providing the service before the accident` LESS THAN 90
+                  THEN e's `days at work providing the service before the accident`
+                  ELSE 90
+
+@ref Fifth Schedule Part 3 para 6(1)(a)
+GIVEN e IS A `Platform earnings`
+GIVETH A NUMBER
+`the platform worker's AME from` e MEANS
+    `the platform worker's ADE from` e TIMES 30
+
+-- para 6(2): the lookback period is "(a) ... at least 90 days ... — the
+-- period of 90 days immediately before the date of the accident; (b) [where
+-- also] on hospitalisation leave or medical leave for 7 or more consecutive
+-- days ... — 90 + B, where B is the number of days ... on [such] leave; (c)
+-- [fewer than 90 days] — the number of days ... at work providing that
+-- platform service."
+@ref Fifth Schedule Part 3 para 6(2)
+GIVEN e IS A `Platform earnings`
+GIVETH A NUMBER
+`the lookback period in days for` e MEANS
+    BRANCH IF e's `days at work providing the service before the accident` LESS THAN 90
+              THEN e's `days at work providing the service before the accident`                   -- (c)
+           IF e's `days of hospitalisation or medical leave in a run of 7 or more` AT LEAST 7
+              THEN 90 PLUS e's `days of hospitalisation or medical leave in a run of 7 or more`       -- (b)
+           OTHERWISE 90                                                                         -- (a)
+
+§§ `The incapacity (ss 4, 15, 34L)`
+
+-- s 4(5): with permanent or current incapacity, "(a) partial incapacity ...
+-- if ... the aggregate percentage of the loss of earning capacity ... is less
+-- than 100%; or (b) total incapacity if ... 100% or more." s 4(2)(b): an
+-- injury in the Fourth Schedule is permanent incapacity.
+@ref s 4(2), (5)
+GIVEN percent IS A NUMBER
+GIVETH AN Outcome
+`the s 4(5) outcome for a loss of earning capacity of` percent MEANS
+    IF   percent AT LEAST 100
+    THEN `permanent or current total incapacity`
+    ELSE `permanent or current partial incapacity` percent
+
+-- s 15(1)(b), s 34L(1)(b): current incapacity is "assessed at the earliest
+-- opportunity but not earlier than 6 months after the date of the accident".
+-- s 15(2), s 34L(2) and s 4(4): never for the diseases in s 10(1) or 34G(1).
+@ref s 15(1)(b), (2); s 34L(1)(b), (2); s 4(4)
+GIVEN assessed    IS A DATE
+      accident    IS A DATE
+      `a disease` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a current-incapacity assessment on` assessed `is allowed for an accident on` accident `, a disease:` `a disease` IF
+        NOT `a disease`
+    AND assessed AT LEAST `add months` accident 6
+
+§§ `Death, total and partial incapacity (First Schedule paras 1-3; Fifth Schedule Part 3 paras 1-3)`
+
+-- para 1(2)-(3): the death amount is held between $76,000 and $225,000 for an
+-- accident before 1 November 2025, and between $91,000 and $269,000 on or
+-- after it. para 2(b)-(c): C is held between $97,000 and $289,000, or between
+-- $116,000 and $346,000. The Fifth Schedule repeats the same figures.
+@ref First Schedule para 1(2)-(3); Fifth Schedule Part 3 para 1(2)-(3)
+GIVEN accident IS A DATE
+GIVETH A NUMBER
+`the death floor for an accident on` accident MEANS
+    IF accident LESS THAN YMD 2025 11 1 THEN 76000 ELSE 91000
+
+GIVEN accident IS A DATE
+GIVETH A NUMBER
+`the death cap for an accident on` accident MEANS
+    IF accident LESS THAN YMD 2025 11 1 THEN 225000 ELSE 269000
+
+@ref First Schedule para 2(b)-(c); Fifth Schedule Part 3 para 2(b)-(c)
+GIVEN accident IS A DATE
+GIVETH A NUMBER
+`the C floor for an accident on` accident MEANS
+    IF accident LESS THAN YMD 2025 11 1 THEN 97000 ELSE 116000
+
+GIVEN accident IS A DATE
+GIVETH A NUMBER
+`the C cap for an accident on` accident MEANS
+    IF accident LESS THAN YMD 2025 11 1 THEN 289000 ELSE 346000
+
+GIVEN x     IS A NUMBER
+      floor IS A NUMBER
+      cap   IS A NUMBER
+GIVETH A NUMBER
+`held between the floor and the cap` x floor cap MEANS
+    BRANCH IF x LESS THAN floor    THEN floor
+           IF x GREATER THAN cap   THEN cap
+           OTHERWISE x
+
+-- para 1(1): death — "the AME of the deceased ... [times] the appropriate
+-- factor in the second column of Table A according to the age on the next
+-- birthday ... at the time of the accident", then para 1(2)-(3).
+@ref First Schedule para 1; Fifth Schedule Part 3 para 1
+GIVEN ame      IS A NUMBER
+      born     IS A DATE
+      accident IS A DATE
+GIVETH A NUMBER
+`the death compensation for an AME of` ame `, born` born `, accident on` accident MEANS
+    IF   `the law is encoded for an accident on` accident
+    THEN `held between the floor and the cap`
+             (ame TIMES `the Table A factor for age` (`the age on the next birthday, if born on` born `, at an accident on` accident))
+             (`the death floor for an accident on` accident)
+             (`the death cap for an accident on` accident)
+    ELSE REFUSE "no source is encoded for this accident date"
+
+-- para 2(a)-(c): C — AME times the Table B factor, held between the floor and
+-- the cap.
+@ref First Schedule para 2; Fifth Schedule Part 3 para 2
+GIVEN ame      IS A NUMBER
+      born     IS A DATE
+      accident IS A DATE
+GIVETH A NUMBER
+`C for an AME of` ame `, born` born `, accident on` accident MEANS
+    IF   `the law is encoded for an accident on` accident
+    THEN `held between the floor and the cap`
+             (ame TIMES `the Table B factor for age` (`the age on the next birthday, if born on` born `, at an accident on` accident))
+             (`the C floor for an accident on` accident)
+             (`the C cap for an accident on` accident)
+    ELSE REFUSE "no source is encoded for this accident date"
+
+-- para 2: total incapacity — "the formula C + 0.25C". The cap bites on C, so
+-- the most payable is 1.25 times the cap.
+@ref First Schedule para 2; Fifth Schedule Part 3 para 2
+GIVEN ame      IS A NUMBER
+      born     IS A DATE
+      accident IS A DATE
+GIVETH A NUMBER
+`the total incapacity compensation for an AME of` ame `, born` born `, accident on` accident MEANS
+    1.25 TIMES `C for an AME of` ame `, born` born `, accident on` accident
+
+-- para 3(1): partial incapacity — C times the percentage of loss of earning
+-- capacity (the Fourth Schedule's, or as assessed "assuming that it is
+-- permanent"). para 3(2): several injuries in one accident are aggregated,
+-- "but not so as to exceed ... the amount ... payable in respect of permanent
+-- total incapacity" (1.25C). s 4(5)(b): an aggregate of 100% or more is total
+-- incapacity, paid under para 2 (found by the independent test pass).
+@ref First Schedule para 3; Fifth Schedule Part 3 para 3
+GIVEN ame      IS A NUMBER
+      born     IS A DATE
+      accident IS A DATE
+      percents IS A LIST OF NUMBER
+GIVETH A NUMBER
+`the partial incapacity compensation for an AME of` ame `, born` born `, accident on` accident `, losses in percent` percents MEANS
+    BRANCH IF sum percents AT LEAST 100              THEN `the total amount`   -- s 4(5)(b): total incapacity, para 2
+           IF `aggregate` GREATER THAN `the total amount` THEN `the total amount`   -- para 3(2)
+           OTHERWISE `aggregate`
+    WHERE
+        `C`                MEANS `C for an AME of` ame `, born` born `, accident on` accident
+        `aggregate`        MEANS sum (map (GIVEN p YIELD `C` TIMES p DIVIDED BY 100) percents)
+        `the total amount` MEANS 1.25 TIMES `C`
+
+-- Fourth Schedule Note 3: "Loss of remaining arm, leg or eye if one has
+-- already been lost, is to be the difference between the compensation for the
+-- total incapacity, and compensation already paid or that which would have
+-- been paid for the previous loss of limb or eye."
+@ref Fourth Schedule Note 3
+GIVEN `total incapacity amount` IS A NUMBER
+      `for the previous loss`   IS A NUMBER
+GIVETH A NUMBER
+`the Note 3 compensation for losing the remaining member, total` `total incapacity amount` `, previous` `for the previous loss` MEANS
+    IF   `total incapacity amount` GREATER THAN `for the previous loss`
+    THEN `total incapacity amount` MINUS `for the previous loss`
+    ELSE 0
+
+-- One answer for the lump sums, by outcome.
+@ref ss 14, 34K; First Schedule paras 1-3; Fifth Schedule Part 3 paras 1-3
+GIVEN ame      IS A NUMBER
+      born     IS A DATE
+      accident IS A DATE
+      o        IS AN Outcome
+GIVETH A NUMBER
+`the lump sum for an AME of` ame `, born` born `, accident on` accident `, outcome` o MEANS
+    CONSIDER o
+    WHEN `death` THEN `the death compensation for an AME of` ame `, born` born `, accident on` accident
+    WHEN `permanent or current total incapacity` THEN `the total incapacity compensation for an AME of` ame `, born` born `, accident on` accident
+    WHEN `permanent or current partial incapacity` p THEN `the partial incapacity compensation for an AME of` ame `, born` born `, accident on` accident `, losses in percent` (LIST p)
+    WHEN `temporary incapacity` THEN REFUSE "temporary incapacity is paid periodically (s 17, 34N), not as a lump sum: use the temporary incapacity rules"
+
+§§ `Temporary incapacity (s 17, s 34N; First Schedule para 4; Fifth Schedule Part 3 para 4)`
+
+-- First Schedule para 4(1): for each day within one year starting on the date
+-- of the accident on hospitalisation leave, medical leave or light duties:
+-- "(a) for the first 60 days of hospitalisation leave — the employee's AME;
+-- (b) ... subsequent days ... — two-thirds ...; (c) for the first 14 days of
+-- medical leave and light duties — (i) [on] medical leave — the employee's
+-- AME; and (ii) [on] light duties — the shortfall (if any) in the employee's
+-- actual wages for that period below the employee's AME; (d) for any
+-- subsequent days ... — two-thirds of the employee's AME, [or] the shortfall
+-- ... below two-thirds of the employee's AME."
+-- Fifth Schedule para 4(1): the same with ADE, without light duties; para
+-- 4(2): where ADE is unavailable, "$27 x D".
+--
+-- FORK F4: the Schedule pays "based on" AME, a MONTHLY figure, for each DAY,
+-- and does not say how to turn one into the other. The daily rate is an input
+-- (`daily AME`). For a platform worker the ADE is already daily.
+-- FORK F5: "the first 14 days of medical leave and light duties" is one count,
+-- shared by the two kinds of day, in the order the days fall.
+@ref First Schedule para 4(1); Fifth Schedule Part 3 para 4(1)-(2)
+GIVEN accident   IS A DATE
+      `daily AME` IS A NUMBER
+      days       IS A LIST OF `Leave day`
+GIVETH A NUMBER
+`the temporary incapacity payments for an accident on` accident `at a daily rate of` `daily AME` `for the days` days MEANS
+    IF   `the law is encoded for an accident on` accident
+    THEN `pay` (filter `within a year` days) 0 0
+    ELSE REFUSE "no source is encoded for this accident date"
+    WHERE
+        `within a year` ld MEANS
+                ld's `day` AT LEAST accident
+            AND ld's `day` LESS THAN `add years` accident 1
+            AND NOT ld's `kind` EQUALS `a day that does not count`
+        `two thirds` MEANS 2 DIVIDED BY 3
+        `pay` ds hosp ml MEANS
+            CONSIDER ds
+            WHEN EMPTY THEN 0
+            WHEN d FOLLOWED BY rest THEN
+                CONSIDER d's `kind`
+                WHEN `a day of hospitalisation leave` THEN
+                        (IF hosp LESS THAN 60 THEN `daily AME` ELSE `daily AME` TIMES `two thirds`)
+                    PLUS `pay` rest (hosp PLUS 1) ml
+                WHEN `a day of medical leave` THEN
+                        (IF ml LESS THAN 14 THEN `daily AME` ELSE `daily AME` TIMES `two thirds`)
+                    PLUS `pay` rest hosp (ml PLUS 1)
+                WHEN `a day of light duties` THEN
+                        `shortfall` (IF ml LESS THAN 14 THEN `daily AME` ELSE `daily AME` TIMES `two thirds`) (d's `actual wages that day`)
+                    PLUS `pay` rest hosp (ml PLUS 1)
+                WHEN `a day that does not count` THEN `pay` rest hosp ml
+        `shortfall` level wages MEANS IF wages LESS THAN level THEN level MINUS wages ELSE 0
+
+-- Fifth Schedule para 4(2): "Where the platform worker's ADE is unavailable
+-- ... periodical payments computed in accordance with the formula $27 x D,
+-- where D is the number of days the platform worker is on hospitalisation
+-- leave or medical leave."
+@ref Fifth Schedule Part 3 para 4(1)-(2)
+GIVEN accident IS A DATE
+      e        IS A `Platform earnings`
+      days     IS A LIST OF `Leave day`
+GIVETH A NUMBER
+`the platform worker's temporary incapacity payments for an accident on` accident `with earnings` e `for the days` days MEANS
+    IF   e's `ADE available`
+    THEN `the temporary incapacity payments for an accident on` accident `at a daily rate of` (`the platform worker's ADE from` e) `for the days` `leave days`
+    ELSE 27 TIMES count `leave days`
+    WHERE
+        -- light duties are not a head for platform workers (para 4(1))
+        `leave days` MEANS filter (GIVEN d YIELD     d's `day` AT LEAST accident
+                                              AND d's `day` LESS THAN `add years` accident 1
+                                              AND (   d's `kind` EQUALS `a day of hospitalisation leave`
+                                                   OR d's `kind` EQUALS `a day of medical leave`)) days
+
+-- s 17(4), s 34N(5): periodical payments "may be commuted into a lump sum, of
+-- an amount agreed ..., after — (a) the periodical payments have continued for
+-- not less than 6 months; and (b) the Commissioner consents."
+@ref s 17(4), s 34N(5)
+GIVEN `payments began on`       IS A DATE
+      d                         IS A DATE
+      `the Commissioner consents` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the periodical payments that began on` `payments began on` `may be commuted on` d `, the Commissioner consenting:` `the Commissioner consents` IF
+        d AT LEAST `add months` `payments began on` 6
+    AND `the Commissioner consents`
+
+-- s 34N(2): a platform worker's periodical payment is payable "(a) where the
+-- platform operator receives, no later than the 14th day of a calendar month
+-- ..., a certificate of a health professional ... — not later than 16 days
+-- after the relevant day; or (b) [if received later in the month] — not later
+-- than the 13th day of the following calendar month."
+@ref s 34N(2)
+GIVEN received IS A DATE
+GIVETH A DATE
+`the last day to pay a platform worker's periodical payment, certificate received on` received MEANS
+    IF   DATE_DAY received AT MOST 14
+    THEN YMD (DATE_YEAR received) (DATE_MONTH received) 14 PLUS 16
+    ELSE `add months` (YMD (DATE_YEAR received) (DATE_MONTH received) 13) 1
+
+-- s 17(1)(b) (employees): "payable not later than the same day as earnings
+-- would have been payable ... except that the interval between periodical
+-- payments must not exceed one month." The pay day is the contract's: an
+-- input.
+@ref s 17(1)(b)
+GIVEN `previous payment on` IS A DATE
+      `next payment on`     IS A DATE
+GIVETH A BOOLEAN
+DECIDE `the interval from` `previous payment on` `to` `next payment on` `is within s 17(1)(b)` IF
+    `next payment on` AT MOST `add months` `previous payment on` 1
+
+§§ `Medical treatment (s 16, s 34M; First Schedule para 5; Fifth Schedule Part 3 para 5)`
+
+-- para 5(1): "the lower of ... (a) the cost of medical treatment received ...
+-- within a period of one year after the date of the accident ...; (b) ...
+-- per accident per employee: (i) if the accident takes place before
+-- 1 November 2025 — $45,000; (ii) ... on or after 1 November 2025 — $53,000."
+-- The Fifth Schedule says "per employee" too; read as per platform worker.
+@ref First Schedule para 5(1); Fifth Schedule Part 3 para 5(1)
+GIVEN accident IS A DATE
+GIVETH A NUMBER
+`the medical cap for an accident on` accident MEANS
+    IF accident LESS THAN YMD 2025 11 1 THEN 45000 ELSE 53000
+
+@ref ss 16(1), 34M(1); First Schedule para 5
+GIVEN accident IS A DATE
+      cost     IS A NUMBER
+GIVETH A NUMBER
+`the medical compensation for an accident on` accident `, the cost within a year being` cost MEANS
+    IF   NOT `the law is encoded for an accident on` accident
+    THEN REFUSE "no source is encoded for this accident date"
+    ELSE IF cost LESS THAN `the medical cap for an accident on` accident THEN cost ELSE `the medical cap for an accident on` accident
+
+-- s 16(1)(a), s 34M(1): treatment "by a health professional or at an approved
+-- medical institution; and ... certified by any attending health professional
+-- to be necessary". s 16(1)(b): for an employee within s 9, treatment abroad
+-- "required immediately due to the nature of the work injury" in the
+-- Commissioner's opinion.
+@ref s 16(1), s 34M(1)
+GIVEN `by a health professional or at an approved institution` IS A BOOLEAN
+      `certified necessary`                                    IS A BOOLEAN
+      `abroad, for an accident abroad, and required immediately in the Commissioner's opinion` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the treatment is compensable:` `by a health professional or at an approved institution` `,` `certified necessary` `,` `abroad, for an accident abroad, and required immediately in the Commissioner's opinion` IF
+        "(a)" ... (`by a health professional or at an approved institution` AND `certified necessary`)
+    OR  "(b)" ... `abroad, for an accident abroad, and required immediately in the Commissioner's opinion`
+
+-- s 16(2)-(3), s 34M(2)-(3): compensation for treatment at an approved medical
+-- institution goes to its proprietor, "after deducting any amount previously
+-- paid by or on behalf of the [worker]"; s 16(4), s 34M(4): whoever paid
+-- recovers it.
+@ref s 16(2), s 34M(2)
+GIVEN compensation          IS A NUMBER
+      `already paid to it`  IS A NUMBER
+GIVETH A NUMBER
+`the amount paid to the approved medical institution, of` compensation `, less` `already paid to it` MEANS
+    IF compensation GREATER THAN `already paid to it` THEN compensation MINUS `already paid to it` ELSE 0
+
+§§ `Seafarers (s 67)`
+
+-- s 67(1): no periodical payment for temporary incapacity while the ship's
+-- owner is liable to defray the seafarer's maintenance under a shipping law
+-- (other than the Maritime Labour Convention Act). s 67(2): medical
+-- compensation is reduced by any payment under s 35 of the Merchant Shipping
+-- (Maritime Labour Convention) Act 2014. s 67(3): temporary incapacity
+-- compensation is reduced by any payment under its s 36.
+@ref s 67(2), (3)
+GIVEN compensation IS A NUMBER
+      received     IS A NUMBER
+GIVETH A NUMBER
+`the seafarer's compensation of` compensation `, reduced by` received MEANS
+    IF compensation GREATER THAN received THEN compensation MINUS received ELSE 0
+
+@ref s 67(1)
+GIVEN `the owner is liable for maintenance` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a periodical payment is payable to the seafarer, the owner liable for maintenance:` `the owner is liable for maintenance` IF
+    NOT `the owner is liable for maintenance`
+
+§§ `Refusal of treatment (s 38)`
+
+-- s 38: where the worker "refuses treatment ... or fails to carry out or
+-- deliberately disregards the instructions of a health professional", the
+-- Commissioner MAY suspend or restrict periodical payments, or pay permanent
+-- or current incapacity compensation for the incapacity that would have
+-- resulted with the treatment. A discretion; its trigger is encoded.
+@ref s 38
+GIVEN `refused, failed or disregarded treatment` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Commissioner may direct under s 38, treatment having been refused:` `refused, failed or disregarded treatment` IF
+    `refused, failed or disregarded treatment`

@@ -1,0 +1,1108 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `wica-types`
+IMPORT `wica-schedules`
+IMPORT `wica-liability`
+IMPORT `wica-compensation`
+IMPORT `wica-payment`
+IMPORT `wica-process`
+IMPORT `wica-insurance-offences`
+IMPORT `wica-administration`
+
+-- Work Injury Compensation Act 2019 — INDEPENDENT TESTS.
+--
+-- Every expected value was decided from ../source/WICA2019.txt and
+-- ../source/PROVENANCE.md before any module was opened; the scenarios and
+-- their provisions are listed in independent-expectations.md (the IDs in the
+-- comments below, e.g. [B9], are that file's). A failing assertion here is a
+-- finding, not a test to be fixed.
+
+§ `Independent tests`
+
+§§ `Helpers`
+
+GIVEN x IS A NUMBER, y IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `about` x `is` y IF
+    (x MINUS y) AT MOST 0.01 AND (y MINUS x) AT MOST 0.01
+
+GIVEN c IS A `Coverage`
+GIVETH A BOOLEAN
+DECIDE `is covered:` c IF
+    CONSIDER c
+    WHEN `not covered` r THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN l IS A `Liability`
+GIVETH A BOOLEAN
+DECIDE `is liable:` l IF
+    CONSIDER l
+    WHEN `liable to pay compensation` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN d IS A `Disease liability`
+GIVETH A BOOLEAN
+DECIDE `is compensable:` d IF
+    CONSIDER d
+    WHEN `compensable as if a work injury` u THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN who IS A STRING
+      shares IS A LIST OF `Operator share`
+GIVETH A NUMBER
+`share of` who `in` shares MEANS
+    sum (map (GIVEN s YIELD s's `share`) (filter (GIVEN s YIELD s's `operator` EQUALS who) shares))
+
+GIVEN i IS A NUMBER
+GIVETH A NUMBER
+`months for item` i MEANS
+    CONSIDER `the Second Schedule row` i
+    WHEN JUST r  THEN r's `period in months`
+    WHEN NOTHING THEN 0
+
+-- A claimant: capacity, Third Schedule class, and the TRUE flags by name.
+GIVEN cap IS A `Capacity at work`
+      cls IS A `Third Schedule class`
+      flags IS A LIST OF STRING
+GIVETH A Claimant
+`worker` cap cls flags MEANS
+    Claimant WITH
+        `name` IS "X"
+        `date of birth` IS YMD 1995 12 31
+        `capacity` IS cap
+        `works under a contract of service` IS elem "contract" flags
+        `works under a platform work agreement` IS elem "pwa" flags
+        `class` IS cls
+        `a Government employee` IS elem "govt" flags
+        `in a class the President has declared` IS elem "declared" flags
+        `the contract was illegal at the time of the accident` IS elem "illegal" flags
+        `ordinarily resident in Singapore` IS elem "resident" flags
+        `employed by an employer in Singapore` IS elem "sg employer" flags
+        `required by the employment to work outside Singapore` IS elem "required abroad" flags
+        `employed as crew of a Singapore ship` IS elem "crew" flags
+
+`no class` MEANS `none of the Third Schedule classes`
+`emp` MEANS `as an employee`
+`pw` MEANS `as a platform worker`
+`plain employee` MEANS `worker` `emp` `no class` (LIST "contract", "resident", "sg employer")
+`plain platform worker` MEANS `worker` `pw` `no class` (LIST "pwa", "resident")
+
+GIVEN who IS A STRING, st IS A `Work stage`, earned IS A NUMBER
+GIVETH A `Platform engagement`
+`with` who `at` st `earning` earned MEANS
+    `Platform engagement` WITH `operator` IS who, `stage` IS st, `earnings in the lookback period` IS earned
+
+-- An accident: its date, the TRUE flags by name, and the platform engagements.
+GIVEN d IS A DATE
+      flags IS A LIST OF STRING
+      engs IS A LIST OF `Platform engagement`
+GIVETH AN Accident
+`accident on` d `having` flags `serving` engs MEANS
+    Accident WITH
+        `date` IS d
+        `in Singapore` IS NOT elem "abroad" flags
+        `on a Singapore ship` IS elem "sg ship" flags
+        `in the course of the work` IS elem "course" flags
+        `evidence it did not arise out of the work` IS elem "contrary evidence" flags
+        `travelling as a passenger to or from the workplace with the employer's permission` IS elem "passenger" flags
+        `transport operated by or for the employer, or by arrangement with the employer` IS elem "employer transport" flags
+        `transport operated in the ordinary course of a public transport service` IS elem "public transport" flags
+        `in or about the workplace, or at work providing the platform service` IS elem "at workplace" flags
+        `taking steps in an actual or supposed emergency to rescue, protect or avert damage` IS elem "emergency" flags
+        `acting in contravention of law, regulations or orders, or without instructions` IS elem "contravening" flags
+        `would otherwise have arisen out of and in the course of the work` IS elem "otherwise in course" flags
+        `the act was done for the purposes of and in connection with the business or service` IS elem "for the business" flags
+        `proven the injury is directly attributable to alcohol or a drug` IS elem "alcohol" flags
+        `deliberate self-injury or deliberate aggravation` IS elem "self-injury" flags
+        `injured in a fight or an assault` IS elem "fight" flags
+        `assaulted another person in the fight` IS elem "assaulted" flags
+        `any assault was in the exercise of the right of private defence` IS elem "private defence" flags
+        `breaking up or preventing the fight, or safeguarding life, property or law and order` IS elem "breaking up" flags
+        `under the instruction or with the consent of the employer or platform operator` IS elem "consent" flags
+        `proven contravention of a Sixth Schedule Part 1 law in using a vehicle` IS elem "part 1" flags
+        `used a vehicle in providing the platform service` IS elem "vehicle" flags
+        `proven contravention of a Sixth Schedule Part 2 law about that vehicle` IS elem "part 2" flags
+        `proven that contravention caused or contributed to the accident` IS elem "caused" flags
+        `platform engagements` IS engs
+
+`d0` MEANS YMD 2025 6 1
+GIVEN flags IS A LIST OF STRING
+GIVETH AN Accident
+`emp accident` flags MEANS `accident on` `d0` `having` flags `serving` EMPTY
+
+`stage 2 with A` MEANS LIST (`with` "A" `at` `work stage 2` `earning` 1000)
+
+GIVEN flags IS A LIST OF STRING
+GIVETH AN Accident
+`pw accident` flags MEANS `accident on` `d0` `having` flags `serving` `stage 2 with A`
+
+GIVEN f IS A LIST OF STRING
+GIVETH A BOOLEAN
+DECIDE `employee liable with` f IF
+    `is liable:` (`the liability for` `plain employee` `in the accident` (`emp accident` f))
+
+GIVEN f IS A LIST OF STRING
+GIVETH A BOOLEAN
+DECIDE `platform worker liable with` f IF
+    `is liable:` (`the liability for` `plain platform worker` `in the accident` (`pw accident` f))
+
+§§ `A. Coverage`
+
+`at work` MEANS `emp accident` (LIST "course")
+`at work abroad` MEANS `emp accident` (LIST "course", "abroad")
+
+-- [A1] s 3(1)
+#ASSERT `is covered:` (`the coverage of` `plain employee` `for the accident` `at work`)
+-- [A2] Third Sch para 1
+#ASSERT NOT `is covered:` (`the coverage of` (`worker` `emp` `a member of the Singapore Armed Forces` (LIST "contract", "resident")) `for the accident` `at work`)
+-- [A3]/[A4] Third Sch para 2
+#ASSERT NOT `is covered:` (`the coverage of` (`worker` `emp` `an officer of the Police Force, Civil Defence Force, Central Narcotics Bureau or Prisons Service` (LIST "contract", "resident")) `for the accident` `at work`)
+-- [A5] Third Sch para 3
+#ASSERT NOT `is covered:` (`the coverage of` (`worker` `emp` `a domestic worker employed in the domestic services of private premises` (LIST "contract", "resident")) `for the accident` `at work`)
+-- [A6] s 3(1)(a) declared Government class
+#ASSERT `is covered:` (`the coverage of` (`worker` `emp` `no class` (LIST "contract", "govt", "declared", "resident")) `for the accident` `at work`)
+-- [A7] Government, not declared
+#ASSERT NOT `is covered:` (`the coverage of` (`worker` `emp` `no class` (LIST "contract", "govt", "resident")) `for the accident` `at work`)
+-- [A8] no contract of service
+#ASSERT NOT `is covered:` (`the coverage of` (`worker` `emp` `no class` (LIST "resident")) `for the accident` `at work`)
+-- [A9] s 9
+#ASSERT `is covered:` (`the coverage of` (`worker` `emp` `no class` (LIST "contract", "resident", "sg employer", "required abroad")) `for the accident` `at work abroad`)
+-- [A10] s 9(a) not resident
+#ASSERT NOT `is covered:` (`the coverage of` (`worker` `emp` `no class` (LIST "contract", "sg employer", "required abroad")) `for the accident` `at work abroad`)
+-- [A11] s 9(b) employer not in Singapore
+#ASSERT NOT `is covered:` (`the coverage of` (`worker` `emp` `no class` (LIST "contract", "resident", "required abroad")) `for the accident` `at work abroad`)
+-- [A12] s 65(2) seafarer on a Singapore ship abroad
+#ASSERT `is covered:` (`the coverage of` (`worker` `emp` `no class` (LIST "contract", "crew")) `for the accident` (`emp accident` (LIST "course", "abroad", "sg ship")))
+-- [A13] platform worker, 2025-02-01
+#ASSERT `is covered:` (`the coverage of` `plain platform worker` `for the accident` (`accident on` (YMD 2025 2 1) `having` (LIST "course") `serving` `stage 2 with A`))
+-- [A14] [A15] [A16] vintages
+#ASSERT REFUSED `the coverage of` `plain employee` `for the accident` (`accident on` (YMD 2020 8 31) `having` (LIST "course") `serving` EMPTY)
+#ASSERT REFUSED `the coverage of` `plain employee` `for the accident` (`accident on` (YMD 2020 9 1) `having` (LIST "course") `serving` EMPTY)
+#ASSERT REFUSED `the coverage of` `plain employee` `for the accident` (`accident on` (YMD 2024 12 31) `having` (LIST "course") `serving` EMPTY)
+-- [A17]
+#ASSERT `is covered:` (`the coverage of` `plain employee` `for the accident` (`accident on` (YMD 2025 1 1) `having` (LIST "course") `serving` EMPTY))
+-- [A18] platform worker 2024-12-31
+#ASSERT REFUSED `the coverage of` `plain platform worker` `for the accident` (`accident on` (YMD 2024 12 31) `having` (LIST "course") `serving` `stage 2 with A`)
+-- [A14] the liability answer refuses too
+#ASSERT REFUSED `the liability for` `plain employee` `in the accident` (`accident on` (YMD 2020 8 31) `having` (LIST "course") `serving` EMPTY)
+
+§§ `B. Accident liability — employees (s 7, s 8)`
+
+-- [B1] s 7(1)
+#ASSERT `employee liable with` (LIST "course")
+-- [B2]/[B4] s 7(2)(a)
+#ASSERT NOT `employee liable with` (LIST "course", "alcohol")
+-- [B3] influence not proven directly attributable: the flag is false
+#ASSERT `employee liable with` (LIST "course")
+-- [B5]/[B6] s 7(2)(b)
+#ASSERT NOT `employee liable with` (LIST "course", "self-injury")
+-- [B7] fight, did not assault
+#ASSERT `employee liable with` (LIST "course", "fight")
+-- [B8] private defence
+#ASSERT `employee liable with` (LIST "course", "fight", "assaulted", "private defence")
+-- [B9] assaulted, no exception
+#ASSERT NOT `employee liable with` (LIST "course", "fight", "assaulted")
+-- [B10]/[B12] breaking up / safeguarding with employer's consent
+#ASSERT `employee liable with` (LIST "course", "fight", "assaulted", "breaking up", "consent")
+-- [B11] without consent
+#ASSERT NOT `employee liable with` (LIST "course", "fight", "assaulted", "breaking up")
+-- [B13] s 7(4) deemed
+#ASSERT `employee liable with` (LIST "course")
+-- [B14] evidence to the contrary
+#ASSERT NOT `employee liable with` (LIST "course", "contrary evidence")
+-- [B15] s 8(1)
+#ASSERT `employee liable with` (LIST "passenger", "employer transport")
+-- [B16] public transport
+#ASSERT NOT `employee liable with` (LIST "passenger", "employer transport", "public transport")
+-- [B17] no permission
+#ASSERT NOT `employee liable with` (LIST "employer transport")
+-- [B18] s 8(2)
+#ASSERT `employee liable with` (LIST "at workplace", "emergency")
+-- [B19] not at the workplace
+#ASSERT NOT `employee liable with` (LIST "emergency")
+-- [B20] s 8(3)
+#ASSERT `employee liable with` (LIST "contravening", "otherwise in course", "for the business")
+-- [B21] not for the business
+#ASSERT NOT `employee liable with` (LIST "contravening", "otherwise in course")
+-- s 8 deeming does not oust s 7(2): drunk on the company bus
+#ASSERT NOT `employee liable with` (LIST "passenger", "employer transport", "alcohol")
+
+§§ `C. Platform workers (ss 34D-34F)`
+
+-- [C1]
+#ASSERT `platform worker liable with` (LIST "course")
+-- [C2] s 34D(2)(a)(i)
+#ASSERT NOT `platform worker liable with` (LIST "course", "alcohol")
+-- [C3] s 34D(2)(a)(ii): no causation needed
+#ASSERT NOT `platform worker liable with` (LIST "course", "vehicle", "part 1")
+-- [C4] Part 2 contravention that did not cause the accident
+#ASSERT `platform worker liable with` (LIST "course", "vehicle", "part 2")
+-- [C5] Part 2 contravention that caused it
+#ASSERT NOT `platform worker liable with` (LIST "course", "vehicle", "part 2", "caused")
+-- [C6]
+#ASSERT NOT `platform worker liable with` (LIST "course", "self-injury")
+-- [C7] breaking up a fight with the operator's consent
+#ASSERT `platform worker liable with` (LIST "course", "fight", "assaulted", "breaking up", "consent")
+-- [C8]
+#ASSERT NOT `platform worker liable with` (LIST "course", "fight", "assaulted")
+-- [C9] s 34F(1)
+#ASSERT `platform worker liable with` (LIST "at workplace", "emergency")
+-- [C10] s 34F(2)
+#ASSERT `platform worker liable with` (LIST "contravening", "otherwise in course", "for the business")
+-- employer transport (s 8(1)) is not applied to platform workers (s 34B replaces s 8 with s 34F)
+#ASSERT NOT `platform worker liable with` (LIST "passenger", "employer transport")
+-- [C13]/[C17] not at a work stage
+#ASSERT NOT `is liable:` (`the liability for` `plain platform worker` `in the accident` (`accident on` `d0` `having` (LIST "course") `serving` (LIST (`with` "A" `at` `not at a work stage` `earning` 1000))))
+-- [C18] A at stage 2, B at stage 1
+`A2 B1` MEANS `accident on` `d0` `having` (LIST "course") `serving` (LIST (`with` "A" `at` `work stage 2` `earning` 1000), (`with` "B" `at` `work stage 1` `earning` 3000))
+#ASSERT `share of` "A" `in` (`the liable platform operators and their shares for` `A2 B1`) EQUALS 1
+#ASSERT `share of` "B" `in` (`the liable platform operators and their shares for` `A2 B1`) EQUALS 0
+-- [C19] both at stage 1, earnings 3000 / 1000
+`A1 B1` MEANS `accident on` `d0` `having` (LIST "course") `serving` (LIST (`with` "A" `at` `work stage 1` `earning` 3000), (`with` "B" `at` `work stage 1` `earning` 1000))
+#ASSERT `share of` "A" `in` (`the liable platform operators and their shares for` `A1 B1`) EQUALS 0.75
+#ASSERT `share of` "B" `in` (`the liable platform operators and their shares for` `A1 B1`) EQUALS 0.25
+-- [C20] both at stage 2, equal earnings
+`A2 B2` MEANS `accident on` `d0` `having` (LIST "course") `serving` (LIST (`with` "A" `at` `work stage 2` `earning` 2000), (`with` "B" `at` `work stage 2` `earning` 2000))
+#ASSERT `share of` "A" `in` (`the liable platform operators and their shares for` `A2 B2`) EQUALS 0.5
+-- a third operator not at a work stage takes no share
+`A2 B2 Cn` MEANS `accident on` `d0` `having` (LIST "course") `serving` (LIST (`with` "A" `at` `work stage 2` `earning` 2000), (`with` "B" `at` `work stage 2` `earning` 2000), (`with` "C" `at` `not at a work stage` `earning` 9000))
+#ASSERT `share of` "C" `in` (`the liable platform operators and their shares for` `A2 B2 Cn`) EQUALS 0
+
+§§ `D. Principal (s 13)`
+
+GIVEN biz IS A BOOLEAN, work IS A BOOLEAN, empd IS A BOOLEAN, place IS A BOOLEAN, dir IS A BOOLEAN
+GIVETH A `Principal arrangement`
+`principal` biz work empd place dir MEANS
+    `Principal arrangement` WITH
+        `contracted in the course of or for the principal's trade or business` IS biz
+        `for execution of work, or supply of labour, undertaken by the principal` IS work
+        `the employee was employed in executing the work` IS empd
+        `accident at a place where the principal undertook to execute work, or under the principal's control` IS place
+        `the Commissioner has directed the principal` IS dir
+
+-- [D1]
+#ASSERT `the principal is liable under s 13, the worker being` `emp` `:` (`principal` TRUE TRUE TRUE TRUE TRUE)
+-- [D2] s 13(5)
+#ASSERT NOT `the principal is liable under s 13, the worker being` `emp` `:` (`principal` TRUE TRUE TRUE FALSE TRUE)
+-- no direction yet
+#ASSERT NOT `the principal is liable under s 13, the worker being` `emp` `:` (`principal` TRUE TRUE TRUE TRUE FALSE)
+-- [D5] s 34B(c)
+#ASSERT NOT `the principal is liable under s 13, the worker being` `pw` `:` (`principal` TRUE TRUE TRUE TRUE TRUE)
+
+§§ `E. Disease (ss 10-12, 11A, 34G)`
+
+GIVEN item IS A MAYBE NUMBER
+      worked IS A BOOLEAN
+      ceased IS A MAYBE DATE
+      contracted IS A DATE
+      chem IS A BOOLEAN
+      exposureEnded IS A MAYBE DATE
+      since2012 IS A BOOLEAN
+      incap IS A MAYBE DATE
+      died IS A MAYBE DATE
+      cert IS A MAYBE DATE
+      lastDay IS A DATE
+      preceded IS A BOOLEAN
+      specific IS A BOOLEAN
+GIVETH A `Disease facts`
+`disease` item worked ceased contracted chem exposureEnded since2012 incap died cert lastDay preceded specific MEANS
+    `Disease facts` WITH
+        `Second Schedule item` IS item
+        `worked in the specified occupation when it was contracted` IS worked
+        `ceased working in the specified occupation on` IS ceased
+        `contracted on` IS contracted
+        `directly attributable to a chemical or biological exposure at work` IS chem
+        `exposure ceased on` IS exposureEnded
+        `employed in that occupation by this employer on or after 1 June 2012` IS since2012
+        `incapacity commenced on` IS incap
+        `died on` IS died
+        `certified as suffering from the disease on` IS cert
+        `last day working for this employer or operator` IS lastDay
+        `death preceded by compensable incapacity` IS preceded
+        `directly attributable to a specific work injury` IS specific
+
+-- [E1] s 10(1)(a), barotrauma
+#ASSERT `is compensable:` (`the liability for the disease of a worker` `emp` `:` (`disease` (JUST 1) TRUE NOTHING (YMD 2025 6 1) FALSE NOTHING TRUE (JUST (YMD 2025 6 10)) NOTHING NOTHING (YMD 2025 12 31) FALSE FALSE))
+-- [E2] s 10(1)(b), NIHL within 12 months of leaving (ceased 2025-01-31)
+#ASSERT `is compensable:` (`the liability for the disease of a worker` `emp` `:` (`disease` (JUST 6) FALSE (JUST (YMD 2025 1 31)) (YMD 2025 12 15) FALSE NOTHING TRUE (JUST (YMD 2025 12 20)) NOTHING NOTHING (YMD 2025 1 31) FALSE FALSE))
+-- [E3] contracted after the limitation period
+#ASSERT NOT `is compensable:` (`the liability for the disease of a worker` `emp` `:` (`disease` (JUST 6) FALSE (JUST (YMD 2025 1 31)) (YMD 2026 3 1) FALSE NOTHING TRUE (JUST (YMD 2026 3 5)) NOTHING NOTHING (YMD 2025 1 31) FALSE FALSE))
+-- [E4] Second Schedule periods
+#ASSERT `months for item` 31 EQUALS 36
+#ASSERT `months for item` 34 EQUALS 36
+#ASSERT `months for item` 36 EQUALS 12
+#ASSERT `months for item` 6 EQUALS 12
+#ASSERT `months for item` 1 EQUALS 12
+#ASSERT `months for item` 38 EQUALS 12
+#ASSERT `months for item` 39 EQUALS 0
+-- [E5] s 10(1)(c)
+#ASSERT `is compensable:` (`the liability for the disease of a worker` `emp` `:` (`disease` NOTHING FALSE NOTHING (YMD 2025 6 1) TRUE NOTHING FALSE (JUST (YMD 2025 7 1)) NOTHING NOTHING (YMD 2025 12 31) FALSE FALSE))
+-- [E6] contracted before 1 June 2012
+#ASSERT NOT `is compensable:` (`the liability for the disease of a worker` `emp` `:` (`disease` NOTHING FALSE NOTHING (YMD 2012 5 31) TRUE NOTHING FALSE (JUST (YMD 2025 7 1)) NOTHING NOTHING (YMD 2025 12 31) FALSE FALSE))
+-- [E7] s 10(3)(a): incapacity 2026-03-01, after the period ended 2026-01-31
+#ASSERT NOT `is compensable:` (`the liability for the disease of a worker` `emp` `:` (`disease` (JUST 6) FALSE (JUST (YMD 2025 1 31)) (YMD 2025 12 15) FALSE NOTHING TRUE (JUST (YMD 2026 3 1)) NOTHING NOTHING (YMD 2025 1 31) FALSE FALSE))
+-- [E8] s 10(3)(b): incapacity more than one year after the exposure ceased
+#ASSERT NOT `is compensable:` (`the liability for the disease of a worker` `emp` `:` (`disease` NOTHING FALSE NOTHING (YMD 2025 1 1) TRUE (JUST (YMD 2025 1 10)) FALSE (JUST (YMD 2026 1 11)) NOTHING NOTHING (YMD 2025 12 31) FALSE FALSE))
+-- [E9] exactly one year: not "more than one year"
+#ASSERT `is compensable:` (`the liability for the disease of a worker` `emp` `:` (`disease` NOTHING FALSE NOTHING (YMD 2025 1 1) TRUE (JUST (YMD 2025 1 10)) FALSE (JUST (YMD 2026 1 10)) NOTHING NOTHING (YMD 2025 12 31) FALSE FALSE))
+-- [E10] s 10(4): death preceded by compensable incapacity
+#ASSERT `is compensable:` (`the liability for the disease of a worker` `emp` `:` (`disease` (JUST 6) FALSE (JUST (YMD 2025 1 31)) (YMD 2025 12 15) FALSE NOTHING TRUE NOTHING (JUST (YMD 2026 3 1)) NOTHING (YMD 2025 1 31) TRUE FALSE))
+-- [E11] s 12
+#ASSERT `is compensable:` (`the liability for the disease of a worker` `emp` `:` (`disease` NOTHING FALSE NOTHING (YMD 2025 6 1) FALSE NOTHING FALSE (JUST (YMD 2025 7 1)) NOTHING NOTHING (YMD 2025 12 31) FALSE TRUE))
+-- [E12]
+#ASSERT NOT `is compensable:` (`the liability for the disease of a worker` `emp` `:` (`disease` NOTHING FALSE NOTHING (YMD 2025 6 1) FALSE NOTHING FALSE (JUST (YMD 2025 7 1)) NOTHING NOTHING (YMD 2025 12 31) FALSE FALSE))
+-- [E13] s 34G(1)(c), platform worker
+#ASSERT `is compensable:` (`the liability for the disease of a worker` `pw` `:` (`disease` NOTHING FALSE NOTHING (YMD 2025 6 1) TRUE NOTHING FALSE (JUST (YMD 2025 7 1)) NOTHING NOTHING (YMD 2025 12 31) FALSE FALSE))
+-- [E14] s 11(1)
+#ASSERT `the date of the accident for computing earnings, for the disease` (`disease` (JUST 6) TRUE NOTHING (YMD 2025 5 1) FALSE NOTHING TRUE (JUST (YMD 2025 8 1)) NOTHING NOTHING (YMD 2025 6 30) FALSE FALSE) EQUALS YMD 2025 6 30
+-- [E15]
+#ASSERT `the date of the accident for computing earnings, for the disease` (`disease` (JUST 6) TRUE NOTHING (YMD 2025 4 1) FALSE NOTHING TRUE (JUST (YMD 2025 5 1)) NOTHING NOTHING (YMD 2025 6 30) FALSE FALSE) EQUALS YMD 2025 5 1
+-- death earliest
+#ASSERT `the date of the accident for computing earnings, for the disease` (`disease` (JUST 6) TRUE NOTHING (YMD 2025 4 1) FALSE NOTHING TRUE NOTHING (JUST (YMD 2025 6 2)) NOTHING (YMD 2025 6 30) FALSE FALSE) EQUALS YMD 2025 6 2
+-- [E16] s 11(2)(a)
+#ASSERT `the date of the accident for other purposes, for the disease` (`disease` (JUST 6) TRUE NOTHING (YMD 2025 4 1) FALSE NOTHING TRUE (JUST (YMD 2025 9 1)) NOTHING (JUST (YMD 2025 7 15)) (YMD 2025 12 31) FALSE FALSE) EQUALS YMD 2025 7 15
+-- [E17] s 11(2)(b)
+#ASSERT `the date of the accident for other purposes, for the disease` (`disease` (JUST 6) TRUE NOTHING (YMD 2025 4 1) FALSE NOTHING TRUE NOTHING (JUST (YMD 2025 10 1)) NOTHING (YMD 2025 12 31) FALSE FALSE) EQUALS YMD 2025 10 1
+-- [E18] s 11A(a)
+#ASSERT `the apportioned amounts` (LIST 60000, 40000) `are within s 11A(a) of a single amount of` 100000
+#ASSERT NOT `the apportioned amounts` (LIST 60000, 50000) `are within s 11A(a) of a single amount of` 100000
+-- [E19] s 11A(b)
+#ASSERT REFUSED `s 11A(b) — the prescribed apportionment`
+
+§§ `F. Amounts — First Schedule`
+
+-- [F1] Table A
+#ASSERT `the Table A factor for age` 14 EQUALS 136
+#ASSERT `the Table A factor for age` 10 EQUALS 136
+#ASSERT `the Table A factor for age` 15 EQUALS 135
+#ASSERT `the Table A factor for age` 30 EQUALS 123
+#ASSERT `the Table A factor for age` 45 EQUALS 103
+#ASSERT `the Table A factor for age` 65 EQUALS 53
+#ASSERT `the Table A factor for age` 66 EQUALS 48
+#ASSERT `the Table A factor for age` 70 EQUALS 48
+-- [F2] Table B
+#ASSERT `the Table B factor for age` 14 EQUALS 181
+#ASSERT `the Table B factor for age` 10 EQUALS 181
+#ASSERT `the Table B factor for age` 30 EQUALS 164
+#ASSERT `the Table B factor for age` 45 EQUALS 134
+#ASSERT `the Table B factor for age` 60 EQUALS 99
+#ASSERT `the Table B factor for age` 65 EQUALS 77
+#ASSERT `the Table B factor for age` 66 EQUALS 72
+#ASSERT `the Table B factor for age` 80 EQUALS 72
+
+-- born on 31 December: at a 2025 accident the age on the next birthday is 2025 - birth year
+`age 30` MEANS YMD 1995 12 31
+`age 40` MEANS YMD 1985 12 31
+`age 45` MEANS YMD 1980 12 31
+`age 60` MEANS YMD 1965 12 31
+`age 66` MEANS YMD 1959 12 31
+`pre` MEANS YMD 2025 6 1
+`post` MEANS YMD 2025 11 1
+
+-- [F3] death, capped at 225,000
+#ASSERT `the death compensation for an AME of` 2000 `, born` `age 30` `, accident on` `pre` EQUALS 225000
+-- [F4] post-Nov
+#ASSERT `the death compensation for an AME of` 2000 `, born` `age 30` `, accident on` `post` EQUALS 246000
+-- [F5] 31 Oct 2025
+#ASSERT `the death compensation for an AME of` 2000 `, born` `age 30` `, accident on` (YMD 2025 10 31) EQUALS 225000
+-- [F6] floor 76,000
+#ASSERT `the death compensation for an AME of` 500 `, born` `age 66` `, accident on` `pre` EQUALS 76000
+-- [F7] floor 91,000
+#ASSERT `the death compensation for an AME of` 500 `, born` `age 66` `, accident on` `post` EQUALS 91000
+-- [F8]
+#ASSERT `the death compensation for an AME of` 1500 `, born` `age 45` `, accident on` `pre` EQUALS 154500
+-- [F9] cap 269,000
+#ASSERT `the death compensation for an AME of` 3000 `, born` `age 30` `, accident on` (YMD 2025 12 1) EQUALS 269000
+-- [F10] total incapacity post: 1.25 x 328,000
+#ASSERT `the total incapacity compensation for an AME of` 2000 `, born` `age 30` `, accident on` `post` EQUALS 410000
+-- [F11] pre: C capped 289,000
+#ASSERT `the total incapacity compensation for an AME of` 2000 `, born` `age 30` `, accident on` `pre` EQUALS 361250
+-- [F12] post: C capped 346,000
+#ASSERT `the total incapacity compensation for an AME of` 3000 `, born` `age 30` `, accident on` `post` EQUALS 432500
+-- [F13] post floor 116,000
+#ASSERT `the total incapacity compensation for an AME of` 500 `, born` `age 60` `, accident on` `post` EQUALS 145000
+-- [F14] pre floor 97,000
+#ASSERT `the total incapacity compensation for an AME of` 500 `, born` `age 60` `, accident on` `pre` EQUALS 121250
+-- [F15] partial 70% of C (no 0.25 uplift)
+#ASSERT `the partial incapacity compensation for an AME of` 2000 `, born` `age 30` `, accident on` `post` `, losses in percent` (LIST 70) EQUALS 229600
+-- [F16]
+#ASSERT `the partial incapacity compensation for an AME of` 2000 `, born` `age 30` `, accident on` `post` `, losses in percent` (LIST 20) EQUALS 65600
+-- [F17] aggregated 135% of C, capped at the total incapacity amount
+#ASSERT `the partial incapacity compensation for an AME of` 2000 `, born` `age 30` `, accident on` `post` `, losses in percent` (LIST 75, 60) EQUALS 410000
+-- [F18]
+#ASSERT `the partial incapacity compensation for an AME of` 2000 `, born` `age 30` `, accident on` `post` `, losses in percent` (LIST 30, 20) EQUALS 164000
+-- the lump-sum dispatcher agrees
+#ASSERT `the lump sum for an AME of` 2000 `, born` `age 30` `, accident on` `post` `, outcome` (`permanent or current partial incapacity` 70) EQUALS 229600
+#ASSERT `the lump sum for an AME of` 2000 `, born` `age 30` `, accident on` `post` `, outcome` `death` EQUALS 246000
+#ASSERT REFUSED `the lump sum for an AME of` 2000 `, born` `age 30` `, accident on` (YMD 2020 1 1) `, outcome` `death`
+-- [F19] s 4(5)
+#ASSERT `the s 4(5) outcome for a loss of earning capacity of` 99 EQUALS `permanent or current partial incapacity` 99
+#ASSERT `the s 4(5) outcome for a loss of earning capacity of` 100 EQUALS `permanent or current total incapacity`
+#ASSERT `the s 4(5) outcome for a loss of earning capacity of` 120 EQUALS `permanent or current total incapacity`
+-- [F20] Fourth Schedule
+#ASSERT `the Fourth Schedule percentage for` `loss of 2 limbs` EQUALS 100
+#ASSERT `the Fourth Schedule percentage for` `loss of hand at wrist` EQUALS 70
+#ASSERT `the Fourth Schedule percentage for` `loss of 4 fingers` EQUALS 60
+#ASSERT `the Fourth Schedule percentage for` `loss of thumb, both phalanges` EQUALS 30
+#ASSERT `the Fourth Schedule percentage for` `loss of index finger, 3 phalanges` EQUALS 14
+#ASSERT `the Fourth Schedule percentage for` `loss of sight of one eye` EQUALS 50
+#ASSERT `the Fourth Schedule percentage for` `total loss of hearing` EQUALS 60
+#ASSERT `the Fourth Schedule percentage for` `loss of hearing, one ear` EQUALS 30
+#ASSERT `the Fourth Schedule percentage for` `loss of leg below knee` EQUALS 65
+#ASSERT `the Fourth Schedule percentage for` `loss of foot` EQUALS 55
+#ASSERT `the Fourth Schedule percentage for` `loss of great toe, one phalanx` EQUALS 3
+-- [F21] Note 2: hand parts total 78, held at 70
+#ASSERT `the Fourth Schedule percentage for the injuries` (LIST `loss of thumb, both phalanges`, `loss of index finger, 3 phalanges`, `loss of middle finger, 3 phalanges`, `loss of ring finger, 3 phalanges`, `loss of little finger, 3 phalanges`, `loss of first or second metacarpal (additional)`) EQUALS 70
+-- Note 2 does not touch a single hand part or a non-hand injury: thumb 20 + foot 55
+#ASSERT `the Fourth Schedule percentage for the injuries` (LIST `loss of thumb, one phalanx`, `loss of foot`) EQUALS 75
+-- [F22] Note 3
+#ASSERT `the Note 3 compensation for losing the remaining member, total` 410000 `, previous` 150000 EQUALS 260000
+
+-- temporary incapacity: the daily rate is an input (the Act does not convert AME to a day) [F30]
+GIVEN k IS A `Kind of day`, start IS A DATE, n IS A NUMBER, wages IS A NUMBER
+GIVETH A LIST OF `Leave day`
+`run of` k `from` start `for` n `paid` wages MEANS
+    IF n AT MOST 0
+    THEN EMPTY
+    ELSE append (LIST (`Leave day` WITH `day` IS start, `kind` IS k, `actual wages that day` IS wages))
+                (`run of` k `from` (start PLUS 1) `for` (n MINUS 1) `paid` wages)
+
+`H` MEANS `a day of hospitalisation leave`
+`ML` MEANS `a day of medical leave`
+`LD` MEANS `a day of light duties`
+`rest` MEANS `a day that does not count`
+
+-- [F23] 70 days in hospital at 90/day: 60 x 90 + 10 x 60
+#ASSERT `about` (`the temporary incapacity payments for an accident on` `pre` `at a daily rate of` 90 `for the days` (`run of` `H` `from` `pre` `for` 70 `paid` 0)) `is` 6000
+-- [F24] 20 days medical leave: 14 x 90 + 6 x 60
+#ASSERT `about` (`the temporary incapacity payments for an accident on` `pre` `at a daily rate of` 90 `for the days` (`run of` `ML` `from` `pre` `for` 20 `paid` 0)) `is` 1620
+-- [F25] 10 ML then 10 LD at wages 30: 900 + 4 x 60 + 6 x 30
+#ASSERT `about` (`the temporary incapacity payments for an accident on` `pre` `at a daily rate of` 90 `for the days` (append (`run of` `ML` `from` `pre` `for` 10 `paid` 0) (`run of` `LD` `from` (YMD 2025 6 11) `for` 10 `paid` 30))) `is` 1320
+-- [F26] light duty shortfall, within the first 14
+#ASSERT `about` (`the temporary incapacity payments for an accident on` `pre` `at a daily rate of` 100 `for the days` (`run of` `LD` `from` `pre` `for` 1 `paid` 70)) `is` 30
+#ASSERT `about` (`the temporary incapacity payments for an accident on` `pre` `at a daily rate of` 100 `for the days` (`run of` `LD` `from` `pre` `for` 1 `paid` 120)) `is` 0
+-- [F27] light duty after 14 ML days: 1400 + (66.67 - 50)
+#ASSERT `about` (`the temporary incapacity payments for an accident on` `pre` `at a daily rate of` 100 `for the days` (append (`run of` `ML` `from` `pre` `for` 14 `paid` 0) (`run of` `LD` `from` (YMD 2025 6 15) `for` 1 `paid` 50))) `is` 1416.67
+-- [F28] the one-year window: accident 2025-03-01
+#ASSERT `about` (`the temporary incapacity payments for an accident on` (YMD 2025 3 1) `at a daily rate of` 100 `for the days` (`run of` `ML` `from` (YMD 2026 2 28) `for` 1 `paid` 0)) `is` 100
+#ASSERT `about` (`the temporary incapacity payments for an accident on` (YMD 2025 3 1) `at a daily rate of` 100 `for the days` (`run of` `ML` `from` (YMD 2026 3 1) `for` 1 `paid` 0)) `is` 0
+-- [F29] a rest day is not a leave day and does not use up the first 14
+#ASSERT `about` (`the temporary incapacity payments for an accident on` `pre` `at a daily rate of` 90 `for the days` (append (`run of` `ML` `from` `pre` `for` 13 `paid` 0) (append (`run of` `rest` `from` (YMD 2025 6 14) `for` 1 `paid` 0) (`run of` `ML` `from` (YMD 2025 6 15) `for` 1 `paid` 0)))) `is` 1260
+
+-- [F32] [F33] [F34] medical
+#ASSERT `the medical compensation for an accident on` (YMD 2025 10 31) `, the cost within a year being` 60000 EQUALS 45000
+#ASSERT `the medical compensation for an accident on` `post` `, the cost within a year being` 60000 EQUALS 53000
+#ASSERT `the medical compensation for an accident on` `post` `, the cost within a year being` 30000 EQUALS 30000
+#ASSERT REFUSED `the medical compensation for an accident on` (YMD 2024 6 1) `, the cost within a year being` 1000
+
+GIVEN cont IS A BOOLEAN, months IS A NUMBER, a IS A NUMBER, d IS A NUMBER, w IS A NUMBER
+GIVETH AN `Employee earnings`
+`employee earnings` cont months a d w MEANS
+    `Employee earnings` WITH
+        `continuously employed for more than one whole calendar month`   IS cont
+        `whole calendar months continuously employed before the accident` IS months
+        `actual earnings in the computation period`  IS a
+        `average earnings per working day`           IS d
+        `average working days per week`              IS w
+
+-- [F36] [F37] [F38] para 6(1)
+#ASSERT `the employee's AME from` (`employee earnings` TRUE 12 36000 0 0) EQUALS 3000
+#ASSERT `the employee's AME from` (`employee earnings` TRUE 18 30000 0 0) EQUALS 2500
+#ASSERT `the employee's AME from` (`employee earnings` TRUE 3 7500 0 0) EQUALS 2500
+-- [F39] [F40] para 6(2)
+#ASSERT `about` (`the employee's AME from` (`employee earnings` FALSE 0 0 100 5.5)) `is` 2383.33
+#ASSERT `the employee's AME from` (`employee earnings` FALSE 1 0 80 6) EQUALS 2080
+-- [F41] [F42] age on next birthday
+#ASSERT `the age on the next birthday, if born on` (YMD 1990 6 15) `, at an accident on` (YMD 2025 6 14) EQUALS 35
+#ASSERT `the age on the next birthday, if born on` (YMD 1990 6 15) `, at an accident on` (YMD 2025 6 15) EQUALS 36
+
+§§ `G. Amounts — Fifth Schedule`
+
+GIVEN days IS A NUMBER, e IS A NUMBER, m IS A `Mode of transport`, leave IS A NUMBER, avail IS A BOOLEAN
+GIVETH A `Platform earnings`
+`pw earnings` days e m leave avail MEANS
+    `Platform earnings` WITH
+        `days at work providing the service before the accident` IS days
+        `relevant earnings in the lookback period`               IS e
+        `mode`                                                   IS m
+        `days of hospitalisation or medical leave in a run of 7 or more` IS leave
+        `ADE available`                                          IS avail
+
+`foot` MEANS `on foot, by public transport or by a bicycle that is not power assisted`
+`moto` MEANS `by personal mobility device, power-assisted bicycle or motorcycle`
+`car` MEANS `by motor vehicle other than a motorcycle`
+
+-- [G1]
+#ASSERT `the platform worker's ADE from` (`pw earnings` 120 9000 `foot` 0 TRUE) EQUALS 80
+#ASSERT `the platform worker's AME from` (`pw earnings` 120 9000 `foot` 0 TRUE) EQUALS 2400
+-- [G2]
+#ASSERT `the platform worker's ADE from` (`pw earnings` 120 9000 `moto` 0 TRUE) EQUALS 65
+#ASSERT `the platform worker's AME from` (`pw earnings` 120 9000 `moto` 0 TRUE) EQUALS 1950
+-- [G3]
+#ASSERT `the platform worker's ADE from` (`pw earnings` 120 9000 `car` 0 TRUE) EQUALS 40
+#ASSERT `the platform worker's AME from` (`pw earnings` 120 9000 `car` 0 TRUE) EQUALS 1200
+-- [G5] 45 days: P = 45
+#ASSERT `the platform worker's ADE from` (`pw earnings` 45 4500 `foot` 0 TRUE) EQUALS 80
+-- [G6] [G7] [G8] [G9] lookback
+#ASSERT `the lookback period in days for` (`pw earnings` 120 0 `foot` 0 TRUE) EQUALS 90
+#ASSERT `the lookback period in days for` (`pw earnings` 120 0 `foot` 10 TRUE) EQUALS 100
+#ASSERT `the lookback period in days for` (`pw earnings` 120 0 `foot` 6 TRUE) EQUALS 90
+#ASSERT `the lookback period in days for` (`pw earnings` 45 0 `foot` 0 TRUE) EQUALS 45
+-- P stays 90 when the lookback is lengthened (para 6(1)(c)(ii)(B))
+#ASSERT `the platform worker's ADE from` (`pw earnings` 120 9000 `foot` 10 TRUE) EQUALS 80
+-- [G10] death, AME 2400, age 30, post-Nov: 295,200 capped
+#ASSERT `the death compensation for an AME of` (`the platform worker's AME from` (`pw earnings` 120 9000 `foot` 0 TRUE)) `, born` `age 30` `, accident on` `post` EQUALS 269000
+-- [G11] total incapacity, AME 1500, age 40: C = 216,000
+#ASSERT `the total incapacity compensation for an AME of` 1500 `, born` `age 40` `, accident on` `post` EQUALS 270000
+-- [G12] ADE 100 (E 11,250 over 90 days on foot), 70 days hospital
+#ASSERT `about` (`the platform worker's temporary incapacity payments for an accident on` `pre` `with earnings` (`pw earnings` 120 11250 `foot` 0 TRUE) `for the days` (`run of` `H` `from` `pre` `for` 70 `paid` 0)) `is` 6666.67
+-- [G13] 20 days medical leave
+#ASSERT `about` (`the platform worker's temporary incapacity payments for an accident on` `pre` `with earnings` (`pw earnings` 120 11250 `foot` 0 TRUE) `for the days` (`run of` `ML` `from` `pre` `for` 20 `paid` 0)) `is` 1800
+-- [G14] ADE unavailable: $27 x 10
+#ASSERT `the platform worker's temporary incapacity payments for an accident on` `pre` `with earnings` (`pw earnings` 120 0 `foot` 0 FALSE) `for the days` (`run of` `ML` `from` `pre` `for` 10 `paid` 0) EQUALS 270
+-- light duties are no head for platform workers
+#ASSERT `the platform worker's temporary incapacity payments for an accident on` `pre` `with earnings` (`pw earnings` 120 0 `foot` 0 FALSE) `for the days` (append (`run of` `ML` `from` `pre` `for` 10 `paid` 0) (`run of` `LD` `from` (YMD 2025 6 11) `for` 5 `paid` 0)) EQUALS 270
+-- [G15]
+#ASSERT `the medical compensation for an accident on` (YMD 2025 12 1) `, the cost within a year being` 60000 EQUALS 53000
+
+§§ `H. Timing and payment rules`
+
+-- [H1] s 15(1)(b)
+#ASSERT `a current-incapacity assessment on` (YMD 2025 9 1) `is allowed for an accident on` (YMD 2025 3 1) `, a disease:` FALSE
+#ASSERT NOT `a current-incapacity assessment on` (YMD 2025 8 31) `is allowed for an accident on` (YMD 2025 3 1) `, a disease:` FALSE
+-- [H2] s 15(2)
+#ASSERT NOT `a current-incapacity assessment on` (YMD 2026 9 1) `is allowed for an accident on` (YMD 2025 3 1) `, a disease:` TRUE
+-- [H3] [H4] [H5] s 17(4)
+#ASSERT `the periodical payments that began on` (YMD 2025 3 1) `may be commuted on` (YMD 2025 9 1) `, the Commissioner consenting:` TRUE
+#ASSERT NOT `the periodical payments that began on` (YMD 2025 3 1) `may be commuted on` (YMD 2025 8 31) `, the Commissioner consenting:` TRUE
+#ASSERT NOT `the periodical payments that began on` (YMD 2025 3 1) `may be commuted on` (YMD 2025 10 1) `, the Commissioner consenting:` FALSE
+-- [H6] [H7] s 17(1)(b)
+#ASSERT `the interval from` (YMD 2025 3 1) `to` (YMD 2025 4 1) `is within s 17(1)(b)`
+#ASSERT NOT `the interval from` (YMD 2025 3 1) `to` (YMD 2025 4 2) `is within s 17(1)(b)`
+-- [H8]-[H12] s 34N(2)
+#ASSERT `the last day to pay a platform worker's periodical payment, certificate received on` (YMD 2025 3 14) EQUALS YMD 2025 3 30
+#ASSERT `the last day to pay a platform worker's periodical payment, certificate received on` (YMD 2025 3 15) EQUALS YMD 2025 4 13
+#ASSERT `the last day to pay a platform worker's periodical payment, certificate received on` (YMD 2025 12 20) EQUALS YMD 2026 1 13
+#ASSERT `the last day to pay a platform worker's periodical payment, certificate received on` (YMD 2025 12 14) EQUALS YMD 2025 12 30
+#ASSERT `the last day to pay a platform worker's periodical payment, certificate received on` (YMD 2026 2 14) EQUALS YMD 2026 3 2
+#ASSERT `the last day to pay a platform worker's periodical payment, certificate received on` (YMD 2025 3 1) EQUALS YMD 2025 3 30
+#ASSERT `the last day to pay a platform worker's periodical payment, certificate received on` (YMD 2025 3 31) EQUALS YMD 2025 4 13
+-- [H13] s 16(2)
+#ASSERT `the amount paid to the approved medical institution, of` 5000 `, less` 1000 EQUALS 4000
+-- [H14] [H15] s 16(1)
+#ASSERT `the treatment is compensable:` FALSE `,` FALSE `,` TRUE
+#ASSERT NOT `the treatment is compensable:` TRUE `,` FALSE `,` FALSE
+#ASSERT `the treatment is compensable:` TRUE `,` TRUE `,` FALSE
+-- [H16] [H17] [H18] s 67
+#ASSERT `the seafarer's compensation of` 10000 `, reduced by` 3000 EQUALS 7000
+#ASSERT `the seafarer's compensation of` 4000 `, reduced by` 1500 EQUALS 2500
+#ASSERT NOT `a periodical payment is payable to the seafarer, the owner liable for maintenance:` TRUE
+
+§§ `I. Payees and payment (ss 18-23, 59, refunds)`
+
+GIVEN died IS A BOOLEAN, exec IS A BOOLEAN, incap IS A BOOLEAN, donee IS A BOOLEAN, minor IS A BOOLEAN, pi IS A BOOLEAN, s20 IS A BOOLEAN, dep IS A BOOLEAN
+GIVETH A `Payee facts`
+`payee` died exec incap donee minor pi s20 dep MEANS
+    `Payee facts` WITH
+        `the claimant has died` IS died
+        `an executor or administrator is known to be appointed` IS exec
+        `the claimant lacks capacity in property and affairs` IS incap
+        `a donee or deputy with power to receive the payment` IS donee
+        `the claimant is below 18` IS minor
+        `for permanent or current incapacity` IS pi
+        `the Commissioner has directed payment to relatives` IS s20
+        `the Commissioner has directed a deposit` IS dep
+
+-- [I1]
+#ASSERT `whom the insurer pays, under s 18:` (`payee` FALSE FALSE FALSE FALSE FALSE TRUE FALSE FALSE) EQUALS `the claimant`
+-- [I2]
+#ASSERT `whom the insurer pays, under s 18:` (`payee` FALSE FALSE FALSE FALSE TRUE TRUE FALSE FALSE) EQUALS `the Public Trustee`
+-- [I3]
+#ASSERT `whom the insurer pays, under s 18:` (`payee` FALSE FALSE FALSE FALSE TRUE FALSE FALSE FALSE) EQUALS `the claimant`
+-- [I5]
+#ASSERT `whom the insurer pays, under s 18:` (`payee` TRUE TRUE FALSE FALSE FALSE TRUE FALSE FALSE) EQUALS `the executor or administrator`
+-- [I6]
+#ASSERT `whom the insurer pays, under s 18:` (`payee` FALSE FALSE TRUE TRUE FALSE TRUE FALSE FALSE) EQUALS `the donee or deputy`
+-- [I7]
+#ASSERT `whom the insurer pays, under s 18:` (`payee` FALSE FALSE FALSE FALSE FALSE TRUE TRUE FALSE) EQUALS `the claimant's relatives, as the Commissioner directs`
+-- [I8] para (b) yields to (e)
+#ASSERT `whom the insurer pays, under s 18:` (`payee` FALSE FALSE FALSE FALSE TRUE TRUE TRUE FALSE) EQUALS `the claimant's relatives, as the Commissioner directs`
+-- [I9] s 18(3)
+#ASSERT `whom the insurer pays, under s 18:` (`payee` FALSE FALSE FALSE FALSE FALSE TRUE FALSE TRUE) EQUALS `a deposit with the Commissioner`
+-- died minor with executor: (c) prevails over (b)
+#ASSERT `whom the insurer pays, under s 18:` (`payee` TRUE TRUE FALSE FALSE TRUE TRUE FALSE FALSE) EQUALS `the executor or administrator`
+-- [I10]
+#ASSERT `whom the employer pays, under s 19:` (`payee` FALSE FALSE FALSE FALSE FALSE TRUE FALSE FALSE) EQUALS `the claimant`
+-- [I11]
+#ASSERT `whom the employer pays, under s 19:` (`payee` TRUE TRUE FALSE FALSE FALSE TRUE FALSE FALSE) EQUALS `a deposit with the Commissioner`
+-- [I12]
+#ASSERT `whom the employer pays, under s 19:` (`payee` FALSE FALSE TRUE TRUE FALSE TRUE FALSE FALSE) EQUALS `a deposit with the Commissioner`
+-- [I13]
+#ASSERT `whom the employer pays, under s 19:` (`payee` FALSE FALSE FALSE FALSE TRUE TRUE FALSE FALSE) EQUALS `a deposit with the Commissioner`
+-- [I14]
+#ASSERT `whom the employer pays, under s 19:` (`payee` FALSE FALSE FALSE FALSE TRUE FALSE FALSE FALSE) EQUALS `the claimant`
+-- [I15]
+#ASSERT `whom the employer pays, under s 19:` (`payee` FALSE FALSE FALSE FALSE FALSE TRUE TRUE FALSE) EQUALS `the claimant's relatives, as the Commissioner directs`
+-- s 21 deposit direction
+#ASSERT `whom the employer pays, under s 19:` (`payee` FALSE FALSE FALSE FALSE FALSE TRUE FALSE TRUE) EQUALS `a deposit with the Commissioner`
+-- [I16] [I17] s 22
+#ASSERT `paying` `the Public Trustee` `discharges the compensation, the Act naming` `the Public Trustee`
+#ASSERT NOT `paying` `the claimant` `discharges the compensation, the Act naming` `the Public Trustee`
+-- [I18] s 23(1)
+#ASSERT `the agreement is void under s 23(1):` TRUE `, recorded as a settlement:` FALSE
+#ASSERT NOT `the agreement is void under s 23(1):` TRUE `, recorded as a settlement:` TRUE
+-- [I19] [I20] s 59(2)
+#ASSERT `the interest payable, at the prescribed rate` 6000 `, on late compensation of` 10000 EQUALS 5000
+#ASSERT `the interest payable, at the prescribed rate` 3000 `, on late compensation of` 10000 EQUALS 3000
+
+GIVEN wd IS A BOOLEAN, refusal IS A BOOLEAN, err IS A BOOLEAN, applied IS A BOOLEAN, heard IS A BOOLEAN, efma IS A BOOLEAN
+GIVETH A `Refund facts`
+`refund` wd refusal err applied heard efma MEANS
+    `Refund facts` WITH
+        `the claim was withdrawn and not resumed` IS wd
+        `an order of refusal has been made or taken effect` IS refusal
+        `paid on the basis of an error or false or misleading information` IS err
+        `the payer applied in time, in the required form` IS applied
+        `the claimant had a reasonable opportunity to make representations` IS heard
+        `a medical payment the employer owes under the Employment of Foreign Manpower Act 1990` IS efma
+
+-- [I22]
+#ASSERT `the Commissioner may order a refund or reimbursement to the payer:` (`refund` TRUE FALSE FALSE TRUE TRUE FALSE)
+-- [I23] withdrawn but resumed: no ground
+#ASSERT NOT `the Commissioner may order a refund or reimbursement to the payer:` (`refund` FALSE FALSE FALSE TRUE TRUE FALSE)
+-- [I24] not applied in time
+#ASSERT NOT `the Commissioner may order a refund or reimbursement to the payer:` (`refund` TRUE FALSE FALSE FALSE TRUE FALSE)
+-- [I25] s 16(7)
+#ASSERT NOT `the Commissioner may order a refund or reimbursement to the payer:` (`refund` TRUE FALSE FALSE TRUE TRUE TRUE)
+-- [I26] no opportunity
+#ASSERT NOT `the Commissioner may order a refund or reimbursement to the payer:` (`refund` FALSE FALSE TRUE TRUE FALSE FALSE)
+-- [I27] refusal order
+#ASSERT `the Commissioner may order a refund or reimbursement to the payer:` (`refund` FALSE TRUE FALSE TRUE TRUE FALSE)
+
+§§ `J. Process (Part 4)`
+
+GIVEN acc IS A DATE
+      died IS A MAYBE DATE
+      notice IS A MAYBE DATE
+      later IS A MAYBE DATE
+      wd IS A MAYBE DATE
+      res IS A MAYBE DATE
+      approved IS A BOOLEAN
+      claim IS A MAYBE DATE
+      notified IS A BOOLEAN
+      stmt IS A BOOLEAN
+GIVETH A `Claim history`
+`history` acc died notice later wd res approved claim notified stmt MEANS
+    `Claim history` WITH
+        `accident on` IS acc
+        `claimant died on` IS died
+        `employer first had notice on` IS notice
+        `later date specified by the Commissioner` IS later
+        `withdrawn on` IS wd
+        `resumed on` IS res
+        `the Commissioner approved a late resumption` IS approved
+        `incapacity claim made on` IS claim
+        `notified of assessment for permanent or current incapacity` IS notified
+        `incapacity claim had a health professional's statement` IS stmt
+
+`a1` MEANS YMD 2025 3 1
+
+-- [J1]
+#ASSERT `the last day for the employer to have notice, in` (`history` `a1` NOTHING NOTHING NOTHING NOTHING NOTHING FALSE NOTHING FALSE FALSE) EQUALS YMD 2026 3 1
+-- [J2] notice on the last day
+#ASSERT `the status on` (YMD 2026 6 1) `of the claim in` (`history` `a1` NOTHING (JUST (YMD 2026 3 1)) NOTHING NOTHING NOTHING FALSE NOTHING FALSE FALSE) EQUALS `the claim is alive`
+-- [J3] notice a day late
+#ASSERT `the status on` (YMD 2026 6 1) `of the claim in` (`history` `a1` NOTHING (JUST (YMD 2026 3 2)) NOTHING NOTHING NOTHING FALSE NOTHING FALSE FALSE) EQUALS `deemed withdrawn under s 35(5)`
+-- [J4] death within the year
+#ASSERT `the last day for the employer to have notice, in` (`history` `a1` (JUST (YMD 2025 12 1)) NOTHING NOTHING NOTHING NOTHING FALSE NOTHING FALSE FALSE) EQUALS YMD 2026 12 1
+-- [J5] death after the year
+#ASSERT `the last day for the employer to have notice, in` (`history` `a1` (JUST (YMD 2026 4 1)) NOTHING NOTHING NOTHING NOTHING FALSE NOTHING FALSE FALSE) EQUALS YMD 2026 3 1
+-- [J6] Commissioner's later date
+#ASSERT `the last day for the employer to have notice, in` (`history` `a1` NOTHING NOTHING (JUST (YMD 2027 1 31)) NOTHING NOTHING FALSE NOTHING FALSE FALSE) EQUALS YMD 2027 1 31
+-- [J8] resumed by notice within the year
+#ASSERT `the status on` (YMD 2026 4 1) `of the claim in` (`history` `a1` NOTHING (JUST `a1`) NOTHING (JUST (YMD 2025 6 1)) (JUST (YMD 2026 3 1)) FALSE NOTHING FALSE FALSE) EQUALS `the claim is alive`
+-- [J9] resumed a day late without approval
+#ASSERT `the status on` (YMD 2026 4 1) `of the claim in` (`history` `a1` NOTHING (JUST `a1`) NOTHING (JUST (YMD 2025 6 1)) (JUST (YMD 2026 3 2)) FALSE NOTHING FALSE FALSE) EQUALS `withdrawn under s 41(1)`
+-- late resumption approved
+#ASSERT `the status on` (YMD 2026 4 1) `of the claim in` (`history` `a1` NOTHING (JUST `a1`) NOTHING (JUST (YMD 2025 6 1)) (JUST (YMD 2026 3 2)) TRUE NOTHING FALSE FALSE) EQUALS `the claim is alive`
+-- [J10] [J11] s 41(3)-(4)
+#ASSERT `the Commissioner may excuse the delay:` TRUE `, a damages action causing it:` FALSE
+#ASSERT NOT `the Commissioner may excuse the delay:` TRUE `, a damages action causing it:` TRUE
+-- [J12] s 39(1): last day 2026-03-01
+#ASSERT `compensation for permanent or current incapacity is open under s 39 in` (`history` `a1` NOTHING (JUST `a1`) NOTHING NOTHING NOTHING FALSE (JUST (YMD 2026 3 1)) FALSE TRUE)
+#ASSERT NOT `compensation for permanent or current incapacity is open under s 39 in` (`history` `a1` NOTHING (JUST `a1`) NOTHING NOTHING NOTHING FALSE (JUST (YMD 2026 3 2)) FALSE TRUE)
+-- [J13] s 39(2)
+#ASSERT `compensation for permanent or current incapacity is open under s 39 in` (`history` `a1` NOTHING (JUST `a1`) NOTHING NOTHING NOTHING FALSE (JUST (YMD 2026 6 1)) TRUE FALSE)
+-- [J14] s 39(3)(b)
+#ASSERT NOT `compensation for permanent or current incapacity is open under s 39 in` (`history` `a1` NOTHING (JUST `a1`) NOTHING NOTHING NOTHING FALSE (JUST (YMD 2025 9 1)) FALSE FALSE)
+-- [J15] s 37(1)
+#ASSERT `the last day to offer a medical examination, notice having come on` `a1` EQUALS YMD 2025 3 6
+-- [J16] [J17] [J18] s 37(7)
+#ASSERT `s 37(7) bars compensation on` (YMD 2025 7 11) `, the examination fixed for` (YMD 2025 4 10) `, still not attended:` TRUE `, death:` FALSE `, reasonable cause:` FALSE
+#ASSERT NOT `s 37(7) bars compensation on` (YMD 2025 7 11) `, the examination fixed for` (YMD 2025 4 10) `, still not attended:` TRUE `, death:` TRUE `, reasonable cause:` FALSE
+#ASSERT NOT `s 37(7) bars compensation on` (YMD 2025 7 10) `, the examination fixed for` (YMD 2025 4 10) `, still not attended:` TRUE `, death:` FALSE `, reasonable cause:` FALSE
+#ASSERT NOT `s 37(7) bars compensation on` (YMD 2025 7 11) `, the examination fixed for` (YMD 2025 4 10) `, still not attended:` TRUE `, death:` FALSE `, reasonable cause:` TRUE
+
+GIVEN served IS A DATE
+      objs IS A LIST OF DATE
+      wdn IS A MAYBE DATE
+      errf IS A BOOLEAN
+GIVETH A `Notice and objections`
+`notice` served objs wdn errf MEANS
+    `Notice and objections` WITH
+        `served on` IS served
+        `objections received on` IS objs
+        `all objections withdrawn on` IS wdn
+        `objection delayed by another's error or fraud` IS errf
+
+`s1` MEANS YMD 2025 5 1
+
+-- [J19] [J21] no objection: 15th day after service
+#ASSERT `the day the notice takes effect as an order, if it does:` (`notice` `s1` EMPTY NOTHING FALSE) EQUALS JUST (YMD 2025 5 16)
+-- [J20] objection withdrawn within 28 days: 29th day
+#ASSERT `the day the notice takes effect as an order, if it does:` (`notice` `s1` (LIST (YMD 2025 5 10)) (JUST (YMD 2025 5 29)) FALSE) EQUALS JUST (YMD 2025 5 30)
+-- objection withdrawn too late, or not at all: no deemed order
+#ASSERT `the day the notice takes effect as an order, if it does:` (`notice` `s1` (LIST (YMD 2025 5 10)) (JUST (YMD 2025 5 30)) FALSE) EQUALS NOTHING
+#ASSERT `the day the notice takes effect as an order, if it does:` (`notice` `s1` (LIST (YMD 2025 5 10)) NOTHING FALSE) EQUALS NOTHING
+-- an objection received on the 15th day is not within the 14 days
+#ASSERT `the day the notice takes effect as an order, if it does:` (`notice` `s1` (LIST (YMD 2025 5 16)) NOTHING FALSE) EQUALS JUST (YMD 2025 5 16)
+-- [J22] s 46(2)
+#ASSERT `an objection on` (YMD 2025 5 15) `to a notice served on` `s1` `is in time, delayed by another's error or fraud:` FALSE
+#ASSERT NOT `an objection on` (YMD 2025 5 16) `to a notice served on` `s1` `is in time, delayed by another's error or fraud:` FALSE
+#ASSERT `an objection on` (YMD 2025 8 13) `to a notice served on` `s1` `is in time, delayed by another's error or fraud:` TRUE
+#ASSERT NOT `an objection on` (YMD 2025 8 14) `to a notice served on` `s1` `is in time, delayed by another's error or fraud:` TRUE
+-- [J24] [J25] [J26] s 47E
+#ASSERT `the last day for Y or Z to notify the relevant PO's insurer, served on` `s1` EQUALS YMD 2025 5 8
+#ASSERT `the last day for the relevant PO's insurer to object, the notice issued on` `s1` EQUALS YMD 2025 5 15
+#ASSERT `the last day for Y or Z to object directly, served on` `s1` EQUALS YMD 2025 6 7
+-- [J27] [J28] s 48(4)
+#ASSERT `the Commissioner may reassess on` (YMD 2028 5 1) `a disease notice dated` `s1` `, aggravated:` TRUE `, substantially inadequate:` TRUE
+#ASSERT NOT `the Commissioner may reassess on` (YMD 2028 5 2) `a disease notice dated` `s1` `, aggravated:` TRUE `, substantially inadequate:` TRUE
+#ASSERT NOT `the Commissioner may reassess on` (YMD 2026 5 1) `a disease notice dated` `s1` `, aggravated:` TRUE `, substantially inadequate:` FALSE
+-- [J29] s 51(3)
+#ASSERT `the Commissioner may set aside the settlement order, error or fraud:` TRUE `, appeal pending:` FALSE
+#ASSERT NOT `the Commissioner may set aside the settlement order, error or fraud:` TRUE `, appeal pending:` TRUE
+-- [J30] [J31] s 58
+#ASSERT `an appeal lies against` `an order of the Commissioner after review` `, a refusal:` FALSE `, of` 1000 `, a substantial question of law:` TRUE
+#ASSERT NOT `an appeal lies against` `an order of the Commissioner after review` `, a refusal:` FALSE `, of` 999 `, a substantial question of law:` TRUE
+#ASSERT `an appeal lies against` `an order of the Commissioner after review` `, a refusal:` TRUE `, of` 0 `, a substantial question of law:` TRUE
+#ASSERT NOT `an appeal lies against` `an order of the Commissioner after review` `, a refusal:` FALSE `, of` 50000 `, a substantial question of law:` FALSE
+#ASSERT NOT `an appeal lies against` `a notice of computation in effect as an order` `, a refusal:` FALSE `, of` 50000 `, a substantial question of law:` TRUE
+#ASSERT NOT `an appeal lies against` `a settlement order not set aside` `, a refusal:` FALSE `, of` 50000 `, a substantial question of law:` TRUE
+#ASSERT `an appeal lies against` `an order of refusal at a pre-hearing conference` `, a refusal:` TRUE `, of` 0 `, a substantial question of law:` TRUE
+-- [J32] [J33] s 35A(4)
+#ASSERT `the s 35A(4) treatment, AME as employee` 3000 `, as platform worker` 2000 EQUALS `may be treated as an employee's claim`
+#ASSERT `the s 35A(4) treatment, AME as employee` 2000 `, as platform worker` 3000 EQUALS `may be treated as a platform worker's claim`
+-- [J34] s 36(2)
+#ASSERT `the Commissioner must process the claim, insured:` FALSE `, deciding to:` FALSE
+#ASSERT NOT `the Commissioner must process the claim, insured:` TRUE `, deciding to:` FALSE
+
+§§ `K. Damages (ss 63-64)`
+
+GIVEN sued IS A BOOLEAN, recE IS A BOOLEAN, recO IS A BOOLEAN, settle IS A BOOLEAN, deemed IS A BOOLEAN, nowd IS A BOOLEAN, review IS A BOOLEAN, route IS A BOOLEAN, refused IS A BOOLEAN
+GIVETH A `Damages history`
+`damages` sued recE recO settle deemed nowd review route refused MEANS
+    `Damages history` WITH
+        `sued the employer for damages` IS sued
+        `recovered damages from the employer` IS recE
+        `recovered damages from someone else` IS recO
+        `a settlement order made` IS settle
+        `a notice took effect as an order` IS deemed
+        `failed to withdraw within 28 days of service, or withdrawal not kept` IS nowd
+        `an order to pay compensation made after review` IS review
+        `the s 63(3) route was followed` IS route
+        `compensation refused, or appeal failed on scope` IS refused
+
+-- [K1] [K2] [K3] s 63(1)
+#ASSERT `s 63(1) bars compensation, given` (`damages` TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE)
+#ASSERT `s 63(1) bars compensation, given` (`damages` FALSE TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE)
+#ASSERT NOT `s 63(1) bars compensation, given` (`damages` FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE)
+-- [K4]-[K8] s 63(2)
+#ASSERT `s 63(2) bars an action for damages against the employer, given` (`damages` FALSE FALSE TRUE FALSE FALSE FALSE FALSE FALSE FALSE)
+#ASSERT `s 63(2) bars an action for damages against the employer, given` (`damages` FALSE FALSE FALSE TRUE FALSE FALSE FALSE FALSE FALSE)
+#ASSERT `s 63(2) bars an action for damages against the employer, given` (`damages` FALSE FALSE FALSE FALSE TRUE FALSE FALSE FALSE FALSE)
+#ASSERT `s 63(2) bars an action for damages against the employer, given` (`damages` FALSE FALSE FALSE FALSE FALSE TRUE FALSE FALSE FALSE)
+#ASSERT `s 63(2) bars an action for damages against the employer, given` (`damages` FALSE FALSE FALSE FALSE FALSE FALSE TRUE FALSE FALSE)
+#ASSERT NOT `s 63(2) bars an action for damages against the employer, given` (`damages` FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE)
+-- [K9] s 63(3) route
+#ASSERT NOT `s 63(2) bars an action for damages against the employer, given` (`damages` FALSE FALSE FALSE FALSE FALSE TRUE TRUE TRUE FALSE)
+-- [K10] route not followed (compensation retained)
+#ASSERT `s 63(2) bars an action for damages against the employer, given` (`damages` FALSE FALSE FALSE FALSE FALSE TRUE TRUE FALSE FALSE)
+-- [K11] [K12] s 63(5)
+#ASSERT NOT `s 63(2) bars an action for damages against the employer, given` (`damages` FALSE FALSE FALSE FALSE FALSE TRUE FALSE FALSE TRUE)
+-- [K13] [K14] s 63(6)
+#ASSERT `the court assesses compensation under s 63(6), accident on` `a1` `, action on` (YMD 2026 3 1) `, found` TRUE `, chosen:` TRUE
+#ASSERT NOT `the court assesses compensation under s 63(6), accident on` `a1` `, action on` (YMD 2026 3 2) `, found` TRUE `, chosen:` TRUE
+-- [K15] s 64(1)(a)
+#ASSERT NOT `compensation may still be recovered, damages having been recovered from the third party:` TRUE
+-- [K16] s 64(1)(b), (3)
+#ASSERT `the indemnity from the third party, compensation` 10000 `, reduced:` FALSE `, proportion` 0.6 EQUALS 10000
+#ASSERT `the indemnity from the third party, compensation` 10000 `, reduced:` TRUE `, proportion` 0.6 EQUALS 6000
+
+§§ `L. Insurance (ss 24-34)`
+
+GIVEN ins IS A BOOLEAN, excl IS A BOOLEAN, mlc IS A BOOLEAN, steps IS A BOOLEAN
+GIVETH AN `Insurance position`
+`position` ins excl mlc steps MEANS
+    `Insurance position` WITH
+        `insured under approved policies with designated insurers for every worker` IS ins
+        `in an excluded class prescribed under s 24(2)(a)` IS excl
+        `a seafarer covered by Maritime Labour Convention security` IS mlc
+        `took all reasonable steps to ascertain the matters in s 25(3)` IS steps
+
+-- [L1] s 24(1), s 67(4)
+#ASSERT `the insurance duty is met:` (`position` TRUE FALSE FALSE FALSE)
+#ASSERT NOT `the insurance duty is met:` (`position` FALSE FALSE FALSE FALSE)
+#ASSERT `the insurance duty is met:` (`position` FALSE FALSE TRUE FALSE)
+-- [L2] [L3] s 25(3)
+#ASSERT NOT `the s 25(1) / 34P(1) offence is made out on` (`position` FALSE FALSE FALSE TRUE) `, ignorance pleaded:` TRUE
+#ASSERT `the s 25(1) / 34P(1) offence is made out on` (`position` FALSE FALSE FALSE FALSE) `, ignorance pleaded:` TRUE
+-- [L4] s 26(1)
+#ASSERT `an approved policy, compulsory terms:` TRUE `, derogating term:` FALSE
+#ASSERT NOT `an approved policy, compulsory terms:` TRUE `, derogating term:` TRUE
+-- [L5] s 26(4)
+#ASSERT `what the insurer of a purported policy must pay, of compensation` 200000 `, the minimum` (JUST 150000) EQUALS 150000
+
+GIVEN bk IS A BOOLEAN, wu IS A BOOLEAN, rcv IS A BOOLEAN, deb IS A BOOLEAN, recon IS A BOOLEAN, void IS A BOOLEAN, ntc IS A BOOLEAN
+GIVETH AN `Insolvency facts`
+`insolvency` bk wu rcv deb recon void ntc MEANS
+    `Insolvency facts` WITH
+        `bankrupt, or a composition or scheme with creditors` IS bk
+        `winding-up proceedings commenced` IS wu
+        `a receiver or manager appointed` IS rcv
+        `debenture holders took possession under a floating charge` IS deb
+        `only a voluntary winding up for reconstruction or amalgamation` IS recon
+        `the contract is void or voidable other than for premiums` IS void
+        `the employee gave the insurer notice as soon as practicable` IS ntc
+
+-- [L6] [L7] [L8] s 28
+#ASSERT `the employer's rights against the insurer pass to the worker:` (`insolvency` TRUE FALSE FALSE FALSE FALSE FALSE FALSE)
+#ASSERT `the employer's rights against the insurer pass to the worker:` (`insolvency` FALSE TRUE FALSE FALSE FALSE FALSE FALSE)
+#ASSERT NOT `the employer's rights against the insurer pass to the worker:` (`insolvency` FALSE TRUE FALSE FALSE TRUE FALSE FALSE)
+#ASSERT NOT `the employer's rights against the insurer pass to the worker:` (`insolvency` FALSE FALSE FALSE FALSE FALSE FALSE FALSE)
+-- [L9] s 28(3)
+#ASSERT `the balance the worker may prove for, liability` 100000 `, insurer's liability` 60000 EQUALS 40000
+-- [L10] [L11] s 29(2)
+#ASSERT `the employer's rights against the insurer pass to the worker:` (`insolvency` TRUE FALSE FALSE FALSE FALSE TRUE TRUE)
+#ASSERT NOT `the employer's rights against the insurer pass to the worker:` (`insolvency` TRUE FALSE FALSE FALSE FALSE TRUE FALSE)
+-- [L13] [L14] s 30 fines per policy
+#ASSERT (`the maximum penalty for` `s 30(1) — unauthorised provider of employer insurance` `, a repeat offender:` FALSE)'s `fine` TIMES 3 EQUALS 240000
+#ASSERT (`the maximum penalty for` `s 30(1) — unauthorised provider of employer insurance` `, a repeat offender:` TRUE)'s `fine` TIMES 3 EQUALS 480000
+#ASSERT (`the maximum penalty for` `s 30(3) — insurance that is not an approved policy` `, a repeat offender:` FALSE)'s `fine` EQUALS 80000
+#ASSERT (`the maximum penalty for` `s 30(3) — insurance that is not an approved policy` `, a repeat offender:` TRUE)'s `fine` EQUALS 160000
+#ASSERT (`the maximum penalty for` `s 30(2A) — unauthorised provider of platform operator insurance` `, a repeat offender:` TRUE)'s `fine` EQUALS 160000
+-- [L15] s 30(5), s 30(1), s 30(3)
+#ASSERT NOT `providing it is an offence under s 30, provider` `anyone else` `, approved:` TRUE `, within the Act:` FALSE
+#ASSERT `providing it is an offence under s 30, provider` `anyone else` `, approved:` TRUE `, within the Act:` TRUE
+#ASSERT `providing it is an offence under s 30, provider` `a designated insurer of the right kind, not suspended` `, approved:` FALSE `, within the Act:` TRUE
+#ASSERT NOT `providing it is an offence under s 30, provider` `an insurance intermediary for such an insurer` `, approved:` TRUE `, within the Act:` TRUE
+
+GIVEN o IS AN Offence, rep IS A BOOLEAN, prov IS A STRING, reg IS A BOOLEAN
+GIVETH AN `Earlier conviction`
+`earlier` o rep prov reg MEANS
+    `Earlier conviction` WITH
+        `offence` IS o
+        `under the repealed Act` IS rep
+        `repealed Act provision` IS prov
+        `under the old regulation 3(5)` IS reg
+
+GIVEN o IS AN Offence
+GIVETH AN `Earlier conviction`
+`earlier under` o MEANS `earlier` o FALSE "" FALSE
+
+-- a placeholder offence for a repealed-Act conviction (only the provision matters)
+GIVEN p IS A STRING
+GIVETH AN `Earlier conviction`
+`earlier repealed` p MEANS `earlier` `s 82(3) — contravening the regulations` TRUE p FALSE
+
+`o25-1` MEANS `s 25(1) — employer not insured`
+`o25-4` MEANS `s 25(4) — employer deducting insurance cost from earnings`
+`o30-1` MEANS `s 30(1) — unauthorised provider of employer insurance`
+`o30-2A` MEANS `s 30(2A) — unauthorised provider of platform operator insurance`
+`o30-3` MEANS `s 30(3) — insurance that is not an approved policy`
+`o34P-1` MEANS `s 34P(1) — platform operator not insured`
+`o34P-4` MEANS `s 34P(4) — platform operator deducting insurance cost from earnings`
+`o35-8` MEANS `s 35(8) — failing to give the Commissioner notice of an accident`
+`o50-4` MEANS `s 50(4) — failing to comply with a direction`
+`o61-1` MEANS `s 61(1) — failing to pay compensation`
+`o61-3` MEANS `s 61(3) — failing to deposit interest`
+`o61-5` MEANS `s 61(5) — failing to make a directed deposit`
+`o62-1` MEANS `s 62(1) — false or misleading information`
+`o62-3a` MEANS `s 62(3)(a) — dishonestly obtaining compensation`
+`o62-3b` MEANS `s 62(3)(b) — dishonestly avoiding liability to pay compensation`
+`o68-6` MEANS `s 68(6) — obstructing the Commissioner or an investigation officer`
+`o82-3` MEANS `s 82(3) — contravening the regulations`
+
+-- [L16] [L17] s 30(2C), (3A)
+#ASSERT `an earlier conviction` (`earlier under` `o30-1`) `counts for a repeat of` `o30-2A`
+#ASSERT `an earlier conviction` (`earlier under` `o30-2A`) `counts for a repeat of` `o30-1`
+#ASSERT NOT `an earlier conviction` (`earlier under` `o30-1`) `counts for a repeat of` `o30-3`
+#ASSERT `an earlier conviction` (`earlier under` `o30-3`) `counts for a repeat of` `o30-3`
+-- [L18] s 31(6)
+#ASSERT NOT `the designation, until` (JUST (YMD 2026 12 31)) `, cancelled` NOTHING `, is in force on` (YMD 2027 1 1)
+#ASSERT `the designation, until` (JUST (YMD 2026 12 31)) `, cancelled` NOTHING `, is in force on` (YMD 2026 12 31)
+-- [L19] s 34(1)(b)
+#ASSERT `the most the Commissioner may impose on a designated insurer, failures being` 3 EQUALS 90000
+
+§§ `M. Offences`
+
+GIVEN o IS AN Offence, r IS A BOOLEAN
+GIVETH A NUMBER
+`fine for` o `repeat` r MEANS (`the maximum penalty for` o `, a repeat offender:` r)'s `fine`
+
+GIVEN o IS AN Offence, r IS A BOOLEAN
+GIVETH A NUMBER
+`months for` o `repeat` r MEANS (`the maximum penalty for` o `, a repeat offender:` r)'s `imprisonment in months`
+
+-- [M1] s 25(1), (2)
+#ASSERT `fine for` `o25-1` `repeat` FALSE EQUALS 10000
+#ASSERT `months for` `o25-1` `repeat` FALSE EQUALS 12
+#ASSERT `fine for` `o25-1` `repeat` TRUE EQUALS 20000
+#ASSERT `months for` `o25-1` `repeat` TRUE EQUALS 12
+#ASSERT `an earlier conviction` (`earlier under` `o25-1`) `counts for a repeat of` `o25-1`
+#ASSERT `an earlier conviction` (`earlier under` `o34P-1`) `counts for a repeat of` `o25-1`
+#ASSERT `an earlier conviction` (`earlier repealed` "35(1)(b)") `counts for a repeat of` `o25-1`
+#ASSERT NOT `an earlier conviction` (`earlier under` `o25-4`) `counts for a repeat of` `o25-1`
+#ASSERT NOT `an earlier conviction` (`earlier repealed` "35(1)(a)") `counts for a repeat of` `o25-1`
+-- [M2] s 25(4), (5)
+#ASSERT `fine for` `o25-4` `repeat` FALSE EQUALS 5000
+#ASSERT `months for` `o25-4` `repeat` FALSE EQUALS 6
+#ASSERT `fine for` `o25-4` `repeat` TRUE EQUALS 10000
+#ASSERT `months for` `o25-4` `repeat` TRUE EQUALS 6
+#ASSERT `an earlier conviction` (`earlier under` `o34P-4`) `counts for a repeat of` `o25-4`
+#ASSERT `an earlier conviction` (`earlier repealed` "35(1)(a)") `counts for a repeat of` `o25-4`
+#ASSERT NOT `an earlier conviction` (`earlier under` `o25-1`) `counts for a repeat of` `o25-4`
+-- [M3] s 34P(1), (2)
+#ASSERT `fine for` `o34P-1` `repeat` FALSE EQUALS 10000
+#ASSERT `fine for` `o34P-1` `repeat` TRUE EQUALS 20000
+#ASSERT `months for` `o34P-1` `repeat` TRUE EQUALS 12
+#ASSERT `an earlier conviction` (`earlier under` `o25-1`) `counts for a repeat of` `o34P-1`
+#ASSERT `an earlier conviction` (`earlier repealed` "35(1)(b)") `counts for a repeat of` `o34P-1`
+-- [M4] s 34P(4), (5)
+#ASSERT `fine for` `o34P-4` `repeat` FALSE EQUALS 5000
+#ASSERT `fine for` `o34P-4` `repeat` TRUE EQUALS 10000
+#ASSERT `an earlier conviction` (`earlier under` `o25-4`) `counts for a repeat of` `o34P-4`
+#ASSERT `an earlier conviction` (`earlier repealed` "35(1)(a)") `counts for a repeat of` `o34P-4`
+-- [M6] s 35(8), (9): no imprisonment for a first offence
+#ASSERT `fine for` `o35-8` `repeat` FALSE EQUALS 5000
+#ASSERT `months for` `o35-8` `repeat` FALSE EQUALS 0
+#ASSERT `fine for` `o35-8` `repeat` TRUE EQUALS 10000
+#ASSERT `months for` `o35-8` `repeat` TRUE EQUALS 6
+#ASSERT `an earlier conviction` (`earlier` `o82-3` FALSE "" TRUE) `counts for a repeat of` `o35-8`
+#ASSERT `an earlier conviction` (`earlier under` `o35-8`) `counts for a repeat of` `o35-8`
+#ASSERT NOT `an earlier conviction` (`earlier under` `o61-1`) `counts for a repeat of` `o35-8`
+-- [M7] s 50(4)
+#ASSERT `fine for` `o50-4` `repeat` FALSE EQUALS 5000
+#ASSERT `months for` `o50-4` `repeat` FALSE EQUALS 6
+#ASSERT `fine for` `o50-4` `repeat` TRUE EQUALS 10000
+#ASSERT `an earlier conviction` (`earlier under` `o50-4`) `counts for a repeat of` `o50-4`
+-- [M8] s 61(1), (2)
+#ASSERT `fine for` `o61-1` `repeat` FALSE EQUALS 15000
+#ASSERT `months for` `o61-1` `repeat` FALSE EQUALS 12
+#ASSERT `fine for` `o61-1` `repeat` TRUE EQUALS 30000
+#ASSERT `an earlier conviction` (`earlier repealed` "35(2)(a)") `counts for a repeat of` `o61-1`
+#ASSERT NOT `an earlier conviction` (`earlier under` `o61-3`) `counts for a repeat of` `o61-1`
+-- [M9] s 61(3), (4)
+#ASSERT `fine for` `o61-3` `repeat` TRUE EQUALS 30000
+#ASSERT `months for` `o61-3` `repeat` TRUE EQUALS 12
+#ASSERT `an earlier conviction` (`earlier repealed` "35(2)(b)") `counts for a repeat of` `o61-3`
+#ASSERT NOT `an earlier conviction` (`earlier repealed` "35(2)(a)") `counts for a repeat of` `o61-3`
+-- [M10] s 61(5)
+#ASSERT `fine for` `o61-5` `repeat` FALSE EQUALS 15000
+#ASSERT `fine for` `o61-5` `repeat` TRUE EQUALS 30000
+#ASSERT `an earlier conviction` (`earlier under` `o61-5`) `counts for a repeat of` `o61-5`
+#ASSERT NOT `an earlier conviction` (`earlier under` `o61-1`) `counts for a repeat of` `o61-5`
+-- [M11] s 62(1), (2)
+#ASSERT `fine for` `o62-1` `repeat` FALSE EQUALS 5000
+#ASSERT `months for` `o62-1` `repeat` FALSE EQUALS 6
+#ASSERT `fine for` `o62-1` `repeat` TRUE EQUALS 10000
+#ASSERT `an earlier conviction` (`earlier repealed` "35(2)(c)") `counts for a repeat of` `o62-1`
+-- [M12] s 62(3)
+#ASSERT `fine for` `o62-3a` `repeat` FALSE EQUALS 15000
+#ASSERT `months for` `o62-3a` `repeat` FALSE EQUALS 12
+#ASSERT `fine for` `o62-3b` `repeat` TRUE EQUALS 30000
+-- [M13] s 62(4) asymmetry
+#ASSERT `an earlier conviction` (`earlier repealed` "35(2)(f)") `counts for a repeat of` `o62-3a`
+#ASSERT NOT `an earlier conviction` (`earlier repealed` "35(2)(f)") `counts for a repeat of` `o62-3b`
+#ASSERT `an earlier conviction` (`earlier under` `o62-3a`) `counts for a repeat of` `o62-3b`
+#ASSERT `an earlier conviction` (`earlier under` `o62-3b`) `counts for a repeat of` `o62-3a`
+#ASSERT NOT `an earlier conviction` (`earlier under` `o62-1`) `counts for a repeat of` `o62-3a`
+-- [M14] s 68(6), (7)
+#ASSERT `fine for` `o68-6` `repeat` FALSE EQUALS 5000
+#ASSERT `months for` `o68-6` `repeat` FALSE EQUALS 6
+#ASSERT `fine for` `o68-6` `repeat` TRUE EQUALS 10000
+#ASSERT `an earlier conviction` (`earlier repealed` "35(2)(e)") `counts for a repeat of` `o68-6`
+#ASSERT NOT `an earlier conviction` (`earlier repealed` "35(2)(c)") `counts for a repeat of` `o68-6`
+-- [M15] s 82(3)
+#ASSERT `fine for` `o82-3` `repeat` FALSE EQUALS 10000
+#ASSERT `months for` `o82-3` `repeat` FALSE EQUALS 6
+-- the list form
+#ASSERT `a repeat offender for` `o25-1` `, with earlier convictions` (LIST (`earlier under` `o61-1`), (`earlier repealed` "35(1)(b)"))
+#ASSERT NOT `a repeat offender for` `o25-1` `, with earlier convictions` (LIST (`earlier under` `o61-1`), (`earlier under` `o25-4`))
+-- [M16] [M17] s 76(1)
+#ASSERT `the composition limit for an offence with a maximum fine of` 5000 EQUALS 2500
+#ASSERT `the composition limit for an offence with a maximum fine of` 15000 EQUALS 5000
+#ASSERT `the composition limit for an offence with a maximum fine of` 80000 EQUALS 5000
+#ASSERT `the composition limit for an offence with a maximum fine of` 10000 EQUALS 5000
+
+GIVEN off IS A BOOLEAN, con IS A BOOLEAN, kc IS A BOOLEAN, knew IS A BOOLEAN
+GIVETH AN `Officer facts`
+`officer` off con kc knew MEANS
+    `Officer facts` WITH
+        `an officer, partner, or manager able to influence the conduct` IS off
+        `consented, connived or conspired` IS con
+        `knowingly concerned in or party to it` IS kc
+        `knew or ought to have known, and did not take all reasonable steps` IS knew
+
+-- [M19] [M20] ss 72(2), 73(2)
+#ASSERT `the officer is guilty of the same offence:` (`officer` TRUE TRUE FALSE FALSE) `, the body having committed it:` TRUE
+#ASSERT `the officer is guilty of the same offence:` (`officer` TRUE FALSE FALSE TRUE) `, the body having committed it:` TRUE
+#ASSERT NOT `the officer is guilty of the same offence:` (`officer` TRUE FALSE FALSE FALSE) `, the body having committed it:` TRUE
+#ASSERT NOT `the officer is guilty of the same offence:` (`officer` FALSE TRUE TRUE TRUE) `, the body having committed it:` TRUE
+-- [M21] s 77
+#ASSERT NOT `may be prosecuted under the Act, the accused being the Government:` TRUE
+#ASSERT `may be prosecuted under the Act, the accused being the Government:` FALSE
+
+§§ `N. Administration`
+
+-- [N1] [N2] ss 47, 18(1)
+#ASSERT `what the insurer pays of an order of` 120000 `, insured for` 100000 EQUALS 100000
+#ASSERT `what the insurer pays of an order of` 80000 `, insured for` 100000 EQUALS 80000
+-- [N4] s 40(2)
+#ASSERT `the employer's indemnity to its insurer, assistance given:` FALSE `, insurer paid` 50000 EQUALS 50000
+#ASSERT `the employer's indemnity to its insurer, assistance given:` TRUE `, insurer paid` 50000 EQUALS 0
+-- [N5] s 47A
+#ASSERT `the relevant platform operator, serving` (LIST "A") `, designated` NOTHING EQUALS "A"
+#ASSERT `the relevant platform operator, serving` (LIST "A", "B") `, designated` (JUST "B") EQUALS "B"
+#ASSERT REFUSED `the relevant platform operator, serving` (LIST "A", "B") `, designated` NOTHING
+-- [N6] [N7] s 47C(6)-(7)
+#ASSERT `who reimburses the relevant PO's insurer, Z insured:` TRUE EQUALS `the other operator's insurer (Y), s 47C(6)`
+#ASSERT `who reimburses the relevant PO's insurer, Z insured:` FALSE EQUALS `the other operator itself (Z), s 47C(7)`
+#ASSERT `the reimbursement for a share of` 0.25 `of compensation of` 10000 EQUALS 2500
+-- [N8] s 47G(3)
+#ASSERT `the day recovery may begin, period ending` (YMD 2025 9 1) `, order on` (JUST (YMD 2025 10 1)) EQUALS YMD 2025 10 1
+#ASSERT `the day recovery may begin, period ending` (YMD 2025 9 1) `, order on` (JUST (YMD 2025 8 1)) EQUALS YMD 2025 9 1
+-- [N9] s 60(2)
+#ASSERT `the court that may order the enforcement step, a sale of immovable property:` TRUE EQUALS "the General Division of the High Court"
+-- [N10] s 70
+#ASSERT NOT `an ex gratia payment of` 60000 `is within s 70, entitled to` 50000
+#ASSERT `an ex gratia payment of` 50000 `is within s 70, entitled to` 50000
+-- [N12] s 21(2)(b)(i), the cap an input
+#ASSERT `the funeral expenses payable from a deposit, of` 8000 `, capped at` 6000 EQUALS 6000
+
+§§ `S. Supplementary (added after the interface was read; expected values still from the source)`
+
+-- [S1] s 83(1): a disease whose date of accident (s 11(2)) is before 1 September 2020
+#ASSERT REFUSED `the liability for the disease of a worker` `emp` `:` (`disease` NOTHING FALSE NOTHING (YMD 2019 6 1) TRUE NOTHING FALSE (JUST (YMD 2019 7 1)) NOTHING NOTHING (YMD 2019 12 31) FALSE FALSE)
+-- [S2] brief: date of accident in 2023, text before 1 January 2025 not supplied
+#ASSERT REFUSED `the liability for the disease of a worker` `emp` `:` (`disease` NOTHING FALSE NOTHING (YMD 2023 3 1) TRUE NOTHING FALSE (JUST (YMD 2023 4 1)) NOTHING NOTHING (YMD 2023 12 31) FALSE FALSE)
+-- [S3] s 83(1): temporary incapacity for a 2019 accident
+#ASSERT REFUSED `the temporary incapacity payments for an accident on` (YMD 2019 6 1) `at a daily rate of` 90 `for the days` (`run of` `ML` `from` (YMD 2019 6 1) `for` 20 `paid` 0)
+-- [S4] s 4(5)(b): aggregate 110% is total incapacity, so C + 0.25C
+#ASSERT `the partial incapacity compensation for an AME of` 2000 `, born` `age 30` `, accident on` `post` `, losses in percent` (LIST 60, 50) EQUALS 410000
+-- [S5] s 4(2)(b), (5)(b): a 100% Fourth Schedule injury is total incapacity
+#ASSERT `the partial incapacity compensation for an AME of` 2000 `, born` `age 30` `, accident on` `post` `, losses in percent` (LIST 100) EQUALS 410000
+-- the encoding's s 4(5) route gives the total-incapacity amount for 100%
+#ASSERT `the lump sum for an AME of` 2000 `, born` `age 30` `, accident on` `post` `, outcome` (`the s 4(5) outcome for a loss of earning capacity of` 110) EQUALS 410000
+-- [S6] a platform worker abroad: the Act does not say
+#ASSERT REFUSED `the coverage of` `plain platform worker` `for the accident` (`accident on` `d0` `having` (LIST "course", "abroad") `serving` `stage 2 with A`)

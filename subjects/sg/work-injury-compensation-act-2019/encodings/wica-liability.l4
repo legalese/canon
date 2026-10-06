@@ -1,0 +1,494 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `wica-types`
+IMPORT `wica-schedules`
+
+-- Work Injury Compensation Act 2019 — GOALS 1 AND 2: IS THE PERSON COVERED,
+-- AND IS ANYONE LIABLE?
+--
+-- One conclusion per question, each built from every provision that bears
+-- on it: ss 2, 3, 9, 34A-34C, 65, 83 and the Third Schedule (coverage);
+-- ss 7, 8, 13, 34D-34F, the Fifth Schedule Part 1-2 and the Sixth Schedule
+-- (liability for an accident); ss 10-12, 11A, 34G-34I and the Second Schedule
+-- (liability for a disease).
+--
+-- Source: ../source/WICA2019.txt lines 196-678, 1515-1830, 3268-3315,
+-- 3671-3706, 4002-4191, 4725-4739.
+
+§ `Goals 1 and 2 — coverage and liability`
+
+§§ `The period this encoding states the law for`
+
+-- s 83(1): "Despite its repeal, the repealed Act continues to apply ... to any
+-- personal injury caused by an accident to an employee, or disease contracted
+-- by an employee, if the date of the accident ... is before 1 September 2020."
+-- That is the law's answer, but the repealed Act is not in the source, so the
+-- encoding refuses rather than answer with this Act.
+-- The text is consolidated as at 6 Oct 2026. Its last amendment to the
+-- operative provisions is Act 30 of 2024 (Platform Workers Act 2024), in force
+-- 1 January 2025; earlier texts were not supplied. An accident between
+-- 1 September 2020 and 31 December 2024 is under this Act, but in a version
+-- this encoding does not have.
+@ref Work Injury Compensation Act 2019 s 83(1); Act 30 of 2024
+GIVEN d IS A DATE
+GIVETH A BOOLEAN
+`the law is encoded for an accident on` d MEANS
+    BRANCH IF d LESS THAN YMD 2020 9 1
+              THEN REFUSE "s 83(1): the repealed Work Injury Compensation Act (Cap. 354) applies to an accident before 1 September 2020, and it is not encoded"
+           IF d LESS THAN YMD 2025 1 1
+              THEN REFUSE "the Act as it stood before the Platform Workers Act 2024 amendments of 1 January 2025 is not encoded"
+           OTHERWISE TRUE
+
+§§ `Goal 1 — is the person covered?`
+
+-- s 3(1): "'employee' means an individual who has entered into or works under
+-- a contract of service with an employer and — (a) includes every employee of
+-- the Government in a class or description declared by the President to be
+-- employees for the purposes of this Act; but (b) does not include any class of
+-- individuals specified in the Third Schedule".
+@ref s 3(1) "employee"; Third Schedule
+GIVEN c IS A Claimant
+GIVETH A BOOLEAN
+DECIDE `an employee within the Act:` c IF
+        c's `works under a contract of service`
+    AND "(a)" ... ((NOT c's `a Government employee`) OR c's `in a class the President has declared`)
+    AND "(b)" ... c's `class` EQUALS `none of the Third Schedule classes`
+
+-- s 2 "platform worker" has the meaning in the Platform Workers Act 2024
+-- s 5(1); whether a person is one is an input. Part 3A applies Part 2 to
+-- them (s 34B) from 1 January 2025.
+@ref s 2 "platform worker"; s 34B
+GIVEN c IS A Claimant
+GIVETH A BOOLEAN
+DECIDE `a platform worker within the Act:` c IF
+    c's `works under a platform work agreement`
+
+-- Where the accident happened. The Act's own extensions are s 9 (an employee
+-- working abroad) and s 65(2) (a seafarer on a Singapore ship).
+-- FORK F1: s 9 speaks of a person "employed by an employer in Singapore" and
+-- s 34B does not map it onto platform workers, so for a platform worker's
+-- accident outside Singapore the text does not say; the encoding refuses.
+@ref s 9; s 65(2)
+GIVEN c IS A Claimant
+      a IS AN Accident
+GIVETH A BOOLEAN
+DECIDE `the Act reaches the place of the accident to` c `:` a IF
+        a's `in Singapore`
+    ..  "s 9" ... `s 9 applies`
+    ..  "s 65(2)" ... (c's `employed as crew of a Singapore ship` AND a's `on a Singapore ship`)
+    OR  `a platform worker abroad`
+    WHERE
+        `s 9 applies` MEANS
+                c's `capacity` EQUALS `as an employee`
+            AND "(a)" ... c's `ordinarily resident in Singapore`
+            AND "(b)" ... c's `employed by an employer in Singapore`
+            AND c's `required by the employment to work outside Singapore`
+        `a platform worker abroad` MEANS
+            IF   c's `capacity` EQUALS `as a platform worker`
+            THEN REFUSE "the Act does not say whether it reaches a platform worker's accident outside Singapore (s 9 is about employees)"
+            ELSE FALSE
+
+DECLARE `Coverage` IS ONE OF
+    `covered as an employee`
+    `covered as a platform worker`
+    `not covered` HAS `the reason` IS A STRING
+
+-- The whole of Goal 1. s 3(3) and s 34J let the Commissioner or the court treat
+-- an illegal contract as valid; whether they do is a discretion, so an
+-- illegal contract is reported, not decided.
+@ref ss 2, 3, 9, 34B, 34J, 65, 83; Third Schedule
+GIVEN c IS A Claimant
+      a IS AN Accident
+GIVETH A `Coverage`
+`the coverage of` c `for the accident` a MEANS
+    IF NOT `the law is encoded for an accident on` (a's `date`)
+    THEN REFUSE "no source is encoded for this accident date"
+    ELSE CONSIDER c's `capacity`
+         WHEN `as an employee` THEN
+             BRANCH IF NOT c's `works under a contract of service`
+                       THEN `not covered` "s 3(1): no contract of service"
+                    IF NOT c's `class` EQUALS `none of the Third Schedule classes`
+                       THEN `not covered` "s 3(1)(b): a class in the Third Schedule"
+                    IF c's `a Government employee` AND NOT c's `in a class the President has declared`
+                       THEN `not covered` "s 3(1)(a): a Government employee in no declared class"
+                    IF NOT `the Act reaches the place of the accident to` c `:` a
+                       THEN `not covered` "s 9: an accident outside Singapore that the Act does not extend to"
+                    IF c's `the contract was illegal at the time of the accident`
+                       THEN `not covered` "s 3(3): the contract was illegal; the Commissioner or court may treat it as valid"
+                    OTHERWISE `covered as an employee`
+         WHEN `as a platform worker` THEN
+             BRANCH IF NOT `a platform worker within the Act:` c
+                       THEN `not covered` "s 2: not a platform worker under a platform work agreement"
+                    IF NOT `the Act reaches the place of the accident to` c `:` a
+                       THEN `not covered` "the accident was outside Singapore"
+                    IF c's `the contract was illegal at the time of the accident`
+                       THEN `not covered` "s 34J: the agreement was illegal; the Commissioner or court may treat it as valid"
+                    OTHERWISE `covered as a platform worker`
+
+§§ `Goal 2a — did the accident arise out of and in the course of the work?`
+
+-- s 7(1), s 34D(1): "an accident arising out of and in the course of" the work.
+-- s 7(4), s 34D(4): "an accident arising in the course of [the work] is
+-- deemed, in the absence of evidence to the contrary, to have arisen out of"
+-- it.
+-- s 8(1) (employees only): a passenger, with permission, to or from the
+-- workplace, on transport "operated by or on behalf of the employer, or by
+-- some other person ... pursuant to arrangements made with the employer" and
+-- "not operated in the ordinary course of a public transport service".
+-- s 8(2), s 34F(1): an emergency at the workplace, or while at work on the
+-- platform service.
+-- s 8(3), s 34F(2): acting against law, regulations or orders, or without
+-- instructions, where it would otherwise have been in the course of the work
+-- and the act was for the business or the service.
+-- Fifth Schedule Part 1 para 1(2): a platform worker is "at work providing a
+-- platform service" only at work stage 1 or 2.
+@ref ss 7(1), 7(4), 8, 34D(1), 34D(4), 34F; Fifth Schedule Part 1 para 1(2)
+GIVEN cap IS A `Capacity at work`
+      a   IS AN Accident
+GIVETH A BOOLEAN
+DECIDE `the accident arose out of and in the course of the work` cap `:` a IF
+        `in the course of the work, and not shown otherwise`
+    ..  "s 8(1)" ... `employer transport`
+    ..  "s 8(2), 34F(1)" ... `an emergency`
+    OR  "s 8(3), 34F(2)" ... `acting against rules for the business`
+    WHERE
+        `at a work stage, if a platform worker` MEANS
+            IF   cap EQUALS `as a platform worker`
+            THEN any (GIVEN e YIELD NOT e's `stage` EQUALS `not at a work stage`) (a's `platform engagements`)
+            ELSE TRUE
+        `in the course of the work, and not shown otherwise` MEANS
+                a's `in the course of the work`
+            AND `at a work stage, if a platform worker`
+            AND NOT a's `evidence it did not arise out of the work`
+        `employer transport` MEANS
+                cap EQUALS `as an employee`
+            AND "(a)" ... a's `travelling as a passenger to or from the workplace with the employer's permission`
+            AND "(b)(i)" ... a's `transport operated by or for the employer, or by arrangement with the employer`
+            AND "(b)(ii)" ... NOT a's `transport operated in the ordinary course of a public transport service`
+        `an emergency` MEANS
+                a's `in or about the workplace, or at work providing the platform service`
+            AND a's `taking steps in an actual or supposed emergency to rescue, protect or avert damage`
+        `acting against rules for the business` MEANS
+                a's `acting in contravention of law, regulations or orders, or without instructions`
+            AND a's `would otherwise have arisen out of and in the course of the work`
+            AND a's `the act was done for the purposes of and in connection with the business or service`
+
+§§ `Goal 2b — is liability excluded?`
+
+-- s 7(2), s 34D(2): "(a) ... directly attributable to [being] under the
+-- influence of alcohol or a drug; (b) deliberate self-injury or the deliberate
+-- aggravation of an accidental injury; or (c) any injury ... suffered in a
+-- fight or an assault ... unless — (i) [the worker] did not assault any other
+-- person in the fight or, if [they] did, it was done in the exercise of the
+-- right of private defence ...; or (ii) [they were] (A) breaking up or
+-- preventing the fight or assault; or (B) in the course of safeguarding life
+-- or any property of any person or maintaining law and order, under any
+-- instruction or with the consent, whether express or implied, of [the
+-- employer or platform operator]."
+-- s 34D(2)(a)(ii)-(iii), platform workers only: a proven contravention of a
+-- Sixth Schedule Part 1 law in using a vehicle; or of a Part 2 law about the
+-- vehicle used, that caused or contributed to the accident.
+@ref ss 7(2), 34D(2); Sixth Schedule
+GIVEN cap IS A `Capacity at work`
+      a   IS AN Accident
+GIVETH A LIST OF STRING
+`the exclusions that apply to` cap `:` a MEANS
+    concat (LIST `(a) alcohol or drug`, `(a)(ii) Part 1 law`, `(a)(iii) Part 2 law`, `(b) self-injury`, `(c) fight`)
+    WHERE
+        `if` holds label MEANS IF holds THEN LIST label ELSE EMPTY
+        `platform` MEANS cap EQUALS `as a platform worker`
+        `(a) alcohol or drug` MEANS
+            `if` (a's `proven the injury is directly attributable to alcohol or a drug`) "s 7(2)(a) / 34D(2)(a)(i): alcohol or a drug"
+        `(a)(ii) Part 1 law` MEANS
+            `if` (`platform` AND a's `proven contravention of a Sixth Schedule Part 1 law in using a vehicle`) "s 34D(2)(a)(ii): a Sixth Schedule Part 1 contravention"
+        `(a)(iii) Part 2 law` MEANS
+            `if` (    `platform`
+                  AND a's `used a vehicle in providing the platform service`
+                  AND a's `proven contravention of a Sixth Schedule Part 2 law about that vehicle`
+                  AND a's `proven that contravention caused or contributed to the accident`)
+                 "s 34D(2)(a)(iii): a Sixth Schedule Part 2 contravention that caused or contributed"
+        `(b) self-injury` MEANS
+            `if` (a's `deliberate self-injury or deliberate aggravation`) "s 7(2)(b) / 34D(2)(b): deliberate self-injury"
+        `(c) fight` MEANS
+            `if` (a's `injured in a fight or an assault` AND NOT `an exception in (c)`) "s 7(2)(c) / 34D(2)(c): a fight or assault"
+        `an exception in (c)` MEANS
+                "(i)"  ... ((NOT a's `assaulted another person in the fight`) OR a's `any assault was in the exercise of the right of private defence`)
+            OR  "(ii)" ... (    a's `breaking up or preventing the fight, or safeguarding life, property or law and order`
+                            AND a's `under the instruction or with the consent of the employer or platform operator`)
+
+§§ `Goal 2c — which platform operators are liable, and for what share?`
+
+-- s 34D(1): the operator the worker was providing the service for.
+-- s 34E(2): where the worker was serving 2 or more operators concurrently,
+-- "(a) all of the platform operators for whom the platform worker ... was at
+-- work stage 2 ...; (b) where ... not at work stage 2 of any platform service
+-- for any platform operator — all of the platform operators for whom the
+-- platform worker was at work stage 1".
+-- s 34E(3): each one's share is its earnings in the lookback period over the
+-- aggregate earnings with all the liable operators.
+DECLARE `Operator share` HAS
+    `operator` IS A STRING
+    `share`    IS A NUMBER     -- a fraction; the shares sum to 1
+
+@ref ss 34D(1), 34E
+GIVEN a IS AN Accident
+GIVETH A LIST OF `Operator share`
+`the liable platform operators and their shares for` a MEANS
+    map (GIVEN e YIELD `Operator share` WITH `operator` IS e's `operator`, `share` IS `the share of` e) `the liable`
+    WHERE
+        `at stage 2` MEANS filter (GIVEN e YIELD e's `stage` EQUALS `work stage 2`) (a's `platform engagements`)
+        `at stage 1` MEANS filter (GIVEN e YIELD e's `stage` EQUALS `work stage 1`) (a's `platform engagements`)
+        `the liable` MEANS IF null `at stage 2` THEN `at stage 1` ELSE `at stage 2`
+        `total` MEANS sum (map (GIVEN e YIELD e's `earnings in the lookback period`) `the liable`)
+        `the share of` e MEANS
+            IF   count `the liable` EQUALS 1 THEN 1
+            ELSE IF `total` EQUALS 0
+                 THEN REFUSE "s 34E(3): the liable operators' lookback earnings are all nil, so no proportion can be computed"
+                 ELSE e's `earnings in the lookback period` DIVIDED BY `total`
+
+§§ `Goal 2 — the liability for an accident, in one answer`
+
+DECLARE `Liability` IS ONE OF
+    `liable to pay compensation`
+    `not liable` HAS `the reasons` IS A LIST OF STRING
+
+@ref ss 3, 7, 8, 9, 34B, 34D, 34F, 65, 83
+GIVEN c IS A Claimant
+      a IS AN Accident
+GIVETH A `Liability`
+`the liability for` c `in the accident` a MEANS
+    CONSIDER `the coverage of` c `for the accident` a
+    WHEN `not covered` why THEN `not liable` (LIST why)
+    WHEN `covered as an employee` THEN `decided for` `as an employee`
+    WHEN `covered as a platform worker` THEN `decided for` `as a platform worker`
+    WHERE
+        `decided for` cap MEANS
+            BRANCH IF NOT `the accident arose out of and in the course of the work` cap `:` a
+                      THEN `not liable` (LIST "s 7(1) / 34D(1): the accident did not arise out of and in the course of the work")
+                   IF NOT null (`the exclusions that apply to` cap `:` a)
+                      THEN `not liable` (`the exclusions that apply to` cap `:` a)
+                   OTHERWISE `liable to pay compensation`
+
+§§ `Goal 2d — the principal (s 13)`
+
+-- s 13(1): where the principal contracts "in the course of or for the purpose
+-- of the principal's trade or business" with a contractor "(a) for the
+-- execution by the contractor of the whole or any part of any work; or (b)
+-- for the supply of labour to carry out any work, undertaken by the
+-- principal", the Commissioner MAY direct the principal to fulfil the
+-- employer's obligations to an employee of the contractor "employed in the
+-- execution of the work". s 13(5): only if the accident is at a place where
+-- the principal undertook to execute work, or under its control or
+-- management. s 34B(c): not for platform workers.
+@ref s 13(1), (5), s 34B(c)
+GIVEN cap IS A `Capacity at work`
+      p   IS A `Principal arrangement`
+GIVETH A BOOLEAN
+DECIDE `the Commissioner may direct the principal under s 13, the worker being` cap `:` p IF
+        cap EQUALS `as an employee`
+    AND p's `contracted in the course of or for the principal's trade or business`
+    AND p's `for execution of work, or supply of labour, undertaken by the principal`
+    AND p's `the employee was employed in executing the work`
+    AND "(5)" ... p's `accident at a place where the principal undertook to execute work, or under the principal's control`
+
+-- s 13(2): once directed, "the principal is liable to pay ... as if that
+-- employee had been immediately employed by the principal, except that the
+-- amount ... is to be calculated with reference to the earnings of the
+-- employee under the contractor." s 13(3): indemnity from the employer.
+-- s 13(4): the employer can still be pursued for what remains unpaid.
+@ref s 13(2)-(4)
+GIVEN cap IS A `Capacity at work`
+      p   IS A `Principal arrangement`
+GIVETH A BOOLEAN
+DECIDE `the principal is liable under s 13, the worker being` cap `:` p IF
+        `the Commissioner may direct the principal under s 13, the worker being` cap `:` p
+    AND p's `the Commissioner has directed the principal`
+
+§§ `Goal 2e — liability for a disease (ss 10-12, 34G-34I)`
+
+-- The day a disease route opened: 1 June 2012 for employees (s 10(1)(c),
+-- (3)(a)); for platform workers, "the date of commencement of paragraph 17 of
+-- the Ninth Schedule to the Platform Workers Act 2024" — 1 January 2025 by the
+-- text's amendment notes (s 34G is marked "wef 01/01/2025").
+@ref s 10(1)(c), (3)(a); s 34G(1)(c), (3)(a)
+GIVEN cap IS A `Capacity at work`
+GIVETH A DATE
+`the disease cut-off date for` cap MEANS
+    IF cap EQUALS `as an employee` THEN YMD 2012 6 1 ELSE YMD 2025 1 1
+
+-- s 10(5), s 34G(5): the limitation period "is the period specified in the
+-- third column of the Second Schedule for that disease, starting on the day
+-- after the [worker] ... had ceased to be employed [or to work] in that
+-- occupation". Its last day is the same date that many months after the day
+-- the worker ceased (FORK F2, calendar months).
+@ref s 10(5), s 34G(5); Second Schedule third column
+GIVEN d IS A `Disease facts`
+GIVETH A MAYBE DATE
+`the last day of the limitation period for` d MEANS
+    CONSIDER d's `Second Schedule item`
+    WHEN NOTHING  THEN NOTHING
+    WHEN JUST i   THEN CONSIDER `the Second Schedule row` i
+                       WHEN NOTHING  THEN NOTHING
+                       WHEN JUST row THEN CONSIDER d's `ceased working in the specified occupation on`
+                                          WHEN NOTHING THEN NOTHING
+                                          WHEN JUST c  THEN JUST (`add months` c (row's `period in months`))
+
+DECLARE `Disease liability` IS ONE OF
+    `compensable as if a work injury` HAS `under` IS A STRING
+    `not compensable` HAS `the reason` IS A STRING
+
+-- s 10(1), s 34G(1): "(a) the [worker], while employed in [or working in] any
+-- occupation specified in the second column of the Second Schedule, contracts
+-- an occupational disease specified for that occupation; (b) the [worker],
+-- after ceasing to be employed in [such an] occupation ..., contracts [it]
+-- within the limitation period for that disease; (c) the [worker] contracts,
+-- on or after [the cut-off], a disease that — (i) is not specified in the
+-- first column of the Second Schedule; and (ii) is directly attributable to an
+-- exposure to a chemical or biological agent and the exposure arises out of
+-- and in the course of the [work]."
+-- s 10(3), s 34G(3): no compensation "(a) [for] an occupational disease ... if
+-- [(i) the employee is, on or after 1 June 2012, employed in that occupation
+-- by the employer;] (ii) [it is contracted] on or after [the cut-off]; and
+-- (iii) the ... incapacity commences or death happens, after the end of the
+-- limitation period ...; or (b) [for] a disease mentioned in subsection (1)(c),
+-- if the ... incapacity commences or death happens more than one year after
+-- the [worker] ceases to be exposed".
+-- s 10(4), s 34G(4): (3) does not apply to a death preceded by compensable
+-- incapacity.
+-- s 12, s 34I: otherwise, a disease is compensable only if "directly
+-- attributable to a specific work injury".
+@ref ss 10, 12, 34G, 34I; Second Schedule
+GIVEN cap IS A `Capacity at work`
+      d   IS A `Disease facts`
+GIVETH A `Disease liability`
+`the liability for the disease of a worker` cap `:` d MEANS
+    IF NOT `the law is encoded for an accident on` `the date for s 83`
+    THEN REFUSE "no source is encoded for this disease's date of accident"
+    ELSE `decided`
+    WHERE
+        `decided` MEANS
+            BRANCH IF `in the Schedule` AND d's `worked in the specified occupation when it was contracted` AND NOT `barred (a)`
+                      THEN `compensable as if a work injury` "s 10(1)(a) / 34G(1)(a): an occupational disease contracted in the specified occupation"
+                   IF `in the Schedule` AND `contracted within the limitation period` AND NOT `barred (a)`
+                      THEN `compensable as if a work injury` "s 10(1)(b) / 34G(1)(b): contracted within the limitation period after leaving the occupation"
+                   IF `in the Schedule` AND `barred (a)`
+                      THEN `not compensable` "s 10(3)(a) / 34G(3)(a): incapacity or death after the end of the limitation period"
+                   IF     NOT `in the Schedule`
+                      AND d's `contracted on` AT LEAST `the disease cut-off date for` cap
+                      AND d's `directly attributable to a chemical or biological exposure at work`
+                      AND NOT `barred (b)`
+                      THEN `compensable as if a work injury` "s 10(1)(c) / 34G(1)(c): a disease from a chemical or biological exposure at work"
+                   IF (NOT `in the Schedule`) AND `barred (b)`
+                      THEN `not compensable` "s 10(3)(b) / 34G(3)(b): incapacity or death more than one year after the exposure ceased"
+                   IF d's `directly attributable to a specific work injury`
+                      THEN `compensable as if a work injury` "s 12 / 34I: attributable to a specific work injury"
+                   OTHERWISE `not compensable` "s 12 / 34I: not within s 10 or 34G and not attributable to a specific work injury"
+        `in the Schedule` MEANS
+            CONSIDER d's `Second Schedule item`
+            WHEN NOTHING THEN FALSE
+            WHEN JUST i  THEN CONSIDER `the Second Schedule row` i
+                              WHEN NOTHING THEN FALSE
+                              WHEN JUST r  THEN TRUE
+        -- FORK F12: s 83(1) turns on "the date of the accident" for a disease,
+        -- which is the s 11(2) date; with no incapacity, death or
+        -- certification yet, the date it was contracted stands in.
+        `the date for s 83` MEANS
+            IF   `a s 11(2) date exists`
+            THEN `the date of the accident for other purposes, for the disease` d
+            ELSE d's `contracted on`
+        `a s 11(2) date exists` MEANS
+                `is just` (d's `incapacity commenced on`)
+            OR  `is just` (d's `died on`)
+            OR  `is just` (d's `certified as suffering from the disease on`)
+        `is just` m MEANS
+            CONSIDER m
+            WHEN NOTHING THEN FALSE
+            WHEN JUST x  THEN TRUE
+        `the start of incapacity or death` MEANS
+            CONSIDER d's `incapacity commenced on`
+            WHEN JUST x  THEN JUST x
+            WHEN NOTHING THEN d's `died on`
+        `contracted within the limitation period` MEANS
+            CONSIDER `the last day of the limitation period for` d
+            WHEN NOTHING    THEN FALSE
+            WHEN JUST last  THEN d's `contracted on` AT MOST last
+        `the (4) saving` MEANS d's `death preceded by compensable incapacity`
+        `barred (a)` MEANS
+                NOT `the (4) saving`
+            AND "(i)"  ... (cap EQUALS `as a platform worker` OR d's `employed in that occupation by this employer on or after 1 June 2012`)
+            AND "(ii)" ... d's `contracted on` AT LEAST `the disease cut-off date for` cap
+            AND "(iii)" ... CONSIDER `the last day of the limitation period for` d
+                           WHEN NOTHING   THEN FALSE
+                           WHEN JUST last THEN CONSIDER `the start of incapacity or death`
+                                               WHEN NOTHING THEN FALSE
+                                               WHEN JUST s  THEN s GREATER THAN last
+        `barred (b)` MEANS
+                NOT `the (4) saving`
+            AND CONSIDER d's `exposure ceased on`
+                WHEN NOTHING THEN FALSE
+                WHEN JUST e  THEN CONSIDER `the start of incapacity or death`
+                                  WHEN NOTHING THEN FALSE
+                                  WHEN JUST s  THEN s GREATER THAN `add years` e 1
+
+-- s 11(1), s 34H(1): for computing AME or ADE, "the date of the accident is
+-- taken to be the earliest of — (a) the last day of the [worker's] employment
+-- with [or service for] the employer [or operator] ...; (b) the date of
+-- commencement of the incapacity ...; (c) the date of ... death."
+@ref s 11(1), s 34H(1)
+GIVEN d IS A `Disease facts`
+GIVETH A DATE
+`the date of the accident for computing earnings, for the disease` d MEANS
+    `the earliest of` (LIST d's `last day working for this employer or operator`) (d's `incapacity commenced on`) (d's `died on`)
+    WHERE
+        `the earliest of` base m1 m2 MEANS
+            `the earliest day in` (append base (append (`as a list` m1) (`as a list` m2)))
+        `as a list` m MEANS
+            CONSIDER m
+            WHEN NOTHING THEN EMPTY
+            WHEN JUST x  THEN LIST x
+        `the earliest day in` xs MEANS
+            Date (`smallest day` (map (GIVEN x YIELD Day x) xs))
+        `smallest day` ns MEANS
+            CONSIDER ns
+            WHEN n FOLLOWED BY rest THEN IF null rest THEN n ELSE (IF n LESS THAN `smallest day` rest THEN n ELSE `smallest day` rest)
+            WHEN EMPTY THEN 0
+
+-- s 11(2), s 34H(2): for all other purposes, "(a) the earlier of — (i) the
+-- date of commencement of the incapacity ...; or (ii) the date on which a
+-- health professional certifies that ... [the worker] is suffering from the
+-- disease ...; or (b) if there has been no previous period of incapacity —
+-- the date of the ... death."
+-- FORK F3: with no incapacity and no death, (a)(ii) alone gives the
+-- certification date; with neither that nor a date for (b), there is no date.
+@ref s 11(2), s 34H(2)
+GIVEN d IS A `Disease facts`
+GIVETH A DATE
+`the date of the accident for other purposes, for the disease` d MEANS
+    CONSIDER d's `incapacity commenced on`
+    WHEN JUST i THEN CONSIDER d's `certified as suffering from the disease on`
+                     WHEN JUST c  THEN IF c LESS THAN i THEN c ELSE i
+                     WHEN NOTHING THEN i
+    WHEN NOTHING THEN CONSIDER d's `died on`
+                      WHEN JUST x  THEN x
+                      WHEN NOTHING THEN CONSIDER d's `certified as suffering from the disease on`
+                                        WHEN JUST c  THEN c
+                                        WHEN NOTHING THEN REFUSE "s 11(2): no incapacity, death or certification date, so no date of accident"
+
+-- s 11A: where 2 or more employers or operators are severally liable for a
+-- disease contracted by a gradual process, "(a) the aggregate amount ...
+-- must not exceed the amount that would have been payable if there were only
+-- a single employer or single platform operator; and (b) if [they] do not come
+-- to an agreement on the apportionment ... each ... is liable for the
+-- proportion ... determined in the manner prescribed." The prescribed manner
+-- is in regulations not in the source.
+@ref s 11A(a)
+GIVEN shares        IS A LIST OF NUMBER
+      `single amount` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the apportioned amounts` shares `are within s 11A(a) of a single amount of` `single amount` IF
+    sum shares AT MOST `single amount`
+
+@ref s 11A(b)
+GIVETH A NUMBER
+`s 11A(b) — the prescribed apportionment` MEANS
+    REFUSE "s 11A(b): the manner of apportionment is prescribed by regulations, which are not in the source"

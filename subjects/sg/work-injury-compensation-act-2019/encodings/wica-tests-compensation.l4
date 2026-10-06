@@ -1,0 +1,234 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `wica-types`
+IMPORT `wica-schedules`
+IMPORT `wica-liability`
+IMPORT `wica-compensation`
+
+-- Work Injury Compensation Act 2019 — TESTS FOR GOAL 3: the amount.
+--
+-- Expected values are worked by hand from ../source/WICA2019.txt: the First
+-- Schedule (lines 3707-4001), the Fourth Schedule (4191-4259), the Fifth
+-- Schedule Part 3 (4260-4724) and ss 4, 15-17, 34L-34N, 67. The worker in
+-- most cases is born 10 March 1996, so at an accident on 2 March 2026 the age
+-- on the next birthday is 30: Table A factor 123, Table B factor 164.
+
+§ `Tests — Goal 3`
+
+§§ `Helpers`
+
+GIVEN k IS A `Kind of day`, start IS A DATE, n IS A NUMBER, wages IS A NUMBER
+GIVETH A LIST OF `Leave day`
+`days of` k `from` start `for` n `earning` wages MEANS
+    IF n AT MOST 0
+    THEN EMPTY
+    ELSE append (LIST (`Leave day` WITH `day` IS start, `kind` IS k, `actual wages that day` IS wages))
+                (`days of` k `from` (start PLUS 1) `for` (n MINUS 1) `earning` wages)
+
+GIVEN cont IS A BOOLEAN, months IS A NUMBER, a IS A NUMBER, d IS A NUMBER, w IS A NUMBER
+GIVETH AN `Employee earnings`
+`earnings` cont months a d w MEANS
+    `Employee earnings` WITH
+        `continuously employed for more than one whole calendar month`   IS cont
+        `whole calendar months continuously employed before the accident` IS months
+        `actual earnings in the computation period`  IS a
+        `average earnings per working day`           IS d
+        `average working days per week`              IS w
+
+GIVEN days IS A NUMBER, e IS A NUMBER, m IS A `Mode of transport`, leave IS A NUMBER, avail IS A BOOLEAN
+GIVETH A `Platform earnings`
+`platform earnings` days e m leave avail MEANS
+    `Platform earnings` WITH
+        `days at work providing the service before the accident` IS days
+        `relevant earnings in the lookback period`               IS e
+        `mode`                                                   IS m
+        `days of hospitalisation or medical leave in a run of 7 or more` IS leave
+        `ADE available`                                          IS avail
+
+`born` MEANS YMD 1996 3 10
+`after Nov 2025` MEANS YMD 2026 3 2
+`before Nov 2025` MEANS YMD 2025 10 1
+`motorcycle` MEANS `by personal mobility device, power-assisted bicycle or motorcycle`
+`car` MEANS `by motor vehicle other than a motorcycle`
+`foot` MEANS `on foot, by public transport or by a bicycle that is not power assisted`
+
+§§ `Earnings — AME for an employee (First Schedule para 6)`
+
+-- para 6(1): 18 months employed, so P = 12; A = 42,000 over the last 12
+#ASSERT `the employee's AME from` (`earnings` TRUE 18 42000 0 0) EQUALS 3500
+-- para 6(1): 6 whole months, A = 18,000
+#ASSERT `the employee's AME from` (`earnings` TRUE 6 18000 0 0) EQUALS 3000
+-- para 6(2): (D x W x 52) / 12 = (100 x 5.5 x 52) / 12 = 28,600 / 12
+#ASSERT `the employee's AME from` (`earnings` FALSE 0 0 100 5.5) EQUALS 28600 DIVIDED BY 12
+#ASSERT REFUSED `the employee's AME from` (`earnings` TRUE 0 0 0 0)
+
+§§ `Earnings — ADE and AME for a platform worker (Fifth Schedule Part 3 para 6)`
+
+-- 120 days at work, so P = 90; E = 9,000; R = 100; by motorcycle F = 35%: ADE 65
+#ASSERT `the platform worker's ADE from` (`platform earnings` 120 9000 `motorcycle` 0 TRUE) EQUALS 65
+#ASSERT `the platform worker's AME from` (`platform earnings` 120 9000 `motorcycle` 0 TRUE) EQUALS 1950
+-- 45 days, so P = 45; E = 3,600; R = 80; by car F = 60%: ADE 32
+#ASSERT `the platform worker's ADE from` (`platform earnings` 45 3600 `car` 0 TRUE) EQUALS 32
+-- on foot F = 20%: R = 4,500 / 90 = 50, ADE 40
+#ASSERT `the platform worker's ADE from` (`platform earnings` 90 4500 `foot` 0 TRUE) EQUALS 40
+#ASSERT REFUSED `the platform worker's ADE from` (`platform earnings` 0 0 `foot` 0 TRUE)
+-- para 6(2): the lookback period
+#ASSERT `the lookback period in days for` (`platform earnings` 45 0 `foot` 0 TRUE) EQUALS 45
+#ASSERT `the lookback period in days for` (`platform earnings` 120 0 `foot` 0 TRUE) EQUALS 90
+#ASSERT `the lookback period in days for` (`platform earnings` 120 0 `foot` 10 TRUE) EQUALS 100
+#ASSERT `the lookback period in days for` (`platform earnings` 90 0 `foot` 7 TRUE) EQUALS 97
+-- para 6(2)(c) wins for fewer than 90 days whatever the leave
+#ASSERT `the lookback period in days for` (`platform earnings` 60 0 `foot` 10 TRUE) EQUALS 60
+
+§§ `The incapacity (ss 4(5), 15)`
+
+#ASSERT `the s 4(5) outcome for a loss of earning capacity of` 100 EQUALS `permanent or current total incapacity`
+#ASSERT `the s 4(5) outcome for a loss of earning capacity of` 120 EQUALS `permanent or current total incapacity`
+#ASSERT `the s 4(5) outcome for a loss of earning capacity of` 99 EQUALS `permanent or current partial incapacity` 99
+-- s 15(1)(b): not earlier than 6 months after the accident; s 15(2): never for a disease
+#ASSERT `a current-incapacity assessment on` (YMD 2026 7 15) `is allowed for an accident on` (YMD 2026 1 15) `, a disease:` FALSE
+#ASSERT NOT `a current-incapacity assessment on` (YMD 2026 7 14) `is allowed for an accident on` (YMD 2026 1 15) `, a disease:` FALSE
+#ASSERT NOT `a current-incapacity assessment on` (YMD 2026 9 1) `is allowed for an accident on` (YMD 2026 1 15) `, a disease:` TRUE
+
+§§ `Age on the next birthday, and the Tables`
+
+#ASSERT `the age on the next birthday, if born on` `born` `, at an accident on` `after Nov 2025` EQUALS 30
+#ASSERT `the age on the next birthday, if born on` `born` `, at an accident on` (YMD 2026 3 10) EQUALS 31
+#ASSERT `the Table A factor for age` 30 EQUALS 123
+#ASSERT `the Table A factor for age` 12 EQUALS 136
+#ASSERT `the Table A factor for age` 66 EQUALS 48
+#ASSERT `the Table A factor for age` 80 EQUALS 48
+#ASSERT `the Table B factor for age` 30 EQUALS 164
+#ASSERT `the Table B factor for age` 14 EQUALS 181
+#ASSERT `the Table B factor for age` 60 EQUALS 99
+#ASSERT `the Table B factor for age` 70 EQUALS 72
+
+§§ `Death (First Schedule para 1)`
+
+-- 2,000 x 123 = 246,000: inside $91,000-$269,000
+#ASSERT `the death compensation for an AME of` 2000 `, born` `born` `, accident on` `after Nov 2025` EQUALS 246000
+-- 3,000 x 123 = 369,000: capped at $269,000
+#ASSERT `the death compensation for an AME of` 3000 `, born` `born` `, accident on` `after Nov 2025` EQUALS 269000
+-- 500 x 123 = 61,500: raised to $91,000
+#ASSERT `the death compensation for an AME of` 500 `, born` `born` `, accident on` `after Nov 2025` EQUALS 91000
+-- before 1 November 2025: 246,000 is capped at $225,000; 61,500 raised to $76,000
+#ASSERT `the death compensation for an AME of` 2000 `, born` `born` `, accident on` `before Nov 2025` EQUALS 225000
+#ASSERT `the death compensation for an AME of` 500 `, born` `born` `, accident on` `before Nov 2025` EQUALS 76000
+-- on the 30th birthday the next birthday is the 31st: factor 122
+#ASSERT `the death compensation for an AME of` 1000 `, born` `born` `, accident on` (YMD 2026 3 10) EQUALS 122000
+-- the day before the new caps, and the day they begin
+#ASSERT `the death compensation for an AME of` 3000 `, born` `born` `, accident on` (YMD 2025 10 31) EQUALS 225000
+#ASSERT `the death compensation for an AME of` 3000 `, born` `born` `, accident on` (YMD 2025 11 1) EQUALS 269000
+#ASSERT REFUSED `the death compensation for an AME of` 2000 `, born` `born` `, accident on` (YMD 2020 1 1)
+
+§§ `Total incapacity (First Schedule para 2)`
+
+-- C = 2,000 x 164 = 328,000 (under $346,000); C + 0.25C = 410,000
+#ASSERT `C for an AME of` 2000 `, born` `born` `, accident on` `after Nov 2025` EQUALS 328000
+#ASSERT `the total incapacity compensation for an AME of` 2000 `, born` `born` `, accident on` `after Nov 2025` EQUALS 410000
+-- C = 2,500 x 164 = 410,000, capped at 346,000; total 432,500
+#ASSERT `the total incapacity compensation for an AME of` 2500 `, born` `born` `, accident on` `after Nov 2025` EQUALS 432500
+-- before November 2025: C capped at 289,000; total 361,250
+#ASSERT `the total incapacity compensation for an AME of` 2000 `, born` `born` `, accident on` `before Nov 2025` EQUALS 361250
+-- C = 500 x 164 = 82,000, raised to 116,000; total 145,000
+#ASSERT `the total incapacity compensation for an AME of` 500 `, born` `born` `, accident on` `after Nov 2025` EQUALS 145000
+-- and raised to 97,000 before November 2025; total 121,250
+#ASSERT `the total incapacity compensation for an AME of` 500 `, born` `born` `, accident on` `before Nov 2025` EQUALS 121250
+
+§§ `Partial incapacity (First Schedule para 3; Fourth Schedule)`
+
+-- loss of one eye, 50%: 328,000 x 50% = 164,000
+#ASSERT `the partial incapacity compensation for an AME of` 2000 `, born` `born` `, accident on` `after Nov 2025` `, losses in percent` (LIST 50) EQUALS 164000
+-- para 3(2): arm at shoulder 75% + leg below knee 65% = 140% of C = 459,200, held to 410,000
+#ASSERT `the partial incapacity compensation for an AME of` 2000 `, born` `born` `, accident on` `after Nov 2025` `, losses in percent` (LIST 75, 65) EQUALS 410000
+-- the one-answer form
+#ASSERT `the lump sum for an AME of` 2000 `, born` `born` `, accident on` `after Nov 2025` `, outcome` (`permanent or current partial incapacity` 30) EQUALS 98400
+#ASSERT `the lump sum for an AME of` 2000 `, born` `born` `, accident on` `after Nov 2025` `, outcome` `death` EQUALS 246000
+#ASSERT `the lump sum for an AME of` 2000 `, born` `born` `, accident on` `after Nov 2025` `, outcome` `permanent or current total incapacity` EQUALS 410000
+#ASSERT REFUSED `the lump sum for an AME of` 2000 `, born` `born` `, accident on` `after Nov 2025` `, outcome` `temporary incapacity`
+-- Fourth Schedule Note 3: the remaining eye — 410,000 less the 164,000 for the first
+#ASSERT `the Note 3 compensation for losing the remaining member, total` 410000 `, previous` 164000 EQUALS 246000
+-- Fourth Schedule items
+#ASSERT `the Fourth Schedule percentage for` `loss of foot` EQUALS 55
+#ASSERT `the Fourth Schedule percentage for` `loss of index finger, 2 phalanges` EQUALS 11
+#ASSERT `the Fourth Schedule percentage for` `total loss of hearing` EQUALS 60
+-- thumb 30 + index 14 = 44: under the whole hand
+#ASSERT `the Fourth Schedule percentage for the injuries` (LIST `loss of thumb, both phalanges`, `loss of index finger, 3 phalanges`) EQUALS 44
+-- Note 2: 4 fingers 60 + thumb 30 = 90, not more than the whole hand, 70
+#ASSERT `the Fourth Schedule percentage for the injuries` (LIST `loss of 4 fingers`, `loss of thumb, both phalanges`) EQUALS 70
+-- a foot and a toe are not the hand: 55 + 14 = 69
+#ASSERT `the Fourth Schedule percentage for the injuries` (LIST `loss of foot`, `loss of great toe, both phalanges`) EQUALS 69
+-- one eye 50 + one ear 30 = 80
+#ASSERT `the Fourth Schedule percentage for the injuries` (LIST `loss of sight of one eye`, `loss of hearing, one ear`) EQUALS 80
+-- both hands (item 2, 100) is not "a part of the hand": with a thumb, 130, which s 4(5) makes total (100)
+#ASSERT `the Fourth Schedule percentage for the injuries` (LIST `loss of both hands or of all fingers and both thumbs`, `loss of thumb, both phalanges`) EQUALS 100
+-- item 23(d): "each 3", two toes
+#ASSERT `the Fourth Schedule percentage for the injuries` (LIST `loss of a toe other than the great toe, more than one lost`, `loss of a toe other than the great toe, more than one lost`) EQUALS 6
+
+§§ `Temporary incapacity (First Schedule para 4; Fifth Schedule Part 3 para 4)`
+
+-- daily rate 100 (FORK F4: the daily rate is an input)
+-- para 4(1)(a): 3 days in hospital
+#ASSERT `the temporary incapacity payments for an accident on` `after Nov 2025` `at a daily rate of` 100 `for the days` (`days of` `a day of hospitalisation leave` `from` `after Nov 2025` `for` 3 `earning` 0) EQUALS 300
+-- para 4(1)(a)-(b): 62 days in hospital — 60 at 100, 2 at two-thirds
+#ASSERT `the temporary incapacity payments for an accident on` `after Nov 2025` `at a daily rate of` 100 `for the days` (`days of` `a day of hospitalisation leave` `from` `after Nov 2025` `for` 62 `earning` 0) EQUALS 6000 PLUS (400 DIVIDED BY 3)
+-- para 4(1)(c)-(d): 16 days of medical leave — 14 at 100, 2 at two-thirds
+#ASSERT `the temporary incapacity payments for an accident on` `after Nov 2025` `at a daily rate of` 100 `for the days` (`days of` `a day of medical leave` `from` `after Nov 2025` `for` 16 `earning` 0) EQUALS 1400 PLUS (400 DIVIDED BY 3)
+-- FORK F5: 10 days of medical leave, then 6 of light duties earning 30, then 2 of medical leave.
+-- The first 14 are shared: 10 x 100, then 4 x (100 - 30); then 2 x (66.67 - 30) and 2 x 66.67.
+#ASSERT `the temporary incapacity payments for an accident on` `after Nov 2025` `at a daily rate of` 100 `for the days` (append (`days of` `a day of medical leave` `from` `after Nov 2025` `for` 10 `earning` 0) (append (`days of` `a day of light duties` `from` (YMD 2026 3 12) `for` 6 `earning` 30) (`days of` `a day of medical leave` `from` (YMD 2026 3 18) `for` 2 `earning` 0))) EQUALS 1220 PLUS (800 DIVIDED BY 3)
+-- para 4(1)(c)(ii): light duties earning the full rate pay nothing
+#ASSERT `the temporary incapacity payments for an accident on` `after Nov 2025` `at a daily rate of` 100 `for the days` (`days of` `a day of light duties` `from` `after Nov 2025` `for` 5 `earning` 120) EQUALS 0
+-- para 4(1): only days within one year starting on the date of the accident (to 1 March 2027)
+#ASSERT `the temporary incapacity payments for an accident on` `after Nov 2025` `at a daily rate of` 100 `for the days` (`days of` `a day of hospitalisation leave` `from` (YMD 2027 3 1) `for` 2 `earning` 0) EQUALS 100
+-- para 4(5)(d): a rest day is not a day of leave, and does not use up the 14
+#ASSERT `the temporary incapacity payments for an accident on` `after Nov 2025` `at a daily rate of` 100 `for the days` (append (`days of` `a day that does not count` `from` `after Nov 2025` `for` 3 `earning` 0) (`days of` `a day of medical leave` `from` (YMD 2026 3 5) `for` 14 `earning` 0)) EQUALS 1400
+-- platform worker, ADE 65: 3 days of medical leave; light duties are no head for them
+#ASSERT `the platform worker's temporary incapacity payments for an accident on` `after Nov 2025` `with earnings` (`platform earnings` 120 9000 `motorcycle` 0 TRUE) `for the days` (append (`days of` `a day of medical leave` `from` `after Nov 2025` `for` 3 `earning` 0) (`days of` `a day of light duties` `from` (YMD 2026 3 5) `for` 2 `earning` 0)) EQUALS 195
+-- para 4(2): ADE unavailable — $27 x D, D = 4
+#ASSERT `the platform worker's temporary incapacity payments for an accident on` `after Nov 2025` `with earnings` (`platform earnings` 120 9000 `motorcycle` 0 FALSE) `for the days` (`days of` `a day of hospitalisation leave` `from` `after Nov 2025` `for` 4 `earning` 0) EQUALS 108
+
+§§ `Periodical payments (ss 17, 34N)`
+
+-- s 17(4), s 34N(5): 6 months and the Commissioner's consent
+#ASSERT `the periodical payments that began on` (YMD 2026 1 15) `may be commuted on` (YMD 2026 7 15) `, the Commissioner consenting:` TRUE
+#ASSERT NOT `the periodical payments that began on` (YMD 2026 1 15) `may be commuted on` (YMD 2026 7 14) `, the Commissioner consenting:` TRUE
+#ASSERT NOT `the periodical payments that began on` (YMD 2026 1 15) `may be commuted on` (YMD 2026 9 1) `, the Commissioner consenting:` FALSE
+-- s 34N(2)(a): by the 14th — 16 days after the 14th; (b) later — the 13th of next month
+#ASSERT `the last day to pay a platform worker's periodical payment, certificate received on` (YMD 2026 3 14) EQUALS YMD 2026 3 30
+#ASSERT `the last day to pay a platform worker's periodical payment, certificate received on` (YMD 2026 3 2) EQUALS YMD 2026 3 30
+#ASSERT `the last day to pay a platform worker's periodical payment, certificate received on` (YMD 2026 3 15) EQUALS YMD 2026 4 13
+#ASSERT `the last day to pay a platform worker's periodical payment, certificate received on` (YMD 2026 12 20) EQUALS YMD 2027 1 13
+-- s 17(1)(b): no more than a month between payments
+#ASSERT `the interval from` (YMD 2026 3 5) `to` (YMD 2026 4 5) `is within s 17(1)(b)`
+#ASSERT NOT `the interval from` (YMD 2026 3 5) `to` (YMD 2026 4 6) `is within s 17(1)(b)`
+
+§§ `Medical treatment (ss 16, 34M; First Schedule para 5)`
+
+#ASSERT `the medical compensation for an accident on` `after Nov 2025` `, the cost within a year being` 60000 EQUALS 53000
+#ASSERT `the medical compensation for an accident on` `after Nov 2025` `, the cost within a year being` 20000 EQUALS 20000
+#ASSERT `the medical compensation for an accident on` `before Nov 2025` `, the cost within a year being` 50000 EQUALS 45000
+#ASSERT REFUSED `the medical compensation for an accident on` (YMD 2020 6 1) `, the cost within a year being` 1000
+-- s 16(1)(a), (b)
+#ASSERT `the treatment is compensable:` TRUE `,` TRUE `,` FALSE
+#ASSERT NOT `the treatment is compensable:` TRUE `,` FALSE `,` FALSE
+#ASSERT `the treatment is compensable:` FALSE `,` FALSE `,` TRUE
+-- s 16(2): to the institution, less what the worker already paid it
+#ASSERT `the amount paid to the approved medical institution, of` 5000 `, less` 1200 EQUALS 3800
+
+§§ `Seafarers (s 67) and refusal of treatment (s 38)`
+
+#ASSERT `the seafarer's compensation of` 10000 `, reduced by` 2500 EQUALS 7500
+#ASSERT `the seafarer's compensation of` 1000 `, reduced by` 2500 EQUALS 0
+#ASSERT NOT `a periodical payment is payable to the seafarer, the owner liable for maintenance:` TRUE
+#ASSERT `a periodical payment is payable to the seafarer, the owner liable for maintenance:` FALSE
+#ASSERT `the Commissioner may direct under s 38, treatment having been refused:` TRUE
+
+§§ `Found by the independent test pass`
+
+-- s 4(5)(b): 60% + 50% = 110% is total incapacity, paid C + 0.25C = 410,000
+#ASSERT `the partial incapacity compensation for an AME of` 2000 `, born` `born` `, accident on` `after Nov 2025` `, losses in percent` (LIST 60, 50) EQUALS 410000
+-- s 4(2)(b), 4(5)(b): one 100% Fourth Schedule injury
+#ASSERT `the partial incapacity compensation for an AME of` 2000 `, born` `born` `, accident on` `after Nov 2025` `, losses in percent` (LIST 100) EQUALS 410000
+-- s 83(1): temporary incapacity for an accident before the encoded period
+#ASSERT REFUSED `the temporary incapacity payments for an accident on` (YMD 2019 6 1) `at a daily rate of` 100 `for the days` (`days of` `a day of medical leave` `from` (YMD 2019 6 1) `for` 3 `earning` 0)
