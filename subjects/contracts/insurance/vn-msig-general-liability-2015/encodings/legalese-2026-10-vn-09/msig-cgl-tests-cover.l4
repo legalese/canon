@@ -1,0 +1,496 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `msig-cgl-nouns`
+IMPORT `msig-cgl-record`
+IMPORT `msig-cgl-definitions`
+IMPORT `msig-cgl-general`
+IMPORT `msig-cgl-conditions`
+IMPORT `msig-cgl-part-cgl`
+IMPORT `msig-cgl-part-pco`
+IMPORT `msig-cgl-special`
+IMPORT `msig-cgl-answer`
+IMPORT `msig-cgl-tests-fixtures`
+
+-- TESTS, LAYER 1: is the claim covered? Every expected value was written from the source
+-- text (the clause is cited on each group) before the assertion was run; none was copied
+-- from an evaluation. A failing assertion here is a finding, never a value to edit.
+--
+-- The fixtures. One policy for calendar year 2026 with both coverage parts, issued to an
+-- organization, Retroactive Date 1 January 2020, combined single limit. One ordinary
+-- claim: bodily injury to a third party on 1 June 2026 at a place the Policy describes,
+-- an accident neither expected nor intended, which the insured is legally obligated to
+-- pay, claimed in writing on 1 July 2026, with immediate notice given; every other fact
+-- the record may find is NOT the case. A scenario puts its own findings in front of that
+-- baseline (the first finding about a fact is the one read).
+--
+-- For each exclusion: one fact pattern that triggers it and one near miss that does not.
+-- Where the exclusion has a single limb, its near miss is the baseline claim itself
+-- (`the ordinary CGL claim` is covered, test C0).
+
+§ `Tests — is the claim covered?`
+
+§§ `C0 — the baseline, and the record that does not say`
+
+-- src:325-332: damages the insured must pay, for bodily injury in the period, caused by an
+-- occurrence, in the territory: covered by the CGL part, and not by the P&CO part, whose
+-- insuring agreement needs the completed operations or products hazard (src:570).
+#ASSERT `CGL:` `the ordinary CGL claim` EQUALS `covered`
+#ASSERT `CGL I — the insuring agreement reaches the claim` `the policy` `the ordinary CGL claim` (YMD 2026 6 1)
+#ASSERT `P&CO:` `the ordinary CGL claim` EQUALS `not covered` `I: the harm is not within the completed operations hazard or the products hazard`
+#ASSERT `P&CO:` `the ordinary products claim` EQUALS `covered`
+#ASSERT `P&CO I — the insuring agreement reaches the claim` `the policy` `the ordinary products claim` (YMD 2026 6 1)
+
+-- A record that is silent on a fact the answer needs is declined, naming the fact.
+`a claim whose record is empty` MEANS
+    `A claim against an insured` WITH
+        `the person claimed against`                                      IS `the named insured`
+        `the harm`                                                        IS `bodily injury`
+        `the date the injury occurs`                                      IS YMD 2026 6 1
+        `the date of the occurrence`                                      IS YMD 2026 6 1
+        `the occurrence`                                                  IS "the occurrence"
+        `the general conditions of exposure`                              IS NOTHING
+        `the date the claim was first made in writing against an insured` IS JUST (YMD 2026 7 1)
+        `the date an insured first became aware of circumstances which may give rise to the claim` IS NOTHING
+        `the date written notice of those circumstances was given to the Company` IS NOTHING
+        `the claim series`                                                IS NOTHING
+        `the findings`                                                    IS EMPTY
+#ASSERT REFUSED `CGL:` `a claim whose record is empty` BECAUSE "the record does not say whether the harm arises out of the conduct of a partnership or joint venture of which the insured is a partner or member and which is not designated in the Policy as a named insured"
+
+-- An earlier arm that decides makes a missing later fact irrelevant (lazy evaluation):
+-- a claim against a stranger fails Persons Insured without the record saying anything.
+`a claim against a stranger, record empty` MEANS
+    `A claim against an insured` WITH
+        `the person claimed against`                                      IS `another person or organization`
+        `the harm`                                                        IS `bodily injury`
+        `the date the injury occurs`                                      IS YMD 2026 6 1
+        `the date of the occurrence`                                      IS YMD 2026 6 1
+        `the occurrence`                                                  IS "the occurrence"
+        `the general conditions of exposure`                              IS NOTHING
+        `the date the claim was first made in writing against an insured` IS JUST (YMD 2026 7 1)
+        `the date an insured first became aware of circumstances which may give rise to the claim` IS NOTHING
+        `the date written notice of those circumstances was given to the Company` IS NOTHING
+        `the claim series`                                                IS NOTHING
+        `the findings`                                                    IS EMPTY
+#ASSERT `CGL:` `a claim against a stranger, record empty` EQUALS `not covered` `PERSONS INSURED: the person claimed against is not an insured`
+
+§§ `C1 — COVERAGE: the coverage parts the declarations identify (src:12-13)`
+
+#ASSERT `the answer under the P&CO Coverage Part` `a CGL-only policy` `the ordinary products claim` EQUALS `not covered` `COVERAGE: the coverage part is not identified in the declarations`
+#ASSERT `the answer under the CGL Coverage Part` `a CGL-only policy` `the ordinary CGL claim` EQUALS `covered`
+
+§§ `C2 — I: the insuring agreement (src:325-336) and the definitions it uses`
+
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `it is not the case that` `the insured is legally obligated to pay the sums claimed as damages`)) EQUALS `not covered` `I: the insured is not legally obligated to pay the damages`
+#ASSERT `CGL:` (`a claim against` `the named insured` `for` `harm of another kind` `on` (YMD 2026 6 1) `, claimed on` (JUST (YMD 2026 7 1)) `, where` EMPTY) EQUALS `not covered` `I: the harm is neither bodily injury nor property damage as defined`
+#ASSERT `CGL:` (`a property damage claim where` EMPTY) EQUALS `covered`
+#ASSERT `CGL:` (`a loss of use claim where` EMPTY) EQUALS `covered`
+
+-- "which occurs during the policy period" (src:59, 164): both stated days inside, the day
+-- before and the day after outside.
+#ASSERT `CGL:` (`a claim against` `the named insured` `for` `bodily injury` `on` (YMD 2026 1 1) `, claimed on` (JUST (YMD 2026 7 1)) `, where` EMPTY) EQUALS `covered`
+#ASSERT `CGL:` (`a claim against` `the named insured` `for` `bodily injury` `on` (YMD 2026 12 31) `, claimed on` (JUST (YMD 2027 1 5)) `, where` EMPTY) EQUALS `covered`
+#ASSERT `CGL:` (`a claim against` `the named insured` `for` `bodily injury` `on` (YMD 2025 12 31) `, claimed on` (JUST (YMD 2026 7 1)) `, where` EMPTY) EQUALS `not covered` `I: the harm did not occur during the policy period`
+#ASSERT `CGL:` (`a claim against` `the named insured` `for` `bodily injury` `on` (YMD 2027 1 1) `, claimed on` (JUST (YMD 2027 1 5)) `, where` EMPTY) EQUALS `not covered` `I: the harm did not occur during the policy period`
+
+-- Loss of use of uninjured property is dated by the occurrence, not by the loss (src:166).
+`loss of use in 2027 from an occurrence in 2026` MEANS
+    `A claim against an insured` WITH
+        `the person claimed against`                                      IS `the named insured`
+        `the harm`                                                        IS `loss of use`
+        `the date the injury occurs`                                      IS YMD 2027 3 1
+        `the date of the occurrence`                                      IS YMD 2026 12 20
+        `the occurrence`                                                  IS "the occurrence"
+        `the general conditions of exposure`                              IS NOTHING
+        `the date the claim was first made in writing against an insured` IS JUST (YMD 2027 3 5)
+        `the date an insured first became aware of circumstances which may give rise to the claim` IS NOTHING
+        `the date written notice of those circumstances was given to the Company` IS NOTHING
+        `the claim series`                                                IS NOTHING
+        `the findings`                                                    IS `the ordinary findings`
+#ASSERT `CGL:` `loss of use in 2027 from an occurrence in 2026` EQUALS `covered`
+
+-- "occurrence" (src:139-140): an accident, neither expected nor intended.
+#ASSERT `CGL:` (`a bodily injury claim where` (`only` `the harm was expected or intended from the standpoint of the insured`)) EQUALS `not covered` `I: the harm was not caused by an occurrence`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `it is not the case that` `the harm results from an accident, including continuous or repeated exposure to conditions`)) EQUALS `not covered` `I: the harm was not caused by an occurrence`
+
+§§ `C3 — II: Persons Insured, CGL part (src:462-499) and Condition 8 (src:281-285)`
+
+GIVEN person   IS A `A person claimed against`
+      findings IS A LIST OF `A finding`
+GIVETH A `A claim against an insured`
+`a claim against` person `, where` findings MEANS
+    `a claim against` person `for` `bodily injury` `on` (YMD 2026 6 1) `, claimed on` (JUST (YMD 2026 7 1)) `, where` findings
+
+-- (a) an individual named insured: only for the conduct of a business it solely owns; its
+-- spouse likewise.
+#ASSERT `the answer under the CGL Coverage Part` `a policy issued to an individual` (`a claim against` `the named insured` `, where` (`only` `the claim concerns the conduct of a business of which the named insured is the sole proprietor`)) EQUALS `covered`
+#ASSERT `the answer under the CGL Coverage Part` `a policy issued to an individual` (`a claim against` `the named insured` `, where` EMPTY) EQUALS `not covered` `PERSONS INSURED: the person claimed against is not an insured`
+#ASSERT `the answer under the CGL Coverage Part` `a policy issued to an individual` (`a claim against` `the spouse of the named insured` `, where` (`only` `the claim concerns the conduct of a business of which the named insured is the sole proprietor`)) EQUALS `covered`
+#ASSERT `CGL:` (`a claim against` `the spouse of the named insured` `, where` (`only` `the claim concerns the conduct of a business of which the named insured is the sole proprietor`)) EQUALS `not covered` `PERSONS INSURED: the person claimed against is not an insured`
+-- (b) a partner, only for its liability as such.
+#ASSERT `the answer under the CGL Coverage Part` `a policy issued to a partnership` (`a claim against` `a partner or member of the named insured` `, where` (`only` `the liability is that of the partner or member as such`)) EQUALS `covered`
+#ASSERT `the answer under the CGL Coverage Part` `a policy issued to a partnership` (`a claim against` `a partner or member of the named insured` `, where` EMPTY) EQUALS `not covered` `PERSONS INSURED: the person claimed against is not an insured`
+-- (c) an officer, director or stockholder, while acting within the scope of their duties.
+#ASSERT `CGL:` (`a claim against` `an executive officer, director or stockholder of the named insured` `, where` (`only` `the executive officer, director or stockholder was acting within the scope of their duties as such`)) EQUALS `covered`
+#ASSERT `CGL:` (`a claim against` `an executive officer, director or stockholder of the named insured` `, where` EMPTY) EQUALS `not covered` `PERSONS INSURED: the person claimed against is not an insured`
+-- (d) a real estate manager.
+#ASSERT `CGL:` (`a claim against` `a person who is not an employee of the named insured, or an organization, acting as real estate manager for the named insured` `, where` EMPTY) EQUALS `covered`
+-- An employee is an insured only under (e).
+#ASSERT `CGL:` (`a claim against` `an employee of the named insured` `, where` EMPTY) EQUALS `not covered` `PERSONS INSURED: the person claimed against is not an insured`
+
+-- (e) mobile equipment registered for the road, operated on a public highway.
+`the highway facts` MEANS
+    LIST `it is the case that` `the harm arises out of the operation, for the purpose of locomotion upon a public highway, of mobile equipment registered under a motor vehicle registration law`,
+         `it is the case that` `the employee was operating the mobile equipment in the course of employment`,
+         `it is the case that` `the person was operating the mobile equipment with the permission of the named insured`,
+         `it is the case that` `the mobile equipment is registered in the name of the named insured`
+#ASSERT `CGL:` (`a claim against` `an employee of the named insured` `, where` `the highway facts`) EQUALS `covered`
+#ASSERT `CGL:` (`a claim against` `an employee of the named insured` `, where` (`it is the case that` `the bodily injury is to a fellow employee of the operator, injured in the course of employment` FOLLOWED BY `the highway facts`)) EQUALS `not covered` `PERSONS INSURED: the person claimed against is not an insured`
+#ASSERT `CGL:` (`a claim against` `a person other than an employee of the named insured, operating mobile equipment` `, where` `the highway facts`) EQUALS `covered`
+#ASSERT `CGL:` (`a claim against` `a person other than an employee of the named insured, operating mobile equipment` `, where` (`it is the case that` `other valid and collectible insurance is available, on a primary or excess basis, to the person or organization claimed against` FOLLOWED BY `the highway facts`)) EQUALS `not covered` `PERSONS INSURED: the person claimed against is not an insured`
+#ASSERT `CGL:` (`a claim against` `a person or organization legally responsible for the operation of mobile equipment` `, where` `the highway facts`) EQUALS `covered`
+#ASSERT `CGL:` (`a claim against` `a person other than an employee of the named insured, operating mobile equipment` `, where` (`it is not the case that` `the mobile equipment is registered in the name of the named insured` FOLLOWED BY `the highway facts`)) EQUALS `not covered` `PERSONS INSURED: the person claimed against is not an insured`
+-- Proviso (2): property of the named insured or of the operator's employer.
+#ASSERT `CGL:` (`a claim against` `a person other than an employee of the named insured, operating mobile equipment` `for` `physical damage` `on` (YMD 2026 6 1) `, claimed on` (JUST (YMD 2026 7 1)) `, where` (`it is the case that` `the damaged property is owned by, rented to, in charge of or occupied by the named insured or the employer of the operator` FOLLOWED BY `the highway facts`)) EQUALS `not covered` `PERSONS INSURED: the person claimed against is not an insured`
+
+-- Condition 8: after the named insured's death.
+#ASSERT `CGL:` (`a claim against` `the legal representative of the named insured, who has died` `, where` (`only` `the legal representative is acting within the scope of their duties as such`)) EQUALS `covered`
+#ASSERT `CGL:` (`a claim against` `the legal representative of the named insured, who has died` `, where` EMPTY) EQUALS `not covered` `PERSONS INSURED: the person claimed against is not an insured`
+#ASSERT `CGL:` (`a claim against` `the person having proper temporary custody of the property of the named insured, who has died` `, where` (`only` `the claim is with respect to the property of the named insured`)) EQUALS `covered`
+#ASSERT `CGL:` (`a claim against` `the person having proper temporary custody of the property of the named insured, who has died` `, where` (`it is the case that` `a legal representative of the named insured has been appointed and qualified` FOLLOWED BY `only` `the claim is with respect to the property of the named insured`)) EQUALS `not covered` `PERSONS INSURED: the person claimed against is not an insured`
+#ASSERT `CGL:` (`a claim against` `another person or organization` `, where` EMPTY) EQUALS `not covered` `PERSONS INSURED: the person claimed against is not an insured`
+
+-- The closing sentence of II: an undesignated partnership or joint venture.
+#ASSERT `CGL:` (`a bodily injury claim where` (`only` `the harm arises out of the conduct of a partnership or joint venture of which the insured is a partner or member and which is not designated in the Policy as a named insured`)) EQUALS `not covered` `PERSONS INSURED: the conduct of a partnership or joint venture not designated as a named insured`
+
+§§ `C4 — IV: policy territory (src:142-157, 549) and JURISDICTION (src:46-49)`
+
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `it is not the case that` `the harm occurs within a nation or area described in the Policy`)) EQUALS `not covered` `IV: the harm did not occur within the policy territory`
+-- (2) international waters or air space, but not in the course of travel to or from another nation.
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `it is not the case that` `the harm occurs within a nation or area described in the Policy`, `it is the case that` `the harm occurs in international waters or air space`)) EQUALS `covered`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `it is not the case that` `the harm occurs within a nation or area described in the Policy`, `it is the case that` `the harm occurs in international waters or air space`, `it is the case that` `the harm occurs in the course of travel or transportation to or from another nation or area`)) EQUALS `not covered` `IV: the harm did not occur within the policy territory`
+-- (3) anywhere, for a product sold for use in the territory: no suit, or a suit in Vietnam,
+-- covered; a suit brought elsewhere, not.
+`a product injury abroad` MEANS LIST `it is not the case that` `the harm occurs within a nation or area described in the Policy`, `it is the case that` `the damages arise out of a product sold for use or consumption within the territory described in the Policy`
+#ASSERT `P&CO:` (`a products claim where` `a product injury abroad`) EQUALS `covered`
+#ASSERT `P&CO:` (`a products claim where` (append (LIST `it is the case that` `a suit for the damages has been brought`, `it is the case that` `the original suit for the damages was brought in a court of competent jurisdiction within Vietnam`) `a product injury abroad`)) EQUALS `covered`
+#ASSERT `P&CO:` (`a products claim where` (`it is the case that` `a suit for the damages has been brought` FOLLOWED BY `a product injury abroad`)) EQUALS `not covered` `IV: the harm did not occur within the policy territory`
+-- JURISDICTION: a judgement first delivered outside Vietnam, or a Vietnamese order enforcing one.
+#ASSERT `CGL:` (`a bodily injury claim where` (`only` `the insured's liability for the damages is fixed by a judgement`)) EQUALS `not covered` `JURISDICTION: the judgement was not delivered in the first instance by a court in Vietnam`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `it is the case that` `the insured's liability for the damages is fixed by a judgement`, `it is the case that` `the judgement was delivered in the first instance by, or obtained from, a court of competent jurisdiction within Vietnam`)) EQUALS `covered`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `it is the case that` `the insured's liability for the damages is fixed by a judgement`, `it is the case that` `the judgement was delivered in the first instance by, or obtained from, a court of competent jurisdiction within Vietnam`, `it is the case that` `the judgement is an order of a Vietnamese court for the enforcement of a judgement made outside Vietnam`)) EQUALS `not covered` `JURISDICTION: the judgement was not delivered in the first instance by a court in Vietnam`
+
+§§ `C5 — CGL exclusions (a)-(q) (src:342-457)`
+
+-- (a) contractual liability, except an incidental contract or a warranty.
+`liability assumed under a contract` MEANS `it is the case that` `the insured assumed liability for the harm under a contract or agreement`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `liability assumed under a contract`)) EQUALS `not covered` `CGL exclusion (a): liability assumed under a contract`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `liability assumed under a contract`, `it is the case that` `that contract or agreement is in writing`, `it is the case that` `that contract or agreement is a lease of premises`)) EQUALS `covered`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `liability assumed under a contract`, `it is the case that` `that contract or agreement is a lease of premises`)) EQUALS `not covered` `CGL exclusion (a): liability assumed under a contract`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `liability assumed under a contract`, `it is the case that` `the liability is under a warranty that work performed by or on behalf of the named insured will be done in a workmanlike manner`)) EQUALS `covered`
+-- "incidental contract" (src:115-118): an easement is one unless it concerns works by a railroad.
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `liability assumed under a contract`, `it is the case that` `that contract or agreement is in writing`, `it is the case that` `that contract or agreement is an easement agreement`)) EQUALS `covered`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `liability assumed under a contract`, `it is the case that` `that contract or agreement is in writing`, `it is the case that` `that contract or agreement is an easement agreement`, `it is the case that` `that easement agreement is in connection with construction or demolition operations on or adjacent to a railroad`)) EQUALS `not covered` `CGL exclusion (a): liability assumed under a contract`
+
+-- (b) automobiles and aircraft owned, operated, rented or loaned by an insured.
+`a road vehicle owned by the insured` MEANS
+    LIST `it is the case that` `the harm arises out of the ownership, maintenance, operation, use, loading or unloading of the vehicle`,
+         `it is the case that` `the vehicle is a land motor vehicle, trailer or semi-trailer designed for travel on public roads`,
+         `it is the case that` `the vehicle is a land vehicle`,
+         `it is the case that` `the conveyance is owned by an insured`
+#ASSERT `CGL:` (`a bodily injury claim where` `a road vehicle owned by the insured`) EQUALS `not covered` `CGL exclusion (b): automobiles and aircraft`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `it is the case that` `the harm arises out of the ownership, maintenance, operation, use, loading or unloading of an aircraft`, `it is the case that` `the conveyance is operated by a person in the course of employment by an insured`)) EQUALS `not covered` `CGL exclusion (b): automobiles and aircraft`
+-- near miss: a customer's car, not an insured's, parked on the named insured's premises.
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `it is the case that` `the harm arises out of the ownership, maintenance, operation, use, loading or unloading of the vehicle`, `it is the case that` `the vehicle is a land motor vehicle, trailer or semi-trailer designed for travel on public roads`, `it is the case that` `the vehicle is a land vehicle`, `it is the case that` `the conveyance is operated by an insured`, `it is the case that` `the harm arises out of the parking of the vehicle on premises owned by, rented to or controlled by the named insured, or the ways immediately adjoining`)) EQUALS `covered`
+-- near miss: the vehicle is mobile equipment (designed for use principally off public roads), not an automobile.
+#ASSERT `CGL:` (`a bodily injury claim where` (`it is the case that` `the vehicle is designed for use principally off public roads` FOLLOWED BY `a road vehicle owned by the insured`)) EQUALS `covered`
+
+-- (c) mobile equipment in a contest; a snowmobile.
+`a forklift kept on the premises` MEANS
+    LIST `it is the case that` `the harm arises out of the ownership, maintenance, operation, use, loading or unloading of the vehicle`,
+         `it is the case that` `the vehicle is a land vehicle`,
+         `it is the case that` `the vehicle is maintained for use exclusively on premises owned by or rented to the named insured, including the ways immediately adjoining`
+#ASSERT `CGL:` (`a bodily injury claim where` `a forklift kept on the premises`) EQUALS `covered`
+#ASSERT `CGL:` (`a bodily injury claim where` (`it is the case that` `the vehicle was being used in a prearranged or organized racing, speed or demolition contest, in a stunting activity, or in practice or preparation for such a contest or activity` FOLLOWED BY `a forklift kept on the premises`)) EQUALS `not covered` `CGL exclusion (c): mobile equipment in a contest, and snowmobiles`
+#ASSERT `CGL:` (`a bodily injury claim where` (`only` `the harm arises out of the operation or use of a snowmobile or a trailer designed for use with one`)) EQUALS `not covered` `CGL exclusion (c): mobile equipment in a contest, and snowmobiles`
+
+-- (d) mobile equipment being carried by an insured's automobile.
+`a forklift carried on the insured's truck` MEANS
+    LIST `it is the case that` `the harm arises out of and in the course of the transportation of the vehicle by an automobile owned or operated by, or rented or loaned to, an insured`,
+         `it is the case that` `the vehicle is a land vehicle`,
+         `it is the case that` `the vehicle is designed for use principally off public roads`
+#ASSERT `CGL:` (`a bodily injury claim where` `a forklift carried on the insured's truck`) EQUALS `not covered` `CGL exclusion (d): mobile equipment carried by an insured's automobile`
+-- near miss: what is carried is a road vehicle, not mobile equipment.
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `it is the case that` `the harm arises out of and in the course of the transportation of the vehicle by an automobile owned or operated by, or rented or loaned to, an insured`, `it is the case that` `the vehicle is a land vehicle`, `it is the case that` `the vehicle is a land motor vehicle, trailer or semi-trailer designed for travel on public roads`)) EQUALS `covered`
+
+-- (e) watercraft of an insured, except while ashore on the named insured's premises.
+`the insured's own boat` MEANS
+    LIST `it is the case that` `the harm arises out of the ownership, maintenance, operation, use, loading or unloading of a watercraft`,
+         `it is the case that` `the conveyance is owned by an insured`
+#ASSERT `CGL:` (`a bodily injury claim where` `the insured's own boat`) EQUALS `not covered` `CGL exclusion (e): watercraft`
+#ASSERT `CGL:` (`a bodily injury claim where` (`it is the case that` `the watercraft was ashore on premises owned by, rented to or controlled by the named insured` FOLLOWED BY `the insured's own boat`)) EQUALS `covered`
+
+-- (f) pollution, unless sudden and accidental.
+`a discharge of fumes` MEANS `it is the case that` `the harm arises out of the discharge, dispersal, release or escape of smoke, vapors, soot, fumes, acids, alkalis, toxic chemicals, liquids or gases, waste materials or other irritants, contaminants or pollutants into or upon land, the atmosphere or a water course or body of water`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `a discharge of fumes`)) EQUALS `not covered` `CGL exclusion (f): pollution`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `a discharge of fumes`, `it is the case that` `that discharge, dispersal, release or escape was sudden and accidental`)) EQUALS `covered`
+
+-- (g) war, with respect to liability assumed under an incidental contract.
+`liability under a written lease` MEANS
+    LIST `liability assumed under a contract`,
+         `it is the case that` `that contract or agreement is in writing`,
+         `it is the case that` `that contract or agreement is a lease of premises`
+#ASSERT `CGL:` (`a bodily injury claim where` (`it is the case that` `the harm is due to war, whether or not declared, civil war, insurrection, rebellion or revolution, or an act or condition incident to any of them` FOLLOWED BY `liability under a written lease`)) EQUALS `not covered` `CGL exclusion (g): war, for incidental contracts`
+#ASSERT `CGL:` (`a bodily injury claim where` `liability under a written lease`) EQUALS `covered`
+
+-- (h) alcoholic beverages: a seller under a liquor statute or for serving a minor; an
+-- owner or lessor of such premises only under a statute, not for serving a minor.
+`liability for serving a minor` MEANS `it is the case that` `the liability is imposed by reason of selling, serving or giving an alcoholic beverage to a minor or to a person under the influence of alcohol, or which causes or contributes to the intoxication of a person`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `it is the case that` `the insured may be held liable as a person or organization engaged in the business of manufacturing, distributing, selling or serving alcoholic beverages`, `liability for serving a minor`)) EQUALS `not covered` `CGL exclusion (h): alcoholic beverages`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `it is the case that` `the insured may be held liable, not being so engaged, as an owner or lessor of premises used for such purposes`, `liability for serving a minor`)) EQUALS `covered`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `it is the case that` `the insured's indemnitee may be held liable, not being so engaged, as an owner or lessor of premises used for such purposes`, `it is the case that` `the liability is imposed by, or because of the violation of, a statute, ordinance or regulation pertaining to the sale, gift, distribution or use of an alcoholic beverage`)) EQUALS `not covered` `CGL exclusion (h): alcoholic beverages`
+
+-- (i) workmen's compensation and similar laws.
+#ASSERT `CGL:` (`a bodily injury claim where` (`only` `the claim is for an obligation for which the insured or a carrier as its insurer may be held liable under a workmen's compensation, unemployment compensation or disability benefits law, or a similar law`)) EQUALS `not covered` `CGL exclusion (i): workmen's compensation and similar laws`
+
+-- (j) injury to the insured's employee at work, except liability assumed under an incidental contract.
+`an employee injured at work` MEANS `it is the case that` `the bodily injury is to an employee of the insured, arising out of and in the course of employment by the insured`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `an employee injured at work`)) EQUALS `not covered` `CGL exclusion (j): injury to the insured's employees`
+#ASSERT `CGL:` (`a bodily injury claim where` (`an employee injured at work` FOLLOWED BY `liability under a written lease`)) EQUALS `covered`
+
+-- (k) property owned, used or in the insured's care, custody or control.
+#ASSERT `CGL:` (`a property damage claim where` (`only` `the damaged property is owned or occupied by, or rented to, the insured`)) EQUALS `not covered` `CGL exclusion (k): property owned, used or controlled by the insured`
+`goods in the insured's custody` MEANS `it is the case that` `the damaged property is in the care, custody or control of the insured, or the insured is for any purpose exercising physical control over it`
+#ASSERT `CGL:` (`a property damage claim where` (LIST `goods in the insured's custody`)) EQUALS `not covered` `CGL exclusion (k): property owned, used or controlled by the insured`
+-- near miss: (3) does not reach damage from using an elevator at the named insured's
+-- premises, unless what is damaged is the elevator itself.
+`a lift at the premises` MEANS
+    LIST `it is the case that` `the device is a hoisting or lowering device to connect floors or landings`,
+         `it is the case that` `the property damage arises out of the use of the device at premises owned by, rented to or controlled by the named insured`
+#ASSERT `CGL:` (`a property damage claim where` (`goods in the insured's custody` FOLLOWED BY `a lift at the premises`)) EQUALS `covered`
+#ASSERT `CGL:` (`a property damage claim where` (`goods in the insured's custody` FOLLOWED BY `it is the case that` `the damaged property is the device` FOLLOWED BY `a lift at the premises`)) EQUALS `not covered` `CGL exclusion (k): property owned, used or controlled by the insured`
+#ASSERT `CGL:` (`a property damage claim where` (`goods in the insured's custody` FOLLOWED BY `it is the case that` `the device is a dumbwaiter used exclusively for carrying property and having a compartment height not exceeding four feet` FOLLOWED BY `a lift at the premises`)) EQUALS `not covered` `CGL exclusion (k): property owned, used or controlled by the insured`
+-- near miss: (2) and (3) do not reach liability under a written sidetrack agreement.
+#ASSERT `CGL:` (`a property damage claim where` (LIST `goods in the insured's custody`, `liability assumed under a contract`, `it is the case that` `that contract or agreement is in writing`, `it is the case that` `that contract or agreement is a sidetrack agreement`)) EQUALS `covered`
+
+-- (l) premises the named insured has alienated, damage arising out of them.
+#ASSERT `CGL:` (`a property damage claim where` (LIST `it is the case that` `the damaged property is premises alienated by the named insured`, `it is the case that` `the property damage arises out of those premises or any part of them`)) EQUALS `not covered` `CGL exclusion (l): premises alienated by the named insured`
+#ASSERT `CGL:` (`a property damage claim where` (`only` `the damaged property is premises alienated by the named insured`)) EQUALS `covered`
+
+-- (m) loss of use from delay or failure to perform, except sudden and accidental injury
+-- to the products or work after they were put to use.
+#ASSERT `CGL:` (`a loss of use claim where` (`only` `the loss of use results from a delay in or lack of performance by or on behalf of the named insured of a contract or agreement`)) EQUALS `not covered` `CGL exclusion (m): loss of use from delay or failure to perform`
+#ASSERT `CGL:` (`a loss of use claim where` (LIST `it is the case that` `the loss of use results from the failure of the named insured's products or work performed by or on behalf of the named insured to meet the level of performance, quality, fitness or durability warranted or represented by the named insured`, `it is the case that` `the loss of use results from sudden and accidental physical injury to or destruction of the named insured's products or work performed by or on behalf of the named insured, after they had been put to use by a person or organization other than an insured`)) EQUALS `covered`
+
+-- (n) damage to the named insured's products arising out of them; (o) to its work.
+#ASSERT `CGL:` (`a property damage claim where` (LIST `it is the case that` `the damaged property is the named insured's products`, `it is the case that` `the property damage arises out of those products or any part of them`)) EQUALS `not covered` `CGL exclusion (n): damage to the named insured's products`
+#ASSERT `CGL:` (`a property damage claim where` (`only` `the damaged property is the named insured's products`)) EQUALS `covered`
+#ASSERT `CGL:` (`a property damage claim where` (LIST `it is the case that` `the damaged property is work performed by or on behalf of the named insured`, `it is the case that` `the property damage arises out of that work or any portion of it, or out of materials, parts or equipment furnished in connection with it`)) EQUALS `not covered` `CGL exclusion (o): damage to the named insured's work`
+#ASSERT `CGL:` (`a property damage claim where` (`only` `the damaged property is work performed by or on behalf of the named insured`)) EQUALS `covered`
+
+-- (p) withdrawal (recall) of products or work because of a known or suspected defect.
+`damages for a recall` MEANS `it is the case that` `the damages are claimed for the withdrawal, inspection, repair, replacement or loss of use of the named insured's products or work completed by or for the named insured, or of property of which they form a part`
+#ASSERT `CGL:` (`a property damage claim where` (LIST `damages for a recall`, `it is the case that` `those products, that work or that property were withdrawn from the market or from use because of a known or suspected defect or deficiency in them`)) EQUALS `not covered` `CGL exclusion (p): withdrawal of products or work`
+#ASSERT `CGL:` (`a property damage claim where` (LIST `damages for a recall`)) EQUALS `covered`
+
+-- (q) explosion, collapse and underground hazards, where the classification carries x, c or u.
+`a blasting accident` MEANS `it is the case that` `the property damage arises out of blasting or explosion`
+#ASSERT `CGL:` (`a property damage claim where` (LIST `a blasting accident`, `it is the case that` `the operations are identified in the Policy by a classification code number which includes the symbol x`)) EQUALS `not covered` `CGL exclusion (q): explosion, collapse and underground hazards`
+#ASSERT `CGL:` (`a property damage claim where` (LIST `a blasting accident`)) EQUALS `covered`
+#ASSERT `CGL:` (`a property damage claim where` (LIST `a blasting accident`, `it is the case that` `the property damage arises out of the explosion of air or steam vessels, piping under pressure, prime movers, machinery or power transmitting equipment`, `it is the case that` `the operations are identified in the Policy by a classification code number which includes the symbol x`)) EQUALS `covered`
+#ASSERT `CGL:` (`a property damage claim where` (LIST `it is the case that` `the property damage is the collapse of or structural injury to a building or structure, or results at any time from such collapse or injury`, `it is the case that` `the collapse or structural injury is due to grading of land, excavating, borrowing, filling, back-filling, tunnelling, pile driving, cofferdam work or caisson work`, `it is the case that` `the operations are identified in the Policy by a classification code number which includes the symbol c`)) EQUALS `not covered` `CGL exclusion (q): explosion, collapse and underground hazards`
+#ASSERT `CGL:` (`a property damage claim where` (LIST `it is the case that` `the property damage is the collapse of or structural injury to a building or structure, or results at any time from such collapse or injury`, `it is the case that` `the collapse or structural injury is due to grading of land, excavating, borrowing, filling, back-filling, tunnelling, pile driving, cofferdam work or caisson work`, `it is the case that` `the harm arises out of operations performed for the named insured by independent contractors`, `it is the case that` `the operations are identified in the Policy by a classification code number which includes the symbol c`)) EQUALS `covered`
+`a cut gas main` MEANS
+    LIST `it is the case that` `the property damage is to wires, conduits, pipes, mains, sewers, tanks, tunnels, similar property or apparatus connected with them, beneath the surface of the ground or water, or results at any time from such damage`,
+         `it is the case that` `that underground damage was caused by and occurred during the use of mechanical equipment for grading land, paving, excavating, drilling, borrowing, filling, back-filling or pile driving`
+#ASSERT `CGL:` (`a property damage claim where` (`it is the case that` `the operations are identified in the Policy by a classification code number which includes the symbol u` FOLLOWED BY `a cut gas main`)) EQUALS `not covered` `CGL exclusion (q): explosion, collapse and underground hazards`
+#ASSERT `CGL:` (`a property damage claim where` (`it is the case that` `the operations are identified in the Policy by a classification code number which includes the symbol x` FOLLOWED BY `a cut gas main`)) EQUALS `covered`
+
+§§ `C6 — the Completed Operations Hazard and Products Hazard Exclusion Clause (src:708-713)`
+
+-- The CGL part does not reach the products or completed operations hazards at all.
+#ASSERT `CGL:` `the ordinary products claim` EQUALS `not covered` `COMPLETED OPERATIONS HAZARD AND PRODUCTS HAZARD EXCLUSION CLAUSE`
+#ASSERT `CGL:` (`a completed operations claim where` EMPTY) EQUALS `not covered` `COMPLETED OPERATIONS HAZARD AND PRODUCTS HAZARD EXCLUSION CLAUSE`
+-- near miss: a product that injures someone on the named insured's own premises is not in
+-- the products hazard (src:161), so the CGL part covers it.
+#ASSERT `CGL:` (`a products claim where` (LIST `it is not the case that` `the harm occurs away from premises owned by or rented to the named insured`)) EQUALS `covered`
+-- near miss: tools left behind are excluded from the completed operations hazard (src:97).
+#ASSERT `CGL:` (`a completed operations claim where` (`only` `the harm arises out of the existence of tools, uninstalled equipment or abandoned or unused materials`)) EQUALS `covered`
+
+§§ `C7 — the P&CO part: the hazards, Persons Insured and exclusions (a)-(i) (src:563-660)`
+
+-- "completed operations hazard": completion by any of the deeming rules (src:78-90).
+#ASSERT `P&CO:` (`a completed operations claim where` EMPTY) EQUALS `covered`
+#ASSERT `P&CO:` (`a bodily injury claim where` (LIST `it is the case that` `the harm arises out of operations, including materials, parts or equipment furnished with them, or reliance upon a representation or warranty made at any time about them`, `it is the case that` `the harm occurs away from premises owned by or rented to the named insured`, `it is the case that` `the operations were otherwise complete when the harm occurred, though they might require further service or maintenance work, or correction, repair or replacement because of a defect or deficiency`)) EQUALS `covered`
+#ASSERT `P&CO:` (`a bodily injury claim where` (LIST `it is the case that` `the harm arises out of operations, including materials, parts or equipment furnished with them, or reliance upon a representation or warranty made at any time about them`, `it is the case that` `the harm occurs away from premises owned by or rented to the named insured`)) EQUALS `not covered` `I: the harm is not within the completed operations hazard or the products hazard`
+#ASSERT `P&CO:` (`a completed operations claim where` (`only` `the classification stated in the Policy or in the Company's manual for the operations specifies including completed operations`)) EQUALS `not covered` `I: the harm is not within the completed operations hazard or the products hazard`
+-- "named insured products" leaves out a vending machine rented to others.
+#ASSERT `P&CO:` (`a products claim where` (`only` `those products are a vending machine, or other property apart from a container, rented to or located for use of others but not sold`)) EQUALS `not covered` `I: the harm is not within the completed operations hazard or the products hazard`
+-- possession not yet relinquished: not the products hazard.
+#ASSERT `P&CO:` (`a products claim where` (LIST `it is not the case that` `physical possession of those products had been relinquished to others when the harm occurred`)) EQUALS `not covered` `I: the harm is not within the completed operations hazard or the products hazard`
+
+-- Persons Insured has no paragraph (e): an employee driving registered mobile equipment
+-- is an insured under the CGL part (C3) but not under this one.
+#ASSERT `P&CO:` (`a claim against` `an employee of the named insured` `, where` (append `the highway facts` `the products facts`)) EQUALS `not covered` `PERSONS INSURED: the person claimed against is not an insured`
+#ASSERT `P&CO:` (`a claim against` `an executive officer, director or stockholder of the named insured` `, where` (`it is the case that` `the executive officer, director or stockholder was acting within the scope of their duties as such` FOLLOWED BY `the products facts`)) EQUALS `covered`
+#ASSERT `P&CO:` (`a products claim where` (`only` `the harm arises out of the conduct of a partnership or joint venture of which the insured is a partner or member and which is not designated in the Policy as a named insured`)) EQUALS `not covered` `PERSONS INSURED: the conduct of a partnership or joint venture not designated as a named insured`
+
+-- (a) contractual liability, with NO incidental-contract exception (contrast CGL (a)).
+#ASSERT `P&CO:` (`a products claim where` `liability under a written lease`) EQUALS `not covered` `P&CO exclusion (a): liability assumed under a contract`
+#ASSERT `P&CO:` (`a products claim where` (LIST `liability assumed under a contract`, `it is the case that` `the liability is under a warranty of fitness or quality of the named insured's products`)) EQUALS `covered`
+-- (b) alcoholic beverages.
+#ASSERT `P&CO:` (`a products claim where` (LIST `it is the case that` `the insured may be held liable as a person or organization engaged in the business of manufacturing, distributing, selling or serving alcoholic beverages`, `it is the case that` `the liability is imposed by, or because of the violation of, a statute, ordinance or regulation pertaining to the sale, gift, distribution or use of an alcoholic beverage`)) EQUALS `not covered` `P&CO exclusion (b): alcoholic beverages`
+#ASSERT `P&CO:` (`a products claim where` (LIST `it is the case that` `the insured may be held liable, not being so engaged, as an owner or lessor of premises used for such purposes`, `liability for serving a minor`)) EQUALS `covered`
+-- (c) workmen's compensation.
+#ASSERT `P&CO:` (`a products claim where` (`only` `the claim is for an obligation for which the insured or a carrier as its insurer may be held liable under a workmen's compensation, unemployment compensation or disability benefits law, or a similar law`)) EQUALS `not covered` `P&CO exclusion (c): workmen's compensation and similar laws`
+-- (d) employee injury, with NO incidental-contract exception (contrast CGL (j)).
+#ASSERT `P&CO:` (`a products claim where` (LIST `an employee injured at work`)) EQUALS `not covered` `P&CO exclusion (d): injury to the insured's employees`
+-- (e) loss of use.
+#ASSERT `P&CO:` (`a claim against` `the named insured` `for` `loss of use` `on` (YMD 2026 6 1) `, claimed on` (JUST (YMD 2026 7 1)) `, where` (`it is the case that` `the loss of use results from a delay in or lack of performance by or on behalf of the named insured of a contract or agreement` FOLLOWED BY `the products facts`)) EQUALS `not covered` `P&CO exclusion (e): loss of use from delay or failure to perform`
+#ASSERT `P&CO:` (`a claim against` `the named insured` `for` `loss of use` `on` (YMD 2026 6 1) `, claimed on` (JUST (YMD 2026 7 1)) `, where` `the products facts`) EQUALS `covered`
+-- (f) the products themselves; (g) the work itself; (h) recall.
+#ASSERT `P&CO:` (`a products property damage claim where` (LIST `it is the case that` `the damaged property is the named insured's products`, `it is the case that` `the property damage arises out of those products or any part of them`)) EQUALS `not covered` `P&CO exclusion (f): damage to the named insured's products`
+#ASSERT `P&CO:` (`a products property damage claim where` EMPTY) EQUALS `covered`
+#ASSERT `P&CO:` (`a products property damage claim where` (LIST `it is the case that` `the damaged property is work performed by or on behalf of the named insured`, `it is the case that` `the property damage arises out of that work or any portion of it, or out of materials, parts or equipment furnished in connection with it`)) EQUALS `not covered` `P&CO exclusion (g): damage to the named insured's work`
+#ASSERT `P&CO:` (`a products property damage claim where` (LIST `damages for a recall`, `it is the case that` `those products, that work or that property were withdrawn from the market or from use because of a known or suspected defect or deficiency in them`)) EQUALS `not covered` `P&CO exclusion (h): withdrawal of products or work`
+#ASSERT `P&CO:` (`a products property damage claim where` (LIST `damages for a recall`)) EQUALS `covered`
+-- (i) pollution, unless sudden and accidental.
+#ASSERT `P&CO:` (`a products claim where` (LIST `a discharge of fumes`)) EQUALS `not covered` `P&CO exclusion (i): pollution`
+#ASSERT `P&CO:` (`a products claim where` (LIST `a discharge of fumes`, `it is the case that` `that discharge, dispersal, release or escape was sudden and accidental`)) EQUALS `covered`
+
+§§ `C8 — the Business Risk Exclusion (src:720-724), P&CO only`
+
+`a design mistake` MEANS
+    LIST `it is the case that` `the harm results from the failure of the named insured's products or work performed by or on behalf of the named insured to perform the function or to serve the purpose intended by the named insured`,
+         `it is the case that` `that failure is due to a mistake or deficiency in a design, formula, plan, specifications, advertising material or printed instructions prepared or developed by an insured`
+#ASSERT `P&CO:` (`a products claim where` `a design mistake`) EQUALS `not covered` `BUSINESS RISK EXCLUSION`
+#ASSERT `P&CO:` (`a products claim where` (`it is the case that` `the harm results from the active malfunctioning of those products or that work` FOLLOWED BY `a design mistake`)) EQUALS `covered`
+
+§§ `C9 — the Claims Made Basis Endorsement (src:731-754) and the Claim Series Clause (src:762-776)`
+
+GIVEN injured  IS A DATE
+      claimed  IS A MAYBE DATE
+      findings IS A LIST OF `A finding`
+GIVETH A `A claim against an insured`
+`a products claim for injury on` injured `, claimed on` claimed `, where` findings MEANS
+    `a claim against` `the named insured` `for` `bodily injury` `on` injured `, claimed on` claimed `, where` (append findings `the products facts`)
+
+-- Clause 1: the claim must be made in the policy period.
+#ASSERT `P&CO:` (`a products claim for injury on` (YMD 2026 6 1) `, claimed on` (JUST (YMD 2026 12 31)) `, where` EMPTY) EQUALS `covered`
+#ASSERT `P&CO:` (`a products claim for injury on` (YMD 2026 6 1) `, claimed on` (JUST (YMD 2027 1 1)) `, where` EMPTY) EQUALS `not covered` `CLAIMS MADE BASIS 1: the claim was not made during the policy period`
+#ASSERT `P&CO:` (`a products claim for injury on` (YMD 2026 6 1) `, claimed on` NOTHING `, where` EMPTY) EQUALS `not covered` `CLAIMS MADE BASIS 1: the claim was not made during the policy period`
+-- "sustained after the Retroactive Date": the date itself is not after it.
+#ASSERT `the answer under the P&CO Coverage Part` `a policy with Retroactive Date 1 June 2026` (`a products claim for injury on` (YMD 2026 6 1) `, claimed on` (JUST (YMD 2026 7 1)) `, where` EMPTY) EQUALS `not covered` `CLAIMS MADE BASIS 1: the harm was not sustained after the Retroactive Date`
+#ASSERT `the answer under the P&CO Coverage Part` `a policy with Retroactive Date 1 June 2026` (`a products claim for injury on` (YMD 2026 6 2) `, claimed on` (JUST (YMD 2026 7 1)) `, where` EMPTY) EQUALS `covered`
+#ASSERT REFUSED `the answer under the P&CO Coverage Part` `a policy whose schedule states no Retroactive Date` `the ordinary products claim` BECAUSE "the Retroactive Date stated in the Policy Schedule is not in the record"
+-- immediate notice.
+#ASSERT `P&CO:` (`a products claim where` (LIST `it is not the case that` `immediate notice of the harm has been given in accordance with the Conditions`)) EQUALS `not covered` `CLAIMS MADE BASIS 1: immediate notice was not given`
+-- the proviso on knowledge at the effective date: fails where an insured knew AND could
+-- have foreseen; read as written, holds where an insured did not know (fork F22).
+`knew and could have foreseen` MEANS
+    LIST `it is the case that` `at the effective date of the policy an insured knew that the harm might be expected to be the basis of a claim or suit`,
+         `it is the case that` `at the effective date of the policy an insured could reasonably have foreseen that the harm might be expected to be the basis of a claim or suit`
+#ASSERT `P&CO:` (`a products claim where` `knew and could have foreseen`) EQUALS `not covered` `CLAIMS MADE BASIS 1: the harm was known and foreseeable at the effective date`
+#ASSERT `P&CO:` (`a products claim where` (`only` `at the effective date of the policy an insured could reasonably have foreseen that the harm might be expected to be the basis of a claim or suit`)) EQUALS `covered`
+-- Clause 3: caused before the Retroactive Date.
+#ASSERT `P&CO:` (`a products claim where` (`only` `the harm has been, or is alleged to have been, caused to any extent or degree, directly or indirectly, before the Retroactive Date`)) EQUALS `not covered` `CLAIMS MADE BASIS 3: the harm was caused before the Retroactive Date`
+
+-- Clause 4: circumstances notified in the period make a later claim "deemed" made in it.
+GIVEN aware   IS A MAYBE DATE
+      notified IS A MAYBE DATE
+GIVETH A `A claim against an insured`
+`a products claim made in 2027, after circumstances first known on` aware `and notified on` notified MEANS
+    `A claim against an insured` WITH
+        `the person claimed against`                                      IS `the named insured`
+        `the harm`                                                        IS `bodily injury`
+        `the date the injury occurs`                                      IS YMD 2026 11 1
+        `the date of the occurrence`                                      IS YMD 2026 11 1
+        `the occurrence`                                                  IS "the occurrence"
+        `the general conditions of exposure`                              IS NOTHING
+        `the date the claim was first made in writing against an insured` IS JUST (YMD 2027 2 1)
+        `the date an insured first became aware of circumstances which may give rise to the claim` IS aware
+        `the date written notice of those circumstances was given to the Company` IS notified
+        `the claim series`                                                IS NOTHING
+        `the findings`                                                    IS append (`only` `the claim arises out of the named insured's products to which the notified circumstances relate`) (append `the products facts` `the ordinary findings`)
+#ASSERT `P&CO:` (`a products claim made in 2027, after circumstances first known on` (JUST (YMD 2026 11 2)) `and notified on` (JUST (YMD 2026 11 5))) EQUALS `covered`
+#ASSERT `P&CO:` (`a products claim made in 2027, after circumstances first known on` (JUST (YMD 2026 11 2)) `and notified on` (JUST (YMD 2027 1 3))) EQUALS `not covered` `CLAIMS MADE BASIS 1: the claim was not made during the policy period`
+#ASSERT `P&CO:` (`a products claim made in 2027, after circumstances first known on` NOTHING `and notified on` (JUST (YMD 2026 11 5))) EQUALS `not covered` `CLAIMS MADE BASIS 1: the claim was not made during the policy period`
+
+-- The Claim Series Clause: a later claim in a series takes the series' dates.
+GIVEN `claimed on` IS A DATE
+GIVETH A `A claim against an insured`
+`a claim in a series begun in 2026, itself made on` `claimed on` MEANS
+    `A claim against an insured` WITH
+        `the person claimed against`                                      IS `the named insured`
+        `the harm`                                                        IS `bodily injury`
+        `the date the injury occurs`                                      IS YMD 2029 3 1
+        `the date of the occurrence`                                      IS YMD 2029 3 1
+        `the occurrence`                                                  IS "the occurrence"
+        `the general conditions of exposure`                              IS NOTHING
+        `the date the claim was first made in writing against an insured` IS JUST `claimed on`
+        `the date an insured first became aware of circumstances which may give rise to the claim` IS NOTHING
+        `the date written notice of those circumstances was given to the Company` IS NOTHING
+        `the claim series`                                                IS JUST (`A claim series` WITH
+            `the date the first loss of the series occurred`                                  IS YMD 2026 4 1
+            `the date the first claim of the series was made in writing against the insured`   IS YMD 2026 5 10
+            `the date the insured was first advised in writing of the first claim of the series` IS YMD 2026 5 10
+            `the date written notice of the series was given to the Company or an authorized agent` IS JUST (YMD 2026 5 20))
+        `the findings`                                                    IS append (`only` `the claim is one of a series of two or more claims arising from one specific common cause attributable to one design, specification or formula in products or services supplied by one insured`) (append `the products facts` `the ordinary findings`)
+-- Injury in 2029 and claim in 2029, but the series is dated 2026 on both counts: covered,
+-- up to and including 120 months after the first claim (10 May 2036), not a day later.
+#ASSERT `P&CO:` (`a claim in a series begun in 2026, itself made on` (YMD 2029 3 5)) EQUALS `covered`
+#ASSERT `P&CO:` (`a claim in a series begun in 2026, itself made on` (YMD 2036 5 10)) EQUALS `covered`
+#ASSERT `P&CO:` (`a claim in a series begun in 2026, itself made on` (YMD 2036 5 11)) EQUALS `not covered` `CLAIM SERIES 4: the claim was made more than 120 months after the first claim`
+-- Clause 3: the date of claims-made is the earlier of first advice and the notice.
+#ASSERT `Claim Series 3 — the date of claims-made of the series` (`a claim in a series begun in 2026, itself made on` (YMD 2029 3 5)) EQUALS YMD 2026 5 10
+#ASSERT `Claim Series 3 — the date of occurrence of the series` (`a claim in a series begun in 2026, itself made on` (YMD 2029 3 5)) EQUALS YMD 2026 4 1
+-- A series claim whose record lacks the series dates is declined by name.
+#ASSERT REFUSED `P&CO:` (`a products claim where` (`only` `the claim is one of a series of two or more claims arising from one specific common cause attributable to one design, specification or formula in products or services supplied by one insured`)) BECAUSE "the dates of the Claim Series Event are not in the record"
+
+§§ `C10 — the Special Conditions applicable to all coverage parts (src:781-977)`
+
+-- Asbestos (a) and (b).
+#ASSERT `CGL:` (`a bodily injury claim where` (`only` `the claim or loss is based upon, arises out of, directly or indirectly results from, is in consequence of, or in any way involves asbestos`)) EQUALS `not covered` `ASBESTOS EXCLUSION`
+#ASSERT `P&CO:` (`a products claim where` (`only` `the claim or loss in any way involves actual or alleged asbestos related injury or damage involving the use, presence, existence, detection, removal, elimination or avoidance of asbestos, or exposure or potential exposure to asbestos`)) EQUALS `not covered` `ASBESTOS EXCLUSION`
+-- Cyber, each of the three routes.
+#ASSERT `CGL:` (`a bodily injury claim where` (`only` `the claim or loss arises out of activities or business conducted or transacted via the Internet, an Intranet or an Extranet`)) EQUALS `not covered` `CYBER LIABILITY EXCLUSION`
+#ASSERT `CGL:` (`a bodily injury claim where` (`only` `the claim or loss arises out of activities or business conducted or transacted via the insured's own website, Internet site or web address`)) EQUALS `not covered` `CYBER LIABILITY EXCLUSION`
+#ASSERT `P&CO:` (`a products claim where` (`only` `the claim or loss arises out of activities or business conducted or transacted via the transmission of electronic mail or documents by electronic means`)) EQUALS `not covered` `CYBER LIABILITY EXCLUSION`
+-- Date recognition: the failure, and a cause (i) or (ii); the failure alone is a near miss.
+`a date failure` MEANS `it is the case that` `the claim arises directly or indirectly from, or consists of, the failure or inability of an electronic circuit, microchip, computer, software, telecommunication equipment or similar device, or media or systems used with one, whether the insured's property or not, to achieve a purpose or effect intended by the use of a number, symbol or word to denote a date`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `a date failure`, `it is the case that` `that failure or inability is a result of recognising, using or adopting a date, day of the week or period of time otherwise than as, or other than, the true or correct one`)) EQUALS `not covered` `DATE RECOGNITION EXCEPTION`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `a date failure`, `it is the case that` `that failure or inability is a result of the operation of a command or logic programmed or incorporated into such a device, media or system`)) EQUALS `not covered` `DATE RECOGNITION EXCEPTION`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `a date failure`)) EQUALS `covered`
+-- Electromagnetic fields.
+#ASSERT `CGL:` (`a bodily injury claim where` (`only` `the loss or liability arises out of, or is contributed to directly or indirectly by, exposure to magnetic, electric or electromagnetic fields or radiation, however caused or generated`)) EQUALS `not covered` `ELECTROMAGNETIC FIELDS EXCLUSION`
+-- Institute Radioactive Contamination: (a), (e), and (d) with its isotopes exception.
+#ASSERT `CGL:` (`a bodily injury claim where` (`only` `the loss, damage, liability or expense is directly or indirectly caused by, contributed to by or arises from ionising radiations from or contamination by radioactivity from nuclear fuel, nuclear waste or the combustion of nuclear fuel`)) EQUALS `not covered` `INSTITUTE RADIOACTIVE CONTAMINATION, CHEMICAL, BIOLOGICAL, BIOCHEMICAL AND ELECTROMAGNETIC WEAPONS EXCLUSION CLAUSE`
+#ASSERT `CGL:` (`a bodily injury claim where` (`only` `the loss, damage, liability or expense is directly or indirectly caused by, contributed to by or arises from a chemical, biological, bio-chemical or electromagnetic weapon`)) EQUALS `not covered` `INSTITUTE RADIOACTIVE CONTAMINATION, CHEMICAL, BIOLOGICAL, BIOCHEMICAL AND ELECTROMAGNETIC WEAPONS EXCLUSION CLAUSE`
+`radioactive matter` MEANS `it is the case that` `the loss, damage, liability or expense is directly or indirectly caused by, contributed to by or arises from the radioactive, toxic, explosive or other hazardous or contaminating properties of radioactive matter`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `radioactive matter`)) EQUALS `not covered` `INSTITUTE RADIOACTIVE CONTAMINATION, CHEMICAL, BIOLOGICAL, BIOCHEMICAL AND ELECTROMAGNETIC WEAPONS EXCLUSION CLAUSE`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `radioactive matter`, `it is the case that` `that radioactive matter is radioactive isotopes, other than nuclear fuel, being prepared, carried, stored or used for commercial, agricultural, medical, scientific or other similar peaceful purposes`)) EQUALS `covered`
+-- Professional liability; sanctions.
+#ASSERT `CGL:` (`a bodily injury claim where` (`only` `the liability arises out of breach of professional duty, or wrongful or inadequate advice given separately for a fee`)) EQUALS `not covered` `PROFESSIONAL LIABILITY EXCLUSION`
+#ASSERT `CGL:` (`a bodily injury claim where` (`only` `providing the cover or paying the claim would expose the Company to a sanction, prohibition or restriction under United Nations resolutions or the trade or economic sanctions, laws or regulations of the European Union, the United Kingdom or the United States of America`)) EQUALS `not covered` `SANCTION LIMITATION AND EXCLUSION CLAUSE`
+-- Sistership paragraph 2: later harm from the same cause, measures not taken without a
+-- justifiable reason; with one, a near miss.
+`a second injury from the same defect` MEANS
+    LIST `it is the case that` `the harm arises from the same cause as an earlier bodily injury or property damage`,
+         `it is the case that` `after that earlier injury or damage the named insured failed to take the preventive measures the Sistership Exclusion Clause requires`
+#ASSERT `P&CO:` (`a products claim where` `a second injury from the same defect`) EQUALS `not covered` `SISTERSHIP EXCLUSION CLAUSE`
+#ASSERT `P&CO:` (`a products claim where` (`it is the case that` `the named insured had a justifiable reason for that failure` FOLLOWED BY `a second injury from the same defect`)) EQUALS `covered`
+-- War and Terrorism: (a), (b), (c); and the burden of proof.
+#ASSERT `CGL:` (`a bodily injury claim where` (`only` `the loss is directly or indirectly caused by, results from or is in connection with war, invasion, acts of foreign enemies, hostilities or warlike operations, civil war, rebellion, revolution, insurrection, civil commotion assuming the proportions of or amounting to an uprising, or military or usurped power`)) EQUALS `not covered` `WAR AND TERRORISM EXCLUSION`
+#ASSERT `CGL:` (`a bodily injury claim where` (`only` `the loss is directly or indirectly caused by, results from or is in connection with an act of terrorism`)) EQUALS `not covered` `WAR AND TERRORISM EXCLUSION`
+#ASSERT `P&CO:` (`a products claim where` (`only` `the loss is directly or indirectly caused by, results from or is in connection with an action taken in controlling, preventing, suppressing or in any way relating to war or terrorism`)) EQUALS `not covered` `WAR AND TERRORISM EXCLUSION`
+#ASSERT `CGL:` (`a bodily injury claim where` (`only` `the Company alleges that by reason of the War and Terrorism Exclusion the loss is not covered`)) EQUALS `not covered` `WAR AND TERRORISM EXCLUSION`
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `it is the case that` `the Company alleges that by reason of the War and Terrorism Exclusion the loss is not covered`, `it is the case that` `the insured has proved that the loss is not excluded by the War and Terrorism Exclusion`)) EQUALS `covered`
+
+§§ `C11 — several layers at once`
+
+-- A product claim under BOTH parts: excluded from the CGL part by the Special Condition,
+-- covered by the P&CO part; the same claim made in 2027 fails the claims-made condition.
+#ASSERT `the answer under` `the Comprehensive General Liability Insurance Coverage Part` `, for` `the policy` `and` `the ordinary products claim` EQUALS `not covered` `COMPLETED OPERATIONS HAZARD AND PRODUCTS HAZARD EXCLUSION CLAUSE`
+#ASSERT `the answer under` `the Products and Completed Operations Liability Insurance Coverage Part` `, for` `the policy` `and` `the ordinary products claim` EQUALS `covered`
+-- Several exclusions at once: the first in the arm order is the one reported.
+#ASSERT `CGL:` (`a bodily injury claim where` (LIST `liability assumed under a contract`, `it is the case that` `the claim or loss is based upon, arises out of, directly or indirectly results from, is in consequence of, or in any way involves asbestos`)) EQUALS `not covered` `CGL exclusion (a): liability assumed under a contract`
