@@ -1,0 +1,603 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `pti268-nouns`
+IMPORT `pti268-definitions`
+IMPORT `pti268-injury-table`
+IMPORT `pti268-extensions`
+IMPORT `pti268-exclusions`
+IMPORT `pti268-conditions`
+
+-- Part II, the scope of cover (II. PHẠM VI BẢO HIỂM), lines 364-444 of the source:
+-- A, the main benefits 1 to 4; B, the optional benefits 5 to 7. Benefit 7 is the Annex
+-- (pti268-annex-transport.l4).
+-- For each benefit: which events and outcomes it answers (layer 1), and how much it pays
+-- (layer 2). Whether the claim as a whole is covered — eligibility, period, waiting
+-- periods, exclusions — is put together in pti268-decision.l4.
+--
+-- LIMITS. Every sum insured and limit is the schedule's (`The limits in the schedule`).
+-- Fork F27: a benefit's limit is an aggregate for the period, so the claim carries what has
+-- already been paid under the benefit, and the payment is what remains, at most.
+
+§ `Part II — Scope of cover`
+
+§§ `Which benefits the schedule offers`
+
+-- Benefit 5 may be taken only with accident cover and/or inpatient cover for illness;
+-- Benefit 6 only with Benefit 4.
+-- src:411 | (Quyền lợi này chỉ được tham gia khi tham gia bảo hiểm tai nạn và/hoặc điều trị nội trú do
+-- src:412 | ốm đau bệnh tật)
+-- src:430 | ( Quyền lợi này chỉ được tham gia khi đã tham gia Quyền lợi 4)
+-- Fork F38: "bảo hiểm tai nạn" (accident insurance) is Benefit 1 or Benefit 2; inpatient
+-- cover for illness is Benefit 4.
+GIVEN claim IS A `A claim`
+GIVETH A BOOLEAN
+DECIDE `the benefit claimed is in the schedule, with what it requires, in` claim IF
+        elem b `the benefits`
+    AND (    (NOT b EQUALS `Benefit 5`)
+         OR  elem `Benefit 1` `the benefits`
+         OR  elem `Benefit 2` `the benefits`
+         OR  elem `Benefit 4` `the benefits`)
+    AND ((NOT b EQUALS `Benefit 6`) OR elem `Benefit 4` `the benefits`)
+    WHERE
+        b              MEANS claim's `the benefit claimed`
+        `the benefits` MEANS claim's `the contract`'s `benefits in the schedule`
+
+§§ `What kind of event each benefit answers`
+
+GIVEN claim IS A `A claim`
+GIVETH A BOOLEAN
+DECIDE `an accident under the contract in` claim IF
+    `counts as an accident under` (claim's `the contract`) (claim's `the event`)
+
+GIVEN claim IS A `A claim`
+GIVETH A BOOLEAN
+DECIDE `an illness or maternity in` claim IF
+        `an illness for the 30-day wait in` claim
+    OR  `maternity` (claim's `the event`'s `kind`)
+
+GIVEN o IS AN `An outcome`
+GIVETH A BOOLEAN
+DECIDE `death or permanent injury` o IF
+    CONSIDER o
+    WHEN `death` h                    THEN TRUE
+    WHEN `total permanent injury` r l THEN TRUE
+    WHEN `partial permanent injury` i THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN o IS AN `An outcome`
+GIVETH A BOOLEAN
+DECIDE `medical expenses in` o IF
+    CONSIDER o
+    WHEN `medical expenses` t items THEN TRUE
+    OTHERWISE FALSE
+
+-- Benefit 1: death or permanent injury from an accident, or (VI.11) a disappearance deemed
+-- a death.
+-- src:367 | Quyền lợi 1 - Tử vong hoặc thương tật vĩnh viễn do tai nạn
+-- src:368 | - Trường hợp Tử vong hoặc thương tật toàn bộ vĩnh viễn thuộc phạm vi bảo hiểm: Bồi
+-- src:369 | thường 100% Số tiền bảo hiểm.
+-- src:370 | - Trường hợp thương tật bộ phận vĩnh viễn thuộc phạm vi bảo hiểm: Bồi thường theo
+-- src:371 | “Bảng tỷ lệ thương tật” ghi trong Qui tắc bảo hiểm.
+-- Benefit 2: medical expenses from an accident.
+-- src:372 | Quyền lợi 2 – Chi phí y tế do tai nạn
+-- src:373 | PTI chi trả các chi phí cấp cứu, phẫu thuật, nằm viện, thuốc, vật tư tiêu hao, vật tư thay thế
+-- src:374 | nhằm duy trì sự sống, xét nghiệm, siêu âm, chụp X-quang & chụp cắt lớp để điều trị thương
+-- src:375 | tật do tai nạn theo giới hạn đã lựa chọn.
+-- Benefit 3: death or permanent disability from illness or maternity, paid only on a clear
+-- conclusion of a medical authority on the pathology, where the illness is the direct cause
+-- and no exclusion applies.
+-- src:381 | Quyền lợi 3 – Tử vong, tàn tật vĩnh viễn do ốm đau, bệnh tật, thai sản
+-- src:382 | - Trường hợp Tử vong hoặc tàn tật toàn bộ vĩnh viễn do các nguyên nhân ốm bệnh, thai sản
+-- src:383 | thuộc phạm vi bảo hiểm: Bồi thường 100% Số tiền bảo hiểm.
+-- src:384 | - Trường hợp tàn tật bộ phận vĩnh viễn thuộc phạm vi bảo hiểm: Bồi thường theo “Bảng tỷ
+-- src:385 | lệ thương tật” ghi trong Qui tắc bảo hiểm.
+-- src:386 | PTI chỉ thanh toán quyền lợi này khi NĐBH bị tử vong, thương tật vĩnh viễn do ốm đau,
+-- src:387 | bệnh tật, thai sản có kết luận rõ ràng về tình trạng bệnh lý của cơ quan y tế và ốm đau, bệnh
+-- src:388 | tật, thai sản đó là nguyên nhân trực tiếp dẫn đến NĐBH tử vong hoặc thương tật vĩnh viễn
+-- src:389 | và không thuộc các điểm loại trừ quy định trong Đơn bảo hiểm.
+-- Benefit 4: hospital and surgery costs for illness and maternity care.
+-- src:390 | Quyền lợi 4 - Chi phí nằm viện và phẫu thuật do ốm đau, bệnh tật, thai sản
+-- src:391 | Trường hợp thuộc phạm vi bảo hiểm PTI chi trả các chi phí cấp cứu, phẫu thuật, nằm viện,
+-- src:392 | thuốc, xét nghiệm, siêu âm, chụp phim (X-quang & chụp cắt lớp) để chẩn đoán, điều trị
+-- src:393 | bệnh & chăm sóc thai sản theo giới hạn đã lựa chọn.
+-- Benefit 5: a daily allowance while treating an accidental injury, or while in hospital
+-- for illness; not for maternity.
+-- src:413 | - Trong trường hợp tai nạn: Chi trả trợ cấp theo ngày trong thời gian điều trị thương tật (nội
+-- src:414 | trú, ngoại trú & thời gian nghỉ dưỡng thương theo chỉ định của bác sỹ) nhưng không vượt
+-- src:415 | quá thời gian đã lựa chọn được ghi trên Hợp đồng bảo hiểm và/hoặc Sửa đổi bổ sung.
+-- src:416 | - Trong trường hợp ốm bệnh: Chi trả trợ cấp theo ngày trong thời gian điều trị nội trú (nằm
+-- src:417 | viện), nhưng không vượt quá thời gian đã lựa chọn được ghi trên Hợp đồng và/ hoặc Sửa
+-- src:418 | đổi bổ sung.
+-- src:419 | - Không áp dụng Quyền lợi này cho các trường hợp thai sản.
+-- Benefit 6: outpatient treatment of illness. Fork F37: VI.12's prenatal checks are
+-- answered here, as outpatient services; VI.12 itself names no benefit.
+-- src:431 | 1. Tiền khám bệnh, tiền chụp X-quang, chụp cắt lớp, siêu âm và làm các xét nghiệm do bác
+-- src:432 | sỹ chỉ định để chẩn đoán bệnh, tiền thuốc theo kê đơn của bác sỹ (hoá đơn tiền thuốc phải
+-- src:433 | thể hiện đúng số lượng thuốc, số ngày sử dụng thuốc và tiền thuốc cho một đơn thuốc chỉ
+-- src:434 | được bồi thường một lần).
+-- src:435 | 2. Dụng cụ y tế cần thiết cho việc điều trị gãy chi, thương tật (như băng nẹp, bó bột), dụng
+-- src:436 | cụ hỗ trợ đi lại do bác sỹ chỉ định.
+-- src:437 | 3. Việc trị liệu học bức xạ, liệu pháp dùng sức nóng, liệu pháp ánh sáng và các phương pháp
+-- src:438 | điều trị tương tự khác do bác sỹ chỉ định.
+-- Benefit 7: emergency medical transport within Vietnam (the Annex).
+-- src:442 | Quyền lợi 7 - Vận chuyển y tế cấp cứu trong lãnh thổ Việt Nam
+-- src:443 | (Quyền lợi này độc lập với dịch vụ xe cứu thương trong Quyền lợi 4 - Xin xem chi tiết
+-- src:444 | trong phụ lục trang 32)
+GIVEN claim IS A `A claim`
+GIVETH A BOOLEAN
+DECIDE `the benefit claimed answers the event and outcome in` claim IF
+    CONSIDER claim's `the benefit claimed`
+    WHEN `Benefit 1` THEN
+            `an accident under the contract in` claim
+        AND (   `death or permanent injury` (claim's `the outcome`)
+             OR `a death deemed by VI.11` (claim's `the contract`) (claim's `the outcome`))
+    WHEN `Benefit 2` THEN
+            `an accident under the contract in` claim
+        AND `medical expenses in` (claim's `the outcome`)
+    WHEN `Benefit 3` THEN
+            `an illness or maternity in` claim
+        AND `death or permanent injury` (claim's `the outcome`)
+        AND claim's `the event`'s `a clear conclusion of a medical authority on the pathology`
+        AND claim's `the event`'s `the direct cause of the death or disability`
+    WHEN `Benefit 4` THEN
+            `an illness or maternity in` claim
+        AND `medical expenses in` (claim's `the outcome`)
+    WHEN `Benefit 5` THEN
+            (`an accident under the contract in` claim OR `an illness for the 30-day wait in` claim)
+        AND NOT `maternity` (claim's `the event`'s `kind`)
+        AND `a daily allowance in` (claim's `the outcome`)
+    WHEN `Benefit 6` THEN
+            (    `an illness for the 30-day wait in` claim
+             OR  (    claim's `the event`'s `kind` EQUALS `a pregnancy, for routine prenatal care`
+                  AND `VI.12 covers routine prenatal checks under` (claim's `the contract`)))
+        AND `medical expenses in` (claim's `the outcome`)
+        AND `outpatient in` (claim's `the outcome`)
+    WHEN `Benefit 7` THEN
+            (`an accident under the contract in` claim OR `an illness for the 30-day wait in` claim)
+        AND `emergency transport in` (claim's `the outcome`)
+    WHERE
+        `a daily allowance in` o MEANS
+            CONSIDER o
+            WHEN `daily allowance` d THEN TRUE
+            OTHERWISE FALSE
+        `outpatient in` o MEANS
+            CONSIDER o
+            WHEN `medical expenses` t items THEN t's `setting` EQUALS `outpatient treatment`
+            OTHERWISE FALSE
+        `emergency transport in` o MEANS
+            CONSIDER o
+            WHEN `emergency transport` t THEN TRUE
+            OTHERWISE FALSE
+
+§§ `Benefits 1 and 3: death and permanent injury`
+
+-- Death or total permanent injury: 100% of the sum insured. Partial permanent injury: by
+-- the table (pti268-injury-table.l4). Benefit 1 also pays a disappearance that VI.11 deems a
+-- death.
+-- src:368 | - Trường hợp Tử vong hoặc thương tật toàn bộ vĩnh viễn thuộc phạm vi bảo hiểm: Bồi
+-- src:369 | thường 100% Số tiền bảo hiểm.
+-- src:370 | - Trường hợp thương tật bộ phận vĩnh viễn thuộc phạm vi bảo hiểm: Bồi thường theo
+-- src:371 | “Bảng tỷ lệ thương tật” ghi trong Qui tắc bảo hiểm.
+-- src:382 | - Trường hợp Tử vong hoặc tàn tật toàn bộ vĩnh viễn do các nguyên nhân ốm bệnh, thai sản
+-- src:383 | thuộc phạm vi bảo hiểm: Bồi thường 100% Số tiền bảo hiểm.
+-- src:384 | - Trường hợp tàn tật bộ phận vĩnh viễn thuộc phạm vi bảo hiểm: Bồi thường theo “Bảng tỷ
+-- src:385 | lệ thương tật” ghi trong Qui tắc bảo hiểm.
+GIVEN `the sum insured` IS A NUMBER
+      `the contract`    IS A `The contract`
+      o                 IS AN `An outcome`
+GIVETH A NUMBER
+`the amount for death or permanent injury on` `the sum insured` `under` `the contract` `for` o MEANS
+    CONSIDER o
+    WHEN `death` h                       THEN `the sum insured`
+    WHEN `total permanent injury` r l    THEN
+        IF `counts as total permanent injury` o THEN `the sum insured` ELSE 0
+    WHEN `partial permanent injury` injuries THEN
+        `the amount under the table on` `the sum insured` `for` injuries
+    WHEN `disappearance` declared concluded THEN
+        IF `a death deemed by VI.11` `the contract` o THEN `the sum insured` ELSE 0
+    OTHERWISE 0
+
+GIVEN claim IS A `A claim`
+GIVETH A NUMBER
+`the amount Benefit 1 pays in` claim MEANS
+    `the amount for death or permanent injury on` (claim's `the contract`'s `limits`'s `sum insured under Benefit 1`)
+        `under` (claim's `the contract`) `for` (claim's `the outcome`)
+
+-- Benefit 3 adds def 65's funeral allowance where the insured dies in hospital of a
+-- covered illness (pti268-definitions.l4).
+GIVEN claim IS A `A claim`
+GIVETH A NUMBER
+`the amount Benefit 3 pays in` claim MEANS
+        `the amount for death or permanent injury on` (claim's `the contract`'s `limits`'s `sum insured under Benefit 3`)
+            `under` (claim's `the contract`) `for` (claim's `the outcome`)
+    PLUS `the funeral allowance under definition 65` (claim's `the contract`'s `limits`) (claim's `the outcome`) (claim's `the event`)
+
+§§ `Heads of expense that Part II does not grant`
+
+-- Def 13 (newborn care), 14 (emergency taxi), 22 (ambulance service) and 69 (home care
+-- nurse) define what they are, and def 69 even limits the days, but no clause of Part II
+-- grants them (finding X7). Benefit 7 itself says it is "independent of the ambulance service
+-- in Benefit 4", which Benefit 4 does not mention. Whether a contract grants them is in its
+-- schedule, which is not in the sources; such an item is declined.
+GIVETH A NUMBER
+`Part II grants no benefit for this head of expense, and the schedule is not in the sources` MEANS
+    REFUSE "Part II grants no benefit for this head of expense, and the schedule is not in the sources"
+
+GIVETH A NUMBER
+`VI.12 names no benefit or limit for prenatal checks` MEANS
+    REFUSE "VI.12 names no benefit or limit for prenatal checks"
+
+§§ `Items paid within a hospital stay, and before and after it`
+
+-- Def 15: hospital costs are room, surgery and the other related medical costs during the
+-- stay; def 28 (tests within 30 days before admission) and def 26 (treatment within 45 days
+-- after discharge). Fork F39: tests before admission and treatment after discharge are paid
+-- under the benefit that pays the stay, as Part VII's claim documents (I.2 and I.4) presume.
+-- src:105 | 15. Chi phí nằm viện
+-- src:106 | Bao gồm chi phí tiền phòng, tiền phẫu thuật và các chí phí y tế liên quan khác phát sinh
+-- src:107 | trong khi điều trị tại bệnh viện.
+GIVEN t    IS A `A course of treatment`
+GIVETH A BOOLEAN
+DECIDE `a stay in hospital` t IF
+        `counts as a hospital stay` t
+    AND NOT t's `setting` EQUALS `outpatient treatment`
+
+GIVEN item IS AN `An item of expense`
+      t    IS A `A course of treatment`
+GIVETH A NUMBER
+`the amount allowed for` item `before or after the stay` t MEANS
+    CONSIDER item's `head`
+    WHEN `tests in the 30 days before admission` THEN
+        IF       `a stay in hospital` t
+             AND `within the 30 days before admission` (t's `first day`) (item's `date incurred`)
+        THEN item's `amount`
+        ELSE 0
+    WHEN `treatment in the 45 days after discharge` THEN
+        IF       `a stay in hospital` t
+             AND `within the 45 days after discharge` (t's `last day`) (item's `date incurred`)
+        THEN item's `amount`
+        ELSE 0
+    OTHERWISE 0
+
+-- Def 16: room and board within the contract's limit per day, for the days of the stay.
+-- src:113 | 16. Chi phí Phòng bệnh hay Buồng bệnh
+-- src:114 | Là các chi phí Người được bảo hiểm phải trả cho Bệnh viện trong thời gian lưu trú tại Bệnh
+-- src:115 | viện. Chi phí này sẽ được thanh toán không vượt quá giới hạn quy định trong hợp đồng bảo
+-- src:116 | hiểm. Đồng thời tổng số tiền Người được bảo hiểm được chi trả không vượt quá tổn hạn
+-- src:117 | mức trách nhiệm được quy định trong hợp đồng bảo hiểm.
+GIVEN claim       IS A `A claim`
+      `the amount` IS A NUMBER
+      days        IS A NUMBER
+GIVETH A NUMBER
+`the room and board allowed under` claim `for` `the amount` `over` days MEANS
+    CONSIDER claim's `the contract`'s `limits`'s `room and board limit per day`
+    WHEN JUST perday THEN min `the amount` (perday TIMES days)
+    WHEN NOTHING     THEN `the amount`
+
+§§ `Benefit 2: medical expenses from an accident`
+
+-- Emergency care, surgery, hospital stay, medicine, consumables, replacement materials that
+-- sustain life, tests, ultrasound, X-ray and CT, to treat the accidental injury, up to the
+-- limit chosen. Also crowns and false teeth of ordinary (not precious) material, and other
+-- prostheses: at most 10% of Benefit 2's sum insured for the dental costs, and 10% for the
+-- other prostheses.
+-- src:373 | PTI chi trả các chi phí cấp cứu, phẫu thuật, nằm viện, thuốc, vật tư tiêu hao, vật tư thay thế
+-- src:374 | nhằm duy trì sự sống, xét nghiệm, siêu âm, chụp X-quang & chụp cắt lớp để điều trị thương
+-- src:375 | tật do tai nạn theo giới hạn đã lựa chọn.
+-- src:376 | PTI chi trả chi phí (chi phí mua & chi phí y tế) bọc mão sứ (bọc răng sứ), trồng răng giả
+-- src:377 | bằng chất liệu thông thường (không bằng chất liệu quí như kim cương, vàng, bạc, titan,
+-- src:378 | đồng) & bộ phận giả khác. Giới hạn tối đa không quá 10% số tiền được bảo hiểm của
+-- src:379 | Quyền lợi 2 này cho chi phí điều trị răng nói trên và 10% cho chi phí liên quan đến bộ phận
+-- src:380 | giả khác.
+-- Fork F40: the list is closed. Outside a hospital stay, a head it does not name (a
+-- consultation fee, a walking aid) is not paid (finding X24); inside a stay, def 15 makes
+-- every related medical cost a hospital cost.
+GIVEN item IS AN `An item of expense`
+      t    IS A `A course of treatment`
+      claim IS A `A claim`
+GIVETH A NUMBER
+`the amount Benefit 2 allows for` item `in` t `under` claim MEANS
+    CONSIDER item's `head`
+    WHEN `emergency care`                                THEN a
+    WHEN `surgery`                                       THEN a
+    WHEN `a therapeutic procedure`                       THEN a
+    WHEN `a diagnostic procedure`                        THEN a
+    WHEN `an organ transplant`                           THEN a
+    WHEN `obtaining the organ, or the donor's costs`     THEN 0
+    WHEN `room and board` days                           THEN IF `a stay in hospital` t THEN `the room and board allowed under` claim `for` a `over` days ELSE 0
+    WHEN `medicine`                                      THEN a
+    WHEN `vitamins and tonics` m u                       THEN `the vitamins payable on` (item's `head`) `for` a
+    WHEN `consumables`                                   THEN a
+    WHEN `replacement materials that sustain life`       THEN a
+    WHEN `a prosthesis implanted to sustain life`        THEN a
+    WHEN `tests, ultrasound, X-ray and CT scans`         THEN a
+    WHEN `dental crowns or false teeth of ordinary material` THEN a
+    WHEN `dental crowns or false teeth of precious material` THEN 0
+    WHEN `another prosthesis`                            THEN a
+    WHEN `a consultation`                                THEN IF `a stay in hospital` t THEN a ELSE 0
+    WHEN `medical devices for a fracture or an injury, or a walking aid` THEN IF `a stay in hospital` t THEN a ELSE 0
+    WHEN `radiation, heat or light therapy`              THEN IF `a stay in hospital` t THEN a ELSE 0
+    WHEN `dental treatment` d                            THEN IF `a stay in hospital` t THEN a ELSE 0
+    WHEN `traditional medicine`                          THEN IF `traditional medicine VI.3 covers` item `in` t `under` (claim's `the contract`) THEN a ELSE 0
+    WHEN `a prenatal check-up or ultrasound`             THEN `VI.12 names no benefit or limit for prenatal checks`
+    WHEN `a urine test or blood count in pregnancy`      THEN `VI.12 names no benefit or limit for prenatal checks`
+    WHEN `tests in the 30 days before admission`         THEN `the amount allowed for` item `before or after the stay` t
+    WHEN `treatment in the 45 days after discharge`      THEN `the amount allowed for` item `before or after the stay` t
+    OTHERWISE `Part II grants no benefit for this head of expense, and the schedule is not in the sources`
+    WHERE
+        a MEANS item's `amount`
+
+GIVEN h IS A `A head of expense`
+GIVETH A BOOLEAN
+DECIDE `a dental head of Benefit 2` h IF
+    h EQUALS `dental crowns or false teeth of ordinary material`
+
+GIVEN h IS A `A head of expense`
+GIVETH A BOOLEAN
+DECIDE `another prosthesis head of Benefit 2` h IF
+    h EQUALS `another prosthesis`
+
+GIVEN h IS A `A head of expense`
+GIVETH A BOOLEAN
+DECIDE `a traditional medicine head` h IF
+    h EQUALS `traditional medicine`
+
+GIVEN claim IS A `A claim`
+      `the limit` IS A NUMBER
+GIVETH A NUMBER
+`what remains of the limit in` claim `of` `the limit` MEANS
+    max 0 (`the limit` MINUS claim's `paid already under this benefit in the period`)
+
+-- What the items come to after the sub-limits, before other insurance (III.11) and before
+-- the benefit's own limit; `the medical costs Benefit 2 pays in` applies those two.
+GIVEN claim IS A `A claim`
+GIVETH A NUMBER
+`the medical costs Benefit 2 allows in` claim MEANS
+    CONSIDER claim's `the outcome`
+    WHEN `medical expenses` t items THEN
+             `the sum allowed for` (filter (GIVEN i YIELD `ordinary` i) items) t
+        PLUS min (10% TIMES `the limit`) (`the sum allowed for` (filter (GIVEN i YIELD `a dental head of Benefit 2` (i's `head`)) items) t)
+        PLUS min (10% TIMES `the limit`) (`the sum allowed for` (filter (GIVEN i YIELD `another prosthesis head of Benefit 2` (i's `head`)) items) t)
+        PLUS min (`the traditional medicine cap under` (claim's `the contract`))
+                 (`the sum allowed for` (filter (GIVEN i YIELD `a traditional medicine head` (i's `head`)) items) t)
+    OTHERWISE 0
+    WHERE
+        `the limit` MEANS claim's `the contract`'s `limits`'s `limit of Benefit 2`
+        `ordinary` i MEANS
+                NOT `a dental head of Benefit 2` (i's `head`)
+            AND NOT `another prosthesis head of Benefit 2` (i's `head`)
+            AND NOT `a traditional medicine head` (i's `head`)
+        `the sum allowed for` xs t MEANS
+            sum (map (GIVEN i YIELD `the amount Benefit 2 allows for` i `in` t `under` claim) xs)
+
+§§ `Benefit 4: hospital and surgery for illness and maternity`
+
+-- Emergency care, surgery, hospital stay, medicine, tests, ultrasound and imaging, to
+-- diagnose and treat illness and for maternity care, up to the limit chosen. Surgery costs
+-- cover an inpatient, day or outpatient operation: medicine used in it, consumables,
+-- equipment, the theatre, the surgeon, anaesthesia, the usual pre-operative diagnosis and
+-- post-operative recovery, re-operation, implanted prostheses that sustain life, and organ
+-- transplants; but not procedures to diagnose a condition (gastroscopy, biopsy). A
+-- therapeutic procedure is paid up to 50% of the surgery limit, within the surgery costs.
+-- src:391 | Trường hợp thuộc phạm vi bảo hiểm PTI chi trả các chi phí cấp cứu, phẫu thuật, nằm viện,
+-- src:392 | thuốc, xét nghiệm, siêu âm, chụp phim (X-quang & chụp cắt lớp) để chẩn đoán, điều trị
+-- src:393 | bệnh & chăm sóc thai sản theo giới hạn đã lựa chọn.
+-- src:394 | Chi phí phẫu thuật: PTI chi trả các chi phí y tế liên quan đến một ca phẫu thuật nội trú,
+-- src:395 | phẫu thuật trong ngày hoặc phẫu thuật ngoại trú, bao gồm chi phí thuốc dùng trong phẫu
+-- src:396 | thuật, vật tư tiêu hao, các thiết bị cần thiết cho phẫu thuật; chi phí phòng mổ, phẫu thuật
+-- src:397 | viên, các chi phí gây mê và các chi phí thông thường cho các chẩn đoán trước khi mổ và hồi
+-- src:398 | sức sau khi mổ, chi phí tái mổ, các bộ phận giả được cấy ghép vào cơ thể nhằm duy trì sự
+-- src:399 | sống, chi phí cấy ghép nội tạng. Chi phí phẫu thuât không bao gồm các thủ thuật chẩn đoán
+-- src:400 | tình trạng y tế (ví dụ: nội soi dạ dày chuẩn đoán, sinh thiết).
+-- src:401 | Đối với thủ thuật điều trị, PTI thanh toán tối đa 50% giới hạn phần phẫu thuật và bao gồm
+-- src:402 | trong chi phí phẫu thuật.
+-- Forks: F41 (a diagnostic procedure, being no surgery cost, is paid as a test); F42
+-- (consumables and replacement materials count as surgery costs under Benefit 4, which lists
+-- them only there); outside a stay, Benefit 4 pays only for an operation and emergency care,
+-- the rest of outpatient care being Benefit 6.
+GIVEN h IS A `A head of expense`
+GIVETH A BOOLEAN
+DECIDE `a surgery head of Benefit 4` h IF
+        h EQUALS `surgery`
+    OR  h EQUALS `an organ transplant`
+    OR  h EQUALS `a prosthesis implanted to sustain life`
+    OR  h EQUALS `consumables`
+    OR  h EQUALS `replacement materials that sustain life`
+
+GIVEN item  IS AN `An item of expense`
+      t     IS A `A course of treatment`
+      claim IS A `A claim`
+GIVETH A NUMBER
+`the amount Benefit 4 allows for` item `in` t `under` claim MEANS
+    CONSIDER item's `head`
+    WHEN `emergency care`                                THEN a
+    WHEN `surgery`                                       THEN a
+    WHEN `a therapeutic procedure`                       THEN a
+    WHEN `an organ transplant`                           THEN a
+    WHEN `a prosthesis implanted to sustain life`        THEN a
+    WHEN `consumables`                                   THEN a
+    WHEN `replacement materials that sustain life`       THEN a
+    WHEN `obtaining the organ, or the donor's costs`     THEN 0
+    WHEN `a diagnostic procedure`                        THEN `in a stay` a
+    WHEN `room and board` days                           THEN `in a stay` (`the room and board allowed under` claim `for` a `over` days)
+    WHEN `medicine`                                      THEN `in a stay` a
+    WHEN `vitamins and tonics` m u                       THEN `in a stay` (`the vitamins payable on` (item's `head`) `for` a)
+    WHEN `tests, ultrasound, X-ray and CT scans`         THEN `in a stay` a
+    WHEN `dental crowns or false teeth of ordinary material` THEN 0
+    WHEN `dental crowns or false teeth of precious material` THEN 0
+    WHEN `another prosthesis`                            THEN 0
+    WHEN `a consultation`                                THEN `in a stay` a
+    WHEN `medical devices for a fracture or an injury, or a walking aid` THEN `in a stay` a
+    WHEN `radiation, heat or light therapy`              THEN `in a stay` a
+    WHEN `dental treatment` d                            THEN `in a stay` a
+    WHEN `traditional medicine`                          THEN IF `traditional medicine VI.3 covers` item `in` t `under` (claim's `the contract`) THEN a ELSE 0
+    WHEN `a prenatal check-up or ultrasound`             THEN `VI.12 names no benefit or limit for prenatal checks`
+    WHEN `a urine test or blood count in pregnancy`      THEN `VI.12 names no benefit or limit for prenatal checks`
+    WHEN `tests in the 30 days before admission`         THEN `the amount allowed for` item `before or after the stay` t
+    WHEN `treatment in the 45 days after discharge`      THEN `the amount allowed for` item `before or after the stay` t
+    OTHERWISE `Part II grants no benefit for this head of expense, and the schedule is not in the sources`
+    WHERE
+        a MEANS item's `amount`
+        `in a stay` x MEANS IF `a stay in hospital` t THEN x ELSE 0
+
+GIVEN claim IS A `A claim`
+GIVETH A NUMBER
+`the medical costs Benefit 4 allows in` claim MEANS
+    CONSIDER claim's `the outcome`
+    WHEN `medical expenses` t items THEN
+             `the sum allowed for` (filter `ordinary` items) t
+        PLUS min (`the limits`'s `surgery limit within Benefit 4`)
+                 (    `the sum allowed for` (filter (GIVEN i YIELD `a surgery head of Benefit 4` (i's `head`)) items) t
+                  PLUS min (50% TIMES `the limits`'s `surgery limit within Benefit 4`)
+                           (`the sum allowed for` (filter (GIVEN i YIELD i's `head` EQUALS `a therapeutic procedure`) items) t))
+        PLUS min (`the traditional medicine cap under` (claim's `the contract`))
+                 (`the sum allowed for` (filter (GIVEN i YIELD `a traditional medicine head` (i's `head`)) items) t)
+    OTHERWISE 0
+    WHERE
+        `the limits` MEANS claim's `the contract`'s `limits`
+        `ordinary` i MEANS
+                NOT `a surgery head of Benefit 4` (i's `head`)
+            AND NOT i's `head` EQUALS `a therapeutic procedure`
+            AND NOT `a traditional medicine head` (i's `head`)
+        `the sum allowed for` xs t MEANS
+            sum (map (GIVEN i YIELD `the amount Benefit 4 allows for` i `in` t `under` claim) xs)
+
+§§ `Benefit 5: daily allowance`
+
+-- For an accident: each day of treating the injury (inpatient, outpatient, and convalescence
+-- on a doctor's indication); for illness: each day as an inpatient; in either case no more
+-- than the days chosen in the contract. Actual days off, on a doctor's indication and
+-- confirmed by HR, Saturdays, Sundays and holidays included. Per person per day: the
+-- notified monthly salary / 30, or the fixed daily allowance in the contract, times the
+-- actual days off.
+-- src:413 | - Trong trường hợp tai nạn: Chi trả trợ cấp theo ngày trong thời gian điều trị thương tật (nội
+-- src:414 | trú, ngoại trú & thời gian nghỉ dưỡng thương theo chỉ định của bác sỹ) nhưng không vượt
+-- src:415 | quá thời gian đã lựa chọn được ghi trên Hợp đồng bảo hiểm và/hoặc Sửa đổi bổ sung.
+-- src:416 | - Trong trường hợp ốm bệnh: Chi trả trợ cấp theo ngày trong thời gian điều trị nội trú (nằm
+-- src:417 | viện), nhưng không vượt quá thời gian đã lựa chọn được ghi trên Hợp đồng và/ hoặc Sửa
+-- src:418 | đổi bổ sung.
+-- src:420 | Bồi thường theo quyền lợi này được tính theo ngày dựa trên cơ sở số ngày nghỉ thực tế. Số
+-- src:421 | ngày nghỉ phải theo chỉ định của bác sỹ và xác nhận của bộ phận Nhân sự.
+-- src:422 | Số tiền bồi thường /người /ngày (bao gồm cả ngày thứ bảy, chủ nhật, và ngày lễ) sẽ được
+-- src:423 | tính như sau:
+-- src:424 | Lương tháng đã thông báo của người được bảo hiểm /30 ngày X số ngày nghỉ thực tế
+-- src:425 | Hoặc
+-- src:426 | Trợ cấp cố định theo ngày ghi trên hợp đồng bảo hiểm x số ngày nghỉ thực tế
+-- Fork F43: the days chosen cap each claim (each accident or illness).
+GIVETH A NUMBER
+`the notified monthly salary is not in the claim` MEANS
+    REFUSE "the notified monthly salary is not in the claim"
+
+GIVEN claim IS A `A claim`
+GIVETH A NUMBER
+`the days Benefit 5 counts in` claim MEANS
+    CONSIDER claim's `the outcome`
+    WHEN `daily allowance` d THEN
+        min (claim's `the contract`'s `limits`'s `days of allowance chosen`)
+            (IF   `an accident under the contract in` claim
+             THEN d's `days off on a doctor's indication, confirmed by HR`
+             ELSE d's `of which days as an inpatient`)
+    OTHERWISE 0
+
+GIVEN claim IS A `A claim`
+GIVETH A NUMBER
+`the amount Benefit 5 pays in` claim MEANS
+    CONSIDER claim's `the contract`'s `limits`'s `basis of the daily allowance`
+    WHEN `the notified monthly salary` THEN
+        CONSIDER claim's `the insured person`'s `monthly salary notified`
+        WHEN JUST salary THEN salary DIVIDED BY 30 TIMES `the days Benefit 5 counts in` claim
+        WHEN NOTHING     THEN `the notified monthly salary is not in the claim`
+    WHEN `a fixed daily allowance` perday THEN perday TIMES `the days Benefit 5 counts in` claim
+
+§§ `Benefit 6: outpatient treatment of illness`
+
+-- 1. Examination, X-ray, CT, ultrasound and tests a doctor orders to diagnose, and medicine
+-- on a doctor's prescription (each prescription paid once); 2. medical devices needed to
+-- treat a fracture or an injury, and walking aids, on a doctor's indication; 3. radiation,
+-- heat, light and similar therapy on a doctor's indication; 4. dental treatment of
+-- gingivitis, fillings of diseased teeth, root canal treatment and extraction of diseased
+-- teeth, extraction and surgery of diseased wisdom teeth, and scaling.
+-- src:431 | 1. Tiền khám bệnh, tiền chụp X-quang, chụp cắt lớp, siêu âm và làm các xét nghiệm do bác
+-- src:432 | sỹ chỉ định để chẩn đoán bệnh, tiền thuốc theo kê đơn của bác sỹ (hoá đơn tiền thuốc phải
+-- src:433 | thể hiện đúng số lượng thuốc, số ngày sử dụng thuốc và tiền thuốc cho một đơn thuốc chỉ
+-- src:434 | được bồi thường một lần).
+-- src:435 | 2. Dụng cụ y tế cần thiết cho việc điều trị gãy chi, thương tật (như băng nẹp, bó bột), dụng
+-- src:436 | cụ hỗ trợ đi lại do bác sỹ chỉ định.
+-- src:437 | 3. Việc trị liệu học bức xạ, liệu pháp dùng sức nóng, liệu pháp ánh sáng và các phương pháp
+-- src:438 | điều trị tương tự khác do bác sỹ chỉ định.
+-- src:439 | 4. Điều trị răng cho các trường hợp: điều trị viêm lợi (nướu), hàn (trám) răng bệnh lý (bằng
+-- src:440 | amalgam, composite, fuji, gic hoặc các chất trám tương tự khác), điều trị tuỷ răng và nhổ
+-- src:441 | răng bệnh lý, nhổ & phẫu thuật răng khôn bệnh lý, lấy cao răng (cạo vôi răng).
+GIVEN d IS A `A dental treatment`
+GIVETH A BOOLEAN
+DECIDE `a dental treatment Benefit 6 lists` d IF
+    NOT d EQUALS `another dental treatment`
+
+GIVEN item  IS AN `An item of expense`
+      t     IS A `A course of treatment`
+      claim IS A `A claim`
+GIVETH A NUMBER
+`the amount Benefit 6 allows for` item `in` t `under` claim MEANS
+    CONSIDER item's `head`
+    WHEN `a consultation`                                THEN a
+    WHEN `tests, ultrasound, X-ray and CT scans`         THEN a
+    WHEN `a diagnostic procedure`                        THEN a
+    WHEN `medicine`                                      THEN a
+    WHEN `vitamins and tonics` m u                       THEN `the vitamins payable on` (item's `head`) `for` a
+    WHEN `medical devices for a fracture or an injury, or a walking aid` THEN a
+    WHEN `radiation, heat or light therapy`              THEN a
+    WHEN `dental treatment` d                            THEN IF `a dental treatment Benefit 6 lists` d THEN a ELSE 0
+    WHEN `traditional medicine`                          THEN IF `traditional medicine VI.3 covers` item `in` t `under` (claim's `the contract`) THEN a ELSE 0
+    WHEN `a prenatal check-up or ultrasound`             THEN `VI.12 names no benefit or limit for prenatal checks`
+    WHEN `a urine test or blood count in pregnancy`      THEN `VI.12 names no benefit or limit for prenatal checks`
+    WHEN `an emergency taxi`                             THEN `Part II grants no benefit for this head of expense, and the schedule is not in the sources`
+    WHEN `an ambulance`                                  THEN `Part II grants no benefit for this head of expense, and the schedule is not in the sources`
+    WHEN `a home care nurse` days                        THEN `Part II grants no benefit for this head of expense, and the schedule is not in the sources`
+    WHEN `newborn care`                                  THEN `Part II grants no benefit for this head of expense, and the schedule is not in the sources`
+    OTHERWISE 0
+    WHERE
+        a MEANS item's `amount`
+
+GIVEN claim IS A `A claim`
+GIVETH A NUMBER
+`the medical costs Benefit 6 allows in` claim MEANS
+    CONSIDER claim's `the outcome`
+    WHEN `medical expenses` t items THEN
+             `the sum allowed for` (filter (GIVEN i YIELD NOT `a traditional medicine head` (i's `head`)) items) t
+        PLUS min (`the traditional medicine cap under` (claim's `the contract`))
+                 (`the sum allowed for` (filter (GIVEN i YIELD `a traditional medicine head` (i's `head`)) items) t)
+    OTHERWISE 0
+    WHERE
+        `the sum allowed for` xs t MEANS
+            sum (map (GIVEN i YIELD `the amount Benefit 6 allows for` i `in` t `under` claim) xs)
+
+§§ `Benefits 2, 4 and 6: other insurance, then the limit`
+
+-- III.11 (other insurance) works on the medical costs; the benefit's limit, less what has
+-- been paid already in the period, then caps what is left.
+GIVEN claim       IS A `A claim`
+      `the costs` IS A NUMBER
+      `the limit` IS A NUMBER
+GIVETH A NUMBER
+`what is paid in` claim `of costs` `the costs` `within a limit of` `the limit` MEANS
+    min (`what remains of the limit in` claim `of` `the limit`)
+        (`what III.11 leaves PTI to pay of` `the costs` `for a limit of` `the limit` `with` (claim's `other insurance`))
+
+GIVEN claim IS A `A claim`
+GIVETH A NUMBER
+`the medical costs Benefit 2 pays in` claim MEANS
+    `what is paid in` claim `of costs` (`the medical costs Benefit 2 allows in` claim)
+        `within a limit of` (claim's `the contract`'s `limits`'s `limit of Benefit 2`)
+
+GIVEN claim IS A `A claim`
+GIVETH A NUMBER
+`the medical costs Benefit 4 pays in` claim MEANS
+    `what is paid in` claim `of costs` (`the medical costs Benefit 4 allows in` claim)
+        `within a limit of` (claim's `the contract`'s `limits`'s `limit of Benefit 4`)
+
+GIVEN claim IS A `A claim`
+GIVETH A NUMBER
+`the medical costs Benefit 6 pays in` claim MEANS
+    `what is paid in` claim `of costs` (`the medical costs Benefit 6 allows in` claim)
+        `within a limit of` (claim's `the contract`'s `limits`'s `limit of Benefit 6`)
