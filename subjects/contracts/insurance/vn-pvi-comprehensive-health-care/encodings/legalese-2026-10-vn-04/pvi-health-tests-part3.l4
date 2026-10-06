@@ -1,0 +1,331 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `pvi-health-nouns`
+IMPORT `pvi-health-part1-general`
+IMPORT `pvi-health-part2-definitions`
+IMPORT `pvi-health-part3-benefits`
+IMPORT `pvi-health-part4-exclusions`
+IMPORT `pvi-health-assessment`
+IMPORT `pvi-health-fixtures`
+
+-- Tests of PART III (PHẦN III. QUYỀN LỢI BẢO HIỂM) and of the assessment that puts the layers
+-- together. Expected values are the source's waiting periods (0, 30, 60, 180, 365, 730 days), ages
+-- (15 days, 6, 10, 18, 45), percentages (30/70, 10%, 100%), counts (60 days a year, scaling once
+-- a year, 24 hours) and caps, applied by hand to hypothetical amounts. Calendar facts (computed
+-- once with a script and written here): from 1 January 2026, day 29 is 30 January, day 30 is
+-- 31 January, day 59 is 1 March, day 60 is 2 March, day 179 is 29 June, day 180 is 30 June, day
+-- 364 is 31 December 2026, day 365 is 1 January 2027, day 729 is 31 December 2027, day 730 is
+-- 1 January 2028.
+
+§ `Tests — Part III and the assessment`
+
+§§ `Helpers for these tests`
+
+GIVEN benefit IS A `A benefit`
+      cause IS A `A cause`
+      who IS AN `An insured person`
+      cert IS A `A certificate`
+      arose IS A DATE
+      fac IS A `A medical facility`
+      tr IS A `The treatment`
+      conds IS A LIST OF `A condition`
+      cost IS A `The costs claimed`
+GIVETH A `A claim`
+`a claim for` benefit `, cause` cause `, by` who `, under` cert `, on` arose `, at` fac `, treated` tr `, for` conds `, costs` cost MEANS
+    `a plain claim under` cert `by` who `for` benefit `, cause` cause `, arising and treated` arose `at` fac `:` tr `; conditions` conds `; circumstances` EMPTY `; costs` cost
+
+GIVEN c IS A `A claim`
+GIVETH A BOOLEAN
+`the waiting period is over for` c MEANS
+    `the event in` c `arose after a waiting period of` (`the waiting period in days for` c)
+
+GIVEN `the other medical costs` IS A NUMBER
+      `paid by another insurer` IS A NUMBER
+      `paid this year` IS A NUMBER
+GIVETH A `The costs claimed`
+`costs of` `the other medical costs` `, another insurer paid` `paid by another insurer` `, paid this year` `paid this year` MEANS
+    `costs: surgery` 0 `, other medical` `the other medical costs` `, paid by another insurer` `paid by another insurer` `, vitamins` 0 `, drugs` 0 `, hospital days already paid` 0 `, paid this year` `paid this year`
+
+GIVEN who IS AN `An insured person`
+      cert IS A `A certificate`
+      arose IS A DATE
+      ev IS A `A maternity event`
+      fac IS A `A medical facility`
+      cost IS A `The costs claimed`
+GIVETH A `A claim`
+`a maternity claim by` who `, under` cert `, on` arose `, for` ev `, at` fac `, costs` cost MEANS
+    `a claim by` who `under` cert `for` `maternity` `, claimant` `the insured person` `, cause` `pregnancy or childbirth` `, arising` arose `, treated` arose `at` fac `:` `a three-night stay` `; conditions` EMPTY `; circumstances` EMPTY `; history` `no earlier history` `; costs` cost `; dental items` EMPTY `; maternity` (JUST ev) `; death or injury` `nothing permanent` `; driving` FALSE `; authorised` FALSE
+
+GIVEN benefit IS A `A benefit`
+      cause IS A `A cause`
+      cert IS A `A certificate`
+      arose IS A DATE
+      facts IS A `The facts of death or permanent injury`
+GIVETH A `A claim`
+`a death or injury claim for` benefit `, cause` cause `, under` cert `, on` arose `, with` facts MEANS
+    `a claim by` `the adult woman` `under` cert `for` benefit `, claimant` `a lawful beneficiary` `, cause` cause `, arising` arose `, treated` arose `at` `a public hospital in Hanoi` `:` `an outpatient visit` `; conditions` EMPTY `; circumstances` EMPTY `; history` `no earlier history` `; costs` `no other costs` `; dental items` EMPTY `; maternity` NOTHING `; death or injury` facts `; driving` FALSE `; authorised` FALSE
+
+GIVEN cert IS A `A certificate`
+      arose IS A DATE
+      fac IS A `A medical facility`
+      items IS A LIST OF `A dental item`
+      scalings IS A NUMBER
+GIVETH A `A claim`
+`a dental claim under` cert `, on` arose `, at` fac `, for` items `, scalings already paid` scalings MEANS
+    `a claim by` `the adult woman` `under` cert `for` `dental care` `, claimant` `the insured person` `, cause` `an illness` `, arising` arose `, treated` arose `at` fac `:` `a dental visit` `; conditions` EMPTY `; circumstances` EMPTY `; history` `no earlier history` `; costs` (`The costs claimed` WITH `costs of the surgery` IS 0, `other medical costs` IS 0, `paid under another insurance contract` IS 0, `cost of the vitamins or minerals` IS 0, `cost of the treatment drugs` IS 0, `days of hospitalisation already paid in this insurance year` IS 0, `already paid in this insurance year` IS 0, `scalings already paid in this insurance year` IS scalings) `; dental items` items `; maternity` NOTHING `; death or injury` `nothing permanent` `; driving` FALSE `; authorised` FALSE
+
+GIVEN s IS A `A dental service`
+      n IS A NUMBER
+GIVETH A `A dental item`
+s `costing` n MEANS `A dental item` WITH `service` IS s, `cost` IS n
+
+§§ `Waiting periods — A.2 and B.1`
+
+`an illness on 30 January 2026, first year` MEANS `a claim for` `inpatient treatment` `, cause` `an illness` `, by` `the adult woman` `, under` `the first-year certificate` `, on` (YMD 2026 1 30) `, at` `a public hospital in Hanoi` `, treated` `a three-night stay` `, for` EMPTY `, costs` `no other costs`
+`an illness on 31 January 2026, first year` MEANS `a claim for` `inpatient treatment` `, cause` `an illness` `, by` `the adult woman` `, under` `the first-year certificate` `, on` (YMD 2026 1 31) `, at` `a public hospital in Hanoi` `, treated` `a three-night stay` `, for` EMPTY `, costs` `no other costs`
+#ASSERT `the waiting period in days for` `an illness on 31 January 2026, first year` EQUALS 30
+#ASSERT NOT (`the waiting period is over for` `an illness on 30 January 2026, first year`)
+#ASSERT     `the waiting period is over for` `an illness on 31 January 2026, first year`
+-- an accident: in force at once
+#ASSERT `the waiting period in days for` (`a claim for` `inpatient treatment` `, cause` `an accident` `, by` `the adult woman` `, under` `the first-year certificate` `, on` (YMD 2026 1 1) `, at` `a public hospital in Hanoi` `, treated` `a three-night stay` `, for` EMPTY `, costs` `no other costs`) EQUALS 0
+#ASSERT `the waiting period is over for` (`a claim for` `inpatient treatment` `, cause` `an accident` `, by` `the adult woman` `, under` `the first-year certificate` `, on` (YMD 2026 1 1) `, at` `a public hospital in Hanoi` `, treated` `a three-night stay` `, for` EMPTY `, costs` `no other costs`)
+-- a child aged 5 with bronchitis: 180 days; a child aged 7 with pneumonia: 30.
+#ASSERT `the waiting period in days for` (`a claim for` `inpatient treatment` `, cause` `an illness` `, by` `the child of five` `, under` `the child's first-year certificate` `, on` (YMD 2026 6 29) `, at` `a public hospital in Hanoi` `, treated` `a three-night stay` `, for` (LIST `bronchitis`) `, costs` `no other costs`) EQUALS 180
+#ASSERT NOT (`the waiting period is over for` (`a claim for` `inpatient treatment` `, cause` `an illness` `, by` `the child of five` `, under` `the child's first-year certificate` `, on` (YMD 2026 6 29) `, at` `a public hospital in Hanoi` `, treated` `a three-night stay` `, for` (LIST `bronchitis`) `, costs` `no other costs`))
+#ASSERT     `the waiting period is over for` (`a claim for` `inpatient treatment` `, cause` `an illness` `, by` `the child of five` `, under` `the child's first-year certificate` `, on` (YMD 2026 6 30) `, at` `a public hospital in Hanoi` `, treated` `a three-night stay` `, for` (LIST `bronchitis`) `, costs` `no other costs`)
+#ASSERT `the waiting period in days for` (`a claim for` `inpatient treatment` `, cause` `an illness` `, by` `the child of seven` `, under` `the child's first-year certificate` `, on` (YMD 2026 6 29) `, at` `a public hospital in Hanoi` `, treated` `a three-night stay` `, for` (LIST `pneumonia`) `, costs` `no other costs`) EQUALS 30
+-- a chronic disease: 365 days.
+#ASSERT `the waiting period in days for` (`a claim for` `outpatient treatment` `, cause` `an illness` `, by` `the adult woman` `, under` `the first-year certificate` `, on` (YMD 2026 12 31) `, at` `a public hospital in Hanoi` `, treated` `a three-night stay for a chronic disease` `, for` EMPTY `, costs` `no other costs`) EQUALS 365
+#ASSERT NOT (`the waiting period is over for` (`a claim for` `inpatient treatment` `, cause` `an illness` `, by` `the adult woman` `, under` `the first-year certificate` `, on` (YMD 2026 12 31) `, at` `a public hospital in Hanoi` `, treated` `a three-night stay for a chronic disease` `, for` EMPTY `, costs` `no other costs`))
+#ASSERT     `the waiting period is over for` (`a claim for` `inpatient treatment` `, cause` `an illness` `, by` `the adult woman` `, under` `the first-year certificate` `, on` (YMD 2027 1 1) `, at` `a public hospital in Hanoi` `, treated` `a three-night stay for a chronic disease` `, for` EMPTY `, costs` `no other costs`)
+-- a special disease: 365 days.
+#ASSERT `the waiting period in days for` (`a claim for` `inpatient treatment` `, cause` `an illness` `, by` `the adult woman` `, under` `the first-year certificate` `, on` (YMD 2026 6 1) `, at` `a public hospital in Hanoi` `, treated` `a three-night stay` `, for` (LIST `hypertension`) `, costs` `no other costs`) EQUALS 365
+
+§§ `Waiting periods — continuous renewal`
+
+GIVEN cert IS A `A certificate`
+      benefit IS A `A benefit`
+      tr IS A `The treatment`
+GIVETH A `A claim`
+`a chronic disease on 1 June 2026 under` cert `, claimed under` benefit `, treated` tr MEANS
+    `a claim for` benefit `, cause` `an illness` `, by` `the adult woman` `, under` cert `, on` (YMD 2026 6 1) `, at` `a public hospital in Hanoi` `, treated` tr `, for` (LIST `hypertension`) `, costs` `no other costs`
+
+-- Renewed without a break since 2024: the waiting periods run from 1 January 2024.
+#ASSERT `the date the waiting periods run from, for` (`a chronic disease on 1 June 2026 under` `the renewed certificate` `, claimed under` `inpatient treatment` `, treated` `a three-night stay`) EQUALS YMD 2024 1 1
+#ASSERT `the waiting period is over for` (`a chronic disease on 1 June 2026 under` `the renewed certificate` `, claimed under` `inpatient treatment` `, treated` `a three-night stay`)
+-- The 2026 certificate raised the benefits: not a continuous renewal, so they run from 2026.
+#ASSERT `the date the waiting periods run from, for` (`a chronic disease on 1 June 2026 under` `the upgraded certificate` `, claimed under` `inpatient treatment` `, treated` `a three-night stay`) EQUALS YMD 2026 1 1
+#ASSERT NOT (`the waiting period is over for` (`a chronic disease on 1 June 2026 under` `the upgraded certificate` `, claimed under` `inpatient treatment` `, treated` `a three-night stay`))
+-- 2025 carried no supplementary benefit: B.1 runs from 2026, the main benefit A.2 from 2024.
+#ASSERT `the date the waiting periods run from, for` (`a chronic disease on 1 June 2026 under` `the certificate renewed without riders in 2025` `, claimed under` `outpatient treatment` `, treated` `an outpatient visit`) EQUALS YMD 2026 1 1
+#ASSERT `the date the waiting periods run from, for` (`a chronic disease on 1 June 2026 under` `the certificate renewed without riders in 2025` `, claimed under` `inpatient treatment` `, treated` `a three-night stay`) EQUALS YMD 2024 1 1
+-- The 2026 premium was not paid in full and on time: the chain breaks at 2026.
+#ASSERT `the date the waiting periods run from, for` (`a chronic disease on 1 June 2026 under` `the renewed certificate, premium unpaid` `, claimed under` `inpatient treatment` `, treated` `a three-night stay`) EQUALS YMD 2026 1 1
+-- A certificate that does not show the waiting periods carries none (fork F19).
+#ASSERT `the waiting period is over for` (`a claim for` `inpatient treatment` `, cause` `an illness` `, by` `the adult woman` `, under` `the first-year certificate not showing waiting periods` `, on` (YMD 2026 1 2) `, at` `a public hospital in Hanoi` `, treated` `a three-night stay for a chronic disease` `, for` EMPTY `, costs` `no other costs`)
+
+§§ `Waiting periods — B.2, B.3, B.4`
+
+-- Dental: 30 days, an accident included.
+#ASSERT `the waiting period in days for` (`a claim for` `dental care` `, cause` `an accident` `, by` `the adult woman` `, under` `the first-year certificate` `, on` (YMD 2026 1 30) `, at` `a public hospital in Hanoi` `, treated` `a dental visit` `, for` EMPTY `, costs` `no other costs`) EQUALS 30
+#ASSERT NOT (`the waiting period is over for` (`a claim for` `dental care` `, cause` `an accident` `, by` `the adult woman` `, under` `the first-year certificate` `, on` (YMD 2026 1 30) `, at` `a public hospital in Hanoi` `, treated` `a dental visit` `, for` EMPTY `, costs` `no other costs`))
+-- Maternity: 60 days for a complication, 365 for childbirth, a caesarean section included.
+#ASSERT NOT (`the waiting period is over for` (`a maternity claim by` `the adult woman` `, under` `the first-year certificate` `, on` (YMD 2026 3 1) `, for` (`a complication` `ectopic pregnancy`) `, at` `a public hospital in Hanoi` `, costs` `no other costs`))
+#ASSERT     `the waiting period is over for` (`a maternity claim by` `the adult woman` `, under` `the first-year certificate` `, on` (YMD 2026 3 2) `, for` (`a complication` `ectopic pregnancy`) `, at` `a public hospital in Hanoi` `, costs` `no other costs`)
+#ASSERT `the waiting period in days for` (`a maternity claim by` `the adult woman` `, under` `the first-year certificate` `, on` (YMD 2026 3 2) `, for` `a normal delivery` `, at` `a public hospital in Hanoi` `, costs` `no other costs`) EQUALS 365
+#ASSERT `the waiting period in days for` (`a maternity claim by` `the adult woman` `, under` `the first-year certificate` `, on` (YMD 2026 3 2) `, for` (`a caesarean section` TRUE) `, at` `a public hospital in Hanoi` `, costs` `no other costs`) EQUALS 365
+#ASSERT REFUSED `the waiting period in days for` (`a plain claim under` `the first-year certificate` `by` `the adult woman` `for` `maternity` `, cause` `pregnancy or childbirth` `, arising and treated` (YMD 2026 6 1) `at` `a public hospital in Hanoi` `:` `a three-night stay` `; conditions` EMPTY `; circumstances` EMPTY `; costs` `no other costs`) BECAUSE "a maternity claim that names no maternity event cannot be assessed"
+-- Death from illness: 30 days, or 730 for a chronic, special or pre-existing disease.
+#ASSERT `the waiting period in days for` (`a death or injury claim for` `death from illness` `, cause` `an illness` `, under` `the first-year certificate` `, on` (YMD 2026 6 1) `, with` (`an outcome:` (`death of the insured person` (YMD 2026 6 1)) `, treatment ended` FALSE `, already paid under Benefit 2` 0)) EQUALS 30
+#ASSERT `the waiting period in days for` (`a chronic disease on 1 June 2026 under` `the first-year certificate` `, claimed under` `death from illness` `, treated` `a three-night stay`) EQUALS 730
+
+§§ `Scope — A.1 personal accident`
+
+`a death by accident on 1 June 2026` MEANS `an outcome:` (`death of the insured person` (YMD 2026 6 10)) `, treatment ended` FALSE `, already paid under Benefit 2` 0
+#ASSERT null (`what the claim lacks for the scope of the benefit claimed` (`a death or injury claim for` `personal accident` `, cause` `an accident` `, under` `the renewed certificate` `, on` (YMD 2026 6 1) `, with` `a death by accident on 1 June 2026`))
+#ASSERT `what the claim lacks for the scope of the benefit claimed` (`a death or injury claim for` `personal accident` `, cause` `an accident` `, under` `the renewed certificate` `, on` (YMD 2026 6 1) `, with` `nothing permanent`) EQUALS LIST (`outside the scope of the benefit` "A.1.1: death, or a permanent injury as Part II defines it")
+#ASSERT `what the claim lacks for the scope of the benefit claimed` (`a death or injury claim for` `personal accident` `, cause` `an illness` `, under` `the renewed certificate` `, on` (YMD 2026 6 1) `, with` `a death by accident on 1 June 2026`) EQUALS LIST (`outside the scope of the benefit` "A.1.1: an accident as Part II defines it")
+
+§§ `Scope — A.2 inpatient`
+
+GIVEN tr IS A `The treatment`
+      cause IS A `A cause`
+GIVETH A `A claim`
+`an inpatient claim, renewed, treated` tr `, cause` cause MEANS
+    `a claim for` `inpatient treatment` `, cause` cause `, by` `the adult woman` `, under` `the renewed certificate` `, on` (YMD 2026 6 1) `, at` `a public hospital in Hanoi` `, treated` tr `, for` EMPTY `, costs` `no other costs`
+
+#ASSERT null (`what the claim lacks for the scope of the benefit claimed` (`an inpatient claim, renewed, treated` `a three-night stay` `, cause` `an illness`))
+#ASSERT null (`what the claim lacks for the scope of the benefit claimed` (`an inpatient claim, renewed, treated` `a three-night stay with surgery` `, cause` `an accident`))
+#ASSERT `what the claim lacks for the scope of the benefit claimed` (`an inpatient claim, renewed, treated` `a day treatment` `, cause` `an illness`) EQUALS LIST (`outside the scope of the benefit` "A.2.3: a hospitalisation that is not day treatment, or a surgery that is not day surgery")
+#ASSERT `what the claim lacks for the scope of the benefit claimed` (`an inpatient claim, renewed, treated` `a day surgery` `, cause` `an illness`) EQUALS LIST (`outside the scope of the benefit` "A.2.3: a hospitalisation that is not day treatment, or a surgery that is not day surgery")
+#ASSERT `what the claim lacks for the scope of the benefit claimed` (`an inpatient claim, renewed, treated` `a dental stay` `, cause` `an illness`) EQUALS LIST (`outside the scope of the benefit` "A.2: dental treatment is not included")
+#ASSERT `what the claim lacks for the scope of the benefit claimed` (`an inpatient claim, renewed, treated` `a three-night stay` `, cause` `pregnancy or childbirth`) EQUALS LIST (`outside the scope of the benefit` "A.2.1: an illness or an accident")
+
+§§ `Scope — B.1 outpatient`
+
+GIVEN tr IS A `The treatment`
+GIVETH A `A claim`
+`an outpatient claim, renewed, treated` tr MEANS
+    `a claim for` `outpatient treatment` `, cause` `an illness` `, by` `the adult woman` `, under` `the renewed certificate` `, on` (YMD 2026 6 1) `, at` `a public hospital in Hanoi` `, treated` tr `, for` EMPTY `, costs` `no other costs`
+
+#ASSERT null (`what the claim lacks for the scope of the benefit claimed` (`an outpatient claim, renewed, treated` `an outpatient visit`))
+#ASSERT null (`what the claim lacks for the scope of the benefit claimed` (`an outpatient claim, renewed, treated` `a day treatment`))
+#ASSERT null (`what the claim lacks for the scope of the benefit claimed` (`an outpatient claim, renewed, treated` `a day surgery`))
+#ASSERT `what the claim lacks for the scope of the benefit claimed` (`an outpatient claim, renewed, treated` `a three-night stay`) EQUALS LIST (`outside the scope of the benefit` "B.1.1: outpatient treatment, day treatment or day surgery")
+#ASSERT `what the claim lacks for the scope of the benefit claimed` (`an outpatient claim, renewed, treated` `an outpatient visit with no diagnosis`) EQUALS LIST (`excluded by the benefit's own exclusions` "B.1.3, first limb: examination and tests without a doctor's conclusion of a disease")
+#ASSERT `what the claim lacks for the scope of the benefit claimed` (`an outpatient claim, renewed, treated` `an outpatient visit with a diagnosis and no protocol`) EQUALS LIST (`excluded by the benefit's own exclusions` "B.1.3, third limb: a doctor's conclusion but no specific treatment protocol")
+
+§§ `Scope — B.2 dental`
+
+`a filling for 500,000` MEANS LIST (`a filling with an ordinary material` `costing` 500_000)
+#ASSERT null (`what the claim lacks for the scope of the benefit claimed` (`a dental claim under` `the renewed certificate` `, on` (YMD 2026 6 1) `, at` `a public hospital in Hanoi` `, for` `a filling for 500,000` `, scalings already paid` 0))
+#ASSERT null (`what the claim lacks for the scope of the benefit claimed` (`a dental claim under` `the renewed certificate` `, on` (YMD 2026 6 1) `, at` `a clinic in Da Nang` `, for` `a filling for 500,000` `, scalings already paid` 0))
+-- a private clinic in Hanoi with no PVI agreement is outside dental cover (finding X16)
+#ASSERT `what the claim lacks for the scope of the benefit claimed` (`a dental claim under` `the renewed certificate` `, on` (YMD 2026 6 1) `, at` `a private clinic in Hanoi` `, for` `a filling for 500,000` `, scalings already paid` 0) EQUALS LIST (`outside the scope of the benefit` "B.2.1: a facility where dental care is covered")
+#ASSERT `what the claim lacks for the scope of the benefit claimed` (`a dental claim under` `the renewed certificate` `, on` (YMD 2026 6 1) `, at` `a clinic in Da Nang on PVI's refused list` `, for` `a filling for 500,000` `, scalings already paid` 0) EQUALS LIST (`outside the scope of the benefit` "B.2.1: a facility where dental care is covered")
+#ASSERT `what the claim lacks for the scope of the benefit claimed` (`a dental claim under` (`the renewed certificate with outpatient:` FALSE `, dental:` TRUE `, maternity:` TRUE) `, on` (YMD 2026 6 1) `, at` `a public hospital in Hanoi` `, for` `a filling for 500,000` `, scalings already paid` 0) EQUALS LIST (`outside the scope of the benefit` "B.2: taken only with supplementary benefit 1")
+
+§§ `Scope — B.3 maternity`
+
+#ASSERT null (`what the claim lacks for the scope of the benefit claimed` (`a maternity claim by` `the adult woman` `, under` `the renewed certificate` `, on` (YMD 2026 6 1) `, for` `a normal delivery` `, at` `a public hospital in Hanoi` `, costs` `no other costs`))
+#ASSERT `what the claim lacks for the scope of the benefit claimed` (`a maternity claim by` `the adult man` `, under` `the renewed certificate` `, on` (YMD 2026 6 1) `, for` `a normal delivery` `, at` `a public hospital in Hanoi` `, costs` `no other costs`) EQUALS LIST `the insured person was not eligible for the benefit`
+-- 45 on the start date is within; 46 is not.
+#ASSERT null (`what the claim lacks for the scope of the benefit claimed` (`a maternity claim by` (`a healthy citizen born on` (YMD 1980 6 1) `, a woman:` TRUE `, continuously insured since 60:` FALSE) `, under` `the renewed certificate` `, on` (YMD 2026 6 1) `, for` `a normal delivery` `, at` `a public hospital in Hanoi` `, costs` `no other costs`))
+#ASSERT `what the claim lacks for the scope of the benefit claimed` (`a maternity claim by` (`a healthy citizen born on` (YMD 1979 6 1) `, a woman:` TRUE `, continuously insured since 60:` FALSE) `, under` `the renewed certificate` `, on` (YMD 2026 6 1) `, for` `a normal delivery` `, at` `a public hospital in Hanoi` `, costs` `no other costs`) EQUALS LIST `the insured person was not eligible for the benefit`
+#ASSERT `what the claim lacks for the scope of the benefit claimed` (`a maternity claim by` `the adult woman` `, under` `the renewed certificate on programme 3` `, on` (YMD 2026 6 1) `, for` `a normal delivery` `, at` `a public hospital in Hanoi` `, costs` `no other costs`) EQUALS LIST `the insured person was not eligible for the benefit`
+#ASSERT `what the claim lacks for the scope of the benefit claimed` (`a maternity claim by` `the adult woman` `, under` `the renewed certificate` `, on` (YMD 2026 6 1) `, for` (`a caesarean section` FALSE) `, at` `a public hospital in Hanoi` `, costs` `no other costs`) EQUALS LIST (`outside the scope of the benefit` "B.3.1: a complication, a necessary caesarean section, or a normal delivery")
+#ASSERT `what the claim lacks for the scope of the benefit claimed` (`a maternity claim by` `the adult woman` `, under` `the renewed certificate` `, on` (YMD 2026 6 1) `, for` `a normal delivery` `, at` `a hospital in Singapore` `, costs` `no other costs`) EQUALS LIST (`outside the scope of the benefit` "B.3.1: a state or private facility licensed in Vietnam")
+
+§§ `Scope — B.4 death from illness`
+
+#ASSERT null (`what the claim lacks for the scope of the benefit claimed` (`a death or injury claim for` `death from illness` `, cause` `an illness` `, under` `the renewed certificate` `, on` (YMD 2026 6 1) `, with` `a death by accident on 1 June 2026`))
+#ASSERT `what the claim lacks for the scope of the benefit claimed` (`a death or injury claim for` `death from illness` `, cause` `an accident` `, under` `the renewed certificate` `, on` (YMD 2026 6 1) `, with` `a death by accident on 1 June 2026`) EQUALS LIST (`outside the scope of the benefit` "B.4.1: death from an illness")
+
+§§ `Amounts — A.1 personal accident (sum insured 100,000,000)`
+
+GIVEN facts IS A `The facts of death or permanent injury`
+GIVETH A NUMBER
+`A.1 pays, on an accident on 15 June 2026, for` facts MEANS
+    `the amount PVI pays on` (`a death or injury claim for` `personal accident` `, cause` `an accident` `, under` `the renewed certificate` `, on` (YMD 2026 6 15) `, with` facts)
+
+-- Benefit 1: death, the whole sum insured; total permanent injury at 85%, the whole sum insured.
+#ASSERT `A.1 pays, on an accident on 15 June 2026, for` (`an outcome:` (`death of the insured person` (YMD 2026 7 1)) `, treatment ended` FALSE `, already paid under Benefit 2` 0) EQUALS 100_000_000
+#ASSERT `A.1 pays, on an accident on 15 June 2026, for` (`an outcome:` (`a permanent injury` (YMD 2026 10 1) (85%) NOTHING) `, treatment ended` TRUE `, already paid under Benefit 2` 0) EQUALS 100_000_000
+-- Benefit 2: 30% in the annex, 30% of the sum insured.
+#ASSERT `A.1 pays, on an accident on 15 June 2026, for` (`an outcome:` (`a permanent injury` (YMD 2026 10 1) (30%) (JUST (30%))) `, treatment ended` TRUE `, already paid under Benefit 2` 0) EQUALS 30_000_000
+-- 1.4: 80,000,000 already paid for the same accident; another 30% is capped at the 20,000,000 left.
+#ASSERT `A.1 pays, on an accident on 15 June 2026, for` (`an outcome:` (`a permanent injury` (YMD 2026 10 1) (30%) (JUST (30%))) `, treatment ended` TRUE `, already paid under Benefit 2` 80_000_000) EQUALS 20_000_000
+-- not in the annex: nothing under Benefit 2
+#ASSERT `A.1 pays, on an accident on 15 June 2026, for` (`an outcome:` (`a permanent injury` (YMD 2026 10 1) (30%) NOTHING) `, treatment ended` TRUE `, already paid under Benefit 2` 0) EQUALS 0
+-- 1.4 (iv): 30,000,000 paid under Benefit 2, death within one year of the accident: the
+-- difference, 70,000,000; on the anniversary still within; the day after, nothing.
+#ASSERT `A.1 pays, on an accident on 15 June 2026, for` (`an outcome:` (`death of the insured person` (YMD 2026 12 1)) `, treatment ended` TRUE `, already paid under Benefit 2` 30_000_000) EQUALS 70_000_000
+#ASSERT `A.1 — the amount payable on` (`a death or injury claim for` `personal accident` `, cause` `an accident` `, under` `the renewed certificate` `, on` (YMD 2026 6 15) `, with` (`an outcome:` (`death of the insured person` (YMD 2027 6 15)) `, treatment ended` TRUE `, already paid under Benefit 2` 30_000_000)) EQUALS 70_000_000
+#ASSERT `A.1 — the amount payable on` (`a death or injury claim for` `personal accident` `, cause` `an accident` `, under` `the renewed certificate` `, on` (YMD 2026 6 15) `, with` (`an outcome:` (`death of the insured person` (YMD 2027 6 16)) `, treatment ended` TRUE `, already paid under Benefit 2` 30_000_000)) EQUALS 0
+#ASSERT `A.1.4 — the interest PVI pays on any amount under the Rules` EQUALS 0
+
+§§ `Amounts — A.2 inpatient`
+
+-- Three nights in a standard room: 3 x (1,000,000 + 2,000,000) = 9,000,000, within the 60,000,000 limit.
+#ASSERT `the amount PVI pays on` (`an inpatient claim, renewed, treated` `a three-night stay` `, cause` `an illness`) EQUALS 9_000_000
+-- With a surgery costing 15,000,000 (within the 40,000,000 surgery limit): 24,000,000.
+#ASSERT `the amount PVI pays on` (`a plain claim under` `the renewed certificate` `by` `the adult woman` `for` `inpatient treatment` `, cause` `an accident` `, arising and treated` (YMD 2026 6 1) `at` `a public hospital in Hanoi` `:` `a three-night stay with surgery` `; conditions` EMPTY `; circumstances` EMPTY `; costs` (`costs: surgery` 15_000_000 `, other medical` 0 `, paid by another insurer` 0 `, vitamins` 0 `, drugs` 0 `, hospital days already paid` 0 `, paid this year` 0)) EQUALS 24_000_000
+-- A VIP room at 5,000,000 a night: paid at the cheapest single room, 3 x 3,000,000.
+#ASSERT `the amount PVI pays on` (`an inpatient claim, renewed, treated` `a three-night stay in a VIP room` `, cause` `an illness`) EQUALS 9_000_000
+-- Intensive care at 8,000,000 a night: 3 x 10,000,000.
+#ASSERT `the amount PVI pays on` (`an inpatient claim, renewed, treated` `a three-night stay in intensive care` `, cause` `an illness`) EQUALS 30_000_000
+-- Another insurer paid 7,000,000 of the 9,000,000: PVI pays the 2,000,000 left.
+#ASSERT `the amount PVI pays on` (`a claim for` `inpatient treatment` `, cause` `an illness` `, by` `the adult woman` `, under` `the renewed certificate` `, on` (YMD 2026 6 1) `, at` `a public hospital in Hanoi` `, treated` `a three-night stay` `, for` EMPTY `, costs` (`costs of` 0 `, another insurer paid` 7_000_000 `, paid this year` 0)) EQUALS 2_000_000
+-- 195,000,000 already paid this year against the 200,000,000 sum insured: 5,000,000 left.
+#ASSERT `the amount PVI pays on` (`a claim for` `inpatient treatment` `, cause` `an illness` `, by` `the adult woman` `, under` `the renewed certificate` `, on` (YMD 2026 6 1) `, at` `a public hospital in Hanoi` `, treated` `a three-night stay` `, for` EMPTY `, costs` (`costs of` 0 `, another insurer paid` 0 `, paid this year` 195_000_000)) EQUALS 5_000_000
+-- 60 days in an insurance year: of a 61-day stay at 1,000,000 a day, 60,000,000; with 58 days
+-- already paid this year, 2,000,000.
+#ASSERT `the amount PVI pays on` (`a claim for` `inpatient treatment` `, cause` `an illness` `, by` `the adult woman` `, under` `the renewed certificate with large limits` `, on` (YMD 2026 6 1) `, at` `a public hospital in Hanoi` `, treated` `a 61-day stay` `, for` EMPTY `, costs` `no other costs`) EQUALS 60_000_000
+#ASSERT `the amount PVI pays on` (`a claim for` `inpatient treatment` `, cause` `an illness` `, by` `the adult woman` `, under` `the renewed certificate with large limits` `, on` (YMD 2026 6 1) `, at` `a public hospital in Hanoi` `, treated` `a 61-day stay` `, for` EMPTY `, costs` (`costs: surgery` 0 `, other medical` 0 `, paid by another insurer` 0 `, vitamins` 0 `, drugs` 0 `, hospital days already paid` 58 `, paid this year` 0)) EQUALS 2_000_000
+-- A stay that runs past the end of the term: admitted 30 December 2026 for four nights; 30 and 31
+-- December are paid, 1 and 2 January 2027 are not (Part I clause 10).
+#ASSERT `the amount PVI pays on` (`a claim for` `inpatient treatment` `, cause` `an illness` `, by` `the adult woman` `, under` `the renewed certificate` `, on` (YMD 2026 12 30) `, at` `a public hospital in Hanoi` `, treated` `a four-night stay` `, for` EMPTY `, costs` `no other costs`) EQUALS 6_000_000
+
+§§ `Amounts — the co-payment for a child under 10`
+
+-- The child's certificate has a hospitalisation limit of 6,000,000. Three nights cost 9,000,000.
+-- At a private hospital PVI pays 70% of the lower of 9,000,000 and 6,000,000: 4,200,000. At a
+-- public hospital, 100%: 6,000,000. In a public hospital's international department, 4,200,000.
+GIVEN fac IS A `A medical facility`
+      who IS AN `An insured person`
+GIVETH A `A claim`
+`a three-night stay for a child at` fac `, the child being` who MEANS
+    `a claim for` `inpatient treatment` `, cause` `an illness` `, by` who `, under` `the child's renewed certificate` `, on` (YMD 2026 6 1) `, at` fac `, treated` `a three-night stay` `, for` EMPTY `, costs` `no other costs`
+#ASSERT `the amount PVI pays on` (`a three-night stay for a child at` `a private hospital in Ho Chi Minh City` `, the child being` `the child of five`) EQUALS 4_200_000
+#ASSERT `the amount PVI pays on` (`a three-night stay for a child at` `a public hospital in Hanoi` `, the child being` `the child of five`) EQUALS 6_000_000
+#ASSERT `the amount PVI pays on` (`a three-night stay for a child at` `the international department of a public hospital in Hanoi` `, the child being` `the child of five`) EQUALS 4_200_000
+-- Aged 10 on the date of treatment: no co-payment (born 1 May 2016).
+#ASSERT `the amount PVI pays on` (`a three-night stay for a child at` `a private hospital in Ho Chi Minh City` `, the child being` (`a healthy citizen born on` (YMD 2016 5 1) `, a woman:` FALSE `, continuously insured since 60:` FALSE)) EQUALS 6_000_000
+
+§§ `The scenario where the layers interact`
+
+-- A child of five, insured with a parent and renewed without a break since 2024, spends four nights
+-- at a private hospital in Ho Chi Minh City for an ordinary illness on 1 June 2026. Another
+-- insurer has paid 9,000,000 of the costs. Layer 1: covered (no ground of refusal). Layer 2: the
+-- stay costs 4 x 3,000,000 = 12,000,000; the co-payment for a child under 10 at a non-public
+-- hospital gives PVI 70% of the lower of 12,000,000 and the 6,000,000 limit, 4,200,000; Part I
+-- clause 3 leaves PVI no more than the 3,000,000 the other insurer did not pay; the sum insured
+-- left (200,000,000) does not bite. PVI pays 3,000,000. Without the other insurer, 4,200,000.
+`the layered scenario` MEANS
+    `a claim for` `inpatient treatment` `, cause` `an illness` `, by` `the child of five` `, under` `the child's renewed certificate` `, on` (YMD 2026 6 1) `, at` `a private hospital in Ho Chi Minh City` `, treated` `a four-night stay` `, for` EMPTY `, costs` (`costs of` 0 `, another insurer paid` 9_000_000 `, paid this year` 0)
+`the layered scenario, no other insurer` MEANS
+    `a claim for` `inpatient treatment` `, cause` `an illness` `, by` `the child of five` `, under` `the child's renewed certificate` `, on` (YMD 2026 6 1) `, at` `a private hospital in Ho Chi Minh City` `, treated` `a four-night stay` `, for` EMPTY `, costs` `no other costs`
+#ASSERT `the claim is covered` `the layered scenario`
+#ASSERT `the amount PVI pays on` `the layered scenario` EQUALS 3_000_000
+#ASSERT `the amount PVI pays on` `the layered scenario, no other insurer` EQUALS 4_200_000
+
+§§ `Amounts — B.1, B.2, B.3, B.4`
+
+-- Outpatient: 1,500,000 paid in full for an adult; 70% (1,050,000) for a child of five at a private
+-- hospital; 12,000,000 capped at the 10,000,000 limit.
+#ASSERT `the amount PVI pays on` (`a claim for` `outpatient treatment` `, cause` `an illness` `, by` `the adult woman` `, under` `the renewed certificate` `, on` (YMD 2026 6 1) `, at` `a public hospital in Hanoi` `, treated` `an outpatient visit` `, for` EMPTY `, costs` (`costs of` 1_500_000 `, another insurer paid` 0 `, paid this year` 0)) EQUALS 1_500_000
+#ASSERT `the amount PVI pays on` (`a claim for` `outpatient treatment` `, cause` `an illness` `, by` `the child of five` `, under` `the child's renewed certificate` `, on` (YMD 2026 6 1) `, at` `a private hospital in Ho Chi Minh City` `, treated` `an outpatient visit` `, for` EMPTY `, costs` (`costs of` 1_500_000 `, another insurer paid` 0 `, paid this year` 0)) EQUALS 1_050_000
+#ASSERT `the amount PVI pays on` (`a claim for` `outpatient treatment` `, cause` `an illness` `, by` `the adult woman` `, under` `the renewed certificate` `, on` (YMD 2026 6 1) `, at` `a public hospital in Hanoi` `, treated` `an outpatient visit` `, for` EMPTY `, costs` (`costs of` 12_000_000 `, another insurer paid` 0 `, paid this year` 0)) EQUALS 10_000_000
+
+-- Dental, sum insured 5,000,000. Items: examination 300,000; two scalings of 400,000 (one a year:
+-- 400,000); an ordinary filling 500,000; a gold filling 2,000,000 (not listed); dentures 5,000,000
+-- (excluded); root canal 1,500,000; emergency care 20 hours after an accident 1,000,000 (capped at
+-- 10% of 5,000,000 = 500,000); emergency care 30 hours after 800,000 (not within 24 hours).
+-- 300,000 + 400,000 + 500,000 + 1,500,000 + 500,000 = 3,200,000.
+`the dental items` MEANS
+    LIST `examination, X-ray and diagnosis` `costing` 300_000
+       , `scaling` `costing` 400_000
+       , `scaling` `costing` 400_000
+       , `a filling with an ordinary material` `costing` 500_000
+       , `a filling with another material` `costing` 2_000_000
+       , `making dentures` `costing` 5_000_000
+       , `root canal treatment` `costing` 1_500_000
+       , (`emergency treatment after an accident` 20) `costing` 1_000_000
+       , (`emergency treatment after an accident` 30) `costing` 800_000
+#ASSERT `the amount PVI pays on` (`a dental claim under` `the renewed certificate` `, on` (YMD 2026 6 1) `, at` `a public hospital in Hanoi` `, for` `the dental items` `, scalings already paid` 0) EQUALS 3_200_000
+-- One scaling already paid this year: the 400,000 drops out.
+#ASSERT `the amount PVI pays on` (`a dental claim under` `the renewed certificate` `, on` (YMD 2026 6 1) `, at` `a public hospital in Hanoi` `, for` `the dental items` `, scalings already paid` 1) EQUALS 2_800_000
+-- Emergency care at exactly 24 hours counts.
+#ASSERT `the amount PVI pays on` (`a dental claim under` `the renewed certificate` `, on` (YMD 2026 6 1) `, at` `a public hospital in Hanoi` `, for` (LIST (`emergency treatment after an accident` 24) `costing` 400_000) `, scalings already paid` 0) EQUALS 400_000
+
+-- Maternity, limit 20,000,000: a complication costing 8,000,000 is paid; 25,000,000 is capped.
+#ASSERT `the amount PVI pays on` (`a maternity claim by` `the adult woman` `, under` `the renewed certificate` `, on` (YMD 2026 6 1) `, for` (`a complication` `postpartum haemorrhage`) `, at` `a public hospital in Hanoi` `, costs` (`costs of` 8_000_000 `, another insurer paid` 0 `, paid this year` 0)) EQUALS 8_000_000
+#ASSERT `the amount PVI pays on` (`a maternity claim by` `the adult woman` `, under` `the renewed certificate` `, on` (YMD 2026 6 1) `, for` (`a complication` `postpartum haemorrhage`) `, at` `a public hospital in Hanoi` `, costs` (`costs of` 25_000_000 `, another insurer paid` 0 `, paid this year` 0)) EQUALS 20_000_000
+
+-- Death from illness: the sum insured for B.4, 50,000,000.
+#ASSERT `the amount PVI pays on` (`a death or injury claim for` `death from illness` `, cause` `an illness` `, under` `the renewed certificate` `, on` (YMD 2026 6 1) `, with` `a death by accident on 1 June 2026`) EQUALS 50_000_000
+
+§§ `The assessment: grounds of refusal`
+
+-- The base claim of the Part IV tests is covered and pays 9,000,000.
+#ASSERT `the claim is covered` (`the base claim with conditions` EMPTY `and circumstances` EMPTY)
+#ASSERT `the amount PVI pays on` (`the base claim with conditions` EMPTY `and circumstances` EMPTY) EQUALS 9_000_000
+-- An excluded claim pays nothing, and says why.
+#ASSERT `the grounds of refusal of` (`the base claim with conditions` (LIST `tuberculosis`) `and circumstances` EMPTY) EQUALS LIST (`excluded by Part IV item` 14)
+#ASSERT `the amount PVI pays on` (`the base claim with conditions` (LIST `tuberculosis`) `and circumstances` EMPTY) EQUALS 0
+-- Premium unpaid; benefit not taken; event before the term; waiting period.
+#ASSERT `the grounds of refusal of` (`a claim for` `inpatient treatment` `, cause` `an illness` `, by` `the adult woman` `, under` `the renewed certificate, premium unpaid` `, on` (YMD 2026 6 1) `, at` `a public hospital in Hanoi` `, treated` `a three-night stay` `, for` EMPTY `, costs` `no other costs`) EQUALS LIST `the premium was not paid in full and on time`
+#ASSERT `the grounds of refusal of` (`a claim for` `death from illness` `, cause` `an illness` `, by` `the adult woman` `, under` `the renewed certificate with no rider` `, on` (YMD 2026 6 1) `, at` `a public hospital in Hanoi` `, treated` `a three-night stay` `, for` EMPTY `, costs` `no other costs`) EQUALS LIST `the benefit is not on the certificate`, (`outside the scope of the benefit` "B.4.1: death from an illness")
+#ASSERT `the grounds of refusal of` (`a claim for` `inpatient treatment` `, cause` `an illness` `, by` `the adult woman` `, under` `the first-year certificate` `, on` (YMD 2025 12 20) `, at` `a public hospital in Hanoi` `, treated` `a three-night stay` `, for` EMPTY `, costs` `no other costs`) EQUALS LIST `the event did not arise in the insurance term`, `the event arose in the waiting period`
+#ASSERT `the grounds of refusal of` `an illness on 30 January 2026, first year` EQUALS LIST `the event arose in the waiting period`

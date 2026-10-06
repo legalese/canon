@@ -1,0 +1,781 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `pvi-health-nouns`
+IMPORT `pvi-health-part1-general`
+IMPORT `pvi-health-part2-definitions`
+
+-- PVI comprehensive health care rules, PART III: BENEFITS (PHẦN III. QUYỀN LỢI BẢO HIỂM).
+-- Quotations (`src:N`) are generated from line N of ../../source/raw/pvi-health.txt.
+--
+-- For each benefit: its scope (what it covers), the waiting periods ("Hiệu lực bảo hiểm"), the
+-- benefit's own exclusions where it has them, and the amount payable. The Part IV exclusions,
+-- which apply to every benefit, are in pvi-health-part4-exclusions.l4, and
+-- pvi-health-assessment.l4 puts the layers together.
+--
+-- THE THREE LAYERS. A claim that fails a scope test is reported as a ground of refusal (a
+-- `outside the scope of the benefit` naming the requirement). The amount rules below compute
+-- what the benefit pays on the costs claimed, and assume nothing about cover: the assessment
+-- module pays the amount only for a claim with no ground of refusal.
+
+§ `Part III — Benefits`
+-- src:505 | PHẦN III.
+-- src:506 | QUYỀN LỢI BẢO HIỂM
+-- src:507 | A. QUYỀN LỢI BẢO HIỂM CHÍNH
+
+§§ `Which benefits a certificate carries`
+
+-- The two main benefits are on every certificate; each supplementary benefit only where taken.
+@ref PVI Rules Part III A and B (src:507, 604)
+GIVEN p IS A `A certificate period`
+      b IS A `A benefit`
+GIVETH A BOOLEAN
+`the period` p `includes the benefit` b MEANS
+    CONSIDER b
+    WHEN `outpatient treatment` THEN p's `includes outpatient treatment`
+    WHEN `dental care`          THEN p's `includes dental care`
+    WHEN `maternity`            THEN p's `includes maternity`
+    WHEN `death from illness`   THEN p's `includes death from illness`
+    OTHERWISE                        TRUE
+
+GIVEN c IS A `A claim`
+GIVETH A BOOLEAN
+`the certificate carries the benefit claimed in` c MEANS
+    `the period` (c's `the certificate`'s `this period`) `includes the benefit` (c's `the benefit claimed`)
+
+§§ `The date the waiting periods run from`
+
+-- Each benefit's waiting periods run from the date the insured person first took up that benefit.
+-- For a continuous renewal they run from the start of the earlier certificate at PVI that carried
+-- the benefit, "với điều kiện Người được bảo hiểm đóng phí bảo hiểm đầy đủ, đúng hạn cho thời gian
+-- tiếp theo" (on condition the premium for the following period is paid in full and on time). The
+-- chain is followed back one certificate at a time, and stops at the first link that is not a
+-- continuous renewal (Part II), whose premium was not paid, or whose earlier certificate did not
+-- carry the benefit.
+-- src:575 | - Đối với các hợp đồng tái tục liên tục, thời gian chờ sẽ được tính từ ngày bắt
+-- src:581 | đầu tham gia bảo hiểm (bao gồm cả Hợp đồng / Giấy chứng nhận bảo hiểm
+-- src:582 | năm trước tại Bảo hiểm PVI) với điều kiện Người được bảo hiểm đóng phí bảo
+-- src:583 | hiểm đầy đủ, đúng hạn cho thời gian tiếp theo.
+-- src:646 | Đối với các hợp đồng tái tục liên tục, thời gian chờ sẽ được tính từ ngày bắt đầu
+-- src:647 | tham gia Quyền lợi bảo hiểm bổ sung 1 (bao gồm cả Hợp đồng / Giấy chứng
+-- src:648 | nhận bảo hiểm năm trước tại Bảo hiểm PVI nếu có Quyền lợi bảo hiểm bổ sung 1)
+-- src:649 | với điều kiện Người được bảo hiểm đóng phí bảo hiểm đầy đủ, đúng hạn cho thời
+-- src:650 | gian tiếp theo.
+@ref PVI Rules Part III A.2.2 (src:575-583), B.1.2 (src:646-650), B.3.2 (src:763-767), B.4.2 (src:784-788)
+GIVEN b IS A `A benefit`
+      later IS A `A certificate period`
+      earlier IS A LIST OF `A certificate period`
+GIVETH A DATE
+`the date the waiting periods for` b `run from, for` later `after` earlier MEANS
+    CONSIDER earlier
+    WHEN EMPTY THEN later's `start date`
+    WHEN e FOLLOWED BY rest THEN
+        IF     `a continuous renewal:` later `after` e
+           AND later's `premium paid in full and on time`
+           AND `the period` e `includes the benefit` b
+        THEN `the date the waiting periods for` b `run from, for` e `after` rest
+        ELSE later's `start date`
+
+GIVEN c IS A `A claim`
+GIVETH A DATE
+`the date the waiting periods run from, for` c MEANS
+    `the date the waiting periods for` (c's `the benefit claimed`) `run from, for` (c's `the certificate`'s `this period`) `after` (c's `the certificate`'s `earlier periods at PVI`)
+
+-- Whether the illness is "chronic, special or pre-existing", the class that carries the longest
+-- illness waiting period in A.2, B.1 and B.4.
+GIVEN c IS A `A claim`
+GIVETH A BOOLEAN
+`a chronic, special or pre-existing disease in` c MEANS
+        `a chronic disease as the Rules define it` c
+    OR  `a special disease as the Rules define it` c
+    OR  `a pre-existing disease, cover having begun on` (`the date the waiting periods run from, for` c) `, for` c
+
+-- The waiting periods are counted in calendar days from that date, and the benefit is in force
+-- from the day on which the stated number of days has passed: a 30-day period starting on 1 January
+-- ends with 30 January, and an event arising on 31 January is covered (fork F22). The test is the
+-- date the event arose (definition of the waiting period, src:480-485).
+@ref PVI Rules Part II "Thời gian chờ" (src:480-485); Part III A.2.2, B.1.2, B.2.2, B.3.2, B.4.2
+GIVEN c IS A `A claim`
+      `the waiting period in days` IS A NUMBER
+GIVETH A BOOLEAN
+`the event in` c `arose after a waiting period of` `the waiting period in days` MEANS
+        NOT (`the waiting periods apply under` (c's `the certificate`))
+    OR  Day (c's `the date the event arose`) MINUS Day (`the date the waiting periods run from, for` c)
+        AT LEAST `the waiting period in days`
+
+§§ `A.1 — Personal accident (Bảo hiểm Tai nạn cá nhân)`
+
+-- 1.1 Scope: death or permanent injury from an accident, subject to the Part IV exclusions.
+-- src:508 | 1. Bảo hiểm Tai nạn cá nhân.
+-- src:510 | 1.1. Phạm vi bảo hiểm: Bảo hiểm cho trường hợp Người được bảo hiểm tử vong,
+-- src:511 | thương tật vĩnh viễn do tai nạn, trừ những trường hợp loại trừ quy định ở phần IV
+-- src:512 | dưới đây.
+@ref PVI Rules Part III A.1.1 (src:510-512)
+GIVEN c IS A `A claim`
+GIVETH A LIST OF `A ground of refusal`
+`A.1.1 — what the claim lacks for the scope of the personal accident benefit` c MEANS
+    append
+        (IF   `an accident as the Rules define it` c
+         THEN EMPTY
+         ELSE LIST (`outside the scope of the benefit` "A.1.1: an accident as Part II defines it"))
+        (IF       `a total permanent injury as the Rules define it` (c's `the death or injury facts`)
+              OR  `a partial permanent injury as the Rules define it` (c's `the death or injury facts`)
+              OR  `death of the insured` c
+         THEN EMPTY
+         ELSE LIST (`outside the scope of the benefit` "A.1.1: death, or a permanent injury as Part II defines it"))
+    WHERE
+        `death of the insured` x MEANS
+            CONSIDER x's `the death or injury facts`'s `outcome`
+            WHEN `death of the insured person` d THEN TRUE
+            OTHERWISE                                 FALSE
+
+-- 1.2 In force at once from the start date of the term: a waiting period of 0 days.
+-- src:514 | 1.2. Hiệu lực bảo hiểm: Quyền lợi bảo hiểm này có hiệu lực ngay kể từ ngày bắt đầu
+-- src:515 | thời hạn bảo hiểm ghi trên Hợp đồng / Giấy chứng nhận bảo hiểm.
+@ref PVI Rules Part III A.1.2 (src:514-515)
+GIVETH A NUMBER
+`A.1.2 — the waiting period in days for personal accident` MEANS 0
+
+-- 1.3 Benefit 1: death or total permanent injury, the whole sum insured on the certificate.
+-- Benefit 2: partial permanent injury, the percentage of the sum insured the annex gives.
+-- 1.4: (i) for one accident no more than one sum insured under Benefit 1 or 2; (ii) the total
+-- under Benefit 2 for one accident at most 100% of the sum insured; (iii) no amount paid under the
+-- Rules bears interest; (iv) where Benefit 2 has been paid and the insured person dies of the same
+-- accident within one year of it, PVI pays the difference between the sum insured and what it paid.
+-- "The sum insured" here is the personal accident sum insured on the schedule (fork F14).
+-- (iv) is read as the only route to a death payment after a Benefit 2 payment, and as prevailing
+-- over Part I clause 10 for a death after the term ends but within the year (fork F21; finding X1).
+-- "Within one year" includes the anniversary.
+-- src:517 | 1.3. Quyền lợi bảo hiểm:
+-- src:519 | a. Quyền lợi 1 - Tử vong/ thương tật toàn bộ vĩnh viễn do tai nạn
+-- src:521 | Bảo hiểm PVI trả toàn bộ Số tiền bảo hiểm ghi trên Hợp đồng / Giấy chứng nhận
+-- src:522 | bảo hiểm.
+-- src:527 | b. Quyền lợi 2 - Thương tật bộ phận vĩnh viễn do tai nạn
+-- src:529 | Bảo hiểm PVI chi trả theo tỷ lệ phần trăm của Số tiền bảo hiểm theo Phụ lục “Bảng
+-- src:530 | tỷ lệ trả tiền bảo hiểm thương tật” của Quy tắc bảo hiểm này
+-- src:532 | 1.4. Quy định chung:
+-- src:534 | - Đối với bất kỳ Người được bảo hiểm nào, Số tiền bảo hiểm không được trả quá
+-- src:535 | một trong những Số tiền bảo hiểm quy định tại Quyền lợi 1 hay 2 khi có liên quan
+-- src:536 | đến cùng một tai nạn.
+-- src:538 | - Tổng số tiền được trả theo Số tiền bảo hiểm của Quyền lợi 2 đối với bất kỳ Người
+-- src:539 | được bảo hiểm nào có liên quan tới cùng một tai nạn sẽ không vượt quá 100% số
+-- src:540 | tiền đã ghi trong Hợp đồng / Giấy chứng nhận bảo hiểm.
+-- src:542 | - Không một khoản tiền nào được trả theo Quy tắc bảo hiểm này bị tính lãi.
+-- src:544 | - Trường hợp Người được bảo hiểm bị thương tật bộ phận vĩnh viễn đã được Bảo
+-- src:545 | hiểm PVI trả tiền bảo hiểm, trong vòng 01 năm kể từ ngày xảy ra tai nạn Người
+-- src:546 | được bảo hiểm tử vong do hậu quả của chính tai nạn đó, Bảo hiểm PVI sẽ trả
+-- src:547 | phần chênh lệch giữa số tiền ghi trong hợp đồng / Giấy chứng nhận bảo hiểm với
+-- src:548 | số tiền đã chi trả trước đó.
+@ref PVI Rules Part III A.1.3-A.1.4 (src:517-548)
+GIVEN c IS A `A claim`
+GIVETH A NUMBER
+`A.1 — the amount payable on` c MEANS
+    CONSIDER f's `outcome`
+    WHEN `death of the insured person` dd THEN
+        IF   paid GREATER THAN 0
+        THEN IF   dd AT MOST `add years` (c's `the date the event arose`) 1
+             THEN max 0 (si MINUS paid)                     -- 1.4 (iv)
+             ELSE 0
+        ELSE si                                             -- Benefit 1
+    WHEN `a permanent injury` dt councilRate annexRate THEN
+        IF   `a total permanent injury as the Rules define it` f
+        THEN max 0 (si MINUS paid)                          -- Benefit 1, capped by 1.4 (i)
+        ELSE IF   `a partial permanent injury as the Rules define it` f
+             THEN CONSIDER annexRate
+                  WHEN JUST r  THEN min (r TIMES si) (max 0 (si MINUS paid))   -- Benefit 2, 1.4 (i)-(ii)
+                  WHEN NOTHING THEN 0
+             ELSE 0
+    WHEN `no death and no permanent injury` THEN 0
+    WHERE
+        f    MEANS c's `the death or injury facts`
+        si   MEANS c's `the certificate`'s `schedule`'s `sum insured for personal accident`
+        paid MEANS f's `already paid under Benefit 2 for the same accident`
+
+-- 1.4 (iii): "Không một khoản tiền nào được trả theo Quy tắc bảo hiểm này bị tính lãi." LAW: Art.
+-- 31(2) of the Law on Insurance Business (aid lines 725-729) requires interest on a payment made
+-- late (fork F23; finding X8).
+@ref PVI Rules Part III A.1.4 third limb (src:542)
+GIVETH A NUMBER
+`A.1.4 — the interest PVI pays on any amount under the Rules` MEANS 0
+
+§§ `The co-payment for an insured person under 10`
+
+-- A.2.1 and B.1.1 (the same words): for an insured person under 10 the co-payment is 30/70 (the
+-- insured person pays 30%, PVI 70%) "tại các tất cả các cơ sở y tế, trừ Bệnh viện công lập nhưng
+-- không bao gồm khoa quốc tế tại Bệnh viện công lập": at every facility except a public hospital,
+-- and the exception does not extend to a public hospital's international department (fork F24).
+-- Age is taken on the date of treatment (fork F3).
+-- src:557 | Đối với Người được bảo hiểm dưới 10 tuổi, quyền lợi này áp dụng tỷ lệ đồng chi
+-- src:558 | trả 30/70 (Người được bảo hiểm chi trả 30%, Bảo hiểm PVI chi trả 70%) khi điều trị
+-- src:559 | nội trú tại các tất cả các cơ sở y tế, trừ Bệnh viện công lập nhưng không bao gồm
+-- src:560 | khoa quốc tế tại Bệnh viện công lập.
+@ref PVI Rules Part III A.2.1 (src:557-560), B.1.1 (src:624-631)
+GIVEN c IS A `A claim`
+GIVETH A BOOLEAN
+`the co-payment for a child under 10 applies to` c MEANS
+        `the age of` (c's `the insured`) `on` (c's `the date of treatment`) LESS THAN 10
+    AND NOT (    c's `the facility`'s `kind` EQUALS `a public hospital`
+             AND NOT c's `the facility`'s `the treatment was in its international department`)
+
+GIVEN c IS A `A claim`
+GIVETH A NUMBER
+`PVI's percentage under A.2 or B.1 for` c MEANS
+    IF   `the co-payment for a child under 10 applies to` c
+    THEN 70%
+    ELSE 100%
+
+§§ `The waiting periods of A.2 and B.1`
+
+-- A.2.2 and B.1.2 state the same four periods: none for an accident; 30 days for an ordinary
+-- illness; 180 days for an insured person aged 15 days to 6 years treated for bronchitis,
+-- bronchiolitis or any pneumonia; 365 days for a chronic, special or pre-existing disease. Where
+-- more than one describes the illness the longest applies (fork F25). "đến 6 tuổi" includes age 6
+-- (fork F3), taken on the date the event arose.
+-- src:562 | 2.2. Hiệu lực bảo hiểm: Quyền lợi bảo hiểm này chỉ có hiệu lực sau thời gian chờ dưới
+-- src:563 | đây kể từ ngày bắt đầu tham gia quyền lợi bảo hiểm này ghi trên Hợp đồng / Giấy
+-- src:564 | chứng nhận bảo hiểm:
+-- src:566 | - Có hiệu lực ngay đối với trường hợp tai nạn
+-- src:568 | - 30 ngày đối với trường hợp ốm đau, bệnh tật thông thường
+-- src:570 | - 180 ngày đối với Người được bảo hiểm từ 15 ngày tuổi đến 6 tuổi điều trị bệnh
+-- src:571 | viêm phế quản, tiểu phế quản, viêm phổi các loại.
+-- src:573 | - 365 ngày đối với bệnh mãn tính, bệnh đặc biệt và bệnh có sẵn
+-- src:633 | 1.2. Hiệu lực bảo hiểm: Quyền lợi bảo hiểm này chỉ có hiệu lực sau thời gian chờ dưới
+-- src:634 | đây kể từ ngày bắt đầu tham gia Quyền lợi bảo hiểm bổ sung 1 ghi trên Hợp đồng
+-- src:635 | / Giấy chứng nhận bảo hiểm:
+-- src:637 | - Có hiệu lực ngay đối với trường hợp tai nạn.
+-- src:639 | - 30 ngày đối với trường hợp ốm đau, bệnh tật thông thường.
+-- src:641 | - 180 ngày đối với Người được bảo hiểm từ 15 ngày tuổi đến 6 tuổi điều trị bệnh
+-- src:642 | viêm phế quản, tiểu phế quản, viêm phổi các loại.
+-- src:644 | - 365 ngày đối với bệnh mãn tính, bệnh đặc biệt và bệnh có sẵn.
+@ref PVI Rules Part III A.2.2 (src:562-574), B.1.2 (src:633-645)
+GIVETH A LIST OF `A condition`
+`bronchitis, bronchiolitis and pneumonia` MEANS LIST `bronchitis`, `bronchiolitis`, `pneumonia`
+
+GIVEN c IS A `A claim`
+GIVETH A NUMBER
+`the waiting period in days under A.2 or B.1 for` c MEANS
+    IF   c's `the cause` EQUALS `an accident`
+    THEN 0
+    ELSE max 30 (max `the child's respiratory period` `the long period`)
+    WHERE
+        `the child's respiratory period` MEANS
+            IF       `age in days` (c's `the insured`'s `date of birth`) `on` (c's `the date the event arose`) AT LEAST 15
+                 AND `the age of` (c's `the insured`) `on` (c's `the date the event arose`) AT MOST 6
+                 AND any (GIVEN x YIELD elem x `bronchitis, bronchiolitis and pneumonia`) (c's `the conditions`)
+            THEN 180
+            ELSE 0
+        `the long period` MEANS
+            IF   `a chronic, special or pre-existing disease in` c
+            THEN 365
+            ELSE 0
+
+§§ `A.2 — Inpatient treatment (Điều trị nội trú)`
+
+-- 2.1 Scope: the insured person is ill or injured in an accident and "phải nằm viện phẫu thuật"
+-- (must be hospitalised [or] operated on), dental treatment excluded. Read as either a
+-- hospitalisation or a surgery, the two benefits 2.3(a) and (b) (fork F26). A maternity event is
+-- claimed under B.3, not here (fork F26).
+-- 2.3(a): a hospitalisation, day treatment excluded. 2.3(b): a surgery, day surgery excluded (B.1
+-- takes both). 2.3(c): the other benefits are in the schedule (not in the document).
+-- src:550 | 2. Bảo hiểm Điều trị nội trú do ốm đau, bệnh tật, tai nạn (không bao gồm điều trị nha
+-- src:551 | khoa).
+-- src:553 | 2.1. Phạm vi bảo hiểm: Bảo hiểm trường hợp Người được bảo hiểm bị ốm đau, bệnh
+-- src:554 | tật, tai nạn phải nằm viện phẫu thuật, trừ những trường hợp loại trừ quy định ở
+-- src:555 | Phần IV dưới đây.
+-- src:585 | 2.3. Quyền lợi của Người được bảo hiểm:
+-- src:587 | a. Trường hợp nằm viện: Trường hợp Người được bảo hiểm phải nằm viện (không
+-- src:588 | bao gồm điều trị trong ngày) thuộc phạm vi bảo hiểm, Bảo hiểm PVI sẽ thanh
+-- src:589 | toán các chi phí điều trị, tiền giường điều trị, tiền ăn theo tiêu chuẩn điều trị nội
+-- src:590 | trú của bệnh viện (nếu có), chi phí xét nghiệm, chẩn đoán hình ảnh, thuốc điều
+-- src:591 | trị, truyền máu, ô xy, huyết thanh, quần áo bệnh viện và các chi phí y tế liên quan
+-- src:592 | khác nhưng tối đa không quá giới hạn quy định trong Hợp đồng / Giấy chứng
+-- src:593 | nhận bảo hiểm và không quá 60 ngày trong một năm bảo hiểm.
+-- src:595 | b. Trường hợp phẫu thuật: Trường hợp Người được bảo hiểm phải phẫu thuật ( không
+-- src:596 | bao gồm phẫu thuật trong ngày) thuộc phạm vi bảo hiểm, Bảo hiểm PVI sẽ thanh
+-- src:597 | toán toàn bộ chi phí gây mê, chi phí phẫu thuật và các chi phí y tế phát sinh
+-- src:598 | trong phòng mổ Giới hạn số tiền chi trả cho trường hợp phẫu thuật không vượt
+-- src:599 | mức giới hạn tối đa được ghi cụ thể trong Hợp đồng / Giấy chứng nhận bảo hiểm.
+-- src:601 | c. Các quyền lợi bảo hiểm khác: Quy định chi tiết trong Bảng quyền lợi bảo hiểm
+-- src:602 | Chăm sóc sức khỏe toàn diện của Bảo hiểm PVI.
+@ref PVI Rules Part III A.2.1 (src:550-555), A.2.3 (src:587-602)
+GIVEN c IS A `A claim`
+GIVETH A BOOLEAN
+`A.2.3(a) — a hospitalisation the inpatient benefit pays for` c MEANS
+        `a hospitalisation as the Rules define it` (c's `the treatment`)
+    AND NOT (`day treatment as the Rules define it` (c's `the treatment`))
+
+GIVEN c IS A `A claim`
+GIVETH A BOOLEAN
+`A.2.3(b) — a surgery the inpatient benefit pays for` c MEANS
+        `a surgery as the Rules define it, at` (c's `the facility`) `:` (c's `the treatment`)
+    AND NOT (`a day surgery as the Rules define it, at` (c's `the facility`) `:` (c's `the treatment`))
+
+GIVEN c IS A `A claim`
+GIVETH A LIST OF `A ground of refusal`
+`A.2.1 — what the claim lacks for the scope of the inpatient benefit` c MEANS
+    concat (LIST
+        (IF   c's `the cause` EQUALS `an illness` OR c's `the cause` EQUALS `an accident`
+         THEN EMPTY
+         ELSE LIST (`outside the scope of the benefit` "A.2.1: an illness or an accident"))
+      , (IF   c's `the treatment`'s `dental treatment`
+         THEN LIST (`outside the scope of the benefit` "A.2: dental treatment is not included")
+         ELSE EMPTY)
+      , (IF   `A.2.3(a) — a hospitalisation the inpatient benefit pays for` c
+           OR `A.2.3(b) — a surgery the inpatient benefit pays for` c
+         THEN EMPTY
+         ELSE LIST (`outside the scope of the benefit` "A.2.3: a hospitalisation that is not day treatment, or a surgery that is not day surgery")))
+
+-- 2.3(a): the costs of treatment, bed charges, meals by the hospital's inpatient standard, tests,
+-- imaging, medicine, blood, oxygen, serum, hospital clothing and other related medical costs, up to
+-- the limit on the certificate and "không quá 60 ngày trong một năm bảo hiểm" (no more than 60 days
+-- in an insurance year). Each day of the stay is paid in order until the 60 days of the insurance
+-- year are used or PVI's liability ends (Part I clause 10).
+@ref PVI Rules Part III A.2.3(a) (src:587-593); Part II "Tiền giường điều trị" (src:386-392); Part I clause 10
+GIVEN c IS A `A claim`
+      days IS A LIST OF `A day in hospital`
+      `the date` IS A DATE
+      `days left` IS A NUMBER
+GIVETH A NUMBER
+`the covered cost of the hospital days of` c `:` days `from` `the date` `, with days left:` `days left` MEANS
+    CONSIDER days
+    WHEN EMPTY THEN 0
+    WHEN d FOLLOWED BY rest THEN
+        IF       `days left` AT MOST 0
+             OR  NOT (`clause 10 — a day within PVI's liability under` (c's `the certificate`) `:` `the date`)
+        THEN 0
+        ELSE     `the covered cost of a day in hospital at` (c's `the facility`) `, treated` (c's `the treatment`) `:` d
+            PLUS `the covered cost of the hospital days of` c `:` rest `from` (`the date` PLUS 1) `, with days left:` (`days left` MINUS 1)
+
+@ref PVI Rules Part III A.2.3(a) (src:587-593)
+GIVEN c IS A `A claim`
+GIVETH A NUMBER
+`A.2.3(a) — the hospitalisation costs covered for` c MEANS
+    IF   `A.2.3(a) — a hospitalisation the inpatient benefit pays for` c
+    THEN `the covered cost of the hospital days of` c `:` (c's `the treatment`'s `the days in hospital`) `from` (c's `the date of treatment`) `, with days left:` (60 MINUS c's `the costs`'s `days of hospitalisation already paid in this insurance year`)
+    ELSE 0
+
+-- 2.3(b): all the costs of anaesthesia and surgery and the medical costs in the operating room, up
+-- to the limit on the certificate. The surgery is taken to be on the date of treatment.
+@ref PVI Rules Part III A.2.3(b) (src:595-599)
+GIVEN c IS A `A claim`
+GIVETH A NUMBER
+`A.2.3(b) — the surgery costs covered for` c MEANS
+    IF       `A.2.3(b) — a surgery the inpatient benefit pays for` c
+         AND `clause 10 — a day within PVI's liability under` (c's `the certificate`) `:` (c's `the date of treatment`)
+    THEN c's `the costs`'s `costs of the surgery`
+    ELSE 0
+
+-- The amount: each part at PVI's percentage of the lower of its covered costs and its sub-limit
+-- (Đồng chi trả); then no more than the costs another contract has left unpaid (Part I clause 3);
+-- then no more than the sum insured left in the insurance year. The order is fork F27.
+@ref PVI Rules Part III A.2.1, A.2.3; Part II "Đồng chi trả", "Số tiền bảo hiểm"; Part I clause 3
+GIVEN c IS A `A claim`
+GIVETH A NUMBER
+`A.2 — the amount payable on` c MEANS
+    min (`the sum insured left in the insurance year for` c)
+        (min (`clause 3 — the costs left for PVI after another contract paid` (c's `the costs`'s `paid under another insurance contract`) `, of` (`hospital costs` PLUS `surgery costs`))
+             (    `PVI's part under co-payment of` `percentage` `, on covered costs of` `hospital costs` `and a sub-limit of` (s's `limit for hospitalisation`)
+             PLUS `PVI's part under co-payment of` `percentage` `, on covered costs of` `surgery costs` `and a sub-limit of` (s's `limit for surgery`)))
+    WHERE
+        s                MEANS c's `the certificate`'s `schedule`
+        `percentage`     MEANS `PVI's percentage under A.2 or B.1 for` c
+        `hospital costs` MEANS `A.2.3(a) — the hospitalisation costs covered for` c
+        `surgery costs`  MEANS `A.2.3(b) — the surgery costs covered for` c
+
+§§ `B.1 — Outpatient treatment (Quyền lợi bổ sung 1: Điều trị ngoại trú)`
+
+-- 1.1 Scope: outpatient treatment of illness or accident in the term, dental treatment excluded:
+-- examination, tests, imaging, exploratory procedures and ordinary consumables on a doctor's
+-- indication; prescribed medicine; physical therapy, radiotherapy, heat and light therapy on a
+-- doctor's indication. Day treatment and day surgery, minor surgery or diagnostic endoscopy in the
+-- day are handled under this benefit. The co-payment for a child under 10 is above.
+-- src:605 | 1. Quyền lợi bổ sung 1: Điều trị ngoại trú do ốm đau, bệnh tật, tai nạn (không bao
+-- src:606 | gồm điều trị nha khoa)
+-- src:608 | 1.1. Phạm vi bảo hiểm: Bảo hiểm PVI sẽ thanh toán cho Người được bảo hiểm tham
+-- src:609 | gia quyền lợi bảo hiểm bổ sung này các chi phí y tế phát sinh điều trị ngoại trú do
+-- src:610 | ốm đau, bệnh tật, tai nạn trong thời hạn bảo hiểm, bao gồm:
+-- src:612 | - Chi phí khám, các xét nghiệm, chẩn đoán hình ảnh, thủ thuật thăm dò, vật tư y
+-- src:613 | tế tiêu hao thông thường theo chỉ định của bác sĩ;
+-- src:615 | - Chi phí thuốc theo kê đơn của bác sĩ;
+-- src:617 | - Điều trị bằng các phương pháp vật lý trị liệu, trị liệu hoc bức xạ, nhiệt, liệu pháp
+-- src:618 | ánh sáng do bác sỹ chỉ định.
+-- src:620 | Theo Quy tắc bảo hiểm này, các trường hợp điều trị trong ngày, phẫu thuật/ tiểu
+-- src:621 | phẫu/ nội soi chẩn đoán bệnh trong ngày được giải quyết theo quyền lợi Điều trị
+-- src:622 | ngoại trú.
+-- src:624 | Đối với Người được bảo hiểm dưới 10 tuổi, quyền lợi này áp dụng tỷ lệ đồng chi
+-- src:625 | trả 30/70 (Người được bảo hiểm chi trả 30%, Bảo hiểm PVI chi trả 70%) khi điều trị
+-- src:630 | ngoại trú tại các tất cả các cơ sở y tế, trừ Bệnh viện công lập nhưng không bao
+-- src:631 | gồm khoa quốc tế tại Bệnh viện công lập.
+@ref PVI Rules Part III B.1.1 (src:605-631)
+GIVEN c IS A `A claim`
+GIVETH A BOOLEAN
+`B.1.1 — treatment the outpatient benefit handles` c MEANS
+        `outpatient treatment as the Rules define it, at` (c's `the facility`) `:` (c's `the treatment`)
+    OR  `day treatment as the Rules define it` (c's `the treatment`)
+    OR  `a day surgery as the Rules define it, at` (c's `the facility`) `:` (c's `the treatment`)
+
+GIVEN c IS A `A claim`
+GIVETH A LIST OF `A ground of refusal`
+`B.1.1 — what the claim lacks for the scope of the outpatient benefit` c MEANS
+    concat (LIST
+        (IF   c's `the cause` EQUALS `an illness` OR c's `the cause` EQUALS `an accident`
+         THEN EMPTY
+         ELSE LIST (`outside the scope of the benefit` "B.1.1: an illness or an accident"))
+      , (IF   `B.1.1 — treatment the outpatient benefit handles` c
+         THEN EMPTY
+         ELSE LIST (`outside the scope of the benefit` "B.1.1: outpatient treatment, day treatment or day surgery")))
+
+-- 1.3 Exclusions of this benefit, besides Part IV: examinations and tests without a doctor's
+-- conclusion of a disease; dental treatment and outpatient maternity treatment; examinations and
+-- tests with a doctor's conclusion but no specific treatment protocol.
+-- src:652 | 1.3. Loại trừ bảo hiểm: Ngoài quy định tại Phần IV của Quy tắc bảo hiểm này, Quyền
+-- src:653 | lợi bảo hiểm bổ sung này còn áp dụng thêm các điểm loại trừ sau:
+-- src:655 | - Khám và các xét nghiệm không có kết luận bệnh của bác sỹ;
+-- src:657 | - Điều trị nha khoa, điều trị thai sản ngoại trú;
+-- src:659 | - Khám và các xét nghiệm có kết luận bệnh của bác sĩ điều trị nhưng không có
+-- src:660 | phác đồ điều trị bệnh cụ thể.
+@ref PVI Rules Part III B.1.3 (src:652-660)
+GIVEN c IS A `A claim`
+GIVETH A LIST OF `A ground of refusal`
+`B.1.3 — the outpatient benefit's own exclusions engaged by` c MEANS
+    concat (LIST
+        (IF   NOT c's `the treatment`'s `a doctor's conclusion of a disease`
+         THEN LIST (`excluded by the benefit's own exclusions` "B.1.3, first limb: examination and tests without a doctor's conclusion of a disease")
+         ELSE EMPTY)
+      , (IF   c's `the treatment`'s `dental treatment` OR c's `the cause` EQUALS `pregnancy or childbirth`
+         THEN LIST (`excluded by the benefit's own exclusions` "B.1.3, second limb: dental treatment, outpatient maternity treatment")
+         ELSE EMPTY)
+      , (IF       c's `the treatment`'s `a doctor's conclusion of a disease`
+              AND NOT c's `the treatment`'s `a specific treatment protocol`
+         THEN LIST (`excluded by the benefit's own exclusions` "B.1.3, third limb: a doctor's conclusion but no specific treatment protocol")
+         ELSE EMPTY))
+
+-- The amount: the medical costs (and the cost of a day surgery) at PVI's percentage of the lower of
+-- the costs and the outpatient sub-limit; then Part I clause 3; then the sum insured left.
+@ref PVI Rules Part III B.1.1; Part II "Đồng chi trả", "Số tiền bảo hiểm"; Part I clauses 3 and 10
+GIVEN c IS A `A claim`
+GIVETH A NUMBER
+`B.1 — the amount payable on` c MEANS
+    min (`the sum insured left in the insurance year for` c)
+        (min (`clause 3 — the costs left for PVI after another contract paid` (c's `the costs`'s `paid under another insurance contract`) `, of` `the costs`)
+             (`PVI's part under co-payment of` (`PVI's percentage under A.2 or B.1 for` c) `, on covered costs of` `the costs` `and a sub-limit of` (c's `the certificate`'s `schedule`'s `limit for outpatient treatment`)))
+    WHERE
+        `the costs` MEANS
+            IF   `clause 10 — a day within PVI's liability under` (c's `the certificate`) `:` (c's `the date of treatment`)
+            THEN c's `the costs`'s `other medical costs` PLUS c's `the costs`'s `costs of the surgery`
+            ELSE 0
+
+§§ `B.2 — Dental care (Quyền lợi bổ sung 2: Bảo hiểm Chăm sóc răng)`
+
+-- Taken only with supplementary benefit 1. Covers examination, X-ray and diagnosis; scaling once a
+-- year; fillings with ordinary materials (amalgam, composite or equivalent); extraction of a
+-- diseased tooth or root (surgery included); root canal treatment; gingivitis and periodontitis;
+-- emergency dental treatment within 24 hours of an accident on a doctor's indication, up to 10% of
+-- the dental sum insured ("STBH Quyền lợi bổ sung 2"). "Trong vòng 24 giờ" includes the 24th hour.
+-- src:662 | 2. Quyền lợi bổ sung 2: Bảo hiểm Chăm sóc răng
+-- src:664 | (Chỉ nhận bảo hiểm khi đã tham gia bảo hiểm Điều trị ngoại trú)
+-- src:666 | 2.1. Phạm vi bảo hiểm: Bảo hiểm PVI sẽ thanh toán cho Người được bảo hiểm tham
+-- src:667 | gia quyền lợi bảo hiểm bổ sung này các chi phí y tế chăm sóc và điều trị răng
+-- src:668 | phát sinh trong thời hạn bảo hiểm :
+-- src:670 | - Khám, chụp X Quang và chẩn đoán bệnh;
+-- src:672 | - Lấy cao răng (1 lần/năm);
+-- src:674 | - Trám (hàn) răng bằng các chất liệu thông thường (amalgam hoặc composite
+-- src:675 | hoặc các chất liệu khác tương đương);
+-- src:677 | - Nhổ răng bệnh lý, nhổ chân răng (bao gồm phẫu thuật);
+-- src:679 | - Chữa tủy răng;
+-- src:681 | - Điều trị viêm nướu, viêm nha chu;
+-- src:683 | - Điều trị răng cấp cứu trong vòng 24 giờ kể từ khi xảy ra tai nạn theo chỉ định của
+-- src:688 | bác sĩ giới hạn tới 10% STBH Quyền lợi bổ sung 2;
+@ref PVI Rules Part III B.2 heading (src:664)
+GIVEN c IS A `A claim`
+GIVETH A BOOLEAN
+`B.2 — taken with supplementary benefit 1` c MEANS
+    c's `the certificate`'s `this period`'s `includes outpatient treatment`
+
+-- Where dental care is covered: in Hanoi and Ho Chi Minh City, state hospitals and medical centres,
+-- private and international hospitals, and hospitals or facilities with a PVI cooperation
+-- agreement; elsewhere, facilities licensed in Vietnam that provide full valid documents and
+-- invoices, except those on PVI's list of facilities refused for claims (a list the document does
+-- not publish: finding X10).
+-- src:690 | - Phạm vi bảo hiểm quyền lợi bảo hiểm chăm sóc răng:
+-- src:692 | * Tại địa bàn Hà Nội và TP. Hồ Chí Minh: tại các bệnh viện/ trung tâm y tế nhà
+-- src:693 | nước, bệnh viện tư nhân và quốc tế và các bệnh viện/cơ sở y tế có ký thỏa
+-- src:694 | thuận hợp tác với Bảo hiểm PVI.
+-- src:696 | * Tại các địa bàn khác: tại các cơ sở y tế có giấy phép hoạt động hợp pháp
+-- src:697 | trên lãnh thổ Việt Nam và cung cấp được đầy đủ chứng từ, hóa đơn hợp lệ,
+-- src:698 | loại trừ các cơ sở trong danh sách từ chối bồi thường của Bảo hiểm PVI.
+@ref PVI Rules Part III B.2.1, last limb (src:690-698)
+GIVEN f IS A `A medical facility`
+GIVETH A BOOLEAN
+`B.2.1 — a facility where dental care is covered` f MEANS
+    IF   f's `in Hanoi or Ho Chi Minh City`
+    THEN     f's `kind` EQUALS `a public hospital`
+         OR  f's `kind` EQUALS `a state medical centre`
+         OR  f's `kind` EQUALS `a private or international hospital`
+         OR  f's `has a cooperation agreement with PVI`
+    ELSE     f's `in Vietnam`
+         AND f's `licensed to operate lawfully`
+         AND f's `issues documents and invoices as the Ministry of Finance requires`
+         AND NOT f's `on PVI's list of facilities refused for claims`
+
+GIVEN c IS A `A claim`
+GIVETH A LIST OF `A ground of refusal`
+`B.2 — what the claim lacks for the scope of the dental benefit` c MEANS
+    concat (LIST
+        (IF   `B.2 — taken with supplementary benefit 1` c
+         THEN EMPTY
+         ELSE LIST (`outside the scope of the benefit` "B.2: taken only with supplementary benefit 1"))
+      , (IF   c's `the treatment`'s `dental treatment`
+         THEN EMPTY
+         ELSE LIST (`outside the scope of the benefit` "B.2.1: dental care and treatment"))
+      , (IF   `B.2.1 — a facility where dental care is covered` (c's `the facility`)
+         THEN EMPTY
+         ELSE LIST (`outside the scope of the benefit` "B.2.1: a facility where dental care is covered")))
+
+-- 2.2 Waiting period: 30 days, for every cause (an accident included).
+-- src:700 | 2.2. Hiệu lực bảo hiểm: Quyền lợi bảo hiểm này chỉ có hiệu lực sau thời gian chờ 30
+-- src:701 | ngày kể từ ngày bắt đầu tham gia Quyền lợi bảo hiểm bổ sung 2 ghi trên Hợp
+-- src:702 | đồng / Giấy chứng nhận bảo hiểm.
+@ref PVI Rules Part III B.2.2 (src:700-702)
+GIVETH A NUMBER
+`B.2.2 — the waiting period in days for dental care` MEANS 30
+
+-- 2.3 Exclusions of this benefit, besides Part IV: dentures; cosmetic dental treatment or
+-- orthodontics. With the services 2.1 does not list, these are dropped item by item.
+-- src:704 | 2.3. Loại trừ bảo hiểm: Ngoài việc áp dụng các điểm loại trừ theo quy định tại Phần IV
+-- src:705 | của Quy tắc bảo hiểm, Quyền lợi bảo hiểm bổ sung này còn áp dụng thêm các
+-- src:706 | điểm loại trừ sau:
+-- src:708 | - Làm răng giả;
+-- src:710 | - Điều trị hoặc chỉnh răng mang tính thẩm mỹ.
+@ref PVI Rules Part III B.2.1 (src:666-688), B.2.3 (src:704-710)
+GIVEN s IS A `A dental service`
+GIVETH A BOOLEAN
+`B.2 — a dental service the benefit pays for, other than an emergency` s MEANS
+    CONSIDER s
+    WHEN `examination, X-ray and diagnosis`          THEN TRUE
+    WHEN `a filling with an ordinary material`       THEN TRUE
+    WHEN `extraction of a diseased tooth or root`    THEN TRUE
+    WHEN `root canal treatment`                      THEN TRUE
+    WHEN `treatment of gingivitis or periodontitis`  THEN TRUE
+    OTHERWISE                                             FALSE
+
+GIVEN items IS A LIST OF `A dental item`
+      `scalings left` IS A NUMBER
+GIVETH A NUMBER
+`the cost of the scalings paid among` items `, with scalings left this year:` `scalings left` MEANS
+    CONSIDER items
+    WHEN EMPTY THEN 0
+    WHEN i FOLLOWED BY rest THEN
+        IF   i's `service` EQUALS `scaling` AND `scalings left` GREATER THAN 0
+        THEN i's `cost` PLUS `the cost of the scalings paid among` rest `, with scalings left this year:` (`scalings left` MINUS 1)
+        ELSE `the cost of the scalings paid among` rest `, with scalings left this year:` `scalings left`
+
+GIVEN i IS A `A dental item`
+GIVETH A NUMBER
+`the cost of an emergency within 24 hours of an accident in` i MEANS
+    CONSIDER i's `service`
+    WHEN `emergency treatment after an accident` h THEN
+        IF h AT MOST 24 THEN i's `cost` ELSE 0
+    OTHERWISE 0
+
+@ref PVI Rules Part III B.2.1 (src:666-688)
+GIVEN c IS A `A claim`
+GIVETH A NUMBER
+`B.2 — the amount payable on` c MEANS
+    min (`the sum insured left in the insurance year for` c)
+        (min (`clause 3 — the costs left for PVI after another contract paid` (c's `the costs`'s `paid under another insurance contract`) `, of` `the covered cost`)
+             (min (`the dental sum insured`) `the covered cost`))
+    WHERE
+        items MEANS
+            IF   `clause 10 — a day within PVI's liability under` (c's `the certificate`) `:` (c's `the date of treatment`)
+            THEN c's `the dental items`
+            ELSE EMPTY
+        `the dental sum insured` MEANS c's `the certificate`'s `schedule`'s `sum insured for dental care`
+        `the covered cost` MEANS
+                 sum (map (GIVEN i YIELD IF `B.2 — a dental service the benefit pays for, other than an emergency` (i's `service`) THEN i's `cost` ELSE 0) items)
+            PLUS `the cost of the scalings paid among` items `, with scalings left this year:` (1 MINUS c's `the costs`'s `scalings already paid in this insurance year`)
+            PLUS min (10% TIMES `the dental sum insured`) (sum (map (GIVEN i YIELD `the cost of an emergency within 24 hours of an accident in` i) items))
+
+§§ `B.3 — Maternity (Quyền lợi bổ sung 3: Bảo hiểm thai sản)`
+
+-- Only for women aged 18 to 45 on programme 1 or 2 (the age taken on the certificate's start date,
+-- both ends included: fork F3). Medical costs of maternity care and childbirth at state or private
+-- facilities licensed in Vietnam, up to the limit on the certificate: (a) complications of
+-- pregnancy or childbirth on a doctor's indication (the list is open), and a caesarean section
+-- only where a doctor indicates it is necessary, not on request; (b) normal delivery.
+-- src:712 | 3. Quyền lợi bổ sung 3: Bảo hiểm thai sản
+-- src:714 | (Chỉ áp dụng cho phụ nữ có độ tuổi từ 18 đến 45 và tham gia chương trình 1 hoặc
+-- src:715 | 2)
+-- src:717 | 3.1. Phạm vi bảo hiểm: Bảo hiểm PVI sẽ thanh toán theo giới hạn quy định trong Hợp
+-- src:718 | đồng / Giấy chứng nhận bảo hiểm cho Người được bảo hiểm tham gia quyền lợi
+-- src:719 | bảo hiểm bổ sung này các chi phí y tế chăm sóc thai sản và sinh đẻ tại các cơ sở
+-- src:720 | y tế nhà nước hoặc tư nhân có giấy phép hoạt động hợp pháp trên lãnh thổ Việt
+-- src:721 | Nam phát sinh trong thời hạn bảo hiểm như sau:
+-- src:723 | a. Biến chứng thai sản và sinh mổ:
+-- src:725 | Bảo hiểm PVI sẽ chi trả các chi phí y tế phát sinh theo chỉ định của bác sĩ do các
+-- src:726 | biến chứng trong quá trình mang thai hoặc trong quá trình sinh nở. Việc sinh mổ
+-- src:727 | chỉ được bảo hiểm nếu do bác sĩ chỉ định là cần thiết cho ca sinh đó, không bao
+-- src:728 | gồm việc sinh mổ theo yêu cầu.
+-- src:730 | Biến chứng thai sản bao gồm và không giới hạn trong các trường hợp sau:
+-- src:732 | - Sảy thai hoặc thai nhi chết trong tử cung;
+-- src:734 | - Mang thai trứng nước;
+-- src:736 | - Thai ngoài tử cung;
+-- src:738 | - Băng huyết sau khi sinh;
+-- src:742 | - Sót nhau thai trong tử cung sau khi sinh;
+-- src:744 | - Phá thai do điều trị bao gồm các trường hợp phá thai do các bệnh lý di
+-- src:745 | truyền/dị tật bẩm sinh của thai nhi hoặc phải phá thai để bảo vệ tính mạng
+-- src:746 | của người mẹ;
+-- src:748 | - Biến chứng cuả các trường hợp trên.
+-- src:750 | b. Sinh thường:
+-- src:752 | Bảo hiểm PVI sẽ chi trả các chi phí y tế phát sinh cho việc sinh thường bao gồm và
+-- src:753 | không giới hạn trong các chi phí: đỡ đẻ, viện phí tổng hợp, bác sĩ chuyên khoa…
+@ref PVI Rules Part III B.3 heading (src:714-715)
+GIVEN c IS A `A claim`
+GIVETH A BOOLEAN
+`B.3 — a woman aged 18 to 45 on programme 1 or 2` c MEANS
+        c's `the insured`'s `a woman`
+    AND `the age of` (c's `the insured`) `on` (c's `the certificate`'s `this period`'s `start date`) AT LEAST 18
+    AND `the age of` (c's `the insured`) `on` (c's `the certificate`'s `this period`'s `start date`) AT MOST 45
+    AND (c's `the certificate`'s `programme` EQUALS 1 OR c's `the certificate`'s `programme` EQUALS 2)
+
+@ref PVI Rules Part III B.3.1 (src:717-753)
+GIVEN c IS A `A claim`
+GIVETH A BOOLEAN
+`B.3.1 — a maternity event the benefit covers` c MEANS
+    CONSIDER c's `the maternity event`
+    WHEN NOTHING THEN FALSE
+    WHEN JUST e  THEN
+        CONSIDER e
+        WHEN `a caesarean section` indicated THEN indicated
+        OTHERWISE                                 TRUE
+
+GIVEN c IS A `A claim`
+GIVETH A LIST OF `A ground of refusal`
+`B.3 — what the claim lacks for the scope of the maternity benefit` c MEANS
+    concat (LIST
+        (IF   `B.3 — a woman aged 18 to 45 on programme 1 or 2` c
+         THEN EMPTY
+         ELSE LIST `the insured person was not eligible for the benefit`)
+      , (IF   c's `the cause` EQUALS `pregnancy or childbirth` AND `B.3.1 — a maternity event the benefit covers` c
+         THEN EMPTY
+         ELSE LIST (`outside the scope of the benefit` "B.3.1: a complication, a necessary caesarean section, or a normal delivery"))
+      , (IF   c's `the facility`'s `in Vietnam` AND c's `the facility`'s `licensed to operate lawfully`
+         THEN EMPTY
+         ELSE LIST (`outside the scope of the benefit` "B.3.1: a state or private facility licensed in Vietnam")))
+
+-- 3.2 Waiting periods: 60 days for a complication of pregnancy; 365 days for childbirth. A
+-- caesarean section is a childbirth (fork F28).
+-- src:755 | 3.2. Hiệu lực bảo hiểm: Quyền lợi bảo hiểm này chỉ có hiệu lực sau thời gian chờ
+-- src:756 | dưới đây kể từ ngày bắt đầu tham gia Quyền lợi bảo hiểm bổ sung 3 ghi trên Hợp
+-- src:757 | đồng/ Giấy chứng nhận bảo hiểm:
+-- src:759 | - 60 ngày đối với trường hợp biến chứng thai sản.
+-- src:761 | - 365 ngày đối với trường hợp sinh đẻ.
+@ref PVI Rules Part III B.3.2 (src:755-761)
+GIVEN a IS A TYPE
+GIVETH AN a
+`a maternity claim that names no maternity event cannot be assessed` MEANS
+    REFUSE "a maternity claim that names no maternity event cannot be assessed"
+
+GIVEN c IS A `A claim`
+GIVETH A NUMBER
+`B.3.2 — the waiting period in days for` c MEANS
+    CONSIDER c's `the maternity event`
+    WHEN NOTHING THEN `a maternity claim that names no maternity event cannot be assessed`
+    WHEN JUST e  THEN
+        CONSIDER e
+        WHEN `a complication` which THEN 60
+        OTHERWISE                        365
+
+@ref PVI Rules Part III B.3.1 (src:717-721)
+GIVEN c IS A `A claim`
+GIVETH A NUMBER
+`B.3 — the amount payable on` c MEANS
+    min (`the sum insured left in the insurance year for` c)
+        (min (`clause 3 — the costs left for PVI after another contract paid` (c's `the costs`'s `paid under another insurance contract`) `, of` `the costs`)
+             (min `the costs` (c's `the certificate`'s `schedule`'s `limit for maternity`)))
+    WHERE
+        `the costs` MEANS
+            IF   `clause 10 — a day within PVI's liability under` (c's `the certificate`) `:` (c's `the date of treatment`)
+            THEN c's `the costs`'s `other medical costs` PLUS c's `the costs`'s `costs of the surgery`
+            ELSE 0
+
+§§ `B.4 — Death from illness (Quyền lợi bổ sung 4: Bảo hiểm Tử vong do ốm đau, bệnh tật)`
+
+-- 4.1: the whole sum insured on the certificate if the insured person dies of a covered illness.
+-- 4.2: 30 days for an ordinary illness; 730 days for a chronic, special or pre-existing disease.
+-- src:769 | 4. Quyền lợi bổ sung 4: Bảo hiểm Tử vong do ốm đau, bệnh tật
+-- src:771 | 4.1. Phạm vi bảo hiểm: Bảo hiểm PVI sẽ thanh toán cho Người được bảo hiểm tham
+-- src:772 | gia quyền lợi bảo hiểm bổ sung này toàn bộ Số tiền bảo hiểm ghi trên Hợp đồng
+-- src:773 | / Giấy chứng nhận bảo hiểm trong trường hợp Người được bảo hiểm tử vong do
+-- src:774 | ốm đau, bệnh tật thuộc phạm vi bảo hiểm.
+-- src:776 | 4.2. Hiệu lực bảo hiểm: Quyền lợi bảo hiểm này chỉ có hiệu lực sau thời gian chờ dưới
+-- src:777 | đây kể từ ngày bắt đầu tham gia Quyền lợi bảo hiểm bổ sung 4 ghi trên Hợp
+-- src:778 | đồng/ Giấy chứng nhận bảo hiểm:
+-- src:780 | - 30 ngày đối với trường hợp ốm đau, bệnh tật thông thường.
+-- src:782 | - 730 ngày đối với bệnh mãn tính, bệnh đặc biệt và bệnh có sẵn.
+-- src:784 | Đối với các hợp đồng tái tục liên tục, thời gian chờ sẽ được tính từ ngày bắt đầu
+-- src:785 | tham gia Quyền lợi bảo hiểm bổ sung 4 (bao gồm cả Hợp đồng / Giấy chứng
+-- src:786 | nhận bảo hiểm năm trước tại Bảo hiểm PVI nếu có Quyền lợi bảo hiểm bổ sung 4)
+-- src:787 | với điều kiện Người được bảo hiểm đóng phí bảo hiểm đầy đủ, đúng hạn cho thời
+-- src:788 | gian tiếp theo.
+@ref PVI Rules Part III B.4.1 (src:771-774)
+GIVEN c IS A `A claim`
+GIVETH A LIST OF `A ground of refusal`
+`B.4.1 — what the claim lacks for the scope of the death benefit` c MEANS
+    IF   c's `the cause` EQUALS `an illness` AND `a death in` c
+    THEN EMPTY
+    ELSE LIST (`outside the scope of the benefit` "B.4.1: death from an illness")
+    WHERE
+        `a death in` x MEANS
+            CONSIDER x's `the death or injury facts`'s `outcome`
+            WHEN `death of the insured person` d THEN TRUE
+            OTHERWISE                                 FALSE
+
+@ref PVI Rules Part III B.4.2 (src:776-782)
+GIVEN c IS A `A claim`
+GIVETH A NUMBER
+`B.4.2 — the waiting period in days for` c MEANS
+    IF   `a chronic, special or pre-existing disease in` c
+    THEN 730
+    ELSE 30
+
+@ref PVI Rules Part III B.4.1 (src:771-774)
+GIVEN c IS A `A claim`
+GIVETH A NUMBER
+`B.4 — the amount payable on` c MEANS
+    c's `the certificate`'s `schedule`'s `sum insured for death from illness`
+
+§§ `Every benefit together`
+
+GIVEN c IS A `A claim`
+GIVETH A NUMBER
+`the waiting period in days for` c MEANS
+    CONSIDER c's `the benefit claimed`
+    WHEN `personal accident`    THEN `A.1.2 — the waiting period in days for personal accident`
+    WHEN `inpatient treatment`  THEN `the waiting period in days under A.2 or B.1 for` c
+    WHEN `outpatient treatment` THEN `the waiting period in days under A.2 or B.1 for` c
+    WHEN `dental care`          THEN `B.2.2 — the waiting period in days for dental care`
+    WHEN `maternity`            THEN `B.3.2 — the waiting period in days for` c
+    WHEN `death from illness`   THEN `B.4.2 — the waiting period in days for` c
+
+GIVEN c IS A `A claim`
+GIVETH A LIST OF `A ground of refusal`
+`what the claim lacks for the scope of the benefit claimed` c MEANS
+    CONSIDER c's `the benefit claimed`
+    WHEN `personal accident`    THEN `A.1.1 — what the claim lacks for the scope of the personal accident benefit` c
+    WHEN `inpatient treatment`  THEN `A.2.1 — what the claim lacks for the scope of the inpatient benefit` c
+    WHEN `outpatient treatment` THEN append (`B.1.1 — what the claim lacks for the scope of the outpatient benefit` c) (`B.1.3 — the outpatient benefit's own exclusions engaged by` c)
+    WHEN `dental care`          THEN `B.2 — what the claim lacks for the scope of the dental benefit` c
+    WHEN `maternity`            THEN `B.3 — what the claim lacks for the scope of the maternity benefit` c
+    WHEN `death from illness`   THEN `B.4.1 — what the claim lacks for the scope of the death benefit` c
+
+GIVEN c IS A `A claim`
+GIVETH A NUMBER
+`the amount the benefit claimed pays on` c MEANS
+    CONSIDER c's `the benefit claimed`
+    WHEN `personal accident`    THEN `A.1 — the amount payable on` c
+    WHEN `inpatient treatment`  THEN `A.2 — the amount payable on` c
+    WHEN `outpatient treatment` THEN `B.1 — the amount payable on` c
+    WHEN `dental care`          THEN `B.2 — the amount payable on` c
+    WHEN `maternity`            THEN `B.3 — the amount payable on` c
+    WHEN `death from illness`   THEN `B.4 — the amount payable on` c

@@ -1,0 +1,208 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `pvi-health-nouns`
+IMPORT `pvi-health-part1-general`
+IMPORT `pvi-health-part2-definitions`
+IMPORT `pvi-health-fixtures`
+
+-- Tests of PART II (PHẦN II: CÁC ĐỊNH NGHĨA). Expected values are the thresholds the definitions
+-- print (81%, 3 years, 24 hours, 30 days, 7 days) applied by hand, with both sides of each.
+
+§ `Tests — Part II`
+
+§§ `Helpers for these tests`
+
+GIVEN `existed` IS A BOOLEAN
+      `last treated` IS A MAYBE DATE
+      `symptoms` IS A BOOLEAN
+GIVETH A `The history of the disease`
+`a history: existed before cover` `existed` `, last treated` `last treated` `, symptoms before cover` `symptoms` MEANS
+    `The history of the disease` WITH
+        `the disease existed before cover began`     IS `existed`
+        `date of the last treatment before cover began` IS `last treated`
+        `medical symptoms existed and originated before cover began` IS `symptoms`
+
+GIVEN hist IS A `The history of the disease`
+      conds IS A LIST OF `A condition`
+GIVETH A `A claim`
+`an illness claim with history` hist `and conditions` conds MEANS
+    `a claim by` `the adult woman` `under` `the first-year certificate` `for` `inpatient treatment` `, claimant` `the insured person` `, cause` `an illness` `, arising` (YMD 2026 6 1) `, treated` (YMD 2026 6 1) `at` `a public hospital in Hanoi` `:` `a three-night stay` `; conditions` conds `; circumstances` EMPTY `; history` hist `; costs` `no other costs` `; dental items` EMPTY `; maternity` NOTHING `; death or injury` `nothing permanent` `; driving` FALSE `; authorised` FALSE
+
+GIVEN cause IS A `A cause`
+      arose IS A DATE
+      circs IS A LIST OF `A circumstance`
+GIVETH A `A claim`
+`a first-year claim, cause` cause `, arising` arose `, circumstances` circs MEANS
+    `a plain claim under` `the first-year certificate` `by` `the adult woman` `for` `inpatient treatment` `, cause` cause `, arising and treated` arose `at` `a public hospital in Hanoi` `:` `a three-night stay` `; conditions` EMPTY `; circumstances` circs `; costs` `no other costs`
+
+§§ `Accident (Tai nạn)`
+
+#ASSERT     `an accident as the Rules define it` (`a first-year claim, cause` `an accident` `, arising` (YMD 2026 6 1) `, circumstances` EMPTY)
+-- before the term began
+#ASSERT NOT (`an accident as the Rules define it` (`a first-year claim, cause` `an accident` `, arising` (YMD 2025 12 31) `, circumstances` EMPTY))
+-- the insured person's own intention
+#ASSERT NOT (`an accident as the Rules define it` (`a first-year claim, cause` `an accident` `, arising` (YMD 2026 6 1) `, circumstances` (LIST `caused by an intentional act of the insured person`)))
+#ASSERT NOT (`an accident as the Rules define it` (`a first-year claim, cause` `an illness` `, arising` (YMD 2026 6 1) `, circumstances` EMPTY))
+
+§§ `Total and partial permanent injury`
+
+-- 81% or more, treatment ended: total. 80%: not total, partial if the annex lists it.
+#ASSERT     `a total permanent injury as the Rules define it` (`an outcome:` (`a permanent injury` (YMD 2026 9 1) (81%) (JUST (50%))) `, treatment ended` TRUE `, already paid under Benefit 2` 0)
+#ASSERT NOT (`a partial permanent injury as the Rules define it` (`an outcome:` (`a permanent injury` (YMD 2026 9 1) (81%) (JUST (50%))) `, treatment ended` TRUE `, already paid under Benefit 2` 0))
+#ASSERT NOT (`a total permanent injury as the Rules define it` (`an outcome:` (`a permanent injury` (YMD 2026 9 1) (80%) (JUST (30%))) `, treatment ended` TRUE `, already paid under Benefit 2` 0))
+#ASSERT     `a partial permanent injury as the Rules define it` (`an outcome:` (`a permanent injury` (YMD 2026 9 1) (80%) (JUST (30%))) `, treatment ended` TRUE `, already paid under Benefit 2` 0)
+-- only after the treatment has ended
+#ASSERT NOT (`a total permanent injury as the Rules define it` (`an outcome:` (`a permanent injury` (YMD 2026 9 1) (81%) NOTHING) `, treatment ended` FALSE `, already paid under Benefit 2` 0))
+#ASSERT NOT (`a partial permanent injury as the Rules define it` (`an outcome:` (`a permanent injury` (YMD 2026 9 1) (30%) (JUST (30%))) `, treatment ended` FALSE `, already paid under Benefit 2` 0))
+-- not listed in the annex: not a partial permanent injury
+#ASSERT NOT (`a partial permanent injury as the Rules define it` (`an outcome:` (`a permanent injury` (YMD 2026 9 1) (30%) NOTHING) `, treatment ended` TRUE `, already paid under Benefit 2` 0))
+
+§§ `Chronic, pre-existing and special disease`
+
+#ASSERT     `a chronic disease as the Rules define it` (`a plain claim under` `the first-year certificate` `by` `the adult woman` `for` `inpatient treatment` `, cause` `an illness` `, arising and treated` (YMD 2026 6 1) `at` `a public hospital in Hanoi` `:` `a three-night stay for a chronic disease` `; conditions` EMPTY `; circumstances` EMPTY `; costs` `no other costs`)
+#ASSERT NOT (`a chronic disease as the Rules define it` (`a first-year claim, cause` `an illness` `, arising` (YMD 2026 6 1) `, circumstances` EMPTY))
+
+-- (a) treated within 3 years before cover began on 1 January 2026: exactly 3 years is within.
+#ASSERT     `a pre-existing disease, cover having begun on` (YMD 2026 1 1) `, for` (`an illness claim with history` (`a history: existed before cover` TRUE `, last treated` (JUST (YMD 2023 1 1)) `, symptoms before cover` FALSE) `and conditions` EMPTY)
+#ASSERT NOT (`a pre-existing disease, cover having begun on` (YMD 2026 1 1) `, for` (`an illness claim with history` (`a history: existed before cover` TRUE `, last treated` (JUST (YMD 2022 12 31)) `, symptoms before cover` FALSE) `and conditions` EMPTY))
+-- (b) symptoms that existed and originated before cover, untreated
+#ASSERT     `a pre-existing disease, cover having begun on` (YMD 2026 1 1) `, for` (`an illness claim with history` (`a history: existed before cover` TRUE `, last treated` NOTHING `, symptoms before cover` TRUE) `and conditions` EMPTY)
+-- the chapeau: the disease must have existed before cover
+#ASSERT NOT (`a pre-existing disease, cover having begun on` (YMD 2026 1 1) `, for` (`an illness claim with history` (`a history: existed before cover` FALSE `, last treated` (JUST (YMD 2025 6 1)) `, symptoms before cover` FALSE) `and conditions` EMPTY))
+-- deemed: asthma, with no history at all
+#ASSERT     `a pre-existing disease, cover having begun on` (YMD 2026 1 1) `, for` (`an illness claim with history` `no earlier history` `and conditions` (LIST `asthma`))
+
+#ASSERT     `a special disease as the Rules define it` (`an illness claim with history` `no earlier history` `and conditions` (LIST `hypertension`))
+#ASSERT     `a special disease as the Rules define it` (`an illness claim with history` `no earlier history` `and conditions` (LIST `lupus erythematosus`))
+#ASSERT NOT (`a special disease as the Rules define it` (`an illness claim with history` `no earlier history` `and conditions` (LIST `a condition the Rules do not name`)))
+
+-- The number of rows in each encoded list against the number of items in the source's list,
+-- counted by a script over the raw text (count_lists.py, run 2026-10-06): the special diseases at
+-- src:287-293 have 27 comma-separated items, one of which joins two diseases with no comma
+-- ("u bướu lành tính bệnh huyết áp", fork F37), so 28 rows; the deemed pre-existing diseases at
+-- src:276-285 have 8.
+#ASSERT count `the special diseases` EQUALS 28
+#ASSERT count `the diseases deemed pre-existing` EQUALS 8
+
+§§ `Hospital, public hospital, clinic`
+
+#ASSERT     `a hospital as the Rules define it` `a public hospital in Hanoi`
+#ASSERT NOT (`a hospital as the Rules define it` `a clinic in Da Nang`)
+#ASSERT     `a clinic as the Rules define it` `a clinic in Da Nang`
+#ASSERT NOT (`a clinic as the Rules define it` `a clinic without a business licence`)
+#ASSERT NOT (`a clinic as the Rules define it` `a public hospital in Hanoi`)
+
+§§ `Who is a doctor`
+
+`a treatment indicated by the insured person's husband` MEANS `The treatment` WITH
+    `admitted with the facility's admission procedure` IS FALSE
+    `an admission or discharge paper issued by a hospital` IS FALSE
+    `stayed overnight in a hospital bed`         IS FALSE
+    `continuous hours at the facility`           IS 1
+    `bed charges incurred`                       IS FALSE
+    `for a diagnosed disease under a treatment protocol` IS TRUE
+    `a surgery`                                  IS FALSE
+    `the surgery is on the Ministry of Health's list` IS FALSE
+    `the surgeon holds a lawful practising certificate` IS FALSE
+    `dental treatment`                           IS FALSE
+    `indicated by the treating doctor`           IS TRUE
+    `the doctor is the insured person, or a spouse, parent, child or sibling of the insured person` IS TRUE
+    `a doctor's conclusion of a disease`         IS TRUE
+    `a specific treatment protocol`              IS TRUE
+    `the treating doctor concluded the disease is chronic` IS FALSE
+    `the room`                                   IS `a standard room`
+    `the days in hospital`                       IS EMPTY
+    `date of the last discharge from hospital`   IS NOTHING
+    `days of the hospital stay before home care` IS 0
+
+#ASSERT NOT (`indicated by a doctor as the Rules define one` `a treatment indicated by the insured person's husband`)
+#ASSERT     `indicated by a doctor as the Rules define one` `an outpatient visit`
+
+§§ `Inpatient treatment, day treatment, hospitalisation, outpatient treatment`
+
+#ASSERT     `inpatient treatment as the Rules define it` `a three-night stay`
+#ASSERT NOT (`inpatient treatment as the Rules define it` `a day treatment`)
+#ASSERT     `day treatment as the Rules define it` `a day treatment`
+#ASSERT NOT (`day treatment as the Rules define it` `a three-night stay`)
+-- 24 continuous hours: 24 is a hospitalisation, 16 overnight is not.
+#ASSERT     `a hospitalisation as the Rules define it` `a three-night stay`
+#ASSERT     `a hospitalisation as the Rules define it` `a 24-hour overnight stay`
+#ASSERT NOT (`a hospitalisation as the Rules define it` `a 16-hour overnight stay`)
+#ASSERT     `a hospitalisation as the Rules define it` `a day treatment`
+#ASSERT NOT (`a hospitalisation as the Rules define it` `an outpatient visit`)
+#ASSERT     `outpatient treatment as the Rules define it, at` `a public hospital in Hanoi` `:` `an outpatient visit`
+#ASSERT NOT (`outpatient treatment as the Rules define it, at` `a public hospital in Hanoi` `:` `a three-night stay`)
+
+§§ `Surgery and day surgery`
+
+#ASSERT     `a surgery as the Rules define it, at` `a public hospital in Hanoi` `:` `a three-night stay with surgery`
+-- in a hospital only
+#ASSERT NOT (`a surgery as the Rules define it, at` `a clinic in Da Nang` `:` `a three-night stay with surgery`)
+#ASSERT     `a day surgery as the Rules define it, at` `a public hospital in Hanoi` `:` `a day surgery`
+#ASSERT NOT (`a day surgery as the Rules define it, at` `a public hospital in Hanoi` `:` `a three-night stay with surgery`)
+
+§§ `Bed charges and the standard room`
+
+-- A standard room: the bed charge (1,000,000) and the other medical costs (2,000,000); the
+-- non-medical 100,000 is not paid.
+#ASSERT `the covered cost of a day in hospital at` `a public hospital in Hanoi` `, treated` `a three-night stay` `:` `a standard day` EQUALS 3_000_000
+-- A VIP room at 5,000,000: the bed charge up to the cheapest single room, 1,000,000.
+#ASSERT `the covered cost of a day in hospital at` `a public hospital in Hanoi` `, treated` `a three-night stay in a VIP room` `:` (`a day costing` 5_000_000 `for the bed and` 2_000_000 `otherwise`) EQUALS 3_000_000
+-- Intensive care at 8,000,000: the bed charge in full.
+#ASSERT `the covered cost of a day in hospital at` `a public hospital in Hanoi` `, treated` `a three-night stay in intensive care` `:` (`a day costing` 8_000_000 `for the bed and` 2_000_000 `otherwise`) EQUALS 10_000_000
+
+§§ `Visits; home care; costs before admission and after discharge`
+
+#ASSERT `the number of visits counted when` 3 `specialties are seen, jointly:` TRUE  EQUALS 1
+#ASSERT `the number of visits counted when` 3 `specialties are seen, jointly:` FALSE EQUALS 3
+
+#ASSERT     `home medical care as the Rules define it` (`a plain claim under` `the first-year certificate` `by` `the adult woman` `for` `inpatient treatment` `, cause` `an illness` `, arising and treated` (YMD 2026 6 1) `at` `a public hospital in Hanoi` `:` (`home care, after a hospital stay in days of` 7) `; conditions` EMPTY `; circumstances` (LIST `home nursing by a licensed nurse immediately after discharge, as the treating doctor ordered`) `; costs` `no other costs`)
+#ASSERT NOT (`home medical care as the Rules define it` (`a plain claim under` `the first-year certificate` `by` `the adult woman` `for` `inpatient treatment` `, cause` `an illness` `, arising and treated` (YMD 2026 6 1) `at` `a public hospital in Hanoi` `:` (`home care, after a hospital stay in days of` 6) `; conditions` EMPTY `; circumstances` (LIST `home nursing by a licensed nurse immediately after discharge, as the treating doctor ordered`) `; costs` `no other costs`))
+
+#ASSERT     `a pre-admission cost on` (YMD 2026 5 2) `, admitted on` (YMD 2026 6 1) `, most recent:` TRUE
+#ASSERT NOT (`a pre-admission cost on` (YMD 2026 5 1) `, admitted on` (YMD 2026 6 1) `, most recent:` TRUE)
+#ASSERT NOT (`a pre-admission cost on` (YMD 2026 5 20) `, admitted on` (YMD 2026 6 1) `, most recent:` FALSE)
+#ASSERT     `a post-discharge cost on` (YMD 2026 7 1) `, discharged on` (YMD 2026 6 1)
+#ASSERT NOT (`a post-discharge cost on` (YMD 2026 7 2) `, discharged on` (YMD 2026 6 1))
+
+§§ `Medical devices supporting treatment`
+
+#ASSERT     `a medical device supporting treatment as the Rules define it` (`a first-year claim, cause` `an illness` `, arising` (YMD 2026 6 1) `, circumstances` (LIST `an implanted medical device`))
+#ASSERT NOT (`a medical device supporting treatment as the Rules define it` (`a first-year claim, cause` `an accident` `, arising` (YMD 2026 6 1) `, circumstances` (LIST `an implanted medical device`)))
+#ASSERT     `a medical device supporting treatment as the Rules define it` (`a first-year claim, cause` `an accident` `, arising` (YMD 2026 6 1) `, circumstances` (LIST `a medical device used outside the body`))
+
+§§ `Sum insured and sub-limits`
+
+#ASSERT `the sum insured left in the insurance year for` (`a plain claim under` `the first-year certificate` `by` `the adult woman` `for` `inpatient treatment` `, cause` `an illness` `, arising and treated` (YMD 2026 6 1) `at` `a public hospital in Hanoi` `:` `a three-night stay` `; conditions` EMPTY `; circumstances` EMPTY `; costs` (`costs: surgery` 0 `, other medical` 0 `, paid by another insurer` 0 `, vitamins` 0 `, drugs` 0 `, hospital days already paid` 0 `, paid this year` 150_000_000)) EQUALS 50_000_000
+#ASSERT `the sum insured left in the insurance year for` (`a plain claim under` `the first-year certificate` `by` `the adult woman` `for` `inpatient treatment` `, cause` `an illness` `, arising and treated` (YMD 2026 6 1) `at` `a public hospital in Hanoi` `:` `a three-night stay` `; conditions` EMPTY `; circumstances` EMPTY `; costs` (`costs: surgery` 0 `, other medical` 0 `, paid by another insurer` 0 `, vitamins` 0 `, drugs` 0 `, hospital days already paid` 0 `, paid this year` 250_000_000)) EQUALS 0
+
+-- 60 + 40 + 10 + 5 + 20 = 135 million against 200 million: valid. 110 + 40 + 10 + 30 + 20 = 210 million
+-- against 200 million: the sub-limits exceed the sum insured.
+`a schedule whose sub-limits exceed the sum insured` MEANS `The schedule of benefits` WITH
+    `the sum insured`                            IS 200_000_000
+    `sum insured for personal accident`          IS 100_000_000
+    `limit for hospitalisation`                  IS 110_000_000
+    `limit for surgery`                          IS  40_000_000
+    `limit for outpatient treatment`             IS  10_000_000
+    `sum insured for dental care`                IS  30_000_000
+    `limit for maternity`                        IS  20_000_000
+    `sum insured for death from illness`         IS  50_000_000
+#ASSERT `the schedule, checked against the sum insured` `the schedule` EQUALS RIGHT `the schedule`
+#ASSERT `the schedule, checked against the sum insured` `a schedule whose sub-limits exceed the sum insured` EQUALS LEFT `the sum of the sub-limits exceeds the sum insured`
+
+§§ `Waiting periods shown; continuous renewal; co-payment`
+
+#ASSERT     `the waiting periods apply under` `the first-year certificate`
+#ASSERT NOT (`the waiting periods apply under` `the first-year certificate not showing waiting periods`)
+
+#ASSERT     `a continuous renewal:` `2026, every rider` `after` `2025, every rider`
+-- a gap: 2026 does not start the day after 2024 ended
+#ASSERT NOT (`a continuous renewal:` `2026, every rider` `after` `2024, every rider`)
+-- higher benefits: not a continuous renewal
+#ASSERT NOT (`a continuous renewal:` `2026, every rider, an upgrade` `after` `2025, no rider`)
+
+-- 70% of the lower of 10,000,000 of costs and a sub-limit of 6,000,000 = 4,200,000.
+#ASSERT `PVI's part under co-payment of` (70%) `, on covered costs of` 10_000_000 `and a sub-limit of` 6_000_000 EQUALS 4_200_000
+#ASSERT `PVI's part under co-payment of` (70%) `, on covered costs of` 5_000_000 `and a sub-limit of` 6_000_000 EQUALS 3_500_000
+#ASSERT `PVI's part under co-payment of` (100%) `, on covered costs of` 5_000_000 `and a sub-limit of` 6_000_000 EQUALS 5_000_000
