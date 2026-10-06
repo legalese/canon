@@ -1,0 +1,157 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `uic-par-nouns`
+IMPORT `uic-par-insuring-clause`
+IMPORT `uic-par-exclusions`
+IMPORT `uic-par-average-deductible`
+IMPORT `uic-par-general-conditions`
+
+-- The UIC Property All Risks wording put together: is a Loss covered, how much does the
+-- Policy pay for it, and what does the Insurer owe once the claim's history is known.
+-- This module adds no provision of its own; every step cites the provision it applies.
+--
+-- THE ORDER OF THE STEPS, for one Loss:
+--   1. each piece of property: covered or not (insuring clause, Exclusions A and B,
+--      General Conditions 2 and 8);
+--   2. each item: the amount of the covered Loss (basis of payment, src:15-17), then
+--      Exclusion B4 (other insurance: only the excess), then Under-insurance (src:251-257),
+--      then General Condition 6 (contribution), then proviso (i), the item's sum insured;
+--   3. the Loss: the items added, proviso (i) again on the total sum insured, proviso (ii)
+--      on the limit of liability, and the deductible last (src:263-265);
+--   4. the claim: forfeiture (General Conditions 4 and 10), the time limits (General
+--      Conditions 4(b) and 12), and any term broken whose consequence the wording does not
+--      state.
+-- The order of B4 and Under-insurance is fork F17; the deductible after the caps is fork F19.
+
+§ `Is the Loss to a piece of property covered?`
+
+-- The tests that can only answer FALSE come before the one that can decline (the time of day
+-- of a premium paid on the day of the Loss), so that a Loss excluded on other grounds is
+-- answered without asking it.
+@ref UIC PAR, insuring clause src:3-20; Exclusions src:35-249; General Conditions 2 and 8
+GIVEN `the piece`  IS A `A piece of property lost or damaged`
+      `the loss`   IS A `The Loss`
+      `the policy` IS A `The Policy`
+GIVETH A BOOLEAN
+`the Loss to` `the piece` `is covered, in` `the loss` `under` `the policy` MEANS
+        "insuring clause: a Loss as defined"  ... `the occurrence is a Loss as the wording defines it` `the loss`
+    ... "Exclusions A and B"                  ... NOT `an exclusion applies to` `the piece`
+    ... "General Condition 2"                 ... NOT `General Condition 2: the Insurer is not liable for` `the piece`
+    ... "General Condition 8"                 ... NOT `General Condition 8: cover had ended before the loss on` `the piece`
+    AND "insuring clause: when the cover runs" ... `the cover was running on` (`the loss`'s `the date of the Loss`) `under` `the policy`
+
+§ `What the Policy pays for the Loss`
+
+§§ `Each item`
+
+@ref UIC PAR, insuring clause, src:15-17
+GIVEN `the loss under the item` IS A `A loss under an item`
+      `the loss`                IS A `The Loss`
+      `the policy`              IS A `The Policy`
+GIVETH A NUMBER
+`the amount of the covered Loss under` `the loss under the item` `, in` `the loss` `under` `the policy` MEANS
+    sum (map (GIVEN p YIELD IF   `the Loss to` p `is covered, in` `the loss` `under` `the policy`
+                            THEN `the amount of the Loss to` p
+                            ELSE 0)
+             (`the loss under the item`'s `the property lost or damaged`))
+
+@ref UIC PAR, src:15-17, 242-245, 251-257, 329-336, 22-26; forks F17, F20
+GIVEN `the loss under the item` IS A `A loss under an item`
+      `the loss`                IS A `The Loss`
+      `the policy`              IS A `The Policy`
+GIVETH A NUMBER
+`the amount for the item` `the loss under the item` `, in` `the loss` `under` `the policy` MEANS
+    `proviso (i): the amount` `after General Condition 6` `, capped at what remains of the sum insured for` `the loss under the item`
+    WHERE
+        `the other insurance` MEANS `the loss under the item`'s `other insurance of the property`
+        `the covered amount` MEANS
+            `the amount of the covered Loss under` `the loss under the item` `, in` `the loss` `under` `the policy`
+        `after Exclusion B4` MEANS
+            `exclusion B4: the part of` `the covered amount` `this Policy bears, given` `the other insurance`
+        `after Under-insurance` MEANS
+            `under-insurance: the amount` `after Exclusion B4` `, averaged for` `the loss under the item`
+        `after General Condition 6` MEANS
+            `General Condition 6: the amount` `after Under-insurance` `, limited to a rateable proportion, given` `the other insurance`
+
+§§ `The Loss as a whole`
+
+-- What the Policy pays for the Loss, the claim's history aside: the answer to "what would
+-- this policy pay" for a Loss whose claim is made properly and in time.
+@export The amount the UIC Property All Risks wording pays for one Loss, before any question about how the claim was made
+@ref UIC PAR, src:15-32, 242-269, 329-336; forks F15-F20
+GIVEN `the loss`   IS A `The Loss`   @desc The occurrence: its date, its character, and the property lost or damaged under each item
+      `the policy` IS A `The Policy` @desc The Schedule: Period of Insurance, items and sums insured, limit, deductible, premium, termination
+GIVETH A NUMBER
+`the amount the Policy pays for` `the loss` `under` `the policy` MEANS
+    `the deductible: the amount` `after proviso (ii)` `, less the deductible for each loss stated in` `the policy`
+    WHERE
+        `the items added` MEANS
+            sum (map (GIVEN i YIELD `the amount for the item` i `, in` `the loss` `under` `the policy`)
+                     (`the loss`'s `the losses under each item`))
+        `after proviso (i)` MEANS
+            `proviso (i): the amount` `the items added` `, capped at what remains of the total sum insured under` `the policy` `after earlier losses before` `the loss`
+        `after proviso (ii)` MEANS
+            `proviso (ii): the amount` `after proviso (i)` `, capped at what remains of the limit of liability under` `the policy` `after earlier losses before` `the loss`
+
+§ `What the Insurer owes, given the claim`
+
+-- Terms broken whose consequence the wording does not state. The insuring clause makes the
+-- terms conditions precedent only "so far as the nature of each permits" (src:5-7), and does
+-- not say which; so each of these declines by name (fork F4, finding 9).
+@ref UIC PAR, General Condition 9, src:378-414; insuring clause src:3-7; LAW forks L2, L3
+GIVEN a IS A TYPE
+GIVETH AN a
+`General Condition 9 was not complied with, and the wording does not say whether that defeats the claim` MEANS
+    REFUSE "General Condition 9 was not complied with, and the wording does not say whether that defeats the claim"
+
+@ref UIC PAR, General Condition 5, src:314-327; insuring clause src:3-7
+GIVEN a IS A TYPE
+GIVETH AN a
+`General Condition 5 was not complied with, and the wording does not say whether that defeats the claim` MEANS
+    REFUSE "General Condition 5 was not complied with, and the wording does not say whether that defeats the claim"
+
+@ref UIC PAR, General Condition 13, src:485-488; insuring clause src:3-7
+GIVEN a IS A TYPE
+GIVETH AN a
+`General Condition 13 was not complied with, and the wording does not say whether that defeats the claim` MEANS
+    REFUSE "General Condition 13 was not complied with, and the wording does not say whether that defeats the claim"
+
+@ref UIC PAR, deductible undertaking, src:267-269; insuring clause src:3-7
+GIVEN a IS A TYPE
+GIVETH AN a
+`the Insured insured the deductible, and the wording does not say whether that defeats the claim` MEANS
+    REFUSE "the Insured insured the deductible, and the wording does not say whether that defeats the claim"
+
+-- The order: forfeiture and the time limits answer outright, so they come first; then a
+-- Loss for which the Policy pays nothing anyway; then the declines; then the amount.
+@export The amount the Insurer owes on one Loss under the UIC Property All Risks wording, as at a given day, taking the claim's history into account
+@ref UIC PAR, General Conditions 4, 5, 9, 10, 12 and 13; deductible undertaking src:267-269
+GIVEN `the as-of day` IS A DATE       @desc The day on which the question is asked
+      `the loss`      IS A `The Loss`   @desc The occurrence: its date, its character, and the property lost or damaged under each item
+      `the policy`    IS A `The Policy` @desc The Schedule: Period of Insurance, items and sums insured, limit, deductible, premium, termination
+      `the claim`     IS A `The claim`  @desc What the Insured and the Insurer did after the Loss
+GIVETH A NUMBER
+`the amount the Insurer owes, as at` `the as-of day` `, for` `the loss` `under` `the policy` `on` `the claim` MEANS
+    BRANCH
+        IF `General Condition 4(a): all benefit under the Policy is forfeited by fraud in` `the claim`
+        THEN 0
+        IF `General Condition 10: all benefit under the Policy is forfeited by non-compliance or obstruction, in` `the claim`
+        THEN 0
+        IF `General Condition 4(b): all benefit is forfeited, as at` `the as-of day` `, for` `the claim`
+        THEN 0
+        IF NOT `General Condition 12: the Insurer can still be liable, as at` `the as-of day` `, for a loss on` (`the loss`'s `the date of the Loss`) `under` `the claim`
+        THEN 0
+        IF `the amount` EQUALS 0
+        THEN 0
+        IF NOT `General Condition 9 was complied with, for` `the claim`
+        THEN `General Condition 9 was not complied with, and the wording does not say whether that defeats the claim`
+        IF `the claim`'s `the Insured failed to do or permit the acts the Insurer reasonably required to enforce its rights against others`
+        THEN `General Condition 5 was not complied with, and the wording does not say whether that defeats the claim`
+        IF `the claim`'s `the Insured failed to maintain the property or to take reasonable precautions`
+        THEN `General Condition 13 was not complied with, and the wording does not say whether that defeats the claim`
+        IF `the claim`'s `the Insured insured the deductible elsewhere`
+        THEN `the Insured insured the deductible, and the wording does not say whether that defeats the claim`
+        OTHERWISE `the amount`
+    WHERE
+        `the amount` MEANS `the amount the Policy pays for` `the loss` `under` `the policy`
