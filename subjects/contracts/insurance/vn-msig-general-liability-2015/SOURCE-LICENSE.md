@@ -17,3 +17,9 @@ The encodings are Apache-2.0 (the licence of this repository). That does not ext
 ## Hosting
 
 - `msig-cgl`: msig.com.vn, the insurer's own website
+
+## Ruling on quotation
+
+Meng, 2026-10-06: "quoting the encoded clauses as short -- src:N | comment lines is acceptable for private insurers' text."
+That is a ruling to quote, not a finding that the terms permit it: the licence of the source remains **undetermined** above, and the removal path above stands.
+The ruling covers short clause-level lines, one clause at a time. It does not cover reproducing the document; the encoders were told not to, and the lead checks how many `src:` lines each encoding carries against the length of its source before committing.
