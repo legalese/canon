@@ -12,9 +12,12 @@ assertions satisfied, 0 errors, 0 warnings.
 
 ## Scope — read this first
 
-The CPF Act is about **911,000 characters**. This encodes **section 15,
-subsections (1) to (6)**, plus the s 2 definition of "applicable person". That
-is a few pages out of a very large statute.
+The CPF Act is about **911,000 characters**. This encodes **s 7, s 15(1)–(6),
+s 16 and s 25(1)**, plus the s 2 definition of "applicable person". That is a
+few pages out of a very large statute.
+
+*(The section below describes the first pass only. See "Added with sections 7,
+16 and 25" at the foot of this file, which corrects it.)*
 
 Not encoded: contributions (ss 7–9D), the subsidiary accounts (s 13), housing
 and investment charges, nominations (s 25), the Retirement Sum Scheme machinery
@@ -75,8 +78,6 @@ the rest, which is not the same as being right.
 
 ## What would need doing before this is worth anything
 
-- **Section 16**, which both entitlements are expressed to be subject to, and
-  which was not read at all.
 - The regulations fixing the retirement sum.
 - s 15AA, s 15(4), and the charge provisions.
 - No case law was searched.
