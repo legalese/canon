@@ -9,18 +9,18 @@ pass, no human gate. Observations below, not checked findings.
 2024, in force 1 January 2025) and the disqualification amendment (Act 2 of
 2025, in force 1 January 2026).
 
-**Checks:** `l4 run mv-cases.l4` — 34 assertions satisfied, 0 errors,
-0 warnings.
+**Checks:** `l4 run mv-cases.l4` and `l4 run mv-third-parties-cases.l4` — 82
+assertions satisfied, 0 errors, 0 warnings.
 
 ## What is encoded
 
-ss 2, 3, 4 and 9. That is the spine: it is unlawful to use a vehicle without
-complying cover (s 3), s 4 says what "complying" means, and s 9 is what makes
-the cover worth anything to the person actually injured — the insurer must pay
-the third party's judgment *even though it could have avoided the policy against
-its own insured*.
+**ss 2 to 16.** `mv-act.l4` is the spine: it is unlawful to use a vehicle
+without complying cover (s 3), s 4 says what "complying" means, and s 9 is what
+makes the cover worth anything to the person actually injured.
+`mv-third-parties.l4` is everything that stops the cover failing them.
 
-Not encoded: the settlement-agreement machinery in ss 5–8, and ss 10–24.
+Not encoded: s 6's settlement-payment machinery beyond the routing rule, and
+ss 17–24.
 
 ## Three things worth a second look
 
@@ -77,3 +77,66 @@ duty`.
   because ss 5–8 are not.
 - The Schedule of specified territories was not read.
 - No case law was searched, and no rules made under s 24 were retrieved.
+
+
+---
+
+# Added with sections 5 to 16
+
+## The architecture, once the whole Act is in view
+
+Every section in this half removes one way the insurance could be defeated. Read
+together they say something the individual sections do not: **the cover is for
+the victim, not for the driver.**
+
+- **s 5** — an agreement with the passenger cannot restrict the liability, and
+  it is caught "**whether intended to be legally binding or not**". A mere
+  understanding between driver and passenger is struck down on the same terms as
+  a contract. s 5(2) then excludes *volenti* outright: willingly accepting the
+  risk of the driver's negligence never negatives the liability.
+- **s 7** — a condition in the policy is of no effect, but **only if it bites on
+  something done or omitted *after* the accident**. A condition about
+  pre-accident conduct stands however severe. The timing is the whole of it.
+- **s 8** — restrictions on the policy's scope are of no effect, by reference to
+  a **closed list of eight** grounds. A restriction on anything else survives.
+- **ss 10–13** — the insured's bankruptcy or winding up transfers their rights
+  against the insurer directly to the third party, so the proceeds never enter
+  the estate and the other creditors never see them. s 12 then stops the insurer
+  and the insured dealing them away.
+- **s 14** — no settlement is valid unless the third party is a party to it, and
+  it reaches a claim that "**might** be made", so the insurer cannot buy off the
+  insured before the victim has sued.
+
+And then the counterweight, in **s 7(2)** and **s 8(3)**: the insurer pays the
+third party and **recovers from its own insured**. The driver does not escape;
+the victim is simply not made to bear the driver's breach.
+
+## Two observations
+
+**1. s 11's second limb is doing load-bearing work.** The duty is to say whether
+you were insured **"or would have been so insured if the insurer had not avoided
+or cancelled the policy"**, and to give the certificate particulars either way.
+Without it, the s 9 route — which survives avoidance — could never be found by
+a claimant, because the only person who knows the policy existed is the one with
+an interest in not mentioning it. Asserted on the driver whose policy has been
+avoided.
+
+**2. The driver's paperwork decides whether the victim is paid.** s 15(1)
+requires the certificate to be surrendered within **7 days** of a cancellation
+taking effect. s 9(6)(c), encoded in the other module, makes that surrender one
+of the three things that **bars** the third party's recovery from the insurer.
+
+So a third party's claim can fail because someone else returned a piece of paper
+on time. The victim has no way of knowing, no way of influencing it, and no
+remedy against the insurer if it happened. The penalty for *not* surrendering is
+a fine not exceeding $500. Whether that is the intended trade is not something
+the text settles, but the two provisions should be read together and are three
+sections apart.
+
+## What would still need doing
+
+- s 6's settlement machinery, which has its own Public Trustee approval route and
+  costs-determination preconditions.
+- ss 17–24, including s 21's power to amend the sums.
+- The Schedule of specified territories.
+- No case law was searched, and no human gate has been sought.

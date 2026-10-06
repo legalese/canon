@@ -1,0 +1,387 @@
+IMPORT prelude
+IMPORT `mv-act`
+
+-- Motor Vehicles (Third-Party Risks and Compensation) Act 1960 (Singapore)
+-- -- ss 5 to 8 and ss 10 to 16.
+--
+-- The rest of the Act, after s 3, s 4 and s 9 in mv-act.l4. Everything here
+-- serves one purpose: to stop the insurance from failing the injured third
+-- party. Each section removes a way the cover could otherwise be defeated --
+-- by an agreement with the passenger (s 5), by a condition in the policy
+-- (s 7), by a restriction on who may drive or how (s 8), by the insured's
+-- bankruptcy (ss 10-13), or by a settlement behind the third party's back
+-- (s 14).
+--
+-- NAIVE ENCODING. Straight from the text with the writing-l4-rules skill. No
+-- pipeline, no independent test pass, no human gate.
+--
+-- NOT ENCODED: s 6's procedural machinery for settlement payments beyond the
+-- routing rule, s 17 (deposits), s 18A (solicitation), ss 19-20 (the Public
+-- Trustee's powers), s 21 (power to amend sums), s 22 (securities), s 23
+-- (penalty), s 24 (rules), and the Schedule of territories.
+
+§ `Motor Vehicles Act 1960 -- sections 5 to 16`
+
+§§ `5 -- Agreements with a passenger are of no effect`
+
+-- s 5(1): where s 3 requires cover and another person is carried in or upon the
+-- vehicle, "any ANTECEDENT AGREEMENT OR UNDERSTANDING between them (WHETHER
+-- INTENDED TO BE LEGALLY BINDING OR NOT) is OF NO EFFECT so far as it purports
+-- or might be held -- (a) to negative or restrict any such liability of the user
+-- ... as is required by section 4 to be covered ...; or (b) to impose any
+-- conditions with respect to the enforcement of any such liability."
+--
+-- s 5(2): "The fact that a person so carried ... has WILLINGLY ACCEPTED as the
+-- person's the risk of negligence on the part of the user is NOT to be treated
+-- as negativing any such liability."
+--
+-- s 5(3): being carried includes "entering or getting on to, or ALIGHTING
+-- FROM"; and an antecedent agreement is one made "at any time BEFORE THE
+-- LIABILITY AROSE".
+--
+-- Three things worth noticing: the agreement need not be binding to be caught,
+-- volenti is expressly excluded, and the protection reaches the moment of
+-- getting in and out, not only the journey.
+DECLARE PassengerAgreement HAS
+    `section 3 required cover for this use`     IS A BOOLEAN
+    `the person was carried in or upon the vehicle, including entering, getting on to or alighting from it` IS A BOOLEAN
+    `there was an agreement or understanding between them` IS A BOOLEAN
+    `it was intended to be legally binding`     IS A BOOLEAN
+    `it was made before the liability arose`    IS A BOOLEAN
+    `it purports to negative or restrict the liability required to be covered` IS A BOOLEAN   -- (a)
+    `it purports to impose conditions on the enforcement of that liability` IS A BOOLEAN   -- (b)
+    `the person willingly accepted the risk of the user's negligence` IS A BOOLEAN   -- (2)
+
+GIVEN `the agreement` IS A PassengerAgreement
+GIVETH A BOOLEAN
+DECIDE `the agreement is of no effect under section 5(1)` IF
+        `section 5 is engaged` `the agreement`
+    AND `the agreement does one of the two forbidden things` `the agreement`
+
+GIVEN `the agreement` IS A PassengerAgreement
+GIVETH A BOOLEAN
+DECIDE `section 5 is engaged` IF
+        `the agreement`'s `section 3 required cover for this use`
+    AND `the agreement`'s `the person was carried in or upon the vehicle, including entering, getting on to or alighting from it`
+    AND `the agreement`'s `there was an agreement or understanding between them`
+    AND `the agreement`'s `it was made before the liability arose`
+
+GIVEN `the agreement` IS A PassengerAgreement
+GIVETH A BOOLEAN
+DECIDE `the agreement does one of the two forbidden things` IF
+        `the agreement`'s `it purports to negative or restrict the liability required to be covered`
+    OR  `the agreement`'s `it purports to impose conditions on the enforcement of that liability`
+
+-- s 5(2), stated on its own because it is a complete answer to a defence rather
+-- than a condition of anything: willing acceptance of the risk never negatives
+-- the liability.
+GIVEN `the agreement` IS A PassengerAgreement
+GIVETH A BOOLEAN
+DECIDE `the liability is negatived by the passenger's acceptance of the risk` IF
+    FALSE
+
+§§ `7 -- Conditions in the policy are of no effect`
+
+-- s 7(1): "Any condition in a policy or security ... providing that NO LIABILITY
+-- ARISES ... or that any liability so arising CEASES in the event of some
+-- specified thing being done or omitted to be done AFTER THE HAPPENING OF THE
+-- EVENT giving rise to a claim ... is OF NO EFFECT in connection with such
+-- claims as are mentioned in section 4(1)(b)."
+--
+-- The timing is the whole of it. A condition about something to be done BEFORE
+-- the accident -- keeping the vehicle roadworthy, say -- is untouched. Only
+-- conditions biting on post-accident conduct are struck down, and only as
+-- against the third party.
+--
+-- s 7(2): the insurer may still require the insured to REPAY what it has paid
+-- out to third parties. So the condition fails against the third party and
+-- survives against the insured.
+DECLARE PolicyCondition HAS
+    `the condition provides that no liability arises or that liability ceases` IS A BOOLEAN
+    `it operates on something done or omitted AFTER the event giving rise to the claim` IS A BOOLEAN
+    `the claim is one mentioned in section 4(1)(b)` IS A BOOLEAN
+    `the condition requires the insured to repay the insurer sums applied to third party claims` IS A BOOLEAN
+
+GIVEN `the condition` IS A PolicyCondition
+GIVETH A BOOLEAN
+DECIDE `the condition is of no effect under section 7(1)` IF
+        `the condition`'s `the condition provides that no liability arises or that liability ceases`
+    AND `the condition`'s `it operates on something done or omitted AFTER the event giving rise to the claim`
+    AND `the condition`'s `the claim is one mentioned in section 4(1)(b)`
+    AND NOT `the condition`'s `the condition requires the insured to repay the insurer sums applied to third party claims`
+
+§§ `8 -- Restrictions on the scope of the policy are of no effect`
+
+-- s 8(1): where a certificate has been issued, "so much of the policy as
+-- purports to RESTRICT the insurance of the persons insured by the policy by
+-- reference to any of the following matters" is, as respects the s 4(1)(b)
+-- liabilities, "OF NO EFFECT":
+--   (a) the age or physical or mental condition of persons driving;
+--   (b) the condition of the vehicle;
+--   (c) the number of persons the vehicle carries;
+--   (d) the weight or physical characteristics of the goods carried;
+--   (e) the times at which or the areas within which the vehicle is used;
+--   (f) the horsepower or value of the vehicle;
+--   (g) the carrying of any particular apparatus;
+--   (h) the carrying of any particular means of identification other than one
+--       required by the Road Traffic Act 1961.
+--
+-- A CLOSED LIST of eight. A restriction by reference to anything else -- the
+-- driver's licence class, or whether the vehicle was being used for hire --
+-- stands.
+--
+-- s 8(3): a sum the insurer pays which is covered "BY VIRTUE ONLY OF THIS
+-- SECTION" is recoverable from the insured. Same shape as s 7(2): the
+-- restriction fails against the third party and the insured bears it.
+DECLARE RestrictionGround IS ONE OF
+    `the age or physical or mental condition of persons driving the vehicle`   -- (a)
+    `the condition of the vehicle`                                             -- (b)
+    `the number of persons that the vehicle carries`                           -- (c)
+    `the weight or physical characteristics of the goods that the vehicle carries` -- (d)
+    `the times at which or the areas within which the vehicle is used`         -- (e)
+    `the horsepower or value of the vehicle`                                   -- (f)
+    `the carrying on the vehicle of any particular apparatus`                  -- (g)
+    `the carrying of a means of identification not required by the Road Traffic Act 1961` -- (h)
+    `some ground outside the section 8(1) list`
+
+GIVEN `the ground` IS A RestrictionGround
+GIVETH A BOOLEAN
+DECIDE `the ground is in the section 8(1) list` IF
+    CONSIDER `the ground`
+    WHEN `some ground outside the section 8(1) list` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the ground` IS A RestrictionGround
+    , `a certificate of insurance has been issued under section 4(9)` IS A BOOLEAN
+    , `the liability is one required to be covered by section 4(1)(b)` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the restriction is of no effect under section 8(1)` IF
+        `a certificate of insurance has been issued under section 4(9)`
+    AND `the liability is one required to be covered by section 4(1)(b)`
+    AND `the ground is in the section 8(1) list` `the ground`
+
+-- s 8(3) and s 7(2) together: the insurer pays the third party and recovers
+-- from the insured. The cover is for the victim's benefit, not the driver's.
+GIVEN `the sum was covered by the policy by virtue only of section 8` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the insurer may recover the sum from the insured` IF
+    `the sum was covered by the policy by virtue only of section 8`
+
+§§ `10 to 13 -- The insured's insolvency does not reach the third party`
+
+-- s 10(1): where the insured is insured against third-party liabilities, then on
+--   (a) the insured becoming bankrupt or compounding with creditors; or
+--   (b) for a company: a winding up order or voluntary winding up resolution, a
+--       receiver or manager being appointed, or a debenture holder taking
+--       possession under a floating charge,
+-- "if either BEFORE OR AFTER that event any such liability ... is incurred by
+-- the insured the insured's rights against the insurer under the policy in
+-- respect of the liability are, DESPITE ANYTHING IN ANY WRITTEN LAW TO THE
+-- CONTRARY, TO BE TRANSFERRED TO AND VEST IN THE THIRD PARTY".
+--
+-- The third party takes the insured's rights directly. The policy proceeds
+-- never enter the estate, so the other creditors never see them.
+DECLARE InsolvencyEvent IS ONE OF
+    `the insured became bankrupt or compounded with creditors`      -- (1)(a)
+    `a winding up order was made or a voluntary winding up resolution passed` -- (1)(b)(i)
+    `a receiver or manager of the company was duly appointed`       -- (1)(b)(ii)
+    `a debenture holder took possession under a floating charge`    -- (1)(b)(iii)
+    `no insolvency event`
+
+GIVEN `the event` IS AN InsolvencyEvent
+GIVETH A BOOLEAN
+DECIDE `a section 10(1) event has happened` IF
+    CONSIDER `the event`
+    WHEN `no insolvency event` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the event` IS AN InsolvencyEvent
+    , `the insured is insured against the liability under a policy issued for the purposes of this Act` IS A BOOLEAN
+    , `the liability was incurred, whether before or after the event` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the insured's rights against the insurer vest in the third party` IF
+        `a section 10(1) event has happened` `the event`
+    AND `the insured is insured against the liability under a policy issued for the purposes of this Act`
+    AND `the liability was incurred, whether before or after the event`
+
+-- s 12: once the rights have transferred, "NO AGREEMENT made between the
+-- insurer and the insured after liability has been incurred ... AND AFTER THE
+-- COMMENCEMENT of the bankruptcy or winding up ... NOR ANY WAIVER, ASSIGNMENT
+-- OR OTHER DISPOSITION made by, or PAYMENT MADE TO, the insured ... is
+-- EFFECTIVE TO DEFEAT OR AFFECT the rights transferred".
+--
+-- Both conditions are needed: after the liability AND after the commencement.
+DECLARE PostTransferDealing HAS
+    `an agreement, waiver, assignment, disposition or payment was made` IS A BOOLEAN
+    `it was made after the liability was incurred` IS A BOOLEAN
+    `it was made after the commencement of the bankruptcy or winding up` IS A BOOLEAN
+
+GIVEN `the dealing` IS A PostTransferDealing
+GIVETH A BOOLEAN
+DECIDE `the dealing cannot defeat the third party's rights` IF
+        `the dealing`'s `an agreement, waiver, assignment, disposition or payment was made`
+    AND `the dealing`'s `it was made after the liability was incurred`
+    AND `the dealing`'s `it was made after the commencement of the bankruptcy or winding up`
+
+-- s 13(1): the happening of a s 10 event "DOES NOT ... AFFECT ANY SUCH
+-- LIABILITY of that person as is required to be covered by a policy under
+-- section 4(1)(b)."
+--
+-- So the liability survives the insolvency as well as the rights against the
+-- insurer. The third party keeps both routes.
+GIVEN `the event` IS AN InsolvencyEvent
+    , `a certificate of insurance has been issued under section 4(9)` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the liability survives the insolvency event` IF
+    `a certificate of insurance has been issued under section 4(9)`
+
+§§ `11 -- The duty to say whether there was a policy`
+
+-- s 11(1): "Any person against whom a claim is made in respect of any such
+-- liability as is required to be covered by a policy under section 4(1)(b) MUST
+-- ON DEMAND by or on behalf of the person making the claim STATE whether or not
+-- the person was insured ... OR WOULD HAVE BEEN SO INSURED IF THE INSURER HAD
+-- NOT AVOIDED OR CANCELLED THE POLICY and if ... so insured give such
+-- particulars ... as were specified in the certificate".
+--
+-- The second limb matters: a driver whose policy the insurer has avoided must
+-- still disclose it. Otherwise the s 9 route -- which survives avoidance --
+-- could never be found by the claimant.
+DECLARE InformationDemand HAS
+    `a claim was made in respect of a liability required to be covered by section 4(1)(b)` IS A BOOLEAN
+    `a demand was made by or on behalf of the claimant` IS A BOOLEAN
+    `the person was insured in respect of that liability` IS A BOOLEAN
+    `the person would have been insured had the insurer not avoided or cancelled the policy` IS A BOOLEAN
+    `the person stated whether or not they were insured` IS A BOOLEAN
+    `the person gave the particulars specified in the certificate` IS A BOOLEAN
+
+GIVEN `the demand` IS AN InformationDemand
+GIVETH A BOOLEAN
+DECIDE `the duty under section 11(1) arises` IF
+        `the demand`'s `a claim was made in respect of a liability required to be covered by section 4(1)(b)`
+    AND `the demand`'s `a demand was made by or on behalf of the claimant`
+
+GIVEN `the demand` IS AN InformationDemand
+GIVETH A BOOLEAN
+DECIDE `particulars are owed as well as a statement` IF
+        `the demand`'s `the person was insured in respect of that liability`
+    OR  `the demand`'s `the person would have been insured had the insurer not avoided or cancelled the policy`
+
+GIVEN `the demand` IS AN InformationDemand
+GIVETH A BOOLEAN
+DECIDE `the person has contravened section 11(1)` IF
+        `the duty under section 11(1) arises` `the demand`
+    AND `something owed was not given` `the demand`
+
+GIVEN `the demand` IS AN InformationDemand
+GIVETH A BOOLEAN
+DECIDE `something owed was not given` IF
+        NOT `the demand`'s `the person stated whether or not they were insured`
+    OR  `particulars were owed and not given` `the demand`
+
+GIVEN `the demand` IS AN InformationDemand
+GIVETH A BOOLEAN
+DECIDE `particulars were owed and not given` IF
+        `particulars are owed as well as a statement` `the demand`
+    AND NOT `the demand`'s `the person gave the particulars specified in the certificate`
+
+§§ `14 -- No settlement behind the third party's back`
+
+-- s 14(1): "NO SETTLEMENT by an insurer in respect of any claim which MIGHT be
+-- made by a third party ... IS VALID UNLESS THE THIRD PARTY IS A PARTY TO THE
+-- SETTLEMENT."
+--
+-- Note "might be made". The protection reaches a claim not yet brought, so an
+-- insurer cannot buy off the insured before the victim has sued.
+--
+-- s 14(2): the policy "remains in force and available for third parties DESPITE
+-- THE DEATH of any person insured ... AS IF THE INSURED PERSON WERE STILL
+-- ALIVE."
+GIVEN `the insurer settled a claim which might be made by a third party` IS A BOOLEAN
+    , `the third party was a party to the settlement` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the settlement is invalid under section 14(1)` IF
+        `the insurer settled a claim which might be made by a third party`
+    AND NOT `the third party was a party to the settlement`
+
+GIVEN `the insured person has died` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the policy remains available to third parties` IF
+    TRUE
+
+§§ `15 -- Surrender of the certificate on cancellation`
+
+-- s 15(1): where a certificate has been issued and the policy is cancelled by
+-- mutual consent or under the policy, the person to whom the certificate was
+-- issued must, "WITHIN 7 DAYS from the taking effect of the cancellation,
+-- surrender the certificate to the insurer or, if it has been lost or
+-- destroyed, make a statutory declaration to that effect."
+--
+-- This is the duty whose performance s 9(6)(c) turns into a bar on the third
+-- party's recovery. The driver's 7 days decide whether the victim is paid.
+`the surrender period in days` MEANS 7
+
+DECLARE SurrenderFacts HAS
+    `a certificate of insurance was issued under section 4(9)` IS A BOOLEAN
+    `the policy was cancelled by mutual consent or under the policy` IS A BOOLEAN
+    `the certificate was surrendered or a statutory declaration of loss made` IS A BOOLEAN
+    `days from the taking effect of the cancellation when that was done` IS A NUMBER
+
+GIVEN `the facts` IS A SurrenderFacts
+GIVETH A BOOLEAN
+DECIDE `the surrender duty under section 15(1) arises` IF
+        `the facts`'s `a certificate of insurance was issued under section 4(9)`
+    AND `the facts`'s `the policy was cancelled by mutual consent or under the policy`
+
+GIVEN `the facts` IS A SurrenderFacts
+GIVETH A BOOLEAN
+DECIDE `the person has contravened section 15(1)` IF
+        `the surrender duty under section 15(1) arises` `the facts`
+    AND `the surrender was not made in time` `the facts`
+
+GIVEN `the facts` IS A SurrenderFacts
+GIVETH A BOOLEAN
+DECIDE `the surrender was not made in time` IF
+        NOT `the facts`'s `the certificate was surrendered or a statutory declaration of loss made`
+    OR  `the facts`'s `days from the taking effect of the cancellation when that was done`
+            GREATER THAN `the surrender period in days`
+
+-- s 15(2) and s 16(2): the same penalty in both -- a fine not exceeding $500,
+-- and on a second or subsequent conviction a fine not exceeding $1,000 or
+-- imprisonment not exceeding 6 months.
+`the first conviction fine ceiling in dollars` MEANS 500
+`the subsequent conviction fine ceiling in dollars` MEANS 1000
+`the subsequent conviction imprisonment ceiling in months` MEANS 6
+
+GIVEN `this is a second or subsequent conviction` IS A BOOLEAN
+GIVETH A NUMBER
+DECIDE `the maximum fine in dollars` IS
+    IF   `this is a second or subsequent conviction`
+    THEN `the subsequent conviction fine ceiling in dollars`
+    ELSE `the first conviction fine ceiling in dollars`
+
+§§ `16 -- Production of the certificate`
+
+-- s 16(1): a person driving on a road must, on being required by a police
+-- officer, give their name and address, the owner's name and address, and
+-- produce the certificate.
+DECLARE ProductionDemand HAS
+    `the person was driving a motor vehicle on a road` IS A BOOLEAN
+    `a police officer required it`              IS A BOOLEAN
+    `the person gave their own name and address` IS A BOOLEAN
+    `the person gave the owner's name and address` IS A BOOLEAN
+    `the person produced the certificate`       IS A BOOLEAN
+
+GIVEN `the demand` IS A ProductionDemand
+GIVETH A BOOLEAN
+DECIDE `the person has contravened section 16(1)` IF
+        `the demand`'s `the person was driving a motor vehicle on a road`
+    AND `the demand`'s `a police officer required it`
+    AND `something required by section 16(1) was withheld` `the demand`
+
+GIVEN `the demand` IS A ProductionDemand
+GIVETH A BOOLEAN
+DECIDE `something required by section 16(1) was withheld` IF
+        NOT `the demand`'s `the person gave their own name and address`
+    ..  NOT `the demand`'s `the person gave the owner's name and address`
+    OR  NOT `the demand`'s `the person produced the certificate`
