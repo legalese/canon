@@ -1,0 +1,168 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+
+-- ===========================================================================
+-- IL-07, the capstone: the monthly net income of an employed parent in 2026.
+-- THE NOUNS: DECLARE and nothing else.
+--
+-- Every adapter (il07-adapter-il0N.l4) and the pipeline import this module. An
+-- adapter imports this module and ONE row's modules, so each name below must be
+-- distinct from every name in every row: that is why the types carry "IL-07"
+-- and the fields name whose fact they are ("the earner's ...", "the spouse's
+-- ..."). RECONCILE.md lists the rows' own clashing nouns.
+--
+-- Membership test (encoding-a-subject, step 4): a witness of ordinary
+-- competence could testify to the fact, or a register, a payslip or a return
+-- records it. Whether the fact makes tax or contributions payable, or an
+-- allowance due, is a rule, and belongs to the row that encodes it.
+--
+-- Money is new Israeli shekels (NIS), as a bare NUMBER.
+-- ===========================================================================
+
+§ `IL-07 — the household`
+
+§§ `The earner`
+
+-- INPUT CONVENTIONS (BRIEF.md, "The household"):
+-- * `the earner's monthly salary` is the gross salary from one employer, income
+--   from employment under ITO s 2(2) and so from personal exertion (ITO s 1).
+-- * `the earner is paid that salary in every month of the tax year`: the
+--   capstone apportions the year's tax to a month only on this footing (NOTES.md,
+--   fork K1).
+-- * The two residence facts are separate because the two Laws define residence
+--   separately: ITO s 1 "תושב ישראל" (row IL-01 takes it as an input) and the
+--   NII's "יושב בישראל" in s 65 (row IL-06 takes it as an input).
+-- * `the earner is a foreign worker` and `... the Area ...` are read only so that
+--   row IL-01's refusals for ITO ss 48A and 48 are reached where they apply.
+-- * `the full monthly minimum wage of an employee aged 18 or over applies to the
+--   earner`: Schedule K's minimum for an employee is the minimum wage applicable
+--   to that employee (row IL-05, fork F11); the capstone holds only the full
+--   adult figure the Institute publishes.
+-- * `the earner's age fixed by Part D of Schedule A1 ...`: NII s 342(c)(2)'s age
+--   for a woman, read from Schedule A1 Part D by month of birth (not encoded by
+--   any row: row IL-05 takes it in months). NOTHING for a man.
+-- * `the earner has no credit or deduction under the Income Tax Ordinance beyond
+--   those the composed rows encode`: the rows encode the credit points of
+--   ss 34, 36, 36A, s 37 as halved by s 66(c)(2), and s 66(c)'s children's
+--   points. Every other credit and deduction (s 35 for a new immigrant, ss 39A
+--   and 39B, ss 40A-40D, s 44, s 45, s 45A for life-insurance and pension
+--   contributions, s 47 for provident-fund deposits, and the rest) lowers the
+--   tax and is not encoded (GAPS.md). An employee with mandatory pension
+--   contributions has a s 45A credit, so for most real employees this is FALSE,
+--   and the capstone then declines rather than overstate the tax.
+DECLARE `IL-07 earner` HAS
+    `the earner's name`                                                              IS A STRING
+    `the earner is a woman`                                                          IS A BOOLEAN
+    `the earner's date of birth`                                                     IS A DATE
+    `the earner's monthly salary`                                                    IS A NUMBER
+    `the earner is paid that salary in every month of the tax year`                  IS A BOOLEAN
+    `the earner was an Israeli resident in the tax year, under the Income Tax Ordinance` IS A BOOLEAN
+    `the earner is a foreign worker`                                                 IS A BOOLEAN
+    `the earner is a resident of the Area who is not an Israeli citizen`             IS A BOOLEAN
+    `the earner is insured under Chapter 11 of the National Insurance Law`           IS A BOOLEAN
+    `the earner is resident in Israel, under the National Insurance Law`             IS A BOOLEAN
+    `the full monthly minimum wage of an employee aged 18 or over applies to the earner` IS A BOOLEAN
+    `the earner's age fixed by Part D of Schedule A1 to the National Insurance Law, in months, if a woman` IS A MAYBE NUMBER
+    `the earner has no credit or deduction under the Income Tax Ordinance beyond those the composed rows encode` IS A BOOLEAN
+
+§§ `The spouse, and the couple's elections`
+
+-- `the spouse's taxable income in the tax year`: the household has one earner;
+-- a spouse with income is outside it (the pipeline declines, NOTES.md fork K4).
+-- `the spouse is a housewife ...`: NII s 238 (source line 2428) defines
+-- "עקרת בית" as a married woman, other than an agunah, whose spouse is insured
+-- under Chapter 11 and who is neither an employee nor self-employed; row IL-06
+-- takes the status as an input, and so does this row.
+DECLARE `IL-07 spouse` HAS
+    `the spouse's name`                                                              IS A STRING
+    `the spouse is a woman`                                                          IS A BOOLEAN
+    `the spouse's taxable income in the tax year`                                    IS A NUMBER
+    `the spouse is insured under Chapter 11 of the National Insurance Law`           IS A BOOLEAN
+    `the spouse is a housewife as defined in section 238 of the National Insurance Law` IS A BOOLEAN
+    `the spouse is resident in Israel, under the National Insurance Law`             IS A BOOLEAN
+
+-- `the earner is the registered spouse`: ITO s 64B decides who is "בן הזוג
+-- הרשום"; no row encodes it, so it is an input (as in row IL-02).
+-- `the earner claims a separate calculation ...`: the election of ITO s 66(a)(1)
+-- (the spouse who is not registered) and s 66(c)(1A) (either spouse); row IL-02
+-- records both in one field of `A spouse`.
+-- `the earner would be entitled to a credit point under section 37`: ITO s 37 is
+-- not encoded; row IL-02 takes the answer as an input and halves it under
+-- s 66(c)(2).
+DECLARE `IL-07 couple` HAS
+    `the earner's spouse`                                                            IS AN `IL-07 spouse`
+    `the earner is the registered spouse`                                            IS A BOOLEAN
+    `the earner claims a separate calculation of the tax on the earner's income from personal exertion` IS A BOOLEAN
+    `the earner would be entitled to a credit point under section 37 of the Income Tax Ordinance` IS A BOOLEAN
+
+§§ `A child of the household`
+
+-- The earner's own child and, where there is a spouse, the spouse's too;
+-- unmarried, in Israel, living with the parent or parents (BRIEF.md).
+-- `the child's mother elects ...`: ITO s 66(c)(4)(a1), the mother's election to
+-- count one birth-year credit point in the following tax year.
+DECLARE `IL-07 child` HAS
+    `the child's name`                                                               IS A STRING
+    `the child's date of birth`                                                      IS A DATE
+    `the child's mother elects to count one birth-year credit point in the following tax year` IS A BOOLEAN
+
+§§ `The household in a month`
+
+-- `the health insurance contribution the caller says is deducted for the month`:
+-- health insurance contributions are imposed by the National Health Insurance
+-- Law 5754-1994, which no row encodes (GAPS.md). The caller supplies the amount.
+DECLARE `IL-07 household in a month` HAS
+    `the year of the month`                                                          IS A NUMBER
+    `the month of the year`                                                          IS A NUMBER
+    `the earner`                                                                     IS AN `IL-07 earner`
+    `the couple, if the earner has a spouse`                                         IS A MAYBE `IL-07 couple`
+    `the children of the household`                                                  IS A LIST OF `IL-07 child`
+    `the health insurance contribution the caller says is deducted for the month`    IS A NUMBER
+
+§ `IL-07 — what passes between the rows`
+
+-- Schedule J's column D amount on the earner's wage, one field per branch for
+-- which column D prints a figure. Row IL-04 computes each; row IL-05's s 342(c)
+-- reads them. The two rows each declare their own `A branch of insurance`
+-- (RECONCILE.md, clash N1), so the amounts cross between them in this record,
+-- matched by the branch's name.
+DECLARE `IL-07 column D amounts on the earner's wage` HAS
+    `the column D amount for maternity`                                              IS A NUMBER
+    `the column D amount for accident injury`                                        IS A NUMBER
+    `the column D amount for unemployment`                                           IS A NUMBER
+    `the column D amount for disability`                                             IS A NUMBER
+    `the column D amount for long-term care`                                         IS A NUMBER
+    `the column D amount for senior citizens and survivors`                          IS A NUMBER
+
+-- The credit points ITO s 66(c) gives the earner, as row IL-02 counts them.
+-- `... under section 36A, by paragraph (4)` is kept so that a test can compare
+-- it with row IL-01's own s 36A half point; the pipeline counts s 36A once, from
+-- row IL-01 (RECONCILE.md, clash N7).
+DECLARE `IL-07 credit points section 66(c) gives the earner` HAS
+    `IL-02's half point under section 36A, by section 66(c)(4)`                      IS A NUMBER
+    `IL-02's half point under section 37, by section 66(c)(2)`                       IS A NUMBER
+    `IL-02's points for children, by section 66(c)(4) to (6)`                        IS A NUMBER
+
+§ `IL-07 — the answer`
+
+-- The income tax for the tax year, with the figures it is made of.
+DECLARE `IL-07 income tax for the tax year` HAS
+    `the earner's taxable income in the tax year`                                    IS A NUMBER
+    `the tax under section 121`                                                      IS A NUMBER
+    `the additional tax under section 121B`                                          IS A NUMBER
+    `the value of one credit point in the tax year`                                  IS A NUMBER
+    `the credit points under sections 34, 36 and 36A`                                IS A NUMBER
+    `the half point under section 37, by section 66(c)(2)`                           IS A NUMBER
+    `the credit points for children under section 66(c)`                             IS A NUMBER
+    `the credit for children, set against the tax on income from personal exertion`  IS A NUMBER
+    `the income tax for the tax year`                                                IS A NUMBER
+
+DECLARE `IL-07 the household's month` HAS
+    `the gross salary for the month`                                                 IS A NUMBER
+    `the income tax worked for the tax year`                                         IS AN `IL-07 income tax for the tax year`
+    `one twelfth of the income tax for the tax year`                                 IS A NUMBER
+    `the national insurance contributions deducted from the salary for the month`    IS A NUMBER
+    `the health insurance contribution deducted for the month`                       IS A NUMBER
+    `the child allowance for the month`                                              IS A NUMBER
+    `the net income of the household for the month`                                  IS A NUMBER

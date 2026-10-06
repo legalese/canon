@@ -1,0 +1,257 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `il07-nouns`
+IMPORT `il07-refusals`
+IMPORT `il07-published-figures`
+IMPORT `il07-adapter-il01`
+IMPORT `il07-adapter-il02`
+IMPORT `il07-adapter-il03`
+IMPORT `il07-adapter-il04`
+IMPORT `il07-adapter-il05`
+IMPORT `il07-adapter-il06`
+
+-- ===========================================================================
+-- IL-07: THE PIPELINE. The monthly net income of an employed parent, in a month
+-- of 2026, composed from rows IL-01 to IL-06.
+--
+-- This module calls only the adapters' "IL-0N:" rules, this row's refusals and
+-- this row's one published figure. It never names a row's own rule or type:
+-- the rows' names reach this module (L4 imports are transitive) but several of
+-- them clash (RECONCILE.md), and every name used here resolves to one
+-- definition. Each step below says which row answers it.
+--
+-- The answer, for a household in a month (NOTES.md section 1):
+--   income tax for tax year 2026   IL-03 s 121 and s 121B, less the credits:
+--                                  IL-01 ss 34, 36, 36A; IL-02 s 66(c);
+--                                  the credit-point value from IL-03 s 120B
+--                                  and IL-01's published 2025 figure
+--   one twelfth of it              this row's reading (fork K1)
+--   national insurance deducted    IL-05 s 348 (the income), IL-04 Schedule J
+--                                  column D (the amounts), IL-05 s 342(c)
+--   health insurance contribution  an input (no row encodes it; GAPS.md)
+--   child allowance for the month  IL-06 ss 65-68, with the earner's s 121B
+--                                  liability from IL-03 (fork K5)
+--   net                            salary - tax/12 - national insurance
+--                                  - health + child allowance
+-- ===========================================================================
+
+§ `IL-07 — the pipeline`
+
+§§ `The period, and the household the capstone answers`
+
+-- Every answer passes this gate first, so that a month the capstone does not
+-- answer is refused in this row's words, whichever row would have refused it
+-- first. (The rows' own refusals for 2025 and 2027 are shown, adapter by
+-- adapter, in il07-tests.l4.)
+@ref NOTES.md section 3, "The period"; fork K4
+GIVEN a          IS A TYPE
+      h          IS AN `IL-07 household in a month`
+      `answer`   IS AN a
+GIVETH AN a
+`IL-07: in the month of` h `, the answer is` `answer` MEANS
+    BRANCH IF NOT (h's `the year of the month` EQUALS 2026)
+           THEN `IL-07 answers months of 2026 only, the one period all six composed rows answer`
+           IF h's `the month of the year` LESS THAN 1 OR h's `the month of the year` GREATER THAN 12
+           THEN `IL-07: a month of the year is numbered from 1 to 12`
+           IF `IL-07: the spouse has taxable income, in` h
+           THEN `IL-07 composes a household with one earner; a spouse with taxable income is outside it`
+           OTHERWISE `answer`
+
+GIVEN h IS AN `IL-07 household in a month`
+GIVETH A BOOLEAN
+`IL-07: the spouse has taxable income, in` h MEANS
+    CONSIDER h's `the couple, if the earner has a spouse`
+    WHEN NOTHING THEN FALSE
+    WHEN JUST c  THEN NOT (c's `the earner's spouse`'s `the spouse's taxable income in the tax year` EQUALS 0)
+
+-- Phrasebook 11.8: a refusal stored inside a record is not seen until the field
+-- is read. A rule that returns a record first settles the figure the record
+-- rests on, so that any refusal beneath it is the rule's answer.
+GIVEN a            IS A TYPE
+      `the figure` IS A NUMBER
+      `the answer` IS AN a
+GIVETH AN a
+`IL-07: once` `the figure` `is settled, the answer` `the answer` MEANS
+    IF `the figure` EQUALS `the figure` THEN `the answer` ELSE `the answer`
+
+§§ `Income tax for the tax year`
+
+-- The value of one credit point in the tax year: IL-03's s 120B for the year,
+-- from the 1 January 2024 amount after rounding. s 120B(e)(1) fixes 2025's
+-- amount at that figure, so the Tax Authority's published 2025 value (IL-01,
+-- NIS 2,904) IS the 1 January 2024 amount after rounding; for 2026 the same rule
+-- gives the same figure (NOTES.md fork K2).
+@ref ITO s 120B(e)(1) (row IL-03); Israel Tax Authority, form 135 notes for 2025, p. 4 (row IL-01)
+GIVEN `the tax year` IS A NUMBER
+GIVETH A NUMBER
+`IL-07: the value of one credit point in tax year` `the tax year` MEANS
+    `IL-03: the credit-point amount in force in tax year` `the tax year` `, given the 1 January 2024 amount after rounding of`
+        `IL-01: the value of one credit point the Israel Tax Authority published for tax year 2025`
+
+-- The points s 66(c) gives the earner (row IL-02), where s 66(c) governs the
+-- earner's calculation. Without a spouse, s 66 does not apply and gives nothing;
+-- but a parent without a spouse has credit points for children under s 40(b),
+-- which no row encodes. With a spouse and no separate calculation, the couple
+-- is assessed under s 65, which no row computes.
+@ref ITO s 66(c) (row IL-02); s 40(b), s 65 (not encoded)
+GIVEN h IS AN `IL-07 household in a month`
+GIVETH AN `IL-07 credit points section 66(c) gives the earner`
+`IL-07: the credit points section 66(c) gives the earner, in` h MEANS
+    CONSIDER h's `the couple, if the earner has a spouse`
+    WHEN NOTHING THEN
+        IF   null (h's `the children of the household`)
+        THEN `IL-07 credit points section 66(c) gives the earner` WITH
+                 `IL-02's half point under section 36A, by section 66(c)(4)` IS 0
+                 `IL-02's half point under section 37, by section 66(c)(2)`  IS 0
+                 `IL-02's points for children, by section 66(c)(4) to (6)`  IS 0
+        ELSE `the credit points for the children of a parent without a spouse are given by section 40(b) of the Income Tax Ordinance, which is not encoded`
+    WHEN JUST c THEN
+        IF   `IL-02: section 66(c) governs the earner's calculation, in` h `married as` c
+        THEN `IL-02: the credit points section 66(c) gives the earner, in` h `married as` c
+        ELSE `no separate calculation governs the earner's tax, so the couple is assessed under section 65 of the Income Tax Ordinance, which is not encoded`
+
+-- The additional tax under s 121B (row IL-03), with the 2026 amount the Tax
+-- Authority published (il07-published-figures.l4).
+@ref ITO s 121B (row IL-03); [booklet-2026] PDF p. 8
+GIVEN h IS AN `IL-07 household in a month`
+GIVETH A NUMBER
+`IL-07: the additional tax under section 121B on the earner's salary, in` h MEANS
+    `IL-03: the additional tax under section 121B on the earner's salary, in` h `, with the amount in section 121B(a) at`
+        (`IL-07: the amount in section 121B(a) the Israel Tax Authority published for tax year` (h's `the year of the month`))
+
+-- The year's tax. Fork K3 (NOTES.md): every credit is set off against the s 121
+-- tax, no further than to nil (IL-01 fork F5), and the s 121B additional tax is
+-- added after. All the earner's income is from personal exertion, so the
+-- children's credit, capped by IL-02 at the tax on that income (IL-02 fork F13),
+-- and the other credits reach the same total in any order. Whether a credit may
+-- be set off against the additional tax the text does not say; that is reached
+-- only where the credits exceed the s 121 tax AND there is additional tax, and is
+-- declined there.
+@ref ITO ss 33A, 34, 36, 36A (row IL-01); s 66(c) (row IL-02); ss 120B, 121, 121B (row IL-03); NOTES.md forks K1-K3
+GIVEN h IS AN `IL-07 household in a month`
+GIVETH AN `IL-07 income tax for the tax year`
+`IL-07: the income tax for the tax year, worked, in` h MEANS
+    `IL-07: in the month of` h `, the answer is`
+        (BRANCH IF NOT h's `the earner`'s `the earner is paid that salary in every month of the tax year`
+                THEN `IL-07 apportions the tax for the year to a month only where the salary is the same in every month; withholding under section 164 of the Income Tax Ordinance is not encoded`
+                IF NOT h's `the earner`'s `the earner has no credit or deduction under the Income Tax Ordinance beyond those the composed rows encode`
+                THEN `the earner has a credit or deduction under a provision of the Income Tax Ordinance no composed row encodes, such as section 35, 45A or 47`
+                OTHERWISE `IL-07: once` `the tax` `is settled, the answer`
+                              (`IL-07 income tax for the tax year` WITH
+                                  `the earner's taxable income in the tax year`                                   IS 12 TIMES h's `the earner`'s `the earner's monthly salary`
+                                  `the tax under section 121`                                                     IS `the s 121 tax`
+                                  `the additional tax under section 121B`                                         IS `the s 121B tax`
+                                  `the value of one credit point in the tax year`                                 IS v
+                                  `the credit points under sections 34, 36 and 36A`                               IS `the personal points`
+                                  `the half point under section 37, by section 66(c)(2)`                          IS cp's `IL-02's half point under section 37, by section 66(c)(2)`
+                                  `the credit points for children under section 66(c)`                            IS cp's `IL-02's points for children, by section 66(c)(4) to (6)`
+                                  `the credit for children, set against the tax on income from personal exertion` IS `the children's credit`
+                                  `the income tax for the tax year`                                               IS `the tax`))
+    WHERE
+        `the s 121 tax`       MEANS `IL-03: the tax under section 121 on the earner's salary, in` h
+        `the s 121B tax`      MEANS `IL-07: the additional tax under section 121B on the earner's salary, in` h
+        v                     MEANS `IL-07: the value of one credit point in tax year` (h's `the year of the month`)
+        `the personal points` MEANS `IL-01: the credit points under sections 34, 36 and 36A for the earner` (h's `the earner`)
+        cp                    MEANS `IL-07: the credit points section 66(c) gives the earner, in` h
+        `the other credits`   MEANS
+            `IL-01: the amount of` (`the personal points` PLUS cp's `IL-02's half point under section 37, by section 66(c)(2)`) `credit points at a value of` v
+        `the children's credit` MEANS
+            `IL-02: the credit for` (cp's `IL-02's points for children, by section 66(c)(4) to (6)`) `children's points at a value of` v
+                `, set against a tax on income from personal exertion of` `the s 121 tax`
+        `the credits`         MEANS `the other credits` PLUS `the children's credit`
+        `the tax`             MEANS
+            IF       `the s 121B tax` GREATER THAN 0
+                 AND `the credits` GREATER THAN `the s 121 tax`
+            THEN `the credits exceed the tax under section 121 and there is additional tax under section 121B; the text does not say whether credit points are set off against the additional tax`
+            ELSE `IL-01: the tax after setting off` `the credits` `against` `the s 121 tax` PLUS `the s 121B tax`
+
+@ref NOTES.md section 1; the rule above
+GIVEN h IS AN `IL-07 household in a month`
+GIVETH A NUMBER
+`IL-07: the income tax for the tax year, in` h MEANS
+    (`IL-07: the income tax for the tax year, worked, in` h)'s `the income tax for the tax year`
+
+-- Fork K1 (NOTES.md): the Ordinance charges tax for a tax year (s 121 "in the tax
+-- year"; a credit point is an amount "for a tax year", s 33A); withholding from
+-- a month's salary is s 164 and its 5753-1993 Regulations, not in the sources.
+-- For a salary that is the same in every month of the year, the month's share
+-- of the year's tax is one twelfth of it. That is reported, and named as a
+-- share, not as the tax withheld.
+@ref ITO ss 33A, 121 (rows IL-01, IL-03); s 164 (not encoded); NOTES.md fork K1
+GIVEN h IS AN `IL-07 household in a month`
+GIVETH A NUMBER
+`IL-07: one twelfth of the income tax for the tax year, in` h MEANS
+    `IL-07: the income tax for the tax year, in` h DIVIDED BY 12
+
+§§ `National insurance contributions deducted from the salary`
+
+-- IL-05's s 348 gives the income on which contributions are computed (the salary,
+-- within Schedule K's maximum and minimum); IL-04's Schedule J column D gives the
+-- amount for each deduction branch on that income; IL-05's s 342(c) says what
+-- the employer deducts. s 342(c)(1): "ינכה המעביד משכרו של העובד אחוזים
+-- מההכנסה שלפיה משתלמים דמי הביטוח" (source line 3661) - percentages of the
+-- income on which contributions are paid, which is s 348's figure.
+@ref NII ss 342(c), 348, Schedule K (row IL-05); Schedule J column D (row IL-04)
+GIVEN h IS AN `IL-07 household in a month`
+GIVETH A NUMBER
+`IL-07: the national insurance contributions deducted from the salary for the month, in` h MEANS
+    `IL-07: in the month of` h `, the answer is`
+        (`IL-05: the amount the employer deducts from the earner's wage, in` h `, with column D amounts`
+            (`IL-04: the column D amounts in a month of` (h's `the year of the month`)
+                 `on a wage of` (`IL-05: the income on which the earner's contributions are computed, in` h)))
+
+§§ `The child allowance`
+
+-- IL-06's s 66 takes away the allowance of "an insured parent who has income
+-- chargeable to additional tax within s 121B of the Income Tax Ordinance". IL-06
+-- takes that as an input and leaves open which tax year (its fork F5). The
+-- capstone joins it to IL-03's s 121B for the tax year in which the month falls
+-- (NOTES.md fork K5): chargeable if and only if the additional tax for that year
+-- is above nil.
+@ref NII s 66 (row IL-06); ITO s 121B (row IL-03); NOTES.md fork K5
+GIVEN h IS AN `IL-07 household in a month`
+GIVETH A BOOLEAN
+`IL-07: the earner has income chargeable to additional tax in the tax year of the month, in` h MEANS
+    `IL-07: the additional tax under section 121B on the earner's salary, in` h GREATER THAN 0
+
+@ref NII ss 65-68 (row IL-06); s 72 (not encoded); NOTES.md forks K5, K6
+GIVEN h IS AN `IL-07 household in a month`
+GIVETH A NUMBER
+`IL-07: the child allowance for the month, in` h MEANS
+    `IL-07: in the month of` h `, the answer is`
+        (BRANCH IF NOT h's `the earner`'s `the earner is paid that salary in every month of the tax year`
+                THEN `IL-07 apportions the tax for the year to a month only where the salary is the same in every month; withholding under section 164 of the Income Tax Ordinance is not encoded`
+                IF `IL-06: a child of the household is born, or turns 18, after the first day of the month and by its last, in` h
+                THEN `a child of the household is born, or turns 18, during the month; section 72 of the National Insurance Law decides which months are paid, and is not encoded`
+                OTHERWISE
+                    `IL-06: the household's child allowance for the month, in` h `, the earner's income chargeable to additional tax:`
+                        (`IL-07: the earner has income chargeable to additional tax in the tax year of the month, in` h))
+
+§§ `The net, and the household's month`
+
+@ref NOTES.md section 1
+GIVEN h IS AN `IL-07 household in a month`
+GIVETH A NUMBER
+`IL-07: the net income of the household for the month, in` h MEANS
+          h's `the earner`'s `the earner's monthly salary`
+    MINUS `IL-07: one twelfth of the income tax for the tax year, in` h
+    MINUS `IL-07: the national insurance contributions deducted from the salary for the month, in` h
+    MINUS h's `the health insurance contribution the caller says is deducted for the month`
+    PLUS  `IL-07: the child allowance for the month, in` h
+
+@export The monthly net income, in a month of 2026, of a household in Israel with one employed parent: income tax for tax year 2026 and its twelfth, national insurance deducted from the salary, the child allowance, and the net, composed from encodings of the Income Tax Ordinance and the National Insurance Law; declines by name what those encodings do not cover
+GIVEN h IS AN `IL-07 household in a month` @desc the household: the year (2026) and month (1-12); the earner (sex, date of birth, the same gross monthly salary in every month, residence and insurance facts); the spouse if any (with no income) and the couple's elections under Income Tax Ordinance s 66; the children; and the health insurance contribution for the month, which the caller computes
+GIVETH AN `IL-07 the household's month`
+`IL-07: the household's month, in` h MEANS
+    `IL-07: once` `the net` `is settled, the answer`
+        (`IL-07 the household's month` WITH
+            `the gross salary for the month`                                              IS h's `the earner`'s `the earner's monthly salary`
+            `the income tax worked for the tax year`                                      IS `IL-07: the income tax for the tax year, worked, in` h
+            `one twelfth of the income tax for the tax year`                              IS `IL-07: one twelfth of the income tax for the tax year, in` h
+            `the national insurance contributions deducted from the salary for the month` IS `IL-07: the national insurance contributions deducted from the salary for the month, in` h
+            `the health insurance contribution deducted for the month`                    IS h's `the health insurance contribution the caller says is deducted for the month`
+            `the child allowance for the month`                                           IS `IL-07: the child allowance for the month, in` h
+            `the net income of the household for the month`                               IS `the net`)
+    WHERE
+        `the net` MEANS `IL-07: the net income of the household for the month, in` h
