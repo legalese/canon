@@ -1,0 +1,643 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `bvvcx-nouns`
+IMPORT `bvvcx-p1-definitions`
+IMPORT `bvvcx-p2-contract`
+IMPORT `bvvcx-p3-cover`
+
+-- Part III, Articles 12-15: the sum insured and the value, the settlement of a partial and a
+-- total loss, the deductible, and the reductions. These are the BASE rules; Part IV
+-- modifies some of them and bvvcx-claim.l4 composes the answer for a claim.
+-- Quotations (`src:N`) are generated from line N of ../../source/raw/baoviet-vcx-2021.txt.
+--
+-- Figures are VND. Vietnamese writes thousands with a dot: "500.000 đồng" is five hundred
+-- thousand; the generated tests (bvvcx-tests-generated.l4) read each printed figure back
+-- from the raw text with that rule and compare it with the constant here.
+
+§ `Part III — Articles 12 to 15`
+
+§§ `Article 12 — The sum insured and the value`
+
+-- src:501 | Điều 12. Số tiền bảo hiểm và giá trị bảo hiểm (giá thị trường)
+-- src:502 | 12.1 Số tiền bảo hiểm là số tiền mà Bên mua bảo hiểm yêu cầu BẢO VIỆT bảo hiểm cho
+-- src:503 | xe của mình và được ghi trên Giấy chứng nhận bảo hiểm/Đơn bảo hiểm và không
+-- src:504 | lớn hơn giá thị trường của xe được bảo hiểm tại thời điểm giao kết Hợp đồng bảo
+-- src:505 | hiểm (sau đây gọi tắt là “Số tiền bảo hiểm”).
+-- src:506 | 12.2 Bên mua bảo hiểm có thể thỏa thuận tham gia bảo hiểm bằng hoặc thấp hơn giá trị
+-- src:507 | thị trường của xe được bảo hiểm.
+-- src:508 | 12.3 BẢO VIỆT xác định giá trị của xe ô tô tham gia bảo hiểm như sau:
+-- src:509 | 12.3.1 Đối với xe mới một trăm phần trăm (100%), giá trị của xe là giá bán xe do các
+-- src:510 | hãng sản xuất trong nước công bố tại thị trường Việt Nam, hoặc giá xe nhập
+-- src:511 | khẩu đã bao gồm tất cả các loại thuế theo quy định của Nhà nước.
+-- src:512 | 12.3.2 Đối với xe đã qua sử dụng, giá trị của xe là Giá thị trường của xe tại thời điểm
+-- src:513 | giao kết Hợp đồng bảo hiểm.
+-- 12.3: a vehicle new when the contract was concluded is worth the maker's published price
+-- for Vietnam or the import price with all taxes; a used one its market value then. The
+-- heading equates this value with "giá thị trường", so it is the value 12.1, 12.2 and
+-- 13.1.2(a) compare the sum insured with (fork F2).
+@ref Rules, Article 12.3.1 (src 509-511)
+GIVEN a IS A TYPE
+GIVETH AN a
+`the record does not give the published or import price of a vehicle new at conclusion` MEANS
+    REFUSE "the record does not give the published or import price of a vehicle new at conclusion"
+
+@ref Rules, Article 12.3.2 (src 512-513)
+GIVEN a IS A TYPE
+GIVETH AN a
+`the record does not give the market value of a used vehicle at conclusion` MEANS
+    REFUSE "the record does not give the market value of a used vehicle at conclusion"
+
+@ref Rules, Article 12.3 (src 508-513)
+GIVEN `the vehicle` IS A `The insured vehicle`
+GIVETH A NUMBER
+`12.3 — the value of` `the vehicle` MEANS
+    IF   `the vehicle`'s `brand new when the contract was concluded`
+    THEN CONSIDER `the vehicle`'s `price published by the maker in Vietnam, or import price with all taxes`
+         WHEN JUST `the price` THEN `the price`
+         WHEN NOTHING          THEN `the record does not give the published or import price of a vehicle new at conclusion`
+    ELSE CONSIDER `the vehicle`'s `market value when the contract was concluded`
+         WHEN JUST `the value` THEN `the value`
+         WHEN NOTHING          THEN `the record does not give the market value of a used vehicle at conclusion`
+
+-- 12.1 caps the sum insured at the value. A certificate that breaks the cap is a case the
+-- Rules do not settle. LAW: Article 47 of the Law (aid, lines 933-952) does (fork F29).
+@ref Rules, Article 12.1 (src 502-505)
+GIVEN a IS A TYPE
+GIVETH AN a
+`the sum insured exceeds the value, which 12.1 forbids, and the Rules do not say how such a contract is settled` MEANS
+    REFUSE "the sum insured exceeds the value, which 12.1 forbids, and the Rules do not say how such a contract is settled"
+
+@ref Rules, Articles 12.1-12.2 (src 502-507)
+GIVEN `the policy`  IS A `The policy`
+      `the vehicle` IS A `The insured vehicle`
+GIVETH A BOOLEAN
+`12.2 — insured below value` `the policy` `,` `the vehicle` MEANS
+    IF   `the policy`'s `the sum insured` GREATER THAN `12.3 — the value of` `the vehicle`
+    THEN `the sum insured exceeds the value, which 12.1 forbids, and the Rules do not say how such a contract is settled`
+    ELSE `the policy`'s `the sum insured` LESS THAN `12.3 — the value of` `the vehicle`
+
+-- src:514 | 12.4 Trong mọi trường hợp số tiền bồi thường không vượt quá Số tiền bảo hiểm.
+@ref Rules, Article 12.4 (src 514)
+GIVEN `the compensation`  IS A NUMBER
+      `the sum insured`   IS A NUMBER
+GIVETH A NUMBER
+`12.4 — no more than the sum insured:` `the compensation` `,` `the sum insured` MEANS
+    min `the compensation` `the sum insured`
+
+§§ `Article 13 — Settlement`
+
+-- src:515 | Điều 13. Giải quyết quyền lợi bảo hiểm
+
+§§§ `13.1 — a partial loss`
+
+-- src:516 | 13.1 Bồi thường thiệt hại bộ phận:
+-- src:517 | 13.1.1 BẢO VIỆT chịu trách nhiệm thanh toán chi phí thực tế hợp lý và hợp lệ để sửa
+-- src:518 | chữa, thay thế bộ phận (trường hợp không thể sửa chữa đảm bảo an toàn kỹ
+-- src:519 | thuật khi vận hành theo tiêu chuẩn của nhà sản xuất); Hoặc trả bằng tiền cho
+-- src:520 | Người được bảo hiểm trên cơ sở xác định được chi phí hợp lý để sửa chữa,
+-- src:521 | khắc phục thiệt hại thuộc trách nhiệm bảo hiểm sau khi áp dụng mức giảm trừ,
+-- src:522 | khấu trừ (nếu có). Trường hợp, BẢO VIỆT bảo lãnh thanh toán chi phí sửa xe,
+-- src:523 | Người được bảo hiểm không nhận tiền bồi thường trực tiếp từ BẢO VIỆT thì
+-- src:524 | BẢO VIỆT sẽ thanh toán trực tiếp cho bên sửa chữa;
+-- 13.1.1: the reasonable actual cost of repair, or of replacement where the part cannot be
+-- repaired to the maker's safety standard; or cash on that basis after the reductions and
+-- deductibles. Where the insurer guarantees the repair bill it pays the repairer.
+DECLARE `Who is paid` IS ONE OF
+    `the insured`
+    `the repairer`
+
+@ref Rules, Article 13.1.1 (src 522-524)
+GIVEN `the insurer guaranteed the repair bill and the insured takes no cash` IS A BOOLEAN
+GIVETH A `Who is paid`
+`13.1.1 — who is paid for a partial loss` `the insurer guaranteed the repair bill and the insured takes no cash` MEANS
+    IF   `the insurer guaranteed the repair bill and the insured takes no cash`
+    THEN `the repairer`
+    ELSE `the insured`
+
+-- src:525 | 13.1.2 Cách xác định Số tiền bồi thường:
+-- src:526 | a) Trường hợp xe được bảo hiểm dưới giá trị, Số tiền bồi thường sẽ được tính
+-- src:527 | theo tỷ lệ giữa Số tiền bảo hiểm và Giá thị trường của xe tại thời điểm giao
+-- src:528 | kết Hợp đồng bảo hiểm;
+-- src:529 | b) Trường hợp xe được bảo hiểm bằng giá trị, Số tiền bồi thường bằng chi phí
+-- src:530 | hợp lý để phục hồi, sửa chữa xe bị thiệt hại. Cách xác định chi phí hợp lý
+-- src:531 | cho bộ phận hư hỏng phải thay thế mới được tính bằng chi phí thay thế thực
+-- src:532 | tế trừ đi số tiền khấu hao (trừ trường hợp có thỏa thuận bảo hiểm bổ sung
+-- src:533 | bồi thường không áp dụng khấu hao thay mới), cụ thể như sau:
+-- src:534 | Xe sử dụng dưới ba (03) năm: khấu hao không phần trăm (0%);
+-- src:539 | - Xe sử dụng từ ba (03) đến dưới sáu (06) năm: khấu hao mười lăm phần
+-- src:540 | trăm (15%) giá trị bộ phận thay mới;
+-- src:541 | - Xe sử dụng từ sáu (06) năm đến dưới mười (10) năm: khấu hao hai mươi
+-- src:542 | lăm phần trăm (25%) giá trị bộ phận thay mới;
+-- src:543 | - Xe sử dụng từ mười (10) năm đến dưới mười lăm (15) năm: khấu hao ba
+-- src:544 | mươi lăm phần trăm (35%) giá trị bộ phận thay mới;
+-- src:545 | - Xe sử dụng từ mười lăm (15) năm trở lên: khấu hao năm mươi phần trăm
+-- src:546 | (50%) giá trị bộ phận thay mới.
+-- The depreciation scale of 13.1.2(b), one source row to one L4 row, by the time in use of
+-- definition 12 in months ("under 3 years" is under 36 months). The generated tests check
+-- every row against the raw text, both sides of each edge.
+DECLARE `A row of the depreciation scale` HAS
+    `from months in use`  IS A NUMBER
+    `below months in use` IS A MAYBE NUMBER
+    `rate`                IS A NUMBER
+
+@ref Rules, Article 13.1.2(b) (src 534-546)
+GIVETH A LIST OF `A row of the depreciation scale`
+`13.1.2(b) — the depreciation scale` MEANS
+    LIST
+        --                                  from,  below,     rate
+        (`A row of the depreciation scale` OF   0, JUST  36,  0%),    -- under 3 years
+        (`A row of the depreciation scale` OF  36, JUST  72, 15%),    -- 3 to under 6 years
+        (`A row of the depreciation scale` OF  72, JUST 120, 25%),    -- 6 to under 10 years
+        (`A row of the depreciation scale` OF 120, JUST 180, 35%),    -- 10 to under 15 years
+        (`A row of the depreciation scale` OF 180, NOTHING,  50%)     -- 15 years and more
+
+GIVEN `the row`    IS A `A row of the depreciation scale`
+      `the months` IS A NUMBER
+GIVETH A BOOLEAN
+`the row` `covers a time in use, in months, of` `the months` MEANS
+        `the months` AT LEAST `the row`'s `from months in use`
+    AND CONSIDER `the row`'s `below months in use`
+        WHEN NOTHING          THEN TRUE
+        WHEN JUST `the edge`  THEN `the months` LESS THAN `the edge`
+
+@ref Rules, Part I definition 12 (src 80-83)
+GIVEN a IS A TYPE
+GIVETH AN a
+`the time in use is negative: the first registration is after the insurance began` MEANS
+    REFUSE "the time in use is negative: the first registration is after the insurance began"
+
+@ref Rules, Article 13.1.2(b) (src 534-546)
+GIVEN `the months` IS A NUMBER
+GIVETH A NUMBER
+`13.1.2(b) — the depreciation rate for months in use of` `the months` MEANS
+    CONSIDER filter (GIVEN `r` YIELD `r` `covers a time in use, in months, of` `the months`) `13.1.2(b) — the depreciation scale`
+    WHEN `the row` FOLLOWED BY `the rest` THEN `the row`'s `rate`
+    WHEN EMPTY                            THEN `the time in use is negative: the first registration is after the insurance began`
+
+-- The reasonable cost of one part: repair where repairable, else the actual cost of a new
+-- part less depreciation where depreciation applies (it does not under BVVC01).
+@ref Rules, Articles 13.1.1 (src 517-522) and 13.1.2(b) (src 529-533)
+GIVEN `the part`                IS A `A damaged part`
+      `the depreciation rate`   IS A NUMBER
+GIVETH A NUMBER
+`13.1 — the reasonable cost of` `the part` `at depreciation` `the depreciation rate` MEANS
+    IF   `the part`'s `repairable to the maker's technical safety standard`
+    THEN `the part`'s `reasonable cost of repair`
+    ELSE `the part`'s `actual cost of a new replacement` TIMES (1 MINUS `the depreciation rate`)
+
+-- src:547 | 13.1.3 BẢO VIỆT bồi thường chi phí sơn lại toàn bộ xe nếu trên 50% diện tích sơn
+-- src:548 | của xe bị hư hỏng do tổn thất và theo nguyên tắc tính bồi thường quy định tại
+-- src:549 | khoản 13.1.2a, 13.1.2b Điều 13 Quy tắc này.
+-- More than half the painted area damaged: the whole vehicle is repainted. Otherwise the
+-- damaged area (13.1.1). Exactly half is not "more than 50%".
+@ref Rules, Article 13.1.3 (src 547-549)
+GIVETH A NUMBER
+`13.1.3 — the share of paint damage above which the whole vehicle is repainted` MEANS 50%
+
+@ref Rules, Article 13.1.3 (src 547-549)
+GIVEN `the paint damage` IS A MAYBE `The paint damage`
+GIVETH A NUMBER
+`13.1.3 — the reasonable cost of repainting for` `the paint damage` MEANS
+    CONSIDER `the paint damage`
+    WHEN NOTHING        THEN 0
+    WHEN JUST `the paint` THEN
+        IF   `the paint`'s `share of the painted area damaged` GREATER THAN `13.1.3 — the share of paint damage above which the whole vehicle is repainted`
+        THEN `the paint`'s `cost of repainting the whole vehicle`
+        ELSE `the paint`'s `cost of repainting the damaged area only`
+
+-- 13.1.2(a): below value, the compensation is pro-rated by sum insured over value at
+-- conclusion. It is read as pro-rating the same reasonable cost (b) defines, depreciation
+-- included (fork F30).
+@ref Rules, Article 13.1.2(a) (src 526-528)
+GIVEN `the reasonable cost`  IS A NUMBER
+      `the sum insured`      IS A NUMBER
+      `the value`            IS A NUMBER
+GIVETH A NUMBER
+`13.1.2(a) — the compensation below value for` `the reasonable cost` `, sum insured` `the sum insured` `, value` `the value` MEANS
+    `the reasonable cost` TIMES (`the sum insured` DIVIDED BY `the value`)
+
+§§§ `13.2 — a total loss`
+
+-- src:550 | 13.2 Bồi thường thiệt hại toàn bộ:
+-- src:551 | 13.2.1 BẢO VIỆT bồi thường thiệt hại toàn bộ trong các trường hợp:
+-- src:552 | a) Chi phí hợp lý để phục hồi, sửa chữa xe bị thiệt hại trên bảy mươi lăm phần
+-- src:553 | trăm (75%) Giá trị thị trường của xe tại thời điểm, nơi xảy ra thiệt hại;
+-- src:554 | b) Xe bị mất trộm/mất cướp khi có thông báo/quyết định của cơ quan Công an
+-- src:555 | đình chỉ điều tra hoặc đình chỉ khởi tố hình sự liên quan đến mất trộm, mất
+-- src:556 | cướp của chính chiếc xe đó.
+-- (a) The reasonable cost of restoring the vehicle is MORE than 75% of its market value at
+-- the time and place of the loss. That cost is read as the same "reasonable cost" 13.1.2(b)
+-- defines, depreciation included, of the parts the cover pays for (fork F31).
+-- (b) A theft or robbery, once the police issue a notice or decision suspending the
+-- investigation or the prosecution.
+@ref Rules, Article 13.2.1(a) (src 552-553)
+GIVETH A NUMBER
+`13.2.1(a) — the share of market value above which the loss is total` MEANS 75%
+
+@ref Rules, Article 13.2.1(a) (src 552-553)
+GIVEN `the reasonable cost of restoring` IS A NUMBER
+      `the market value at the loss`     IS A NUMBER
+GIVETH A BOOLEAN
+`13.2.1(a) — a total loss, the reasonable cost of restoring being` `the reasonable cost of restoring` `against a market value of` `the market value at the loss` MEANS
+    `the reasonable cost of restoring` GREATER THAN
+        `13.2.1(a) — the share of market value above which the loss is total` TIMES `the market value at the loss`
+
+@ref Rules, Article 13.2.1(b) (src 554-556)
+GIVEN `the event` IS AN `The event`
+GIVETH A BOOLEAN
+`13.2.1(b) — a total loss by theft or robbery` `the event` MEANS
+        (   `the event`'s `what happened` EQUALS `theft of the whole vehicle`
+         OR `the event`'s `what happened` EQUALS `robbery of the whole vehicle`)
+    AND `the event`'s `the police suspended the investigation or the prosecution`
+
+-- src:557 | 13.2.2 Số tiền bồi thường thiệt hại toàn bộ bằng Giá trị thị trường của xe tại thời điểm,
+-- src:558 | nơi xảy ra thiệt hại và không vượt quá số tiền ghi trên Giấy chứng nhận bảo
+-- src:559 | hiểm/Đơn bảo hiểm.
+@ref Rules, Article 13.2.2 (src 557-559)
+GIVEN `the market value at the loss` IS A NUMBER
+      `the sum insured`              IS A NUMBER
+GIVETH A NUMBER
+`13.2.2 — the compensation for a total loss, market value` `the market value at the loss` `, sum insured` `the sum insured` MEANS
+    min `the market value at the loss` `the sum insured`
+
+§§§ `13.3 — what the insurer recovers`
+
+-- src:560 | 13.3 Thu hồi tài sản sau bồi thường:
+-- src:561 | Khi BẢO VIỆT đã bồi thường thiệt hại bộ phận hoặc toàn bộ xe thì bộ phận hư
+-- src:562 | hỏng hoặc toàn bộ xe đó thuộc quyền sở hữu của BẢO VIỆT, cụ thể:
+-- src:563 | 13.3.1 Đối với trường hợp bồi thường thay mới bộ phận, BẢO VIỆT sẽ thu hồi bộ
+-- src:564 | phận hư hỏng đã được trả tiền bồi thường thay mới (kể cả trường hợp trừ khấu
+-- src:565 | hao).
+@ref Rules, Article 13.3.1 (src 563-565)
+GIVEN `the part` IS A `A damaged part`
+GIVETH A BOOLEAN
+`13.3.1 — the insurer takes back the damaged part` `the part` MEANS
+    NOT `the part`'s `repairable to the maker's technical safety standard`
+
+-- src:566 | 13.3.2 Đối với trường hợp bồi thường thiệt hại toàn bộ, BẢO VIỆT có quyền thu hồi
+-- src:567 | tài sản bị thiệt hại sau khi đã trả tiền bồi thường. Trường hợp tham gia bảo hiểm
+-- src:568 | dưới giá trị thì BẢO VIỆT thu hồi phần giá trị tương đương theo tỷ lệ tham gia
+-- src:569 | bảo hiểm. Trường hợp Người được bảo hiểm yêu cầu nhận lại chiếc xe bị thiệt
+-- src:570 | hại toàn bộ, BẢO VIỆT sẽ giảm số tiền bồi thường tương đương giá trị thu hồi
+-- src:571 | chiếc xe bị thiệt hại theo định giá của BẢO VIỆT.
+-- After a total loss the insurer may take the wreck; below value it takes the share the sum
+-- insured bears to the value. If the insured keeps the wreck the compensation drops by the
+-- recovery value "as the insurer values it" (no criteria: finding X13); the drop is read as
+-- the insurer's share of that value (fork F32).
+@ref Rules, Article 13.3.2 (src 566-571)
+GIVEN a IS A TYPE
+GIVETH AN a
+`the insured keeps the wreck, and the record does not give the insurer's valuation of it` MEANS
+    REFUSE "the insured keeps the wreck, and the record does not give the insurer's valuation of it"
+
+@ref Rules, Article 13.3.2 (src 566-571)
+GIVEN `the salvage`          IS A `The salvage`
+      `the share recovered`  IS A NUMBER
+GIVETH A NUMBER
+`13.3.2 — the deduction for a wreck the insured keeps:` `the salvage` `, the insurer's share being` `the share recovered` MEANS
+    IF   `the salvage`'s `the insured asks to keep the vehicle after a total loss`
+    THEN CONSIDER `the salvage`'s `the salvage value as the insurer values it`
+         WHEN JUST `the value` THEN `the value` TIMES `the share recovered`
+         WHEN NOTHING          THEN `the insured keeps the wreck, and the record does not give the insurer's valuation of it`
+    ELSE 0
+
+-- src:572 | 13.3.3 Đối với trường hợp bồi thường xe bị mất trộm, mất cướp sau đó tìm được xe bị
+-- src:573 | mất trộm, mất cướp thì BẢO VIỆT được quyền sở hữu toàn bộ chiếc xe đó.
+@ref Rules, Article 13.3.3 (src 572-573)
+GIVEN `the event` IS AN `The event`
+GIVETH A BOOLEAN
+`13.3.3 — the insurer owns the stolen vehicle that was found` `the event` MEANS
+        `13.2.1(b) — a total loss by theft or robbery` `the event`
+    AND `the event`'s `the stolen vehicle was found after the compensation was paid`
+
+§§§ `13.4 — the order of deductibles and reductions`
+
+-- src:574 | 13.4 Nguyên tắc áp dụng giảm trừ bồi thường và khấu trừ:
+-- src:575 | Trường hợp vụ thiệt hại bị đồng thời giảm trừ tại Điều 15, khấu trừ chung tại Điều
+-- src:576 | 14 và khấu trừ riêng theo quy định tại Phần IV của điều khoản bổ sung thì áp dụng
+-- src:577 | khấu trừ của điều khoản bổ sung trước sau đó áp dụng giảm trừ theo Điều 15 và
+-- src:578 | cuối cùng áp dụng khấu trừ chung (Điều 14) được quy định trên Giấy chứng nhận
+-- src:579 | bảo hiểm/Đơn bảo hiểm.
+-- First a supplementary clause's own deductible, then the Article 15 reduction, last the
+-- general deductible of Article 14. The Rules do not place pro-rating, the 12.4 cap, the
+-- wreck deduction or the double-insurance share in this order; where bvvcx-claim.l4 puts
+-- them is fork F33.
+@ref Rules, Article 13.4 (src 574-579); Article 14.2 (src 587-592)
+GIVEN `the amount`                IS A NUMBER
+      `the special deductible`    IS A NUMBER
+      `the reduction rate`        IS A NUMBER
+      `the general deductible`    IS A NUMBER
+GIVETH A NUMBER
+`13.4 — the compensation from` `the amount` `, less the special deductible` `the special deductible` `, then reduced by` `the reduction rate` `, then less the general deductible` `the general deductible` MEANS
+    `14.2 — the compensation from a loss of` `the reduced amount` `under a deductible of` `the general deductible`
+    WHERE
+        `after the special deductible` MEANS max 0 (`the amount` MINUS `the special deductible`)
+        `the reduced amount`           MEANS `after the special deductible` TIMES (1 MINUS `the reduction rate`)
+
+§§ `Article 14 — The deductible`
+
+-- src:583 | Điều 14. Mức khấu trừ
+-- src:584 | 14.1 Mức khấu trừ là số tiền được ấn định trên Giấy chứng nhận bảo hiểm/Đơn bảo hiểm
+-- src:585 | mà Người được bảo hiểm phải tự gánh chịu trong mỗi và mọi vụ tổn thất bộ phận
+-- src:586 | của xe tham gia bảo hiểm vật chất xe tại BẢO VIỆT.
+-- A sum per loss, borne by the insured, "in each and every PARTIAL loss": the deductible is
+-- read as not applying to a total loss (fork F34).
+-- src:593 | 14.3 BẢO VIỆT áp dụng Mức khấu trừ tối thiểu là Năm trăm ngàn đồng (500.000
+-- src:594 | đồng)/vụ tổn thất. Trường hợp áp dụng Mức khấu trừ khác, Mức khấu trừ sẽ được
+-- src:595 | quy định cụ thể trong Giấy chứng nhận bảo hiểm/Đơn bảo hiểm.
+-- At least 500,000 VND per loss ("500.000 đồng"); another figure, if the certificate states
+-- one. A certificate figure below 500,000 is taken as stated (fork F35).
+@ref Rules, Article 14.3 (src 593-595)
+GIVETH A NUMBER
+`14.3 — the minimum deductible per loss` MEANS 500_000
+
+@ref Rules, Articles 14.1 and 14.3 (src 584-586, 593-595)
+GIVEN `the policy` IS A `The policy`
+GIVETH A NUMBER
+`14 — the deductible per partial loss under` `the policy` MEANS
+    CONSIDER `the policy`'s `the deductible stated on the certificate`
+    WHEN JUST `the stated deductible` THEN `the stated deductible`
+    WHEN NOTHING                      THEN `14.3 — the minimum deductible per loss`
+
+-- src:587 | 14.2 Khi xảy ra thiệt hại thuộc trách nhiệm bảo hiểm, BẢO VIỆT sẽ thanh toán bồi
+-- src:588 | thường và áp dụng Mức khấu trừ trên mỗi vụ tổn thất, cụ thể như sau:
+-- src:589 | - Thiệt hại xe nhỏ hơn hoặc bằng mức khấu trừ, BẢO VIỆT không chịu trách nhiệm
+-- src:590 | bồi thường thiệt hại (Người được bảo hiểm tự gánh chịu thiệt hại);
+-- src:591 | - Thiệt hại trên Mức khấu trừ, thì số tiền bồi thường bảo hiểm bằng (=) thiệt hại trừ
+-- src:592 | (-) Mức khấu trừ;
+-- A loss at or below the deductible: nothing. Above it: the loss less the deductible.
+@ref Rules, Article 14.2 (src 587-592)
+GIVEN `the loss`       IS A NUMBER
+      `the deductible` IS A NUMBER
+GIVETH A NUMBER
+`14.2 — the compensation from a loss of` `the loss` `under a deductible of` `the deductible` MEANS
+    IF   `the loss` AT MOST `the deductible`
+    THEN 0
+    ELSE `the loss` MINUS `the deductible`
+
+§§ `Article 15 — Reductions`
+
+-- src:596 | Điều 15. Giảm trừ bồi thường
+-- src:597 | 15.1 BẢO VIỆT thực hiện giảm mức bồi thường theo tỷ lệ trong một số trường hợp sau
+-- src:598 | đây:
+DECLARE `A ground of reduction` IS ONE OF
+    `15.1.1 late notice, no mitigation, scene not kept, or a parking or lane offence`
+    `15.1.2 dismantling or repair without consent, or speeding by 20% or more`
+    `15.1.3 no subrogation, dishonesty, or obstructing verification`
+    `15.1.4 overloading by more than 20% and less than 50%`
+    `15.1.5 too little premium paid`
+
+DECLARE `A reduction` HAS
+    `ground` IS A `A ground of reduction`
+    `rate`   IS A NUMBER
+
+§§§ `15.1.1 — 10%`
+
+-- src:599 | 15.1.1 Giảm mười phần trăm (10%) số tiền bồi thường trong các trường hợp khi xảy ra
+-- src:600 | tai nạn Bên mua bảo hiểm, Người được bảo hiểm, Người điều khiển xe:
+-- src:601 | a) Không thông báo ngay cho BẢO VIỆT trong vòng sáu (06) giờ kể từ thời
+-- src:602 | điểm xảy ra tai nạn để phối hợp và được hướng dẫn;
+-- src:603 | b) Không gửi Thông báo thiệt hại (bằng văn bản) cho BẢO VIỆT trong thời
+-- src:604 | hạn năm (05) ngày kể từ ngày xảy ra thiệt hại (trừ trường hợp bất khả kháng
+-- src:605 | hoặc đã được BẢO VIỆT giám định thiệt hại trong thời gian này);
+-- src:606 | c) Không thực hiện đầy đủ các biện pháp cứu chữa, hạn chế thiệt hại về người
+-- src:607 | và tài sản; Không giữ nguyên hiện trường thiệt hại, tự ý di chuyển khỏi hiện
+-- src:608 | trường mà chưa có ý kiến chấp thuận của BẢO VIỆT (trừ trường hợp di
+-- src:609 | chuyển để đảm bảo an toàn hoặc phải thi hành theo yêu cầu của cơ quan
+-- src:610 | chức năng);
+-- src:611 | d) Dừng xe nơi có biển “Cấm dừng xe và đỗ xe”; đỗ xe nơi có biển “Cấm đỗ
+-- src:612 | xe” hoặc biển “Cấm dừng xe và đỗ xe”; Điều khiển xe đi vào đường đường
+-- src:613 | dành riêng cho xe buýt/xe điện, đi vào đường có biển báo hiệu có nội dung
+-- src:614 | cấm đi vào đối với loại phương tiện đang điều khiển (không bao gồm các
+-- src:615 | biển quy định trong khoản 11.5 Điều 11 của Quy tắc này).
+-- (a) The insurer not told within 6 hours of the accident. "Accident" (tai nạn) is read as
+-- any loss event, as the Rules use it in 6.1 and 7.1.1, so a theft is caught too (fork F36,
+-- finding X3). (b) No written notice within 5 days of the damage, save force majeure or an
+-- assessment made in that time. (c) Not rescuing and limiting the harm; not keeping the
+-- scene by moving the vehicle without consent, save for safety or on the authorities'
+-- orders (one limb: fork F28). (d) A parking, bus-lane or no-entry offence other than the
+-- signs of 11.5.
+@ref Rules, Article 15.1.1 (src 599-600)
+GIVETH A NUMBER
+`15.1.1 — the reduction` MEANS 10%
+
+@ref Rules, Article 15.1.1(a) (src 601-602)
+GIVETH A NUMBER
+`15.1.1(a) — the hours within which the insurer must be told` MEANS 6
+
+@ref Rules, Article 15.1.1(b) (src 603-605)
+GIVETH A NUMBER
+`15.1.1(b) — the days within which written notice must be sent` MEANS 5
+
+GIVEN `the limit`   IS A NUMBER
+      `the elapsed` IS A MAYBE NUMBER
+GIVETH A BOOLEAN
+`not done within` `the limit` `, having taken` `the elapsed` MEANS
+    CONSIDER `the elapsed`
+    WHEN NOTHING     THEN TRUE
+    WHEN JUST `t`    THEN `t` GREATER THAN `the limit`
+
+@ref Rules, Article 15.1.1(a)-(d) (src 599-615)
+GIVEN `the claim` IS A `A claim`
+GIVETH A BOOLEAN
+`15.1.1 — a ground for a 10% reduction` `the claim` MEANS
+        "(a)" ... `not done within` `15.1.1(a) — the hours within which the insurer must be told` `, having taken` (`the conduct`'s `hours until the insurer was told`)
+    OR  "(b)" ... (    `not done within` `15.1.1(b) — the days within which written notice must be sent` `, having taken` (`the conduct`'s `days until written notice of the damage was sent`)
+                   AND NOT `the conduct`'s `force majeure prevented the written notice`
+                   AND NOT `the conduct`'s `the insurer assessed the damage within five days`)
+    OR  "(c)" ... (   NOT `the conduct`'s `took every measure to rescue and to limit harm to people and property`
+                   OR (    ((NOT `the conduct`'s `kept the scene as it was`) OR `the conduct`'s `moved the vehicle from the scene without the insurer's consent`)
+                       AND NOT `the conduct`'s `the move was for safety or on the authorities' orders`))
+    OR  "(d)" ... (   `the manner`'s `stopped where a no-stopping-and-no-parking sign is posted`
+                   OR `the manner`'s `parked where a no-parking or no-stopping-and-no-parking sign is posted`
+                   OR `the manner`'s `drove into a lane reserved for buses or trams`
+                   OR `the manner`'s `drove into a road whose signs bar that type of vehicle`)
+    WHERE
+        `the conduct` MEANS `the claim`'s `the conduct after the loss`
+        `the manner`  MEANS `the claim`'s `the driving`'s `the manner of driving`
+
+§§§ `15.1.2 — 25%`
+
+-- src:616 | 15.1.2 Giảm 25% số tiền bồi thường trong các trường hợp Người được bảo hiểm,
+-- src:617 | Người điều khiển xe:
+-- src:618 | a) Tự ý tháo dỡ hoặc sửa chữa tài sản khi chưa có ý kiến chấp thuận của BẢO
+-- src:619 | VIỆT (trừ trường hợp cần thiết để đảm bảo an toàn, đề phòng hạn chế thiệt
+-- src:620 | hại về người và tài sản hoặc phải thi hành theo yêu cầu của cơ quan có thẩm
+-- src:621 | quyền);
+-- src:622 | b) Lái xe vượt quá tốc độ cho phép và có kết luận bằng văn bản của cơ quan
+-- src:623 | chức năng xác định vượt quá từ hai mươi phần trăm (20%);
+-- (b) needs a written finding by the authorities of speed "from 20%" over the limit:
+-- exactly 20% is caught.
+@ref Rules, Article 15.1.2 (src 616)
+GIVETH A NUMBER
+`15.1.2 — the reduction` MEANS 25%
+
+@ref Rules, Article 15.1.2(b) (src 622-623)
+GIVETH A NUMBER
+`15.1.2(b) — the excess over the speed limit that is caught` MEANS 20%
+
+@ref Rules, Article 15.1.2(a)-(b) (src 616-623)
+GIVEN `the claim` IS A `A claim`
+GIVETH A BOOLEAN
+`15.1.2 — a ground for a 25% reduction` `the claim` MEANS
+        "(a)" ... (    `the conduct`'s `dismantled or repaired the property without the insurer's consent`
+                   AND NOT `the conduct`'s `the dismantling or repair was needed for safety, to limit harm, or ordered by the authorities`)
+    OR  "(b)" ... CONSIDER `the claim`'s `the driving`'s `the manner of driving`'s `excess over the speed limit found in writing by the authorities`
+                  WHEN NOTHING        THEN FALSE
+                  WHEN JUST `excess`  THEN `excess` AT LEAST `15.1.2(b) — the excess over the speed limit that is caught`
+    WHERE
+        `the conduct` MEANS `the claim`'s `the conduct after the loss`
+
+§§§ `15.1.3 — up to 100%, by degree of fault`
+
+-- src:628 | 15.1.3 Giảm tối đa đến một trăm phần trăm (100%) số tiền bồi thường tùy theo mức
+-- src:629 | độ lỗi của Người được bảo hiểm, Người điều khiển xe trong các trường hợp
+-- src:630 | sau:
+-- src:631 | a) Không bảo lưu quyền khiếu nại và chuyển quyền đòi người thứ ba cho BẢO
+-- src:632 | VIỆT kèm theo toàn bộ hồ sơ, các căn cứ tài liệu cần thiết, không hợp tác
+-- src:633 | với BẢO VIỆT để đòi lại người thứ ba hoặc tự động thỏa thuận bồi thường
+-- src:634 | với người thứ ba gây thiệt hại cho BẢO VIỆT;
+-- src:635 | b) Không trung thực trong việc cung cấp các thông tin, tài liệu, chứng từ trong
+-- src:636 | hồ sơ bồi thường. Người điều khiển xe không tạo điều kiện cho cơ quan
+-- src:637 | chức năng xác định nồng độ cồn trong máu hoặc khí thở;
+-- src:638 | c) Không tạo điều kiện thuận lợi cho BẢO VIỆT trong quá trình xác minh tính
+-- src:639 | chân thực của các thông tin, tài liệu, chứng từ trong hồ sơ bồi thường.
+-- The rate is the insurer's, "by the degree of fault", up to 100%, with no further criteria
+-- (finding X13). It is an input: where a ground applies and the insurer has fixed no rate,
+-- the encoding declines. (b)'s second sentence is about "the driver" (definition 8).
+@ref Rules, Article 15.1.3 (src 628-630)
+GIVETH A NUMBER
+`15.1.3 — the most the reduction can be` MEANS 100%
+
+@ref Rules, Article 15.1.3 (src 628-639)
+GIVEN `the claim` IS A `A claim`
+GIVETH A BOOLEAN
+`15.1.3 — a ground for a reduction by degree of fault` `the claim` MEANS
+        "(a)" ... `the conduct`'s `failed to preserve or transfer the right of recovery against a third party, did not cooperate in recovering, or settled with the third party alone`
+    OR  "(b)" ... (   `the conduct`'s `dishonest in the information or documents of the claim`
+                   OR (CONSIDER `the claim`'s `the driving`'s `the person driving`
+                       WHEN NOTHING           THEN FALSE
+                       WHEN JUST `the person` THEN     `the driver within definition 8` `the person`
+                                                   AND `the person`'s `did not let the authorities measure alcohol in blood or breath`))
+    OR  "(c)" ... `the conduct`'s `did not facilitate the insurer's verification of the claim documents`
+    WHERE
+        `the conduct` MEANS `the claim`'s `the conduct after the loss`
+
+@ref Rules, Article 15.1.3 (src 628-630)
+GIVEN a IS A TYPE
+GIVETH AN a
+`a ground of 15.1.3 applies and the insurer has fixed no rate for it` MEANS
+    REFUSE "a ground of 15.1.3 applies and the insurer has fixed no rate for it"
+
+@ref Rules, Article 15.1.3 (src 628-630)
+GIVEN a IS A TYPE
+GIVETH AN a
+`the rate the insurer fixed under 15.1.3 is outside 0% to 100%` MEANS
+    REFUSE "the rate the insurer fixed under 15.1.3 is outside 0% to 100%"
+
+@ref Rules, Article 15.1.3 (src 628-630)
+GIVEN `the conduct` IS A `The conduct after the loss`
+GIVETH A NUMBER
+`15.1.3 — the rate the insurer fixed, from` `the conduct` MEANS
+    CONSIDER `the conduct`'s `the reduction the insurer fixed under 15.1.3`
+    WHEN NOTHING       THEN `a ground of 15.1.3 applies and the insurer has fixed no rate for it`
+    WHEN JUST `rate`   THEN
+        IF   `rate` LESS THAN 0 OR `rate` GREATER THAN `15.1.3 — the most the reduction can be`
+        THEN `the rate the insurer fixed under 15.1.3 is outside 0% to 100%`
+        ELSE `rate`
+
+§§§ `15.1.4 — overloading between 20% and 50%`
+
+-- src:640 | 15.1.4 Giảm số tiền bồi thường tương ứng với tỷ lệ phần trăm (%) chở/kéo theo quá
+-- src:641 | trọng tải, số người (từ trên hai mươi phần trăm (20%) đến dưới năm mươi phần
+-- src:642 | trăm (50%)) theo quy định trong Giấy chứng nhận kiểm định;
+-- More than 20% and less than 50%: the compensation falls by the overload percentage. 50%
+-- and more is 11.16's exclusion; 20% or less, nothing. 15.1.4 does not repeat 11.16's
+-- carve-out for children under 7; it is read as carrying it (fork F21).
+@ref Rules, Article 15.1.4 (src 640-642)
+GIVETH A NUMBER
+`15.1.4 — the overloading above which the reduction applies` MEANS 20%
+
+@ref Rules, Article 15.1.4 (src 640-642)
+GIVEN `the claim` IS A `A claim`
+GIVETH A NUMBER
+`15.1.4 — the overloading` `the claim` MEANS
+    `the overloading of` (`the claim`'s `the vehicle`) `carrying` (`the claim`'s `the event`'s `the load`) `, counting children under 7:` FALSE
+
+@ref Rules, Article 15.1.4 (src 640-642)
+GIVEN `the claim` IS A `A claim`
+GIVETH A BOOLEAN
+`15.1.4 — a ground for a reduction by the overloading` `the claim` MEANS
+        `15.1.4 — the overloading` `the claim` GREATER THAN `15.1.4 — the overloading above which the reduction applies`
+    AND `15.1.4 — the overloading` `the claim` LESS THAN    `11.16 — the overloading that excludes`
+
+§§§ `15.1.5 — too little premium`
+
+-- src:643 | 15.1.5 Giảm số tiền bồi thường theo tỷ lệ giữa số phí thực nộp và số phí phải nộp theo
+-- src:644 | quy định trong trường hợp:
+-- src:645 | a) Bên mua bảo hiểm kê khai/xác nhận yêu cầu bảo hiểm sai (không đúng mục
+-- src:646 | đích sử dụng của xe) làm thu thiếu phí bảo hiểm so với quy định;
+-- src:647 | b) Bên mua bảo hiểm/Người được bảo hiểm không thông báo cho BẢO VIỆT
+-- src:648 | trong trường hợp có sự gia tăng mức độ rủi ro bảo hiểm để bổ sung phí bảo
+-- src:649 | hiểm (như chuyển đổi mục đích sử dụng, hoán cải, nâng cấp làm tăng giá
+-- src:650 | xe).
+-- The compensation is scaled by premium paid over premium due: the reduction is the
+-- shortfall's share of the premium due.
+@ref Rules, Article 15.1.5 (src 643-650)
+GIVEN a IS A TYPE
+GIVETH AN a
+`a ground of 15.1.5 applies and the record does not give the premium that should have been paid` MEANS
+    REFUSE "a ground of 15.1.5 applies and the record does not give the premium that should have been paid"
+
+@ref Rules, Article 15.1.5(a)-(b) (src 645-650)
+GIVEN `the shortfall` IS A `The premium shortfall`
+GIVETH A BOOLEAN
+`15.1.5 — a ground for a reduction by the premium shortfall` `the shortfall` MEANS
+        "(a)" ... `the shortfall`'s `the purchaser misdeclared the purpose of use, so too little premium was collected`
+    OR  "(b)" ... `the shortfall`'s `the risk increased and the insurer was not told, so too little premium was collected`
+
+@ref Rules, Article 15.1.5 (src 643-644)
+GIVEN `the shortfall` IS A `The premium shortfall`
+GIVETH A NUMBER
+`15.1.5 — the reduction for` `the shortfall` MEANS
+    CONSIDER `the shortfall`'s `the premium that should have been paid`
+    WHEN NOTHING      THEN `a ground of 15.1.5 applies and the record does not give the premium that should have been paid`
+    WHEN JUST `due`   THEN
+        IF   `due` GREATER THAN 0
+        THEN max 0 (1 MINUS (`the shortfall`'s `the premium actually paid` DIVIDED BY `due`))
+        ELSE 0
+
+§§§ `15.2 — one reduction only, the highest`
+
+-- src:651 | 15.2 Nguyên tắc giảm trừ số tiền bồi thường
+-- src:652 | Trường hợp Người được bảo hiểm bị giảm trừ số tiền bồi thường theo nhiều tỷ
+-- src:653 | lệ khác nhau theo các quy định tại khoản 15.1 Điều 15 của Quy tắc này, BẢO
+-- src:654 | VIỆT sẽ áp dụng duy nhất một loại giảm trừ số tiền bồi thường theo tỷ lệ cao
+-- src:655 | nhất.
+@ref Rules, Article 15.1 (src 597-650)
+GIVEN `the claim` IS A `A claim`
+GIVETH A LIST OF `A reduction`
+`15.1 — the reductions that apply to` `the claim` MEANS
+    concat (LIST
+        (IF `15.1.1 — a ground for a 10% reduction` `the claim`
+         THEN LIST (`A reduction` WITH `ground` IS `15.1.1 late notice, no mitigation, scene not kept, or a parking or lane offence`, `rate` IS `15.1.1 — the reduction`)
+         ELSE EMPTY),
+        (IF `15.1.2 — a ground for a 25% reduction` `the claim`
+         THEN LIST (`A reduction` WITH `ground` IS `15.1.2 dismantling or repair without consent, or speeding by 20% or more`, `rate` IS `15.1.2 — the reduction`)
+         ELSE EMPTY),
+        (IF `15.1.3 — a ground for a reduction by degree of fault` `the claim`
+         THEN LIST (`A reduction` WITH `ground` IS `15.1.3 no subrogation, dishonesty, or obstructing verification`, `rate` IS `15.1.3 — the rate the insurer fixed, from` (`the claim`'s `the conduct after the loss`))
+         ELSE EMPTY),
+        (IF `15.1.4 — a ground for a reduction by the overloading` `the claim`
+         THEN LIST (`A reduction` WITH `ground` IS `15.1.4 overloading by more than 20% and less than 50%`, `rate` IS `15.1.4 — the overloading` `the claim`)
+         ELSE EMPTY),
+        (IF `15.1.5 — a ground for a reduction by the premium shortfall` (`the claim`'s `the premium shortfall`)
+         THEN LIST (`A reduction` WITH `ground` IS `15.1.5 too little premium paid`, `rate` IS `15.1.5 — the reduction for` (`the claim`'s `the premium shortfall`))
+         ELSE EMPTY))
+
+@ref Rules, Article 15.2 (src 651-655)
+GIVEN `the claim` IS A `A claim`
+GIVETH A NUMBER
+`15.2 — the one reduction rate applied to` `the claim` MEANS
+    maximum1 0 (map (GIVEN `r` YIELD `r`'s `rate`) (`15.1 — the reductions that apply to` `the claim`))

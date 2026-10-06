@@ -1,0 +1,337 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `bvvcx-nouns`
+IMPORT `bvvcx-p2-contract`
+IMPORT `bvvcx-p3-settlement`
+IMPORT `bvvcx-p4-supplementary`
+IMPORT `bvvcx-claim`
+IMPORT `bvvcx-tests-fixtures`
+
+-- Layer 2: how much is payable? Every expected value worked by hand from Articles 10.2,
+-- 12-15 and Part IV before it was written here. The standard case (bvvcx-tests-fixtures.l4):
+-- a door repaired for 8,000,000 and a bumper replaced for 10,000,000 on a car 48 months in
+-- use (15% depreciation: 8,500,000), so the reasonable cost is 16,500,000; insured at value;
+-- the 14.3 deductible of 500,000 applies.
+
+§ `Tests — a partial loss`
+
+#ASSERT `the amount payable on` `the standard claim` EQUALS 16_000_000
+#ASSERT `the settlement of` `the standard claim` EQUALS `a covered loss settled as` `10.1.1 collision, overturning, toppling, loss of balance, sinking, falling, or being struck from outside` `a partial loss (13.1)` 16_000_000 0 0
+#ASSERT `13.1.1 — who is paid for a partial loss` TRUE EQUALS `the repairer`
+#ASSERT `13.1.1 — who is paid for a partial loss` FALSE EQUALS `the insured`
+#ASSERT `13.3.1 — the insurer takes back the damaged part` `a bumper replaced for 10 million`
+#ASSERT NOT `13.3.1 — the insurer takes back the damaged part` `a door repaired for 8 million`
+
+§§ `Depreciation by time in use (13.1.2(b)), through the whole claim`
+
+GIVEN `the year` IS A NUMBER
+      `the month` IS A NUMBER
+GIVETH A `A claim`
+`the standard collision of a car registered in` `the year` `,` `the month` MEANS
+    `a claim: vehicle` (`a used car worth 600 million, registered` (`registered in` `the year` `,` `the month`) `, made in` (`the year` MINUS 1))
+        `, policy` `the standard policy` `, claimant` `the insured named on the certificate`
+        `, event` `the standard collision` `, driving` `the standard driving` `, conduct` `prompt and proper conduct`
+        `, shortfall` `no premium shortfall` `, costs` `no costs` `, hire` NOTHING `, wreck` `no wreck kept` `, other insurance` EMPTY
+
+-- February 2023 to January 2026 is 35 months: 0%, so 8m + 10m - 0.5m.
+#ASSERT `the amount payable on` (`the standard collision of a car registered in` 2023 `,` 2) EQUALS 17_500_000
+-- 48 months: 15%. 72 months: 25% (8m + 7.5m - 0.5m). 120 months: 35%. 180 months: 50%.
+#ASSERT `the amount payable on` (`the standard collision of a car registered in` 2022 `,` 1) EQUALS 16_000_000
+#ASSERT `the amount payable on` (`the standard collision of a car registered in` 2020 `,` 1) EQUALS 15_000_000
+#ASSERT `the amount payable on` (`the standard collision of a car registered in` 2016 `,` 1) EQUALS 14_000_000
+#ASSERT `the amount payable on` (`the standard collision of a car registered in` 2011 `,` 1) EQUALS 12_500_000
+
+§§ `Below value (13.1.2(a)), BVVC06, BVVC01, the deductible (14)`
+
+GIVEN `the policy` IS A `The policy`
+GIVETH A `A claim`
+`the standard collision under` `the policy` MEANS
+    `a standard claim under` `the policy` `for` `the standard collision` `,` `the standard driving`
+
+-- Sum insured 480m of a 600m value: 16.5m x 0.8 - 0.5m.
+#ASSERT `the amount payable on` (`the standard collision under` (`a 2026 policy with sum insured` 480_000_000 `, deductible` NOTHING `, clauses` EMPTY)) EQUALS 12_700_000
+-- BVVC06 cancels the pro-rating.
+#ASSERT `the amount payable on` (`the standard collision under` (`a 2026 policy with sum insured` 480_000_000 `, deductible` NOTHING `, clauses` (LIST `BVVC06 (settlement up to the limit of liability)`))) EQUALS 16_000_000
+-- BVVC01: no depreciation, 8m + 10m - 0.5m.
+#ASSERT `the amount payable on` (`the standard collision under` (`the standard policy with` (LIST `BVVC01 (no deduction for depreciation)`))) EQUALS 17_500_000
+-- A deductible of 2m on the certificate; one of 300,000 (below the 14.3 minimum, fork F35).
+#ASSERT `the amount payable on` (`the standard collision under` (`a 2026 policy with sum insured` 600_000_000 `, deductible` (JUST 2_000_000) `, clauses` EMPTY)) EQUALS 14_500_000
+#ASSERT `the amount payable on` (`the standard collision under` (`a 2026 policy with sum insured` 600_000_000 `, deductible` (JUST 300_000) `, clauses` EMPTY)) EQUALS 16_200_000
+-- 14.2: a loss at the deductible pays nothing; just above it pays the excess.
+#ASSERT `14.2 — the compensation from a loss of` 500_000 `under a deductible of` 500_000 EQUALS 0
+#ASSERT `14.2 — the compensation from a loss of` 500_001 `under a deductible of` 500_000 EQUALS 1
+-- 12.1: a sum insured above the value is not settled by the Rules.
+#ASSERT REFUSED `the amount payable on` (`the standard collision under` (`a 2026 policy with sum insured` 700_000_000 `, deductible` NOTHING `, clauses` EMPTY)) BECAUSE "the sum insured exceeds the value, which 12.1 forbids, and the Rules do not say how such a contract is settled"
+
+§§ `Paint (13.1.3)`
+
+GIVEN `the share` IS A NUMBER
+GIVETH A `A claim`
+`the standard collision, with paint damage over` `the share` MEANS
+    `a standard claim for` `the event`
+    WHERE
+        `the event` MEANS
+            `an event on` (YMD 2026 6 15) `: peril` `a collision` `, sudden` TRUE `, at` `in Vietnam` `, war` FALSE `, deliberate` EMPTY
+                `, hired out` FALSE `, inspection` `a valid inspection certificate` `, load` `a normal load` `, parts` `the standard parts`
+                `, paint` (JUST `the paint`) `, police suspension` FALSE `, earlier part thefts` 0
+        `the paint` MEANS
+            `The paint damage` WITH `share of the painted area damaged` IS `the share`, `cost of repainting the whole vehicle` IS 30_000_000, `cost of repainting the damaged area only` IS 12_000_000
+
+-- Over half: the whole vehicle is repainted (30m); exactly half: the damaged area (12m).
+#ASSERT `the amount payable on` (`the standard collision, with paint damage over` 0.6) EQUALS 46_000_000
+#ASSERT `the amount payable on` (`the standard collision, with paint damage over` 0.5) EQUALS 28_000_000
+
+§ `Tests — reductions (Article 15)`
+
+GIVEN `hours`     IS A MAYBE NUMBER
+      `days`      IS A MAYBE NUMBER
+      `fm`        IS A BOOLEAN
+      `moved`     IS A BOOLEAN
+      `safety`    IS A BOOLEAN
+      `repaired`  IS A BOOLEAN
+      `dishonest` IS A BOOLEAN
+      `rate`      IS A MAYBE NUMBER
+GIVETH A `A claim`
+`the standard collision; told after` `hours` `hours, written notice after` `days` `days; force majeure` `fm` `; moved` `moved` `; for safety` `safety` `; repaired` `repaired` `; dishonest` `dishonest` `; rate` `rate` MEANS
+    `the standard collision, with conduct` (`conduct: told after hours` `hours` `, written notice after days` `days` `, force majeure` `fm` `, moved without consent` `moved` `, for safety` `safety` `, repaired without consent` `repaired` `, dishonest` `dishonest` `, 15.1.3 rate` `rate`)
+
+-- 15.1.1(a): 7 hours, 10% (16.5m x 0.9 - 0.5m); exactly 6 hours, none.
+#ASSERT `the amount payable on` (`the standard collision; told after` (JUST 7) `hours, written notice after` (JUST 2) `days; force majeure` FALSE `; moved` FALSE `; for safety` FALSE `; repaired` FALSE `; dishonest` FALSE `; rate` NOTHING) EQUALS 14_350_000
+#ASSERT `the amount payable on` (`the standard collision; told after` (JUST 6) `hours, written notice after` (JUST 2) `days; force majeure` FALSE `; moved` FALSE `; for safety` FALSE `; repaired` FALSE `; dishonest` FALSE `; rate` NOTHING) EQUALS 16_000_000
+#ASSERT `the amount payable on` (`the standard collision; told after` NOTHING `hours, written notice after` (JUST 2) `days; force majeure` FALSE `; moved` FALSE `; for safety` FALSE `; repaired` FALSE `; dishonest` FALSE `; rate` NOTHING) EQUALS 14_350_000
+-- 15.1.1(b): written notice after 6 days, 10%; after 5, none; after 6 under force majeure, none.
+#ASSERT `the amount payable on` (`the standard collision; told after` (JUST 1) `hours, written notice after` (JUST 6) `days; force majeure` FALSE `; moved` FALSE `; for safety` FALSE `; repaired` FALSE `; dishonest` FALSE `; rate` NOTHING) EQUALS 14_350_000
+#ASSERT `the amount payable on` (`the standard collision; told after` (JUST 1) `hours, written notice after` (JUST 5) `days; force majeure` FALSE `; moved` FALSE `; for safety` FALSE `; repaired` FALSE `; dishonest` FALSE `; rate` NOTHING) EQUALS 16_000_000
+#ASSERT `the amount payable on` (`the standard collision; told after` (JUST 1) `hours, written notice after` (JUST 6) `days; force majeure` TRUE `; moved` FALSE `; for safety` FALSE `; repaired` FALSE `; dishonest` FALSE `; rate` NOTHING) EQUALS 16_000_000
+-- 15.1.1(c): moved from the scene without consent, 10%; moved for safety, none.
+#ASSERT `the amount payable on` (`the standard collision; told after` (JUST 1) `hours, written notice after` (JUST 2) `days; force majeure` FALSE `; moved` TRUE `; for safety` FALSE `; repaired` FALSE `; dishonest` FALSE `; rate` NOTHING) EQUALS 14_350_000
+#ASSERT `the amount payable on` (`the standard collision; told after` (JUST 1) `hours, written notice after` (JUST 2) `days; force majeure` FALSE `; moved` TRUE `; for safety` TRUE `; repaired` FALSE `; dishonest` FALSE `; rate` NOTHING) EQUALS 16_000_000
+-- 15.1.2(a): repaired without consent, 25% (16.5m x 0.75 - 0.5m).
+#ASSERT `the amount payable on` (`the standard collision; told after` (JUST 1) `hours, written notice after` (JUST 2) `days; force majeure` FALSE `; moved` FALSE `; for safety` FALSE `; repaired` TRUE `; dishonest` FALSE `; rate` NOTHING) EQUALS 11_875_000
+-- 15.2: 10% and 25% together, the higher only.
+#ASSERT `the amount payable on` (`the standard collision; told after` (JUST 7) `hours, written notice after` (JUST 2) `days; force majeure` FALSE `; moved` FALSE `; for safety` FALSE `; repaired` TRUE `; dishonest` FALSE `; rate` NOTHING) EQUALS 11_875_000
+#ASSERT count (`15.1 — the reductions that apply to` (`the standard collision; told after` (JUST 7) `hours, written notice after` (JUST 2) `days; force majeure` FALSE `; moved` FALSE `; for safety` FALSE `; repaired` TRUE `; dishonest` FALSE `; rate` NOTHING)) EQUALS 2
+-- 15.1.3: dishonesty, the insurer fixing 40% (16.5m x 0.6 - 0.5m); fixing nothing, declined.
+#ASSERT `the amount payable on` (`the standard collision; told after` (JUST 1) `hours, written notice after` (JUST 2) `days; force majeure` FALSE `; moved` FALSE `; for safety` FALSE `; repaired` FALSE `; dishonest` TRUE `; rate` (JUST 0.4)) EQUALS 9_400_000
+#ASSERT REFUSED `the amount payable on` (`the standard collision; told after` (JUST 1) `hours, written notice after` (JUST 2) `days; force majeure` FALSE `; moved` FALSE `; for safety` FALSE `; repaired` FALSE `; dishonest` TRUE `; rate` NOTHING) BECAUSE "a ground of 15.1.3 applies and the insurer has fixed no rate for it"
+#ASSERT REFUSED `the amount payable on` (`the standard collision; told after` (JUST 1) `hours, written notice after` (JUST 2) `days; force majeure` FALSE `; moved` FALSE `; for safety` FALSE `; repaired` FALSE `; dishonest` TRUE `; rate` (JUST 1.5)) BECAUSE "the rate the insurer fixed under 15.1.3 is outside 0% to 100%"
+
+§§ `15.1.2(b): speed`
+
+GIVEN `the excess` IS A MAYBE NUMBER
+GIVETH A `A claim`
+`the standard collision at a speed excess of` `the excess` MEANS
+    `a standard claim under` `the standard policy` `for` `the standard collision` `,`
+        (`driven by` `a sober licensed driver with consent` `,` (`driving: wrong way` FALSE `, disobeyed signals` FALSE `, racing` FALSE `, dangerous goods` FALSE `, parked at a no-parking sign` FALSE `, speed excess` `the excess`))
+
+#ASSERT `the amount payable on` (`the standard collision at a speed excess of` (JUST 0.2)) EQUALS 11_875_000
+#ASSERT `the amount payable on` (`the standard collision at a speed excess of` (JUST 0.19)) EQUALS 16_000_000
+#ASSERT `the amount payable on` (`the standard collision at a speed excess of` NOTHING) EQUALS 16_000_000
+
+§§ `15.1.4: overloading between 20% and 50%`
+
+GIVEN `the load` IS A NUMBER
+GIVETH A `A claim`
+`the standard collision of a goods vehicle permitted 1000, carrying` `the load` MEANS
+    `a claim: vehicle` (`a goods vehicle permitted to carry` 1000) `, policy` `the standard policy` `, claimant` `the insured named on the certificate`
+        `, event` `the event` `, driving` `the standard driving` `, conduct` `prompt and proper conduct` `, shortfall` `no premium shortfall` `, costs` `no costs`
+        `, hire` NOTHING `, wreck` `no wreck kept` `, other insurance` EMPTY
+    WHERE
+        `the event` MEANS
+            `an event on` (YMD 2026 6 15) `: peril` `a collision` `, sudden` TRUE `, at` `in Vietnam` `, war` FALSE `, deliberate` EMPTY
+                `, hired out` FALSE `, inspection` `a valid inspection certificate` `, load` (`carrying` `the load` `, with persons` 2 `, and children under 7` 0) `, parts` `the standard parts`
+                `, paint` NOTHING `, police suspension` FALSE `, earlier part thefts` 0
+
+-- 30% over: 30% off (16.5m x 0.7 - 0.5m). 20% over: nothing. 49.9% over: 49.9% off.
+#ASSERT `the amount payable on` (`the standard collision of a goods vehicle permitted 1000, carrying` 1300) EQUALS 11_050_000
+#ASSERT `the amount payable on` (`the standard collision of a goods vehicle permitted 1000, carrying` 1200) EQUALS 16_000_000
+#ASSERT `the amount payable on` (`the standard collision of a goods vehicle permitted 1000, carrying` 1499) EQUALS 7_766_500
+#ASSERT `the amount payable on` (`the standard collision of a goods vehicle permitted 1000, carrying` 1500) EQUALS 0
+
+§§ `15.1.5: too little premium`
+
+GIVEN `the shortfall` IS A `The premium shortfall`
+GIVETH A `A claim`
+`the standard collision, with premium shortfall` `the shortfall` MEANS
+    `a claim: vehicle` `the standard vehicle` `, policy` `the standard policy` `, claimant` `the insured named on the certificate`
+        `, event` `the standard collision` `, driving` `the standard driving` `, conduct` `prompt and proper conduct`
+        `, shortfall` `the shortfall` `, costs` `no costs` `, hire` NOTHING `, wreck` `no wreck kept` `, other insurance` EMPTY
+
+-- Paid 9m of 12m due: 25% off.
+#ASSERT `the amount payable on` (`the standard collision, with premium shortfall` (`a shortfall: misdeclared` TRUE `, risk increase not told` FALSE `, paid` 9_000_000 `, due` (JUST 12_000_000))) EQUALS 11_875_000
+#ASSERT `the amount payable on` (`the standard collision, with premium shortfall` (`a shortfall: misdeclared` FALSE `, risk increase not told` TRUE `, paid` 9_000_000 `, due` (JUST 12_000_000))) EQUALS 11_875_000
+#ASSERT REFUSED `the amount payable on` (`the standard collision, with premium shortfall` (`a shortfall: misdeclared` TRUE `, risk increase not told` FALSE `, paid` 9_000_000 `, due` NOTHING)) BECAUSE "a ground of 15.1.5 applies and the record does not give the premium that should have been paid"
+
+§§ `4.1.6: a certificate with reduction rates of its own`
+
+#ASSERT REFUSED `the amount payable on` (`a claim: vehicle` `the standard vehicle` `, policy` `a policy whose certificate sets its own reduction rates` `, claimant` `the insured named on the certificate` `, event` `the standard collision` `, driving` `the standard driving` `, conduct` (`conduct: told after hours` (JUST 7) `, written notice after days` (JUST 2) `, force majeure` FALSE `, moved without consent` FALSE `, for safety` FALSE `, repaired without consent` FALSE `, dishonest` FALSE `, 15.1.3 rate` NOTHING) `, shortfall` `no premium shortfall` `, costs` `no costs` `, hire` NOTHING `, wreck` `no wreck kept` `, other insurance` EMPTY) BECAUSE "the certificate sets reduction rates of its own, which are not in the Rules"
+#ASSERT `the amount payable on` (`a standard claim under` `a policy whose certificate sets its own reduction rates` `for` `the standard collision` `,` `the standard driving`) EQUALS 16_000_000
+
+§ `Tests — a total loss (13.2)`
+
+`an engine replaced for 300 million` MEANS `a part replaced:` "engine" `, of kind` `the engine` `, caused by` `the insured event itself` `, for` 300_000_000
+
+GIVEN `the cost` IS A NUMBER
+GIVETH A `A damaged part`
+`body work repaired for` `the cost` MEANS `a part repaired:` "body" `, of kind` `an ordinary part of the vehicle` `, caused by` `the insured event itself` `, for` `the cost`
+
+GIVEN `the body work` IS A NUMBER
+GIVETH A `A claim`
+`a collision wrecking the engine (300m new) with body work of` `the body work` MEANS
+    `a standard claim for` (`a sudden` `a collision` `on 15 June 2026, damaging` (LIST `an engine replaced for 300 million`, `body work repaired for` `the body work`))
+
+-- 255m (300m less 15%) + 200m = 455m, more than 75% of the 580m market value (435m): a total
+-- loss, paid at market value, no deductible.
+#ASSERT `the kind of loss in` (`a collision wrecking the engine (300m new) with body work of` 200_000_000) EQUALS `a total loss by the cost of repair (13.2.1(a))`
+#ASSERT `the amount payable on` (`a collision wrecking the engine (300m new) with body work of` 200_000_000) EQUALS 580_000_000
+-- 255m + 180m = 435m exactly: not more than 75%, so a partial loss: 435m - 0.5m.
+#ASSERT `the kind of loss in` (`a collision wrecking the engine (300m new) with body work of` 180_000_000) EQUALS `a partial loss (13.1)`
+#ASSERT `the amount payable on` (`a collision wrecking the engine (300m new) with body work of` 180_000_000) EQUALS 434_500_000
+
+GIVEN `the policy`    IS A `The policy`
+      `the salvage`   IS A `The salvage`
+      `the hours`     IS A NUMBER
+GIVETH A `A claim`
+`a total loss under` `the policy` `, wreck` `the salvage` `, insurer told after this many hours:` `the hours` MEANS
+    `a claim: vehicle` `the standard vehicle` `, policy` `the policy` `, claimant` `the insured named on the certificate`
+        `, event` `the event` `, driving` `the standard driving`
+        `, conduct` (`conduct: told after hours` (JUST `the hours`) `, written notice after days` (JUST 2) `, force majeure` FALSE `, moved without consent` FALSE `, for safety` FALSE `, repaired without consent` FALSE `, dishonest` FALSE `, 15.1.3 rate` NOTHING)
+        `, shortfall` `no premium shortfall` `, costs` `no costs` `, hire` NOTHING `, wreck` `the salvage` `, other insurance` EMPTY
+    WHERE
+        `the event` MEANS
+            `a sudden` `a collision` `on 15 June 2026, damaging` (LIST `an engine replaced for 300 million`, `body work repaired for` 200_000_000)
+
+`the insured keeps the wreck, valued at 50 million` MEANS `The salvage` WITH
+    `the insured asks to keep the vehicle after a total loss`  IS TRUE
+    `the salvage value as the insurer values it`               IS JUST 50_000_000
+
+-- Keeping the wreck: 580m - 50m. Below value (480m of 600m): 13.2.2 pays the sum insured
+-- (no pro-rating), and the wreck deduction is the insurer's 80% share, 40m.
+#ASSERT `the amount payable on` (`a total loss under` `the standard policy` `, wreck` `the insured keeps the wreck, valued at 50 million` `, insurer told after this many hours:` 1) EQUALS 530_000_000
+#ASSERT `the amount payable on` (`a total loss under` (`a 2026 policy with sum insured` 480_000_000 `, deductible` NOTHING `, clauses` EMPTY) `, wreck` `no wreck kept` `, insurer told after this many hours:` 1) EQUALS 480_000_000
+#ASSERT `the amount payable on` (`a total loss under` (`a 2026 policy with sum insured` 480_000_000 `, deductible` NOTHING `, clauses` EMPTY) `, wreck` `the insured keeps the wreck, valued at 50 million` `, insurer told after this many hours:` 1) EQUALS 440_000_000
+-- A total loss told late: 580m x 0.9.
+#ASSERT `the amount payable on` (`a total loss under` `the standard policy` `, wreck` `no wreck kept` `, insurer told after this many hours:` 7) EQUALS 522_000_000
+-- BVVC06: a total loss is paid the sum insured.
+#ASSERT `the amount payable on` (`a total loss under` (`a 2026 policy with sum insured` 480_000_000 `, deductible` NOTHING `, clauses` (LIST `BVVC06 (settlement up to the limit of liability)`)) `, wreck` `no wreck kept` `, insurer told after this many hours:` 1) EQUALS 480_000_000
+
+§§ `Theft of the whole vehicle (13.2.1(b))`
+
+GIVEN `suspended` IS A BOOLEAN
+GIVETH A `A claim`
+`a theft of the whole vehicle, the police having suspended the case:` `suspended` MEANS
+    `a standard claim under` `the standard policy` `for` `the event` `,` `nobody driving`
+    WHERE
+        `the event` MEANS
+            `an event on` (YMD 2026 6 15) `: peril` `theft of the whole vehicle` `, sudden` TRUE `, at` `in Vietnam` `, war` FALSE `, deliberate` EMPTY
+                `, hired out` FALSE `, inspection` `a valid inspection certificate` `, load` `a normal load` `, parts` EMPTY
+                `, paint` NOTHING `, police suspension` `suspended` `, earlier part thefts` 0
+
+#ASSERT `the amount payable on` (`a theft of the whole vehicle, the police having suspended the case:` TRUE) EQUALS 580_000_000
+#ASSERT `the kind of loss in` (`a theft of the whole vehicle, the police having suspended the case:` FALSE) EQUALS `a theft or robbery not yet a total loss (13.2.1(b))`
+#ASSERT `the amount payable on` (`a theft of the whole vehicle, the police having suspended the case:` FALSE) EQUALS 0
+
+§ `Tests — Part IV amounts`
+
+§§ `BVVC03: flood`
+
+GIVEN `the peril`   IS A `A peril`
+      `the parts`   IS A LIST OF `A damaged part`
+      `the clauses` IS A LIST OF `A supplementary clause`
+GIVETH A `A claim`
+`a sudden` `the peril` `damaging` `the parts` `, under clauses` `the clauses` MEANS
+    `a standard claim under` (`the standard policy with` `the clauses`) `for` (`a sudden` `the peril` `on 15 June 2026, damaging` `the parts`) `,` `the standard driving`
+
+`an engine drowned while driving, repaired for 40 million` MEANS `a part repaired:` "engine" `, of kind` `the engine` `, caused by` `water, while the vehicle was operating in a flooded area` `, for` 40_000_000
+`an engine drowned while parked, repaired for 40 million` MEANS `a part repaired:` "engine" `, of kind` `the engine` `, caused by` `water, while the vehicle was not operating` `, for` 40_000_000
+`an engine drowned while driving, repaired for 20 million` MEANS `a part repaired:` "engine" `, of kind` `the engine` `, caused by` `water, while the vehicle was operating in a flooded area` `, for` 20_000_000
+
+-- Flooding under BVVC03: 40m less the flood deductible (10%, 4m) less 0.5m; 20m less the
+-- floor of 3m, less 0.5m.
+#ASSERT `the amount payable on` (`a sudden` `flooding in rain, storm or flood` `damaging` (LIST `an engine drowned while driving, repaired for 40 million`) `, under clauses` (LIST `BVVC03 (flood damage)`)) EQUALS 35_500_000
+#ASSERT `the amount payable on` (`a sudden` `flooding in rain, storm or flood` `damaging` (LIST `an engine drowned while driving, repaired for 20 million`) `, under clauses` (LIST `BVVC03 (flood damage)`)) EQUALS 16_500_000
+-- A catastrophe while driving: without BVVC03 the engine is excluded (11.12) and nothing is
+-- paid; with it, as above.
+#ASSERT `the amount payable on` (`a sudden` `a natural catastrophe beyond human control` `damaging` (LIST `an engine drowned while driving, repaired for 40 million`) `, under clauses` EMPTY) EQUALS 0
+#ASSERT `the amount payable on` (`a sudden` `a natural catastrophe beyond human control` `damaging` (LIST `an engine drowned while driving, repaired for 40 million`) `, under clauses` (LIST `BVVC03 (flood damage)`)) EQUALS 35_500_000
+-- A catastrophe while parked: covered by 10.1.3 without BVVC03; the base deductible only.
+#ASSERT `the amount payable on` (`a sudden` `a natural catastrophe beyond human control` `damaging` (LIST `an engine drowned while parked, repaired for 40 million`) `, under clauses` EMPTY) EQUALS 39_500_000
+
+§§ `BVVC04: theft of parts`
+
+-- The mirror (6m, less 15%: 5.1m) less the theft deductible (20% is 1.02m, so the floor of
+-- 2m) less 0.5m; the remote control is not paid for.
+`a mirror stolen` MEANS `a part replaced:` "wing mirror" `, of kind` `an ordinary part of the vehicle` `, caused by` `theft or robbery of the part` `, for` 6_000_000
+`a remote stolen` MEANS `a part replaced:` "remote control" `, of kind` `a key or remote control` `, caused by` `theft or robbery of the part` `, for` 1_500_000
+`a theft of a mirror and a remote` MEANS
+    `an event on` (YMD 2026 6 15) `: peril` `theft of parts of the vehicle` `, sudden` TRUE `, at` `in Vietnam` `, war` FALSE `, deliberate` EMPTY
+        `, hired out` FALSE `, inspection` `a valid inspection certificate` `, load` `a normal load`
+        `, parts` (LIST `a mirror stolen`, `a remote stolen`)
+        `, paint` NOTHING `, police suspension` FALSE `, earlier part thefts` 0
+#ASSERT `the amount payable on` (`a standard claim under` (`the standard policy with` (LIST `BVVC04 (theft of parts)`)) `for` `a theft of a mirror and a remote` `,` `nobody driving`) EQUALS 2_600_000
+#ASSERT `the amount payable on` (`a standard claim under` `the standard policy` `for` `a theft of a mirror and a remote` `,` `nobody driving`) EQUALS 0
+
+§§ `BVVC05: car hire`
+
+GIVEN `the clauses` IS A LIST OF `A supplementary clause`
+      `the costs`   IS A LIST OF NUMBER
+GIVETH A `A claim`
+`the standard collision under clauses` `the clauses` `, hiring a car at` `the costs` MEANS
+    `a claim: vehicle` `the standard vehicle` `, policy` (`the standard policy with` `the clauses`) `, claimant` `the insured named on the certificate`
+        `, event` `the standard collision` `, driving` `the standard driving` `, conduct` `prompt and proper conduct`
+        `, shortfall` `no premium shortfall` `, costs` `no costs` `, hire` (`car hire costing` `the costs`) `, wreck` `no wreck kept` `, other insurance` EMPTY
+
+-- 800,000 a day and 8,000,000 an event. Ten days at 1,000,000: 10 x 800,000 = 8m, less 3 x
+-- 800,000 = 2.4m, is 5.6m. Fifteen days: 12m - 2.4m = 9.6m, capped at 8m. Three days: 0.
+#ASSERT `the amount payable on` (`the standard collision under clauses` (LIST `BVVC05 (car hire during repair)`) `, hiring a car at` (replicate 10 1_000_000)) EQUALS 21_600_000
+#ASSERT `the amount payable on` (`the standard collision under clauses` (LIST `BVVC05 (car hire during repair)`) `, hiring a car at` (replicate 15 1_000_000)) EQUALS 24_000_000
+#ASSERT `the amount payable on` (`the standard collision under clauses` (LIST `BVVC05 (car hire during repair)`) `, hiring a car at` (replicate 3 1_000_000)) EQUALS 16_000_000
+#ASSERT `the amount payable on` (`the standard collision under clauses` EMPTY `, hiring a car at` (replicate 10 1_000_000)) EQUALS 16_000_000
+
+§§ `BVVC02: the authorised garage`
+
+-- Registered January 2022, concluded December 2025: 47 months. January 2015: 131 months, over
+-- 10 years. December 2015: 120 months, not over.
+#ASSERT `Article 17 — the vehicle may take the authorised-garage clause` `the standard vehicle` `under` `the standard policy`
+#ASSERT NOT `Article 17 — the vehicle may take the authorised-garage clause` (`a used car worth 600 million, registered` (`registered in` 2015 `,` 1) `, made in` 2014) `under` `the standard policy`
+#ASSERT `Article 17 — the vehicle may take the authorised-garage clause` (`a used car worth 600 million, registered` (`registered in` 2015 `,` 12) `, made in` 2014) `under` `the standard policy`
+#ASSERT `Article 17 — the damaged vehicle is repaired at an authorised garage` (`the standard collision under` (`the standard policy with` (LIST `BVVC02 (repair at an authorised garage)`)))
+
+§ `Tests — costs (10.2) and double insurance (8)`
+
+GIVEN `the costs` IS A `The expenses`
+      `the others` IS A LIST OF `Another insurance of the vehicle`
+GIVETH A `A claim`
+`the standard collision with costs` `the costs` `and other insurance` `the others` MEANS
+    `a claim: vehicle` `the standard vehicle` `, policy` `the standard policy` `, claimant` `the insured named on the certificate`
+        `, event` `the standard collision` `, driving` `the standard driving` `, conduct` `prompt and proper conduct`
+        `, shortfall` `no premium shortfall` `, costs` `the costs` `, hire` NOTHING `, wreck` `no wreck kept` `, other insurance` `the others`
+
+-- 2m to prevent further damage, 70m of towing capped at 10% of 600m: 62m on top of 16m.
+#ASSERT `the amount payable on` (`the standard collision with costs` (`costs: at the insurer's request` TRUE `, preventing further damage` 2_000_000 `, rescue and towing` 70_000_000) `and other insurance` EMPTY) EQUALS 78_000_000
+#ASSERT `the amount payable on` (`the standard collision with costs` (`costs: at the insurer's request` FALSE `, preventing further damage` 2_000_000 `, rescue and towing` 70_000_000) `and other insurance` EMPTY) EQUALS 16_000_000
+-- Another 400m on the same conditions: this insurer pays 600/1000 of 16m.
+#ASSERT `the amount payable on` (`the standard collision with costs` `no costs` `and other insurance` (LIST (`Another insurance of the vehicle` WITH `the sum insured under it` IS 400_000_000, `on the same conditions as this contract` IS TRUE))) EQUALS 9_600_000
+
+§ `Tests — the layers together`
+
+-- A natural catastrophe while driving, on a vehicle insured for 480m of 600m, with BVVC03 and a
+-- 1m deductible on the certificate; the insurer told after 8 hours; 2m spent at its request.
+-- Parts: the drowned engine repaired (40m), the door (8m), the bumper (8.5m after 15%): 56.5m.
+-- Pro-rated by 0.8: 45.2m, of which the flood part 32m bears the flood deductible of 3.2m;
+-- then the 10% reduction: 37.8m; then the 1m deductible: 36.8m; plus the 2m: 38.8m.
+`the layered claim` MEANS
+    `a claim: vehicle` `the standard vehicle`
+        `, policy` (`a 2026 policy with sum insured` 480_000_000 `, deductible` (JUST 1_000_000) `, clauses` (LIST `BVVC03 (flood damage)`))
+        `, claimant` `the insured named on the certificate`
+        `, event` (`a sudden` `a natural catastrophe beyond human control` `on 15 June 2026, damaging` (LIST `an engine drowned while driving, repaired for 40 million`, `a door repaired for 8 million`, `a bumper replaced for 10 million`))
+        `, driving` `the standard driving`
+        `, conduct` (`conduct: told after hours` (JUST 8) `, written notice after days` (JUST 2) `, force majeure` FALSE `, moved without consent` FALSE `, for safety` FALSE `, repaired without consent` FALSE `, dishonest` FALSE `, 15.1.3 rate` NOTHING)
+        `, shortfall` `no premium shortfall`
+        `, costs` (`costs: at the insurer's request` TRUE `, preventing further damage` 2_000_000 `, rescue and towing` 0)
+        `, hire` NOTHING `, wreck` `no wreck kept` `, other insurance` EMPTY
+
+#ASSERT `the cover decision for` `the layered claim` EQUALS `covered under` `10.1.3 a natural catastrophe beyond human control`
+#ASSERT `the settlement of` `the layered claim` EQUALS `a covered loss settled as` `10.1.3 a natural catastrophe beyond human control` `a partial loss (13.1)` 36_800_000 2_000_000 0
+#ASSERT `the amount payable on` `the layered claim` EQUALS 38_800_000

@@ -1,0 +1,302 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `bvvcx-nouns`
+IMPORT `bvvcx-p1-definitions`
+IMPORT `bvvcx-p2-contract`
+IMPORT `bvvcx-p2-claims`
+IMPORT `bvvcx-p3-cover`
+IMPORT `bvvcx-p3-settlement`
+IMPORT `bvvcx-p4-supplementary`
+
+-- The answer to a claim: the three layers put together.
+--   1. Is the loss covered? Definition 14, Articles 2-3 (the contract in effect on the day),
+--      Article 10 and Part IV's added heads, Article 11 less what Part IV cancels.
+--   2. How much? Articles 12-15, Part IV's changes, Article 8's share, Article 10.2's costs
+--      and BVVC05's car hire.
+--   3. What must be done and by when is in the Part II modules, as regulative rules.
+-- The Rules fix the order of only three steps (13.4). Where this module puts the others is
+-- fork F33: pro-rating below value (13.1.2(a)) is part of finding the compensation and comes
+-- first; then 13.4's three steps; then the 12.4 cap; then Article 8's share. A wreck the
+-- insured keeps (13.3.2) is deducted inside the total-loss figure, before 13.4. The 10.2
+-- costs and the BVVC05 benefit are added at the end, outside the cap and the share.
+
+§ `The answer to a claim`
+
+§§ `Is the loss covered?`
+
+DECLARE `The cover decision` IS ONE OF
+    `covered under`                                HAS `the head`       IS A `A head of cover`
+    `the vehicle is not a car within definition 14`
+    `the contract was not in effect`               HAS `the standing`   IS A `The standing of the contract on a date`
+    `outside the cover of Article 10`
+    `excluded by`                                  HAS `the exclusions` IS A LIST OF `An exclusion of Article 11`
+
+-- The base head first; Part IV's heads only where the base gives none.
+GIVEN `the claim` IS A `A claim`
+GIVETH A MAYBE `A head of cover`
+`the head of cover for` `the claim` MEANS
+    orElse (`10.1 — the head of cover for the event` (`the claim`'s `the event`))
+           (`Part IV — the head of cover added for` `the claim`)
+
+GIVEN `the exclusion` IS AN `An exclusion of Article 11`
+      `the claim`     IS A `A claim`
+GIVETH A BOOLEAN
+`the exclusion` `is cancelled by a supplementary clause for` `the claim` MEANS
+    elem `the exclusion` (`Part IV — the exclusions cancelled for` `the claim`)
+
+@ref Rules, Article 11 (src 440-500); Part IV, Articles 18, 19 and 22
+GIVEN `the claim` IS A `A claim`
+GIVETH A LIST OF `An exclusion of Article 11`
+`the exclusions about the event that bite on` `the claim` MEANS
+    filter (GIVEN `x` YIELD NOT `x` `is cancelled by a supplementary clause for` `the claim`)
+           (`Article 11 — the exclusions about the event that apply to` `the claim`)
+
+@ref Rules, Part I definition 14; Articles 2-3, 10, 11, 23
+GIVEN `the claim` IS A `A claim`
+GIVETH A `The cover decision`
+`the cover decision for` `the claim` MEANS
+    BRANCH
+        IF `the claim`'s `the policy`'s `a clause agreed under Article 23 is on the certificate`
+            THEN `the certificate carries an Article 23 clause, whose terms are not in the Rules`
+        IF NOT `a car within definition 14` (`the claim`'s `the vehicle`)
+            THEN `the vehicle is not a car within definition 14`
+        IF NOT (`the standing` EQUALS `in effect`)
+            THEN `the contract was not in effect` `the standing`
+        IF isNothing (`the head of cover for` `the claim`)
+            THEN `outside the cover of Article 10`
+        IF NOT null (`the exclusions about the event that bite on` `the claim`)
+            THEN `excluded by` (`the exclusions about the event that bite on` `the claim`)
+        OTHERWISE
+            CONSIDER `the head of cover for` `the claim`
+            WHEN JUST `the head` THEN `covered under` `the head`
+            WHEN NOTHING         THEN `outside the cover of Article 10`
+    WHERE
+        `the standing` MEANS
+            `the standing of the contract on` (`the claim`'s `the event`'s `the date of the loss`)
+                `for` (`the claim`'s `the claimant`) `under` (`the claim`'s `the policy`)
+
+§§ `Which damaged parts are paid for`
+
+-- A part is paid for if no part exclusion bites on it (after Part IV's cancellations), and,
+-- under a Part IV head, if that clause covers it.
+@ref Rules, Article 11.10-11.13, 11.17 (src 473-483, 496-500); Articles 18 and 19
+GIVEN `the part`  IS A `A damaged part`
+      `the claim` IS A `A claim`
+GIVETH A LIST OF `An exclusion of Article 11`
+`the exclusions that bite on` `the part` `in` `the claim` MEANS
+    filter (GIVEN `x` YIELD NOT `x` `is cancelled by a supplementary clause for` `the claim`)
+           (`Article 11 — the exclusions that apply to` `the part` `among` (`the claim`'s `the event`'s `the damaged parts`))
+
+GIVEN `the part`  IS A `A damaged part`
+      `the claim` IS A `A claim`
+GIVETH A BOOLEAN
+`the part` `is paid for in` `the claim` MEANS
+        null (`the exclusions that bite on` `the part` `in` `the claim`)
+    AND CONSIDER `the head of cover for` `the claim`
+        WHEN JUST `BVVC03 water damage to the engine or electrical system` THEN `Article 18 — engine or electrical damage caused by water` `the part`
+        WHEN JUST `BVVC04 theft or robbery of parts`                        THEN `Article 19 — a part fixed to the vehicle to the maker's design, not a key or remote` `the part`
+        OTHERWISE TRUE
+
+-- Paid under the flood clause, and so subject to its deductible: under BVVC03's own head, or
+-- a part 11.12 would have excluded but for BVVC03.
+GIVEN `the part`  IS A `A damaged part`
+      `the claim` IS A `A claim`
+GIVETH A BOOLEAN
+`the part` `is paid under the flood clause in` `the claim` MEANS
+        `the part` `is paid for in` `the claim`
+    AND (   `the head of cover for` `the claim` EQUALS JUST `BVVC03 water damage to the engine or electrical system`
+         OR `11.12 — engine or electrical system damaged while operating in a flooded area` `the part`)
+
+§§ `How much`
+
+DECLARE `The kind of loss` IS ONE OF
+    `a partial loss (13.1)`
+    `a total loss by the cost of repair (13.2.1(a))`
+    `a total loss by theft or robbery (13.2.1(b))`
+    `a theft or robbery not yet a total loss (13.2.1(b))`
+
+DECLARE `The settlement` IS ONE OF
+    `nothing is payable, because` HAS `the decision` IS A `The cover decision`
+    `a covered loss settled as`   HAS `the head`                          IS A `A head of cover`
+                                      `the kind of loss`                  IS A `The kind of loss`
+                                      `the compensation for the vehicle`  IS A NUMBER
+                                      `the costs under Article 10.2`      IS A NUMBER
+                                      `the car-hire benefit under BVVC05` IS A NUMBER
+
+-- The reduction rate of Article 15, or a refusal where the certificate sets rates of its
+-- own (4.1.6) and some ground applies.
+@ref Rules, Articles 4.1.6 (src 192-195) and 15 (src 596-655)
+GIVEN a IS A TYPE
+GIVETH AN a
+`the certificate sets reduction rates of its own, which are not in the Rules` MEANS
+    REFUSE "the certificate sets reduction rates of its own, which are not in the Rules"
+
+@ref Rules, Articles 4.1.6 and 15.2 (src 192-195, 651-655)
+GIVEN `the claim` IS A `A claim`
+GIVETH A NUMBER
+`the reduction rate for` `the claim` MEANS
+    IF   null (`15.1 — the reductions that apply to` `the claim`)
+    THEN 0
+    ELSE IF   `the claim`'s `the policy`'s `the certificate states reduction rates of its own`
+         THEN `the certificate sets reduction rates of its own, which are not in the Rules`
+         ELSE `15.2 — the one reduction rate applied to` `the claim`
+
+-- The share the sum insured bears to the value, where pro-rating applies (13.1.2(a), not
+-- under BVVC06), else 1.
+@ref Rules, Articles 12.2, 13.1.2(a) (src 506-507, 526-528); Article 21
+GIVEN `the claim` IS A `A claim`
+GIVETH A NUMBER
+`the pro-rating factor for` `the claim` MEANS
+    IF       `12.2 — insured below value` (`the claim`'s `the policy`) `,` (`the claim`'s `the vehicle`)
+         AND `Article 21 — 13.1.2(a) pro-rating applies to` `the claim`
+    THEN `the claim`'s `the policy`'s `the sum insured` DIVIDED BY `12.3 — the value of` (`the claim`'s `the vehicle`)
+    ELSE 1
+
+@ref Rules, Part I definition 12; Articles 13.1.2(b) and 16
+GIVEN `the claim` IS A `A claim`
+GIVETH A NUMBER
+`the depreciation rate for` `the claim` MEANS
+    IF   `Article 16 — depreciation applies to new parts for` `the claim`
+    THEN `13.1.2(b) — the depreciation rate for months in use of`
+             (`the time in use, in months, when the insurance began, of` (`the claim`'s `the vehicle`) `under` (`the claim`'s `the policy`))
+    ELSE 0
+
+GIVEN `the parts` IS A LIST OF `A damaged part`
+      `the rate`  IS A NUMBER
+GIVETH A NUMBER
+`the reasonable cost of` `the parts` `at depreciation` `the rate` MEANS
+    sum (map (GIVEN `p` YIELD `13.1 — the reasonable cost of` `p` `at depreciation` `the rate`) `the parts`)
+
+-- The reasonable cost of restoring the vehicle: the parts paid for, plus the paint (13.1.3).
+@ref Rules, Articles 13.1.1-13.1.3 (src 516-549)
+GIVEN `the claim` IS A `A claim`
+GIVETH A NUMBER
+`the reasonable cost of restoring the vehicle in` `the claim` MEANS
+        `the reasonable cost of` (filter (GIVEN `p` YIELD `p` `is paid for in` `the claim`) (`the claim`'s `the event`'s `the damaged parts`))
+            `at depreciation` (`the depreciation rate for` `the claim`)
+    PLUS `13.1.3 — the reasonable cost of repainting for` (`the claim`'s `the event`'s `the paint damage`)
+
+@ref Rules, Article 13.2.1 (src 550-556)
+GIVEN `the claim` IS A `A claim`
+GIVETH A `The kind of loss`
+`the kind of loss in` `the claim` MEANS
+    BRANCH
+        IF `13.2.1(b) — a total loss by theft or robbery` (`the claim`'s `the event`)
+            THEN `a total loss by theft or robbery (13.2.1(b))`
+        IF    `the claim`'s `the event`'s `what happened` EQUALS `theft of the whole vehicle`
+           OR `the claim`'s `the event`'s `what happened` EQUALS `robbery of the whole vehicle`
+            THEN `a theft or robbery not yet a total loss (13.2.1(b))`
+        IF `13.2.1(a) — a total loss, the reasonable cost of restoring being` (`the reasonable cost of restoring the vehicle in` `the claim`)
+               `against a market value of` (`the claim`'s `the event`'s `market value at the time and place of the loss`)
+            THEN `a total loss by the cost of repair (13.2.1(a))`
+        OTHERWISE `a partial loss (13.1)`
+
+-- A partial loss, before 13.4: the reasonable cost, pro-rated, split into the part paid under
+-- the flood clause, the part paid under the theft-of-parts clause, and the rest, so that each
+-- clause's own deductible falls on its own part (fork F40).
+@ref Rules, Articles 13.1, 13.4, 18, 19
+GIVEN `the claim` IS A `A claim`
+GIVETH A NUMBER
+`the compensation for a partial loss in` `the claim` MEANS
+    `13.4 — the compensation from` `the whole`
+        `, less the special deductible` `the special deductibles`
+        `, then reduced by` (`the reduction rate for` `the claim`)
+        `, then less the general deductible` (`14 — the deductible per partial loss under` (`the claim`'s `the policy`))
+    WHERE
+        `the rate`        MEANS `the depreciation rate for` `the claim`
+        `the factor`      MEANS `the pro-rating factor for` `the claim`
+        `the paid parts`  MEANS filter (GIVEN `p` YIELD `p` `is paid for in` `the claim`) (`the claim`'s `the event`'s `the damaged parts`)
+        `flood parts`     MEANS filter (GIVEN `p` YIELD `p` `is paid under the flood clause in` `the claim`) `the paid parts`
+        `under BVVC04`    MEANS `the head of cover for` `the claim` EQUALS JUST `BVVC04 theft or robbery of parts`
+        `the whole`       MEANS `the factor` TIMES `the reasonable cost of restoring the vehicle in` `the claim`
+        `the flood part`  MEANS `the factor` TIMES `the reasonable cost of` `flood parts` `at depreciation` `the rate`
+        `the theft part`  MEANS IF `under BVVC04` THEN `the whole` ELSE 0
+        `the flood deductible` MEANS
+            IF `the flood part` GREATER THAN 0
+            THEN min `the flood part` (`Article 18 — the flood deductible on` `the flood part`)
+            ELSE 0
+        `the theft deductible` MEANS
+            IF `the theft part` GREATER THAN 0
+            THEN min `the theft part` (`Article 19 — the theft-of-parts deductible on` `the theft part`)
+            ELSE 0
+        `the special deductibles` MEANS `the flood deductible` PLUS `the theft deductible`
+
+-- A total loss, before 13.4: 13.2.2's figure (or BVVC06's), less a wreck the insured keeps.
+-- No general deductible (fork F34); the flood clause's deductible where the loss is under
+-- that clause's head.
+@ref Rules, Articles 13.2.2, 13.3.2, 13.4, 18, 21
+GIVEN `the claim` IS A `A claim`
+GIVETH A NUMBER
+`the compensation for a total loss in` `the claim` MEANS
+    `13.4 — the compensation from` `before 13.4`
+        `, less the special deductible` `the flood deductible`
+        `, then reduced by` (`the reduction rate for` `the claim`)
+        `, then less the general deductible` 0
+    WHERE
+        `the sum insured` MEANS `the claim`'s `the policy`'s `the sum insured`
+        `the figure` MEANS
+            IF   `Article 21 — 13.1.2(a) pro-rating applies to` `the claim`
+            THEN `13.2.2 — the compensation for a total loss, market value` (`the claim`'s `the event`'s `market value at the time and place of the loss`) `, sum insured` `the sum insured`
+            ELSE `Article 21 — the compensation for a total loss under the clause` `the claim`
+        `the insurer's share of the wreck` MEANS
+            IF   `12.2 — insured below value` (`the claim`'s `the policy`) `,` (`the claim`'s `the vehicle`)
+            THEN `the sum insured` DIVIDED BY `12.3 — the value of` (`the claim`'s `the vehicle`)
+            ELSE 1
+        `before 13.4` MEANS
+            max 0 (`the figure` MINUS `13.3.2 — the deduction for a wreck the insured keeps:` (`the claim`'s `the salvage`) `, the insurer's share being` `the insurer's share of the wreck`)
+        `the flood deductible` MEANS
+            IF   `the head of cover for` `the claim` EQUALS JUST `BVVC03 water damage to the engine or electrical system`
+            THEN min `before 13.4` (`Article 18 — the flood deductible on` `before 13.4`)
+            ELSE 0
+
+@ref Rules, Articles 8, 12.4, 13 (src 389-400, 514, 515-579)
+GIVEN `the claim` IS A `A claim`
+GIVETH A NUMBER
+`the compensation for the vehicle in` `the claim` MEANS
+    `the share` TIMES (`12.4 — no more than the sum insured:` `the compensation` `,` (`the claim`'s `the policy`'s `the sum insured`))
+    WHERE
+        `the compensation` MEANS
+            CONSIDER `the kind of loss in` `the claim`
+            WHEN `a partial loss (13.1)`                                THEN `the compensation for a partial loss in` `the claim`
+            WHEN `a total loss by the cost of repair (13.2.1(a))`       THEN `the compensation for a total loss in` `the claim`
+            WHEN `a total loss by theft or robbery (13.2.1(b))`         THEN `the compensation for a total loss in` `the claim`
+            WHEN `a theft or robbery not yet a total loss (13.2.1(b))`  THEN 0
+        `the share` MEANS
+            `8.1 — this insurer's share of a loss, with sum insured` (`the claim`'s `the policy`'s `the sum insured`)
+                `and other insurance` (`the claim`'s `other insurance of the vehicle`)
+
+@ref Rules, Article 20 (src 726-739)
+GIVEN `the claim` IS A `A claim`
+GIVETH A NUMBER
+`the car-hire benefit in` `the claim` MEANS
+    IF   `the claim` `has in effect` `BVVC05 (car hire during repair)`
+     AND `the kind of loss in` `the claim` EQUALS `a partial loss (13.1)`
+    THEN CONSIDER `the claim`'s `the car hire`
+         WHEN NOTHING          THEN 0
+         WHEN JUST `the hire`  THEN `Article 20 — the car-hire benefit for` `the hire` `under` (`the claim`'s `the policy`) `, reduced by` (`the reduction rate for` `the claim`)
+    ELSE 0
+
+@desc What Bao Viet's motor physical damage rules (Decision 5688/QD-BHBV, 2021) settle for a claim: the cover decision, the kind of loss, and each amount payable in VND
+@ref Rules, Articles 10-23
+GIVEN `the claim` IS A `A claim` @desc The whole case: vehicle, certificate, claimant, event, driving, conduct after the loss, premium shortfall, costs, car hire, wreck and other insurance
+GIVETH A `The settlement`
+`the settlement of` `the claim` MEANS
+    CONSIDER `the cover decision for` `the claim`
+    WHEN `covered under` `the head` THEN
+        `a covered loss settled as` `the head`
+            (`the kind of loss in` `the claim`)
+            (`the compensation for the vehicle in` `the claim`)
+            (`10.2 — the expenses payable from` (`the claim`'s `the expenses`) `with sum insured` (`the claim`'s `the policy`'s `the sum insured`))
+            (`the car-hire benefit in` `the claim`)
+    OTHERWISE `nothing is payable, because` (`the cover decision for` `the claim`)
+
+@desc The total Bao Viet pays on a motor physical damage claim under Decision 5688/QD-BHBV (2021), in VND: compensation for the vehicle, plus Article 10.2 costs, plus BVVC05 car hire
+@ref Rules, Articles 10-23
+GIVEN `the claim` IS A `A claim` @desc The whole case: vehicle, certificate, claimant, event, driving, conduct after the loss, premium shortfall, costs, car hire, wreck and other insurance
+GIVETH A NUMBER
+`the amount payable on` `the claim` MEANS
+    CONSIDER `the settlement of` `the claim`
+    WHEN `nothing is payable, because` `the decision` THEN 0
+    WHEN `a covered loss settled as` `the head` `the kind` `the vehicle part` `the costs` `the hire` THEN
+        `the vehicle part` PLUS `the costs` PLUS `the hire`
