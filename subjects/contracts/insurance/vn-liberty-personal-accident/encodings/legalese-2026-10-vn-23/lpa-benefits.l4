@@ -1,0 +1,487 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `lpa-nouns`
+IMPORT `lpa-definitions`
+IMPORT `lpa-injury-tables`
+
+-- Liberty personal accident rules, UW-PAG-W-001-10-V: how much is payable.
+-- PHẠM VI BẢO HIỂM (benefits A to D and the geographical scope, src 307-527), HẠN MỨC CHUNG
+-- (the limit per conveyance, src 533-542) and HẠN MỨC BẢO HIỂM ĐỐI VỚI MỖI NGƯỜI ĐƯỢC BẢO HIỂM
+-- (the limitations for each insured, src 544-578).
+--
+-- These rules compute what a benefit would pay on facts the cover decision (lpa-claim.l4) has
+-- already found covered. A benefit the schedule does not include (NOTHING) pays nothing: the
+-- wording makes each benefit the policyholder's choice (src 311-314).
+
+§ `I. Benefits`
+
+-- The chapeau: on the choice of the policyholder or the insured, the contract covers death /
+-- permanent injury, temporary injury / hospital allowance, and medical expenses.
+-- src:309 | I. Quyền lợi bảo hiểm
+-- src:311 | Căn cứ trên lựa chọn của Bên mua bảo hiểm và/hoặc Người được bảo hiểm, Hợp đồng bảo
+-- src:312 | hiểm này bảo hiểm cho quyền lợi Tử vong / Thương tật vĩnh viễn (Thương tật bộ phận vĩnh
+-- src:313 | viễn & Thương tật toàn bộ vĩnh viễn), quyền lợi Thương tật tạm thời/ Trợ cấp Ngày nằm viện,
+-- src:314 | quyền lợi Chi phí y tế, cụ thể như sau:
+
+GIVEN `the limit` IS A MAYBE NUMBER
+GIVETH A NUMBER
+`the limit chosen, or nothing if the benefit was not chosen:` `the limit` MEANS
+    CONSIDER `the limit`
+    WHEN NOTHING THEN 0
+    WHEN JUST l  THEN l
+
+§§ `A.1 Death`
+
+-- The death benefit is paid only if the Injury is the sole cause of death and death occurs
+-- within 24 months of the Accident. The amount is the limit in the summary or certificate.
+-- "Within 24 months" counts calendar months and includes the last day (fork F10).
+-- src:320 | Quyền lợi bảo hiểm Hạn mức bảo hiểm/ Tỷ lệ bồi thường
+-- src:322 | A. Tử vong hay Thương tật vĩnh viễn như được mô tả dưới đây
+-- src:324 | 1. Tử vong 1. Hạn mức bảo hiểm ghi trong Bản tóm tắt Hợp
+-- src:325 | (Quyền lợi Tử vong được chi đồng bảo hiểm/ Giấy chứng nhận bảo hiểm.
+-- src:326 | trả chỉ khi Thương tật là
+-- src:327 | nguyên nhân duy nhất của Tử
+-- src:328 | vong; và đồng thời, Tử vong
+-- src:329 | xảy ra trong vòng 24 tháng kể
+-- src:330 | từ ngày xảy ra Tai nạn)
+GIVEN `the date of the accident` IS A DATE
+      `the date of death`        IS A DATE
+GIVETH A BOOLEAN
+`death within 24 months of the accident:` `the date of the accident` `and` `the date of death` MEANS
+        `the date of death` AT LEAST `the date of the accident`
+    AND `the date of death` AT MOST  `add months` `the date of the accident` 24
+
+-- `the Injury is the sole cause of death` is the accident's own limb, or the deeming of
+-- special provision 2 (the caller, lpa-claim.l4, decides which).
+GIVEN a IS AN `An accident`
+      s IS A `The policy schedule`
+      `the date of death` IS A MAYBE DATE
+      `the Injury is the sole cause of death` IS A BOOLEAN
+GIVETH A NUMBER
+`benefit A.1, the death benefit, for` a `under` s `on death on` `the date of death` `, the Injury the sole cause:` `the Injury is the sole cause of death` MEANS
+    CONSIDER `the date of death`
+    WHEN NOTHING THEN 0
+    WHEN JUST d  THEN
+        IF     `the Injury is the sole cause of death`
+           AND `death within 24 months of the accident:` (a's `date of the accident`) `and` d
+        THEN `the limit chosen, or nothing if the benefit was not chosen:` (s's `death limit`)
+        ELSE 0
+
+§§ `A.2 Permanent injury`
+
+-- A percentage of the limit in the summary: the rate for each kind of permanent injury in the
+-- tables (lpa-injury-tables.l4), but the total for all permanent injuries not over the limit
+-- for each insured in the period.
+-- src:332 | 2. Thương tật vĩnh viễn như 2. Một số tiền theo tỷ lệ phần trăm của Hạn mức
+-- src:333 | được mô tả dưới đây bảo hiểm ghi trong Bản tóm tắt Hợp đồng bảo
+-- src:334 | hiểm.
+-- src:336 | Tỷ lệ chi trả đối với mỗi loại Thương tật vĩnh
+-- src:337 | viễn theo quy định như bảng dưới đây, nhưng
+-- src:338 | tổng số tiền bồi thường cho tất cả các loại
+-- src:339 | Thương tật vĩnh viễn không vượt quá Hạn mức
+-- src:340 | bảo hiểm cho Quyền lợi bảo hiểm ghi trên Bản
+-- src:341 | tóm tắt Hợp đồng bảo hiểm đối với mỗi Người
+-- src:342 | được bảo hiểm trong Thời hạn bảo hiểm.
+--
+-- Limitation 1(a), applied here because it decides which items A.2 adds up: no item is paid
+-- where, for the same Injury, it falls within another item with a larger amount.
+-- src:546 | 1. Hạn mức bảo hiểm sẽ không được chi trả cho:
+-- src:548 | (a) bất kỳ một hạng mục nào của Quyền lợi Thương tật vĩnh viễn mà tại đó cho cùng một
+-- src:549 | Thương tật hạng mục này nằm trong một hạng mục khác của Quyền lợi Thương tật vĩnh
+-- src:550 | viễn có Hạn mức bảo hiểm lớn hơn;
+--
+-- The 5% rule (src 463-464, 467): partial permanent injury is paid only if its degree is 5% or
+-- more. Fork F11: the degree is the sum of the partial items from one accident, not each item
+-- on its own; total permanent injury items are outside the rule.
+GIVETH A NUMBER
+`the least degree of partial permanent injury paid` MEANS 5%
+
+GIVEN `the date of the accident` IS A DATE
+      c IS A `The permanent injury claim`
+      `left-handed` IS A MAYBE BOOLEAN
+GIVETH A NUMBER
+`benefit A.2, the rate payable, for the accident on` `the date of the accident` `and the assessment` c `, left-handedness` `left-handed` MEANS
+    min 1 (`the total part` PLUS `the partial part`)
+    WHERE
+        `counted` MEANS filter (GIVEN i YIELD NOT (i's `within another claimed item with a larger amount, for the same injury`)) (c's `items`)
+        `the total items` MEANS filter (GIVEN i YIELD `a total permanent injury:` (i's `the injury`)) `counted`
+        `the partial items` MEANS filter (GIVEN i YIELD NOT (`a total permanent injury:` (i's `the injury`))) `counted`
+        `the rate of` i MEANS `the rate for the permanent injury` (i's `the injury`) `, the insured's left-handedness being` `left-handed`
+        `the total part` MEANS
+            IF   `permanence is established, counting` `the days in 104 weeks` `days from` `the date of the accident` `, for` c
+            THEN sum (map `the rate of` `the total items`)
+            ELSE 0
+        `the partial sum` MEANS sum (map `the rate of` `the partial items`)
+        `the partial part` MEANS
+            IF       `permanence is established, counting` `the days in 52 weeks` `days from` `the date of the accident` `, for` c
+                 AND `the partial sum` AT LEAST `the least degree of partial permanent injury paid`
+            THEN `the partial sum`
+            ELSE 0
+
+GIVEN a IS AN `An accident`
+      s IS A `The policy schedule`
+      c IS A `The permanent injury claim`
+      `left-handed` IS A MAYBE BOOLEAN
+GIVETH A NUMBER
+`benefit A.2, the permanent injury benefit, for` a `under` s `on the assessment` c `, left-handedness` `left-handed` MEANS
+    CONSIDER s's `permanent injury limit`
+    WHEN NOTHING THEN 0
+    WHEN JUST l  THEN
+        l TIMES `benefit A.2, the rate payable, for the accident on` (a's `date of the accident`) `and the assessment` c `, left-handedness` `left-handed`
+
+§§ `B. Temporary injury`
+
+-- B pays an income allowance while the insured is under treatment for a Temporary Injury, for
+-- no longer than the time limits in the summary for each Injury and in total in the period: a
+-- daily sum on the limit in the contract, either a fixed sum or by monthly Income, whether or
+-- not the Injury is later found permanent, within the amount and time chosen. The daily wage is
+-- Income (or the insured's latest declaration the Company confirmed) at the time of the
+-- accident divided by 30. Nothing is paid while the insured still receives income, wages or
+-- business income.
+-- src:165 | Thương tật tạm thời Thương tật mà chỉ duy nhất do Thương tật này trực tiếp làm mất khả năng và
+-- src:166 | ngăn trở hoàn toàn Người được bảo hiểm tham gia việc kinh doanh hay nghề
+-- src:167 | nghiệp của họ trong một thời gian như được quy định trên Bản tóm tắt Hợp
+-- src:168 | đồng bảo hiểm/ Giấy chứng nhận bảo hiểm.
+-- src:469 | B. Thương tật tạm thời không thể tham gia việc B. Trợ cấp Thu nhập trong thời gian điều trị
+-- src:470 | làm hoặc làm các nghề nghiệp như bình Thương tật tạm thời như được nêu trong
+-- src:471 | thường. Bản tóm tắt Hợp đồng bảo hiểm phát sinh
+-- src:472 | trong thời hạn không vượt quá giới hạn
+-- src:473 | về thời gian như ghi trên Bản tóm tắt Hợp
+-- src:474 | đồng bảo hiểm đối với mỗi Thương tật và
+-- src:475 | tổng cộng trong Thời hạn bảo hiểm.
+-- src:477 | Trong trường hợp Người được bảo hiểm
+-- src:478 | bị Thương tật tạm thời như trong định
+-- src:479 | nghĩa, Công ty sẽ trả một số tiền mỗi
+-- src:480 | ngày căn cứ vào Hạn mức bảo hiểm
+-- src:481 | được ghi trong Hợp đồng bảo hiểm theo
+-- src:482 | số tiền bảo hiểm cố định hoặc theo mức
+-- src:483 | Thu nhập hàng tháng (cho dù sau đó
+-- src:484 | Thương tật này có được xác định là vĩnh
+-- src:485 | viễn hay không). Hạn mức bảo hiểm chi
+-- src:486 | trả cho thời gian nghỉ điều trị này không
+-- src:487 | quá số tiền và thời hạn đã chọn trong
+-- src:488 | Hợp đồng bảo hiểm.
+-- src:490 | Số tiền lương, tiền công mỗi ngày được
+-- src:491 | tính trên cơ sở Thu nhập của Người
+-- src:492 | được bảo hiểm hoặc theo khai báo mới
+-- src:493 | nhất của Người được bảo hiểm (đã
+-- src:496 | UW-PAG-W-001-10-V Trang 8/27
+-- src:497 | được Công ty xác nhận) tại thời điểm xảy
+-- src:498 | ra tai nạn theo công thức sau: Thu
+-- src:499 | nhập/30 ngày
+-- src:501 | Nếu Người được bảo hiểm vẫn đang
+-- src:502 | được hưởng Thu nhập, tiền lương, tiền
+-- src:503 | công hoặc từ thu nhập từ công việc kinh
+-- src:504 | doanh, thì mặc dù Người được bảo hiểm
+-- src:505 | có nghỉ việc hoặc không kinh doanh do
+-- src:506 | Thương tật tạm thời thì vẫn không được
+-- src:507 | chi trả.
+-- src:242 | Thu nhập Thu nhập có nghĩa là thu nhập theo tháng bao gồm tiền lương cơ bản thể hiện
+-- src:243 | trện hợp đồng lao động hoặc tiền công cố định, nhưng không bao gồm tiền hoa
+-- src:244 | hồng, tiền thưởng, tiền trả làm thêm, các khoản thu nhập không cố định khác.
+--
+-- Limitation 2: no temporary injury benefit for any time from the determination of death or
+-- permanent injury that the Company decides to pay.
+-- src:564 | 2. Quyền lợi Thương tật tạm thời sẽ không được trả đối với bất kỳ khoảng thời gian nào kể từ thời
+-- src:565 | điểm xác định Tử vong/ Thương tật vĩnh viễn mà Công ty quyết định chi trả bồi thường theo
+-- src:566 | Quyền lợi Tử vong hoặc bất cứ hạng mục nào của Quyền lợi Thương tật vĩnh viễn.
+GIVETH A NUMBER
+`the days Income is divided by` MEANS 30
+
+@ref src 490-499: the daily wage is computed from Income or the insured's latest confirmed declaration
+GIVEN a IS A TYPE
+GIVETH AN a
+`the insured's monthly income is not in the record, and benefit B is paid on income` MEANS
+    REFUSE "the insured's monthly income is not in the record, and benefit B is paid on income"
+
+GIVEN b IS A `The temporary injury benefit chosen`
+      t IS A `The temporary injury claim`
+GIVETH A NUMBER
+`benefit B, the daily amount, under` b `for` t MEANS
+    CONSIDER b's `basis`
+    WHEN `a fixed sum for each day` d THEN d
+    WHEN `the insured's monthly income` THEN
+        CONSIDER t's `monthly income at the time of the accident`
+        WHEN NOTHING THEN `the insured's monthly income is not in the record, and benefit B is paid on income`
+        WHEN JUST m  THEN m DIVIDED BY `the days Income is divided by`
+
+-- Limitation 2 counts the day of the determination as outside the benefit (fork F12).
+GIVEN t IS A `The temporary injury claim`
+GIVETH A NUMBER
+`the days of total disablement before any determination of death or permanent injury, in` t MEANS
+    max 0 ((Day `the last day counted`) MINUS (Day (t's `first day of total disablement`)) PLUS 1)
+    WHERE
+        `the last day counted` MEANS
+            CONSIDER t's `date death or permanent injury was determined for payment`
+            WHEN NOTHING THEN t's `last day of total disablement`
+            WHEN JUST d  THEN
+                IF   d MINUS 1 LESS THAN t's `last day of total disablement`
+                THEN d MINUS 1
+                ELSE t's `last day of total disablement`
+
+GIVEN s IS A `The policy schedule`
+      t IS A `The temporary injury claim`
+GIVETH A NUMBER
+`benefit B, the temporary injury benefit, under` s `for` t MEANS
+    CONSIDER s's `temporary injury benefit`
+    WHEN NOTHING THEN 0
+    WHEN JUST b  THEN
+        IF   t's `still receiving income, wages or business income`
+          OR t's `also insured under another contract, other than social insurance`
+        THEN 0
+        ELSE max 0 (min (`the days payable` b TIMES `benefit B, the daily amount, under` b `for` t)
+                        (b's `limit` MINUS t's `amount already paid under benefit B in the period`))
+    WHERE
+        `the days payable` b MEANS
+            max 0 (minimum (LIST `the days of total disablement before any determination of death or permanent injury, in` t
+                               , b's `maximum days for each injury`
+                               , b's `maximum days in the period` MINUS t's `days already paid in the period for other injuries`))
+
+§§ `C. Medical expenses`
+
+-- C pays the reasonable and customary cost of medicine, hospital and surgery, nursing home care
+-- or nursing, incurred within 52 weeks of the Injury, reasonable and necessary, for
+-- professional services of a Doctor at a Medical Facility, up to the medical expense limit in
+-- the summary for the period.
+-- src:509 | C. Các chi phí Thông thường và hợp lý cho C. Thanh toán đến hạn mức Chi phí y tế ghi
+-- src:510 | thuốc men, nằm viện và phẫu thuật, chăm sóc trên Bản tóm tắt Hợp đồng bảo hiểm
+-- src:511 | tại nhà điều dưỡng hay chi phí điều dưỡng trong Thời hạn bảo hiểm.
+-- src:512 | phát sinh trong vòng 52 tuần kể từ lúc bị
+-- src:513 | Thương tật, với điều kiện là các chi phí đã
+-- src:514 | phát sinh là hợp lý và cần thiết phải trả cho
+-- src:515 | các dịch vụ chuyên nghiệp cung cấp bởi Bác
+-- src:516 | sỹ tại Cơ sở y tế.
+-- The definition says 12 months (src 229-231), the benefit 52 weeks: fork F13 takes the
+-- definition's 12 months, the longer.
+-- src:229 | Chi phí y tế a. Chi phí phát sinh trong vòng 12 tháng kể từ ngày phát sinh Thương tật, do
+-- src:230 | Người được bảo hiểm trả, chi phí nằm viện hoặc điều trị ngoại trú nhằm
+-- src:231 | mục đích chữa trị các Thương tật phát sinh trong một Tai nạn.
+-- src:232 | b. Bao gồm chi phí cho bác sĩ đa khoa, chuyên khoa, đông y, nắn xương
+-- src:233 | khớp, phẫu thuật nha khoa, phẫu thuật, chụp x-quang, dịch vụ y tế, thuốc
+-- src:234 | và đồ dùng y tế.
+-- src:235 | c. Chi phí cho điều trị nha khoa không bao gồm cạo vôi, đánh bóng răng, nhổ
+-- src:236 | răng, chụp x-quang, trồng răng, lấy tủy răng, cắt u răng, cắt cuống răng,
+-- src:237 | điều trị thẩm mỹ, phủ chóp răng, cầu răng, răng giả và trám răng.
+-- src:238 | d. Tất cả các chi phí điều trị phải là chi phí Thông thường và hợp lý, và không
+-- src:239 | vượt quá mức quyền lợi tối đa như được quy định trong Bản tóm tắt Hợp
+-- src:240 | đồng bảo hiểm.
+-- Benefits are not paid above the reasonable and customary charge.
+-- src:265 | Quyền lợi bảo hiểm sẽ không được trả cho các khoản chi vượt quá mức chi
+-- src:266 | phí Thông thường và hợp lý.
+-- Limitation 4: no payment where the benefit is also insured under another contract at the
+-- same time, or the policyholder or insured is compensated from another source; but the
+-- Company pays what exceeds the other contract or source, up to the limit.
+-- src:573 | 4. Bồi thường đối với Quyền lợi Chi phí y tế sẽ không được trả nếu Quyền lợi này cũng được bảo
+-- src:574 | hiểm theo bất kỳ hợp đồng bảo hiểm nào khác trong cùng thời điểm đó, hoặc nếu Bên mua bảo
+-- src:575 | hiểm hay Người được bảo hiểm được bù đắp từ bất cứ một nguồn nào khác. Tuy nhiên, Công
+-- src:576 | ty sẽ có trách nhiệm trả tiền bảo hiểm theo Quyền lợi này đối với các khoản vượt quá số tiền
+-- src:577 | bảo hiểm trong hợp đồng bảo hiểm khác hay các nguồn khác, tối đa đến Hạn mức bảo hiểm
+-- src:578 | của Quyền lợi này.
+-- Special exclusion 3 (src 887-889) excludes medical expenses insured under another contract
+-- outright, and general provision 11 (src 1449-1453) pays the excess or a rateable share.
+-- Fork F14 takes limitation 4 for benefit C (NOTES.md, Findings).
+
+GIVEN k IS A `A kind of medical expense`
+GIVETH A BOOLEAN
+`a kind of medical expense benefit C pays:` k MEANS
+    CONSIDER k
+    WHEN `a hospital stay or outpatient treatment` THEN TRUE
+    WHEN `a general practitioner, a specialist, traditional medicine or bone-setting` THEN TRUE
+    WHEN `dental surgery` THEN TRUE           -- definition (b); general exclusion 12 conflicts (fork F15)
+    WHEN `surgery` THEN TRUE
+    WHEN `x-rays` THEN TRUE
+    WHEN `medical services` THEN TRUE
+    WHEN `medicine and medical supplies` THEN TRUE
+    WHEN `nursing home care or nursing` THEN TRUE
+    OTHERWISE FALSE                           -- definition (c) and general exclusions 9, 11-13, 16, 17
+
+GIVEN e IS A `A medical expense`
+      `the date of the accident` IS A DATE
+GIVETH A NUMBER
+`benefit C, the amount allowed for the expense` e `after the accident on` `the date of the accident` MEANS
+    IF       `a kind of medical expense benefit C pays:` (e's `kind`)
+         AND e's `to treat the injury from the accident`                    -- special exclusion 2
+         AND e's `directed by a Doctor`                                     -- general exclusion 14
+         AND e's `for professional services of a Doctor at a Medical Facility`
+         AND NOT e's `a pandemic declaration in force on the date incurred` -- general exclusion 18
+         AND e's `date incurred` AT LEAST `the date of the accident`
+         AND e's `date incurred` AT MOST `add months` `the date of the accident` 12
+    THEN min (e's `amount paid by the insured`) (e's `the reasonable and customary amount`)
+    ELSE 0
+
+GIVEN a IS AN `An accident`
+      s IS A `The policy schedule`
+      m IS A `The medical expense claim`
+GIVETH A NUMBER
+`benefit C, the medical expense benefit, for` a `under` s `on` m MEANS
+    CONSIDER s's `medical expense limit`
+    WHEN NOTHING THEN 0
+    WHEN JUST l  THEN
+        max 0 (min `the excess over other cover`
+                   (l MINUS m's `amount already paid under benefit C in the period`))
+    WHERE
+        `the allowed total` MEANS
+            sum (map (GIVEN e YIELD `benefit C, the amount allowed for the expense` e `after the accident on` (a's `date of the accident`)) (m's `expenses`))
+        `the excess over other cover` MEANS
+            max 0 (`the allowed total` MINUS m's `amount met by another contract or another source`)
+
+§§ `D. Daily hospital allowance`
+
+-- D pays the daily hospital allowance in the summary in the period: for each 24 hours of
+-- treatment the Injury needs in a Medical Facility, where it needs hospital treatment within
+-- twelve months of the Accident. Fork F16: a part of 24 hours is not paid.
+-- Special exclusion 3 excludes the allowance where it is insured under another contract
+-- (other than social insurance).
+-- src:518 | D. Trợ cấp ngày nằm viện D. Công ty sẽ trả tiền Trợ cấp nằm viện hàng
+-- src:519 | ngày như quy định đã nêu trong Bản tóm
+-- src:520 | tắt Hợp đồng bảo hiểm trong Thời hạn
+-- src:521 | bảo hiểm
+-- src:223 | Trợ cấp Ngày nằm Nếu Người được bảo hiểm bị Thương tật mà đòi hỏi phải nhập viện để điều trị
+-- src:224 | viện trong vòng mười hai (12) tháng từ ngày xảy ra Tai nạn, Công ty sẽ trả tiền Trợ
+-- src:225 | cấp ngày nằm viện tối đa như quy định trong Bản tóm tắt Hợp đồng bảo hiểm
+-- src:226 | cho mỗi hai mươi tư (24) giờ mà Người được bảo hiểm cần phải được điều trị
+-- src:227 | cho Thương tật tại Cơ sở y tế.
+-- src:887 | 3. Quyền lợi về Thương tật tạm thời/Trợ cấp ngày nằm viện và Chi phí y tế của quyền lợi liên quan
+-- src:888 | đến Thương tật do Tai nạn đang được bảo hiểm dưới hợp đồng bảo hiểm khác (ngoại trừ bảo
+-- src:889 | hiểm xã hội).
+GIVETH A NUMBER
+`the hours in a day of hospital allowance` MEANS 24
+
+GIVEN a IS AN `An accident`
+      s IS A `The policy schedule`
+      h IS A `The hospital allowance claim`
+GIVETH A NUMBER
+`benefit D, the hospital allowance, for` a `under` s `on` h MEANS
+    CONSIDER s's `daily hospital allowance`
+    WHEN NOTHING THEN 0
+    WHEN JUST d  THEN
+        IF       h's `hospital treatment was required for the injury`
+             AND h's `date of admission` AT LEAST a's `date of the accident`
+             AND h's `date of admission` AT MOST `add months` (a's `date of the accident`) 12
+             AND NOT h's `also insured under another contract, other than social insurance`
+        THEN d TIMES TRUNC (h's `hours of treatment in a Medical Facility` DIVIDED BY `the hours in a day of hospital allowance`) 0
+        ELSE 0
+
+§ `II. Geographical scope`
+
+-- The area covered is the area listed in the summary for which the matching premium was paid.
+-- Encoded as the accident's `within the geographical area in the schedule`, read by the
+-- definition of an Injury (lpa-definitions.l4).
+-- src:524 | II. Phạm vi địa lý
+-- src:526 | Phạm vi địa lý được bảo hiểm phụ thuộc vào khu vực bảo hiểm được liệt kê trong Bản tóm tắt
+-- src:527 | Hợp đồng bảo hiểm mà phí bảo hiểm khu vực phù hợp được thanh toán.
+
+§ `The limit per conveyance (HẠN MỨC CHUNG)`
+
+-- The Company's total liability for all insured persons on the same flight, road journey or
+-- train or boat journey is not over 25.000.000.000 đồng ("Hạn mức mỗi chuyến"), or the total
+-- limits payable to them, whichever is less; if the total for Injury on one conveyance exceeds
+-- it, each insured's benefit is reduced in proportion.
+-- src:535 | Trách nhiệm tổng cộng tối đa của Công ty đối với tất cả những Người được bảo hiểm đi trên cùng một
+-- src:536 | chuyến bay, chuyến xe hoặc chuyến tàu sẽ không vượt quá hai mươi lăm tỷ (25.000.000.000) đồng
+-- src:537 | (“Hạn mức mỗi chuyến”) hoặc tổng Hạn mức bảo hiểm phải trả cho những Người được bảo hiểm đó,
+-- src:538 | tùy thuộc vào số nào nhỏ hơn.
+-- src:540 | Nếu tổng số tiền bồi thường cho Thương tật đối với những Người được bảo hiểm cùng đi trên một
+-- src:541 | phương tiện vận chuyển vượt quá Hạn mức mỗi chuyến, trách nhiệm của Công ty đối với mỗi Người
+-- src:542 | được bảo hiểm sẽ được tính theo tỷ lệ của các Quyền lợi phải trả đối với Người được bảo hiểm đó.
+GIVETH A NUMBER
+`the limit per conveyance` MEANS 25000000000
+
+GIVEN `the limits payable to them` IS A NUMBER
+GIVETH A NUMBER
+`the most the Company pays for all insured on one conveyance, their limits totalling` `the limits payable to them` MEANS
+    min `the limit per conveyance` `the limits payable to them`
+
+GIVEN `the amounts otherwise payable` IS A LIST OF NUMBER
+GIVETH A LIST OF NUMBER
+`the amounts payable to the insured on one conveyance, from` `the amounts otherwise payable` MEANS
+    IF   sum `the amounts otherwise payable` GREATER THAN `the limit per conveyance`
+    THEN map (GIVEN x YIELD x TIMES `the limit per conveyance` DIVIDED BY sum `the amounts otherwise payable`) `the amounts otherwise payable`
+    ELSE `the amounts otherwise payable`
+
+§ `The limitations for each insured`
+
+-- 1(a) is applied in benefit A.2 above. 1(b) and 1(c):
+--
+-- 1(b): the death benefit is not paid on top of a permanent injury benefit caused by the same
+-- Injury, except that where a permanent injury benefit has been paid and death then follows
+-- within 52 weeks of the Injury, the Company pays the amount by which the death benefit exceeds
+-- what was paid.
+-- src:552 | (b) Quyền lợi Tử vong như là khoản trả thêm cho Quyền lợi Thương tật vĩnh viễn nếu cả hai
+-- src:553 | Quyền lợi đều bị gây ra bởi cùng một Thương tật, ngoại trừ trường hợp Hạn mức bảo hiểm
+-- src:554 | đã được trả theo hạng mục nào đó của Quyền lợi Thương tật vĩnh viễn, và Tử vong xảy ra
+-- src:555 | sau đó được xem như là Quyền lợi gây ra bởi Thương tật này trong khoảng thời gian không
+-- src:556 | quá 52 tuần kể từ khi xảy ra Thương tật và khi đó nếu Hạn mức bảo hiểm sẽ trả theo Quyền
+-- src:557 | lợi Tử vong lớn hơn Hạn mức bảo hiểm đã trả theo Quyền lợi Thương tật vĩnh viễn, Công
+-- src:558 | ty sẽ thanh toán khoản chênh lệch đó;
+GIVEN `the death benefit`                       IS A NUMBER
+      `the permanent injury benefit already paid` IS A NUMBER
+      `the date of the injury`                    IS A DATE
+      `the date of death`                         IS A DATE
+GIVETH A NUMBER
+`limitation 1(b): the death benefit payable, given` `the death benefit` `and a permanent injury benefit of` `the permanent injury benefit already paid` `paid for an injury on` `the date of the injury` `, death on` `the date of death` MEANS
+    BRANCH
+        IF `the permanent injury benefit already paid` EQUALS 0 THEN `the death benefit`
+        IF `the date of death` AT MOST (`the date of the injury` PLUS `the days in 52 weeks`)
+            THEN max 0 (`the death benefit` MINUS `the permanent injury benefit already paid`)
+        OTHERWISE 0
+
+-- 1(c): the benefits for each insured together are not over 100% of the limit for the death
+-- benefit or the permanent injury benefit, whichever is greater, in the period.
+-- Fork F17: where the schedule has neither benefit, there is no cap (NOTHING); read literally
+-- the cap is 100% of nothing (NOTES.md, Findings).
+-- src:560 | (c) tổng cộng bất cứ một hay nhiều Quyền lợi đối với mỗi Người được bảo hiểm nhiều hơn
+-- src:561 | 100% Hạn mức bảo hiểm đối với Quyền lợi Tử vong hay Quyền lợi Thương tật vĩnh viễn
+-- src:562 | (tùy số nào lớn hơn) trong Thời hạn bảo hiểm.
+GIVEN s IS A `The policy schedule`
+GIVETH A MAYBE NUMBER
+`limitation 1(c): the most all benefits pay one insured in the period, under` s MEANS
+    CONSIDER s's `death limit`
+    WHEN NOTHING THEN
+        CONSIDER s's `permanent injury limit`
+        WHEN NOTHING THEN NOTHING
+        WHEN JUST p  THEN JUST p
+    WHEN JUST d THEN
+        CONSIDER s's `permanent injury limit`
+        WHEN NOTHING THEN JUST d
+        WHEN JUST p  THEN JUST (max d p)
+
+GIVEN s IS A `The policy schedule`
+GIVETH A NUMBER
+`limitation 1(c) read literally: the cap, under` s MEANS
+    max (`the limit chosen, or nothing if the benefit was not chosen:` (s's `death limit`))
+        (`the limit chosen, or nothing if the benefit was not chosen:` (s's `permanent injury limit`))
+
+GIVEN s IS A `The policy schedule`
+      `the benefits otherwise payable` IS A NUMBER
+GIVETH A NUMBER
+`limitation 1(c): the benefits payable in the period, under` s `, from` `the benefits otherwise payable` MEANS
+    CONSIDER `limitation 1(c): the most all benefits pay one insured in the period, under` s
+    WHEN NOTHING THEN `the benefits otherwise payable`
+    WHEN JUST c  THEN min c `the benefits otherwise payable`
+
+-- 2 is applied in benefit B above.
+--
+-- 3: the permanent injury benefit is paid once the total is agreed, or, at the insured's
+-- request, in instalments at least 30 days apart (no advance), beginning 30 days after the
+-- Company receives notice of the Injury. Fork F18: "sau 30 ngày kể từ" is the day 30 days
+-- after, and "từ 30 ngày trở lên" means a gap of 30 days or more.
+-- src:568 | 3. Quyền lợi Thương tật vĩnh viễn sẽ được trả khi tổng số tiền đã được nhất trí, hoặc theo yêu
+-- src:569 | cầu của Người được bảo hiểm, sẽ được trả theo nhiều đợt mỗi đợt cách nhau từ 30 ngày trở
+-- src:570 | lên (nhưng không tạm ứng trước) và việc chi trả theo cách này sẽ được bắt đầu sau 30 ngày
+-- src:571 | kể từ khi Công ty nhận được thông báo về Thương tật.
+GIVETH A NUMBER
+`the days between instalments of benefit A.2` MEANS 30
+
+GIVEN `the day the Company received notice of the injury` IS A DATE
+GIVETH A DATE
+`limitation 3: the first day an instalment may be paid, notice received on` `the day the Company received notice of the injury` MEANS
+    `the day the Company received notice of the injury` PLUS `the days between instalments of benefit A.2`
+
+GIVEN `the day of the last instalment` IS A DATE
+GIVETH A DATE
+`limitation 3: the first day the next instalment may be paid, the last paid on` `the day of the last instalment` MEANS
+    `the day of the last instalment` PLUS `the days between instalments of benefit A.2`
+
+-- 4 is applied in benefit C above.

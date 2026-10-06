@@ -1,0 +1,273 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `lpa-nouns`
+IMPORT `lpa-definitions`
+IMPORT `lpa-injury-tables`
+IMPORT `lpa-benefits`
+IMPORT `lpa-special-provisions`
+IMPORT `lpa-exclusions`
+IMPORT `lpa-general-provisions`
+IMPORT `lpa-termination`
+IMPORT `lpa-claim`
+
+-- The evidence for NOTES.md section 4, Findings: each assertion shows a surprising answer the
+-- wording gives, and is EXPECTED TO BE SATISFIED. The finding numbers are NOTES.md's.
+-- Expected values are worked from the source, as in lpa-tests.l4; scenario figures (limits,
+-- dates) are hypothetical.
+
+§ `Findings`
+
+§§ `Fixtures`
+
+`Minh` MEANS `An insured person` WITH
+    `date of birth`                                                         IS YMD 1990 5 15
+    `place in the group`                                                    IS `an employee of the employer`
+    `a Vietnamese citizen`                                                  IS TRUE
+    `living in Vietnam when cover began, as declared in the application`    IS TRUE
+    `living in Vietnam on a tourist visa`                                   IS FALSE
+    `a citizen of a country under United Nations, United States, European Union or United Kingdom sanctions` IS FALSE
+    `occupation class`                                                      IS `class 1`
+    `left-handed`                                                           IS JUST FALSE
+    `degree of permanent disability before the effective date`              IS 0
+    `insured under the same contract as a parent, adoptive parent or legal guardian` IS FALSE
+    `in full-time study, with a valid student card or proof of it`          IS FALSE
+    `keeps a valid visa or temporary residence card`                        IS TRUE
+
+GIVEN `the death limit` IS A MAYBE NUMBER
+      `the injury limit` IS A MAYBE NUMBER
+GIVETH A `The policy schedule`
+`a 2026 schedule, death limit` `the death limit` `, injury limit` `the injury limit` MEANS
+    `The policy schedule` WITH
+        `first day of the period of insurance`  IS YMD 2026 1 1
+        `last day of the period of insurance`   IS YMD 2026 12 31
+        `a renewal`                             IS FALSE
+        `worldwide geographical scope`          IS TRUE
+        `death limit`                           IS `the death limit`
+        `permanent injury limit`                IS `the injury limit`
+        `temporary injury benefit`              IS NOTHING
+        `medical expense limit`                 IS JUST 50000000
+        `daily hospital allowance`              IS JUST 400000
+        `food poisoning cover agreed`           IS FALSE
+
+`the findings schedule` MEANS `a 2026 schedule, death limit` (JUST 1000000000) `, injury limit` (JUST 1000000000)
+
+GIVEN `absences` IS A LIST OF `An absence from Vietnam`
+      `changes`  IS A LIST OF `A change increasing the risk`
+GIVETH A `The insured's cover facts`
+`cover facts with absences` `absences` `and changes` `changes` MEANS
+    `The insured's cover facts` WITH
+        `date of entry into Vietnam, if after the first day of the period`      IS NOTHING
+        `date the insured became eligible, if after the first day of the period` IS NOTHING
+        `date the insured ceased to be eligible, for a reason other than age`   IS NOTHING
+        `date the group contract ended`                                         IS NOTHING
+        `date employment with the employer ended`                               IS NOTHING
+        `date membership of the sponsoring organisation ended`                  IS NOTHING
+        `date the insured member's own cover ended`                             IS NOTHING
+        `date the benefits were used up`                                        IS NOTHING
+        `premium for the insured paid in full within the payment period`        IS TRUE
+        `last day of the payment period`                                        IS YMD 2026 1 31
+        `absences from Vietnam`                                                 IS `absences`
+        `changes increasing the risk`                                           IS `changes`
+
+§§ `D1. "hoặc đang thực hiện công việc": general exclusion 6(d) read literally excludes every injury at work`
+
+-- An office worker injured at work: the encoding's reading (fork F22) engages no exclusion;
+-- the literal reading of 6(d) excludes it, in a policy bought to insure employees.
+#ASSERT `the exclusions engaged by` `performing work` `under` `the findings schedule` EQUALS EMPTY
+#ASSERT `general exclusion 6(d) read literally excludes` `performing work`
+
+§§ `D2. Cover ends retroactively on the day the insured LEFT Vietnam (7.1(e))`
+
+-- An insured who leaves on 1 March 2026 without notice and is injured abroad on 1 April: on
+-- the facts as they stand after 180 days, cover is not in force on 1 April; had the insured
+-- come home on day 180, it would have been.
+#ASSERT NOT `the insured's cover was in force on` (YMD 2026 4 1) `, for` `Minh` `under` `the findings schedule` `and` (`cover facts with absences` (LIST `An absence from Vietnam` OF (YMD 2026 3 1), 181, FALSE, FALSE) `and changes` EMPTY)
+#ASSERT     `the insured's cover was in force on` (YMD 2026 4 1) `, for` `Minh` `under` `the findings schedule` `and` (`cover facts with absences` (LIST `An absence from Vietnam` OF (YMD 2026 3 1), 180, FALSE, FALSE) `and changes` EMPTY)
+-- And 3(f) allows only 180 days abroad at a time under worldwide cover, whatever the notice.
+#ASSERT NOT `general provision 3(f): a stay abroad is within the limit, under` `the findings schedule` `, lasting` 181
+
+§§ `D3. An unpaid premium: 16B(b) pays 0,1%, 4(b) pays nothing; on a hospital allowance 0,1% is 400 đồng`
+
+-- 4(b): no liability arises if a condition precedent (premium, 4(a)(ii)) is not met.
+-- 16B(b): for an event before the automatic termination, at most 0,1% of the limit.
+#ASSERT `general provision 16B(b): the most paid on a claim, the programme limit being` 1000000000 `and the summary limit` 1000000000 EQUALS 1000000
+#ASSERT `general provision 16B(b): the most paid on a claim, the programme limit being` 400000 `and the summary limit` 400000 EQUALS 400
+
+§§ `D4. Limitation 1(b): the top-up for death after a permanent injury benefit can almost never be paid`
+
+-- Partial permanence exists only from 52 weeks after the accident (10 January 2026 + 364 =
+-- 9 January 2027). The top-up needs death within 52 weeks of the Injury: by the same day. A
+-- death one day later, after 400.000.000 was paid for the lost eye, adds nothing; the same
+-- death with no permanent injury claim pays the whole 1.000.000.000 (within 24 months).
+#ASSERT (YMD 2026 1 10) PLUS `the days in 52 weeks` EQUALS YMD 2027 1 9
+#ASSERT `limitation 1(b): the death benefit payable, given` 1000000000 `and a permanent injury benefit of` 400000000 `paid for an injury on` (YMD 2026 1 10) `, death on` (YMD 2027 1 10) EQUALS 0
+#ASSERT `limitation 1(b): the death benefit payable, given` 1000000000 `and a permanent injury benefit of` 0 `paid for an injury on` (YMD 2026 1 10) `, death on` (YMD 2027 1 10) EQUALS 1000000000
+#ASSERT `death within 24 months of the accident:` (YMD 2026 1 10) `and` (YMD 2027 1 10)
+
+§§ `D5. General provision 13: deadlines that cannot all be met`
+
+-- (i) If "sự kiện bảo hiểm" is the accident, the one-year limit ends long before a total
+-- permanent injury can exist (104 weeks).
+#ASSERT `add years` (YMD 2026 1 10) 1 LESS THAN ((YMD 2026 1 10) PLUS `the days in 104 weeks`)
+-- (ii) The forms and evidence are due within 30 days of the insured event, and 13(d) voids a
+-- claim out of time: a claim file sent on day 200, well within the year, fails if the forms
+-- go with it. The one-year period of 13(a) (and of Law 08/2022/QH15 art 30) does no work.
+#ASSERT NOT `done, if at all, by` ((YMD 2026 3 10) PLUS 30) `: on` (JUST ((YMD 2026 3 10) PLUS 200))
+#ASSERT     `done, if at all, by` (`add years` (YMD 2026 3 10) 1) `: on` (JUST ((YMD 2026 3 10) PLUS 200))
+
+§§ `D6. The teeth bands`
+
+-- Exactly 8 teeth, or more than 8 that dentures can replace: no band. 3 teeth: two bands.
+#ASSERT `the row for the loss of` 8 `teeth, replaceable by dentures:` FALSE EQUALS NOTHING
+#ASSERT `the row for the loss of` 12 `teeth, replaceable by dentures:` TRUE EQUALS NOTHING
+#ASSERT `the rate printed for` `loss of 3 to 4 teeth` EQUALS `one rate` (8%)
+#ASSERT `the rate printed for` `loss of 1 to 3 teeth` EQUALS `one rate` (3%)
+-- The 1-3 teeth row (3%) is under the 5% rule, so on its own it never pays.
+#ASSERT `benefit A.2, the rate payable, for the accident on` (YMD 2026 1 10) `and the assessment` (`The permanent injury claim` OF (YMD 2027 1 9), TRUE, TRUE, (LIST `A claimed permanent injury` OF (`loss of teeth` 3 TRUE), FALSE)) `, left-handedness` (JUST FALSE) EQUALS 8%
+#ASSERT `benefit A.2, the rate payable, for the accident on` (YMD 2026 1 10) `and the assessment` (`The permanent injury claim` OF (YMD 2027 1 9), TRUE, TRUE, (LIST `A claimed permanent injury` OF (`loss of teeth` 2 TRUE), FALSE)) `, left-handedness` (JUST FALSE) EQUALS 0
+
+§§ `D7. Fingers and toes the tables do not price`
+
+-- Of the 31 sets of whole fingers of one hand, 10 have no row; of the 31 sets of toes, 20.
+`every set of fingers` MEANS LIST
+        (LIST `the thumb`)
+      , (LIST `the index finger`)
+      , (LIST `the middle finger`)
+      , (LIST `the ring finger`)
+      , (LIST `the little finger`)
+      , (LIST `the thumb`, `the index finger`)
+      , (LIST `the thumb`, `the middle finger`)
+      , (LIST `the thumb`, `the ring finger`)
+      , (LIST `the thumb`, `the little finger`)
+      , (LIST `the index finger`, `the middle finger`)
+      , (LIST `the index finger`, `the ring finger`)
+      , (LIST `the index finger`, `the little finger`)
+      , (LIST `the middle finger`, `the ring finger`)
+      , (LIST `the middle finger`, `the little finger`)
+      , (LIST `the ring finger`, `the little finger`)
+      , (LIST `the thumb`, `the index finger`, `the middle finger`)
+      , (LIST `the thumb`, `the index finger`, `the ring finger`)
+      , (LIST `the thumb`, `the index finger`, `the little finger`)
+      , (LIST `the thumb`, `the middle finger`, `the ring finger`)
+      , (LIST `the thumb`, `the middle finger`, `the little finger`)
+      , (LIST `the thumb`, `the ring finger`, `the little finger`)
+      , (LIST `the index finger`, `the middle finger`, `the ring finger`)
+      , (LIST `the index finger`, `the middle finger`, `the little finger`)
+      , (LIST `the index finger`, `the ring finger`, `the little finger`)
+      , (LIST `the middle finger`, `the ring finger`, `the little finger`)
+      , (LIST `the thumb`, `the index finger`, `the middle finger`, `the ring finger`)
+      , (LIST `the thumb`, `the index finger`, `the middle finger`, `the little finger`)
+      , (LIST `the thumb`, `the index finger`, `the ring finger`, `the little finger`)
+      , (LIST `the thumb`, `the middle finger`, `the ring finger`, `the little finger`)
+      , (LIST `the index finger`, `the middle finger`, `the ring finger`, `the little finger`)
+      , (LIST `the thumb`, `the index finger`, `the middle finger`, `the ring finger`, `the little finger`)
+
+`every set of toes` MEANS LIST
+        (LIST `the big toe`)
+      , (LIST `the second toe`)
+      , (LIST `the third toe`)
+      , (LIST `the fourth toe`)
+      , (LIST `the little toe`)
+      , (LIST `the big toe`, `the second toe`)
+      , (LIST `the big toe`, `the third toe`)
+      , (LIST `the big toe`, `the fourth toe`)
+      , (LIST `the big toe`, `the little toe`)
+      , (LIST `the second toe`, `the third toe`)
+      , (LIST `the second toe`, `the fourth toe`)
+      , (LIST `the second toe`, `the little toe`)
+      , (LIST `the third toe`, `the fourth toe`)
+      , (LIST `the third toe`, `the little toe`)
+      , (LIST `the fourth toe`, `the little toe`)
+      , (LIST `the big toe`, `the second toe`, `the third toe`)
+      , (LIST `the big toe`, `the second toe`, `the fourth toe`)
+      , (LIST `the big toe`, `the second toe`, `the little toe`)
+      , (LIST `the big toe`, `the third toe`, `the fourth toe`)
+      , (LIST `the big toe`, `the third toe`, `the little toe`)
+      , (LIST `the big toe`, `the fourth toe`, `the little toe`)
+      , (LIST `the second toe`, `the third toe`, `the fourth toe`)
+      , (LIST `the second toe`, `the third toe`, `the little toe`)
+      , (LIST `the second toe`, `the fourth toe`, `the little toe`)
+      , (LIST `the third toe`, `the fourth toe`, `the little toe`)
+      , (LIST `the big toe`, `the second toe`, `the third toe`, `the fourth toe`)
+      , (LIST `the big toe`, `the second toe`, `the third toe`, `the little toe`)
+      , (LIST `the big toe`, `the second toe`, `the fourth toe`, `the little toe`)
+      , (LIST `the big toe`, `the third toe`, `the fourth toe`, `the little toe`)
+      , (LIST `the second toe`, `the third toe`, `the fourth toe`, `the little toe`)
+      , (LIST `the big toe`, `the second toe`, `the third toe`, `the fourth toe`, `the little toe`)
+
+#ASSERT count `every set of fingers` EQUALS 31
+#ASSERT count (filter (GIVEN fs YIELD isNothing (`the row for the amputation of the fingers` fs)) `every set of fingers`) EQUALS 10
+#ASSERT count `every set of toes` EQUALS 31
+#ASSERT count (filter (GIVEN ts YIELD isNothing (`the row for the amputation of the toes` ts)) `every set of toes`) EQUALS 20
+-- The 50% ankylosis rule for toes other than the big toe has no amputation amount to halve.
+#ASSERT REFUSED `the rate for the permanent injury` (`ankylosis of the joints of toes of one foot` (LIST `the second toe`)) `, the insured's left-handedness being` (JUST FALSE) BECAUSE "the injury is not in the tables, and its rate is for the Company to decide by comparison"
+-- Ankylosis of the non-dominant middle finger: 2,5%, under the 5% rule, never paid alone.
+#ASSERT `the rate for the permanent injury` (`ankylosis of the joints of fingers of one hand` (LIST `the middle finger`) `the left side`) `, the insured's left-handedness being` (JUST FALSE) EQUALS 2.5%
+
+§§ `D8. Three rules for medical expenses another contract also covers`
+
+-- Bills of 10.000.000; another contract paid 4.000.000; this limit 50.000.000 of 100.000.000.
+-- Limitation 4: the excess, 6.000.000. General provision 11: the excess, 6.000.000, OR the
+-- rateable share, 5.000.000. Special exclusion 3: nothing.
+#ASSERT `general provision 11: the excess of` 10000000 `over` 4000000 EQUALS 6000000
+#ASSERT `general provision 11: the rateable share of` 10000000 `, this limit being` 50000000 `of total limits` 100000000 EQUALS 5000000
+
+§§ `D9. 52 weeks or 12 months for medical expenses`
+
+-- Accident 10 March 2026: 52 weeks end on 9 March 2027, 12 months on 10 March 2027. A bill of
+-- 10 March 2027 is inside the definition (src 229) and outside benefit C's words (src 512).
+#ASSERT (YMD 2026 3 10) PLUS `the days in 52 weeks` EQUALS YMD 2027 3 9
+#ASSERT `benefit C, the amount allowed for the expense` (`A medical expense` OF `surgery`, 1000000, 1000000, YMD 2027 3 10, TRUE, TRUE, TRUE, FALSE) `after the accident on` (YMD 2026 3 10) EQUALS 1000000
+
+§§ `D11. Special provision 5 against general exclusion 5(g)`
+
+-- A sudden, accidental asphyxiation by toxic fumes: covered on the encoding's reading (F21),
+-- although 5(g) excludes "hít phải hơi độc, khí độc, chất độc" without qualification.
+#ASSERT `the exclusions engaged by` (`inhaling smoke, toxic vapour, gas or poison` TRUE FALSE) `under` `the findings schedule` EQUALS EMPTY
+
+§§ `D12. Any Injury must be notified "ngay" (7.1(f)), against 30 days (13(a))`
+
+-- Read literally, the claimed injury of 10 March 2026, notified on day 20 (in time under
+-- 13(a)) but not at once, ends cover on 10 March itself.
+#ASSERT NOT `the insured's cover was in force on` (YMD 2026 3 10) `, for` `Minh` `under` `the findings schedule` `and` (`cover facts with absences` EMPTY `and changes` (LIST `A change increasing the risk` OF (YMD 2026 3 10), FALSE))
+
+§§ `D13. Limitation 1(c) rests on benefit A, which is optional`
+
+-- A programme without benefit A: on the literal reading the cap on all benefits is 0.
+#ASSERT `limitation 1(c) read literally: the cap, under` (`a 2026 schedule, death limit` NOTHING `, injury limit` NOTHING) EQUALS 0
+#ASSERT `limitation 1(c): the most all benefits pay one insured in the period, under` (`a 2026 schedule, death limit` NOTHING `, injury limit` NOTHING) EQUALS NOTHING
+
+§§ `D15. "Any race" (4(e)) swallows the carve-out for racing on foot (4(l))`
+
+#ASSERT `the exclusions engaged by` `a race, or a test of speed or endurance` `under` `the findings schedule` EQUALS LIST `general exclusion 4(e), a race or a speed or endurance test`
+
+§§ `D16. The short-period bands share their edges`
+
+-- Exactly 3 months: "Đến 3 tháng" (40%) and "Từ 3 tháng đến 6 tháng" (70%) both apply. The
+-- encoding takes 40% (fork F38).
+#ASSERT `general provision 9: the short-period rate, cover from` (YMD 2026 1 1) `to` (YMD 2026 4 1) EQUALS 40%
+#ASSERT `general provision 9: the short-period rate, cover from` (YMD 2026 1 1) `to` (YMD 2026 7 1) EQUALS 70%
+
+§§ `D17. A 5 cm shortening is in two bands`
+
+#ASSERT `the rate printed for` `shortening of a leg by at least about 5 cm` EQUALS `one rate` (30%)
+#ASSERT `the rate printed for` `shortening of a leg by 3 to 5 cm` EQUALS `one rate` (20%)
+
+§§ `D18. The application outranks the endorsements that amend the contract`
+
+#ASSERT `general provision 1: the document that prevails between` `an endorsement` `and` `the application, quotation, renewal notice or renewal quotation` EQUALS `the application, quotation, renewal notice or renewal quotation`
+
+§§ `D24. Property-insurance exclusions in an accident wording`
+
+#ASSERT REFUSED `the exclusions engaged by` `property at a nuclear installation, nuclear fuel or material, or supplying such an installation` `under` `the findings schedule`
+
+§§ `D28. A 30-day period has a payment period that ends after it`
+
+-- "If the period is under 30 days" (16A(a)): a period of exactly 30 days (1-30 January) takes
+-- the ordinary 30 days from the effective date, which end on 31 January (fork F35).
+#ASSERT `general provision 16A: the last day of the payment period, effective` (YMD 2026 1 1) `, the period ending` (YMD 2026 1 30) EQUALS YMD 2026 1 31
+
+§§ `D31. An extension that cuts cover: motorcycles over 150cc`
+
+#ASSERT `special provision 8 is not met by` (`riding a motorcycle, as driver or passenger` 175)
