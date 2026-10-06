@@ -1,0 +1,155 @@
+IMPORT prelude
+IMPORT `cpf-withdrawal`
+IMPORT `cpf-medisave-and-contributions`
+
+-- Central Provident Fund Act 1953, ss 7, 16 and 25(1) -- worked cases.
+
+§ `Fixtures`
+
+GIVEN `citizen or pr` IS A BOOLEAN, `over 55` IS A BOOLEAN
+    , `credit` IS A NUMBER, `retirement sum` IS A NUMBER
+GIVETH A Member
+DECIDE `a member` `citizen or pr` `over 55` `credit` `retirement sum` IS
+    Member WITH
+        `name` IS "M"
+        `a citizen or permanent resident of Singapore` IS `citizen or pr`
+        `of a class prescribed under section 77(1) as an applicable person` IS FALSE
+        `has attained the age of 55 years` IS `over 55`
+        `has already withdrawn on the ground of having attained 55` IS FALSE
+        `an anniversary of the date of birth has since passed, or the Minister has directed another period` IS FALSE
+        `the sum standing to the member's credit` IS `credit`
+        `the prescribed retirement sum applicable to the member` IS `retirement sum`
+        `a reserved amount standing to the member's credit` IS 0
+
+GIVEN `total` IS A NUMBER, `medisave` IS A NUMBER
+GIVETH AN Accounts
+DECIDE `accounts of` `total` `medisave` IS
+    Accounts WITH
+        `the total sum standing to the member's credit` IS `total`
+        `the sum standing to the credit of the medisave account` IS `medisave`
+
+GIVEN `member` IS A Member, `accounts` IS AN Accounts
+GIVETH A MemberAccounts
+DECIDE `a holding` `member` `accounts` IS
+    MemberAccounts WITH
+        `the member` IS `member`
+        `the accounts` IS `accounts`
+        `the Minister has approved a section 15AA(1) medisave withdrawal` IS FALSE
+
+-- $200,000 in all, of which $60,000 is medisave; retirement sum $100,000.
+`a citizen aged 60` MEANS `a member` TRUE TRUE 200000 100000
+`a foreigner aged 40` MEANS `a member` FALSE FALSE 200000 100000
+`the accounts` MEANS `accounts of` 200000 60000
+
+§ `16 -- which routes can reach the medisave account`
+
+#ASSERT NOT `the medisave account may be withdrawn by this route` `section 15(2)(a) -- having attained 55` FALSE
+#ASSERT NOT `the medisave account may be withdrawn by this route` `section 15(3) -- the annual further withdrawal` FALSE
+#ASSERT NOT `the medisave account may be withdrawn by this route` `section 15(4) -- at the Board's discretion` FALSE
+
+-- s 16(2): the s 15AA(1) route is barred EXCEPT with the Minister's approval.
+#ASSERT NOT `the medisave account may be withdrawn by this route` `section 15AA(1)` FALSE
+#ASSERT `the medisave account may be withdrawn by this route` `section 15AA(1)` TRUE
+
+-- AND THE ROUTE s 16 DOES NOT NAME. s 16(1) restricts withdrawal "under section
+-- 15(2)(a) or (3)". It says nothing about s 15(2)(b), the route for a member who
+-- is not an applicable person. So the member who ceases to be a citizen or
+-- permanent resident may take the medisave balance as well.
+#ASSERT `the medisave account may be withdrawn by this route` `section 15(2)(b) -- not being an applicable person` FALSE
+
+#ASSERT `the credit outside the medisave account` `the accounts` EQUALS 140000
+#ASSERT `the sum this route can reach` `the accounts` `section 15(2)(a) -- having attained 55` FALSE EQUALS 140000
+#ASSERT `the sum this route can reach` `the accounts` `section 15(2)(b) -- not being an applicable person` FALSE EQUALS 200000
+
+§ `The correction to the first pass`
+
+-- THE FIRST PASS WAS TOO HIGH. cpf-withdrawal.l4 computed the 55-year-old
+-- citizen's entitlement on the whole credit and got $100,000: $200,000 less the
+-- $100,000 retirement sum. s 16 takes the $60,000 medisave out of reach first,
+-- so the real figure is $140,000 less $100,000 = $40,000.
+#ASSERT `the amount this member may withdraw` `a citizen aged 60` TRUE EQUALS 100000
+#ASSERT `the amount this member may actually withdraw` (`a holding` `a citizen aged 60` `the accounts`) TRUE EQUALS 40000
+
+-- The two rules disagree by exactly the medisave balance, and that is the point
+-- of keeping both: the older rule is what s 15 says on its own, and the newer
+-- one is what s 15 and s 16 say together.
+
+-- THE ASYMMETRY, SHARPENED. The member who stays loses both the retirement sum
+-- and the medisave balance. The member who ceases to be an applicable person
+-- loses neither and takes the whole $200,000.
+#ASSERT `the amount this member may actually withdraw` (`a holding` `a foreigner aged 40` `the accounts`) TRUE EQUALS 200000
+
+-- Where the non-medisave credit will not cover the retirement sum, nothing comes
+-- out at all -- even though the member has $200,000 in the Fund.
+`a citizen aged 60 with most of it in medisave` MEANS `a member` TRUE TRUE 200000 100000
+`accounts mostly medisave` MEANS `accounts of` 200000 150000
+
+#ASSERT `the credit outside the medisave account` `accounts mostly medisave` EQUALS 50000
+#ASSERT `the amount this member may actually withdraw` (`a holding` `a citizen aged 60 with most of it in medisave` `accounts mostly medisave`) TRUE EQUALS 0
+
+-- The Board's authority under s 15(1) is still required on top.
+#ASSERT `the amount this member may actually withdraw` (`a holding` `a citizen aged 60` `the accounts`) FALSE EQUALS 0
+
+-- A citizen under 55 is on no route at all.
+`a citizen aged 40` MEANS `a member` TRUE FALSE 200000 100000
+#ASSERT `the amount this member may actually withdraw` (`a holding` `a citizen aged 40` `the accounts`) TRUE EQUALS 0
+
+§ `7 -- contributions`
+
+GIVEN `rate` IS A NUMBER, `wages` IS A NUMBER, `interval` IS A NUMBER
+    , `recovered` IS A BOOLEAN, `paid in time` IS A BOOLEAN
+GIVETH A ContributionFacts
+DECIDE `contributions` `rate` `wages` `interval` `recovered` `paid in time` IS
+    ContributionFacts WITH
+        `the employer's contribution rate from the First Schedule` IS `rate`
+        `the amount shown in the First Schedule as recoverable from the employee` IS 0
+        `the employee's monthly wages` IS `wages`
+        `the interval authorised by the Board, in months` IS `interval`
+        `the employer recovered the employee's share from the wages` IS `recovered`
+        `the employer paid the contributions to the Fund within the prescribed time` IS `paid in time`
+
+#ASSERT `the contribution payable to the Fund` (`contributions` 0.37 4000 1 TRUE TRUE) EQUALS 1480
+
+-- s 7(1A): the Board may stretch the interval, but not beyond 6 months.
+#ASSERT `the authorised interval is within section 7(1A)` (`contributions` 0.37 4000 6 TRUE TRUE)
+#ASSERT NOT `the authorised interval is within section 7(1A)` (`contributions` 0.37 4000 7 TRUE TRUE)
+
+-- s 7(3) IS NARROWER THAN A GENERAL FAILURE-TO-PAY OFFENCE. It bites only where
+-- the employer HAS ALREADY TAKEN the money out of the employee's wages. An
+-- employer who never recovered the employee's share and never paid anything is
+-- outside this subsection -- whatever other provisions may catch them.
+#ASSERT `an offence under section 7(3) is committed` (`contributions` 0.37 4000 1 TRUE FALSE)
+#ASSERT NOT `an offence under section 7(3) is committed` (`contributions` 0.37 4000 1 FALSE FALSE)
+#ASSERT NOT `an offence under section 7(3) is committed` (`contributions` 0.37 4000 1 TRUE TRUE)
+
+-- Seven years' imprisonment for failing to hand over money already deducted
+-- from an employee's wages -- the heaviest custodial maximum met anywhere in
+-- this set of seven Acts.
+#ASSERT `the maximum imprisonment under section 7(3) in years` EQUALS 7
+
+§ `25(1) -- who may nominate`
+
+#ASSERT `the member may make a nomination under section 25(1)` `a citizen aged 40` TRUE
+#ASSERT NOT `the member may make a nomination under section 25(1)` `a citizen aged 40` FALSE
+
+-- A MEMBER WHO IS NOT AN APPLICABLE PERSON MAY NOT NOMINATE, though they may
+-- withdraw the entire Fund under s 15(2)(b). The Act lets them take everything
+-- out and not say who should have it if they die first.
+#ASSERT NOT `the member may make a nomination under section 25(1)` `a foreigner aged 40` TRUE
+#ASSERT `the member is entitled to withdraw under section 15(2)(b)` `a foreigner aged 40`
+
+§ `25(1)(a)(ii)(B) -- a large nomination is split in two`
+
+-- Below the Minister's maximum, the whole portion goes into the nominee's own
+-- CPF accounts.
+#ASSERT `the amount transferred into the nominee's own accounts` 50000 80000 TRUE EQUALS 50000
+#ASSERT `the amount paid out to the nominee` 50000 80000 TRUE EQUALS 0
+
+-- Above it, the maximum is transferred and the excess is paid out.
+#ASSERT `the amount transferred into the nominee's own accounts` 120000 80000 TRUE EQUALS 80000
+#ASSERT `the amount paid out to the nominee` 120000 80000 TRUE EQUALS 40000
+
+-- A nominee who is neither citizen nor permanent resident is paid the whole
+-- portion in cash: there are no accounts to transfer it into.
+#ASSERT `the amount transferred into the nominee's own accounts` 120000 80000 FALSE EQUALS 0
+#ASSERT `the amount paid out to the nominee` 120000 80000 FALSE EQUALS 120000

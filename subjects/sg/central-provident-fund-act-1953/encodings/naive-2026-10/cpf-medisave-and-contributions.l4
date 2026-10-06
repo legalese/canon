@@ -1,0 +1,224 @@
+IMPORT prelude
+IMPORT `cpf-withdrawal`
+
+-- Central Provident Fund Act 1953 (Singapore) -- s 7, s 16 and s 25(1).
+--
+-- Three things the first pass left out, one of which CORRECTS it.
+--
+-- s 16 is the correction. cpf-withdrawal.l4 computed what a member may take out
+-- of "the sum standing to the member's credit" without excluding the MEDISAVE
+-- ACCOUNT. s 16 ring-fences that account against the ordinary withdrawal routes,
+-- so the earlier figure was too high for every member with a medisave balance --
+-- which is every member. The rules below supersede it, and the older rule is
+-- left in place and renamed rather than deleted, so the difference is visible.
+--
+-- NAIVE ENCODING. Straight from the text with the writing-l4-rules skill. No
+-- pipeline, no independent test pass, no human gate.
+--
+-- SCOPE REMAINS SMALL. The CPF Act is about 911,000 characters. This adds the
+-- contribution duty (s 7), the medisave restrictions (s 16) and the capacity to
+-- nominate (s 25(1)), and nothing else. The First Schedule contribution rates,
+-- s 13 (crediting into the three accounts), s 15AA, the housing and investment
+-- charges and the whole of Parts 3A onwards are still not encoded.
+
+§ `Central Provident Fund Act 1953 -- sections 7, 16 and 25`
+
+§§ `16 -- The medisave account is ring-fenced`
+
+-- s 16(1): "A member of the Fund is NOT ENTITLED to withdraw any sum standing
+-- to the credit of the member in the member's MEDISAVE ACCOUNT UNDER
+-- SECTION 15(2)(a) OR (3)."
+-- s 16(2): nor under s 15AA(1), "EXCEPT WITH THE MINISTER'S APPROVAL."
+-- s 16(3): "The Board MUST NOT ALLOW" a withdrawal from the medisave account
+-- under s 15(4).
+--
+-- READ THE LIST OF ROUTES IT NAMES. s 16(1) restricts withdrawal under
+-- s 15(2)(a) -- reaching 55 -- and under s 15(3) -- the annual further
+-- withdrawal. It does NOT name s 15(2)(b), the route for a member who is not an
+-- applicable person. See the note at the foot of this file.
+DECLARE Accounts HAS
+    `the total sum standing to the member's credit` IS A NUMBER
+    `the sum standing to the credit of the medisave account` IS A NUMBER
+
+-- The part of the credit that the ordinary routes can reach at all.
+GIVEN `the accounts` IS AN Accounts
+GIVETH A NUMBER
+DECIDE `the credit outside the medisave account` IS
+    `the accounts`'s `the total sum standing to the member's credit`
+        MINUS `the accounts`'s `the sum standing to the credit of the medisave account`
+
+DECLARE WithdrawalRoute IS ONE OF
+    `section 15(2)(a) -- having attained 55`
+    `section 15(2)(b) -- not being an applicable person`
+    `section 15(3) -- the annual further withdrawal`
+    `section 15(4) -- at the Board's discretion`
+    `section 15AA(1)`
+
+GIVEN `the route` IS A WithdrawalRoute, `the Minister has approved` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the medisave account may be withdrawn by this route` IF
+    CONSIDER `the route`
+    WHEN `section 15(2)(a) -- having attained 55` THEN FALSE          -- s 16(1)
+    WHEN `section 15(3) -- the annual further withdrawal` THEN FALSE  -- s 16(1)
+    WHEN `section 15(4) -- at the Board's discretion` THEN FALSE      -- s 16(3)
+    WHEN `section 15AA(1)` THEN `the Minister has approved`           -- s 16(2)
+    OTHERWISE TRUE                                                     -- s 15(2)(b)
+
+-- The sum a given route can reach, once s 16 is applied.
+GIVEN `the accounts` IS AN Accounts
+    , `the route` IS A WithdrawalRoute
+    , `the Minister has approved` IS A BOOLEAN
+GIVETH A NUMBER
+DECIDE `the sum this route can reach` IS
+    IF   `the medisave account may be withdrawn by this route` `the route` `the Minister has approved`
+    THEN `the accounts`'s `the total sum standing to the member's credit`
+    ELSE `the credit outside the medisave account` `the accounts`
+
+§§ `The corrected withdrawal figure`
+
+-- s 15 decides WHETHER money may come out and how much must be set aside;
+-- s 16 decides WHICH ACCOUNT it may come out of. Both have to be applied, and
+-- the first pass applied only the first.
+--
+-- The retirement sum under s 15(6) is set aside from the credit after excluding
+-- the reserved amount; the medisave balance is simply unavailable on these
+-- routes. So the figure is computed on the non-medisave credit throughout.
+DECLARE MemberAccounts HAS
+    `the member`        IS A Member
+    `the accounts`      IS AN Accounts
+    `the Minister has approved a section 15AA(1) medisave withdrawal` IS A BOOLEAN
+
+GIVEN `the holding` IS A MemberAccounts
+GIVETH A NUMBER
+DECIDE `the reachable credit on the 55 route` IS
+    `the credit outside the medisave account` (`the holding`'s `the accounts`)
+
+GIVEN `the holding` IS A MemberAccounts
+GIVETH A NUMBER
+DECIDE `the amount withdrawable at 55 after section 16 and the set-aside` IS
+    IF   `the reachable credit on the 55 route` `the holding`
+             AT LEAST `the holding`'s `the member`'s `the prescribed retirement sum applicable to the member`
+    THEN `the reachable credit on the 55 route` `the holding`
+             MINUS `the holding`'s `the member`'s `the prescribed retirement sum applicable to the member`
+    ELSE 0
+
+-- The member who is not an applicable person is on s 15(2)(b), which s 16 does
+-- not restrict and s 15(6) does not reach. They take everything, medisave
+-- included.
+GIVEN `the holding` IS A MemberAccounts
+GIVETH A NUMBER
+DECIDE `the amount withdrawable on ceasing to be an applicable person` IS
+    `the holding`'s `the accounts`'s `the total sum standing to the member's credit`
+
+GIVEN `the holding` IS A MemberAccounts
+    , `the Board has given its authority` IS A BOOLEAN
+GIVETH A NUMBER
+DECIDE `the amount this member may actually withdraw` IS
+    BRANCH
+        IF NOT `the Board has given its authority` THEN 0
+        IF `the member is entitled to withdraw under section 15(2)(b)` (`the holding`'s `the member`)
+            THEN `the amount withdrawable on ceasing to be an applicable person` `the holding`
+        IF `the member is entitled to withdraw under section 15(2)(a)` (`the holding`'s `the member`)
+            THEN `the amount withdrawable at 55 after section 16 and the set-aside` `the holding`
+        OTHERWISE 0
+
+§§ `7 -- The contribution duty`
+
+-- s 7(1): "EVERY employer of an employee MUST pay to the Fund MONTHLY in
+-- respect of each employee contributions at the appropriate rates set out in
+-- the FIRST SCHEDULE."
+--
+-- The rates are in the First Schedule and vary by age and wage band. They are
+-- not encoded: like Tables A and B of the Work Injury Compensation Act, they
+-- are a long table crossing page breaks, and the same extraction caution
+-- applies. The rate is therefore a supplied fact.
+--
+-- s 7(1A): the Board may authorise payment "at other intervals NOT EXCEEDING
+-- 6 MONTHS."
+-- s 7(2): "DESPITE the provisions of any written law or any contract to the
+-- contrary", the employer may recover from the employee's monthly wages the
+-- amount the First Schedule shows as recoverable.
+-- s 7(3): an employer who HAS RECOVERED the employee's share and then fails to
+-- pay it to the Fund in time commits an offence -- a fine not exceeding $10,000
+-- or imprisonment not exceeding SEVEN YEARS or both.
+`the maximum interval the Board may authorise, in months` MEANS 6
+`the maximum fine under section 7(3) in dollars` MEANS 10000
+`the maximum imprisonment under section 7(3) in years` MEANS 7
+
+DECLARE ContributionFacts HAS
+    `the employer's contribution rate from the First Schedule` IS A NUMBER
+    `the amount shown in the First Schedule as recoverable from the employee` IS A NUMBER
+    `the employee's monthly wages`              IS A NUMBER
+    `the interval authorised by the Board, in months` IS A NUMBER
+    `the employer recovered the employee's share from the wages` IS A BOOLEAN
+    `the employer paid the contributions to the Fund within the prescribed time` IS A BOOLEAN
+
+GIVEN `the facts` IS A ContributionFacts
+GIVETH A NUMBER
+DECIDE `the contribution payable to the Fund` IS
+    `the facts`'s `the employee's monthly wages`
+        TIMES `the facts`'s `the employer's contribution rate from the First Schedule`
+
+GIVEN `the facts` IS A ContributionFacts
+GIVETH A BOOLEAN
+DECIDE `the authorised interval is within section 7(1A)` IF
+    `the facts`'s `the interval authorised by the Board, in months`
+        AT MOST `the maximum interval the Board may authorise, in months`
+
+-- s 7(3) is narrower than a general failure-to-pay offence: it bites only where
+-- the employer HAS ALREADY TAKEN the money out of the employee's wages. An
+-- employer who never recovered the employee's share and never paid its own
+-- contributions is outside this subsection.
+GIVEN `the facts` IS A ContributionFacts
+GIVETH A BOOLEAN
+DECIDE `an offence under section 7(3) is committed` IF
+        `the facts`'s `the employer recovered the employee's share from the wages`
+    AND NOT `the facts`'s `the employer paid the contributions to the Fund within the prescribed time`
+
+§§ `25(1) -- Who may nominate`
+
+-- s 25(1): "any member of the Fund (BEING AN APPLICABLE PERSON) who is AT LEAST
+-- 16 YEARS OF AGE may, by a memorandum executed in such manner as the Board may
+-- prescribe, nominate any person to receive in his or her own right ..."
+--
+-- Two conditions on the member: an applicable person, and 16 or over. Note the
+-- first -- a member who has ceased to be a citizen or permanent resident may
+-- withdraw the whole Fund under s 15(2)(b) but may NOT make a nomination.
+`the minimum age to nominate` MEANS 16
+
+-- The Member record in cpf-withdrawal.l4 carries only the one age fact s 15
+-- needs -- whether the member has attained 55 -- so whether they have attained
+-- 16 is taken as its own input rather than inferred from it. Inferring it would
+-- make every member under 55 ineligible to nominate, which is not the law.
+GIVEN `the member` IS A Member
+    , `the member has attained 16 years of age` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the member may make a nomination under section 25(1)` IF
+        `the member is an applicable person` `the member`
+    AND `the member has attained 16 years of age`
+
+-- s 25(1)(a)(ii)(B): where the nominated portion "EXCEEDS SUCH MAXIMUM AMOUNT
+-- AS THE MINISTER MAY DETERMINE", the maximum is transferred into the nominee's
+-- own CPF accounts and the EXCESS is paid out to them. So a large nomination to
+-- a citizen or permanent resident is split in two.
+GIVEN `the portion nominated` IS A NUMBER
+    , `the maximum amount the Minister has determined` IS A NUMBER
+    , `the nominee is a citizen or permanent resident of Singapore` IS A BOOLEAN
+GIVETH A NUMBER
+DECIDE `the amount transferred into the nominee's own accounts` IS
+    BRANCH
+        IF NOT `the nominee is a citizen or permanent resident of Singapore` THEN 0
+        IF `the portion nominated` GREATER THAN `the maximum amount the Minister has determined`
+            THEN `the maximum amount the Minister has determined`
+        OTHERWISE `the portion nominated`
+
+GIVEN `the portion nominated` IS A NUMBER
+    , `the maximum amount the Minister has determined` IS A NUMBER
+    , `the nominee is a citizen or permanent resident of Singapore` IS A BOOLEAN
+GIVETH A NUMBER
+DECIDE `the amount paid out to the nominee` IS
+    `the portion nominated`
+        MINUS `the amount transferred into the nominee's own accounts`
+                  `the portion nominated`
+                  `the maximum amount the Minister has determined`
+                  `the nominee is a citizen or permanent resident of Singapore`

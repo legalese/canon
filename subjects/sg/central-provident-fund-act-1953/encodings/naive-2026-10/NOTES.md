@@ -7,8 +7,8 @@ pass, no human gate.
 **Edition:** 2020 Revised Edition, informal consolidation in force from
 1 July 2026.
 
-**Checks:** `l4 run cpf-cases.l4` — 27 assertions satisfied, 0 errors,
-0 warnings.
+**Checks:** `l4 run cpf-cases.l4` and `l4 run cpf-medisave-cases.l4` — 60
+assertions satisfied, 0 errors, 0 warnings.
 
 ## Scope — read this first
 
@@ -80,3 +80,86 @@ the rest, which is not the same as being right.
 - The regulations fixing the retirement sum.
 - s 15AA, s 15(4), and the charge provisions.
 - No case law was searched.
+
+
+---
+
+# Added with sections 7, 16 and 25
+
+## s 16 corrects the first pass, and the first pass was too generous
+
+The earlier note said that `the amount this member may withdraw` was "the
+function someone would want to call and the one least safe to rely on", because
+it did not read s 16. It now does, and the difference is large.
+
+**s 16 ring-fences the medisave account.** A member may not withdraw it under
+s 15(2)(a) (reaching 55) or s 15(3) (the annual further withdrawal); the Board
+must not allow it under s 15(4); and under s 15AA(1) only with the Minister's
+approval.
+
+So for a 55-year-old citizen with **$200,000** in the Fund, of which **$60,000**
+is medisave, and a **$100,000** retirement sum:
+
+| | |
+|---|---|
+| first pass, s 15 alone | $200,000 − $100,000 = **$100,000** |
+| with s 16 | ($200,000 − $60,000) − $100,000 = **$40,000** |
+
+Both rules are kept, and both are asserted, so the difference is visible rather
+than silently corrected. The older one states what s 15 says on its own; the
+newer one states what s 15 and s 16 say together.
+
+A member whose medisave balance is large enough can reach **nothing at all**: on
+$200,000 with $150,000 in medisave, the non-medisave credit is $50,000, which
+will not cover the $100,000 retirement sum, so the withdrawable amount is zero
+despite $200,000 in the Fund. Asserted.
+
+## The asymmetry, sharpened
+
+The earlier note recorded that the retirement-sum set-aside binds the member who
+stays and not the one who goes. s 16 widens that gap, because **s 16(1) names
+s 15(2)(a) and s 15(3) and does not name s 15(2)(b)**:
+
+| | retirement sum set aside? | medisave reachable? | takes |
+|---|---|---|---|
+| citizen, 60 | yes | no | **$40,000** |
+| non-citizen, 40 | no | **yes** | **$200,000** |
+
+The member who remains a citizen or permanent resident loses both. The member
+who ceases to be one loses neither. There is a coherent policy reading — the
+retirement sum funds a retirement here and medisave pays for healthcare here —
+but the difference is now a factor of five on identical balances, and it is
+assembled from three provisions that never mention each other.
+
+## Two more
+
+**s 7(3) is narrower than a general failure-to-pay offence, and far heavier.**
+It bites only where the employer **has already recovered** the employee's share
+from their wages and then fails to pay it over. An employer who never deducted
+anything and never paid anything is outside this subsection. The maximum is a
+fine not exceeding $10,000 **or imprisonment for a term not exceeding seven
+years** — the heaviest custodial maximum encountered anywhere in these seven
+Acts, and it is for keeping money already taken from a worker's pay.
+
+**A member who is not an applicable person may empty the Fund but may not say
+who gets it.** s 25(1) allows a nomination only by "a member of the Fund (**being
+an applicable person**) who is at least 16 years of age". So the same person who
+may withdraw everything under s 15(2)(b) may not make a nomination at all.
+Asserted as that pair.
+
+Also encoded: s 25(1)(a)(ii)(B) splits a large nomination to a citizen or
+permanent resident — the Minister's maximum is transferred into the nominee's
+own CPF accounts and the excess is paid out to them in cash.
+
+## Still a small fraction of the Act
+
+911,000 characters, of which this encodes s 7, s 15(1)–(6), s 16 and s 25(1).
+Not encoded: the First Schedule contribution rates, s 13 (crediting into the
+three accounts), s 15AA, s 15(4), the housing and investment charges, the rest
+of s 25, and everything from Part 3A onwards.
+
+**A caution carried over from the Work Injury Compensation Act.** The First
+Schedule contribution rates are a long table that crosses page breaks, and in
+that Act every such table in the deposited text was shifted by one row against
+its key. The CPF rates were *not* encoded partly for that reason: they should be
+recovered from the PDF and checked before anyone relies on them.
