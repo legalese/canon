@@ -1,0 +1,312 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `tasco-vn19-nouns`
+IMPORT `tasco-vn19-ch1-general`
+IMPORT `tasco-vn19-art10-waiting`
+IMPORT `tasco-vn19-ch3-exclusions`
+IMPORT `tasco-vn19-ch2-cover`
+IMPORT `tasco-vn19-test-fixtures`
+
+-- Tests for the cover: Articles 7 to 11 and the three layers together (`the outcome of`). Every
+-- expected value was worked by hand from the percentages, day limits, periods and thresholds the
+-- source prints, before the assertion was run; the working is beside each. A failing assertion is a
+-- finding, never a value to edit. Sums insured, costs, dates and the two table percentages (which the
+-- source does not contain) are hypothetical.
+--
+-- The base claim: an ordinary illness, a 5-day stay in Western medicine on 1-5 May 2026, standard
+-- contract (20 million dong for each scope), first contract from 1 Jan 2026, cost 3,000,000.
+
+§ `Tests, the cover`
+
+§§ `Article 7, scope`
+
+#ASSERT `the scope of` `III.3 surgery` EQUALS `scope C`
+#ASSERT `the scope of` `II.2 partial permanent disability from accident` EQUALS `scope B`
+#ASSERT `Article 7.3, the contract includes at least two of the three scopes` `the standard contract`
+#ASSERT NOT (`Article 7.3, the contract includes at least two of the three scopes` (`a 2026 contract insuring` (JUST 1) NOTHING NOTHING))
+-- 7.2: an accident is not a scope C event.
+#ASSERT `the outcome of` (`claiming` `III.1 hospitalisation in Western medicine` `an accident` `the illness stay claim`) EQUALS `not payable` (LIST `the benefit does not answer to the cause of the event (Article 7.2)`)
+-- 7.1: Vietnam only.
+#ASSERT `the outcome of` (`outside Vietnam` `the illness stay claim`) EQUALS `not payable` (LIST `the event was outside Vietnam (Article 7.1)`)
+-- A scope the contract does not include.
+#ASSERT `the outcome of` (`with the contract` (`a 2026 contract insuring` NOTHING (JUST 20000000) (JUST 20000000)) `the death claim`) EQUALS `not payable` (LIST `the contract does not include the scope this benefit belongs to (Articles 7.2, 7.3)`)
+
+§§ `Article 8, the programme`
+
+-- "đến 20trđ" (up to 20 million) is standard, "trên 20trđ" (over) is special.
+#ASSERT `Article 8, the programme for` `scope C` `under` (`a 2026 contract insuring` (JUST 1) (JUST 1) (JUST 20000000)) EQUALS `the standard programme`
+#ASSERT `Article 8, the programme for` `scope C` `under` (`a 2026 contract insuring` (JUST 1) (JUST 1) (JUST 20000001)) EQUALS `the special programme`
+
+§§ `Article 8 III.1 and III.2, hospital days`
+
+GIVEN `admitted` IS A DATE
+      `discharged` IS A DATE
+      `cost` IS A NUMBER
+      `used` IS A NUMBER
+      c IS A `A claim`
+GIVETH A `A claim`
+`with a stay` `admitted` `discharged` `cost` `used` c MEANS
+    `with the stay` (JUST (`a stay` `admitted` `discharged` NOTHING `cost` `used`)) c
+
+-- Standard, 20 million: 0.5% is 100,000 a day for the first 10 days, 0.3% is 60,000 from the 11th.
+-- 5 days: 500,000. 12 days: 10 x 100,000 + 2 x 60,000 = 1,120,000.
+#ASSERT `the outcome of` `the illness stay claim` EQUALS `payable` 500000
+#ASSERT `the outcome of` (`with a stay` (YMD 2026 5 1) (YMD 2026 5 12) 3000000 0 `the illness stay claim`) EQUALS `payable` 1120000
+-- Special, scope C 50 million: 250,000 a day, then 150,000; 12 days cap 2,500,000 + 300,000 =
+-- 2,800,000. A cost of 2,000,000 is paid in full; a cost of 9,000,000 is paid up to the cap.
+#ASSERT `the outcome of` (`with the contract` `the special contract` (`with a stay` (YMD 2026 5 1) (YMD 2026 5 12) 2000000 0 `the illness stay claim`)) EQUALS `payable` 2000000
+#ASSERT `the outcome of` (`with the contract` `the special contract` (`with a stay` (YMD 2026 5 1) (YMD 2026 5 12) 9000000 0 `the illness stay claim`)) EQUALS `payable` 2800000
+-- 60 days a policy year: 55 already paid, a 10-day stay pays 5 days, 500,000.
+#ASSERT `the outcome of` (`with a stay` (YMD 2026 5 1) (YMD 2026 5 10) 3000000 55 `the illness stay claim`) EQUALS `payable` 500000
+-- III.4: a 6-month contract has 60 x 6/12 = 30 days; 25 used, a 10-day stay pays 5 days, 500,000.
+#ASSERT `the outcome of` (`with the contract` (`a contract` (YMD 2026 1 1) (YMD 2026 6 30) 6 (JUST 20000000) (JUST 20000000) (JUST 20000000) 1 FALSE FALSE NOTHING) (`with a stay` (YMD 2026 5 1) (YMD 2026 5 10) 3000000 25 `the illness stay claim`)) EQUALS `payable` 500000
+-- Eastern medicine: 0.2% is 40,000 a day; 10 days 400,000. 90 days a year: 85 used pays 5 days,
+-- 200,000. A 7-month contract has 90 x 7/12 = 52.5 days; 50 used pays 2.5 days, 100,000 (no
+-- rounding, fork F39).
+#ASSERT `the outcome of` (`claiming` `III.2 hospitalisation in Eastern medicine` `an illness` (`with a stay` (YMD 2026 5 1) (YMD 2026 5 10) 3000000 0 `the illness stay claim`)) EQUALS `payable` 400000
+#ASSERT `the outcome of` (`claiming` `III.2 hospitalisation in Eastern medicine` `an illness` (`with a stay` (YMD 2026 5 1) (YMD 2026 5 10) 3000000 85 `the illness stay claim`)) EQUALS `payable` 200000
+#ASSERT `the outcome of` (`with the contract` (`a contract` (YMD 2026 1 1) (YMD 2026 7 31) 7 (JUST 20000000) (JUST 20000000) (JUST 20000000) 1 FALSE FALSE NOTHING) (`claiming` `III.2 hospitalisation in Eastern medicine` `an illness` (`with a stay` (YMD 2026 5 1) (YMD 2026 5 10) 3000000 50 `the illness stay claim`))) EQUALS `payable` 100000
+-- III.4 second paragraph: 19,800,000 already paid under scope C this year leaves 200,000.
+#ASSERT `the outcome of` (`with the state` (`a state with payments of` 0 `under B and` 19800000 `under C`) `the illness stay claim`) EQUALS `payable` 200000
+-- Article 3: another contract paid 2,000,000 of a 3,000,000 cost; special 5-day cap 1,250,000; Tasco
+-- pays the 1,000,000 left.
+#ASSERT `the outcome of` (`with another contract paying` 2000000 (`with the contract` `the special contract` `the illness stay claim`)) EQUALS `payable` 1000000
+-- A cost ordered by the insured's spouse is not a medical expense (2.16, 2.24; fork F38).
+#ASSERT `the outcome of` (`with the doctor` (JUST (`The treating doctor` WITH `holds a lawful practising licence recognised by Vietnamese law` IS TRUE, `treating within the licence and the field of training` IS TRUE, `relation to the insured` IS `a spouse, parent, parent-in-law or child of the insured`, `registered to practise as required` IS TRUE)) (`with the contract` `the special contract` `the illness stay claim`)) EQUALS `payable` 0
+-- 2.18: a 20-hour stay is no hospitalisation.
+#ASSERT `the outcome of` (`with the stay` (JUST (`a stay` (YMD 2026 5 1) (YMD 2026 5 2) (JUST 20) 3000000 0)) `the illness stay claim`) EQUALS `not payable` (LIST `the stay is not a hospitalisation as Article 2.18 defines it`)
+-- 4.4: a stay from 30 Dec 2026 to 3 Jan 2027, hours not recorded, counts 2 days in the contract:
+-- 200,000. Counted in hours, it is declined.
+#ASSERT `the outcome of` (`with the event and treatment on` (YMD 2026 12 30) (`with a stay` (YMD 2026 12 30) (YMD 2027 1 3) 3000000 0 `the illness stay claim`)) EQUALS `payable` 200000
+#ASSERT REFUSED `the outcome of` (`with the event and treatment on` (YMD 2026 12 30) (`with the stay` (JUST (`a stay` (YMD 2026 12 30) (YMD 2027 1 3) (JUST 96) 3000000 0)) `the illness stay claim`))
+-- 4.1: an event after the end date.
+#ASSERT `the outcome of` (`with the event and treatment on` (YMD 2027 1 2) (`with a stay` (YMD 2027 1 2) (YMD 2027 1 6) 3000000 0 `the illness stay claim`)) EQUALS `not payable` (LIST `the contract was not in force on the day of the event (Article 4.1)`, `the consequence arose after the contract ended (Article 4.4)`)
+-- Article 1: an insured with cancer at the start is not admitted.
+#ASSERT `the outcome of` (`with the insured` (`The insured person` WITH `nationality and residence` IS `Vietnamese`, `date of birth` IS YMD 1990 3 15, `suffering from a neurological disease` IS FALSE, `suffering from a psychiatric disease` IS FALSE, `suffering from leprosy` IS FALSE, `suffering from cancer` IS TRUE, `permanent disability or injury, in percent` IS 0, `in a period of treatment for illness or injury` IS FALSE) `the illness stay claim`) EQUALS `not payable` (LIST `the insured is not a person Article 1 admits (Articles 1, 4.1(e))`)
+
+§§ `Article 8 III.3, surgery`
+
+GIVEN `percent` IS A MAYBE NUMBER
+      `cost`    IS A NUMBER
+      k         IS A `The contract`
+GIVETH A `A claim`
+`a surgery claim at` `percent` `costing` `cost` `under` k MEANS
+    `with the contract` k
+        (`claiming` `III.3 surgery` `an illness`
+            (`with the surgery` (JUST (`a surgery` (YMD 2026 5 2) `percent` `cost`)) `the illness stay claim`))
+
+-- Standard: 10% of 20 million, 2,000,000. Special: 10% of 50 million is 5,000,000; a cost of
+-- 4,000,000 is paid in full, one of 6,000,000 up to 5,000,000. No percentage: declined (X2).
+#ASSERT `the outcome of` (`a surgery claim at` (JUST 10) `costing` 4000000 `under` `the standard contract`) EQUALS `payable` 2000000
+#ASSERT `the outcome of` (`a surgery claim at` (JUST 10) `costing` 4000000 `under` `the special contract`) EQUALS `payable` 4000000
+#ASSERT `the outcome of` (`a surgery claim at` (JUST 10) `costing` 6000000 `under` `the special contract`) EQUALS `payable` 5000000
+#ASSERT REFUSED `the outcome of` (`a surgery claim at` NOTHING `costing` 4000000 `under` `the standard contract`)
+
+§§ `Article 8 I and II, death and accident`
+
+-- I.1: the whole sum insured.
+#ASSERT `the outcome of` `the death claim` EQUALS `payable` 20000000
+#ASSERT `the outcome of` (`with the contract` `the special contract` `the death claim`) EQUALS `payable` 100000000
+
+GIVEN b IS A `A benefit`
+      j IS AN `An accidental injury`
+      c IS A `A claim`
+GIVETH A `A claim`
+`an accident claim for` b `with` j `on` c MEANS
+    `claiming` b `an accident` (`with the injury` (JUST j) c)
+
+-- II.3 temporary injury, injury table 5% (hypothetical): standard 5% of 20 million, 1,000,000.
+-- Special: 5% of 100 million is 5,000,000, cost 3,000,000 paid in full.
+#ASSERT `the outcome of` `the accident claim` EQUALS `payable` 1000000
+#ASSERT `the outcome of` (`with the contract` `the special contract` `the accident claim`) EQUALS `payable` 3000000
+-- II.2 partial permanent disability by loss, 30%: 6,000,000; no percentage: declined (X2).
+#ASSERT `the outcome of` (`an accident claim for` `II.2 partial permanent disability from accident` `with` (`an injury` `partial permanent disability by loss` (YMD 2026 5 1) (YMD 2026 5 2) (JUST 30) 0 0) `on` `the accident claim`) EQUALS `payable` 6000000
+#ASSERT REFUSED `the outcome of` (`an accident claim for` `II.2 partial permanent disability from accident` `with` (`an injury` `partial permanent disability by loss` (YMD 2026 5 1) (YMD 2026 5 2) NOTHING 0 0) `on` `the accident claim`)
+-- II.4: 18,000,000 already paid under scope B leaves 2,000,000 of the 6,000,000.
+#ASSERT `the outcome of` (`with the state` (`a state with payments of` 18000000 `under B and` 0 `under C`) (`an accident claim for` `II.2 partial permanent disability from accident` `with` (`an injury` `partial permanent disability by loss` (YMD 2026 5 1) (YMD 2026 5 2) (JUST 30) 0 0) `on` `the accident claim`)) EQUALS `payable` 2000000
+-- II.1 with Article 9: death on 1 Aug 2026 (92 days after the accident); 3,000,000 paid before for
+-- this accident: 20,000,000 - 3,000,000 = 17,000,000.
+#ASSERT `the outcome of` (`with the state` (`a state with payments of` 3000000 `under B and` 0 `under C`) (`an accident claim for` `II.1 death or total permanent disability from accident` `with` (`an injury` `death` (YMD 2026 8 1) (YMD 2026 8 1) NOTHING 0 3000000) `on` `the accident claim`)) EQUALS `payable` 17000000
+-- Death 181 days after the accident (29 Oct 2026): outside Article 9.
+#ASSERT `the outcome of` (`an accident claim for` `II.1 death or total permanent disability from accident` `with` (`an injury` `death` (YMD 2026 10 29) (YMD 2026 10 29) NOTHING 0 0) `on` `the accident claim`) EQUALS `not payable` (LIST `the death or disability was not within 180 days of the accident (Article 9)`)
+-- 4.4's exception: an accident on 1 Nov 2026, death on 15 Jan 2027, after the contract ended: paid.
+#ASSERT `the outcome of` (`with the event and treatment on` (YMD 2026 11 1) (`an accident claim for` `II.1 death or total permanent disability from accident` `with` (`an injury` `death` (YMD 2027 1 15) (YMD 2027 1 15) NOTHING 0 0) `on` `the accident claim`)) EQUALS `payable` 20000000
+-- Paralysis from an accident on 1 Nov 2026, certified 181 days later on 1 May 2027: it began within
+-- the contract and within 180 days, and the certificate is not too early: paid (F17, F25).
+#ASSERT `the outcome of` (`with the event and treatment on` (YMD 2026 11 1) (`an accident claim for` `II.1 death or total permanent disability from accident` `with` (`an injury` `total permanent disability by paralysis or assessment` (YMD 2026 11 1) (YMD 2027 5 1) NOTHING 0 0) `on` `the accident claim`)) EQUALS `payable` 20000000
+-- The same paralysis certified on day 179: too early (2.21(b)).
+#ASSERT `the outcome of` (`an accident claim for` `II.1 death or total permanent disability from accident` `with` (`an injury` `total permanent disability by paralysis or assessment` (YMD 2026 5 1) (YMD 2026 10 27) NOTHING 0 0) `on` `the accident claim`) EQUALS `not payable` (LIST `the disability was certified earlier than Article 2.21(b) or 2.22(b) allows`)
+-- Read literally (finding X17), a paralysis "occurs" when certified, and only day 180 satisfies
+-- both Article 9 (within 180 days) and Article 2.21(b) (not before 180 days).
+#ASSERT NOT (`Articles 9 and 2.21(b) read literally: a paralysis certified this many days after the accident qualifies` 179)
+#ASSERT `Articles 9 and 2.21(b) read literally: a paralysis certified this many days after the accident qualifies` 180
+#ASSERT NOT (`Articles 9 and 2.21(b) read literally: a paralysis certified this many days after the accident qualifies` 181)
+
+§§ `Article 10, waiting periods`
+
+-- Row 3, ordinary illness, 30 days from 1 Jan 2026: 30 Jan is day 29, 31 Jan day 30.
+#ASSERT `the outcome of` (`with the event and treatment on` (YMD 2026 1 30) (`with a stay` (YMD 2026 1 30) (YMD 2026 2 3) 3000000 0 `the illness stay claim`)) EQUALS `not payable` (LIST `the event fell within a waiting period (Article 10)`)
+#ASSERT `the outcome of` (`with the event and treatment on` (YMD 2026 1 31) (`with a stay` (YMD 2026 1 31) (YMD 2026 2 4) 3000000 0 `the illness stay claim`)) EQUALS `payable` 500000
+-- The illness began inside the period, the treatment after it: still inside (Article 10's definition).
+#ASSERT `the outcome of` (`with treatment beginning on` (YMD 2026 2 15) (`with the event and treatment on` (YMD 2026 1 20) (`with a stay` (YMD 2026 2 15) (YMD 2026 2 19) 3000000 0 `the illness stay claim`))) EQUALS `not payable` (LIST `the event fell within a waiting period (Article 10)`)
+-- A reinstatement on 20 Apr 2026 restarts the count: 1 May is day 11.
+#ASSERT `the outcome of` (`with the history` (`The history` WITH `the previous contract` IS NOTHING, `start of the insured's continuous participation` IS YMD 2026 1 1, `date of the most recent reinstatement` IS JUST (YMD 2026 4 20)) `the illness stay claim`) EQUALS `not payable` (LIST `the event fell within a waiting period (Article 10)`)
+-- Accidents have none (row 1): an accident on 2 Jan 2026 is paid.
+#ASSERT `the outcome of` (`with the event and treatment on` (YMD 2026 1 2) (`with the injury` (JUST (`an injury` `temporary injury` (YMD 2026 1 2) (YMD 2026 1 2) (JUST 5) 3000000 0)) `the accident claim`)) EQUALS `payable` 1000000
+
+-- A 5-day maternity stay in Western medicine from the given day; the flag is the 10.2(d) "miscarriage,
+-- or a complication needing curettage".
+GIVEN k     IS A `A maternity event`
+      cur   IS A BOOLEAN
+      `day` IS A DATE
+      c     IS A `A claim`
+GIVETH A `A claim`
+`a maternity stay` k cur `day` c MEANS
+    `with the maternity event` (JUST k) cur
+        (`claiming` `III.1 hospitalisation in Western medicine` `maternity`
+            (`with the illness` NOTHING
+                (`with the event and treatment on` `day`
+                    (`with a stay` `day` (`day` PLUS 4) 3000000 0 c))))
+
+-- Row 5, complications, 90 days: 31 Mar 2026 is day 89, 1 Apr day 90. Row 6, childbirth, 270 days:
+-- 28 Sep 2026 is day 270. Other maternity care has no row: declined.
+#ASSERT `the outcome of` (`a maternity stay` `a pregnancy complication` FALSE (YMD 2026 3 31) `the illness stay claim`) EQUALS `not payable` (LIST `the event fell within a waiting period (Article 10)`)
+#ASSERT `the outcome of` (`a maternity stay` `a pregnancy complication` FALSE (YMD 2026 4 1) `the illness stay claim`) EQUALS `payable` 500000
+#ASSERT `the outcome of` (`a maternity stay` `childbirth` FALSE (YMD 2026 9 27) `the illness stay claim`) EQUALS `not payable` (LIST `the event fell within a waiting period (Article 10)`)
+#ASSERT `the outcome of` (`a maternity stay` `childbirth` FALSE (YMD 2026 9 28) `the illness stay claim`) EQUALS `payable` 500000
+#ASSERT REFUSED `the outcome of` (`a maternity stay` `other maternity care` FALSE (YMD 2026 9 28) `the illness stay claim`)
+
+-- Group contracts. 150 persons, a group: the over-100 column. Exactly 100: no column (finding X1).
+GIVEN `persons` IS A NUMBER
+      `group` IS A BOOLEAN
+      `clause` IS A BOOLEAN
+      `row 3` IS A MAYBE NUMBER
+GIVETH A `The contract`
+`a 2026 group contract of` `persons` `group` `clause` `row 3` MEANS
+    `a contract` (YMD 2026 1 1) (YMD 2026 12 31) 12 (JUST 20000000) (JUST 20000000) (JUST 20000000) `persons` `group` `clause` `row 3`
+
+#ASSERT REFUSED `the outcome of` (`with the contract` (`a 2026 group contract of` 100 TRUE FALSE NOTHING) `the illness stay claim`)
+        BECAUSE "Article 10.1 has a column for contracts of under 100 persons and one for group contracts of over 100 persons, and none for a contract of exactly 100"
+-- Rows 1 and 4 print the same figure in both columns, so an accident is answered even at 100 persons.
+#ASSERT `the outcome of` (`with the contract` (`a 2026 group contract of` 100 TRUE FALSE NOTHING) `the accident claim`) EQUALS `payable` 1000000
+#ASSERT `the outcome of` (`with the contract` (`a 2026 group contract of` 99 TRUE FALSE NOTHING) `the illness stay claim`) EQUALS `payable` 500000
+#ASSERT `the outcome of` (`with the contract` (`a 2026 group contract of` 150 TRUE FALSE NOTHING) `the illness stay claim`) EQUALS `payable` 500000
+#ASSERT REFUSED `the outcome of` (`with the contract` (`a 2026 group contract of` 150 FALSE FALSE NOTHING) `the illness stay claim`)
+-- "or as agreed": a group contract that agrees 0 days for row 3 pays an illness on 2 Jan.
+#ASSERT `the outcome of` (`with the contract` (`a 2026 group contract of` 150 TRUE FALSE (JUST 0)) (`with the event and treatment on` (YMD 2026 1 2) (`with a stay` (YMD 2026 1 2) (YMD 2026 1 6) 3000000 0 `the illness stay claim`))) EQUALS `payable` 500000
+-- Special disease in the first year: under 100 persons, excluded by 11.17; a group of 150 is not,
+-- but waits 365 days (row 2); with the Article 10.2 clause it waits none.
+#ASSERT `the outcome of` (`with the illness` (JUST `a special disease`) `the illness stay claim`) EQUALS `not payable` (LIST (`excluded by` `Article 11.17`))
+#ASSERT `the outcome of` (`with the contract` (`a 2026 group contract of` 150 TRUE FALSE NOTHING) (`with the illness` (JUST `a special disease`) `the illness stay claim`)) EQUALS `not payable` (LIST `the event fell within a waiting period (Article 10)`)
+#ASSERT `the outcome of` (`with the contract` (`a 2026 group contract of` 150 TRUE TRUE NOTHING) (`with the illness` (JUST `a special disease`) `the illness stay claim`)) EQUALS `payable` 500000
+-- 10.2(d): childbirth on 16 May 2026, day 135, under the clause: half the benefit, 250,000; a
+-- miscarriage on 15 Feb, day 45: 45/90 of it, 250,000.
+#ASSERT `the outcome of` (`with the contract` (`a 2026 group contract of` 150 TRUE TRUE NOTHING) (`a maternity stay` `childbirth` FALSE (YMD 2026 5 16) `the illness stay claim`)) EQUALS `payable` 250000
+#ASSERT `the outcome of` (`with the contract` (`a 2026 group contract of` 150 TRUE TRUE NOTHING) (`a maternity stay` `a pregnancy complication` TRUE (YMD 2026 2 15) `the illness stay claim`)) EQUALS `payable` 250000
+-- Second year: a special disease after a continuous renewal from 1 Jan 2025: row 2's 365 days and
+-- 11.17's first year have both run.
+#ASSERT `the outcome of` (`with the history` (`a renewal of` `the 2025 standard contract` `continuous since` (YMD 2025 1 1)) (`with the illness` (JUST `a special disease`) `the illness stay claim`)) EQUALS `payable` 500000
+-- Finding: in a leap year, row 2's 365 days run out a day before 11.17's first year does.
+-- Continuous participation from 1 Jan 2028: 31 Dec 2028 is day 365 and still the first year.
+`the leap-year claim` MEANS
+    `with the contract` (`a contract` (YMD 2028 1 1) (YMD 2028 12 31) 12 (JUST 20000000) (JUST 20000000) (JUST 20000000) 1 FALSE FALSE NOTHING)
+        (`with the history` (`a first contract from` (YMD 2028 1 1))
+            (`with the illness` (JUST `a special disease`)
+                (`with the event and treatment on` (YMD 2028 12 31)
+                    (`with a stay` (YMD 2028 12 31) (YMD 2028 12 31) 3000000 0 `the illness stay claim`))))
+#ASSERT `Article 10, the waiting period has run` `the leap-year claim`
+#ASSERT `Article 11.17 applies to` `the leap-year claim`
+-- An increase serves its own waiting period (Article 5, second paragraph; F27): C raised from 10 to
+-- 20 million at renewal; an illness on 15 Jan 2026 is past the 30 days counted from 1 Jan 2025 but
+-- not those counted from 1 Jan 2026, so only 10 million is available: 5 x 0.5% x 10 million = 250,000.
+#ASSERT `the outcome of` (`with the history` (`a renewal of` (`a previous contract` (YMD 2025 1 1) (YMD 2025 12 31) (JUST 20000000) (JUST 20000000) (JUST 10000000)) `continuous since` (YMD 2025 1 1)) (`with the event and treatment on` (YMD 2026 1 15) (`with a stay` (YMD 2026 1 15) (YMD 2026 1 19) 3000000 0 `the illness stay claim`))) EQUALS `payable` 250000
+
+§§ `Article 11, exclusions: each limb, and a near miss`
+
+GIVEN ks IS A LIST OF `A circumstance of the event`
+GIVETH A LIST OF `An exclusion of Article 11`
+`the exclusions for a stay with` ks MEANS
+    `Article 11, the exclusions that apply to` (`with the circumstances` ks `the illness stay claim`)
+
+#ASSERT `the exclusions for a stay with` EMPTY EQUALS EMPTY
+#ASSERT `the exclusions for a stay with` (LIST `an intentional act of a lawful heir of the insured`) EQUALS LIST `Article 11.1`
+#ASSERT `the exclusions for a stay with` (LIST `the insured took part in a fight, not confirmed as self-defence`) EQUALS LIST `Article 11.14`
+#ASSERT `the exclusions for a stay with` (LIST `alcohol, beer, drugs or a similar stimulant used by the insured caused it`) EQUALS LIST `Article 11.2`
+#ASSERT `the exclusions for a stay with` (LIST `the insured was driving a vehicle`) EQUALS EMPTY
+-- 11.3, the limits as printed (F34): breath over 0.25, blood over 50; at the limit, not over.
+GIVEN `breath` IS A MAYBE NUMBER
+      `blood`  IS A MAYBE NUMBER
+      `driving` IS A BOOLEAN
+GIVETH A LIST OF `An exclusion of Article 11`
+`the exclusions for readings` `breath` `blood` `driving` MEANS
+    `Article 11, the exclusions that apply to`
+        (`with alcohol readings` `breath` `blood`
+            (`with the circumstances` (IF `driving` THEN (LIST `the insured was driving a vehicle`) ELSE EMPTY) `the illness stay claim`))
+
+#ASSERT `the exclusions for readings` (JUST 0.26) NOTHING TRUE EQUALS LIST `Article 11.3`
+#ASSERT `the exclusions for readings` (JUST 0.25) NOTHING TRUE EQUALS EMPTY
+#ASSERT `the exclusions for readings` NOTHING (JUST 51) TRUE EQUALS LIST `Article 11.3`
+#ASSERT `the exclusions for readings` NOTHING (JUST 50) TRUE EQUALS EMPTY
+#ASSERT `the exclusions for readings` (JUST 0.30) NOTHING FALSE EQUALS EMPTY
+#ASSERT `the exclusions for a stay with` (LIST `the insured was driving having used drugs, addictive or similar stimulant substances`) EQUALS LIST `Article 11.3`
+-- 11.4 needs no link to the event (finding X7): a traffic offence while driving excludes an illness stay.
+#ASSERT `the exclusions for a stay with` (LIST `the insured was driving a vehicle`, `the insured broke traffic law while driving a vehicle`) EQUALS LIST `Article 11.4`
+#ASSERT `the exclusions for a stay with` (LIST `the insured broke a rule of a local authority, an agency or a social organisation`) EQUALS LIST `Article 11.4`
+-- 11.5: treatment at a workplace medical unit, by an unregistered doctor, or against directions.
+#ASSERT `Article 11, the exclusions that apply to` (`with the facility` (JUST (`a facility of kind` `a workplace medical unit`)) `the illness stay claim`) EQUALS LIST `Article 11.5`
+#ASSERT `Article 11, the exclusions that apply to` (`with the doctor` (JUST (`The treating doctor` WITH `holds a lawful practising licence recognised by Vietnamese law` IS TRUE, `treating within the licence and the field of training` IS TRUE, `relation to the insured` IS `none`, `registered to practise as required` IS FALSE)) `the illness stay claim`) EQUALS LIST `Article 11.5`
+#ASSERT `the exclusions for a stay with` (LIST `treatment or medication not as the treating doctor directed`) EQUALS LIST `Article 11.5`
+-- 11.6, with 2.26 read literally (finding X6): climbing with gear is excluded, without gear is not.
+#ASSERT `the exclusions for a stay with` (LIST `aviation, other than as a ticketed passenger`) EQUALS LIST `Article 11.6`
+#ASSERT `the exclusions for a stay with` (LIST `taking part in` (`mountain or rock climbing` TRUE)) EQUALS LIST `Article 11.6`
+#ASSERT `the exclusions for a stay with` (LIST `taking part in` (`mountain or rock climbing` FALSE)) EQUALS EMPTY
+#ASSERT `the exclusions for a stay with` (LIST `taking part in` `boxing`) EQUALS LIST `Article 11.6`
+#ASSERT `the exclusions for a stay with` (LIST `training for or competing in a professional sport`) EQUALS LIST `Article 11.6`
+#ASSERT `the exclusions for a stay with` (LIST `hospitalisation for neurasthenia, physical debility, a mental disorder, a sleep disorder, insomnia, spinal degeneration or spina bifida`) EQUALS LIST `Article 11.7`
+#ASSERT `the exclusions for a stay with` (LIST `treatment or surgery of a congenital disease or defect`) EQUALS LIST `Article 11.8`
+#ASSERT `the exclusions for a stay with` (LIST `treatment or surgery at the insured's own request`) EQUALS LIST `Article 11.8`
+#ASSERT `the exclusions for a stay with` (LIST `an injury, or an indication for treatment or surgery, existing before the start date`) EQUALS LIST `Article 11.8`
+#ASSERT `the exclusions for a stay with` (LIST `malaria, tuberculosis or an occupational disease`) EQUALS LIST `Article 11.9`
+#ASSERT `the exclusions for a stay with` (LIST `bone-marrow failure, leukaemia or artificial kidney dialysis`) EQUALS LIST `Article 11.9`
+#ASSERT `the exclusions for a stay with` (LIST `treatment of a sexually transmitted disease`) EQUALS LIST `Article 11.10`
+#ASSERT `the exclusions for a stay with` (LIST `illness related to HIV or AIDS`) EQUALS LIST `Article 11.10`
+#ASSERT `the exclusions for a stay with` (LIST `experimental or scientifically unrecognised treatment`) EQUALS LIST `Article 11.11`
+#ASSERT `the exclusions for a stay with` (LIST `cosmetic treatment, cosmetic surgery, or orthopaedic correction`) EQUALS LIST `Article 11.11`
+#ASSERT `the exclusions for a stay with` (LIST `supplying, maintaining, fitting, repairing or replacing a medical device or a prosthesis`) EQUALS LIST `Article 11.12`
+#ASSERT `the exclusions for a stay with` (LIST `family planning, infertility, assisted reproduction, sexual dysfunction, artificial insemination, hormone therapy or gender change`) EQUALS LIST `Article 11.13`
+#ASSERT `the exclusions for a stay with` (LIST `hospitalisation for a check-up or medical assessment unrelated to treatment`) EQUALS LIST `Article 11.15`
+#ASSERT `the exclusions for a stay with` (LIST `vaccination or preventive medicine, not after an accident or an animal or insect bite`) EQUALS LIST `Article 11.15`
+#ASSERT `the exclusions for a stay with` (LIST `degeneration of hearing or sight, cataract, or a natural refractive error`) EQUALS LIST `Article 11.16`
+#ASSERT `the exclusions for a stay with` (LIST `an epidemic declared by a competent authority`) EQUALS LIST `Article 11.18`
+#ASSERT `the exclusions for a stay with` (LIST `a catastrophe: earthquake, volcano, tsunami, radiation, asbestos, war, civil war, strike, terrorism or riot`) EQUALS LIST `Article 11.18`
+#ASSERT `the exclusions for a stay with` (LIST `alcohol, beer, drugs or a similar stimulant used by the insured caused it`, `the insured took part in a fight, not confirmed as self-defence`) EQUALS LIST `Article 11.2`, `Article 11.14`
+-- Through the outcome: a fracture set by orthopaedic surgery after an accident, read as "chỉnh hình"
+-- (finding X3), is not paid.
+#ASSERT `the outcome of` (`with the circumstances` (LIST `cosmetic treatment, cosmetic surgery, or orthopaedic correction`) `the accident claim`) EQUALS `not payable` (LIST (`excluded by` `Article 11.11`))
+-- 2.11 lists tuberculosis ("lao các loại") as a special disease, covered from the second year;
+-- 11.9 excludes it outright, so that cover never pays (finding X22). The same second-year special
+-- disease without tuberculosis is paid.
+#ASSERT `the outcome of` (`with the circumstances` (LIST `malaria, tuberculosis or an occupational disease`) (`with the history` (`a renewal of` `the 2025 standard contract` `continuous since` (YMD 2025 1 1)) (`with the illness` (JUST `a special disease`) `the illness stay claim`))) EQUALS `not payable` (LIST (`excluded by` `Article 11.9`))
+
+§§ `Several layers at once`
+
+-- Special contract for 2027 (A and B 100 million, C 50 million), renewed continuously from a 2026
+-- contract whose scope C was 30 million. A special disease, a 12-day stay on 1-12 Mar 2027 costing
+-- 9,000,000, of which another contract paid 1,000,000.
+--   cover: Article 1 met; in force; 11.17's first year ended 1 Jan 2027; row 2's 365 days from 1 Jan
+--     2026 have run. The 20-million increase has its own 365 days from 1 Jan 2027, not run, so only
+--     30 million is available (F27).
+--   programme: special (50 million > 20 million).
+--   cap: 10 x 0.5% x 30 million + 2 x 0.3% x 30 million = 1,500,000 + 180,000 = 1,680,000.
+--   cost: 9,000,000 - 1,000,000 (Article 3) = 8,000,000, more than the cap.
+--   III.4: nothing paid before this year; 1,680,000 is under 30 million.
+`the layered claim` MEANS
+    `with the contract` (`a contract` (YMD 2027 1 1) (YMD 2027 12 31) 12 (JUST 100000000) (JUST 100000000) (JUST 50000000) 1 FALSE FALSE NOTHING)
+        (`with the history` (`a renewal of` (`a previous contract` (YMD 2026 1 1) (YMD 2026 12 31) (JUST 100000000) (JUST 100000000) (JUST 30000000)) `continuous since` (YMD 2026 1 1))
+            (`with the illness` (JUST `a special disease`)
+                (`with another contract paying` 1000000
+                    (`with the event and treatment on` (YMD 2027 3 1)
+                        (`with a stay` (YMD 2027 3 1) (YMD 2027 3 12) 9000000 0 `the illness stay claim`)))))
+
+#ASSERT `the outcome of` `the layered claim` EQUALS `payable` 1680000
