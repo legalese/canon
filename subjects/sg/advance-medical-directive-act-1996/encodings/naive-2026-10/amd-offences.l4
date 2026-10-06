@@ -1,0 +1,326 @@
+IMPORT prelude
+IMPORT `amd-act`
+
+-- Advance Medical Directive Act 1996 (Singapore) -- ss 11 to 21.
+--
+-- The rest of the Act, after the decision procedures in amd-act.l4. These
+-- sections do not decide whether a directive may be acted on; they say what the
+-- Act does NOT do (ss 11-13, 17, 18), create four offences (ss 14-16), protect
+-- those who act in good faith (s 19), and settle a question of causation
+-- (s 20).
+--
+-- NAIVE ENCODING. Straight from the text with the writing-l4-rules skill. No
+-- pipeline, no independent test pass, no human gate.
+--
+-- NOT ENCODED: s 22 (the regulation power), which confers a power and decides
+-- nothing.
+
+§ `Advance Medical Directive Act 1996 -- sections 11 to 21`
+
+§§ `11 to 13 and 17 to 18 -- what the Act does not touch`
+
+-- These five sections are all savings. They matter to an encoding because each
+-- one marks a question the Act does NOT answer, and a system built on this must
+-- not pretend otherwise.
+--
+-- s 11: the Act "does not apply to palliative care and does not affect any
+--   right, power or duty which a medical practitioner or any other person has
+--   in relation to palliative care."
+-- s 12(1): ss 3 and 10 do not derogate from a medical practitioner's duty to
+--   inform a conscious and rational patient of the available treatments.
+-- s 12(2): the Act does not affect a patient's right to make decisions about
+--   extraordinary life-sustaining treatment while able to do so.
+-- s 13(1): the Act "does not affect the right of any person to REFUSE medical
+--   or surgical treatment."
+-- s 17(1): nothing in the Act authorises "an act that causes or accelerates
+--   death as distinct from an act that permits the dying process to take its
+--   natural course"; s 17(2) declares that nothing in it condones abetment of
+--   suicide, mercy killing or euthanasia.
+-- s 18(1): making a directive does not affect a policy of insurance.
+DECLARE QuestionAsked IS ONE OF
+    `whether palliative care may be given or withheld`              -- s 11
+    `whether the practitioner must inform a conscious patient of the options` -- s 12(1)
+    `whether a conscious patient may decide about life-sustaining treatment`  -- s 12(2)
+    `whether a person may refuse medical or surgical treatment`     -- s 13(1)
+    `whether an act that causes or accelerates death is authorised` -- s 17(1)
+    `whether euthanasia or abetment of suicide is permitted`        -- s 17(2)
+    `whether making a directive affects a policy of insurance`      -- s 18(1)
+    `whether a directive may be acted on`                           -- the Act's own question
+
+GIVEN `the question` IS A QuestionAsked
+GIVETH A BOOLEAN
+DECIDE `this Act answers the question` IF
+    CONSIDER `the question`
+    WHEN `whether a directive may be acted on` THEN TRUE
+    OTHERWISE FALSE
+
+-- s 17(1) is the one saving that is also a limit on what any directive can do:
+-- a directive permits the dying process to take its course, and authorises
+-- nothing that causes or accelerates death.
+GIVEN `the act causes or accelerates death as distinct from permitting the dying process to take its natural course` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the act is outside anything this Act authorises` IF
+    `the act causes or accelerates death as distinct from permitting the dying process to take its natural course`
+
+§§ `14 -- Obtaining a directive by fraud, forging one, or concealing a revocation`
+
+-- s 14(1): a person who --
+--   (a) "by any deception, fraud, misstatement, unconscionable conduct or undue
+--       influence, procures or obtains, directly or indirectly, the execution by
+--       another person of a directive";
+--   (b) "falsifies or forges the directive of another person"; or
+--   (c) "WILFULLY conceals or withholds personal knowledge of a revocation of a
+--       directive",
+-- is guilty of an offence: a fine not exceeding $10,000 or imprisonment not
+-- exceeding 3 years or both.
+--
+-- Only limb (c) carries a mental element on its face. (a) and (b) describe the
+-- conduct and leave it there.
+DECLARE Section14Conduct HAS
+    `procured the execution of a directive by deception, fraud, misstatement, unconscionable conduct or undue influence` IS A BOOLEAN   -- (a)
+    `falsified or forged the directive of another person` IS A BOOLEAN   -- (b)
+    `concealed or withheld personal knowledge of a revocation` IS A BOOLEAN   -- (c)
+    `the concealment was wilful`                IS A BOOLEAN   -- (c)
+
+GIVEN `the conduct` IS A Section14Conduct
+GIVETH A BOOLEAN
+DECIDE `limb (c) of section 14(1) is made out` IF
+        `the conduct`'s `concealed or withheld personal knowledge of a revocation`
+    AND `the conduct`'s `the concealment was wilful`
+
+GIVEN `the conduct` IS A Section14Conduct
+GIVETH A BOOLEAN
+DECIDE `an offence under section 14(1) is made out` IF
+        `the conduct`'s `procured the execution of a directive by deception, fraud, misstatement, unconscionable conduct or undue influence`
+    ..  `the conduct`'s `falsified or forged the directive of another person`
+    OR  `limb (c) of section 14(1) is made out` `the conduct`
+
+`the maximum fine under section 14 in dollars` MEANS 10000
+`the maximum imprisonment under section 14 in years` MEANS 3
+
+-- s 14(2): a person with one of FOUR interests who "is guilty of an offence
+-- under subsection (1) (WHETHER OR NOT HE OR SHE HAS BEEN CONVICTED of that
+-- offence) shall FORFEIT any interest under the will, policy, instrument,
+-- intestacy or memorandum ..."
+--
+-- Note two things. The forfeiture does not wait for a conviction. And the list
+-- of four interests is the s 3(3) witness list MINUS the registered objection --
+-- so it is a FOURTH version of that list, differing again from ss 9(9) and
+-- 10(4). See the note in NOTES.md.
+GIVEN `the conduct` IS A Section14Conduct, `the interests` IS AN Interests
+GIVETH A BOOLEAN
+DECIDE `the person holds an interest within section 14(2)` IF
+        `the interests`'s `a beneficiary under the patient's will or any policy of insurance`
+    ..  `the interests`'s `has an interest under an instrument under which the patient is donor, settlor or grantor`
+    ..  `the interests`'s `would be entitled to an interest in the estate on the patient's intestacy`
+    OR  `the interests`'s `would be entitled to the patient's provident fund moneys on death`
+
+GIVEN `the conduct` IS A Section14Conduct, `the interests` IS AN Interests
+GIVETH A BOOLEAN
+DECIDE `the interest is forfeited under section 14(2)` IF
+        `an offence under section 14(1) is made out` `the conduct`
+    AND `the person holds an interest within section 14(2)` `the conduct` `the interests`
+
+-- s 14(3): "Where a person is CHARGED for an offence under subsection (1), NO
+-- PERSON MAY ACT ON A DIRECTIVE unless it is ascertained that the directive has
+-- been validly and voluntarily made ..."
+--
+-- A charge, not a conviction, freezes the directive. This is a further bar on
+-- top of the ones in amd-act.l4.
+GIVEN `a person has been charged with an offence under section 14(1) in respect of this directive` IS A BOOLEAN
+    , `it has been ascertained that the directive was validly and voluntarily made` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `section 14(3) bars acting on the directive` IF
+        `a person has been charged with an offence under section 14(1) in respect of this directive`
+    AND NOT `it has been ascertained that the directive was validly and voluntarily made`
+
+-- s 14(4): "Where a person is CONVICTED of an offence under subsection (1), the
+-- directive is DEEMED TO BE REVOKED and has no effect."
+GIVEN `a person has been convicted of an offence under section 14(1) in respect of this directive` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the directive is deemed revoked under section 14(4)` IF
+    `a person has been convicted of an offence under section 14(1) in respect of this directive`
+
+§§ `15 -- Asking whether a directive has been made`
+
+-- s 15(1): "a person who has or who will be likely to have the medical care of
+-- any patient ... MUST NOT ASK or otherwise enquire of the patient as to
+-- whether or not the patient has made or intends to make a directive."
+--
+-- s 15(2) carves out a discussion by the practitioner responsible for the
+-- patient's care which is (a) consistent with good medical practice, (b) held
+-- in the context of that relationship, and (c) in furtherance of public
+-- education. All three, cumulatively.
+DECLARE EnquiryFacts HAS
+    `the person has or will likely have the medical care of the patient` IS A BOOLEAN
+    `the person asked or enquired whether a directive has been or will be made` IS A BOOLEAN
+    `the person is the medical practitioner responsible for the patient's care` IS A BOOLEAN
+    `the discussion was consistent with good medical practice` IS A BOOLEAN   -- (2)(a)
+    `the discussion was held in the context of the practitioner-patient relationship` IS A BOOLEAN   -- (2)(b)
+    `the discussion was in furtherance of the purposes of public education` IS A BOOLEAN   -- (2)(c)
+
+GIVEN `the facts` IS AN EnquiryFacts
+GIVETH A BOOLEAN
+DECIDE `the section 15(2) exception applies` IF
+        `the facts`'s `the person is the medical practitioner responsible for the patient's care`
+    AND `all three conditions of section 15(2) are met` `the facts`
+
+GIVEN `the facts` IS AN EnquiryFacts
+GIVETH A BOOLEAN
+DECIDE `all three conditions of section 15(2) are met` IF
+        `the facts`'s `the discussion was consistent with good medical practice`
+    AND `the facts`'s `the discussion was held in the context of the practitioner-patient relationship`
+    AND `the facts`'s `the discussion was in furtherance of the purposes of public education`
+
+GIVEN `the facts` IS AN EnquiryFacts
+GIVETH A BOOLEAN
+DECIDE `the person contravenes section 15(1)` IF
+        `the facts`'s `the person has or will likely have the medical care of the patient`
+    AND `the facts`'s `the person asked or enquired whether a directive has been or will be made`
+    AND NOT `the section 15(2) exception applies` `the facts`
+
+-- s 15(3): "EXCEPT where a patient has been determined in accordance with
+-- section 9 to be suffering from a terminal illness, ALL INFORMATION relating
+-- to the patient's making of a directive, or of the patient's intention to make
+-- a directive ... must be kept CONFIDENTIAL".
+--
+-- The confidentiality lifts on the s 9 determination, which is also the moment
+-- the Registrar may disclose the register under s 6(3)(c).
+GIVEN `the patient has been determined under section 9 to be terminally ill` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the information must be kept confidential` IF
+    NOT `the patient has been determined under section 9 to be terminally ill`
+
+`the maximum fine under section 15 in dollars` MEANS 5000
+`the maximum imprisonment under section 15 in months` MEANS 12
+
+§§ `16 -- Requiring or prohibiting a directive as a condition`
+
+-- s 16(1): "Any person who REQUIRES OR PROHIBITS the making of a directive as a
+-- condition for being insured for, or receiving medical or health care
+-- services" commits an offence.
+--
+-- Both directions are caught: an insurer may not demand a directive, and may
+-- not forbid one either.
+--
+-- s 16(2): "Any condition of a policy of insurance mentioned in subsection (1)
+-- is VOID TO THE EXTENT that it requires or prohibits the making of a
+-- directive." Severance, like s 8 of the Employment Act, not destruction of the
+-- policy.
+GIVEN `the condition requires the making of a directive` IS A BOOLEAN
+    , `the condition prohibits the making of a directive` IS A BOOLEAN
+    , `it is a condition for being insured or for receiving medical or health care services` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `an offence under section 16(1) is committed` IF
+        `it is a condition for being insured or for receiving medical or health care services`
+    AND `the condition either requires or prohibits a directive` `the condition requires the making of a directive` `the condition prohibits the making of a directive`
+
+GIVEN `the condition requires the making of a directive` IS A BOOLEAN
+    , `the condition prohibits the making of a directive` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the condition either requires or prohibits a directive` IF
+        `the condition requires the making of a directive`
+    OR  `the condition prohibits the making of a directive`
+
+GIVEN `the condition requires the making of a directive` IS A BOOLEAN
+    , `the condition prohibits the making of a directive` IS A BOOLEAN
+    , `it is a condition for being insured or for receiving medical or health care services` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the condition is void to that extent under section 16(2)` IF
+    `an offence under section 16(1) is committed`
+        `the condition requires the making of a directive`
+        `the condition prohibits the making of a directive`
+        `it is a condition for being insured or for receiving medical or health care services`
+
+§§ `19 -- Protection for good faith decisions`
+
+-- s 19(1): a medical practitioner "shall NOT be subject to civil or criminal
+-- liability or discipline for professional misconduct for a DECISION made by
+-- him or her IN GOOD FAITH AND WITHOUT NEGLIGENCE as to whether --
+--   (a) a patient is, or is not, suffering from a terminal illness;
+--   (b) a patient has revoked, or intended to revoke, a directive;
+--   (c) a patient was, or was not, at the time of making a directive, capable
+--       of understanding the nature and consequences of the directive; or
+--   (d) a directive was valid."
+--
+-- Two conditions, both required: good faith AND absence of negligence. Good
+-- faith alone is not enough, which is what s 20(2) then confirms.
+DECLARE ProtectedDecision IS ONE OF
+    `whether the patient is suffering from a terminal illness`      -- (a)
+    `whether the patient has revoked or intended to revoke a directive` -- (b)
+    `whether the patient could understand the directive when making it` -- (c)
+    `whether a directive was valid`                                 -- (d)
+    `some other decision`
+
+GIVEN `the decision` IS A ProtectedDecision
+GIVETH A BOOLEAN
+DECIDE `the decision is one section 19(1) names` IF
+    CONSIDER `the decision`
+    WHEN `some other decision` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the decision` IS A ProtectedDecision
+    , `made in good faith` IS A BOOLEAN
+    , `made without negligence` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the practitioner is protected by section 19(1)` IF
+        `the decision is one section 19(1) names` `the decision`
+    AND `made in good faith`
+    AND `made without negligence`
+
+-- s 19(2): a person acting on a practitioner's instructions is protected for
+-- GIVING EFFECT to a directive "in the ABSENCE OF KNOWLEDGE of revocation or
+-- intended revocation". A different test: not good faith and care, but simple
+-- ignorance of the revocation.
+GIVEN `the person acted under a medical practitioner's instructions` IS A BOOLEAN
+    , `the person knew of a revocation or intended revocation` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the person is protected by section 19(2)` IF
+        `the person acted under a medical practitioner's instructions`
+    AND NOT `the person knew of a revocation or intended revocation`
+
+§§ `20 -- Causation of death`
+
+-- s 20(1): "For the purposes of the laws of Singapore, the non-application ...
+-- or the withdrawal of extraordinary life-sustaining treatment from a person
+-- suffering from a terminal illness DOES NOT CONSTITUTE A CAUSE OF DEATH where
+-- the non-application or withdrawal was as a result of and IN COMPLIANCE WITH a
+-- directive VALIDLY MADE in accordance with this Act."
+--
+-- s 20(2): "This section does NOT relieve a medical practitioner from the
+-- consequences of a NEGLIGENT DECISION as to whether or not a patient is
+-- suffering from a terminal illness."
+--
+-- So the causation rule is conditional on the directive being valid, and it
+-- does not reach a negligent terminal-illness decision. Read with s 19(1), a
+-- practitioner who is negligent loses both protections at once.
+GIVEN `the treatment was withheld or withdrawn from a person suffering from a terminal illness` IS A BOOLEAN
+    , `it was as a result of and in compliance with the directive` IS A BOOLEAN
+    , `the directive was validly made in accordance with this Act` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the withholding does not constitute a cause of death` IF
+        `the treatment was withheld or withdrawn from a person suffering from a terminal illness`
+    AND `it was as a result of and in compliance with the directive`
+    AND `the directive was validly made in accordance with this Act`
+
+GIVEN `the decision whether the patient was terminally ill was negligent` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `section 20 leaves the practitioner exposed` IF
+    `the decision whether the patient was terminally ill was negligent`
+
+§§ `21 -- Composition`
+
+-- s 21(1): the Director-General "may COMPOUND any offence under this Act ...
+-- WHICH IS PRESCRIBED to be a compoundable offence by accepting ... a sum NOT
+-- EXCEEDING $1,000." s 21(2): on payment, no further proceedings.
+--
+-- Which offences are compoundable is prescribed by regulations that were not
+-- retrieved, so that is a supplied fact. The ceiling is in the Act.
+`the maximum composition sum in dollars` MEANS 1000
+
+GIVEN `the offence is prescribed to be compoundable` IS A BOOLEAN
+    , `the sum accepted` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the offence may be compounded for that sum` IF
+        `the offence is prescribed to be compoundable`
+    AND `the sum accepted` AT MOST `the maximum composition sum in dollars`

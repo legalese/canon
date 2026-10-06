@@ -8,15 +8,16 @@ Everything below is an observation made while encoding, not a checked finding.
 **Edition:** 2020 Revised Edition, informal consolidation in force from
 1 May 2023 (`../../registers/source-bundle/AMDA1996.txt`).
 
-**Checks:** `l4 run amd-cases.l4` — 41 assertions satisfied, 0 errors,
-0 warnings. `l4 run` exits 0 on a failing assertion, so the diagnostics were
+**Checks:** `l4 run amd-cases.l4` and `l4 run amd-offences-cases.l4` — 93
+assertions satisfied, 0 errors, 0 warnings. `l4 run` exits 0 on a failing assertion, so the diagnostics were
 read rather than the exit code.
 
 ## What is encoded
 
-ss 2–10, which is the whole of the Act's decision-making. ss 11–22 are savings,
-offences, composition and the regulation power: they state consequences rather
-than decide anything, and nothing in ss 2–10 depends on them.
+**ss 2–21 — the whole Act** except s 22, the regulation power, which confers a
+power and decides nothing. `amd-act.l4` has the decision procedures;
+`amd-offences.l4` has the savings, the offences, the protections and the
+causation rule.
 
 The register, the prescribed forms, whether a person is in fact terminally ill,
 and whether a witness took "reasonable steps" are all facts supplied. The Act
@@ -77,3 +78,72 @@ encoding implements (6), and (7) is consistent with it.
 - The three observations above are observations. None has been checked against
   any authority, and the first two would need someone who knows the Act's
   purpose to say whether they are drafting defects or deliberate.
+
+
+---
+
+# Added with sections 11 to 21
+
+## The interest list is stated FOUR times, with four different contents
+
+The first version of this note set out three lists. s 14(2) is a fourth, and it
+differs from all of them:
+
+| limb | s 3(3) witness | s 9(9) certifying | s 10(4) acting | **s 14(2) forfeiture** |
+|---|---|---|---|---|
+| beneficiary under will or insurance | yes | yes | yes | **yes** |
+| interest under an instrument | yes | yes | yes | **yes** |
+| entitled on intestacy | yes | — | — | **yes** |
+| entitled to provident fund moneys | yes | yes | yes | **yes** |
+| has registered an objection | yes | yes | — | **—** |
+
+So the Act describes the same family of conflicts of interest four times and
+never the same way twice. The intestacy limb is the clearest case: it bars you
+from witnessing a directive and forfeits your inheritance if you procure one by
+fraud, but does not stop you certifying the patient terminally ill or acting on
+the directive. Asserted across both case files.
+
+Three of the four lists could have been one defined term. They are not, and
+nothing in the Act explains the differences.
+
+## Other observations
+
+**A charge freezes the directive; a conviction revokes it.** s 14(3) stops
+anyone acting on a directive once a person is *charged* under s 14(1), until the
+directive's validity is ascertained. s 14(4) then deems it revoked on
+*conviction*. The freeze does not wait for proof.
+
+**Forfeiture under s 14(2) does not wait for a conviction either** — it bites on
+a person who "is guilty of an offence under subsection (1) (**whether or not he
+or she has been convicted** of that offence)". So a civil court deciding a
+succession dispute must decide the criminal question for itself.
+
+**Only limb (c) of s 14(1) has a mental element.** Procuring a directive by
+"deception, fraud, misstatement, unconscionable conduct or undue influence" and
+forging one are described by their conduct alone; concealing a revocation must
+be **wilful**. "Misstatement" in limb (a) is notably wide — on its face it
+reaches an innocent one.
+
+**s 15 makes it an offence to ask.** A person who has or will likely have the
+medical care of a patient must not ask whether they have made a directive. The
+exception is narrow and cumulative: it must be the *responsible* practitioner,
+the discussion must be consistent with good medical practice, held within that
+relationship, **and** in furtherance of public education. A ward nurse asking
+out of ordinary concern commits the offence.
+
+**s 19(1) needs good faith AND absence of negligence**, and s 20(2) confirms it
+from the other side: the causation rule "does not relieve a medical practitioner
+from the consequences of a negligent decision". A negligent practitioner loses
+both protections on the same fact. Asserted as that pair.
+
+**s 16 catches both directions.** An insurer may not require a directive as a
+condition, and may not prohibit one either. s 16(2) severs the offending
+condition rather than voiding the policy — contrast s 54 of the Employment Act,
+which destroys the whole contract.
+
+## Still not encoded
+
+- s 22, the regulation power.
+- The prescribed forms and the Advance Medical Directive Regulations, which
+  s 3(1) and the whole of s 9 run on.
+- No case law was searched, and no human gate has been sought.
