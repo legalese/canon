@@ -1,0 +1,315 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `baominh-par-exclusions`
+IMPORT `baominh-par-fixtures`
+
+-- Tests for layer 1: the insuring clause and the exclusions. Every expected value was decided
+-- from the source text before the assertion was run; where the text needs a fork to decide it,
+-- the comment names the fork. For every exclusion limb there is a fact pattern that triggers it
+-- and a near miss that does not. A failing assertion here is a finding, never a value to edit.
+
+§ `Tests: the insuring clause and the exclusions`
+
+§§ `Helpers`
+
+GIVEN i IS A `A damaged item`
+GIVETH A `The effect of the exclusions on an item`
+`the effect on` i MEANS `the effect of the exclusions on` (`a loss of the item` i) i
+
+GIVEN i IS A `A damaged item`
+      l IS A `A loss`
+GIVETH A `The effect of the exclusions on an item`
+`the effect on` i `in` l MEANS `the effect of the exclusions on` l i
+
+GIVEN c IS A STRING
+GIVETH A `The effect of the exclusions on an item`
+`excluded wholly by` c MEANS `excluded by` (LIST c)
+
+GIVEN c IS A STRING
+GIVETH A `The effect of the exclusions on an item`
+`apportioned by` c MEANS `excluded except for the part arising from a cause not excluded` (LIST c)
+
+`a fire in the building` MEANS `a damaged` buildings `by` (LIST `directly` fire)
+
+GIVEN its IS A LIST OF `A damaged item`
+      th  IS A MAYBE `The circumstances of a theft`
+      ac  IS A MAYBE `An act of force or violence`
+      dp  IS A MAYBE `When the Damage happened, relative to a dispossession`
+      em  IS A MAYBE BOOLEAN
+GIVETH A `A loss`
+`a loss of` its `where theft` th `act` ac `dispossession` dp `empty` em MEANS
+    `a loss on` (YMD 2026 6 1) `of` its `with theft` th `act` ac `dispossession` dp `building empty` em `conduct` `good conduct` `premium` `the premium paid on time`
+
+§§ `The insuring clause`
+
+-- Damage: physical, and sudden and unforeseen (src:17-18), both required (fork F1).
+#ASSERT `the loss is Damage as defined` (`a loss of the item` `a fire in the building`)
+#ASSERT NOT `the loss is Damage as defined` (`A loss` WITH `date of the loss` IS YMD 2026 6 1, `physical loss, destruction or damage` IS TRUE, `sudden and unforeseen` IS FALSE, `the damaged items` IS EMPTY, `the theft` IS NOTHING, `the act of force or violence` IS NOTHING, `when the Damage happened, relative to the dispossession` IS NOTHING, `the insured building was empty or not in use` IS NOTHING, `theft or a malicious act was suspected` IS FALSE, `the Insured's conduct` IS `good conduct`, `the premium payment` IS `the premium paid on time`)
+#ASSERT NOT `the loss is Damage as defined` (`A loss` WITH `date of the loss` IS YMD 2026 6 1, `physical loss, destruction or damage` IS FALSE, `sudden and unforeseen` IS TRUE, `the damaged items` IS EMPTY, `the theft` IS NOTHING, `the act of force or violence` IS NOTHING, `when the Damage happened, relative to the dispossession` IS NOTHING, `the insured building was empty or not in use` IS NOTHING, `theft or a malicious act was suspected` IS FALSE, `the Insured's conduct` IS `good conduct`, `the premium payment` IS `the premium paid on time`)
+
+-- The period of insurance, both edges inside (fork F2), and a renewal period.
+#ASSERT `the date falls within the period of insurance or a renewal of it` `the Schedule` (YMD 2026 1 1)
+#ASSERT `the date falls within the period of insurance or a renewal of it` `the Schedule` (YMD 2026 12 31)
+#ASSERT NOT `the date falls within the period of insurance or a renewal of it` `the Schedule` (YMD 2025 12 31)
+#ASSERT NOT `the date falls within the period of insurance or a renewal of it` `the Schedule` (YMD 2027 1 1)
+#ASSERT `the date falls within the period of insurance or a renewal of it` (`a Schedule for 2026 with` NOTHING EMPTY (LIST (`A period` WITH `first day` IS YMD 2027 1 1, `last day` IS YMD 2027 12 31)) TRUE) (YMD 2027 3 1)
+
+-- What the insuring clause reaches: insured property at the insured premises, premium paid or agreed.
+#ASSERT `the insuring clause reaches the item` `the Schedule` (`a loss of the item` `a fire in the building`) `a fire in the building`
+#ASSERT NOT `the insuring clause reaches the item` `the Schedule` (`a loss of the item` `a fire in the building`) (`a damaged` buildings `by` (LIST `directly` fire) `where` (LIST `away from the insured premises`))
+#ASSERT NOT `the insuring clause reaches the item` (`a Schedule for 2026 with` NOTHING EMPTY EMPTY FALSE) (`a loss of the item` `a fire in the building`) `a fire in the building`
+#ASSERT `why the insuring clause does not reach the item` `the Schedule` (`a loss of the item` `a fire in the building`) `a fire in the building` EQUALS EMPTY
+#ASSERT `why the insuring clause does not reach the item` (`a Schedule for 2026 with` NOTHING EMPTY EMPTY FALSE) (`a loss of the item` `a fire in the building`) `a fire in the building` EQUALS LIST "insuring clause: the Insured has neither paid nor agreed to pay the premium"
+
+-- The proviso: an aggregate cap, less what has been paid.
+#ASSERT `limb (i): what is left of the sum insured of the item` `the building` EQUALS 1000000000
+#ASSERT `limb (i): what is left of the sum insured of the item` (`a scheduled item` "x" `insured for` 1000000000 `with paid already` 900000000) EQUALS 100000000
+#ASSERT `limb (i): what is left of the sum insured of the item` (`a scheduled item` "x" `insured for` 1000000000 `with paid already` 1200000000) EQUALS 0
+#ASSERT `the proviso applied to` `the Schedule` 2000000000 EQUALS 1500000000
+#ASSERT `the proviso applied to` (`a Schedule for 2026 with` NOTHING (LIST (`A limit of liability` WITH `description` IS "any one event", `amount` IS 300000000, `already paid against it` IS 100000000)) EMPTY TRUE) 250000000 EQUALS 200000000
+#ASSERT `the proviso applied to` (`a Schedule for 2026 with` NOTHING (LIST (`A limit of liability` WITH `description` IS "any one event", `amount` IS 300000000, `already paid against it` IS 100000000)) EMPTY TRUE) 150000000 EQUALS 150000000
+
+§§ `No exclusion: the ordinary fire`
+
+#ASSERT `the effect on` `a fire in the building` EQUALS `no exclusion applies`
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `directly` `a cause not named in this document`)) EQUALS `no exclusion applies`
+
+§§ `Exclusion 1(a)`
+
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `directly` `faulty design`)) EQUALS `excluded wholly by` "exclusion 1(a)"
+#ASSERT `the effect on` (`a damaged` `machinery and equipment` `by` (LIST `directly` `wear and tear from use`)) EQUALS `excluded wholly by` "exclusion 1(a)"
+#ASSERT `the effect on` (`a damaged` stock `by` (LIST `directly` `interruption of the electricity supply to or from the insured premises`)) EQUALS `excluded wholly by` "exclusion 1(a)"
+-- the write-back: a cause not excluded also caused the Damage directly
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `directly` `faulty design`, `directly` fire)) EQUALS `apportioned by` "exclusion 1(a)"
+-- near miss: faulty design only an indirect cause of a fire (exclusion 1 reaches direct causes, fork F3)
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `indirectly` `faulty design`, `directly` fire)) EQUALS `no exclusion applies`
+
+§§ `Exclusion 1(b)`
+
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `directly` `collapse of an insured building`)) EQUALS `excluded wholly by` "exclusion 1(b)"
+#ASSERT `the effect on` (`a damaged` stock `by` (LIST `directly` mould)) EQUALS `excluded wholly by` "exclusion 1(b)"
+-- the write-back: rot that followed Damage to the building by fire
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `directly` rot `, after earlier Damage by` fire)) EQUALS `no exclusion applies`
+-- near miss for the write-back: rot that followed wear and tear, itself excluded
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `directly` rot `, after earlier Damage by` `wear and tear from use`)) EQUALS `excluded wholly by` "exclusion 1(b)"
+-- near miss: rust not a direct cause
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `indirectly` rust, `directly` `a cause not named in this document`)) EQUALS `no exclusion applies`
+
+§§ `Exclusion 1(c)`
+
+`a theft from stock` MEANS `a damaged` stock `by` (LIST `directly` theft)
+
+GIVEN b IS A BOOLEAN
+      f IS A BOOLEAN
+GIVETH A `A loss`
+`a theft where in the building` b `with force` f MEANS
+    `a loss of` (LIST `a theft from stock`) `where theft` (JUST (`The circumstances of a theft` WITH `in the insured building` IS b, `with force or violence to break in or to get out` IS f)) `act` NOTHING `dispossession` NOTHING `empty` NOTHING
+
+-- (i) theft: written out only where in the insured building AND with force or violence
+#ASSERT `the effect on` `a theft from stock` `in` (`a theft where in the building` TRUE `with force` TRUE) EQUALS `no exclusion applies`
+#ASSERT `the effect on` `a theft from stock` `in` (`a theft where in the building` TRUE `with force` FALSE) EQUALS `excluded wholly by` "exclusion 1(c)"
+#ASSERT `the effect on` `a theft from stock` `in` (`a theft where in the building` FALSE `with force` TRUE) EQUALS `excluded wholly by` "exclusion 1(c)"
+#ASSERT REFUSED `the effect on` `a theft from stock` BECAUSE "the circumstances of the theft are not in the record"
+-- (ii), (iii)
+#ASSERT `the effect on` (`a damaged` stock `by` (LIST `directly` `a fraudulent or dishonest act`)) EQUALS `excluded wholly by` "exclusion 1(c)"
+#ASSERT `the effect on` (`a damaged` stock `by` (LIST `directly` `unexplained disappearance`)) EQUALS `excluded wholly by` "exclusion 1(c)"
+#ASSERT `the effect on` (`a damaged` stock `by` (LIST `directly` `an administrative or accounting error`)) EQUALS `excluded wholly by` "exclusion 1(c)"
+-- (iv), (v)
+#ASSERT `the effect on` (`a damaged` boilers `by` (LIST `directly` `leakage of a boiler weld`)) EQUALS `excluded wholly by` "exclusion 1(c)"
+#ASSERT `the effect on` (`a damaged` `machinery and equipment` `by` (LIST `directly` `mechanical or electrical breakdown or derangement of machinery or equipment`)) EQUALS `excluded wholly by` "exclusion 1(c)"
+-- the write-back needs BOTH limbs (fork F5): breakdown after Damage by fire, and fire a direct cause
+#ASSERT `the effect on` (`a damaged` `machinery and equipment` `by` (LIST `directly` `mechanical or electrical breakdown or derangement of machinery or equipment` `, after earlier Damage by` fire, `directly` fire)) EQUALS `apportioned by` "exclusion 1(c)"
+-- near miss: fire a direct cause, but the breakdown did not follow Damage by a cause not excluded
+#ASSERT `the effect on` (`a damaged` `machinery and equipment` `by` (LIST `directly` `mechanical or electrical breakdown or derangement of machinery or equipment`, `directly` fire)) EQUALS `excluded wholly by` "exclusion 1(c)"
+-- near miss: breakdown only an indirect cause of the fire that damaged the building
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `indirectly` `mechanical or electrical breakdown or derangement of machinery or equipment`, `directly` fire)) EQUALS `no exclusion applies`
+
+`a burst pipe` MEANS `a damaged` stock `by` (LIST `directly` `bursting, overflowing or leaking of water tanks, pipes or apparatus`)
+
+-- (vi) escape of water: only while the insured building is empty or not in use
+#ASSERT `the effect on` `a burst pipe` `in` (`a loss of` (LIST `a burst pipe`) `where theft` NOTHING `act` NOTHING `dispossession` NOTHING `empty` (JUST TRUE)) EQUALS `excluded wholly by` "exclusion 1(c)"
+#ASSERT `the effect on` `a burst pipe` `in` (`a loss of` (LIST `a burst pipe`) `where theft` NOTHING `act` NOTHING `dispossession` NOTHING `empty` (JUST FALSE)) EQUALS `no exclusion applies`
+#ASSERT REFUSED `the effect on` `a burst pipe` BECAUSE "whether the insured building was empty or not in use is not in the record"
+
+§§ `Exclusion 1(d)`
+
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `directly` `erosion by river or sea`)) EQUALS `excluded wholly by` "exclusion 1(d)"
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `directly` landslip)) EQUALS `excluded wholly by` "exclusion 1(d)"
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `directly` `normal settlement or bedding down of new structures`)) EQUALS `excluded wholly by` "exclusion 1(d)"
+#ASSERT `the effect on` (`a damaged` `machinery and equipment` `by` (LIST `directly` `escape of molten metal`)) EQUALS `excluded wholly by` "exclusion 1(d)"
+-- near miss: subsidence only an indirect cause (it cracked a gas main and the fire did the Damage)
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `indirectly` subsidence, `directly` fire)) EQUALS `no exclusion applies`
+-- (iv): wind on movable property in the open, and on a fence
+#ASSERT `the effect on` (`a damaged` stock `by` (LIST `directly` wind) `where` (LIST movable, `in the open`)) EQUALS `excluded wholly by` "exclusion 1(d)"
+#ASSERT `the effect on` (`a damaged` fences `by` (LIST `directly` rain)) EQUALS `excluded wholly by` "exclusion 1(d)"
+-- near miss: wind on the building itself, and on movable stock indoors
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `directly` wind)) EQUALS `no exclusion applies`
+#ASSERT `the effect on` (`a damaged` stock `by` (LIST `directly` flood) `where` (LIST movable)) EQUALS `no exclusion applies`
+
+§§ `Exclusion 2`
+
+-- (a) any link, direct or not (fork F3)
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `indirectly` `a malicious act of the Insured or of anyone acting for the Insured`, `directly` fire)) EQUALS `excluded wholly by` "exclusion 2"
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `directly` `wilful negligence of the Insured or of anyone acting for the Insured`)) EQUALS `excluded wholly by` "exclusion 2"
+-- near miss: a malicious act of someone else
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `directly` `a malicious act of another person`)) EQUALS `no exclusion applies`
+-- (b)
+#ASSERT `the effect on` (`a damaged` stock `by` (LIST `directly` `cessation of work`)) EQUALS `excluded wholly by` "exclusion 2"
+#ASSERT `the effect on` (`a damaged` stock `by` (LIST `indirectly` `loss of market`, `directly` rot)) EQUALS `excluded wholly by` "exclusion 1(b)"
+
+§§ `Exclusion 3`
+
+-- (a), (b): any link, whatever else contributed
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `indirectly` war, `directly` fire)) EQUALS `excluded wholly by` "exclusion 3"
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `directly` `military or usurped power`)) EQUALS `excluded wholly by` "exclusion 3"
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `directly` `action taken to control, prevent or suppress an event in exclusion 3(a) to (c)`)) EQUALS `excluded wholly by` "exclusion 3"
+-- (e), d)(i)
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `directly` `destruction by order of a public authority`)) EQUALS `excluded wholly by` "exclusion 3"
+#ASSERT `the effect on` (`a damaged` stock `by` (LIST `indirectly` `confiscation, nationalisation or requisition by order of a lawful public authority`, `directly` `a cause not named in this document`)) EQUALS `excluded wholly by` "exclusion 3"
+
+`a bomb` MEANS `a damaged` buildings `by` (LIST `indirectly` `an act of force or violence, or a threat of it`, `directly` explosion)
+
+GIVEN p IS A BOOLEAN
+GIVETH A `A loss`
+`a bombing for a political purpose` p MEANS
+    `a loss of` (LIST `a bomb`) `where theft` NOTHING `act` (JUST (`An act of force or violence` WITH `use of force or violence, or a threat of it, by a person or a group of persons` IS TRUE, `for a political, religious, ideological or similar purpose` IS p)) `dispossession` NOTHING `empty` NOTHING
+
+-- (c) terrorism as defined, and the near miss: the same act for gain, not for a political purpose
+#ASSERT `the effect on` `a bomb` `in` (`a bombing for a political purpose` TRUE) EQUALS `excluded wholly by` "exclusion 3"
+#ASSERT `the effect on` `a bomb` `in` (`a bombing for a political purpose` FALSE) EQUALS `no exclusion applies`
+#ASSERT REFUSED `the effect on` `a bomb` BECAUSE "the facts about the act of force or violence are not in the record"
+
+`squatters' Damage` MEANS `a damaged` buildings `by` (LIST `indirectly` `unlawful occupation of a building by any person`, `directly` `a cause not named in this document`)
+
+GIVEN w IS A `When the Damage happened, relative to a dispossession`
+GIVETH A `A loss`
+`an occupation, with the Damage` w MEANS
+    `a loss of` (LIST `squatters' Damage`) `where theft` NOTHING `act` NOTHING `dispossession` (JUST w) `empty` NOTHING
+
+-- d)(ii) and its proviso (fork F7)
+#ASSERT `the effect on` `squatters' Damage` `in` (`an occupation, with the Damage` `before the dispossession`) EQUALS `no exclusion applies`
+#ASSERT `the effect on` `squatters' Damage` `in` (`an occupation, with the Damage` `during a temporary dispossession`) EQUALS `no exclusion applies`
+#ASSERT `the effect on` `squatters' Damage` `in` (`an occupation, with the Damage` `during or after a permanent dispossession`) EQUALS `excluded wholly by` "exclusion 3"
+#ASSERT REFUSED `the effect on` `squatters' Damage` BECAUSE "when the Damage happened, relative to the dispossession, is not in the record"
+
+-- the burden of proof
+#ASSERT `who must prove that the loss is covered` TRUE EQUALS `the Insured`
+#ASSERT REFUSED `who must prove that the loss is covered` FALSE BECAUSE "the document allocates the burden of proof only where the Insurer relies on exclusion 3(a), (b) or (c)"
+
+§§ `Exclusion 4`
+
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `indirectly` `ionising radiation or radioactive contamination from nuclear fuel or nuclear waste`, `directly` fire)) EQUALS `excluded wholly by` "exclusion 4"
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `directly` `nuclear weapons material`)) EQUALS `excluded wholly by` "exclusion 4"
+-- near miss: an explosion that is not of a nuclear device
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `directly` explosion)) EQUALS `no exclusion applies`
+
+§§ `Exclusion 5`
+
+#ASSERT `the effect on` (`a damaged` stock `by` (LIST `directly` `pollution or contamination`)) EQUALS `excluded wholly by` "exclusion 5"
+-- (a): pollution that itself followed Damage by fire, an insured peril
+#ASSERT `the effect on` (`a damaged` stock `by` (LIST `directly` `pollution or contamination` `, after earlier Damage by` fire)) EQUALS `no exclusion applies`
+-- (b): an insured peril (fire) that itself resulted from pollution
+#ASSERT `the effect on` (`a damaged` stock `by` (LIST `indirectly` `pollution or contamination`, `directly` fire `, after earlier Damage by` `pollution or contamination`)) EQUALS `no exclusion applies`
+-- near miss for (a): pollution that followed Damage by corrosion, itself excluded
+#ASSERT `the effect on` (`a damaged` stock `by` (LIST `directly` `pollution or contamination` `, after earlier Damage by` corrosion)) EQUALS `excluded wholly by` "exclusion 5"
+
+§§ `Exclusion 6`
+
+-- (a): money not confirmed as insured is excluded even from fire (fork F9); confirmed, it is
+-- covered for the perils written back, and not for anything else
+#ASSERT `the effect on` (`a damaged` money `by` (LIST `directly` fire)) EQUALS `excluded wholly by` "exclusion 6"
+#ASSERT `the effect on` (`a damaged` money `by` (LIST `directly` fire) `where` (LIST `stated as insured`)) EQUALS `no exclusion applies`
+#ASSERT `the effect on` (`a damaged` `works of art` `by` (LIST `directly` `a cause not named in this document`) `where` (LIST `stated as insured`)) EQUALS `excluded wholly by` "exclusion 6"
+-- (b)-(d): only the perils written back
+#ASSERT `the effect on` (`a damaged` `fixed glass` `by` (LIST `directly` `a cause not named in this document`)) EQUALS `excluded wholly by` "exclusion 6"
+#ASSERT `the effect on` (`a damaged` `fixed glass` `by` (LIST `directly` earthquake)) EQUALS `no exclusion applies`
+#ASSERT `the effect on` (`a damaged` china `by` (LIST `directly` `a malicious act of another person`)) EQUALS `no exclusion applies`
+#ASSERT `the effect on` (`a damaged` computers `by` (LIST `directly` `a cause not named in this document`)) EQUALS `excluded wholly by` "exclusion 6"
+-- (escape of water also engages 1(c)(vi), which needs to know the building was in use)
+`a flooded computer` MEANS `a damaged` computers `by` (LIST `directly` `bursting, overflowing or leaking of water tanks, pipes or apparatus`)
+#ASSERT `the effect on` `a flooded computer` `in` (`a loss of` (LIST `a flooded computer`) `where theft` NOTHING `act` NOTHING `dispossession` NOTHING `empty` (JUST FALSE)) EQUALS `no exclusion applies`
+-- near miss: the same accidental breakage of property no exclusion names
+#ASSERT `the effect on` (`a damaged` `machinery and equipment` `by` (LIST `directly` `a cause not named in this document`)) EQUALS `no exclusion applies`
+
+§§ `Exclusion 7`
+
+#ASSERT `the effect on` (`a damaged` documents `by` (LIST `directly` fire)) EQUALS `excluded wholly by` "exclusion 7"
+#ASSERT `the effect on` (`a damaged` moulds `by` (LIST `directly` fire) `where` (LIST `stated as insured`)) EQUALS `no exclusion applies`
+
+§§ `Exclusion 8`
+
+#ASSERT `the effect on` (`a damaged` `motor vehicles licensed for public roads, with their equipment and accessories` `by` (LIST `directly` fire)) EQUALS `excluded wholly by` "exclusion 8"
+#ASSERT `the effect on` (`a damaged` stock `by` (LIST `directly` fire) `where` (LIST `in transit`)) EQUALS `excluded wholly by` "exclusion 8"
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `directly` fire) `where` (LIST `under construction`)) EQUALS `excluded wholly by` "exclusion 8"
+#ASSERT `the effect on` (`a damaged` `land, including topsoil, fill, drainage and culverts` `by` (LIST `directly` flood)) EQUALS `excluded wholly by` "exclusion 8"
+#ASSERT `the effect on` (`a damaged` trees `by` (LIST `directly` lightning)) EQUALS `excluded wholly by` "exclusion 8"
+#ASSERT `the effect on` (`a damaged` stock `by` (LIST `directly` `a drying process or a process using heat`)) EQUALS `excluded wholly by` "exclusion 8"
+#ASSERT `the effect on` (`a damaged` stock `by` (LIST `directly` fire) `where` (LIST `insured some other way`)) EQUALS `excluded wholly by` "exclusion 8"
+-- near misses: machinery that is not a road vehicle; a drying process that only led to a fire
+#ASSERT `the effect on` (`a damaged` `machinery and equipment` `by` (LIST `directly` fire)) EQUALS `no exclusion applies`
+#ASSERT `the effect on` (`a damaged` stock `by` (LIST `indirectly` `a drying process or a process using heat`, `directly` fire)) EQUALS `no exclusion applies`
+-- (g) and its near miss: machinery being installed, damaged by the installing, or by fire
+#ASSERT `the effect on` (`a damaged` `machinery and equipment` `by` (LIST `directly` `installing or moving the machinery or equipment, including dismantling and re-erecting it`) `where` (LIST `being installed or moved`)) EQUALS `excluded wholly by` "exclusion 8"
+#ASSERT `the effect on` (`a damaged` `machinery and equipment` `by` (LIST `directly` fire) `where` (LIST `being installed or moved`)) EQUALS `no exclusion applies`
+-- (h), its write-back, and its near miss
+#ASSERT `the effect on` (`a damaged` `machinery and equipment` `by` (LIST `directly` `the repair, inspection, installation or maintenance work`) `where` (LIST `under repair`)) EQUALS `excluded wholly by` "exclusion 8(h)"
+#ASSERT `the effect on` (`a damaged` `machinery and equipment` `by` (LIST `directly` `the repair, inspection, installation or maintenance work`, `directly` fire) `where` (LIST `under repair`)) EQUALS `apportioned by` "exclusion 8(h)"
+#ASSERT `the effect on` (`a damaged` `machinery and equipment` `by` (LIST `directly` flood) `where` (LIST `under repair`)) EQUALS `no exclusion applies`
+
+§§ `Exclusion 9`
+
+#ASSERT `exclusion 9 reaches the item` (`a damaged` stock `by` (LIST `directly` fire) `where` (LIST marine))
+#ASSERT NOT `exclusion 9 reaches the item` (`a damaged` stock `by` (LIST `directly` fire))
+
+§§ `The first exclusion 10: pressure vessels`
+
+#ASSERT `the effect on` (`a damaged` boilers `by` (LIST `directly` `explosion or rupture of the boiler, vessel, machine or apparatus itself`)) EQUALS `excluded wholly by` "exclusion 10 (pressure vessels)"
+-- near misses: the boiler damaged by fire; the building damaged by the boiler's explosion
+#ASSERT `the effect on` (`a damaged` boilers `by` (LIST `directly` fire)) EQUALS `no exclusion applies`
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `directly` `explosion or rupture of the boiler, vessel, machine or apparatus itself`)) EQUALS `no exclusion applies`
+
+§§ `The second exclusion 10: electronic data`
+
+#ASSERT `the effect on` (`a damaged` `electronic data` `by` (LIST `directly` fire)) EQUALS `excluded wholly by` "exclusion 10 (electronic data)"
+#ASSERT `the effect on` (`a damaged` `machinery and equipment` `by` (LIST `directly` `a computer virus`)) EQUALS `excluded wholly by` "exclusion 10 (electronic data)"
+-- (a)(ii): a fire that a virus started, and the fire damaged the machine
+#ASSERT `the effect on` (`a damaged` `machinery and equipment` `by` (LIST `indirectly` `a computer virus`, `directly` fire)) EQUALS `no exclusion applies`
+
+§§ `Exclusion 11`
+
+-- Part 1, and its write-back for physical Damage at the premises from a listed peril
+#ASSERT `the effect on` (`a damaged` `machinery and equipment` `by` (LIST `directly` `processing of data involving a change of date, by a computer system or chip`)) EQUALS `excluded wholly by` "exclusion 11, Part 1"
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `indirectly` `a change or modification involving a change of date, to a computer system or chip`, `directly` fire)) EQUALS `no exclusion applies`
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `indirectly` `processing of data involving a change of date, by a computer system or chip`, `directly` `falling objects`)) EQUALS `no exclusion applies`
+-- a peril exclusion 6 writes back but exclusion 11 does not name: not written back (fork F11)
+`a date-change leak` MEANS `a damaged` buildings `by` (LIST `indirectly` `processing of data involving a change of date, by a computer system or chip`, `directly` `bursting, overflowing or leaking of water tanks, pipes or apparatus`)
+#ASSERT `the effect on` `a date-change leak` `in` (`a loss of` (LIST `a date-change leak`) `where theft` NOTHING `act` NOTHING `dispossession` NOTHING `empty` (JUST FALSE)) EQUALS `excluded wholly by` "exclusion 11, Part 1"
+-- Part 2
+`a computer upgrade claimed as a cost` MEANS `A damaged item` WITH
+    `the item insured`                  IS `the building`
+    `kind`                              IS computers
+    `the chain of causation`            IS LIST (`directly` fire)
+    `circumstances`                     IS `the ordinary circumstances`
+    `valuation`                         IS `the ordinary valuation`
+    `what the Insured told the Insurer` IS `nothing false was said`
+    `changes under General Condition 8` IS EMPTY
+    `claimed as a cost of changing or adding to a computer system, programme, software or chip` IS TRUE
+
+#ASSERT `the effect on` `a computer upgrade claimed as a cost` EQUALS `excluded wholly by` "exclusion 11, Part 2"
+-- near miss: the same computer damaged by fire, claimed at the value of the Damage
+#ASSERT `the effect on` (`a damaged` computers `by` (LIST `directly` fire)) EQUALS `no exclusion applies`
+
+§§ `Several exclusions at once`
+
+-- the first that excludes wholly decides, in the document's order
+#ASSERT `the effect on` (`a damaged` buildings `by` (LIST `directly` `faulty design`, `directly` fire, `indirectly` war)) EQUALS `excluded wholly by` "exclusion 3"
+-- two that apportion are both listed
+#ASSERT `the effect on` (`a damaged` `machinery and equipment` `by` (LIST `directly` `latent defect`, `directly` `the repair, inspection, installation or maintenance work`, `directly` fire) `where` (LIST `under repair`)) EQUALS `excluded except for the part arising from a cause not excluded` (LIST "exclusion 1(a)", "exclusion 8(h)")
+
+§§ `A cause not excluded`
+
+#ASSERT NOT `the cause is excluded for the item` (`a loss of the item` `a fire in the building`) `a fire in the building` fire
+#ASSERT `the cause is excluded for the item` (`a loss of the item` `a fire in the building`) `a fire in the building` `latent defect`
+#ASSERT NOT `the cause is excluded for the item` (`a loss of the item` `a fire in the building`) `a fire in the building` wind
+#ASSERT `the cause is excluded for the item` (`a loss of the item` `a fire in the building`) (`a damaged` fences `by` (LIST `directly` wind)) wind

@@ -1,0 +1,164 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `baominh-par-quantum`
+IMPORT `baominh-par-fixtures`
+
+-- Tests for layer 2: how much. Every expected value was worked by hand from the clause cited
+-- beside it, before the assertion was run; the arithmetic is written out. All amounts are
+-- scenario values in VND (baominh-par-fixtures.l4 says why). The building's sum insured is
+-- 1,000,000,000; the Schedule's deductible is 10,000,000 for each loss.
+
+§ `Tests: the amount`
+
+§§ `Helpers`
+
+GIVEN i IS A `A damaged item`
+GIVETH A NUMBER
+`the amount for` i MEANS
+    `the amount for the item` i `given` (`the effect of the exclusions on` (`a loss of the item` i) i)
+
+GIVEN k IS A `A kind of property`
+      v IS A `The valuation of the item`
+GIVETH A `A damaged item`
+`a fire damaging` k `valued` v MEANS
+    `an item of` k `damaged by` (LIST `directly` fire) `in` `the ordinary circumstances` `valued` v
+
+GIVEN v IS A `The valuation of the item`
+GIVETH A `The valuation of the item`
+`with other insurance of 1,000,000,000` v MEANS `The valuation of the item` WITH
+    `the Damage, valued at the time of the loss`                      IS v's `the Damage, valued at the time of the loss`
+    `the part of the Damage arising from a cause not excluded`        IS NOTHING
+    `the actual value of the item at the time of the loss`            IS v's `the actual value of the item at the time of the loss`
+    `sums insured by other insurances of the same property or loss`   IS LIST 1000000000
+    `the amount the marine policy would pay if this policy did not exist` IS NOTHING
+    `the costs of the media`                                          IS NOTHING
+
+GIVEN m IS A MAYBE NUMBER
+GIVETH A `The valuation of the item`
+`Damage of 100,000,000 with a marine policy paying` m MEANS `The valuation of the item` WITH
+    `the Damage, valued at the time of the loss`                      IS 100000000
+    `the part of the Damage arising from a cause not excluded`        IS NOTHING
+    `the actual value of the item at the time of the loss`            IS JUST 1000000000
+    `sums insured by other insurances of the same property or loss`   IS EMPTY
+    `the amount the marine policy would pay if this policy did not exist` IS m
+    `the costs of the media`                                          IS NOTHING
+
+GIVEN mc IS A MAYBE `The costs of electronic data processing media`
+GIVETH A `The valuation of the item`
+`media valued with` mc MEANS `The valuation of the item` WITH
+    `the Damage, valued at the time of the loss`                      IS 999
+    `the part of the Damage arising from a cause not excluded`        IS NOTHING
+    `the actual value of the item at the time of the loss`            IS JUST 1000000000
+    `sums insured by other insurances of the same property or loss`   IS EMPTY
+    `the amount the marine policy would pay if this policy did not exist` IS NOTHING
+    `the costs of the media`                                          IS mc
+
+GIVEN r IS A BOOLEAN
+GIVETH A `The costs of electronic data processing media`
+`blank media 2,000,000 and copying 3,000,000, restored` r MEANS `The costs of electronic data processing media` WITH
+    `the cost of blank media`                                         IS 2000000
+    `the cost of copying the data from back-up or from the originals` IS 3000000
+    `the media are repaired, replaced or restored`                    IS r
+
+§§ `The measure of the Damage (insuring clause, src:16-17)`
+
+-- 100,000,000 of Damage to a building worth exactly its sum insured: 100,000,000
+#ASSERT `the amount for` (`a fire damaging` buildings `valued` (`Damage of` 100000000 `to property worth` 1000000000)) EQUALS 100000000
+
+§§ `General Condition 14: average`
+
+-- worth 2,000,000,000 against a sum insured of 1,000,000,000: 100,000,000 x 1/2 = 50,000,000
+#ASSERT `the amount for` (`a fire damaging` buildings `valued` (`Damage of` 100000000 `to property worth` 2000000000)) EQUALS 50000000
+-- worth 1,250,000,000: 100,000,000 x 1,000/1,250 = 80,000,000
+#ASSERT `the amount for` (`a fire damaging` buildings `valued` (`Damage of` 100000000 `to property worth` 1250000000)) EQUALS 80000000
+-- the edge: worth exactly the sum insured, no average ("lớn hơn", greater than)
+#ASSERT `the amount for` (`a fire damaging` buildings `valued` (`Damage of` 100000000 `to property worth` 1000000000)) EQUALS 100000000
+-- one dong over the sum insured: average bites, just
+#ASSERT `the amount for` (`a fire damaging` buildings `valued` (`Damage of` 100000000 `to property worth` 1000000001)) LESS THAN 100000000
+#ASSERT `the amount for` (`a fire damaging` buildings `valued` (`Damage of` 100000000 `to property worth` 1000000001)) GREATER THAN 99999999
+-- no actual value in the record: refused, by name
+#ASSERT REFUSED `the amount for` (`a fire damaging` buildings `valued` (`The valuation of the item` WITH `the Damage, valued at the time of the loss` IS 100000000, `the part of the Damage arising from a cause not excluded` IS NOTHING, `the actual value of the item at the time of the loss` IS NOTHING, `sums insured by other insurances of the same property or loss` IS EMPTY, `the amount the marine policy would pay if this policy did not exist` IS NOTHING, `the costs of the media` IS NOTHING)) BECAUSE "the actual value of the item at the time of the loss is not in the record"
+
+§§ `General Condition 6: contribution`
+
+-- another policy of 1,000,000,000 on the same property: 100,000,000 x 1,000/(1,000 + 1,000) = 50,000,000 (fork F16)
+#ASSERT `the amount for` (`a fire damaging` buildings `valued` (`with other insurance of 1,000,000,000` (`Damage of` 100000000 `to property worth` 1000000000))) EQUALS 50000000
+-- with average as well (worth 2,000,000,000): 100,000,000 x 1/2 x 1/2 = 25,000,000
+#ASSERT `the amount for` (`a fire damaging` buildings `valued` (`with other insurance of 1,000,000,000` (`Damage of` 100000000 `to property worth` 2000000000))) EQUALS 25000000
+
+§§ `Exclusion 9: the excess over a marine policy`
+
+GIVEN m IS A MAYBE NUMBER
+GIVETH A `A damaged item`
+`marine stock with the marine policy paying` m MEANS
+    `an item of` stock `damaged by` (LIST `directly` fire) `in` (`circumstances with` (LIST marine)) `valued` (`Damage of 100,000,000 with a marine policy paying` m)
+
+-- the marine policy would pay 80,000,000: the excess is 20,000,000
+#ASSERT `the amount for` (`marine stock with the marine policy paying` (JUST 80000000)) EQUALS 20000000
+-- it would pay more than the Damage: nothing
+#ASSERT `the amount for` (`marine stock with the marine policy paying` (JUST 120000000)) EQUALS 0
+#ASSERT REFUSED `the amount for` (`marine stock with the marine policy paying` NOTHING) BECAUSE "what the marine policy would pay is not in the record"
+
+§§ `Exclusion 10(b): electronic data processing media`
+
+GIVEN mc IS A MAYBE `The costs of electronic data processing media`
+GIVETH A `A damaged item`
+`burnt media with` mc MEANS `a fire damaging` `electronic data processing media` `valued` (`media valued with` mc)
+
+-- restored: blank media 2,000,000 + copying 3,000,000 = 5,000,000 (not the 999 of the general valuation)
+#ASSERT `the amount for` (`burnt media with` (JUST (`blank media 2,000,000 and copying 3,000,000, restored` TRUE))) EQUALS 5000000
+-- not restored: the blank media only, 2,000,000
+#ASSERT `the amount for` (`burnt media with` (JUST (`blank media 2,000,000 and copying 3,000,000, restored` FALSE))) EQUALS 2000000
+#ASSERT REFUSED `the amount for` (`burnt media with` NOTHING) BECAUSE "the costs of the electronic data processing media are not in the record"
+
+§§ `The part not excluded (exclusions 1(a), 1(c), 8(h))`
+
+-- latent defect and fire both direct; the adjuster puts 30,000,000 of 100,000,000 down to the fire
+#ASSERT `the amount for` (`an item of` buildings `damaged by` (LIST `directly` `latent defect`, `directly` fire) `in` `the ordinary circumstances` `valued` (`Damage of` 100000000 `, of which not excluded` 30000000 `, to property worth` 1000000000)) EQUALS 30000000
+#ASSERT REFUSED `the amount for` (`a damaged` buildings `by` (LIST `directly` `latent defect`, `directly` fire)) BECAUSE "the part of the Damage arising from a cause not excluded is not in the record"
+-- wholly excluded: nothing to measure
+#ASSERT `the amount for` (`a damaged` buildings `by` (LIST `directly` `latent defect`)) EQUALS 0
+
+§§ `The proviso, limb (i): what is left of the item's sum insured`
+
+GIVEN p IS A NUMBER
+      d IS A NUMBER
+GIVETH A `A damaged item`
+`a fire in a building already paid` p `, with Damage of` d MEANS `A damaged item` WITH
+    `the item insured`                  IS `a scheduled item` "factory building" `insured for` 1000000000 `with paid already` p
+    `kind`                              IS buildings
+    `the chain of causation`            IS LIST (`directly` fire)
+    `circumstances`                     IS `the ordinary circumstances`
+    `valuation`                         IS `Damage of` d `to property worth` 1000000000
+    `what the Insured told the Insurer` IS `nothing false was said`
+    `changes under General Condition 8` IS EMPTY
+    `claimed as a cost of changing or adding to a computer system, programme, software or chip` IS FALSE
+
+-- 900,000,000 already paid on the building this period: of 500,000,000 only 100,000,000 is left
+#ASSERT `the amount for` (`a fire in a building already paid` 900000000 `, with Damage of` 500000000) EQUALS 100000000
+-- nothing paid yet: the whole 500,000,000
+#ASSERT `the amount for` (`a fire in a building already paid` 0 `, with Damage of` 500000000) EQUALS 500000000
+
+§§ `General Condition 13: the deductible, for each loss, after everything else`
+
+-- 100,000,000 less the deductible of 10,000,000
+#ASSERT `the amount for the loss` `the Schedule` (LIST 100000000) EQUALS 90000000
+-- no deductible stated in the Schedule: nothing deducted
+#ASSERT `the amount for the loss` `the Schedule without a deductible` (LIST 100000000) EQUALS 100000000
+-- below the deductible: nothing; at it: nothing; one dong over it: one dong
+#ASSERT `the amount for the loss` `the Schedule` (LIST 5000000) EQUALS 0
+#ASSERT `the amount for the loss` `the Schedule` (LIST 10000000) EQUALS 0
+#ASSERT `the amount for the loss` `the Schedule` (LIST 10000001) EQUALS 1
+-- two items in one loss bear one deductible: 60,000,000 + 40,000,000 - 10,000,000
+#ASSERT `the amount for the loss` `the Schedule` (LIST 60000000, 40000000) EQUALS 90000000
+-- the policy's total sum insured (1,500,000,000) caps the loss before the deductible (fork F14)
+#ASSERT `the amount for the loss` `the Schedule` (LIST 1000000000, 1000000000) EQUALS 1490000000
+-- the item cap binds first, then the deductible: 100,000,000 left on the item, less 10,000,000 (fork F14)
+#ASSERT `the amount for the loss` `the Schedule` (LIST (`the amount for` (`a fire in a building already paid` 900000000 `, with Damage of` 500000000))) EQUALS 90000000
+
+§§ `General Condition 11: reinstatement`
+
+#ASSERT `the most the Insurer is bound to spend reinstating` `the building` `at a cost of` 1200000000 EQUALS 1000000000
+#ASSERT `the most the Insurer is bound to spend reinstating` `the building` `at a cost of` 300000000 EQUALS 300000000
+#ASSERT `what the Insurer pays where regulations prevent reinstatement` 250000000 EQUALS 250000000
