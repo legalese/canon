@@ -4,7 +4,83 @@ National Insurance Law [Consolidated Version], 5755-1995: **s 334** (interpretat
 Status: **draft**.
 No domain expert has read it against the source; HG1 has not been sought.
 
+## Repair 2026-10-07
+
+Run `IL-09-20261006` (claim row IL-09), encoder `enc-il-04`, on Meng's ruling YOGHURT as the lead relayed it: repair this row against the enacted amending Laws.
+Nothing in sections 0-9 was deleted.
+Entries whose answer changed are marked **(revised 2026-10-07)** and keep a sentence saying what they said before; entries that only gained evidence are marked **(added 2026-10-07)**.
+The section "Comparison with Axiom's RuleSpec" at the end, `tests-independent.l4`, `DECIDED-ANSWERS.md` and `INDEPENDENT-FINDINGS.md` are untouched.
+
+### The enacted Laws
+
+| Law | Sefer HaChukim | file, or how fetched | sha256 | what this row takes from it |
+| --- | --- | --- | --- | --- |
+| National Insurance Law (Amendment No. 252 and temporary provision), 5785-2025 | 3347, pp. 176-178 (14 January 2025) | deposited: `../../registers/source-bundle/amending-laws/25_lsr_5482787.pdf` (from `https://fs.knesset.gov.il/25/law/25_lsr_5482787.pdf`) | `d6c450ca0b869d1edb036b0f96bffbd79be6670336d9b5aa888da6cf2ecc8904` | s 6: commencement 1 January 2025; s 7(a): the Law is read, "for national insurance contributions collected in respect of the years 2025 and 2026", until 31 December 2026, with s 7(a)(3) replacing the lower sub-columns of columns C and D of Schedule J only; s 7(a)(3)(a): item 2's lower figure for those who are neither printed as 0.17, the column's total as 6.92; s 7(b): the Minister of Finance may extend that period by order to 2027 and then 2028, one year at a time |
+| Law for Achieving the Budget Targets and Implementing the Economic Policy for Budget Year 2025 (Legislative Amendments), 5785-2025 | 3384, pp. 395-396 | deposited: `../../registers/source-bundle/amending-laws/25_lsr_6133485.pdf` (from `https://fs.knesset.gov.il/25/law/25_lsr_6133485.pdf`) | `eba7e1fa570a3ece265d87f379543024da038ee51af3f959d4c74162f5edecfa` | s 19 (Amendment No. 256): (2) inserts the definition of the reduced collection threshold into s 334(a); (6) "in Schedule J, everywhere", for "60% of the average wage" substitutes "the reduced collection threshold as defined in s 334(a)"; s 20(1): in Amendment 252 s 7(a)(3)(a), 0.17 becomes 0.16; s 21: the chapter commences on 1 January 2026 |
+| Economic Efficiency Law (Legislative Amendments for Achieving the Budget Targets for Budget Years 2023 and 2024), 5783-2023, s 24 (National Insurance, Amendment No. 234, temporary provision) | 3045, p. 169 | fetched 2026-10-06 21:39:39 UTC through the lead's Israeli-IP SOCKS proxy (an `ssh -D` tunnel to an EC2 instance in il-central-1) from `https://fs.knesset.gov.il/25/law/25_lsr_2572039.pdf`, 414,996 bytes, 32 pages; **not deposited** (outside this directory's lane; the bytes are kept in the encoder's scratchpad for the lead) | `6d90d3c4393a55874bca61b2cf7d3a57cba60ec900df57560563d1d2cc7474af` | from 1 January 2024 to 31 December 2027, Schedule J is read with item 4 for an employee at 2.06 above the split (for 1.96) and 0.47 below it (for 0.37), and the totals at 14.60 (for 14.50) and 3.95 (for 3.85): the enacted source of the editors' "2024 to 2027" notes (the comparison's N3) |
+
+Text was read with `pdftotext -raw` (visual order, word order reversed per line) and, for Amendment 252 p. 177, by rendering the page to an image; the 0.17 was read off the image.
+No Hebrew from these PDFs is quoted in the modules (the Hebrew check is against the consolidation only); they are cited in English.
+
+### What changed
+
+1. **F3, column D's upper part (revised).** Amendment 252 never replaced column D's upper sub-column, and s 19(6) amended its heading from 1 January 2026; so in every reading of the schedule for 2026 on the upper part begins at the reduced collection threshold. The flag on the two temporary versions changed from TRUE to FALSE. The heading the consolidation prints at line 4718 ("above 60% of the average wage") is a stale copy of the pre-2026 text: still quoted, no longer followed. The refusal for the "gap" is still defined, and is now reachable only through the 2025 version kept as data. (Comparison R1, D11; IL-05's NOTES section 9 reads the three texts the same way.)
+2. **A1, the 2025 text (added).** Item 2's lower figure for those who are neither, as enacted for 2025 (0.17), is kept as data in `nii-schedule-j.l4`, in a 2025 version no year arm selects. With 0.17 the column's items sum to 6.93 against the printed 6.92; s 20(1) made it 0.16 from 1 January 2026, and then the column meets its total. 2025 stays declined.
+3. **F1 (added).** Amendment 252 s 7(a)'s "in respect of the years 2025 and 2026" confirms reading (i).
+4. **An extension order under Amendment 252 s 7(b) (added; assumption A8).** `Schedule J — the version for a contribution month in` *year* `, the temporary provision extended to that year by an order under Amendment 252 s 7(b):` *order*, and s 337(a)(1) and (a)(2) entry points that take the same argument. With an order, 2027 and 2028 read the temporary lower sub-columns; an order for 2029 on is declined. The year-only rules assume no order. It is an argument, not a field of the case records, so that the records `tests-independent.l4` builds still build. (The comparison's R2 proposed declining when the input is not given; the lead's instruction set the default instead.)
+5. **F18, the temporary sub-columns' own headings (added fork).** See section 4.
+6. **Column E's comment (revised; comparison R4).** The nouns module no longer calls column E a percentage; s 32(c1)(1) divides the Treasury's allocations among the branches "as in Schedule J" (line 495).
+7. **F4, A3, F5, section 7 (added evidence)**, and new forks F19 and F20; see their entries.
+8. `nii-s334-interpretation.l4`'s vintage refusal cites the enacted s 19(2) and s 21 in place of the Wikisource page.
+
+### Assertions whose expected value changed
+
+All three are in `nii-il04-tests.l4`, section "Schedule J, column D — the two headings", 2026, the deduction branches, threshold 7,703.
+
+| assertion | was | now | why |
+| --- | --- | --- | --- |
+| deduction on a wage of 7,704, average wage 13,566 | `REFUSED` (the gap) | 80.1579 (7,703 × 1.04% + 1 × 4.67%) | 2025 budget-year Law s 19(6) and s 21 (SH 3384 p. 396); Amendment 252 s 7(a)(3) (SH 3347 p. 177) |
+| deduction on a wage of 20,000, average wage 13,769 | `REFUSED` | 654.3811 (7,703 × 1.04% + 12,297 × 4.67%) | the same |
+| `where column D's upper part begins in` the 2026 version | 8,139.6 (60% of 13,566) | 7,703 | the same |
+
+The comparison's R1 gives the same two figures (80.1579, 654.3811).
+No other expected value in this row's own modules changed.
+Added: 23 assertions in `nii-il04-tests.l4` (its last section), each worked by hand from the cells and the enacted figures before it was run, and 1 in `nii-il04-tests-expected-red.l4` (family 3).
+
+### What `check.sh` prints after the repair
+
+Run on 2026-10-07 with the same binary as section 0 (`jl4-0.1-0ee0100b`, sha256 `64bbcb15…e118`), `JL4_LIBRARY_PATH` unset:
+
+```
+module                                    errors satisfied  failed  refused  expected
+nii-il04-nouns.l4                              0         0       0        0         0
+nii-il04-published-figures.l4                  0         0       0        0         0
+nii-il04-tests-expected-red.l4                15        26      15        0        15
+nii-il04-tests.l4                              0       143       0        0         0
+nii-s1-definitions.l4                          0         0       0        0         0
+nii-s334-interpretation.l4                     0         0       0        0         0
+nii-s337-rates.l4                              0         0       0        0         0
+nii-schedule-j-tables.l4                       0         0       0        0         0
+nii-schedule-j.l4                              0         0       0        0         0
+tests-independent.l4                           6       640       6        0         6
+TOTAL (10 modules)                            21       809      21        0
+```
+
+`check.sh` exit 0; every error is a failed assertion, read line by line from the diagnostics, none "could not be evaluated".
+
+- `nii-il04-tests.l4`: 143 of 143 (120 before, 23 added).
+- `nii-il04-tests-expected-red.l4`: 15 of 41 fail, the 14 of section 0 and the 2025 text (line 137).
+- `tests-independent.l4` (the independent tester's; not edited): 646 assertions, 640 satisfied, 6 failed. One is T7 (line 787, fork F6), failing before the repair. **Five encode the pre-repair F3** and now fail: line 756 (the 2026 version's flag asserted TRUE), line 924 (upper part begins at 8,139.6), and lines 929-931 (refusals at 7,703.01, 8,000 and 10,000, for which the enacted Laws give, on the items, 80.111667, 93.9811 and 187.3811; this row's tests now assert 187.3811). They stay failing and are left for the tester to reclassify. `check.sh`'s `expected_failed` table now lists `tests-independent.l4` with 6 (the encoder's change to `check.sh`, made so that the run's exit status reflects the expected count; the tester's file is unchanged).
+
+**Mechanical checks after the repair.** `tools/srcquote.py` over the nine `nii-*.l4` modules changes nothing; `tools/schedule_j.py` still reproduces `nii-schedule-j-tables.l4` byte for byte (the 2025 row is hand-written in `nii-schedule-j.l4`, not generated, because it is not in the consolidation); `tools/hebcheck.py` passes on every `.l4` module (`tests-independent.l4` included), `BRIEF.md`, `SOURCE-LICENSE.md`, `encoding.json`, and this file up to the comparison section. It flags five Hebrew runs inside the comparison section (lines 493-536 at the time of writing), which quote the enacted Laws, not the consolidation the tool checks against; that section is the comparison author's and is not edited here. (Section 0's sentence that the check passes on "this file" was true when written, before the comparison section was appended.)
+
+### Still not sourced
+
+The consumer price index: the Central Bureau of Statistics API returned an empty reply through the Israeli proxy too (2026-10-06 21:40 UTC), so the index stays an input and the 2026 threshold stays the Institute's published 7,703 (not checked against s 334(a)(1)'s formula). The threshold for 2027 on, and any order under Amendment 252 s 7(b), were not published at retrieval.
+
 ## 0. What `check.sh` prints
+
+(As run on 2026-10-06, before the repair; the numbers after it are in "Repair 2026-10-07" above.)
 
 Run on 2026-10-06 with `/Users/mengwong/.local/bin/l4`, `JL4_LIBRARY_PATH` unset.
 That path is a symlink to `~/.cabal/bin/l4`, which resolves to the cabal store entry `jl4-0.1-0ee0100b` (modified 2026-10-06 21:20 local), sha256 `64bbcb157dbef2ef1020a6a75589313bba0a2aeeb807c921c5e65e62e9eca118`.
@@ -72,7 +148,8 @@ Line numbers are lines of `../../registers/source-bundle/national-insurance-law-
 **Totals.** s 334, s 337 and Schedule J: **24 encoded, 3 inert, 0 out-of-scope, 0 deferred** (27 rows).
 s 1: **9 encoded** (of which 4 as inputs or input conventions), **60 out-of-scope**, 0 deferred (69 rows, one per definition line).
 Provisions outside the slice that the slice refers to, or that displace it: **14 out-of-scope** rows, each with its reason.
-Altogether **33 encoded, 3 inert, 74 out-of-scope, 0 deferred**.
+Enacted amending Laws (added 2026-10-07): **8 encoded** rows, below.
+Altogether **41 encoded, 3 inert, 74 out-of-scope, 0 deferred** (33, 3, 74 and 0 before the repair).
 
 ### s 334, s 337 and Schedule J
 
@@ -104,7 +181,20 @@ Altogether **33 encoded, 3 inert, 74 out-of-scope, 0 deferred**.
 | Schedule J permanent table: item 4 notes | 4741 | 2.06 and 0.47 in 2024-2027 | encoded (A3) | `Schedule J (permanent version), item 4, with the figures noted for 2024-2027` |
 | Schedule J permanent table: totals | 4748 | totals row, with its notes | encoded (as data; compared in the red module) | `Schedule J (permanent version), totals as printed`, `… as read in 2024-2027` |
 | Schedule J: "–" cells | 4720-4747 | no figure printed | encoded (NOTHING; a branch paid with a dash is declined, F10) | `the percentage in column C of`, `the percentage in column D of` |
-| Schedule J column D, applied | 4717-4718, 4735-4736 | what the deduction columns apply to | encoded (as the schedule's headings say; the gap in the temporary version declined, F3) | `the column D deduction under` |
+| Schedule J column D, applied | 4717-4718, 4735-4736 | what the deduction columns apply to | encoded (revised 2026-10-07: as the enacted headings say from 2026, the upper part from the threshold, F3; before, the temporary version's "gap" was declined) | `the column D deduction under` |
+
+### Enacted amending Laws (added 2026-10-07)
+
+| provision | where | gist | disposition | where in the encoding |
+| --- | --- | --- | --- | --- |
+| Amendment 252 ss 6, 7(a) | SH 3347 pp. 177 | commencement 1.1.2025; the temporary provision for contributions in respect of 2025 and 2026, to 31.12.2026 | encoded (as the 2026 arm, and the reason 2025 differs) | `Schedule J — the version for a contribution month in` |
+| Amendment 252 s 7(a)(3) | SH 3347 p. 177 | replaces the lower sub-columns of columns C and D only | encoded (the temporary versions; F3, F18) | `nii-schedule-j.l4` |
+| Amendment 252 s 7(a)(3)(a), item 2, neither | SH 3347 p. 177 | 0.17 as enacted for 2025 | encoded (as data; 2025 not answered) | `Schedule J (temporary version), item 2, as enacted for 2025` |
+| Amendment 252 s 7(b) | SH 3347 p. 178 | extension by order to 2027, then 2028 | encoded (as an input, default no order: A8, F20) | the version rule and s 337 entry points with the order argument |
+| 2025 budget-year Law s 19(2) | SH 3384 p. 396 | inserts "reduced collection threshold" into s 334(a) | encoded (the vintage boundary of s 334(a)) | `section 334(a) as it stood before 1 January 2026 is not in the deposited text` |
+| 2025 budget-year Law s 19(6) | SH 3384 p. 396 | Schedule J "everywhere": 60% of the average wage becomes the threshold | encoded (F3) | the version flags |
+| 2025 budget-year Law ss 20(1), 21 | SH 3384 p. 396 | 0.17 to 0.16; commencement 1.1.2026 | encoded (the 2026 figure, and the vintage boundary) | tests; `Schedule J as it stood before 1 January 2026 is not in the deposited text` |
+| Economic Efficiency Law 5783-2023 s 24 | SH 3045 p. 169 | 2024-2027: item 4 at 2.06 and 0.47, totals 14.60 and 3.95 | encoded (as the "read in 2024-2027" versions; A3) | `Schedule J (… version), item 4, with the figures noted for 2024-2027` |
 
 ### s 1, every defined term
 
@@ -211,6 +301,7 @@ The check: tags ־9 to ־12 then fall on Amendment 257, Amendment 258, Amendment
 The Law for the 2025 budget year, as Hebrew Wikisource prints it (fetched 2026-10-06, section 7), says in its s 21 that its National Insurance chapter (ss 19-20, the second amending "Amendment 252 and temporary provision") commences on 1 January 2026.
 So the deposited s 334 and Schedule J are the text in force from 1 January 2026; what they said in 2025 is not in the sources, and answering 2025 from the amended text would borrow one vintage's figures for another.
 The identification is by counting and by the commencement section of a Wikisource page; the Laws themselves could not be fetched from the Knesset (section 7).
+**(added 2026-10-07)** Verified against the enacted Laws: the 2025 budget-year Law s 19(2) inserts the threshold's definition, s 19(6) changes Schedule J's headings, s 20(1) changes item 2's lower figure for those who are neither from 0.17 to 0.16, and s 21 commences all of it on 1 January 2026. So the 2025 text demonstrably differs (0.17; every heading "60% of the average wage"), and the refusal of 2025 is required by the sources, not only by the brief.
 
 **A2. The year of the contribution month is an explicit input, and the dated arms select on it.**
 The skill's rule-effective-time axis (`RULES EFFECTIVE DATE`) was not used.
@@ -222,6 +313,7 @@ The text itself prints two tables; which governs when is said only by the editor
 Without them there is no rule choosing a table, so they are used, as aids, and every use is cited.
 The Institute's pages corroborate the 2026 selection: its published composites for the self-employed (4.47 / 12.83, and 0.26 / 0.78 for work injury alone) and for those who are neither (6.92 / 7.00), and the employee's 5.55 and 1.04 up to the threshold, are exactly the sums of the 2026 version's items.
 They also date the employee's 14.6% composite "from 01.02.2025", where the note says 2024; that difference touches only months this row declines.
+**(added 2026-10-07)** Each note now has an enacted source: the temporary table is Amendment 252 s 7 (for contributions in respect of 2025 and 2026), and the item-4 and totals figures are the Economic Efficiency Law 5783-2023 s 24 (1 January 2024 to 31 December 2027). The Institute's "from 01.02.2025" for the 14.6% composite remains unexplained by either.
 
 **A4. Published figures.**
 Used: the reduced collection threshold for 2026 (7,703), and the 2026 average wage under s 1 (13,566) and under s 2 (13,769), each from the Institute's pages with URL, time and sha256 (`nii-il04-published-figures.l4`).
@@ -238,15 +330,18 @@ Neither s 334 nor s 337 nor Schedule J says to round; contributions and the upda
 **A7. Each branch is listed once, and income is not negative.**
 These are input conventions stated in the nouns module, not checked.
 
+**A8. No order under Amendment 252 s 7(b) (added 2026-10-07).**
+The rules that take only a year assume the temporary provision was not extended to 2027 or 2028: it ends on 31 December 2026 by its own terms, and no extension order was known at retrieval (an order must be brought to the Knesset Labour and Welfare Committee at least two months before the year). Callers who know of an order use the entry points that take it as an argument.
+
 ## 4. Fork register
 
 | # | where | the question | readings | taken, and why |
 | --- | --- | --- | --- | --- |
 | F1 | Schedule J sub-heading (4711), label (4714) | "For the years 2025-2026": years of what? | (i) the calendar year of the month for which contributions are paid; (ii) the year of payment; (iii) the tax year of the income | **(i)**: the sub-heading dates the rates by the month contributions are "for" ("בעד אפריל"). (i) and (iii) coincide for an employee's monthly contributions. |
 | F2 | items 4 and totals (4723, 4741, 4730, 4748) | The 2024-2027 notes: which table do they modify in which year? | (i) each table's own notes apply while that table is in force (temporary in 2026, permanent in 2027); (ii) the notes apply to both tables in all of 2024-2027 | **(i)**, and it makes no difference: both tables note the same 2.06 above the threshold; only the permanent table notes 0.47 below it, and the permanent table governs only 2027 of those years. The temporary table's 0.60 below the threshold carries no note and stands. |
-| F3 | Schedule J temporary version, column D (4718) | Column D's upper part is "the part of the wage above 60% of the average wage"; its lower part "the part not above the reduced collection threshold". In 2026 the threshold (7,703) is below 60% of either published average wage (8,139.6; 8,261.4), so the part of a wage between them has no figure. | (i) as printed: that part has no column D figure; (ii) the upper heading is stale, and the upper part begins at the threshold, as in the permanent version; (iii) the lower part runs up to 60% of the average wage | **(i), declined**: `the column D deduction under` refuses a wage that reaches the gap. The Institute applies the employee's 7% "on the part of the wage above the reduced collection threshold", which is reading (ii). The wording "60% of the average wage" is consistent with the threshold's earlier definition: 7,522 is 60% of 12,536, the Institute's s 2 average wage for contributions in 2024 and 2025. Column D's use is s 342(c), row IL-05. |
-| F4 | totals rows (4730, 4748) | Ten printed totals differ from the sums of the items above them (section 0). Which governs? | (i) the items: s 335 imposes contributions branch by branch, s 337(a) applies "the rates under section 335", and s 28(a) credits contributions to the branches' accounts "in the ratio of the rates in Schedule J" (line 449); (ii) the totals: the Institute charges composites equal to them (14.6, 7.00) | **(i) for computing; the totals are data and are compared, red, in their own module.** Consequence: an employee in 2026 is charged 14.49% above the threshold here where the Institute charges 14.6%, and the deduction on the upper part sums to 4.67% where the Institute deducts 7%. The two items of evidence point in opposite directions; this is open question 1. |
-| F5 | s 1 "the average wage" (222-226), s 2(b) (236) | Which figure is "the average wage" in Schedule J's column D heading, in "self-employed person" (2), and in s 334(a)(2)? | (i) the s 1 figure (13,566 for 2026); (ii) the figure as calculated under s 2, which s 2(b) applies "for benefits and contributions" (13,769) | **not decided**: every rule takes the average wage as an argument. The tests supply 13,566 (the s 1 figure, which the editors' note at line 226 also gives). The column D gap (F3) exists under either. The Institute publishes both, each "for contributions". |
+| F3 | Schedule J temporary version, column D (4718) | **(revised 2026-10-07)** The consolidation prints column D's upper heading in the temporary table as "above 60% of the average wage" and the lower as "not above the reduced collection threshold"; in 2026 they do not meet (7,703 against 8,139.6 or 8,261.4). | (i) as printed: no figure for the part between; (ii) the upper heading is stale, and the upper part begins at the threshold; (iii) the lower part runs up to 60% of the average wage | **(ii), on the enacted Laws.** Amendment 252 s 7(a)(3) replaced only the lower sub-columns, so the upper sub-column is the principal Law's, and the 2025 budget-year Law s 19(6) changed "60% of the average wage" to "the reduced collection threshold" everywhere in Schedule J from 1 January 2026 (s 21). Line 4718's upper heading is a stale copy. The Institute applies the employee's 7% "on the part of the wage above the reduced collection threshold", and row IL-05 read the texts the same way. *Before the repair:* (i), declined, with every 2026 wage above 7,703 refused. |
+| F4 | totals rows (4730, 4748) | Ten printed totals differ from the sums of the items above them (section 0). Which governs? | (i) the items: s 335 imposes contributions branch by branch, s 337(a) applies "the rates under section 335", and s 28(a) credits contributions to the branches' accounts "in the ratio of the rates in Schedule J" (line 449); (ii) the totals: the Institute charges composites equal to them (14.6, 7.00) | **(i) for computing; the totals are data and are compared, red, in their own module.** Consequence: an employee in 2026 is charged 14.49% above the threshold here where the Institute charges 14.6%, and the deduction on the upper part sums to 4.67% where the Institute deducts 7%. The two items of evidence point in opposite directions; this is open question 1. **(added 2026-10-07)** Two enacted precedents: the 2025 budget-year Law s 20(1) changed a row so that it met its printed total (0.17 to 0.16), and the Economic Efficiency Law 5783-2023 s 24 moved item 4 and the totals together by 0.10. Both treat a total as tracking its items; neither says which is right where they already differ, and the gaps (0.11, 2.33, 0.31) predate both. Choice unchanged. |
+| F5 | s 1 "the average wage" (222-226), s 2(b) (236) | Which figure is "the average wage" in Schedule J's column D heading, in "self-employed person" (2), and in s 334(a)(2)? | (i) the s 1 figure (13,566 for 2026); (ii) the figure as calculated under s 2, which s 2(b) applies "for benefits and contributions" (13,769) | **not decided**: every rule takes the average wage as an argument. The tests supply 13,566 (the s 1 figure, which the editors' note at line 226 also gives). The column D gap (F3) exists under either. The Institute publishes both, each "for contributions". **(added 2026-10-07)** After the F3 repair Schedule J no longer reads the average wage at all; the fork remains for "self-employed person" (2) and s 334(a)(2). Row IL-05 (its fork F1) found that every Institute figure for Chapter 15 it checked (3,442; 143; 171; the 2025 table's 3,134, 627 and 1,880) fits the s 2 figure and not the s 1 figure, which is evidence for (ii) in contributions; the s 1 definition of "self-employed person" serves benefits as well, so the rules still take the figure as an argument. |
 | F6 | s 334(a)(1)-(2) (3606-3607) | If the index or the average wage falls, does the threshold fall? | (i) yes, the rate of rise is negative and is applied; (ii) no, "עליית" (rise) counts only rises | **(i)**: the update is a rate computed from two readings; a test shows a 1% fall lowering 8,000 to 7,920. |
 | F7 | s 334(a) | Is the updated threshold rounded? | (i) no; (ii) to the shekel, as the Institute publishes it | **(i)**: the section says nothing about rounding. The published 2026 figure is a whole number; the encoding uses it as published for 2026 and computes unrounded for any later year a caller supplies readings for. |
 | F8 | s 337(a)(2) (3627) | "annual income divided into the periods set for advances": equal shares? and does the threshold scale for a period longer than a month? | (i) equal shares, threshold per monthly period, other periods declined; (ii) the threshold scaled by the period's length | **(i)**: s 336 makes the payment period a month unless the Minister sets otherwise, and the Institute applies the threshold to monthly income; the text does not say how it scales. |
@@ -259,6 +354,9 @@ These are input conventions stated in the nouns module, not checked.
 | F15 | Schedule J items 1-2 | Item 2 is "maternity – an insured person who is neither employee nor self-employed". Is it a tenth branch? | (i) the same branch, the column decides which item applies; (ii) a separate branch | **(i)**: s 335 imposes maternity contributions (in (a) and (i)) as one branch; items 1 and 2 never both print a figure in one column (a test checks this for every version and column). |
 | F16 | s 1 "self-employed person" (207-209) | "לפחות" (at least), "לא פחתה מ" (not less than) at the boundary | — | **inclusive** (`AT LEAST`); tests sit on each boundary. |
 | F17 | Schedule J column C (4718) | Is the rate applied to the whole income according to its band, or to each part? | (i) marginal, each figure "on the part"; (ii) slab | **(i)**: the headings say "on the part above" and "on the part not above". At exactly the threshold all the income is "not above". |
+| F18 | Amendment 252 s 7(a)(3) | **(added 2026-10-07)** The temporary lower sub-columns Amendment 252 inserts carry their own headings, "not above 60% of the average wage"; the 2025 budget-year Law s 20 amended that section's figures but not those headings, and s 19(6) amends "Schedule J, everywhere". Read literally for 2026 the lower part would run to 60% of the average wage while the upper part starts at the threshold: an overlap. | (i) the threshold: s 19(6) reaches Schedule J as read under the temporary provision; (ii) literal: the lower part runs to 60% of the average wage | **(i)**, the only workable reading, and the one the consolidation (line 4718) and the Institute follow. Not settled by any text read. |
+| F19 | item 4, employee, not above the split, 2026 (4723) | **(added 2026-10-07)** Two temporary provisions reach the same cell in 2026: the Economic Efficiency Law 5783-2023 s 24 reads 0.47 into the principal sub-column, and Amendment 252 s 7(a)(3) replaces that sub-column with its own (0.60). | (i) Amendment 252's sub-column, 0.60; (ii) 0.47 | **(i)**: s 7(a)(3) replaces the whole sub-column, and is the later Law; the consolidation prints 0.60, and the Institute's 2026 composite (5.55) includes it. |
+| F20 | Amendment 252 s 7(b) | **(added 2026-10-07)** The extension is "one year at a time": does an order for 2028 presuppose one for 2027? | — | **not checked**: the order is an input per year. |
 
 **Where I looked for others and found none:** s 334(a)'s two carrier definitions; s 337(b)'s conditions (each a fact the order records); Schedule J's column E (data only).
 
@@ -274,7 +372,8 @@ Composite percentages are sums of the items of the version in force, for the bra
 | employee, not above / above | declined | 5.55 / 14.49 (printed totals 5.55 / 14.60) | 4.26 / 14.49 (printed 3.95 / 14.60) | 4.16 / 14.39 (printed 3.85 / 14.50) |
 | self-employed, not above / above | declined | 4.47 / 12.83 | 2.87 / 12.83 | 2.87 / 12.83 |
 | neither, not above / above | declined | 6.92 / 7.00 | 4.61 / 7.00 | 4.61 / 7.00 |
-| column D, not above / upper part | declined | 1.04 / 4.67 (printed 1.04 / 7.00); upper part begins at 60% of the average wage (F3) | 0.40 / 4.67 (printed 0.40 / 7.00) | 0.40 / 4.67 (printed 0.40 / 7.00) |
+| column D, not above / upper part | declined | 1.04 / 4.67 (printed 1.04 / 7.00); upper part from the threshold (F3, revised 2026-10-07; before: from 60% of the average wage) | 0.40 / 4.67 (printed 0.40 / 7.00) | 0.40 / 4.67 (printed 0.40 / 7.00) |
+| with an order under Amendment 252 s 7(b) (added 2026-10-07) | declined | (no order needed) | the temporary lower sub-columns: employee 5.55 / 14.49, self-employed 4.47 / 12.83, neither 6.92 / 7.00, column D 1.04 / 4.67 | 2028: the temporary lower sub-columns, upper as printed: employee 5.55 / 14.39; 2029 on: declined |
 
 Worked figures the tests assert (2026 unless marked):
 
@@ -288,7 +387,10 @@ Worked figures the tests assert (2026 unless marked):
 | neither, the Institute's January 2026 example (base 8,558) | 592.8976 (with health at 5.17%: 1,035.3462; the Institute prints 931.29 + 104.05 = 1,035) |
 | self-employed, 240,000 a year in 12 monthly advances | 1,922.0292 a month; 23,064.3504 a year |
 | column D, permanent version, wage 10,000, threshold 8,000 (scenario) | 125.4 |
-| column D, temporary version, wage 7,000 / 7,703 / 7,704 | 72.8 / 80.1112 / declined (F3) |
+| column D, temporary version, wage 7,000 / 7,703 / 7,704 | 72.8 / 80.1112 / 80.1579 (revised 2026-10-07; before: declined) |
+| column D, temporary version, wage 10,000 / 20,000 (added 2026-10-07) | 187.3811 / 654.3811 |
+| employee, work injury only, 10,000, threshold 8,000 (scenario), with an order: 2027 / 2028 (added 2026-10-07) | 89.2 / 87.2 |
+| self-employed, 2027, 240,000 a year, threshold 8,000 (scenario): with an order / without (added 2026-10-07) | 1,897.2 / 1,769.2 a month |
 
 ## 6. Nouns to reconcile at IL-07
 
@@ -317,11 +419,12 @@ The Institute's pages describe themselves as general information and not the bin
 **Attempted and failed:** the amending Laws from `fs.knesset.gov.il` (Amendment 252, `25_lsr_5482787.pdf`) returned a 131,618-byte HTML page in place of a PDF, as it did for row IL-03; the Wayback Machine availability API answered 429 (too many requests); the Central Bureau of Statistics price-index API (`api.cbs.gov.il`) timed out after 40 seconds.
 Nothing was kept from those responses.
 So the consumer price index is an input, and the commencement of Amendment 252's temporary provision was not read.
+**(revised 2026-10-07)** Amendment 252 and the 2025 budget-year Law were fetched the same day through the lead's Israeli-IP proxy and are now deposited at `../../registers/source-bundle/amending-laws/` with `SOURCES.json` (commons commit 7737fa8); the Economic Efficiency Law 5783-2023 was fetched through the proxy at 21:39:39 UTC and is not deposited ("Repair 2026-10-07" above has all three, with their sha256). The Central Bureau of Statistics API returned an empty reply through the proxy too, so the index is still an input.
 
 **Observations about the source**, for whoever maintains it:
 
 - Ten cells of Schedule J's totals rows differ from the sums of their items (section 0). The gaps are the same in all four readings of the schedule: 2.33 in column D's upper part, 0.11 in column C above the threshold for an employee, and (permanent version only) 0.31 the other way in column C not above the threshold for an employee. Which cell, if any, is wrong cannot be told from the table.
-- The temporary version's column D heading ("above 60% of the average wage") does not meet its other heading ("not above the reduced collection threshold") in 2026 (F3).
+- The temporary version's column D heading ("above 60% of the average wage") does not meet its other heading ("not above the reduced collection threshold") in 2026 (F3). **(revised 2026-10-07)** On the enacted Laws the upper heading is stale: s 19(6) of the 2025 budget-year Law made it "the reduced collection threshold" from 1 January 2026, and the temporary provision never replaced it.
 - s 342(e)(3)-(4) (lines 3669-3670) refer to "טור ה׳ בלוח י׳" (column E) for the employee's deduction rates, where the schedule's column E is the Treasury allocation and column D is the deduction (row IL-05's provision; noted for it).
 - Line 3605's editorial note calls 7,522 "nominal for 2025"; the text is in force only from 1 January 2026 (A1), so the note dates the base, not a year the text governed.
 
@@ -329,14 +432,15 @@ So the consumer price index is an input, and the commencement of Amendment 252's
 
 1. F4: does the Institute collect the employee's 14.6% (and deduct 7%) above the threshold because the totals row governs, or because the items as enacted differ from the consolidation's? If the consolidation mistranscribes an item, which?
 2. F4: for a controlling shareholder in a closely-held company the Institute's composite above the threshold (14.17) exceeds the items without unemployment and insolvency (14.12); is there a rule outside s 335(e)-(f) that explains the 0.05?
-3. F3: is the temporary version's column D heading "above 60% of the average wage" in the Law as amended, or a remnant of the threshold's earlier definition that the 2025 budget-year Law did not update?
-4. F5: which average wage does Schedule J (temporary column D), the s 1 self-employed test and s 334(a)(2) use: the s 1 figure or the s 2 figure?
-5. A3: from which month did the 2.06 work-injury rate apply: January 2024 (the editors' note) or February 2025 (the Institute's composite)?
+3. F3: is the temporary version's column D heading "above 60% of the average wage" in the Law as amended, or a remnant of the threshold's earlier definition that the 2025 budget-year Law did not update? **(answered 2026-10-07 by the enacted Laws: a remnant; F3.)** What remains is F18: do the inserted sub-columns' own headings follow s 19(6)?
+4. F5: which average wage does Schedule J (temporary column D), the s 1 self-employed test and s 334(a)(2) use: the s 1 figure or the s 2 figure? **(2026-10-07: Schedule J no longer uses it; the question stands for the other two.)**
+5. A3: from which month did the 2.06 work-injury rate apply: January 2024 (the editors' note) or February 2025 (the Institute's composite)? **(2026-10-07: the Economic Efficiency Law 5783-2023 s 24 says 1 January 2024; why the Institute dates the 14.6% composite from 1 February 2025 is still open.)**
+7. **(added 2026-10-07)** Was an order under Amendment 252 s 7(b) made extending the temporary provision to 2027 (A8)?
 6. F8: are the self-employed's advance periods ever other than months, and if so how does the Institute apply the threshold to them?
 
 ## 9. What was not done
 
-- **The independent test pass** (skill step 8) was not run: the brief for this row is one session with no sub-agents. Every expected value was worked out before it was asserted, by a Python computation over the source's cells and the Institute's printed figures that does not use this encoding; no second reader has derived them.
+- **The independent test pass** (skill step 8) was not run by this encoder: the brief for this row is one session with no sub-agents. **(added 2026-10-07)** It was run afterwards by `fid-il-04` (`DECIDED-ANSWERS.md`, `INDEPENDENT-FINDINGS.md`, `tests-independent.l4`); its results after the repair are in "Repair 2026-10-07". Every expected value was worked out before it was asserted, by a Python computation over the source's cells and the Institute's printed figures that does not use this encoding; no second reader has derived them.
 - **HG1**, a human who knows Israeli national insurance reading the modules against the Hebrew, has not been sought.
 - **Semi-cleanroom** (ruled 2026-10-06): nothing from the Axiom Foundation, any RuleSpec repository, or the paths the brief lists was read, searched or fetched in this session.
 

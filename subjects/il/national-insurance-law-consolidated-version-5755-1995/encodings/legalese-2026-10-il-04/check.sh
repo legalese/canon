@@ -29,7 +29,8 @@ L4="${L4:-l4}"
 expected_failed() {
   case "$1" in
     # tests-red.l4) echo 3 ;;
-    nii-il04-tests-expected-red.l4) echo 14 ;;   # NOTES.md section 0: printed totals vs items (10), the Institute's composites (4)
+    nii-il04-tests-expected-red.l4) echo 15 ;;   # NOTES.md section 0: printed totals vs items (10), the Institute's composites (4), the 2025 text (1)
+    tests-independent.l4) echo 6 ;;              # the independent tester's: T7 (fork F6, line 787) and five F3 expectations the repair of 2026-10-07 overturned (lines 756, 924, 929-931); not edited
     *) echo 0 ;;
   esac
 }
