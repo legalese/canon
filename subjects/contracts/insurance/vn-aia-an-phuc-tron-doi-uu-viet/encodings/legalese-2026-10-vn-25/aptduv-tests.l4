@@ -1,0 +1,1146 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `aptduv-nouns`
+IMPORT `aptduv-ch1-definitions`
+IMPORT `aptduv-ch1-general`
+IMPORT `aptduv-ch2-benefits`
+IMPORT `aptduv-ch3-policyholder-rights`
+IMPORT `aptduv-ch4-premiums-account`
+IMPORT `aptduv-ch5-charges`
+IMPORT `aptduv-ch6-changes-termination`
+IMPORT `aptduv-ch7-claims`
+IMPORT `aptduv-ch8-9-fund-disputes`
+
+-- Tests for the AIA An Phuc Tron Doi Uu Viet rules and terms (V082021).
+--
+-- Every expected value comes from the SOURCE: a figure or rate the document prints, or
+-- arithmetic on it worked by hand and written beside the assertion. Calendar dates were worked
+-- out with Python's datetime, which shares nothing with L4. The rows of the five tables
+-- (7.2.3, 7.7, 14.5.3, Article 17, Article 32) are generated from the raw text by
+-- scratchpad/vn25/gentables.py, which parses each printed row and converts the Vietnamese
+-- decimal comma ("98,5%") into an L4 literal; they are not retyped. None was copied from an
+-- evaluation. A failing assertion is a finding, never a value to edit.
+--
+-- Money is dong. Hypothetical figures (a sum insured of 500,000,000, an account value of
+-- 50,000,000, a cost of insurance of 150,000 a month) are scenario inputs, chosen to make the
+-- arithmetic visible; they are not in the document.
+
+§ `Tests`
+
+§§ `Fixtures`
+
+GIVEN eff IS A DATE
+      dob IS A DATE
+GIVETH A `The contract`
+`a contract effective` eff `for an insured born` dob MEANS
+    `The contract` WITH
+        `effective date`                                              IS eff
+        `date the Company accepted the insurance`                     IS eff PLUS 10
+        `date of the last reinstatement`                              IS NOTHING
+        `date of the last increase of the current sum insured`        IS NOTHING
+        `insured's date of birth`                                     IS dob
+        `premium mode`                                                IS monthly
+        `annualised basic premium of the first contract year`         IS 12_000_000
+        `accepted on standard terms at issue or at the last reinstatement` IS TRUE
+
+-- C1: effective 31 January 2021, accepted 10 February 2021, insured born 15 June 1980. The
+-- insured is 40 on the effective date, and his insurance age is 40 + (k - 1) in contract year k.
+`C1` MEANS `a contract effective` (YMD 2021 1 31) `for an insured born` (YMD 1980 6 15)
+
+-- C1 reinstated on 1 June 2024.
+`C1 reinstated` MEANS
+    `The contract` WITH
+        `effective date`                                              IS YMD 2021 1 31
+        `date the Company accepted the insurance`                     IS YMD 2021 2 10
+        `date of the last reinstatement`                              IS JUST (YMD 2024 6 1)
+        `date of the last increase of the current sum insured`        IS NOTHING
+        `insured's date of birth`                                     IS YMD 1980 6 15
+        `premium mode`                                                IS monthly
+        `annualised basic premium of the first contract year`         IS 12_000_000
+        `accepted on standard terms at issue or at the last reinstatement` IS TRUE
+
+-- C2: a child, born 1 March 2021, effective 15 April 2021: insurance age 0 in contract year 1,
+-- 1 in year 2, 2 in year 3.
+`C2` MEANS `a contract effective` (YMD 2021 4 15) `for an insured born` (YMD 2021 3 1)
+
+-- C3: an insured born on the day and month of the effective date, so that the 100th birthday
+-- falls on an anniversary.
+`C3` MEANS `a contract effective` (YMD 2021 6 15) `for an insured born` (YMD 1980 6 15)
+
+GIVEN opt IS A `A benefit option`
+      sa  IS A NUMBER
+      b   IS A NUMBER
+      a   IS A NUMBER
+      debts IS A NUMBER
+      k   IS A NUMBER
+GIVETH A `The state of the contract`
+`in force with` opt `, sum insured` sa `, basic value` b `, accumulation value` a `, debts` debts `, cancer paid` k MEANS
+    `The state of the contract` WITH
+        `in force`                    IS TRUE
+        `benefit option`              IS opt
+        `current sum insured`         IS sa
+        `basic account value`         IS b
+        `accumulation account value`  IS a
+        `outstanding debts`           IS debts
+        `cancer benefit already paid` IS k
+
+-- The basic benefit, sum insured 500,000,000, account value 50,000,000 (40,000,000 basic,
+-- 10,000,000 accumulation), no debts, no cancer benefit paid.
+`S basic` MEANS `in force with` `the basic benefit` `, sum insured` 500_000_000 `, basic value` 40_000_000 `, accumulation value` 10_000_000 `, debts` 0 `, cancer paid` 0
+`S enhanced` MEANS `in force with` `the enhanced benefit` `, sum insured` 500_000_000 `, basic value` 40_000_000 `, accumulation value` 10_000_000 `, debts` 0 `, cancer paid` 0
+`S basic, rich` MEANS `in force with` `the basic benefit` `, sum insured` 500_000_000 `, basic value` 500_000_000 `, accumulation value` 100_000_000 `, debts` 0 `, cancer paid` 0
+`S lapsed` MEANS
+    `The state of the contract` WITH
+        `in force`                    IS FALSE
+        `benefit option`              IS `the basic benefit`
+        `current sum insured`         IS 500_000_000
+        `basic account value`         IS 40_000_000
+        `accumulation account value`  IS 10_000_000
+        `outstanding debts`           IS 0
+        `cancer benefit already paid` IS 0
+
+GIVEN d IS A DATE
+GIVETH A `The cause of a death or disability`
+`an ordinary cause first existing on` d MEANS
+    `The cause of a death or disability` WITH
+        `an act of insurance fraud`    IS FALSE
+        `suicide or attempted suicide` IS FALSE
+        `date the cause first existed` IS d
+        `war`                          IS FALSE
+
+GIVEN d IS A DATE
+GIVETH A `The cause of a death or disability`
+`a suicide on` d MEANS
+    `The cause of a death or disability` WITH
+        `an act of insurance fraud`    IS FALSE
+        `suicide or attempted suicide` IS TRUE
+        `date the cause first existed` IS d
+        `war`                          IS FALSE
+
+GIVEN d IS A DATE
+GIVETH A `The cause of a death or disability`
+`an act of war on` d MEANS
+    `The cause of a death or disability` WITH
+        `an act of insurance fraud`    IS FALSE
+        `suicide or attempted suicide` IS FALSE
+        `date the cause first existed` IS d
+        `war`                          IS TRUE
+
+GIVEN d IS A DATE
+GIVETH A `The cause of a death or disability`
+`an act of insurance fraud on` d MEANS
+    `The cause of a death or disability` WITH
+        `an act of insurance fraud`    IS TRUE
+        `suicide or attempted suicide` IS FALSE
+        `date the cause first existed` IS d
+        `war`                          IS FALSE
+
+GIVEN d  IS A DATE
+      cs IS A LIST OF `A circumstance listed in 8.2`
+GIVETH AN `An accident`
+`an accident on` d `in the circumstances` cs MEANS
+    `An accident` WITH
+        `date of the accident`                                        IS d
+        `by the impact of a sudden, external force or object`         IS TRUE
+        `unintended and against the will of the insured`              IS TRUE
+        `the direct and sole cause, unrelated to any other cause`     IS TRUE
+        `excluded circumstances`                                      IS cs
+
+`Lan` MEANS
+    `A beneficiary` WITH
+        `name`                             IS "Lan"
+        `designated share`                 IS 60%
+        `died before the insured`          IS FALSE
+        `took part in the intentional act` IS FALSE
+
+`Minh` MEANS
+    `A beneficiary` WITH
+        `name`                             IS "Minh"
+        `designated share`                 IS 40%
+        `died before the insured`          IS FALSE
+        `took part in the intentional act` IS TRUE
+
+`Lan and Minh` MEANS LIST `Lan`, `Minh`
+
+GIVEN d   IS A DATE
+      c   IS A `The cause of a death or disability`
+      acc IS A MAYBE `An accident`
+      ns  IS A BOOLEAN
+GIVETH A `A death`
+`a death on` d `, cause` c `, accident` acc `, non-smoker` ns MEANS
+    `A death` WITH
+        `date of death`                     IS d
+        `the cause`                         IS c
+        `the accident`                      IS acc
+        `determined to be a non-smoker`     IS ns
+        `premiums received after the death` IS 0
+        `the beneficiaries`                 IS `Lan and Minh`
+        `the policyholder has died`         IS FALSE
+
+GIVEN x IS A NUMBER
+GIVETH AN `The aggregate limit at the time of payment`
+`no limit raised, already received` x MEANS
+    `The aggregate limit at the time of payment` WITH
+        `limit published at the time of payment`                              IS NOTHING
+        `the same kind of benefit already received under all contracts with the Company` IS x
+
+§§ `Tables, generated from the raw text`
+
+-- 7.2.3, one assertion per row, read from src:940-956. A row 'under N' is tested at age N-1,
+-- the only age at which it is the first row that matches; the last row at its own age.
+-- src:940 | Dưới 1 tuổi 20% Số tiền bảo hiểm hiện tại
+#ASSERT `7.2.3 — the part of the current sum insured used, at insurance age` 0 EQUALS 20%
+-- src:947 | Dưới 2 tuổi 40% Số tiền bảo hiểm hiện tại
+#ASSERT `7.2.3 — the part of the current sum insured used, at insurance age` 1 EQUALS 40%
+-- src:948 | Dưới 3 tuổi 60% Số tiền bảo hiểm hiện tại
+#ASSERT `7.2.3 — the part of the current sum insured used, at insurance age` 2 EQUALS 60%
+-- src:949 | Dưới 4 tuổi 80% Số tiền bảo hiểm hiện tại
+#ASSERT `7.2.3 — the part of the current sum insured used, at insurance age` 3 EQUALS 80%
+-- src:956 | Từ 4 tuổi trở lên 100% Số tiền bảo hiểm hiện tại
+#ASSERT `7.2.3 — the part of the current sum insured used, at insurance age` 4 EQUALS 100%
+
+-- 7.7, the loyalty bonus by anniversary, read from src:1070-1072.
+-- src:1070 | 10 100% Tổng Số tiền tính Thưởng
+#ASSERT `7.7 — the part of the total bonus base paid on anniversary` 10 EQUALS 100%
+-- src:1071 | 15 10% Tổng Số tiền tính Thưởng
+#ASSERT `7.7 — the part of the total bonus base paid on anniversary` 15 EQUALS 10%
+-- src:1072 | 20 10% Tổng Số tiền tính Thưởng
+#ASSERT `7.7 — the part of the total bonus base paid on anniversary` 20 EQUALS 10%
+
+-- 7.7, the five windows, read from src:1098-1113. The first year is the NUMERAL printed (fork F26);
+-- The generator also checks that each window ends with the anniversary's own contract year.
+-- src:1099 | 6
+-- src:1100 | hợp đồng thứ 2 (hai) đến Năm hợp đồng thứ 6 (sáu)
+#ASSERT `7.7 — the first contract year whose interest is recorded on anniversary` 6 EQUALS 2
+-- src:1103 | 7
+-- src:1104 | hợp đồng thứ 3 (ba) đến Năm hợp đồng thứ 7 (bảy)
+#ASSERT `7.7 — the first contract year whose interest is recorded on anniversary` 7 EQUALS 3
+-- src:1106 | 8
+-- src:1107 | hợp đồng thứ 4 (tư) đến Năm hợp đồng thứ 8 (tám)
+#ASSERT `7.7 — the first contract year whose interest is recorded on anniversary` 8 EQUALS 4
+-- src:1109 | 9
+-- src:1110 | hợp đồng thứ 5 (năm) đến Năm hợp đồng thứ 9 (chín)
+#ASSERT `7.7 — the first contract year whose interest is recorded on anniversary` 9 EQUALS 5
+-- src:1112 | 10
+-- src:1113 | hợp đồng thứ 6 (năm) đến Năm hợp đồng thứ 10 (mười)
+#ASSERT `7.7 — the first contract year whose interest is recorded on anniversary` 10 EQUALS 6
+
+-- 14.5.3, the allocation rates, read from src:1608 and 1615; column 5 is 'from premium year 5',
+-- tested at years 5 and 30.
+-- src:1608 | 10% 20% 70% 80% 98,5%
+#ASSERT `14.5.3 — the allocation rate of the basic premium in premium year` 1 EQUALS 10%
+#ASSERT `14.5.3 — the allocation rate of the basic premium in premium year` 2 EQUALS 20%
+#ASSERT `14.5.3 — the allocation rate of the basic premium in premium year` 3 EQUALS 70%
+#ASSERT `14.5.3 — the allocation rate of the basic premium in premium year` 4 EQUALS 80%
+#ASSERT `14.5.3 — the allocation rate of the basic premium in premium year` 5 EQUALS 98.5%
+#ASSERT `14.5.3 — the allocation rate of the basic premium in premium year` 30 EQUALS 98.5%
+-- src:1615 | Tỷ lệ phân bổ Phí tích lũy 100% 100% 100% 100% 100%
+#ASSERT `14.5.3 — the allocation rate of the accumulation premium in premium year` 1 EQUALS 100%
+#ASSERT `14.5.3 — the allocation rate of the accumulation premium in premium year` 2 EQUALS 100%
+#ASSERT `14.5.3 — the allocation rate of the accumulation premium in premium year` 3 EQUALS 100%
+#ASSERT `14.5.3 — the allocation rate of the accumulation premium in premium year` 4 EQUALS 100%
+#ASSERT `14.5.3 — the allocation rate of the accumulation premium in premium year` 5 EQUALS 100%
+#ASSERT `14.5.3 — the allocation rate of the accumulation premium in premium year` 30 EQUALS 100%
+
+-- Article 17, the initial charges, read from src:1803 and 1805, the same way.
+-- src:1803 | Phí bảo hiểm cơ bản 90% 80% 30% 20% 1,5%
+#ASSERT `17 — the initial charge on the basic premium in premium year` 1 EQUALS 90%
+#ASSERT `17 — the initial charge on the basic premium in premium year` 2 EQUALS 80%
+#ASSERT `17 — the initial charge on the basic premium in premium year` 3 EQUALS 30%
+#ASSERT `17 — the initial charge on the basic premium in premium year` 4 EQUALS 20%
+#ASSERT `17 — the initial charge on the basic premium in premium year` 5 EQUALS 1.5%
+#ASSERT `17 — the initial charge on the basic premium in premium year` 30 EQUALS 1.5%
+-- src:1805 | Phí tích lũy 0% 0% 0% 0% 0%
+#ASSERT `17 — the initial charge on the accumulation premium in premium year` 1 EQUALS 0%
+#ASSERT `17 — the initial charge on the accumulation premium in premium year` 2 EQUALS 0%
+#ASSERT `17 — the initial charge on the accumulation premium in premium year` 3 EQUALS 0%
+#ASSERT `17 — the initial charge on the accumulation premium in premium year` 4 EQUALS 0%
+#ASSERT `17 — the initial charge on the accumulation premium in premium year` 5 EQUALS 0%
+#ASSERT `17 — the initial charge on the accumulation premium in premium year` 30 EQUALS 0%
+
+-- The two tables close: for each column, the initial charge and the allocation rate of the
+-- same premium sum to 100%. Read from the source rows, not from the encoding.
+#ASSERT 10% PLUS 90% EQUALS 100%
+#ASSERT 20% PLUS 80% EQUALS 100%
+#ASSERT 70% PLUS 30% EQUALS 100%
+#ASSERT 80% PLUS 20% EQUALS 100%
+#ASSERT 98.5% PLUS 1.5% EQUALS 100%
+#ASSERT 100% PLUS 0% EQUALS 100%
+#ASSERT 100% PLUS 0% EQUALS 100%
+#ASSERT 100% PLUS 0% EQUALS 100%
+#ASSERT 100% PLUS 0% EQUALS 100%
+#ASSERT 100% PLUS 0% EQUALS 100%
+
+-- Article 32, the minimum guaranteed rate, read from src:2381-2406; the last row is tested at
+-- years 9 and 40.
+-- src:2381 | 1 5,0%
+#ASSERT `32 — the minimum guaranteed interest rate in contract year` 1 EQUALS 5.0%
+-- src:2382 | 2 5,0%
+#ASSERT `32 — the minimum guaranteed interest rate in contract year` 2 EQUALS 5.0%
+-- src:2386 | 3 4,5%
+#ASSERT `32 — the minimum guaranteed interest rate in contract year` 3 EQUALS 4.5%
+-- src:2387 | 4 4,5%
+#ASSERT `32 — the minimum guaranteed interest rate in contract year` 4 EQUALS 4.5%
+-- src:2392 | 5 4,0%
+#ASSERT `32 — the minimum guaranteed interest rate in contract year` 5 EQUALS 4.0%
+-- src:2393 | 6 3,5%
+#ASSERT `32 — the minimum guaranteed interest rate in contract year` 6 EQUALS 3.5%
+-- src:2399 | 7 3,0%
+#ASSERT `32 — the minimum guaranteed interest rate in contract year` 7 EQUALS 3.0%
+-- src:2400 | 8 2,5%
+#ASSERT `32 — the minimum guaranteed interest rate in contract year` 8 EQUALS 2.5%
+-- src:2406 | Từ năm hợp đồng thứ 9 2,0%
+#ASSERT `32 — the minimum guaranteed interest rate in contract year` 9 EQUALS 2.0%
+#ASSERT `32 — the minimum guaranteed interest rate in contract year` 40 EQUALS 2.0%
+
+§§ `Number format`
+
+-- "100.000.000 đồng" (5.1), "10 (mười) tỷ đồng" (7.4, 7.5), "30.000" and "60.000" (Article 19):
+-- the dot groups thousands, so these are a hundred million, ten billion, thirty thousand and
+-- sixty thousand dong.
+#ASSERT `5.1 — the temporary insurance amount` EQUALS 100000000
+#ASSERT `7.4 and 7.5 — the limit in force at payment, under` (`no limit raised, already received` 0) EQUALS 10000000000
+#ASSERT `19 — the contract administration charge as printed` EQUALS 30000
+#ASSERT `19 — the cap on the contract administration charge as printed` EQUALS 60000
+-- "2%/năm" (Article 20).
+#ASSERT `20 — the maximum fund management charge as printed` EQUALS 0.02
+
+§§ `Article 1 — dates and ages`
+
+-- Age by the last birthday: born 15 June 1980, 40 on 14 June 2021 and 41 on 15 June 2021.
+#ASSERT `the age in completed years of someone born` (YMD 1980 6 15) `on` (YMD 2021 6 14) EQUALS 40
+#ASSERT `the age in completed years of someone born` (YMD 1980 6 15) `on` (YMD 2021 6 15) EQUALS 41
+
+-- 1.8: a contract made on the 31st has its monthiversary on the last day of a shorter month.
+#ASSERT `1.8 — monthiversary number` 1 `of` `C1` EQUALS YMD 2021 2 28
+#ASSERT `1.8 — monthiversary number` 2 `of` `C1` EQUALS YMD 2021 3 31
+#ASSERT `1.8 — monthiversary number` 3 `of` `C1` EQUALS YMD 2021 4 30
+
+-- 1.7 and 1.11: contract year 1 ends the day before the first anniversary.
+#ASSERT `1.7 — contract anniversary number` 1 `of` `C1` EQUALS YMD 2022 1 31
+#ASSERT `1.11 — the contract year in which` (YMD 2021 1 31) `falls, under` `C1` EQUALS 1
+#ASSERT `1.11 — the contract year in which` (YMD 2022 1 30) `falls, under` `C1` EQUALS 1
+#ASSERT `1.11 — the contract year in which` (YMD 2022 1 31) `falls, under` `C1` EQUALS 2
+#ASSERT REFUSED `1.11 — the contract year in which` (YMD 2021 1 30) `falls, under` `C1`
+
+-- 1.32: the insurance age moves only on an anniversary. The insured turns 41 on 15 June 2021,
+-- but his insurance age stays 40 until 31 January 2022.
+#ASSERT `1.32 — the insurance age on` (YMD 2021 7 1) `under` `C1` EQUALS 40
+#ASSERT `1.32 — the insurance age on` (YMD 2022 1 30) `under` `C1` EQUALS 40
+#ASSERT `1.32 — the insurance age on` (YMD 2022 1 31) `under` `C1` EQUALS 41
+
+-- 1.9 and Article 4: 100th birthday 15 June 2080; the first anniversary after it, 31 January
+-- 2081. Where the birthday falls on an anniversary (C3), the anniversary STRICTLY after it.
+#ASSERT `1.9 — the maturity date of` `C1` EQUALS YMD 2081 1 31
+#ASSERT `1.9 — the maturity date of` `C3` EQUALS YMD 2081 6 15
+
+-- 1.6: the later of completion and full payment of the first basic premium.
+GIVEN completed IS A DATE
+      paid      IS A MAYBE DATE
+      accepted  IS A BOOLEAN
+GIVETH AN `An application`
+`an application completed on` completed `, paid` paid `, accepted` accepted MEANS
+    `An application` WITH
+        `the policyholder`                                IS `A policyholder` WITH
+                                                              `an organisation`                     IS FALSE
+                                                              `date of birth`                       IS JUST (YMD 1980 6 15)
+                                                              `full civil act capacity`             IS TRUE
+                                                              `declared and signed the application` IS TRUE
+        `the insured`                                     IS `An insured person` WITH
+                                                              `date of birth`                       IS YMD 1980 6 15
+                                                              `living in Vietnam when the application was submitted` IS TRUE
+        `relationship of the insured to the policyholder` IS `the policyholder themself`
+        `date the application was completed`              IS completed
+        `date the first basic premium was paid in full`   IS paid
+        `accepted by the Company`                         IS accepted
+        `signed in person by the insured`                 IS TRUE
+        `signed by a parent or guardian of the insured, on the application or another consent` IS FALSE
+
+#ASSERT `1.6 — the effective date for` (`an application completed on` (YMD 2021 3 1) `, paid` (JUST (YMD 2021 3 5)) `, accepted` TRUE) EQUALS JUST (YMD 2021 3 5)
+#ASSERT `1.6 — the effective date for` (`an application completed on` (YMD 2021 3 5) `, paid` (JUST (YMD 2021 3 1)) `, accepted` TRUE) EQUALS JUST (YMD 2021 3 5)
+#ASSERT `1.6 — the effective date for` (`an application completed on` (YMD 2021 3 1) `, paid` (JUST (YMD 2021 3 5)) `, accepted` FALSE) EQUALS NOTHING
+#ASSERT `1.6 — the effective date for` (`an application completed on` (YMD 2021 3 1) `, paid` NOTHING `, accepted` TRUE) EQUALS NOTHING
+#ASSERT `Article 2 — the parties to the application qualify` (`an application completed on` (YMD 2021 3 1) `, paid` (JUST (YMD 2021 3 5)) `, accepted` TRUE)
+
+-- 1.2: 18 or more (both sides), full capacity, an organisation.
+GIVEN dob IS A DATE
+      cap IS A BOOLEAN
+GIVETH A `A policyholder`
+`an individual policyholder born` dob `, capacity` cap MEANS
+    `A policyholder` WITH
+        `an organisation`                     IS FALSE
+        `date of birth`                       IS JUST dob
+        `full civil act capacity`             IS cap
+        `declared and signed the application` IS TRUE
+
+#ASSERT `1.2 — the policyholder` (`an individual policyholder born` (YMD 2003 3 1) `, capacity` TRUE) `qualifies on` (YMD 2021 3 1)
+#ASSERT NOT `1.2 — the policyholder` (`an individual policyholder born` (YMD 2003 3 2) `, capacity` TRUE) `qualifies on` (YMD 2021 3 1)
+#ASSERT NOT `1.2 — the policyholder` (`an individual policyholder born` (YMD 1980 3 1) `, capacity` FALSE) `qualifies on` (YMD 2021 3 1)
+#ASSERT `1.2 — the policyholder` (`A policyholder` WITH `an organisation` IS TRUE, `date of birth` IS NOTHING, `full civil act capacity` IS TRUE, `declared and signed the application` IS TRUE) `qualifies on` (YMD 2021 3 1)
+
+-- 1.3: 30 days old (31 March 2021 for a birth on 1 March 2021) and not 29; 65 and not 66;
+-- living in Vietnam.
+GIVEN dob IS A DATE
+      vn  IS A BOOLEAN
+GIVETH AN `An insured person`
+`an insured born` dob `, in Vietnam` vn MEANS
+    `An insured person` WITH
+        `date of birth`                                       IS dob
+        `living in Vietnam when the application was submitted` IS vn
+
+#ASSERT `1.3 — the insured` (`an insured born` (YMD 2021 3 1) `, in Vietnam` TRUE) `qualifies on the effective date` (YMD 2021 3 31) `, accepted` TRUE
+#ASSERT NOT `1.3 — the insured` (`an insured born` (YMD 2021 3 1) `, in Vietnam` TRUE) `qualifies on the effective date` (YMD 2021 3 30) `, accepted` TRUE
+#ASSERT `1.3 — the insured` (`an insured born` (YMD 1955 6 15) `, in Vietnam` TRUE) `qualifies on the effective date` (YMD 2021 6 14) `, accepted` TRUE
+#ASSERT NOT `1.3 — the insured` (`an insured born` (YMD 1955 6 15) `, in Vietnam` TRUE) `qualifies on the effective date` (YMD 2021 6 15) `, accepted` TRUE
+#ASSERT NOT `1.3 — the insured` (`an insured born` (YMD 1980 6 15) `, in Vietnam` FALSE) `qualifies on the effective date` (YMD 2021 6 15) `, accepted` TRUE
+
+-- 1.16: five times the annualised first-year basic premium of 12,000,000.
+#ASSERT `1.16 — the most accumulation premium the contract may take in one contract year` `C1` EQUALS 60000000
+-- 1.17 and 1.21 and 1.25.
+#ASSERT `1.17 — the planned premium of` 1000000 `and` 500000 EQUALS 1500000
+#ASSERT `1.21 — the monthly deduction of` 150000 `and` 30000 EQUALS 180000
+#ASSERT `1.25 — the account value of` `S basic` EQUALS 50000000
+
+§§ `1.29 — total and permanent disability`
+
+GIVEN hands IS A NUMBER
+      legs  IS A NUMBER
+      eyes  IS A NUMBER
+GIVETH A `A disability`
+`a disability of hands` hands `, legs` legs `, eyes` eyes MEANS
+    `A disability` WITH
+        `date of the disability`                         IS YMD 2030 3 1
+        `hands lost or irrecoverably paralysed`          IS hands
+        `legs lost or irrecoverably paralysed`           IS legs
+        `eyes totally and permanently blind`             IS eyes
+        `certified rate of disability or of permanent loss of working capacity` IS NOTHING
+        `certified by`                                   IS `another body`
+        `date of the certification`                      IS NOTHING
+        `the cause`                                      IS `an ordinary cause first existing on` (YMD 2030 3 1)
+
+-- (a), each bullet, and two near misses.
+#ASSERT `1.29(a) — loss or irrecoverable paralysis` (`a disability of hands` 2 `, legs` 0 `, eyes` 0)
+#ASSERT `1.29(a) — loss or irrecoverable paralysis` (`a disability of hands` 0 `, legs` 2 `, eyes` 0)
+#ASSERT `1.29(a) — loss or irrecoverable paralysis` (`a disability of hands` 1 `, legs` 1 `, eyes` 0)
+#ASSERT `1.29(a) — loss or irrecoverable paralysis` (`a disability of hands` 0 `, legs` 0 `, eyes` 2)
+#ASSERT `1.29(a) — loss or irrecoverable paralysis` (`a disability of hands` 1 `, legs` 0 `, eyes` 1)
+#ASSERT `1.29(a) — loss or irrecoverable paralysis` (`a disability of hands` 0 `, legs` 1 `, eyes` 1)
+#ASSERT NOT `1.29(a) — loss or irrecoverable paralysis` (`a disability of hands` 1 `, legs` 0 `, eyes` 0)
+#ASSERT NOT `1.29(a) — loss or irrecoverable paralysis` (`a disability of hands` 0 `, legs` 0 `, eyes` 1)
+
+GIVEN rate     IS A NUMBER
+      certifier IS A `A certifying body`
+      certday   IS A DATE
+GIVETH A `A disability`
+`a disability certified at` rate `, by` certifier `, on` certday MEANS
+    `A disability` WITH
+        `date of the disability`                         IS YMD 2030 3 1
+        `hands lost or irrecoverably paralysed`          IS 0
+        `legs lost or irrecoverably paralysed`           IS 0
+        `eyes totally and permanently blind`             IS 0
+        `certified rate of disability or of permanent loss of working capacity` IS JUST rate
+        `certified by`                                   IS certifier
+        `date of the certification`                      IS JUST certday
+        `the cause`                                      IS `an ordinary cause first existing on` (YMD 2030 3 1)
+
+-- (b): 81% and not 80%; certified exactly six months after the disability (1 September 2030)
+-- and not the day before; by the two bodies (b) names and not by the foreign body of 27.1.
+#ASSERT `1.29(b) — certified at 81% or more` (`a disability certified at` (81%) `, by` `a provincial or centrally-run city medical assessment council` `, on` (YMD 2030 9 1))
+#ASSERT `1.29(b) — certified at 81% or more` (`a disability certified at` (81%) `, by` `an independent medical organisation approved by the Company` `, on` (YMD 2030 9 1))
+#ASSERT NOT `1.29(b) — certified at 81% or more` (`a disability certified at` (80%) `, by` `a provincial or centrally-run city medical assessment council` `, on` (YMD 2030 9 1))
+#ASSERT NOT `1.29(b) — certified at 81% or more` (`a disability certified at` (81%) `, by` `a provincial or centrally-run city medical assessment council` `, on` (YMD 2030 8 31))
+#ASSERT NOT `1.29(b) — certified at 81% or more` (`a disability certified at` (90%) `, by` `a lawful foreign medical organisation approved by the Company` `, on` (YMD 2030 9 1))
+
+§§ `1.30 — cancer, and its exclusions`
+
+GIVEN arose IS A DATE
+GIVETH A `A cancer`
+`an invasive cancer arising on` arose MEANS
+    `A cancer` WITH
+        `a malignant tumour confirmed by histology, growing uncontrollably and invading tissue` IS TRUE
+        `date the cancer arose`                                        IS arose
+        `pre-malignant, non-invasive or in situ, or of borderline or low malignancy` IS FALSE
+        `a tumour of the prostate, thyroid or bladder classified T1N0M0` IS FALSE
+        `chronic lymphocytic leukaemia`                                IS FALSE
+        `RAI stage`                                                    IS NOTHING
+        `in the presence of HIV infection`                            IS FALSE
+        `a skin cancer`                                                IS FALSE
+        `malignant melanoma`                                           IS FALSE
+        `Breslow depth in millimetres`                                 IS NOTHING
+        `Clark level`                                                  IS NOTHING
+
+GIVEN insitu IS A BOOLEAN
+      t1     IS A BOOLEAN
+      cll    IS A BOOLEAN
+      rai    IS A MAYBE NUMBER
+      hiv    IS A BOOLEAN
+      skin   IS A BOOLEAN
+      mel    IS A BOOLEAN
+      depth  IS A MAYBE NUMBER
+      clark  IS A MAYBE NUMBER
+GIVETH A `A cancer`
+`a cancer, in situ` insitu `, T1N0M0` t1 `, CLL` cll `, RAI` rai `, HIV` hiv `, skin` skin `, melanoma` mel `, Breslow` depth `, Clark` clark MEANS
+    `A cancer` WITH
+        `a malignant tumour confirmed by histology, growing uncontrollably and invading tissue` IS TRUE
+        `date the cancer arose`                                        IS YMD 2030 3 1
+        `pre-malignant, non-invasive or in situ, or of borderline or low malignancy` IS insitu
+        `a tumour of the prostate, thyroid or bladder classified T1N0M0` IS t1
+        `chronic lymphocytic leukaemia`                                IS cll
+        `RAI stage`                                                    IS rai
+        `in the presence of HIV infection`                            IS hiv
+        `a skin cancer`                                                IS skin
+        `malignant melanoma`                                           IS mel
+        `Breslow depth in millimetres`                                 IS depth
+        `Clark level`                                                  IS clark
+
+#ASSERT `1.30 — the illness is a Cancer` (`an invasive cancer arising on` (YMD 2030 3 1))
+-- (a) carcinoma in situ.
+#ASSERT NOT `1.30 — the illness is a Cancer` (`a cancer, in situ` TRUE `, T1N0M0` FALSE `, CLL` FALSE `, RAI` NOTHING `, HIV` FALSE `, skin` FALSE `, melanoma` FALSE `, Breslow` NOTHING `, Clark` NOTHING)
+-- (b) T1N0M0 prostate, thyroid or bladder.
+#ASSERT NOT `1.30 — the illness is a Cancer` (`a cancer, in situ` FALSE `, T1N0M0` TRUE `, CLL` FALSE `, RAI` NOTHING `, HIV` FALSE `, skin` FALSE `, melanoma` FALSE `, Breslow` NOTHING `, Clark` NOTHING)
+-- (c) CLL below RAI stage 3, and the near miss at stage 3.
+#ASSERT NOT `1.30 — the illness is a Cancer` (`a cancer, in situ` FALSE `, T1N0M0` FALSE `, CLL` TRUE `, RAI` (JUST 2) `, HIV` FALSE `, skin` FALSE `, melanoma` FALSE `, Breslow` NOTHING `, Clark` NOTHING)
+#ASSERT `1.30 — the illness is a Cancer` (`a cancer, in situ` FALSE `, T1N0M0` FALSE `, CLL` TRUE `, RAI` (JUST 3) `, HIV` FALSE `, skin` FALSE `, melanoma` FALSE `, Breslow` NOTHING `, Clark` NOTHING)
+#ASSERT REFUSED `1.30 — the illness is a Cancer` (`a cancer, in situ` FALSE `, T1N0M0` FALSE `, CLL` TRUE `, RAI` NOTHING `, HIV` FALSE `, skin` FALSE `, melanoma` FALSE `, Breslow` NOTHING `, Clark` NOTHING)
+-- (d) HIV.
+#ASSERT NOT `1.30 — the illness is a Cancer` (`a cancer, in situ` FALSE `, T1N0M0` FALSE `, CLL` FALSE `, RAI` NOTHING `, HIV` TRUE `, skin` FALSE `, melanoma` FALSE `, Breslow` NOTHING `, Clark` NOTHING)
+-- (e) a skin cancer that is not a melanoma; a melanoma under 1.5 mm; at 1.5 mm and Clark 3
+-- (the near miss); under Clark 3; and a melanoma with neither measure, declined.
+#ASSERT NOT `1.30 — the illness is a Cancer` (`a cancer, in situ` FALSE `, T1N0M0` FALSE `, CLL` FALSE `, RAI` NOTHING `, HIV` FALSE `, skin` TRUE `, melanoma` FALSE `, Breslow` NOTHING `, Clark` NOTHING)
+#ASSERT NOT `1.30 — the illness is a Cancer` (`a cancer, in situ` FALSE `, T1N0M0` FALSE `, CLL` FALSE `, RAI` NOTHING `, HIV` FALSE `, skin` TRUE `, melanoma` TRUE `, Breslow` (JUST 1.4) `, Clark` (JUST 3))
+#ASSERT `1.30 — the illness is a Cancer` (`a cancer, in situ` FALSE `, T1N0M0` FALSE `, CLL` FALSE `, RAI` NOTHING `, HIV` FALSE `, skin` TRUE `, melanoma` TRUE `, Breslow` (JUST 1.5) `, Clark` (JUST 3))
+#ASSERT NOT `1.30 — the illness is a Cancer` (`a cancer, in situ` FALSE `, T1N0M0` FALSE `, CLL` FALSE `, RAI` NOTHING `, HIV` FALSE `, skin` TRUE `, melanoma` TRUE `, Breslow` (JUST 2) `, Clark` (JUST 2))
+#ASSERT REFUSED `1.30 — the illness is a Cancer` (`a cancer, in situ` FALSE `, T1N0M0` FALSE `, CLL` FALSE `, RAI` NOTHING `, HIV` FALSE `, skin` TRUE `, melanoma` TRUE `, Breslow` NOTHING `, Clark` NOTHING)
+
+-- (i) and (ii): C1 was accepted on 10 February 2021. Arising the day before: (i). On the day,
+-- and on day 90 after it (11 May 2021): (ii). On day 91 (12 May 2021): neither.
+#ASSERT `1.30(i) — the cancer arose before acceptance or reinstatement` (`an invasive cancer arising on` (YMD 2021 2 9)) `under` `C1`
+#ASSERT `1.30(ii) — the cancer arose within 90 days after acceptance or reinstatement` (`an invasive cancer arising on` (YMD 2021 2 10)) `under` `C1`
+#ASSERT `1.30(ii) — the cancer arose within 90 days after acceptance or reinstatement` (`an invasive cancer arising on` (YMD 2021 5 11)) `under` `C1`
+#ASSERT NOT `1.30(ii) — the cancer arose within 90 days after acceptance or reinstatement` (`an invasive cancer arising on` (YMD 2021 5 12)) `under` `C1`
+#ASSERT NOT `1.30(i) — the cancer arose before acceptance or reinstatement` (`an invasive cancer arising on` (YMD 2021 5 12)) `under` `C1`
+-- A reinstatement on 1 June 2024 restarts the window: a cancer arising on 1 July 2024 is caught.
+#ASSERT `1.30(ii) — the cancer arose within 90 days after acceptance or reinstatement` (`an invasive cancer arising on` (YMD 2024 7 1)) `under` `C1 reinstated`
+
+§§ `1.31 — Accident`
+
+-- An accident on 1 March 2021: a death on day 180 (28 August 2021) counts; day 181 does not.
+#ASSERT `1.31 — the death on` (YMD 2021 8 28) `was caused by the Accident` (`an accident on` (YMD 2021 3 1) `in the circumstances` EMPTY)
+#ASSERT NOT `1.31 — the death on` (YMD 2021 8 29) `was caused by the Accident` (`an accident on` (YMD 2021 3 1) `in the circumstances` EMPTY)
+#ASSERT NOT `1.31 — the death on` (YMD 2021 3 5) `was caused by the Accident` (`An accident` WITH `date of the accident` IS YMD 2021 3 1, `by the impact of a sudden, external force or object` IS TRUE, `unintended and against the will of the insured` IS TRUE, `the direct and sole cause, unrelated to any other cause` IS FALSE, `excluded circumstances` IS EMPTY)
+
+§§ `Article 2 and Article 4`
+
+#ASSERT `2.2 — the policyholder has an insurable interest in the insured, who is` `a natural sibling`
+#ASSERT `2.2 — the policyholder has an insurable interest in the insured, who is` `a natural grandchild, the policyholder being a grandparent`
+#ASSERT REFUSED `2.2 — the policyholder has an insurable interest in the insured, who is` `another person`
+#ASSERT `Article 4 — the day` (YMD 2021 1 31) `falls within the term of` `C1`
+#ASSERT `Article 4 — the day` (YMD 2081 1 31) `falls within the term of` `C1`
+#ASSERT NOT `Article 4 — the day` (YMD 2081 2 1) `falls within the term of` `C1`
+#ASSERT NOT `Article 4 — the day` (YMD 2021 1 30) `falls within the term of` `C1`
+
+§§ `Article 5 — Temporary insurance`
+
+GIVEN acc IS A MAYBE `An accident`
+      sui IS A BOOLEAN
+      sa  IS A NUMBER
+      prem IS A NUMBER
+GIVETH A `A death during temporary insurance`
+`a death in temporary cover on 10 March 2021, accident` acc `, suicide` sui `, sums insured` sa `, first premiums` prem MEANS
+    `A death during temporary insurance` WITH
+        `date the application was completed and the first premium paid in full` IS YMD 2021 3 1
+        `date the temporary cover ended`                                       IS NOTHING
+        `date of death`                                                        IS YMD 2021 3 10
+        `the accident`                                                         IS acc
+        `suicide`                                                              IS sui
+        `total sum insured of all applications for the same insured`           IS sa
+        `total first premiums paid on all applications for the same insured`   IS prem
+        `medical examination costs`                                            IS 2_000_000
+
+`a road accident on 9 March 2021` MEANS JUST (`an accident on` (YMD 2021 3 9) `in the circumstances` EMPTY)
+
+-- 5.1: the lesser of 100,000,000 and the sums insured: 100,000,000 on 500,000,000 insured;
+-- 50,000,000 on 50,000,000 insured.
+#ASSERT `5.1 — the temporary insurance benefit` (`a death in temporary cover on 10 March 2021, accident` `a road accident on 9 March 2021` `, suicide` FALSE `, sums insured` 500000000 `, first premiums` 20000000) EQUALS 100000000
+#ASSERT `5.1 — the temporary insurance benefit` (`a death in temporary cover on 10 March 2021, accident` `a road accident on 9 March 2021` `, suicide` FALSE `, sums insured` 50000000 `, first premiums` 20000000) EQUALS 50000000
+#ASSERT `Article 5 — the first premiums refunded` (`a death in temporary cover on 10 March 2021, accident` `a road accident on 9 March 2021` `, suicide` FALSE `, sums insured` 500000000 `, first premiums` 20000000) EQUALS 0
+-- First premiums of 120,000,000 (above 100,000,000): no benefit, 120,000,000 less 2,000,000 back.
+#ASSERT `5.1 — the temporary insurance benefit` (`a death in temporary cover on 10 March 2021, accident` `a road accident on 9 March 2021` `, suicide` FALSE `, sums insured` 500000000 `, first premiums` 120000000) EQUALS 0
+#ASSERT `Article 5 — the first premiums refunded` (`a death in temporary cover on 10 March 2021, accident` `a road accident on 9 March 2021` `, suicide` FALSE `, sums insured` 500000000 `, first premiums` 120000000) EQUALS 118000000
+-- 5.4: suicide: no benefit; 20,000,000 less 2,000,000 back.
+#ASSERT `5.1 — the temporary insurance benefit` (`a death in temporary cover on 10 March 2021, accident` NOTHING `, suicide` TRUE `, sums insured` 500000000 `, first premiums` 20000000) EQUALS 0
+#ASSERT `Article 5 — the first premiums refunded` (`a death in temporary cover on 10 March 2021, accident` NOTHING `, suicide` TRUE `, sums insured` 500000000 `, first premiums` 20000000) EQUALS 18000000
+-- An illness: no benefit, and the refund is not addressed.
+#ASSERT `5.1 — the temporary insurance benefit` (`a death in temporary cover on 10 March 2021, accident` NOTHING `, suicide` FALSE `, sums insured` 500000000 `, first premiums` 20000000) EQUALS 0
+#ASSERT REFUSED `Article 5 — the first premiums refunded` (`a death in temporary cover on 10 March 2021, accident` NOTHING `, suicide` FALSE `, sums insured` 500000000 `, first premiums` 20000000)
+
+§§ `Article 6`
+
+-- 6.2: no remedy for an innocent misstatement; one for "declined"; three for "limited".
+#ASSERT `6.2 — the remedies open to the Company for` (`A misstatement` WITH `intentional` IS FALSE, `with correct information the Company would have` IS `declined to insure the insured`) EQUALS EMPTY
+#ASSERT `6.2 — the remedies open to the Company for` (`A misstatement` WITH `intentional` IS TRUE, `with correct information the Company would have` IS `declined to insure the insured`) EQUALS LIST `refuse the benefit, end the contract and keep the premiums up to the end`
+#ASSERT count (`6.2 — the remedies open to the Company for` (`A misstatement` WITH `intentional` IS TRUE, `with correct information the Company would have` IS `insured with limited benefits or an extra premium`)) EQUALS 3
+
+-- 6.3: the two years from acceptance on 10 February 2021 end on 10 February 2023; an innocent
+-- misstatement can be contested on that day but not the day after.
+`an innocent misstatement` MEANS `A misstatement` WITH `intentional` IS FALSE, `with correct information the Company would have` IS `insured with limited benefits or an extra premium`
+#ASSERT `6.3 — the information behind` `an innocent misstatement` `under` `C1` `may still be contested on` (YMD 2023 2 10) `, in force with the insured alive at the end of the two years:` TRUE
+#ASSERT NOT `6.3 — the information behind` `an innocent misstatement` `under` `C1` `may still be contested on` (YMD 2023 2 11) `, in force with the insured alive at the end of the two years:` TRUE
+
+-- 6.4: 920,000,000 less 5,000,000 of debts; debts above the benefit declined.
+#ASSERT `6.4 — the amount paid on a benefit of` 925000000 `after debts of` 5000000 EQUALS 920000000
+#ASSERT REFUSED `6.4 — the amount paid on a benefit of` 1000000 `after debts of` 5000000
+
+-- 6.1: an insured under 18 needs a parent's or guardian's signature.
+#ASSERT `6.1 — the application is signed as 6.1 requires` (`an application completed on` (YMD 2021 3 1) `, paid` (JUST (YMD 2021 3 5)) `, accepted` TRUE)
+
+-- 6.5: a listed purpose; another purpose without consent; with consent on its conditions.
+#ASSERT `6.5 — the Company may transfer the information` (`A transfer of information to a third party` WITH `purpose` IS `settling claims`, `written consent of the policyholder or the insured` IS FALSE, `told the purpose and given the choice to consent or not` IS FALSE, `refusal of consent used to refuse to conclude the contract` IS FALSE)
+#ASSERT NOT `6.5 — the Company may transfer the information` (`A transfer of information to a third party` WITH `purpose` IS `another purpose`, `written consent of the policyholder or the insured` IS FALSE, `told the purpose and given the choice to consent or not` IS FALSE, `refusal of consent used to refuse to conclude the contract` IS FALSE)
+#ASSERT `6.5 — the Company may transfer the information` (`A transfer of information to a third party` WITH `purpose` IS `another purpose`, `written consent of the policyholder or the insured` IS TRUE, `told the purpose and given the choice to consent or not` IS TRUE, `refusal of consent used to refuse to conclude the contract` IS FALSE)
+
+§§ `Article 7 — benefits`
+
+-- 7.1: the account value, 50,000,000, if in force and alive on the maturity date.
+#ASSERT `7.1 — the maturity benefit, at` `S basic` `, the insured alive` TRUE EQUALS 50000000
+#ASSERT `7.1 — the maturity benefit, at` `S basic` `, the insured alive` FALSE EQUALS 0
+#ASSERT `7.1 — the maturity benefit, at` `S lapsed` `, the insured alive` TRUE EQUALS 0
+
+-- 7.2.1: basic, the greater of 500,000,000 and 50,000,000; with an account value of
+-- 600,000,000, that. Enhanced: 500,000,000 + 50,000,000.
+#ASSERT `7.2.1 — the death or disability benefit, at` `S basic` `, at insurance age` 40 EQUALS 500000000
+#ASSERT `7.2.1 — the death or disability benefit, at` `S basic, rich` `, at insurance age` 40 EQUALS 600000000
+#ASSERT `7.2.1 — the death or disability benefit, at` `S enhanced` `, at insurance age` 40 EQUALS 550000000
+-- 7.2.3 inside 7.2.1: age 2, 60% of 500,000,000 = 300,000,000, more than the account value.
+#ASSERT `7.2.1 — the death or disability benefit, at` `S basic` `, at insurance age` 2 EQUALS 300000000
+#ASSERT `7.2.1 — the death or disability benefit, at` `S enhanced` `, at insurance age` 2 EQUALS 350000000
+
+-- Deaths under C1 (insurance age 40 in 2021).
+`a natural death in 2030` MEANS `a death on` (YMD 2030 5 1) `, cause` (`an ordinary cause first existing on` (YMD 2029 1 1)) `, accident` NOTHING `, non-smoker` TRUE
+`an accidental death in 2021` MEANS `a death on` (YMD 2021 3 10) `, cause` (`an ordinary cause first existing on` (YMD 2021 3 9)) `, accident` (`a road accident on 9 March 2021`) `, non-smoker` TRUE
+`a smoker's accidental death in 2021` MEANS `a death on` (YMD 2021 3 10) `, cause` (`an ordinary cause first existing on` (YMD 2021 3 9)) `, accident` (`a road accident on 9 March 2021`) `, non-smoker` FALSE
+
+-- 7.3: 10% of 500,000,000 for a non-smoker aged 15 or more; nothing for a smoker; nothing for
+-- the child of C2 at 2.
+#ASSERT `7.3 — the non-smoker benefit under` `C1` `, at` `S basic` `, on` `a natural death in 2030` EQUALS 50000000
+#ASSERT `7.3 — the non-smoker benefit under` `C1` `, at` `S basic` `, on` `a smoker's accidental death in 2021` EQUALS 0
+#ASSERT `7.3 — the non-smoker benefit under` `C2` `, at` `S basic` `, on` (`a death on` (YMD 2023 6 1) `, cause` (`an ordinary cause first existing on` (YMD 2023 5 1)) `, accident` NOTHING `, non-smoker` TRUE) EQUALS 0
+
+-- 7.4: 100% of 500,000,000; at 64 (30 January 2046) and not at 65 (31 January 2046); for the
+-- child of C2 at insurance age 2, 60% of it.
+#ASSERT `7.4 — the accidental death benefit before the limit, under` `C1` `, at` `S basic` `, on` `an accidental death in 2021` EQUALS 500000000
+#ASSERT `7.4 — the accidental death benefit before the limit, under` `C1` `, at` `S basic` `, on` (`a death on` (YMD 2046 1 30) `, cause` (`an ordinary cause first existing on` (YMD 2046 1 29)) `, accident` (JUST (`an accident on` (YMD 2046 1 29) `in the circumstances` EMPTY)) `, non-smoker` TRUE) EQUALS 500000000
+#ASSERT `7.4 — the accidental death benefit before the limit, under` `C1` `, at` `S basic` `, on` (`a death on` (YMD 2046 1 31) `, cause` (`an ordinary cause first existing on` (YMD 2046 1 30)) `, accident` (JUST (`an accident on` (YMD 2046 1 30) `in the circumstances` EMPTY)) `, non-smoker` TRUE) EQUALS 0
+#ASSERT `7.4 — the accidental death benefit before the limit, under` `C2` `, at` `S basic` `, on` (`a death on` (YMD 2023 6 1) `, cause` (`an ordinary cause first existing on` (YMD 2023 5 31)) `, accident` (JUST (`an accident on` (YMD 2023 5 31) `in the circumstances` EMPTY)) `, non-smoker` TRUE) EQUALS 300000000
+#ASSERT `7.4 — the accidental death benefit before the limit, under` `C1` `, at` `S basic` `, on` `a natural death in 2030` EQUALS 0
+
+-- The 10-billion limit as a cap: 9,800,000,000 already received leaves 200,000,000 of room.
+-- A published limit of 12,000,000,000 leaves 2,200,000,000. A published figure below
+-- 10,000,000,000 is not an upward adjustment and is declined.
+#ASSERT `7.4 and 7.5 — the benefit of` 500000000 `kept within the limit, under` (`no limit raised, already received` 9800000000) EQUALS 200000000
+#ASSERT `7.4 and 7.5 — the benefit of` 500000000 `kept within the limit, under` (`no limit raised, already received` 0) EQUALS 500000000
+#ASSERT `7.4 and 7.5 — the benefit of` 500000000 `kept within the limit, under` (`no limit raised, already received` 10500000000) EQUALS 0
+#ASSERT `7.4 and 7.5 — the benefit of` 5000000000 `kept within the limit, under` (`The aggregate limit at the time of payment` WITH `limit published at the time of payment` IS JUST 12000000000, `the same kind of benefit already received under all contracts with the Company` IS 9800000000) EQUALS 2200000000
+#ASSERT REFUSED `7.4 and 7.5 — the limit in force at payment, under` (`The aggregate limit at the time of payment` WITH `limit published at the time of payment` IS JUST 8000000000, `the same kind of benefit already received under all contracts with the Company` IS 0)
+
+-- 7.5: 25% of 500,000,000 = 125,000,000, for a cancer arising in 2030 (insurance age 49).
+-- Inside the waiting period, nothing; at insurance age 65 (2046), nothing; a second one,
+-- declined; with 9,900,000,000 of critical-illness benefits already received, 100,000,000.
+#ASSERT `7.5 — the cancer benefit under` `C1` `, at` `S basic` `, for` (`an invasive cancer arising on` (YMD 2030 3 1)) `, limit` (`no limit raised, already received` 0) EQUALS 125000000
+#ASSERT `7.5 — the cancer benefit under` `C1` `, at` `S basic` `, for` (`an invasive cancer arising on` (YMD 2021 5 11)) `, limit` (`no limit raised, already received` 0) EQUALS 0
+#ASSERT `7.5 — the cancer benefit under` `C1` `, at` `S basic` `, for` (`an invasive cancer arising on` (YMD 2046 1 30)) `, limit` (`no limit raised, already received` 0) EQUALS 125000000
+#ASSERT `7.5 — the cancer benefit under` `C1` `, at` `S basic` `, for` (`an invasive cancer arising on` (YMD 2046 1 31)) `, limit` (`no limit raised, already received` 0) EQUALS 0
+#ASSERT `7.5 — the cancer benefit under` `C1` `, at` `S basic` `, for` (`an invasive cancer arising on` (YMD 2030 3 1)) `, limit` (`no limit raised, already received` 9900000000) EQUALS 100000000
+#ASSERT REFUSED `7.5 — the cancer benefit under` `C1` `, at` (`in force with` `the basic benefit` `, sum insured` 500000000 `, basic value` 40000000 `, accumulation value` 10000000 `, debts` 0 `, cancer paid` 125000000) `, for` (`an invasive cancer arising on` (YMD 2032 3 1)) `, limit` (`no limit raised, already received` 0)
+
+-- 7.6: a declared 3% in contract year 1 is lifted to the 5% minimum; 6% stands; 3% in year 9
+-- stands above the 2% minimum.
+#ASSERT `7.6 — the rate credited, on a declared rate of` (3%) `in contract year` 1 EQUALS 5%
+#ASSERT `7.6 — the rate credited, on a declared rate of` (6%) `in contract year` 1 EQUALS 6%
+#ASSERT `7.6 — the rate credited, on a declared rate of` (3%) `in contract year` 9 EQUALS 3%
+-- Article 32: a yield of 5% less the 2% charge is 3%, lifted to 5% in year 1; 3% in year 9.
+#ASSERT `32 — the accumulation interest rate, from a yield of` (5%) `less a charge of` (2%) `, in contract year` 1 EQUALS 5%
+#ASSERT `32 — the accumulation interest rate, from a yield of` (5%) `less a charge of` (2%) `, in contract year` 9 EQUALS 3%
+
+-- 7.7: interest credited in contract year k of k x 100,000 (years 1 to 10). By the table:
+--   on anniversary 6,  50% of (200,000 + ... + 600,000)   = 50% of 2,000,000 = 1,000,000
+--   on anniversary 7,  50% of (300,000 + ... + 700,000)   = 50% of 2,500,000 = 1,250,000
+--   on anniversary 8,  50% of 3,000,000 = 1,500,000; on 9, 50% of 3,500,000 = 1,750,000;
+--   on anniversary 10, 50% of (600,000 + ... + 1,000,000) = 50% of 4,000,000 = 2,000,000
+--   total 7,500,000: the bonus is 7,500,000 on the 10th anniversary and 750,000 on the 15th
+--   and the 20th.
+GIVEN ok IS A BOOLEAN
+      two IS A BOOLEAN
+GIVETH A `The record for the loyalty bonus`
+`interest of k times 100,000 in year k, premiums paid` ok `, last two monthly paid` two MEANS
+    `The record for the loyalty bonus` WITH
+        `interest credited to the basic account value, by contract year` IS LIST 100000, 200000, 300000, 400000, 500000, 600000, 700000, 800000, 900000, 1000000
+        `basic premiums of earlier contract years paid in full at each due date, grace period included` IS ok
+        `the two most recent monthly basic premiums paid in full before the bonus date` IS two
+
+`R` MEANS `interest of k times 100,000 in year k, premiums paid` TRUE `, last two monthly paid` TRUE
+#ASSERT `7.7 — the bonus base recorded under` `R` `on anniversary` 6 EQUALS 1000000
+#ASSERT `7.7 — the bonus base recorded under` `R` `on anniversary` 7 EQUALS 1250000
+#ASSERT `7.7 — the bonus base recorded under` `R` `on anniversary` 8 EQUALS 1500000
+#ASSERT `7.7 — the bonus base recorded under` `R` `on anniversary` 9 EQUALS 1750000
+#ASSERT `7.7 — the bonus base recorded under` `R` `on anniversary` 10 EQUALS 2000000
+#ASSERT `7.7 — the total bonus base under` `R` EQUALS 7500000
+#ASSERT `7.7 — the loyalty bonus under` `C1` `and` `R` `on anniversary` 10 EQUALS 7500000
+#ASSERT `7.7 — the loyalty bonus under` `C1` `and` `R` `on anniversary` 15 EQUALS 750000
+#ASSERT `7.7 — the loyalty bonus under` `C1` `and` `R` `on anniversary` 20 EQUALS 750000
+#ASSERT `7.7 — the loyalty bonus under` `C1` `and` `R` `on anniversary` 11 EQUALS 0
+-- A monthly payer whose last two monthly premiums were late: no bonus. A missed premium in an
+-- earlier year: no bonus.
+#ASSERT `7.7 — the loyalty bonus under` `C1` `and` (`interest of k times 100,000 in year k, premiums paid` TRUE `, last two monthly paid` FALSE) `on anniversary` 10 EQUALS 0
+#ASSERT `7.7 — the loyalty bonus under` `C1` `and` (`interest of k times 100,000 in year k, premiums paid` FALSE `, last two monthly paid` TRUE) `on anniversary` 10 EQUALS 0
+
+§§ `Article 8 — exclusions`
+
+-- 8.1: fraud; war; suicide on 31 January 2023 (the last day of the 24 months from 31 January
+-- 2021) and not on 1 February 2023; a reinstatement on 1 June 2024 reopens the window; a cause
+-- that existed before the effective date.
+#ASSERT `8.1 — excluded under` `C1` `, the cause being` (`an act of insurance fraud on` (YMD 2030 1 1)) `and the event on` (YMD 2030 1 1)
+#ASSERT `8.1 — excluded under` `C1` `, the cause being` (`an act of war on` (YMD 2030 1 1)) `and the event on` (YMD 2030 1 1)
+#ASSERT `8.1 — excluded under` `C1` `, the cause being` (`a suicide on` (YMD 2023 1 31)) `and the event on` (YMD 2023 1 31)
+#ASSERT NOT `8.1 — excluded under` `C1` `, the cause being` (`a suicide on` (YMD 2023 2 1)) `and the event on` (YMD 2023 2 1)
+#ASSERT `8.1 — excluded under` `C1 reinstated` `, the cause being` (`a suicide on` (YMD 2025 2 1)) `and the event on` (YMD 2025 2 1)
+#ASSERT `8.1 — excluded under` `C1` `, the cause being` (`an ordinary cause first existing on` (YMD 2021 1 30)) `and the event on` (YMD 2030 1 1)
+#ASSERT NOT `8.1 — excluded under` `C1` `, the cause being` (`an ordinary cause first existing on` (YMD 2021 1 31)) `and the event on` (YMD 2030 1 1)
+
+-- 8.2: each kind of circumstance, against a near miss with none.
+#ASSERT `8.2 — the part of the 7.4 benefit left on` `an accidental death in 2021` `, the circumstances being` EMPTY EQUALS 1
+#ASSERT `8.2 — the part of the 7.4 benefit left on` `an accidental death in 2021` `, the circumstances being` (LIST `alcohol above the legal limit, or the effect of medication not prescribed`) EQUALS 0
+#ASSERT `8.2 — the part of the 7.4 benefit left on` `an accidental death in 2021` `, the circumstances being` (LIST `an accident in an aircraft, other than as a passenger on a scheduled commercial flight`) EQUALS 0
+#ASSERT `8.2 — the part of the 7.4 benefit left on` `an accidental death in 2021` `, the circumstances being` (LIST `scuba diving`) EQUALS 0
+#ASSERT `8.2 — the part of the 7.4 benefit left on` `an accidental death in 2021` `, the circumstances being` (LIST `war, armed conflict, riot, disturbance, strike or terrorism`) EQUALS 0
+#ASSERT `8.2 — the part of the 7.4 benefit left on` `an accidental death in 2021` `, the circumstances being` (LIST `radioactive material`) EQUALS 0
+#ASSERT `8.2 — the part of the 7.4 benefit left on` `an accidental death in 2021` `, the circumstances being` (LIST `an intentional act of the insured`) EQUALS 0
+-- A beneficiary's intentional act: Minh (40%) took part, Lan (60%) did not: 60% is left.
+#ASSERT `8.2 — the part of the 7.4 benefit left on` `an accidental death in 2021` `, the circumstances being` (LIST `an intentional act of a beneficiary`) EQUALS 60%
+#ASSERT REFUSED `8.2 — the part of the 7.4 benefit left on` `an accidental death in 2021` `, the circumstances being` (LIST `another recreational activity said to be dangerous`)
+
+§§ `Articles 7 and 8 together — the layers interact`
+
+-- An accidental death on 10 March 2021, insurance age 40, a non-smoker, the basic benefit, a
+-- sum insured of 500,000,000, an account value of 50,000,000, a cancer benefit of
+-- 125,000,000 already paid, debts of 5,000,000:
+--   7.2: the greater of 500,000,000 and 50,000,000          500,000,000
+--   7.3: 10% of 500,000,000                                  +50,000,000
+--   7.5: the cancer benefit comes off 7.2 and 7.3           -125,000,000
+--   7.4: 100% of 500,000,000, within the limit              +500,000,000
+--   total                                                    925,000,000
+--   6.4: less the debts                                       -5,000,000  = 920,000,000
+`S after cancer, with debts` MEANS `in force with` `the basic benefit` `, sum insured` 500000000 `, basic value` 40000000 `, accumulation value` 10000000 `, debts` 5000000 `, cancer paid` 125000000
+#ASSERT `the benefit on the death under` `C1` `, at` `S after cancer, with debts` `, on` `an accidental death in 2021` `, limit` (`no limit raised, already received` 0) EQUALS 925000000
+#ASSERT `6.4 — the amount paid on a benefit of` (`the benefit on the death under` `C1` `, at` `S after cancer, with debts` `, on` `an accidental death in 2021` `, limit` (`no limit raised, already received` 0)) `after debts of` 5000000 EQUALS 920000000
+-- The same, with 9,800,000,000 of accidental-death benefits already received: 7.4 gives
+-- 200,000,000, total 625,000,000.
+#ASSERT `the benefit on the death under` `C1` `, at` `S after cancer, with debts` `, on` `an accidental death in 2021` `, limit` (`no limit raised, already received` 9800000000) EQUALS 625000000
+-- A death in war: 8.1 leaves the account value only, 50,000,000.
+#ASSERT `the benefit on the death under` `C1` `, at` `S basic` `, on` (`a death on` (YMD 2030 5 1) `, cause` (`an act of war on` (YMD 2030 4 1)) `, accident` NOTHING `, non-smoker` TRUE) `, limit` (`no limit raised, already received` 0) EQUALS 50000000
+-- Lapsed: nothing.
+#ASSERT `the benefit on the death under` `C1` `, at` `S lapsed` `, on` `a natural death in 2030` `, limit` (`no limit raised, already received` 0) EQUALS 0
+-- A natural death of a non-smoker: 500,000,000 + 50,000,000.
+#ASSERT `the benefit on the death under` `C1` `, at` `S basic` `, on` `a natural death in 2030` `, limit` (`no limit raised, already received` 0) EQUALS 550000000
+
+-- A disability: insurance age 69 (2050) and 70 (31 January 2051 onward) under C1.
+GIVEN lossday IS A DATE
+GIVETH A `A disability`
+`both legs lost on` lossday MEANS
+    `A disability` WITH
+        `date of the disability`                         IS lossday
+        `hands lost or irrecoverably paralysed`          IS 0
+        `legs lost or irrecoverably paralysed`           IS 2
+        `eyes totally and permanently blind`             IS 0
+        `certified rate of disability or of permanent loss of working capacity` IS NOTHING
+        `certified by`                                   IS `another body`
+        `date of the certification`                      IS NOTHING
+        `the cause`                                      IS `an ordinary cause first existing on` lossday
+#ASSERT `the benefit on the disability under` `C1` `, at` `S basic` `, on` (`both legs lost on` (YMD 2051 1 30)) EQUALS 500000000
+#ASSERT `the benefit on the disability under` `C1` `, at` `S basic` `, on` (`both legs lost on` (YMD 2051 1 31)) EQUALS 0
+#ASSERT `the benefit on the disability under` `C1` `, at` `S after cancer, with debts` `, on` (`both legs lost on` (YMD 2030 1 1)) EQUALS 375000000
+
+§§ `Chapter 3 — the policyholder's requests`
+
+`S two accounts` MEANS `in force with` `the basic benefit` `, sum insured` 500000000 `, basic value` 100000000 `, accumulation value` 300000000 `, debts` 0 `, cancer paid` 0
+
+GIVEN d IS A DATE
+      amt IS A NUMBER
+GIVETH A `A withdrawal request`
+`a withdrawal on` d `, amount` amt MEANS
+    `A withdrawal request` WITH
+        `date of the request`                     IS d
+        `amount requested`                        IS amt
+        `minimum set by the Company at the time`  IS 1000000
+
+-- 9.1: from the second anniversary (31 January 2023) and not the day before; up to 80% of the
+-- basic account value of 100,000,000 = 80,000,000, and not a dong more.
+#ASSERT `9.1 — the policyholder may request the withdrawal under` `C1` `, at` `S two accounts` `:` (`a withdrawal on` (YMD 2023 1 31) `, amount` 80000000)
+#ASSERT NOT `9.1 — the policyholder may request the withdrawal under` `C1` `, at` `S two accounts` `:` (`a withdrawal on` (YMD 2023 1 30) `, amount` 80000000)
+#ASSERT NOT `9.1 — the policyholder may request the withdrawal under` `C1` `, at` `S two accounts` `:` (`a withdrawal on` (YMD 2023 1 31) `, amount` 80000001)
+#ASSERT NOT `9.1 — the policyholder may request the withdrawal under` `C1` `, at` `S two accounts` `:` (`a withdrawal on` (YMD 2023 1 31) `, amount` 999999)
+-- 9.2: the accumulation value pays first.
+#ASSERT `9.2 — the part taken from the accumulation account value, at` `S two accounts` `:` (`a withdrawal on` (YMD 2023 1 31) `, amount` 80000000) EQUALS 80000000
+#ASSERT `9.2 — the part taken from the basic account value, at` `S basic` `:` (`a withdrawal on` (YMD 2023 1 31) `, amount` 30000000) EQUALS 20000000
+-- 9.3: triggered whenever the basic value is below the sum insured; its amount is declined.
+#ASSERT `9.3 — the current sum insured is to be reduced, at` `S two accounts` `:` (`a withdrawal on` (YMD 2023 1 31) `, amount` 80000000)
+#ASSERT REFUSED `9.3 — the current sum insured after the withdrawal, at` `S two accounts` `:` (`a withdrawal on` (YMD 2023 1 31) `, amount` 80000000)
+#ASSERT NOT `9.3 — the current sum insured is to be reduced, at` `S enhanced` `:` (`a withdrawal on` (YMD 2023 1 31) `, amount` 1000000)
+
+-- Article 10: an increase to 600,000,000 on 31 January 2023, at insurance age 42, under a
+-- maximum of 1,000,000,000; a decrease below the minimum fails; the change takes effect on the
+-- monthiversary after approval on 5 March 2023, that is 31 March 2023.
+GIVEN d IS A DATE
+      new IS A NUMBER
+      approved IS A MAYBE DATE
+GIVETH A `A request to change the sum insured`
+`a change on` d `, to` new `, approved` approved MEANS
+    `A request to change the sum insured` WITH
+        `date of the request`                        IS d
+        `new sum insured`                            IS new
+        `maximum set by the Company at the time`     IS 1000000000
+        `minimum set by the Company at the time`     IS 100000000
+        `date of the Company's written approval`     IS approved
+#ASSERT `10.1 — the policyholder may request the increase under` `C1` `, at` `S basic` `:` (`a change on` (YMD 2023 1 31) `, to` 600000000 `, approved` NOTHING)
+#ASSERT NOT `10.1 — the policyholder may request the increase under` `C1` `, at` `S basic` `:` (`a change on` (YMD 2046 1 31) `, to` 600000000 `, approved` NOTHING)
+#ASSERT `10.1 — the policyholder may request the increase under` `C1` `, at` `S basic` `:` (`a change on` (YMD 2046 1 30) `, to` 600000000 `, approved` NOTHING)
+#ASSERT `10.2 — the policyholder may request the decrease under` `C1` `, at` `S basic` `:` (`a change on` (YMD 2023 1 31) `, to` 100000000 `, approved` NOTHING)
+#ASSERT NOT `10.2 — the policyholder may request the decrease under` `C1` `, at` `S basic` `:` (`a change on` (YMD 2023 1 31) `, to` 99999999 `, approved` NOTHING)
+#ASSERT `10.3 — the day the change takes effect under` `C1` `:` (`a change on` (YMD 2023 1 31) `, to` 600000000 `, approved` (JUST (YMD 2023 3 5))) EQUALS JUST (YMD 2023 3 31)
+#ASSERT `10.3 — the day the change takes effect under` `C1` `:` (`a change on` (YMD 2023 1 31) `, to` 600000000 `, approved` (JUST (YMD 2023 3 31))) EQUALS JUST (YMD 2023 4 30)
+
+-- Article 11: a marriage on 1 March 2024, a request 90 days later (30 May 2024) and not 91; up to
+-- 25% of 500,000,000 = 125,000,000; at most twice.
+GIVEN req IS A DATE
+      inc IS A NUMBER
+      done IS A NUMBER
+GIVETH A `A request to increase the sum insured on marriage or a birth`
+`a marriage on 1 March 2024, request on` req `for` inc `, made before` done MEANS
+    `A request to increase the sum insured on marriage or a birth` WITH
+        `date of the request`                                      IS req
+        `date of the marriage or the birth`                        IS YMD 2024 3 1
+        `increase requested`                                       IS inc
+        `proof of the marriage or the birth submitted`             IS TRUE
+        `increases already made under Article 11`                  IS done
+        `total sum insured under all contracts with the Company after the increase` IS 625000000
+        `maximum set by the Company at the time`                   IS 2000000000
+        `date of the Company's approval`                           IS NOTHING
+#ASSERT `Article 11 — the policyholder may request the increase without evidence under` `C1` `, at` `S basic` `:` (`a marriage on 1 March 2024, request on` (YMD 2024 5 30) `for` 125000000 `, made before` 1)
+#ASSERT NOT `Article 11 — the policyholder may request the increase without evidence under` `C1` `, at` `S basic` `:` (`a marriage on 1 March 2024, request on` (YMD 2024 5 31) `for` 125000000 `, made before` 1)
+#ASSERT NOT `Article 11 — the policyholder may request the increase without evidence under` `C1` `, at` `S basic` `:` (`a marriage on 1 March 2024, request on` (YMD 2024 5 30) `for` 125000001 `, made before` 1)
+#ASSERT NOT `Article 11 — the policyholder may request the increase without evidence under` `C1` `, at` `S basic` `:` (`a marriage on 1 March 2024, request on` (YMD 2024 5 30) `for` 125000000 `, made before` 2)
+#ASSERT NOT `11.3 — the Company may ask for evidence of health and finances for` (`a marriage on 1 March 2024, request on` (YMD 2024 5 30) `for` 125000000 `, made before` 1)
+
+-- Article 12: C2's insured was 0 on the effective date, so may switch to the enhanced benefit
+-- from the second anniversary; C1's was 40, so may not. One switch only. In effect on the
+-- anniversary after approval.
+GIVEN d IS A DATE
+      n IS A NUMBER
+      ok IS A MAYBE DATE
+GIVETH A `A request to switch the benefit option`
+`a switch on` d `, after` n `switches, approved` ok MEANS
+    `A request to switch the benefit option` WITH
+        `date of the request`             IS d
+        `switches already made`           IS n
+        `date of the Company's approval`  IS ok
+#ASSERT `12.1 — the policyholder may switch from the basic to the enhanced benefit under` `C2` `, at` `S basic` `:` (`a switch on` (YMD 2023 4 15) `, after` 0 `switches, approved` NOTHING)
+#ASSERT NOT `12.1 — the policyholder may switch from the basic to the enhanced benefit under` `C1` `, at` `S basic` `:` (`a switch on` (YMD 2023 4 15) `, after` 0 `switches, approved` NOTHING)
+#ASSERT NOT `12.1 — the policyholder may switch from the basic to the enhanced benefit under` `C2` `, at` `S basic` `:` (`a switch on` (YMD 2023 4 15) `, after` 1 `switches, approved` NOTHING)
+#ASSERT `12.2 — the policyholder may switch from the enhanced to the basic benefit under` `C1` `, at` `S enhanced` `:` (`a switch on` (YMD 2023 4 15) `, after` 0 `switches, approved` NOTHING)
+#ASSERT `12.4 — the day the switch takes effect under` `C1` `:` (`a switch on` (YMD 2023 4 15) `, after` 0 `switches, approved` (JUST (YMD 2023 5 1))) EQUALS JUST (YMD 2024 1 31)
+
+-- Article 13.
+#ASSERT `13.1 — the policyholder may request the supplementary product` (`A request to add a supplementary product` WITH `the Company offers the product at the time` IS TRUE, `the policyholder and the insured are eligible for it` IS TRUE, `the policyholder agrees to pay its additional premium` IS TRUE, `date of the Company's written approval` IS NOTHING)
+#ASSERT NOT `13.1 — the policyholder may request the supplementary product` (`A request to add a supplementary product` WITH `the Company offers the product at the time` IS FALSE, `the policyholder and the insured are eligible for it` IS TRUE, `the policyholder agrees to pay its additional premium` IS TRUE, `date of the Company's written approval` IS NOTHING)
+
+§§ `Chapter 4 — premiums and the account value`
+
+-- 14.2: a change of mode for the anniversary of 31 January 2022 must be asked for by 1 January
+-- 2022.
+#ASSERT `14.2 — the last day to ask for a change of mode starting on anniversary` 1 `of` `C1` EQUALS YMD 2022 1 1
+#ASSERT `14.2 — a written request made on` (YMD 2022 1 1) `for a change of mode on anniversary` 1 `of` `C1` `is in time`
+#ASSERT NOT `14.2 — a written request made on` (YMD 2022 1 2) `for a change of mode on anniversary` 1 `of` `C1` `is in time`
+
+-- 14.5: an annual payer (nothing more due in the year) with a basic premium of 12,000,000 and
+-- riders of 1,000,000.
+GIVEN yr IS A NUMBER
+      amt IS A NUMBER
+      rest IS A NUMBER
+      acc IS A NUMBER
+GIVETH A `A premium payment`
+`a payment in year` yr `of` amt `, still to fall due` rest `, accumulation so far` acc MEANS
+    `A premium payment` WITH
+        `contract year`                                                   IS yr
+        `amount paid`                                                     IS amt
+        `basic premium due`                                               IS 12000000
+        `rider premiums due`                                              IS 1000000
+        `basic and rider premiums of the contract year still to fall due after this one` IS rest
+        `accumulation premiums already received in the contract year`    IS acc
+-- (i) and (iv): 20,000,000 pays both and leaves 7,000,000 of accumulation premium.
+#ASSERT `14.5 — the application of the payment under` `C1` `:` (`a payment in year` 1 `of` 20000000 `, still to fall due` 0 `, accumulation so far` 0) EQUALS `The application of a payment` WITH `applied to the basic premium` IS 12000000, `applied or held for the rider premiums` IS 1000000, `counted as accumulation premium` IS 7000000, `grace period opened` IS `no grace period`
+-- (ii): 12,500,000 pays the basic premium and opens the riders' grace period.
+#ASSERT `14.5 — the application of the payment under` `C1` `:` (`a payment in year` 1 `of` 12500000 `, still to fall due` 0 `, accumulation so far` 0) EQUALS `The application of a payment` WITH `applied to the basic premium` IS 12000000, `applied or held for the rider premiums` IS 500000, `counted as accumulation premium` IS 0, `grace period opened` IS `the 60-day grace period for the supplementary products`
+-- (iii): 11,000,000 in year 1 opens the contract's grace period; in year 5 it does not.
+#ASSERT `14.5 — the application of the payment under` `C1` `:` (`a payment in year` 1 `of` 11000000 `, still to fall due` 0 `, accumulation so far` 0) EQUALS `The application of a payment` WITH `applied to the basic premium` IS 11000000, `applied or held for the rider premiums` IS 0, `counted as accumulation premium` IS 0, `grace period opened` IS `the grace period for the contract under 15.1`
+#ASSERT `14.5 — the application of the payment under` `C1` `:` (`a payment in year` 5 `of` 11000000 `, still to fall due` 0 `, accumulation so far` 0) EQUALS `The application of a payment` WITH `applied to the basic premium` IS 11000000, `applied or held for the rider premiums` IS 0, `counted as accumulation premium` IS 0, `grace period opened` IS `the 60-day grace period for the supplementary products`
+-- 1.16: 60,000,000 of accumulation premium in the year is allowed, a dong more is declined.
+#ASSERT `14.5 — the application of the payment under` `C1` `:` (`a payment in year` 5 `of` 73000000 `, still to fall due` 0 `, accumulation so far` 0) EQUALS `The application of a payment` WITH `applied to the basic premium` IS 12000000, `applied or held for the rider premiums` IS 1000000, `counted as accumulation premium` IS 60000000, `grace period opened` IS `no grace period`
+#ASSERT REFUSED `14.5 — the application of the payment under` `C1` `:` (`a payment in year` 5 `of` 73000001 `, still to fall due` 0 `, accumulation so far` 0)
+-- A monthly payer's surplus before the year's premiums are paid: declined.
+#ASSERT REFUSED `14.5 — the application of the payment under` `C1` `:` (`a payment in year` 1 `of` 20000000 `, still to fall due` 143000000 `, accumulation so far` 0)
+
+-- Article 15: a basic premium due on 1 March 2023 (year 3) unpaid: grace to 30 April 2023 (day
+-- 60), lapsed from 1 May 2023 unless paid by 30 April.
+GIVEN paid IS A MAYBE DATE
+GIVETH A `The premium history`
+`a premium due 1 March 2023 unpaid, paid` paid MEANS
+    `The premium history` WITH
+        `due date of a basic premium not paid in full, in the first four contract years` IS JUST (YMD 2023 3 1)
+        `date the account value fell short of the monthly deduction, from the fifth contract year` IS NOTHING
+        `basic premiums of the first four contract years all paid in full`   IS FALSE
+        `a withdrawal from the basic account value ever made`                 IS FALSE
+        `date the required premium was paid`                                  IS paid
+#ASSERT `15.1 — the last day of the grace period, by` (`a premium due 1 March 2023 unpaid, paid` NOTHING) EQUALS JUST (YMD 2023 4 30)
+#ASSERT `15.3 — the first day the contract is lapsed, by` (`a premium due 1 March 2023 unpaid, paid` NOTHING) EQUALS JUST (YMD 2023 5 1)
+#ASSERT `15.3 — the first day the contract is lapsed, by` (`a premium due 1 March 2023 unpaid, paid` (JUST (YMD 2023 4 30))) EQUALS NOTHING
+#ASSERT `15.3 — the first day the contract is lapsed, by` (`a premium due 1 March 2023 unpaid, paid` (JUST (YMD 2023 5 1))) EQUALS JUST (YMD 2023 5 1)
+#ASSERT `15.2 and 15.3 — not lapsed on` (YMD 2023 4 30) `, by` (`a premium due 1 March 2023 unpaid, paid` NOTHING)
+#ASSERT NOT `15.2 and 15.3 — not lapsed on` (YMD 2023 5 1) `, by` (`a premium due 1 March 2023 unpaid, paid` NOTHING)
+
+-- 15.4: a shortfall in year 6 opens no grace period where the first four years were paid in
+-- full and nothing was withdrawn from the basic account value; it does where something was.
+GIVEN withdrew IS A BOOLEAN
+GIVETH A `The premium history`
+`a shortfall on 1 March 2027, four years paid, withdrew` withdrew MEANS
+    `The premium history` WITH
+        `due date of a basic premium not paid in full, in the first four contract years` IS NOTHING
+        `date the account value fell short of the monthly deduction, from the fifth contract year` IS JUST (YMD 2027 3 1)
+        `basic premiums of the first four contract years all paid in full`   IS TRUE
+        `a withdrawal from the basic account value ever made`                 IS withdrew
+        `date the required premium was paid`                                  IS NOTHING
+#ASSERT `15.1 — the day the grace period opens, by` (`a shortfall on 1 March 2027, four years paid, withdrew` FALSE) EQUALS NOTHING
+#ASSERT `15.1 — the day the grace period opens, by` (`a shortfall on 1 March 2027, four years paid, withdrew` TRUE) EQUALS JUST (YMD 2027 3 1)
+
+-- Article 16, one month: brought forward 1,000,000 basic and 2,000,000 accumulation; a basic
+-- premium of 1,000,000 in premium year 1 (allocated at 10%: 100,000) and 500,000 of
+-- accumulation premium (100%: 500,000); interest 4,000 and 8,000; cost of insurance 150,000,
+-- administration 30,000 (deduction 180,000); no withdrawals.
+--   basic: 1,000,000 + 100,000 + 4,000 - 180,000 = 924,000
+--   accumulation: 2,000,000 + 500,000 + 8,000     = 2,508,000
+GIVEN bb IS A NUMBER
+      ab IS A NUMBER
+      bp IS A NUMBER
+      py IS A NUMBER
+      ap IS A NUMBER
+      bi IS A NUMBER
+      ai IS A NUMBER
+GIVETH A `A month on the account`
+`a month from` bb `and` ab `, premiums` bp `in year` py `and` ap `, interest` bi `and` ai MEANS
+    `A month on the account` WITH
+        `basic account value at the previous monthiversary`                 IS bb
+        `accumulation account value at the previous monthiversary`          IS ab
+        `basic premiums paid since the previous monthiversary`              IS bp
+        `premium year of the basic premiums paid`                           IS py
+        `accumulation premiums paid since the previous monthiversary`       IS ap
+        `interest on the basic account value at the previous month's rate`  IS bi
+        `interest on the accumulation account value at the previous month's rate` IS ai
+        `cost of insurance for the month`                                   IS 150000
+        `contract administration charge for the month`                      IS 30000
+        `withdrawals from the basic account value since the previous monthiversary` IS 0
+        `withdrawals from the accumulation account value since the previous monthiversary` IS 0
+#ASSERT `16 — the account at the monthiversary` (`a month from` 1000000 `and` 2000000 `, premiums` 1000000 `in year` 1 `and` 500000 `, interest` 4000 `and` 8000) EQUALS `The account at a monthiversary` WITH `basic account value` IS 924000, `accumulation account value` IS 2508000, `monthly deduction left unpaid` IS 0
+-- The same month in premium year 5 (98.5%: 985,000): basic 1,000,000 + 985,000 + 4,000 - 180,000
+-- = 1,809,000.
+#ASSERT `16 — the account at the monthiversary` (`a month from` 1000000 `and` 2000000 `, premiums` 1000000 `in year` 5 `and` 500000 `, interest` 4000 `and` 8000) EQUALS `The account at a monthiversary` WITH `basic account value` IS 1809000, `accumulation account value` IS 2508000, `monthly deduction left unpaid` IS 0
+-- A shortfall: 100,000 basic, nothing paid, no interest: the basic value pays 100,000 and the
+-- accumulation value the other 80,000 (fork F17).
+#ASSERT `16 — the account at the monthiversary` (`a month from` 100000 `and` 2000000 `, premiums` 0 `in year` 3 `and` 0 `, interest` 0 `and` 0) EQUALS `The account at a monthiversary` WITH `basic account value` IS 0, `accumulation account value` IS 1920000, `monthly deduction left unpaid` IS 0
+-- Neither value can meet it: 100,000 and 30,000 against 180,000 leave 50,000 unpaid.
+#ASSERT `16 — the account at the monthiversary` (`a month from` 100000 `and` 30000 `, premiums` 0 `in year` 3 `and` 0 `, interest` 0 `and` 0) EQUALS `The account at a monthiversary` WITH `basic account value` IS 0, `accumulation account value` IS 0, `monthly deduction left unpaid` IS 50000
+-- Day 0 (16.1(a), 16.2(a)): an annual basic premium of 12,000,000 at 10% is 1,200,000, less
+-- the deduction of 180,000: 1,020,000; accumulation premium of 3,000,000 at 100%.
+#ASSERT `16 — the account at the monthiversary` (`a month from` 0 `and` 0 `, premiums` 12000000 `in year` 1 `and` 3000000 `, interest` 0 `and` 0) EQUALS `The account at a monthiversary` WITH `basic account value` IS 1020000, `accumulation account value` IS 3000000, `monthly deduction left unpaid` IS 0
+
+§§ `Chapter 5 — charges`
+
+-- Article 17 on a basic premium of 12,000,000: 90% in year 1 = 10,800,000; 1.5% from year 5 =
+-- 180,000.
+#ASSERT `17 — the initial charge on a basic premium of` 12000000 `in premium year` 1 EQUALS 10800000
+#ASSERT `17 — the initial charge on a basic premium of` 12000000 `in premium year` 5 EQUALS 180000
+-- Article 18: a new rate notified on 1 January 2023 applies from 31 January 2023, not before;
+-- not at all without the Ministry's approval.
+#ASSERT `18 — a new cost-of-insurance rate may be applied, approved` TRUE `, notified on` (YMD 2023 1 1) `, from` (YMD 2023 1 31)
+#ASSERT NOT `18 — a new cost-of-insurance rate may be applied, approved` TRUE `, notified on` (YMD 2023 1 1) `, from` (YMD 2023 1 30)
+#ASSERT NOT `18 — a new cost-of-insurance rate may be applied, approved` FALSE `, notified on` (YMD 2023 1 1) `, from` (YMD 2023 6 1)
+#ASSERT `18 and 19 — the monthly charges are deducted on` (YMD 2081 1 31) `under` `C1` `, in force` TRUE
+#ASSERT NOT `18 and 19 — the monthly charges are deducted on` (YMD 2081 2 28) `under` `C1` `, in force` TRUE
+-- Article 19: 30,000 until a change notified on 1 January 2023 to 50,000 applies, from 1 April
+-- 2023; a change to 70,000 is above the 60,000 cap and declined, unless the Ministry approves
+-- a cap of 80,000.
+#ASSERT `19 — the contract administration charge, a change of` NOTHING `notified on` (YMD 2023 1 1) `, approved cap` NOTHING `, on` (YMD 2023 6 1) EQUALS 30000
+#ASSERT `19 — the contract administration charge, a change of` (JUST 50000) `notified on` (YMD 2023 1 1) `, approved cap` NOTHING `, on` (YMD 2023 3 31) EQUALS 30000
+#ASSERT `19 — the contract administration charge, a change of` (JUST 50000) `notified on` (YMD 2023 1 1) `, approved cap` NOTHING `, on` (YMD 2023 4 1) EQUALS 50000
+#ASSERT REFUSED `19 — the contract administration charge, a change of` (JUST 70000) `notified on` (YMD 2023 1 1) `, approved cap` NOTHING `, on` (YMD 2023 4 1)
+#ASSERT `19 — the contract administration charge, a change of` (JUST 70000) `notified on` (YMD 2023 1 1) `, approved cap` (JUST 80000) `, on` (YMD 2023 4 1) EQUALS 70000
+-- Article 20: 2% is within the maximum, 2.1% is not.
+#ASSERT `20 — a fund management charge of` (2%) `is within its maximum, approved maximum` NOTHING
+#ASSERT NOT `20 — a fund management charge of` (2.1%) `is within its maximum, approved maximum` NOTHING
+#ASSERT `20 — a changed fund management charge may be applied, notified on` (YMD 2023 1 1) `, from` (YMD 2023 1 31)
+
+§§ `Chapter 6 — change, reinstatement, termination`
+
+-- Article 21: issued 1 March 2023, received 15 March 2023: the period runs to 5 April 2023.
+GIVEN refused IS A DATE
+GIVETH A `A free-look refusal`
+`a contract issued 1 March 2023, received 15 March 2023, refused on` refused MEANS
+    `A free-look refusal` WITH
+        `date the contract was issued`                IS YMD 2023 3 1
+        `date the policyholder received the contract` IS YMD 2023 3 15
+        `date of the refusal`                         IS refused
+        `premiums paid`                               IS 20000000
+        `medical examination costs`                   IS 1000000
+#ASSERT `21 — the refusal is in time` (`a contract issued 1 March 2023, received 15 March 2023, refused on` (YMD 2023 4 5))
+#ASSERT NOT `21 — the refusal is in time` (`a contract issued 1 March 2023, received 15 March 2023, refused on` (YMD 2023 4 6))
+#ASSERT `21 — the premiums refunded` (`a contract issued 1 March 2023, received 15 March 2023, refused on` (YMD 2023 4 5)) EQUALS 19000000
+
+-- The free-look right as a trace (days from the start of the period): refused on day 10 and
+-- refunded on day 20, fulfilled. With no refusal by day 22 the permission lapses unused, which
+-- is no breach.
+#TRACE `21 — the free-look right` AT 0 WITH
+    PARTY `the policyholder` DOES `refuse to continue the insurance` AT 10
+    PARTY `the Company` DOES `refund the premiums paid, without interest, less medical examination costs` AT 20
+#TRACE `21 — the free-look right` AT 0 WITH
+    (`WAIT UNTIL` 22)
+
+-- 22.1 and 25.1: account value 50,000,000 less debts of 5,000,000.
+#ASSERT `22.1 — the amount paid when an organisation policyholder cannot continue, at` `S after cancer, with debts` EQUALS 45000000
+#ASSERT `25.1 — the amount paid on surrender, at` `S after cancer, with debts` EQUALS 45000000
+#ASSERT count (`22.3 — the steps open to the Company, the insured no longer residing in Vietnam` TRUE) EQUALS 4
+
+-- Article 23: 1,200,000 of cost of insurance due against 1,000,000 deducted: 200,000 to pay; the
+-- other way round, 200,000 back into the account value. A true birth date that made the insured
+-- 66 on the effective date: the Company may cancel; refund 20,000,000 less debts 5,000,000,
+-- medical 1,000,000, withdrawals 2,000,000 and benefits 0 = 12,000,000.
+GIVEN dob IS A DATE
+      due IS A NUMBER
+      ded IS A NUMBER
+GIVETH A `A misstatement of age or sex`
+`a misstatement, truly born` dob `, cost due` due `, deducted` ded MEANS
+    `A misstatement of age or sex` WITH
+        `true date of birth`                             IS dob
+        `cost of insurance due on the true age and sex`  IS due
+        `cost of insurance deducted`                     IS ded
+        `premiums paid`                                  IS 20000000
+        `medical examination costs`                      IS 1000000
+        `withdrawals from the account value`             IS 2000000
+        `benefits already paid`                          IS 0
+#ASSERT `23.1 — the shortfall of the cost of insurance the policyholder must pay` (`a misstatement, truly born` (YMD 1980 6 15) `, cost due` 1200000 `, deducted` 1000000) EQUALS 200000
+#ASSERT `23.2 — the amount added to the account value, without interest` (`a misstatement, truly born` (YMD 1980 6 15) `, cost due` 1000000 `, deducted` 1200000) EQUALS 200000
+#ASSERT `23.3 — the Company may cancel the contract for` (`a misstatement, truly born` (YMD 1954 6 15) `, cost due` 1000000 `, deducted` 1000000) `under` `C1`
+#ASSERT NOT `23.3 — the Company may cancel the contract for` (`a misstatement, truly born` (YMD 1955 6 15) `, cost due` 1000000 `, deducted` 1000000) `under` `C1`
+#ASSERT `23.3 — the refund on cancellation for` (`a misstatement, truly born` (YMD 1954 6 15) `, cost due` 1000000 `, deducted` 1000000) `, at` `S after cancer, with debts` EQUALS 12000000
+
+-- Article 24 and 25.2(d): lapsed 1 May 2023 in contract year 3. A request on 1 May 2025 (24
+-- months) is in time and the contract has not yet ended; on 2 May 2025 it is late and the
+-- contract has ended.
+GIVEN req IS A DATE
+      paid IS A BOOLEAN
+GIVETH A `A reinstatement request`
+`a reinstatement asked on` req `, overdue paid` paid MEANS
+    `A reinstatement request` WITH
+        `date the contract lapsed`                              IS YMD 2023 5 1
+        `contract year in which it lapsed`                      IS 3
+        `date of the written request`                           IS req
+        `all overdue basic premiums of the compulsory payment period paid` IS paid
+        `basic premium instalments due at reinstatement paid`   IS 1
+        `evidence of health given and every insurability condition met` IS TRUE
+        `date of the Company's approval`                        IS JUST (req PLUS 10)
+        `the policyholder and the insured alive at the approval` IS TRUE
+#ASSERT `24 — the policyholder may ask to reinstate, by` (`a reinstatement asked on` (YMD 2025 5 1) `, overdue paid` TRUE) `under` `C1`
+#ASSERT NOT `24 — the policyholder may ask to reinstate, by` (`a reinstatement asked on` (YMD 2025 5 2) `, overdue paid` TRUE) `under` `C1`
+#ASSERT NOT `24 — the policyholder may ask to reinstate, by` (`a reinstatement asked on` (YMD 2024 5 1) `, overdue paid` FALSE) `under` `C1`
+#ASSERT `24 — the day the reinstatement takes effect, by` (`a reinstatement asked on` (YMD 2024 5 1) `, overdue paid` TRUE) `under` `C1` EQUALS JUST (YMD 2024 5 11)
+#ASSERT NOT `25.2(d) — a contract lapsed on` (YMD 2023 5 1) `has ended by lapse on` (YMD 2025 5 1)
+#ASSERT `25.2(d) — a contract lapsed on` (YMD 2023 5 1) `has ended by lapse on` (YMD 2025 5 2)
+#ASSERT `25.2 — the contract ends automatically on` `the Company approves payment of the disability benefit`
+
+§§ `Chapter 7 — claims`
+
+-- Article 26: Lan takes her share; a beneficiary who died first passes the share to the
+-- policyholder, or to the heirs if the policyholder has died.
+#ASSERT `26.2 — the payee of the share of` (`A beneficiary` WITH `name` IS "Lan", `designated share` IS 60%, `died before the insured` IS FALSE, `took part in the intentional act` IS FALSE) `on` `a natural death in 2030` EQUALS `the beneficiary named` "Lan"
+#ASSERT `26.2 — the payee of the share of` (`A beneficiary` WITH `name` IS "Lan", `designated share` IS 60%, `died before the insured` IS TRUE, `took part in the intentional act` IS FALSE) `on` `a natural death in 2030` EQUALS `the policyholder`
+#ASSERT `26.1 — the payee of a claim that is not for a death, the claim being` `a cancer claim` EQUALS `the policyholder`
+#ASSERT REFUSED `26.1 — the payee of a claim that is not for a death, the claim being` `a death claim`
+
+GIVEN k IS A `A kind of claim`
+      acc IS A BOOLEAN
+      made IS A DATE
+      extra IS A NUMBER
+      docs IS A `The documents submitted`
+GIVETH A `A claim`
+`a claim of kind` k `, accident` acc `, for an event on 10 March 2023, made on` made `, extra days` extra `, documents` docs MEANS
+    `A claim` WITH
+        `kind`                                                 IS k
+        `caused by an accident`                                IS acc
+        `date of the insured event`                            IS YMD 2023 3 10
+        `date the claim was made`                              IS made
+        `days spent supplying documents under 27.3 and 27.4`   IS extra
+        `the documents`                                        IS docs
+        `date the complete and valid file was received`        IS JUST (YMD 2023 6 1)
+
+GIVEN form IS A BOOLEAN
+      death IS A BOOLEAN
+      accdocs IS A BOOLEAN
+GIVETH A `The documents submitted`
+`documents: form` form `, death extract` death `, accident records` accdocs MEANS
+    `The documents submitted` WITH
+        `claim form completed fully and accurately`                      IS form
+        `extract of the death record`                                    IS death
+        `certificate of the injury rate from the medical assessment council or an approved foreign medical organisation` IS FALSE
+        `medical evidence from the examining, diagnosing or treating doctor` IS TRUE
+        `accident record, scene examination record, forensic and investigation conclusions certified by the competent authority` IS accdocs
+        `proof of the right to the benefit, such as a will, and identity papers of the person entitled` IS TRUE
+        `proof of the right to receive the benefit, such as an authorisation` IS TRUE
+
+`full death documents` MEANS `documents: form` TRUE `, death extract` TRUE `, accident records` TRUE
+#ASSERT `27 — the documents are complete for` (`a claim of kind` `a death claim` `, accident` TRUE `, for an event on 10 March 2023, made on` (YMD 2023 4 1) `, extra days` 0 `, documents` `full death documents`)
+#ASSERT NOT `27 — the documents are complete for` (`a claim of kind` `a death claim` `, accident` TRUE `, for an event on 10 March 2023, made on` (YMD 2023 4 1) `, extra days` 0 `, documents` (`documents: form` TRUE `, death extract` TRUE `, accident records` FALSE))
+#ASSERT `27 — the documents are complete for` (`a claim of kind` `a death claim` `, accident` FALSE `, for an event on 10 March 2023, made on` (YMD 2023 4 1) `, extra days` 0 `, documents` (`documents: form` TRUE `, death extract` TRUE `, accident records` FALSE))
+#ASSERT NOT `27 — the documents are complete for` (`a claim of kind` `a disability claim` `, accident` FALSE `, for an event on 10 March 2023, made on` (YMD 2023 4 1) `, extra days` 0 `, documents` `full death documents`)
+#ASSERT `27 — the documents are complete for` (`a claim of kind` `a maturity claim` `, accident` FALSE `, for an event on 10 March 2023, made on` (YMD 2023 4 1) `, extra days` 0 `, documents` (`documents: form` TRUE `, death extract` FALSE `, accident records` FALSE))
+
+-- Article 28: twelve months from 10 March 2023 is 10 March 2024; with 15 days spent on 27.3
+-- documents, 25 March 2024. A maturity claim has no limit.
+#ASSERT `28 — the last day to claim` (`a claim of kind` `a death claim` `, accident` FALSE `, for an event on 10 March 2023, made on` (YMD 2024 3 10) `, extra days` 0 `, documents` `full death documents`) EQUALS JUST (YMD 2024 3 10)
+#ASSERT `28 — the claim is made in time` (`a claim of kind` `a death claim` `, accident` FALSE `, for an event on 10 March 2023, made on` (YMD 2024 3 10) `, extra days` 0 `, documents` `full death documents`)
+#ASSERT NOT `28 — the claim is made in time` (`a claim of kind` `a death claim` `, accident` FALSE `, for an event on 10 March 2023, made on` (YMD 2024 3 11) `, extra days` 0 `, documents` `full death documents`)
+#ASSERT `28 — the claim is made in time` (`a claim of kind` `a cancer claim` `, accident` FALSE `, for an event on 10 March 2023, made on` (YMD 2024 3 25) `, extra days` 15 `, documents` `full death documents`)
+#ASSERT `28 — the claim is made in time` (`a claim of kind` `a maturity claim` `, accident` FALSE `, for an event on 10 March 2023, made on` (YMD 2040 1 1) `, extra days` 0 `, documents` `full death documents`)
+
+-- Article 29: the complete file received 1 June 2023; settle by 1 July 2023; paid 5 July 2023,
+-- four days late; the interest amount declined.
+`the June claim` MEANS `a claim of kind` `a death claim` `, accident` FALSE `, for an event on 10 March 2023, made on` (YMD 2023 4 1) `, extra days` 0 `, documents` `full death documents`
+#ASSERT `29 — the last day to settle` `the June claim` EQUALS JUST (YMD 2023 7 1)
+#ASSERT `29 — the days by which payment on` (YMD 2023 7 5) `is late on` `the June claim` EQUALS 4
+#ASSERT `29 — the days by which payment on` (YMD 2023 7 1) `is late on` `the June claim` EQUALS 0
+#ASSERT REFUSED `29 — the interest on` 500000000 `paid` 4 `days late at` (10%)
+#ASSERT `29 — the interest on` 500000000 `paid` 0 `days late at` (10%) EQUALS 0
+
+-- The duty as a trace (days from receipt): settled on day 30, fulfilled; not settled by day 31,
+-- then settled with interest on day 40, fulfilled through the reparation.
+#TRACE `29 — the Company's duty to settle` AT 0 WITH
+    PARTY `the Company` DOES `settle the claim` AT 30
+#TRACE `29 — the Company's duty to settle` AT 0 WITH
+    (`WAIT UNTIL` 31)
+    PARTY `the Company` DOES `settle the claim with interest on the amount paid late` AT 40
+
+§§ `Chapter 9 — disputes`
+
+-- Article 33: a dispute arising 1 June 2023 may be sued on until 1 June 2026.
+#ASSERT `33 — the last day to bring an action on a dispute that arose on` (YMD 2023 6 1) EQUALS YMD 2026 6 1
+#ASSERT `33 — an action on a dispute that arose on` (YMD 2023 6 1) `is in time if filed on` (YMD 2026 6 1)
+#ASSERT NOT `33 — an action on a dispute that arose on` (YMD 2023 6 1) `is in time if filed on` (YMD 2026 6 2)
+#ASSERT `33 — a party may take the dispute to the court, negotiation having failed` TRUE `, the court being in Vietnam` TRUE `, at the seat` FALSE `, or at the residence` TRUE
+#ASSERT NOT `33 — a party may take the dispute to the court, negotiation having failed` FALSE `, the court being in Vietnam` TRUE `, at the seat` TRUE `, or at the residence` TRUE
