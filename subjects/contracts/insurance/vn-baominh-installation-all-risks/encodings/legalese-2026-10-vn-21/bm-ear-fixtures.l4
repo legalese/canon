@@ -1,0 +1,573 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `bm-ear-nouns`
+
+-- Fixtures for the tests: named cases and the builders that make them. No rules and no
+-- directives. Every figure here is a SCENARIO value chosen to make the arithmetic visible:
+-- the document prints no sum insured, limit or deductible (they are in the schedule), so
+-- none of these figures is the document's.
+--
+-- The standard case: works commenced 5 January 2026; the schedule ends cover on
+-- 31 December 2026; four items in Part I of the schedule:
+--   item 1, plant to be erected,   sum insured 10,000,000,000, full value 10,000,000,000
+--   item 2, civil works,           sum insured  2,000,000,000, full value  2,000,000,000
+--   item 3, construction plant,    sum insured    500,000,000, full value    500,000,000
+--   item 4, surrounding property,  sum insured  1,000,000,000, full value  1,000,000,000
+-- total sum insured under Part I 13,500,000,000; no Part I limit for any one occurrence;
+-- Part I deductible 50,000,000; clearance of debris 200,000,000; Part II limit for any one
+-- occurrence 5,000,000,000; Part II deductible 20,000,000.
+
+§ `Fixtures`
+
+§§ `Items, works and schedules`
+
+GIVEN n  IS A NUMBER
+      si IS A NUMBER
+      fv IS A NUMBER
+GIVETH AN `An item in Part I of the schedule`
+`a new item numbered` n `insured for` si `with full value` fv MEANS
+    `An item in Part I of the schedule` WITH
+        `number`                          IS n
+        `description`                     IS "a new item"
+        `sum insured`                     IS si
+        `full value`                      IS fv
+        `second-hand`                     IS FALSE
+        `date unloaded at the site`       IS NOTHING
+        `date its testing began`          IS NOTHING
+        `date its test run was completed` IS NOTHING
+        `date it was first operated`      IS NOTHING
+        `date it was handed over`         IS NOTHING
+
+`item 1` MEANS `a new item numbered` 1 `insured for` 10000000000 `with full value` 10000000000
+`item 2` MEANS `a new item numbered` 2 `insured for` 2000000000 `with full value` 2000000000
+`item 3` MEANS `a new item numbered` 3 `insured for` 500000000 `with full value` 500000000
+`item 4` MEANS `a new item numbered` 4 `insured for` 1000000000 `with full value` 1000000000
+
+-- Item 1 insured for 8,000,000,000 against a full value of 10,000,000,000 (80%).
+`item 1, underinsured` MEANS `a new item numbered` 1 `insured for` 8000000000 `with full value` 10000000000
+
+-- Item 4 insured for 1,000,000,000 against surrounding property worth 2,000,000,000.
+`item 4, underinsured` MEANS `a new item numbered` 4 `insured for` 1000000000 `with full value` 2000000000
+
+-- An item with its own history, for the period tests. Arguments, in order: number;
+-- second-hand; date unloaded at the site; date its testing began; date its test run was
+-- completed; date it was first operated; date it was handed over.
+GIVEN n  IS A NUMBER
+      sh IS A BOOLEAN
+      un IS A MAYBE DATE
+      tb IS A MAYBE DATE
+      tr IS A MAYBE DATE
+      fo IS A MAYBE DATE
+      ho IS A MAYBE DATE
+GIVETH AN `An item in Part I of the schedule`
+`an item with history` n sh un tb tr fo ho MEANS
+    `An item in Part I of the schedule` WITH
+        `number`                          IS n
+        `description`                     IS "an item with a history"
+        `sum insured`                     IS 1000000000
+        `full value`                      IS 1000000000
+        `second-hand`                     IS sh
+        `date unloaded at the site`       IS un
+        `date its testing began`          IS tb
+        `date its test run was completed` IS tr
+        `date it was first operated`      IS fo
+        `date it was handed over`         IS ho
+
+GIVEN commenced IS A MAYBE DATE
+      testing   IS A MAYBE DATE
+      completed IS A MAYBE DATE
+      handed    IS A MAYBE DATE
+GIVETH A `The works`
+`works commenced` commenced `testing began` testing `first test operation completed` completed `handed over` handed MEANS
+    `The works` WITH
+        `date the works commenced`                                    IS commenced
+        `date testing began`                                          IS testing
+        `date the first test operation or test loading was completed` IS completed
+        `date the works were handed over`                             IS handed
+
+`the standard works` MEANS
+    `works commenced` (JUST (YMD 2026 1 5)) `testing began` NOTHING `first test operation completed` NOTHING `handed over` NOTHING
+
+GIVEN items  IS A LIST OF `An item in Part I of the schedule`
+GIVETH A `The schedule`
+`a schedule with items` items MEANS
+    `The schedule` WITH
+        `the items in Part I`                                   IS items
+        `the total sum insured under Part I`                    IS 13500000000
+        `the Part I limit of indemnity for any one occurrence`  IS NOTHING
+        `the Part I deductible for each occurrence`             IS 50000000
+        `the sum stated separately for clearance of debris`     IS JUST 200000000
+        `the Part II limit of indemnity for any one occurrence` IS 5000000000
+        `the Part II deductible for each occurrence`            IS 20000000
+        `the date on which cover ends`                          IS YMD 2026 12 31
+
+`the standard schedule` MEANS `a schedule with items` (LIST `item 1`, `item 2`, `item 3`, `item 4`)
+
+`a schedule with underinsured item 1` MEANS `a schedule with items` (LIST `item 1, underinsured`, `item 2`, `item 3`, `item 4`)
+
+`a schedule with underinsured item 4` MEANS `a schedule with items` (LIST `item 1`, `item 2`, `item 3`, `item 4, underinsured`)
+
+`a schedule without item 4` MEANS `a schedule with items` (LIST `item 1`, `item 2`, `item 3`)
+
+-- The standard schedule, but with a Part I limit for any one occurrence of 500,000,000.
+`a schedule with a Part I occurrence limit of 500,000,000` MEANS
+    `The schedule` WITH
+        `the items in Part I`                                   IS LIST `item 1`, `item 2`, `item 3`, `item 4`
+        `the total sum insured under Part I`                    IS 13500000000
+        `the Part I limit of indemnity for any one occurrence`  IS JUST 500000000
+        `the Part I deductible for each occurrence`             IS 50000000
+        `the sum stated separately for clearance of debris`     IS JUST 200000000
+        `the Part II limit of indemnity for any one occurrence` IS 5000000000
+        `the Part II deductible for each occurrence`            IS 20000000
+        `the date on which cover ends`                          IS YMD 2026 12 31
+
+-- Item 1 underinsured, with a Part I limit for any one occurrence of 700,000,000.
+`a schedule with underinsured item 1 and an occurrence limit of 700,000,000` MEANS
+    `The schedule` WITH
+        `the items in Part I`                                   IS LIST `item 1, underinsured`, `item 2`, `item 3`, `item 4`
+        `the total sum insured under Part I`                    IS 13500000000
+        `the Part I limit of indemnity for any one occurrence`  IS JUST 700000000
+        `the Part I deductible for each occurrence`             IS 50000000
+        `the sum stated separately for clearance of debris`     IS JUST 200000000
+        `the Part II limit of indemnity for any one occurrence` IS 5000000000
+        `the Part II deductible for each occurrence`            IS 20000000
+        `the date on which cover ends`                          IS YMD 2026 12 31
+
+-- The standard schedule with no separate sum for clearance of debris.
+`a schedule with no sum for debris` MEANS
+    `The schedule` WITH
+        `the items in Part I`                                   IS LIST `item 1`, `item 2`, `item 3`, `item 4`
+        `the total sum insured under Part I`                    IS 13500000000
+        `the Part I limit of indemnity for any one occurrence`  IS NOTHING
+        `the Part I deductible for each occurrence`             IS 50000000
+        `the sum stated separately for clearance of debris`     IS NOTHING
+        `the Part II limit of indemnity for any one occurrence` IS 5000000000
+        `the Part II deductible for each occurrence`            IS 20000000
+        `the date on which cover ends`                          IS YMD 2026 12 31
+
+§§ `Policies`
+
+GIVEN s         IS A `The schedule`
+      w         IS A `The works`
+      a         IS A `The answers in the questionnaire and the proposal form`
+      paid      IS A BOOLEAN
+      ext       IS A MAYBE DATE
+      tp        IS A MAYBE NUMBER
+      xc        IS A BOOLEAN
+GIVETH A `The policy`
+`a policy with schedule` s `works` w `answers` a `premium paid` paid `extension` ext `testing period` tp `extra charges agreed` xc MEANS
+    `The policy` WITH
+        `the schedule`                                                         IS s
+        `the works`                                                            IS w
+        `the answers in the questionnaire and the proposal form`               IS a
+        `the premium stated in the schedule has been paid`                     IS paid
+        `an extension agreed in advance in writing by Bao Minh, to`            IS ext
+        `a testing period agreed in writing in place of four weeks, in days`   IS tp
+        `extra charges under Article 3 agreed specially in writing in advance` IS xc
+
+GIVEN s IS A `The schedule`
+GIVETH A `The policy`
+`the standard policy with schedule` s MEANS
+    `a policy with schedule` s `works` `the standard works` `answers` `given, and every answer true and complete`
+        `premium paid` TRUE `extension` NOTHING `testing period` NOTHING `extra charges agreed` FALSE
+
+`the standard policy` MEANS `the standard policy with schedule` `the standard schedule`
+
+GIVEN w IS A `The works`
+GIVETH A `The policy`
+`the standard policy with works` w MEANS
+    `a policy with schedule` `the standard schedule` `works` w `answers` `given, and every answer true and complete`
+        `premium paid` TRUE `extension` NOTHING `testing period` NOTHING `extra charges agreed` FALSE
+
+GIVEN a IS A `The answers in the questionnaire and the proposal form`
+GIVETH A `The policy`
+`the standard policy with answers` a MEANS
+    `a policy with schedule` `the standard schedule` `works` `the standard works` `answers` a
+        `premium paid` TRUE `extension` NOTHING `testing period` NOTHING `extra charges agreed` FALSE
+
+`the standard policy, premium unpaid` MEANS
+    `a policy with schedule` `the standard schedule` `works` `the standard works` `answers` `given, and every answer true and complete`
+        `premium paid` FALSE `extension` NOTHING `testing period` NOTHING `extra charges agreed` FALSE
+
+`the standard policy, extra charges agreed` MEANS
+    `a policy with schedule` `the standard schedule` `works` `the standard works` `answers` `given, and every answer true and complete`
+        `premium paid` TRUE `extension` NOTHING `testing period` NOTHING `extra charges agreed` TRUE
+
+§§ `The Insured's conduct`
+
+GIVEN breaches IS A LIST OF `A duty of the Insured`
+GIVETH A `The conduct of the Insured`
+`a record of the breaches` breaches MEANS
+    `The conduct of the Insured` WITH
+        `the duties not complied with`                                               IS breaches
+        `a claim under the policy was fraudulent`                                    IS FALSE
+        `a false declaration was made or used in support of a claim`                 IS FALSE
+        `fraudulent means or devices were used to obtain a benefit under the policy` IS FALSE
+
+`a clean record` MEANS `a record of the breaches` EMPTY
+
+-- A false declaration made in support of an EARLIER claim under the same policy.
+`a record of a false declaration in an earlier claim` MEANS
+    `The conduct of the Insured` WITH
+        `the duties not complied with`                                               IS EMPTY
+        `a claim under the policy was fraudulent`                                    IS FALSE
+        `a false declaration was made or used in support of a claim`                 IS TRUE
+        `fraudulent means or devices were used to obtain a benefit under the policy` IS FALSE
+
+`a record of a fraudulent claim` MEANS
+    `The conduct of the Insured` WITH
+        `the duties not complied with`                                               IS EMPTY
+        `a claim under the policy was fraudulent`                                    IS TRUE
+        `a false declaration was made or used in support of a claim`                 IS FALSE
+        `fraudulent means or devices were used to obtain a benefit under the policy` IS FALSE
+
+`a record of fraudulent devices` MEANS
+    `The conduct of the Insured` WITH
+        `the duties not complied with`                                               IS EMPTY
+        `a claim under the policy was fraudulent`                                    IS FALSE
+        `a false declaration was made or used in support of a claim`                 IS FALSE
+        `fraudulent means or devices were used to obtain a benefit under the policy` IS TRUE
+
+§§ `Occurrences`
+
+GIVEN d      IS A DATE
+      causes IS A LIST OF `A cause of loss`
+GIVETH AN `An occurrence`
+`an occurrence on` d `caused by` causes MEANS
+    `An occurrence` WITH
+        `date`                                                                    IS d
+        `causes`                                                                  IS causes
+        `on or near the site`                                                     IS TRUE
+        `directly connected with the erection or testing of the items insured under Part I` IS TRUE
+        `directly connected with the construction of the items insured under Part I`        IS FALSE
+
+-- The standard occurrence: 1 June 2026, from a cause the policy does not name.
+`the standard occurrence` MEANS `an occurrence on` (YMD 2026 6 1) `caused by` (LIST `a cause the policy does not name`)
+
+GIVEN `on site`      IS A BOOLEAN
+      `erection`     IS A BOOLEAN
+      `construction` IS A BOOLEAN
+GIVETH AN `An occurrence`
+`an occurrence on 1 June 2026, on or near the site` `on site` `, connected with erection or testing` `erection` `, connected with construction` `construction` MEANS
+    `An occurrence` WITH
+        `date`                                                                    IS YMD 2026 6 1
+        `causes`                                                                  IS LIST `a cause the policy does not name`
+        `on or near the site`                                                     IS `on site`
+        `directly connected with the erection or testing of the items insured under Part I` IS `erection`
+        `directly connected with the construction of the items insured under Part I`        IS `construction`
+
+§§ `Losses under Part I`
+
+-- Arguments, in order: sudden and unforeseen; physical; repair or replacement necessary;
+-- discovered only at an inventory; repairable.
+GIVEN su  IS A BOOLEAN
+      ph  IS A BOOLEAN
+      ne  IS A BOOLEAN
+      inv IS A BOOLEAN
+      rep IS A BOOLEAN
+GIVETH A `The nature of a loss under Part I`
+`a loss of nature` su ph ne inv rep MEANS
+    `The nature of a loss under Part I` WITH
+        `sudden and unforeseen`                       IS su
+        `physical loss or damage`                     IS ph
+        `repair or replacement necessary`             IS ne
+        `discovered only when an inventory was taken` IS inv
+        `repairable`                                  IS rep
+        `minor`                                       IS FALSE
+
+`an ordinary repairable loss` MEANS
+    `a loss of nature` TRUE TRUE TRUE FALSE TRUE
+
+`a total loss` MEANS
+    `a loss of nature` TRUE TRUE TRUE FALSE FALSE
+
+-- Costs, with the figures that vary as parameters and the rest nil.
+GIVEN restore  IS A NUMBER
+      value    IS A NUMBER
+      salvage  IS A NUMBER
+      incurred IS A NUMBER
+GIVETH A `The costs of a loss under Part I`
+`costs: restoring` restore `, value before` value `, salvage` salvage `, incurred` incurred MEANS
+    `The costs of a loss under Part I` WITH
+        `the cost of restoring the item to its condition immediately before the occurrence` IS restore
+        `the part of that cost of a kind not included in the sum insured`                   IS 0
+        `the actual value of the item immediately before the occurrence`                    IS value
+        `the salvage value`                                                                 IS salvage
+        `the costs actually incurred by the Insured`                                        IS incurred
+        `the cost of temporary repairs`                                                     IS 0
+        `the temporary repairs form part of the permanent repairs`                          IS FALSE
+        `the temporary repairs increase the cost of repair`                                 IS FALSE
+        `the cost of alterations, additions or improvements`                                IS 0
+        `the extra charges for overtime, night work, work on public holidays and express freight` IS 0
+        `the consequential losses claimed`                                                  IS 0
+
+-- The standard repair: 1,000,000,000 to restore an item worth 8,000,000,000 just before
+-- the occurrence; salvage 50,000,000; all of it spent.
+`the standard repair costs` MEANS
+    `costs: restoring` 1000000000 `, value before` 8000000000 `, salvage` 50000000 `, incurred` 1000000000
+
+-- The standard repair, with every other cost field set.
+GIVEN `not insured`   IS A NUMBER
+      incurred        IS A NUMBER
+      temporary       IS A NUMBER
+      `temp part`     IS A BOOLEAN
+      `temp increase` IS A BOOLEAN
+      alterations     IS A NUMBER
+      extra           IS A NUMBER
+      consequential   IS A NUMBER
+GIVETH A `The costs of a loss under Part I`
+`the standard repair, with a part not insured of` `not insured` `, incurred` incurred `, temporary repairs` temporary `forming part` `temp part` `increasing cost` `temp increase` `, alterations` alterations `, extra charges` extra `, consequential losses` consequential MEANS
+    `The costs of a loss under Part I` WITH
+        `the cost of restoring the item to its condition immediately before the occurrence` IS 1000000000
+        `the part of that cost of a kind not included in the sum insured`                   IS `not insured`
+        `the actual value of the item immediately before the occurrence`                    IS 8000000000
+        `the salvage value`                                                                 IS 50000000
+        `the costs actually incurred by the Insured`                                        IS incurred
+        `the cost of temporary repairs`                                                     IS temporary
+        `the temporary repairs form part of the permanent repairs`                          IS `temp part`
+        `the temporary repairs increase the cost of repair`                                 IS `temp increase`
+        `the cost of alterations, additions or improvements`                                IS alterations
+        `the extra charges for overtime, night work, work on public holidays and express freight` IS extra
+        `the consequential losses claimed`                                                  IS consequential
+
+GIVEN p IS A `The property lost or damaged`
+      n IS A `The nature of a loss under Part I`
+      c IS A `The costs of a loss under Part I`
+GIVETH A `A loss under Part I`
+`a loss of` p `, which is` n `, costing` c MEANS
+    `A loss under Part I` WITH
+        `the property`                                                          IS p
+        `the nature`                                                            IS n
+        `the costs`                                                             IS c
+        `the item had earlier been damaged and not repaired promptly and properly` IS FALSE
+        `invoices showing the repair or replacement have been produced`         IS TRUE
+
+GIVEN n IS A NUMBER
+GIVETH A `The property lost or damaged`
+`machinery in item` n MEANS `part of the item numbered` n `property of another kind`
+
+-- The standard loss: machinery in item 1, ordinary repairable damage, standard costs.
+`the standard loss` MEANS
+    `a loss of` (`machinery in item` 1) `, which is` `an ordinary repairable loss` `, costing` `the standard repair costs`
+
+GIVEN n IS A NUMBER
+      c IS A `The costs of a loss under Part I`
+GIVETH A `A loss under Part I`
+`a repairable loss to item` n `costing` c MEANS
+    `a loss of` (`machinery in item` n) `, which is` `an ordinary repairable loss` `, costing` c
+
+-- Surrounding property of the principal, on the site.
+GIVEN k IS A `A kind of property`
+GIVETH A `The property lost or damaged`
+`the principal's surrounding property, of kind` k MEANS `surrounding property` TRUE TRUE k
+
+-- The standard surrounding-property loss: 200,000,000 to restore, all spent, no salvage.
+`the standard surrounding-property loss` MEANS
+    `a loss of` (`the principal's surrounding property, of kind` `property of another kind`)
+        `, which is` `an ordinary repairable loss`
+        `, costing` (`costs: restoring` 200000000 `, value before` 900000000 `, salvage` 0 `, incurred` 200000000)
+
+§§ `Liabilities under Part II`
+
+-- Exclusion facts in the order: exclusion 2, 3(a), 3(b), 3(d).
+GIVEN head      IS A `A head of a third-party claim`
+      damages   IS A MAYBE NUMBER
+      consented IS A NUMBER
+      ex2       IS A BOOLEAN
+      ex3a      IS A BOOLEAN
+      ex3b      IS A BOOLEAN
+      ex3d      IS A BOOLEAN
+GIVETH A `A liability under Part II`
+`a liability for` head `, damages` damages `, consented costs` consented `, exclusion facts` ex2 ex3a ex3b ex3d MEANS
+    `A liability under Part II` WITH
+        `the head`                                                        IS head
+        `accidental`                                                      IS TRUE
+        `the damages the Insured is legally liable to pay`                IS damages
+        `the claimant's costs of litigation recovered from the Insured`   IS 30000000
+        `the costs and expenses incurred with Bao Minh's written consent` IS consented
+        `the costs and expenses incurred without Bao Minh's written consent` IS 50000000
+        `the item from which it arises`                                   IS NOTHING
+        `for doing, redoing, making good, repairing or replacing anything insured or insurable under Part I` IS ex2
+        `injury or illness of an employee or worker of the contractor, the principal or another firm connected with the works, or of a member of their families` IS ex3a
+        `damage to property of, or in the care, custody or control of, the contractor, the principal, another firm connected with the works, or an employee or worker of any of them` IS ex3b
+        `under an agreement of the Insured, and would not have attached without it` IS ex3d
+
+-- The standard injury claim: a passer-by injured; damages 300,000,000; the claimant's
+-- costs recovered 30,000,000; costs with consent 20,000,000; costs without consent
+-- 50,000,000 (never paid).
+`the standard injury to a passer-by` MEANS
+    `a liability for` `bodily injury or illness, fatal or not` `, damages` (JUST 300000000) `, consented costs` 20000000 `, exclusion facts` FALSE FALSE FALSE FALSE
+
+`damage to a neighbour's property` MEANS
+    `a liability for` `loss of or damage to property` `, damages` (JUST 300000000) `, consented costs` 20000000 `, exclusion facts` FALSE FALSE FALSE FALSE
+
+GIVEN item IS A MAYBE NUMBER
+GIVETH A `A liability under Part II`
+`the standard injury, arising from item` item MEANS
+    `A liability under Part II` WITH
+        `the head`                                                        IS `bodily injury or illness, fatal or not`
+        `accidental`                                                      IS TRUE
+        `the damages the Insured is legally liable to pay`                IS JUST 300000000
+        `the claimant's costs of litigation recovered from the Insured`   IS 30000000
+        `the costs and expenses incurred with Bao Minh's written consent` IS 20000000
+        `the costs and expenses incurred without Bao Minh's written consent` IS 50000000
+        `the item from which it arises`                                   IS item
+        `for doing, redoing, making good, repairing or replacing anything insured or insurable under Part I` IS FALSE
+        `injury or illness of an employee or worker of the contractor, the principal or another firm connected with the works, or of a member of their families` IS FALSE
+        `damage to property of, or in the care, custody or control of, the contractor, the principal, another firm connected with the works, or an employee or worker of any of them` IS FALSE
+        `under an agreement of the Insured, and would not have attached without it` IS FALSE
+
+§§ `Disputes and claims`
+
+`no dispute` MEANS
+    `The dispute about the claim` WITH
+        `liability admitted and the amount disputed` IS FALSE
+        `rejected`                                   IS FALSE
+        `date of the arbitral award`                 IS NOTHING
+        `date proceedings were commenced`            IS NOTHING
+
+GIVEN admitted    IS A BOOLEAN
+      rejected    IS A BOOLEAN
+      award       IS A MAYBE DATE
+      proceedings IS A MAYBE DATE
+GIVETH A `The dispute about the claim`
+`a dispute: amount disputed` admitted `, rejected` rejected `, award on` award `, proceedings on` proceedings MEANS
+    `The dispute about the claim` WITH
+        `liability admitted and the amount disputed` IS admitted
+        `rejected`                                   IS rejected
+        `date of the arbitral award`                 IS award
+        `date proceedings were commenced`            IS proceedings
+
+-- The general claim builder. Every other builder below calls it.
+GIVEN p        IS A `The policy`
+      k        IS A `The conduct of the Insured`
+      o        IS AN `An occurrence`
+      losses   IS A LIST OF `A loss under Part I`
+      debris   IS A NUMBER
+      lias     IS A LIST OF `A liability under Part II`
+      assessed IS A DATE
+      notice   IS A MAYBE DATE
+      paid     IS A NUMBER
+      cond2    IS A BOOLEAN
+      other    IS A BOOLEAN
+      share    IS A MAYBE NUMBER
+      dispute  IS A `The dispute about the claim`
+GIVETH A `A claim`
+`the claim built from` p k o losses debris lias assessed notice paid cond2 other share dispute MEANS
+    `A claim` WITH
+        `the policy`                                                   IS p
+        `the conduct of the Insured`                                   IS k
+        `the occurrence`                                               IS o
+        `the losses under Part I`                                      IS losses
+        `the cost of clearing debris from the site`                    IS debris
+        `the liabilities under Part II`                                IS lias
+        `the date of assessment`                                       IS assessed
+        `the date Bao Minh received notice`                            IS notice
+        `the amount already paid under Part I for earlier occurrences` IS paid
+        `Bao Minh has paid under Part II condition 2`                  IS cond2
+        `other insurance covers the same loss or liability`            IS other
+        `Bao Minh's ratable proportion, as determined`                 IS share
+        `the dispute`                                                  IS dispute
+
+-- The common shape: notice received the day after the occurrence, assessed 60 days after
+-- it, no debris, nothing paid before, no other insurance, no dispute.
+GIVEN p      IS A `The policy`
+      k      IS A `The conduct of the Insured`
+      o      IS AN `An occurrence`
+      losses IS A LIST OF `A loss under Part I`
+      lias   IS A LIST OF `A liability under Part II`
+GIVETH A `A claim`
+`a claim under` p `by an Insured with` k `for` o `with losses` losses `and liabilities` lias MEANS
+    `the claim built from` p k o losses 0 lias
+        (o's `date` PLUS 60) (JUST (o's `date` PLUS 1)) 0 FALSE FALSE NOTHING `no dispute`
+
+-- The standard claim: standard policy, clean record, standard occurrence, standard loss,
+-- standard injury.
+`the standard claim` MEANS
+    `a claim under` `the standard policy` `by an Insured with` `a clean record` `for` `the standard occurrence`
+        `with losses` (LIST `the standard loss`) `and liabilities` (LIST `the standard injury to a passer-by`)
+
+GIVEN o IS AN `An occurrence`
+GIVETH A `A claim`
+`the standard claim, for the occurrence` o MEANS
+    `a claim under` `the standard policy` `by an Insured with` `a clean record` `for` o
+        `with losses` (LIST `the standard loss`) `and liabilities` (LIST `the standard injury to a passer-by`)
+
+GIVEN losses IS A LIST OF `A loss under Part I`
+GIVETH A `A claim`
+`the standard claim, with losses` losses MEANS
+    `a claim under` `the standard policy` `by an Insured with` `a clean record` `for` `the standard occurrence`
+        `with losses` losses `and liabilities` EMPTY
+
+GIVEN p      IS A `The policy`
+      losses IS A LIST OF `A loss under Part I`
+GIVETH A `A claim`
+`a claim under` p `with losses` losses MEANS
+    `a claim under` p `by an Insured with` `a clean record` `for` `the standard occurrence`
+        `with losses` losses `and liabilities` EMPTY
+
+GIVEN lias IS A LIST OF `A liability under Part II`
+GIVETH A `A claim`
+`the standard claim, with liabilities` lias MEANS
+    `a claim under` `the standard policy` `by an Insured with` `a clean record` `for` `the standard occurrence`
+        `with losses` EMPTY `and liabilities` lias
+
+GIVEN o    IS AN `An occurrence`
+      lias IS A LIST OF `A liability under Part II`
+GIVETH A `A claim`
+`the standard claim, for the occurrence` o `with liabilities` lias MEANS
+    `a claim under` `the standard policy` `by an Insured with` `a clean record` `for` o
+        `with losses` EMPTY `and liabilities` lias
+
+GIVEN k IS A `The conduct of the Insured`
+GIVETH A `A claim`
+`the standard claim, by an Insured with` k MEANS
+    `a claim under` `the standard policy` `by an Insured with` k `for` `the standard occurrence`
+        `with losses` (LIST `the standard loss`) `and liabilities` (LIST `the standard injury to a passer-by`)
+
+GIVEN p IS A `The policy`
+GIVETH A `A claim`
+`the standard claim, under the policy` p MEANS
+    `a claim under` p `by an Insured with` `a clean record` `for` `the standard occurrence`
+        `with losses` (LIST `the standard loss`) `and liabilities` (LIST `the standard injury to a passer-by`)
+
+-- The standard claim, with the notice date and the assessment date given.
+GIVEN notice   IS A MAYBE DATE
+      assessed IS A DATE
+GIVETH A `A claim`
+`the standard claim, with notice received` notice `, assessed on` assessed MEANS
+    `the claim built from` `the standard policy` `a clean record` `the standard occurrence`
+        (LIST `the standard loss`) 0 (LIST `the standard injury to a passer-by`)
+        assessed notice 0 FALSE FALSE NOTHING `no dispute`
+
+-- The standard claim, with a dispute, assessed on a given date.
+GIVEN dispute  IS A `The dispute about the claim`
+      assessed IS A DATE
+GIVETH A `A claim`
+`the standard claim, with dispute` dispute `, assessed on` assessed MEANS
+    `the claim built from` `the standard policy` `a clean record` `the standard occurrence`
+        (LIST `the standard loss`) 0 (LIST `the standard injury to a passer-by`)
+        assessed (JUST (YMD 2026 6 2)) 0 FALSE FALSE NOTHING dispute
+
+-- The standard Part I claim with the money facts that vary given.
+GIVEN p      IS A `The policy`
+      losses IS A LIST OF `A loss under Part I`
+      debris IS A NUMBER
+      paid   IS A NUMBER
+      other  IS A BOOLEAN
+      share  IS A MAYBE NUMBER
+GIVETH A `A claim`
+`a Part I claim under` p `with losses` losses `, debris` debris `, paid before` paid `, other insurance` other `, share` share MEANS
+    `the claim built from` p `a clean record` `the standard occurrence` losses debris EMPTY
+        (YMD 2026 8 1) (JUST (YMD 2026 6 2)) paid FALSE other share `no dispute`
+
+-- The standard Part II claim with condition 2 and General Condition 9 given.
+GIVEN lias  IS A LIST OF `A liability under Part II`
+      cond2 IS A BOOLEAN
+      other IS A BOOLEAN
+      share IS A MAYBE NUMBER
+GIVETH A `A claim`
+`a Part II claim with liabilities` lias `, condition 2 paid` cond2 `, other insurance` other `, share` share MEANS
+    `the claim built from` `the standard policy` `a clean record` `the standard occurrence` EMPTY 0 lias
+        (YMD 2026 8 1) (JUST (YMD 2026 6 2)) 0 cond2 other share `no dispute`
