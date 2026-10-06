@@ -1,0 +1,230 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `bmfire-nouns`
+IMPORT `bmfire-insuring-clause`
+IMPORT `bmfire-exclusions`
+IMPORT `bmfire-indemnity`
+IMPORT `bmfire-claim`
+IMPORT `bmfire-fixtures`
+
+-- LAYER 2 TESTS: how much is payable? The Rules print no worked example and no figure of
+-- their own except the short-period scale (bmfire-tests-conditions.l4). Every expected
+-- value below is the arithmetic the clause states, worked by hand and written beside the
+-- assertion before it was run. The standard case is in bmfire-fixtures.l4: a fire on
+-- 1 June 2026 damaging the warehouse building (sum insured and actual value 1,000,000,000).
+
+§ `Tests — how much is payable`
+
+§§ `The measure: value at the time of loss, or the amount of the damage`
+
+-- Damaged: the amount of the damage, 200,000,000.
+#ASSERT `the amount payable` (`a building claim` `risk A` `fire` EMPTY EMPTY) EQUALS 200000000
+
+-- Destroyed: the value at the time of loss. Building insured for 1,000,000,000, worth
+-- 800,000,000 when it burned: 800,000,000, not the sum insured.
+`the building, worth 800 million` MEANS `an item` "the warehouse building" 1000000000 800000000 EMPTY
+#ASSERT `the amount payable` (`a claim for the loss` `the Summary` `risk A` `fire` (`physical damage to` `the building, worth 800 million` `of` 0 `with` (LIST `loss — destroyed`))) EQUALS 800000000
+
+§§ `VII.5 — average`
+
+-- Sum insured 600,000,000, actual value 1,000,000,000: the Insured bears 40%.
+-- 200,000,000 x 600/1000 = 120,000,000.
+`the under-insured building` MEANS `an item` "the warehouse building" 600000000 1000000000 EMPTY
+#ASSERT `the amount payable` (`a claim for the loss` `the Summary` `risk A` `fire` (`physical damage to` `the under-insured building` `of` 200000000 `with` EMPTY)) EQUALS 120000000
+-- Both sides of the threshold: value equal to the sum insured, no average; value one dong
+-- above it, average: 200,000,000 x 999,999,999 / 1,000,000,000 = 199,999,999.8.
+#ASSERT `VII.5 — the loss after the average condition` (`an item` "x" 1000000000 1000000000 EMPTY) 200000000 EQUALS 200000000
+#ASSERT `VII.5 — the loss after the average condition` (`an item` "x" 999999999 1000000000 EMPTY) 200000000 EQUALS 199999999.8
+-- Item by item: an over-insured item does not make up for an under-insured one.
+#ASSERT `VII.5 — the loss after the average condition` (`an item` "x" 2000000000 1000000000 EMPTY) 200000000 EQUALS 200000000
+
+§§ `IV — the deductible, after average`
+
+GIVEN r IS A `A risk in Section II`
+      n IS A NUMBER
+GIVETH A `The Policy Summary`
+`the Summary with a deductible for` r `of` n MEANS
+    `a 2026 Summary` `every risk` 1500000000 (LIST (`a deductible for` r `of` n))
+
+`deductible A 10 million` MEANS `the Summary with a deductible for` `risk A` `of` 10000000
+
+GIVEN n IS A NUMBER
+GIVETH A NUMBER
+`a fire under the 10 million deductible, of` n MEANS
+    `the amount payable` (`a claim for the loss` `deductible A 10 million` `risk A` `fire` (`physical damage to` `the building` `of` n `with` EMPTY))
+
+-- 200,000,000 - 10,000,000; and both sides of the deductible.
+#ASSERT `a fire under the 10 million deductible, of` 200000000 EQUALS 190000000
+#ASSERT `a fire under the 10 million deductible, of` 10000000 EQUALS 0
+#ASSERT `a fire under the 10 million deductible, of` 10000001 EQUALS 1
+#ASSERT `a fire under the 10 million deductible, of` 5000000 EQUALS 0
+
+-- "sau khi đã áp dụng tất cả các điều kiện ... bao gồm cả điều kiện luật tỷ lệ": the
+-- deductible comes after average. 200,000,000 x 0.6 = 120,000,000, less 10,000,000 =
+-- 110,000,000 (the other order would give 114,000,000).
+#ASSERT `the amount payable` (`a claim for the loss` `deductible A 10 million` `risk A` `fire` (`physical damage to` `the under-insured building` `of` 200000000 `with` EMPTY)) EQUALS 110000000
+
+-- A deductible stated for another risk does not apply.
+#ASSERT `the amount payable` (`a claim for the loss` (`the Summary with a deductible for` `risk G` `of` 10000000) `risk A` `fire` (`physical damage to` `the building` `of` 200000000 `with` EMPTY)) EQUALS 200000000
+
+§§ `How the deductible is counted, risk by risk`
+
+-- The same incident, 50,000,000 at each of two insured locations, deductible 10,000,000.
+GIVEN r  IS A `A risk in Section II`
+      fs IS A LIST OF `A fact in a test`
+GIVETH A NUMBER
+`two locations, 50 million each, under` r `with` fs MEANS
+    `the amount payable`
+        (`a claim at` (`the Summary with a deductible for` r `of` 10000000) r fs
+            (LIST (`at the insured location` "Hanoi"     (LIST (`physical damage to` `the building` `of` 50000000 `with` EMPTY))),
+                  (`at the insured location` "Haiphong"  (LIST (`physical damage to` `the stock` `of` 50000000 `with` EMPTY)))))
+
+-- A to D: Section IV, once for the loss: 100,000,000 - 10,000,000.
+#ASSERT `two locations, 50 million each, under` `risk A` `with` `fire` EQUALS 90000000
+#ASSERT `two locations, 50 million each, under` `risk C` `with` (LIST `fact — an aircraft or other aerial device, or something from one, fell on the property`) EQUALS 90000000
+#ASSERT `two locations, 50 million each, under` `risk D` `with` (LIST `fact — an act of a person taking part with others in disturbing public order`) EQUALS 90000000
+-- E, G, H, I: at each location: (50 - 10) + (50 - 10).
+#ASSERT `two locations, 50 million each, under` `risk E` `with` (LIST `fact — a malicious act of any person`) EQUALS 80000000
+#ASSERT `two locations, 50 million each, under` `risk G` `with` (LIST `fact — a storm or tempest`) EQUALS 80000000
+#ASSERT `two locations, 50 million each, under` `risk H` `with` (LIST `fact — a flood`) EQUALS 80000000
+#ASSERT `two locations, 50 million each, under` `risk I` `with` (LIST `fact — water overflowing from a water tank, water apparatus or water pipe`) EQUALS 80000000
+
+-- F: at each location, on losses not caused by fire. At one location an earthquake
+-- shakes the building (50,000,000) and the fire it starts burns the stock (100,000,000);
+-- deductible 20,000,000: 100,000,000 + (50,000,000 - 20,000,000) = 130,000,000.
+`an earthquake and the fire it starts` MEANS
+    `the amount payable`
+        (`a claim at` (`the Summary with a deductible for` `risk F` `of` 20000000) `risk F` (LIST `fact — an earthquake or volcanic eruption`)
+            (LIST (`at the insured location` "Hanoi" (LIST (`physical damage to` `the building` `of` 50000000 `with` EMPTY),
+                                                            (`physical damage to` `the stock` `of` 100000000 `with` (LIST `loss — caused by fire`))))))
+#ASSERT `an earthquake and the fire it starts` EQUALS 130000000
+-- And a shaking loss below the deductible at one place does not reduce a fire loss at
+-- another: 15,000,000 shaken at Haiphong (nil after 20,000,000), 100,000,000 burned at Hanoi.
+`an earthquake at two places` MEANS
+    `the amount payable`
+        (`a claim at` (`the Summary with a deductible for` `risk F` `of` 20000000) `risk F` (LIST `fact — an earthquake or volcanic eruption`)
+            (LIST (`at the insured location` "Hanoi"    (LIST (`physical damage to` `the stock` `of` 100000000 `with` (LIST `loss — caused by fire`)))),
+                  (`at the insured location` "Haiphong" (LIST (`physical damage to` `the building` `of` 15000000 `with` EMPTY)))))
+#ASSERT `an earthquake at two places` EQUALS 100000000
+
+-- J: the deductible on impact by the Insured's own vehicle (200 - 10), not on a third
+-- party's (fork F8).
+`a lorry hits the building` MEANS `a building claim in` (`the Summary with a deductible for` `risk J` `of` 10000000) `risk J` (LIST `fact — impact by a vehicle`) EMPTY EMPTY
+`the Insured's own lorry hits the building` MEANS `a building claim in` (`the Summary with a deductible for` `risk J` `of` 10000000) `risk J` (LIST `fact — impact by a vehicle`, `fact — the vehicle or animal was owned or controlled by the Insured, the occupier of the insured premises, or their employees`) EMPTY EMPTY
+#ASSERT `the amount payable` `the Insured's own lorry hits the building` EQUALS 190000000
+#ASSERT `the amount payable` `a lorry hits the building` EQUALS 200000000
+
+§§ `VII.3 — reinstatement`
+
+-- Bao Minh elects to repair; the cost to restore is capped at the sum insured.
+GIVEN n IS A NUMBER
+GIVETH A NUMBER
+`Bao Minh repairs, at a cost of` n MEANS
+    `the amount payable`
+        (`a claim in full` `the Summary` `risk A` `the day` (`the facts` `fire`)
+            (LIST (`at the insured location` "Hanoi"
+                    (LIST (`a loss in full` (`an item` "the shop fit-out" 250000000 250000000 EMPTY) `physical loss, destruction or damage` 999 EMPTY
+                             (`The other figures of a loss` WITH `marine recovery` IS 0, `other insurance` IS NOTHING, `restoring cost` IS n, `blank media` IS 0, `copying` IS 0)))))
+            `the premium paid on 10 January 2026` EMPTY EMPTY EMPTY (`conduct` (YMD 2026 6 11) EMPTY) TRUE 0)
+#ASSERT `Bao Minh repairs, at a cost of` 150000000 EQUALS 150000000
+#ASSERT `Bao Minh repairs, at a cost of` 300000000 EQUALS 250000000
+
+§§ `Proviso — the caps`
+
+-- (ii) per item: 900,000,000 of the building's 1,000,000,000 already paid this period;
+-- 100,000,000 remains. Unless Bao Minh agreed to reinstate the sum insured.
+`the building, 900 million already paid` MEANS `an item in full` "the warehouse building" `property of no category named in III.2(a)` 1000000000 1000000000 900000000 EMPTY
+#ASSERT `the amount payable` (`a claim for the loss` `the Summary` `risk A` `fire` (`physical damage to` `the building, 900 million already paid` `of` 200000000 `with` EMPTY)) EQUALS 100000000
+#ASSERT `the amount payable` (`a claim for the loss` (`a 2026 Summary in full` `every risk` 1500000000 EMPTY FALSE TRUE FALSE) `risk A` `fire` (`physical damage to` `the building, 900 million already paid` `of` 200000000 `with` EMPTY)) EQUALS 200000000
+
+-- (i) and (ii) for the claim: 1,400,000,000 of the 1,500,000,000 total already paid.
+`a fire after 1,400 million already paid` MEANS
+    `a claim in full` `the Summary` `risk A` `the day` (`the facts` `fire`)
+        (LIST (`at the insured location` "Hanoi" (LIST (`physical damage to` `the building` `of` 200000000 `with` EMPTY))))
+        `the premium paid on 10 January 2026` EMPTY EMPTY EMPTY (`conduct` (YMD 2026 6 11) EMPTY) FALSE 1400000000
+#ASSERT `the amount payable` `a fire after 1,400 million already paid` EQUALS 100000000
+
+-- (i) per item: a loss beyond the item's sum insured (a destroyed item worth more than
+-- its sum insured is first averaged, so a damage figure above its value shows the cap).
+`a small item` MEANS `an item` "a kiosk" 50000000 50000000 EMPTY
+#ASSERT `the amount payable` (`a claim for the loss` `the Summary` `risk A` `fire` (`physical damage to` `a small item` `of` 70000000 `with` EMPTY)) EQUALS 50000000
+
+§§ `III.2(b) — marine insurance`
+
+-- Only the part of the damage beyond what the marine policy pays: 200 - 150 = 50 million.
+GIVEN n IS A NUMBER
+GIVETH A NUMBER
+`goods also under a marine policy that pays` n MEANS
+    `the amount payable`
+        (`a claim for the loss` `the Summary` `risk A` `fire`
+            (`a loss in full` `the stock` `physical loss, destruction or damage` 200000000
+                (LIST `loss — insured, or but for this policy would be insured, under a marine policy`)
+                (`The other figures of a loss` WITH `marine recovery` IS n, `other insurance` IS NOTHING, `restoring cost` IS 0, `blank media` IS 0, `copying` IS 0)))
+#ASSERT `goods also under a marine policy that pays` 150000000 EQUALS 50000000
+#ASSERT `goods also under a marine policy that pays` 250000000 EQUALS 0
+
+§§ `VII.6 — contribution`
+
+GIVEN i IS AN `An item of insured property`
+      o IS AN `Other insurance on the item`
+GIVETH A NUMBER
+`200 million to` i `also insured by` o MEANS
+    `the amount payable`
+        (`a claim for the loss` `the Summary` `risk A` `fire`
+            (`a loss in full` i `physical loss, destruction or damage` 200000000 EMPTY
+                (`The other figures of a loss` WITH `marine recovery` IS 0, `other insurance` IS JUST o, `restoring cost` IS 0, `blank media` IS 0, `copying` IS 0)))
+
+`another policy for 1,000 million` MEANS `Other insurance on the item` WITH `its sum insured for the item` IS 1000000000, `it excludes or rateably limits its share alongside this policy` IS FALSE
+`another policy for 1,000 million that limits its share` MEANS `Other insurance on the item` WITH `its sum insured for the item` IS 1000000000, `it excludes or rateably limits its share alongside this policy` IS TRUE
+
+-- First paragraph: rateably, by sums insured: 200 x 1000 / 2000 = 100 million.
+#ASSERT `200 million to` `the building` `also insured by` `another policy for 1,000 million` EQUALS 100000000
+-- Second paragraph: the loss in the proportion of sum insured to value: 200 x 1 = 200;
+-- under-insured, 600 of 1000: 200 x 0.6 = 120, no further share taken.
+#ASSERT `200 million to` `the building` `also insured by` `another policy for 1,000 million that limits its share` EQUALS 200000000
+#ASSERT `200 million to` `the under-insured building` `also insured by` `another policy for 1,000 million that limits its share` EQUALS 120000000
+
+§§ `VIII.1(b) — data media`
+
+GIVEN repaired IS A BOOLEAN
+GIVETH A NUMBER
+`the server disks, repaired` repaired MEANS
+    `the amount payable`
+        (`a claim for the loss` `the Summary` `risk A` `fire`
+            (`a loss in full` (`an item` "server disks" 10000000 10000000 (LIST `item — electronic data processing media`)) `physical loss, destruction or damage` 9000000
+                (IF repaired THEN LIST `loss — the media were repaired, replaced or restored` ELSE EMPTY)
+                (`The other figures of a loss` WITH `marine recovery` IS 0, `other insurance` IS NOTHING, `restoring cost` IS 0, `blank media` IS 2000000, `copying` IS 3000000)))
+-- Blank media plus copying from back-up: 2 + 3 = 5 million; not restored: blank media, 2.
+#ASSERT `the server disks, repaired` TRUE EQUALS 5000000
+#ASSERT `the server disks, repaired` FALSE EQUALS 2000000
+
+§§ `III.3 — rent insured`
+
+-- Loss of rent where the Summary insures rent: the amount claimed under the rent cover,
+-- 30 million, with no average (rent has no actual value: fork F12).
+`the rent` MEANS `an item` "rent receivable" 100000000 1000000000 EMPTY
+#ASSERT `the amount payable` (`a claim for the loss` (`a 2026 Summary in full` `every risk` 1500000000 EMPTY TRUE FALSE FALSE) `risk A` `fire` (`a loss in full` `the rent` `loss of rent` 30000000 EMPTY `no other figures`)) EQUALS 30000000
+
+§§ `The layers together`
+
+-- One fire; deductible 10 million under A.
+--   the building, sum insured 600 of value 1000, damaged 200: average, 120;
+--   the stock, sum insured 500, worth 400 when destroyed: 400;
+--   the business's lost income, 50: out (preamble, III.3), and not counted;
+--   120 + 400 = 520, less the deductible, once: 510 million.
+`a fire, three heads, a deductible` MEANS
+    `a claim at` `deductible A 10 million` `risk A` `fire`
+        (LIST (`at the insured location` "Hanoi"
+                 (LIST (`physical damage to` `the under-insured building` `of` 200000000 `with` (LIST `loss — caused by fire`)),
+                       (`physical damage to` (`an item` "stock of grain" 500000000 400000000 EMPTY) `of` 0 `with` (LIST `loss — destroyed`, `loss — caused by fire`)),
+                       (`a loss in full` `the building` `loss of income, delay, loss of market, or other consequential or indirect loss` 50000000 EMPTY `no other figures`))))
+#ASSERT `the reasons` `a fire, three heads, a deductible` EQUALS LIST `preamble — a head of loss the policy does not insure`, `III.3 — consequential loss`
+#ASSERT `the amount payable` `a fire, three heads, a deductible` EQUALS 510000000
+-- The same claim, but the Insured did not notify Bao Minh in writing at once: nothing is
+-- payable (the conditions are conditions precedent, fork F29).
+`the same fire, notice late` MEANS
+    `a claim in full` `deductible A 10 million` `risk A` `the day` (`the facts` `fire`)
+        (LIST (`at the insured location` "Hanoi" (LIST (`physical damage to` `the under-insured building` `of` 200000000 `with` EMPTY))))
+        `the premium paid on 10 January 2026` EMPTY EMPTY EMPTY (`conduct` (YMD 2026 6 11) (LIST `lapse — not: notified Bao Minh in writing at once`)) FALSE 0
+#ASSERT `the amount payable` `the same fire, notice late` EQUALS 0
