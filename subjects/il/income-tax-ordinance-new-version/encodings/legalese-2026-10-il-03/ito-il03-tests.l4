@@ -1,0 +1,397 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `ito-il03-nouns`
+IMPORT `ito-120b-indexation`
+IMPORT `ito-121-individual-rates`
+IMPORT `ito-121b-additional-tax`
+
+-- Tests for ss 120B, 121 and 121B. Every expected value was worked out by hand from the
+-- rates and figures the SOURCE prints (the arithmetic is written beside each group), before
+-- the assertion was run. None was copied from an evaluation. A failing assertion here is a
+-- finding about the source or the encoding, never a value to edit.
+--
+-- Three kinds of number appear, and each says which it is:
+--   * figures the text prints (301,200; 560,280; 84,120; 120,720; 228,000; 640,000;
+--     5,385,285) and rates (31%, 35%, 47%, 10%, 14%, 20%, 3%, 2%);
+--   * 721,560, the s 121B(a) amount for 2024-2027 given ONLY by the consolidation's
+--     editorial note at source line 4456. It is not law in this encoding; it is supplied
+--     here as a scenario value, the way a caller would supply the published figure;
+--   * HYPOTHETICAL index readings and s 120B base amounts (index 100 -> 102, an amount of
+--     1,000), chosen to make the arithmetic visible. They are not published figures.
+
+§ `Tests`
+
+§§ `Fixtures — items of income`
+
+GIVEN n IS A NUMBER
+GIVETH AN `An item of income`
+`a salary of` n MEANS
+    `An item of income` WITH
+        `amount`                                                               IS n
+        `from personal exertion`                                               IS TRUE
+        `under section 2(1) or 2(2)`                                           IS TRUE
+        `charged at the rates in section 121`                                  IS TRUE
+        `subject to a duty to keep books of account, and acceptable books were not kept` IS FALSE
+        `inflationary amount, as defined in section 88`                        IS 0
+
+GIVEN n IS A NUMBER
+GIVETH AN `An item of income`
+`business income, with acceptable books, of` n MEANS
+    `An item of income` WITH
+        `amount`                                                               IS n
+        `from personal exertion`                                               IS TRUE
+        `under section 2(1) or 2(2)`                                           IS TRUE
+        `charged at the rates in section 121`                                  IS TRUE
+        `subject to a duty to keep books of account, and acceptable books were not kept` IS FALSE
+        `inflationary amount, as defined in section 88`                        IS 0
+
+GIVEN n IS A NUMBER
+GIVETH AN `An item of income`
+`business income, without the acceptable books it required, of` n MEANS
+    `An item of income` WITH
+        `amount`                                                               IS n
+        `from personal exertion`                                               IS TRUE
+        `under section 2(1) or 2(2)`                                           IS TRUE
+        `charged at the rates in section 121`                                  IS TRUE
+        `subject to a duty to keep books of account, and acceptable books were not kept` IS TRUE
+        `inflationary amount, as defined in section 88`                        IS 0
+
+-- Income on the s 121 scale that is not from personal exertion (rent taxed on the scale,
+-- for instance).
+GIVEN n IS A NUMBER
+GIVETH AN `An item of income`
+`other income on the scale of` n MEANS
+    `An item of income` WITH
+        `amount`                                                               IS n
+        `from personal exertion`                                               IS FALSE
+        `under section 2(1) or 2(2)`                                           IS FALSE
+        `charged at the rates in section 121`                                  IS TRUE
+        `subject to a duty to keep books of account, and acceptable books were not kept` IS FALSE
+        `inflationary amount, as defined in section 88`                        IS 0
+
+-- Income another section charges at a rate of its own (a dividend, s 125B).
+GIVEN n IS A NUMBER
+GIVETH AN `An item of income`
+`a dividend of` n MEANS
+    `An item of income` WITH
+        `amount`                                                               IS n
+        `from personal exertion`                                               IS FALSE
+        `under section 2(1) or 2(2)`                                           IS FALSE
+        `charged at the rates in section 121`                                  IS FALSE
+        `subject to a duty to keep books of account, and acceptable books were not kept` IS FALSE
+        `inflationary amount, as defined in section 88`                        IS 0
+
+GIVEN n IS A NUMBER
+      m IS A NUMBER
+GIVETH AN `An item of income`
+`a capital gain of` n `, of which inflationary` m MEANS
+    `An item of income` WITH
+        `amount`                                                               IS n
+        `from personal exertion`                                               IS FALSE
+        `under section 2(1) or 2(2)`                                           IS FALSE
+        `charged at the rates in section 121`                                  IS FALSE
+        `subject to a duty to keep books of account, and acceptable books were not kept` IS FALSE
+        `inflationary amount, as defined in section 88`                        IS m
+
+§§ `Fixtures — sales and individuals`
+
+GIVEN b IS A NUMBER
+      i IS A NUMBER
+GIVETH A `A sale of a right in real estate`
+`a sale of land, with betterment` b `, of which inflationary` i MEANS
+    `A sale of a right in real estate` WITH
+        `betterment`                                                                    IS b
+        `inflationary amount, as defined in section 47 of the Real Estate Taxation Law` IS i
+        `in a residential apartment`                                                    IS FALSE
+        `sale value`                                                                    IS 9_000_000
+        `exempt from tax under any law`                                                 IS FALSE
+
+GIVEN v IS A NUMBER
+      b IS A NUMBER
+      x IS A BOOLEAN
+GIVETH A `A sale of a right in real estate`
+`a sale of a residential apartment for` v `, with betterment` b `, exempt` x MEANS
+    `A sale of a right in real estate` WITH
+        `betterment`                                                                    IS b
+        `inflationary amount, as defined in section 47 of the Real Estate Taxation Law` IS 0
+        `in a residential apartment`                                                    IS TRUE
+        `sale value`                                                                    IS v
+        `exempt from tax under any law`                                                 IS x
+
+GIVEN y     IS A NUMBER
+      dob   IS A DATE
+      items IS A LIST OF `An item of income`
+      sales IS A LIST OF `A sale of a right in real estate`
+GIVETH AN `An individual in a tax year`
+`in tax year` y `, born` dob `, with income` items `and sales` sales MEANS
+    `An individual in a tax year` WITH
+        `tax year`                       IS y
+        `date of birth`                  IS dob
+        `items of income`                IS items
+        `sales of rights in real estate` IS sales
+
+-- Born 1980: 46 in 2026, so only personal exertion is eligible for the reduced rates.
+GIVEN y     IS A NUMBER
+      items IS A LIST OF `An item of income`
+GIVETH AN `An individual in a tax year`
+`someone under 60, in tax year` y `, with income` items MEANS
+    `in tax year` y `, born` (YMD 1980 6 15) `, with income` items `and sales` (EMPTY)
+
+`the s 121B(a) amount the editorial note gives for 2024-2027` MEANS 721_560
+
+§§ `Section 1 and section 120B — the index arithmetic (hypothetical readings)`
+
+-- s 1, line 180: (end - start) / start.   (103 - 100) / 100 = 0.03;  (99 - 100) / 100 = -0.01
+`readings 100 to 103` MEANS `Index readings for a period` WITH
+    `index last published before the start of the period` IS 100
+    `index last published before the end of the period`   IS 103
+`readings 100 to 99` MEANS `Index readings for a period` WITH
+    `index last published before the start of the period` IS 100
+    `index last published before the end of the period`   IS 99
+`readings 100 to 102` MEANS `Index readings for a period` WITH
+    `index last published before the start of the period` IS 100
+    `index last published before the end of the period`   IS 102
+`readings 100 to 101.5` MEANS `Index readings for a period` WITH
+    `index last published before the start of the period` IS 100
+    `index last published before the end of the period`   IS 101.5
+
+#ASSERT `the rate of increase of the index over` `readings 100 to 103` EQUALS 3%
+#ASSERT `the rate of increase of the index over` `readings 100 to 99` EQUALS (0 MINUS 1%)
+
+-- s 1, line 142: the amount plus the amount times the rate.  640,000 + 640,000 x 3% = 659,200
+#ASSERT 640_000 `adjusted at the rate` 3% EQUALS 659_200
+-- s 120B(a): 1,000 on 1 January of the previous year, index 100 -> 102: 1,020
+#ASSERT `s 120B(a) — adjust` 1000 `by the index over` `readings 100 to 102` EQUALS 1020
+-- fork F4: a fall in the index lowers the amount.  1,000 x (1 - 1%) = 990
+#ASSERT `s 120B(a) — adjust` 1000 `by the index over` `readings 100 to 99` EQUALS 990
+
+-- s 120B(e)(1): no adjustment on 1 January of 2025, 2026, 2027; there is on 2024 and 2028.
+#ASSERT NOT `s 120B(e)(1) — no adjustment in tax year` 2024
+#ASSERT     `s 120B(e)(1) — no adjustment in tax year` 2025
+#ASSERT     `s 120B(e)(1) — no adjustment in tax year` 2026
+#ASSERT     `s 120B(e)(1) — no adjustment in tax year` 2027
+#ASSERT NOT `s 120B(e)(1) — no adjustment in tax year` 2028
+
+-- s 120B(b) singles out the pension-point amount.
+#ASSERT     `s 120B(b) — also adjusts mid-year an amount of the kind` `the amount of a pension point`
+#ASSERT NOT `s 120B(b) — also adjusts mid-year an amount of the kind` `the amount of a credit point`
+
+§§ `Section 120B — one amount across the regimes (hypothetical figures)`
+
+-- An amount whose 1 January 2024 figure was 1,000.4 before rounding and 1,000 after; whose
+-- previous-year base (used from 2029) is 1,050; and whose previous tax year saw the index
+-- rise from 100 to 102.
+GIVEN y IS A NUMBER
+GIVETH AN `An amount on 1 January of a tax year`
+`the hypothetical amount, in tax year` y MEANS
+    `An amount on 1 January of a tax year` WITH
+        `kind`                                                          IS `an income ceiling`
+        `tax year`                                                      IS y
+        `amount on 1 January of the previous tax year, before rounding` IS 1050
+        `readings for the previous tax year`                            IS `readings 100 to 102`
+        `amount on 1 January 2024, before rounding`                     IS 1000.4
+        `amount on 1 January 2024, after rounding`                      IS 1000
+
+-- (e)(1): 2025-2027 are the 1 January 2024 figure after rounding, whatever the index did.
+#ASSERT `s 120B — the amount for the tax year` (`the hypothetical amount, in tax year` 2025) EQUALS `fixed by section 120B(e)(1) at` 1000
+#ASSERT `s 120B — the amount for the tax year` (`the hypothetical amount, in tax year` 2026) EQUALS `fixed by section 120B(e)(1) at` 1000
+#ASSERT `s 120B — the amount for the tax year` (`the hypothetical amount, in tax year` 2027) EQUALS `fixed by section 120B(e)(1) at` 1000
+-- (e)(2): 2028 restarts from the 2024 figure BEFORE rounding: 1,000.4 x 1.02 = 1,020.408
+#ASSERT `s 120B — the amount for the tax year` (`the hypothetical amount, in tax year` 2028) EQUALS `adjusted, before rounding, to` 1020.408
+-- (a): 2029 adjusts the previous base: 1,050 x 1.02 = 1,071
+#ASSERT `s 120B — the amount for the tax year` (`the hypothetical amount, in tax year` 2029) EQUALS `adjusted, before rounding, to` 1071
+-- Before 2025: the text of s 120B for those years is not in the sources.
+#ASSERT REFUSED `s 120B — the amount for the tax year` (`the hypothetical amount, in tax year` 2024) BECAUSE "section 120B as it stood before the 5785 amendment is not in the deposited text"
+
+-- The figure in force: the frozen figure in 2026; from 2028 it needs the rounding Order.
+#ASSERT `s 120B — the amount in force in the tax year` (`the hypothetical amount, in tax year` 2026) EQUALS 1000
+#ASSERT REFUSED `s 120B — the amount in force in the tax year` (`the hypothetical amount, in tax year` 2028) BECAUSE "the rounding rules made under section 120B(d) are not encoded in this model"
+
+§§ `Section 120B(b) — the pension-point amount (hypothetical figures)`
+
+GIVEN y IS A NUMBER
+      m IS A MAYBE NUMBER
+GIVETH A `A pension-point amount in a tax year`
+`a pension-point amount of 100 in tax year` y `, increment from` m MEANS
+    `A pension-point amount in a tax year` WITH
+        `tax year`                                                         IS y
+        `amount on 1 January of the tax year`                              IS 100
+        `month from which an agreed cost-of-living increment is paid`      IS m
+        `readings from the start of the tax year to the end of that month` IS `readings 100 to 101.5`
+
+-- 2029, increment agreed from July, index up 1.5% to the end of July: 100 x 1.015 = 101.5
+#ASSERT `s 120B(b) — the pension-point amount from the month of an agreed cost-of-living increment` (`a pension-point amount of 100 in tax year` 2029 `, increment from` (JUST 7)) EQUALS 101.5
+-- 2029, no agreement: unchanged.
+#ASSERT `s 120B(b) — the pension-point amount from the month of an agreed cost-of-living increment` (`a pension-point amount of 100 in tax year` 2029 `, increment from` NOTHING) EQUALS 100
+-- 2026, agreement or not: (e)(1) says "notwithstanding (a) and (b)", so unchanged.
+#ASSERT `s 120B(b) — the pension-point amount from the month of an agreed cost-of-living increment` (`a pension-point amount of 100 in tax year` 2026 `, increment from` (JUST 7)) EQUALS 100
+#ASSERT REFUSED `s 120B(b) — the pension-point amount from the month of an agreed cost-of-living increment` (`a pension-point amount of 100 in tax year` 2024 `, increment from` (JUST 7)) BECAUSE "section 120B as it stood before the 5785 amendment is not in the deposited text"
+
+§§ `Section 121 — which years, and which figures`
+
+-- The figures for 2026 and 2027 are those the text prints (lines 4351-4358).
+#ASSERT `the section 121 ceilings for tax year` 2026 EQUALS `the ceilings printed in section 121`
+#ASSERT `the section 121 ceilings for tax year` 2027 EQUALS `the ceilings printed in section 121`
+#ASSERT REFUSED `the section 121 ceilings for tax year` 2025 BECAUSE "section 121 as it stood before tax year 2026 is not in the deposited text"
+#ASSERT REFUSED `the section 121 ceilings for tax year` 2028 BECAUSE "the section 121 ceilings from tax year 2028 are not determined by the deposited text"
+
+-- A second transcription of the same figures: the editorial table for 2026-2027
+-- (lines 4442-4446) against the text (lines 4351-4358).
+--   src:4442 "עד 84,120"   src:4443 "84,121 עד 120,720"   src:4444 "120,721 עד 228,000"
+--   src:4445 "228,001 עד 301,200"   src:4446 "301,201 עד 560,280"
+#ASSERT `the ceilings printed in section 121`'s `top of the reduced-rate 10% band` EQUALS 84_120
+#ASSERT `the ceilings printed in section 121`'s `top of the reduced-rate 14% band` EQUALS 120_720
+#ASSERT `the ceilings printed in section 121`'s `top of the reduced-rate 20% band` EQUALS 228_000
+#ASSERT `the ceilings printed in section 121`'s `top of the reduced-rate 31% band` EQUALS 301_200
+#ASSERT `the ceilings printed in section 121`'s `top of the 31% band`              EQUALS 301_200
+#ASSERT `the ceilings printed in section 121`'s `top of the 35% band`              EQUALS 560_280
+-- (a)(1) and (b)(1)(d) print the same top for the 31% band.
+#ASSERT `the ceilings printed in section 121`'s `top of the 31% band` EQUALS `the ceilings printed in section 121`'s `top of the reduced-rate 31% band`
+
+§§ `Section 121(a) — income not eligible for the reduced rates, both sides of each edge`
+
+-- 31% x 301,200 = 93,372
+-- + 35% x 1 = 93,372.35
+-- + 35% x (560,280 - 301,200 = 259,080) = 90,678  ->  184,050
+-- + 47% x 1 = 184,050.47
+-- + 47% x (1,000,000 - 560,280 = 439,720) = 206,668.4  ->  390,718.4
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2026 `, with income` (LIST `other income on the scale of` 301_200))   EQUALS RIGHT 93_372
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2026 `, with income` (LIST `other income on the scale of` 301_201))   EQUALS RIGHT 93_372.35
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2026 `, with income` (LIST `other income on the scale of` 560_280))   EQUALS RIGHT 184_050
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2026 `, with income` (LIST `other income on the scale of` 560_281))   EQUALS RIGHT 184_050.47
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2026 `, with income` (LIST `other income on the scale of` 1_000_000)) EQUALS RIGHT 390_718.4
+
+§§ `Section 121(b)(1) — income from personal exertion, both sides of each edge`
+
+-- 10% x 84,120 = 8,412;                 one shekel more: + 14% -> 8,412.14
+-- + 14% x (120,720 - 84,120 = 36,600) = 5,124   -> 13,536;    + 20% -> 13,536.20
+-- + 20% x (228,000 - 120,720 = 107,280) = 21,456 -> 34,992;    + 31% -> 34,992.31
+-- + 31% x (301,200 - 228,000 = 73,200) = 22,692  -> 57,684;    + 35% -> 57,684.35
+-- + 35% x 259,080 = 90,678 -> 148,362;  + 47% x (600,000 - 560,280 = 39,720) = 18,668.4 -> 167,030.4
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a salary of` 84_120))  EQUALS RIGHT 8_412
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a salary of` 84_121))  EQUALS RIGHT 8_412.14
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a salary of` 120_720)) EQUALS RIGHT 13_536
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a salary of` 120_721)) EQUALS RIGHT 13_536.2
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a salary of` 228_000)) EQUALS RIGHT 34_992
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a salary of` 228_001)) EQUALS RIGHT 34_992.31
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a salary of` 301_200)) EQUALS RIGHT 57_684
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a salary of` 301_201)) EQUALS RIGHT 57_684.35
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a salary of` 560_280)) EQUALS RIGHT 148_362
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a salary of` 600_000)) EQUALS RIGHT 167_030.4
+-- 2027 answers the same as 2026: the same printed figures, and no indexation in between.
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2027 `, with income` (LIST `a salary of` 301_200)) EQUALS RIGHT 57_684
+
+§§ `Section 121(b)(1) — mixed income, and the age of 60`
+
+-- Under 60, salary 100,000 and other income on the scale 50,000 (fork F1: the eligible
+-- income at the bottom of the scale).
+--   reduced rates on 100,000: 8,412 + 14% x (100,000 - 84,120 = 15,880) = 2,223.2 -> 10,635.2
+--   the other 50,000 sits at 100,001-150,000, inside (a)(1): 31% x 50,000 = 15,500
+--   total 26,135.2
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a salary of` 100_000, `other income on the scale of` 50_000)) EQUALS RIGHT 26_135.2
+
+-- Aged 60 by the end of the tax year (fork F2): ALL income on the scale is eligible.
+-- 150,000 of other income: 8,412 + 5,124 + 20% x (150,000 - 120,720 = 29,280) = 5,856 -> 19,392
+-- Born 31 December 1966: 60 on 31 December 2026, so eligible for 2026.
+-- Born 1 January 1967: 60 only in 2027, so in 2026: 31% x 150,000 = 46,500; in 2027: 19,392.
+#ASSERT `the tax under section 121 for` (`in tax year` 2026 `, born` (YMD 1966 12 31) `, with income` (LIST `other income on the scale of` 150_000) `and sales` (EMPTY)) EQUALS RIGHT 19_392
+#ASSERT `the tax under section 121 for` (`in tax year` 2026 `, born` (YMD 1967 1 1)   `, with income` (LIST `other income on the scale of` 150_000) `and sales` (EMPTY)) EQUALS RIGHT 46_500
+#ASSERT `the tax under section 121 for` (`in tax year` 2027 `, born` (YMD 1967 1 1)   `, with income` (LIST `other income on the scale of` 150_000) `and sales` (EMPTY)) EQUALS RIGHT 19_392
+
+§§ `Section 121(b)(2) — books of account`
+
+-- Business income 200,000 without the acceptable books it required: no reduced rates,
+-- 31% x 200,000 = 62,000.  With acceptable books: 13,536 + 20% x (200,000 - 120,720 = 79,280)
+-- = 15,856 -> 29,392.
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2026 `, with income` (LIST `business income, without the acceptable books it required, of` 200_000)) EQUALS RIGHT 62_000
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2026 `, with income` (LIST `business income, with acceptable books, of` 200_000))                  EQUALS RIGHT 29_392
+-- (b)(2) reaches an individual over 60 too: other income 100,000 is eligible, the 50,000
+-- without books is not. 10,635.2 (as above) + 31% x 50,000 = 15,500 -> 26,135.2
+#ASSERT `the tax under section 121 for` (`in tax year` 2026 `, born` (YMD 1950 3 1) `, with income` (LIST `other income on the scale of` 100_000, `business income, without the acceptable books it required, of` 50_000) `and sales` (EMPTY)) EQUALS RIGHT 26_135.2
+
+§§ `Section 121 — what is not on the scale, invalid input, and the years declined`
+
+-- A dividend charged at its own rate is not on the s 121 scale: salary 84,120 -> 8,412.
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a salary of` 84_120, `a dividend of` 1_000_000)) EQUALS RIGHT 8_412
+#ASSERT `the tax under section 121 for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a salary of` (0 MINUS 1))) EQUALS LEFT `an amount of income is negative`
+#ASSERT REFUSED `the tax under section 121 for` (`someone under 60, in tax year` 2025 `, with income` (LIST `a salary of` 100_000)) BECAUSE "section 121 as it stood before tax year 2026 is not in the deposited text"
+#ASSERT REFUSED `the tax under section 121 for` (`someone under 60, in tax year` 2028 `, with income` (LIST `a salary of` 100_000)) BECAUSE "the section 121 ceilings from tax year 2028 are not determined by the deposited text"
+
+-- Supplied ceilings whose two tops of the 31% band differ are declined.
+`ceilings whose 31% tops differ` MEANS `The income ceilings of section 121` WITH
+    `top of the 31% band`              IS 301_200
+    `top of the 35% band`              IS 560_280
+    `top of the reduced-rate 10% band` IS  84_120
+    `top of the reduced-rate 14% band` IS 120_720
+    `top of the reduced-rate 20% band` IS 228_000
+    `top of the reduced-rate 31% band` IS 300_000
+#ASSERT REFUSED `s 121 — the tax on` 250_000 `, of which eligible for the reduced rates` 250_000 `, at the ceilings` `ceilings whose 31% tops differ` BECAUSE "sections 121(a)(1) and 121(b)(1)(d) end the 31% band at different figures, and the text does not say which governs"
+
+§§ `Section 121B — (a) and (a1), with the amount the editorial note gives for 2024-2027`
+
+-- 3% on the part above 721,560:  at 721,560 nothing;  one shekel more 0.03;
+-- 800,000 -> 3% x 78,440 = 2,353.2
+#ASSERT `the additional tax under section 121B for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a salary of` 721_560)) `, with the amount in section 121B(a) at` `the s 121B(a) amount the editorial note gives for 2024-2027` EQUALS RIGHT 0
+#ASSERT `the additional tax under section 121B for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a salary of` 721_561)) `, with the amount in section 121B(a) at` `the s 121B(a) amount the editorial note gives for 2024-2027` EQUALS RIGHT 0.03
+#ASSERT `the additional tax under section 121B for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a salary of` 800_000)) `, with the amount in section 121B(a) at` `the s 121B(a) amount the editorial note gives for 2024-2027` EQUALS RIGHT 2_353.2
+
+-- (a1): a dividend of 1,000,000 is from a capital source.
+--   (a)  3% x (1,000,000 - 721,560 = 278,440) = 8,353.2
+--   (a1) 2% x 278,440 = 5,568.8                  -> 13,922
+-- A salary of 1,000,000 is s 2(2) income: (a) only -> 8,353.2
+-- Salary 500,000 and dividend 500,000: (a) on 1,000,000 -> 8,353.2; capital 500,000 is not
+-- above 721,560, so (a1) nothing -> 8,353.2
+#ASSERT `the additional tax under section 121B for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a dividend of` 1_000_000)) `, with the amount in section 121B(a) at` `the s 121B(a) amount the editorial note gives for 2024-2027` EQUALS RIGHT 13_922
+#ASSERT `the additional tax under section 121B for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a salary of` 1_000_000)) `, with the amount in section 121B(a) at` `the s 121B(a) amount the editorial note gives for 2024-2027` EQUALS RIGHT 8_353.2
+#ASSERT `the additional tax under section 121B for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a salary of` 500_000, `a dividend of` 500_000)) `, with the amount in section 121B(a) at` `the s 121B(a) amount the editorial note gives for 2024-2027` EQUALS RIGHT 8_353.2
+-- 2027 answers the same; 2025 is declined.
+#ASSERT `the additional tax under section 121B for` (`someone under 60, in tax year` 2027 `, with income` (LIST `a dividend of` 1_000_000)) `, with the amount in section 121B(a) at` `the s 121B(a) amount the editorial note gives for 2024-2027` EQUALS RIGHT 13_922
+#ASSERT REFUSED `the additional tax under section 121B for` (`someone under 60, in tax year` 2025 `, with income` (LIST `a dividend of` 1_000_000)) `, with the amount in section 121B(a) at` `the s 121B(a) amount the editorial note gives for 2024-2027` BECAUSE "section 121B for tax years before 2026 is not encoded in this model"
+
+§§ `Section 121B(e) — inflationary amounts and betterment`
+
+-- A capital gain of 900,000 of which 100,000 is inflationary (s 88): taxable income for
+-- s 121B is 800,000, all from a capital source.
+--   (a) 2,353.2 (as above);  (a1) 2% x 78,440 = 1,568.8  -> 3,922
+#ASSERT `the additional tax under section 121B for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a capital gain of` 900_000 `, of which inflationary` 100_000)) `, with the amount in section 121B(a) at` `the s 121B(a) amount the editorial note gives for 2024-2027` EQUALS RIGHT 3_922
+-- Betterment of 1,000,000 of which 200,000 inflationary (RE Law s 47), not a residential
+-- apartment: 800,000 counted -> 3,922.  The same in 2027: no residential limb is reached.
+#ASSERT `the additional tax under section 121B for` (`in tax year` 2026 `, born` (YMD 1980 6 15) `, with income` (EMPTY) `and sales` (LIST `a sale of land, with betterment` 1_000_000 `, of which inflationary` 200_000)) `, with the amount in section 121B(a) at` `the s 121B(a) amount the editorial note gives for 2024-2027` EQUALS RIGHT 3_922
+#ASSERT `the additional tax under section 121B for` (`in tax year` 2027 `, born` (YMD 1980 6 15) `, with income` (EMPTY) `and sales` (LIST `a sale of land, with betterment` 1_000_000 `, of which inflationary` 200_000)) `, with the amount in section 121B(a) at` `the s 121B(a) amount the editorial note gives for 2024-2027` EQUALS RIGHT 3_922
+-- A residential apartment sold for exactly 5,385,285 does not "exceed" it: not counted -> 0.
+-- One shekel more, not exempt: 1,000,000 counted -> 8,353.2 + 5,568.8 = 13,922.
+-- Sold for 6,000,000 but exempt: not counted -> 0.
+#ASSERT `the additional tax under section 121B for` (`in tax year` 2026 `, born` (YMD 1980 6 15) `, with income` (EMPTY) `and sales` (LIST `a sale of a residential apartment for` 5_385_285 `, with betterment` 1_000_000 `, exempt` FALSE)) `, with the amount in section 121B(a) at` `the s 121B(a) amount the editorial note gives for 2024-2027` EQUALS RIGHT 0
+#ASSERT `the additional tax under section 121B for` (`in tax year` 2026 `, born` (YMD 1980 6 15) `, with income` (EMPTY) `and sales` (LIST `a sale of a residential apartment for` 5_385_286 `, with betterment` 1_000_000 `, exempt` FALSE)) `, with the amount in section 121B(a) at` `the s 121B(a) amount the editorial note gives for 2024-2027` EQUALS RIGHT 13_922
+#ASSERT `the additional tax under section 121B for` (`in tax year` 2026 `, born` (YMD 1980 6 15) `, with income` (EMPTY) `and sales` (LIST `a sale of a residential apartment for` 6_000_000 `, with betterment` 1_000_000 `, exempt` TRUE))  `, with the amount in section 121B(a) at` `the s 121B(a) amount the editorial note gives for 2024-2027` EQUALS RIGHT 0
+-- In 2027 a residential sale reaches the threshold, which then moves under RE Law s 9(c2).
+#ASSERT REFUSED `the additional tax under section 121B for` (`in tax year` 2027 `, born` (YMD 1980 6 15) `, with income` (EMPTY) `and sales` (LIST `a sale of a residential apartment for` 6_000_000 `, with betterment` 1_000_000 `, exempt` FALSE)) `, with the amount in section 121B(a) at` `the s 121B(a) amount the editorial note gives for 2024-2027` BECAUSE "the residential-apartment sale value in section 121B(e) from 2027 moves under section 9(c2) of the Real Estate Taxation Law, which is not encoded in this model"
+#ASSERT `the residential-apartment sale value in section 121B(e) for tax year` 2025 EQUALS 5_385_285
+#ASSERT `the residential-apartment sale value in section 121B(e) for tax year` 2026 EQUALS 5_385_285
+#ASSERT `the additional tax under section 121B for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a capital gain of` 900_000 `, of which inflationary` (0 MINUS 1))) `, with the amount in section 121B(a) at` `the s 121B(a) amount the editorial note gives for 2024-2027` EQUALS LEFT `an inflationary amount is negative`
+
+§§ `Section 121B — the other subsections, and the route through section 120B`
+
+#ASSERT `the amount printed in section 121B(a), as at 2017` EQUALS 640_000
+#ASSERT NOT `s 121B(b) — section 91(d) on advance payments applies to income chargeable to additional tax under (a) or (a1)`
+
+-- The s 121B(a) amount is an income ceiling: for 2026 s 120B(e)(1) gives the 1 January
+-- 2024 figure after rounding, which is what the caller supplies; for 2028 it needs the
+-- rounding Order. (721,560 here is again the editorial note's figure, supplied; the
+-- before-rounding figure and the readings are hypothetical.)
+GIVEN y IS A NUMBER
+GIVETH AN `An amount on 1 January of a tax year`
+`the s 121B(a) amount, in tax year` y MEANS
+    `An amount on 1 January of a tax year` WITH
+        `kind`                                                          IS `an income ceiling`
+        `tax year`                                                      IS y
+        `amount on 1 January of the previous tax year, before rounding` IS 721_563.7
+        `readings for the previous tax year`                            IS `readings 100 to 102`
+        `amount on 1 January 2024, before rounding`                     IS 721_563.7
+        `amount on 1 January 2024, after rounding`                      IS `the s 121B(a) amount the editorial note gives for 2024-2027`
+#ASSERT `the amount in section 121B(a) in force, under section 120B, from` (`the s 121B(a) amount, in tax year` 2026) EQUALS 721_560
+#ASSERT REFUSED `the amount in section 121B(a) in force, under section 120B, from` (`the s 121B(a) amount, in tax year` 2028) BECAUSE "the rounding rules made under section 120B(d) are not encoded in this model"
+
+-- Composed: the s 121B tax for 2026 with the amount s 120B gives. Dividend 1,000,000 -> 13,922.
+#ASSERT `the additional tax under section 121B for` (`someone under 60, in tax year` 2026 `, with income` (LIST `a dividend of` 1_000_000)) `, with the amount in section 121B(a) at` (`the amount in section 121B(a) in force, under section 120B, from` (`the s 121B(a) amount, in tax year` 2026)) EQUALS RIGHT 13_922
