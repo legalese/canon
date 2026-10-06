@@ -22,4 +22,6 @@ Hebrew is authoritative; English translations are unofficial. The English titles
 
 ## Status of this deposit
 
-No statute text has been deposited yet.
+The Hebrew working text was deposited on 2026-10-06 at `registers/source-bundle/national-insurance-law-consolidated-version-5755-1995.he.wiki.txt`, as the raw MediaWiki source of the Wikisource page.
+Its sha256 and retrieval URL are in the `.meta.json` beside it.
+It is an unofficial consolidation stated as amended at retrieval (the amendment list runs into תשפ״ו, 2026), not a historical vintage.
