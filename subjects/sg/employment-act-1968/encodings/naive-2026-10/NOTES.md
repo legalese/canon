@@ -10,19 +10,26 @@ pass, no human gate.
 **Checks:** `l4 run ea-part2-cases.l4` — 52 assertions satisfied, 0 errors,
 0 warnings.
 
-## Read this before using it: the scope is a small fraction of the Act
+## Scope
 
-The Employment Act has **16 Parts and about 275,000 characters**. This encodes
-**Part 2 only**, ss 8–14. Part 2 decides how a job ends and how much notice is
-owed, which is the part an employee is most likely to need in a hurry — but
-Part 3 (payment of salary), Part 4 (rest days, hours of work and overtime),
-Part 9 (maternity protection) and Part 10 (holiday, annual and sick leave) are
-each at least as useful, and **none of them is encoded**. Nor are ss 15–19
-within Part 2.
+Parts **2, 3, 4, 5, 6, 6A, 7, 8, 9, 10 and 12** — every operative Part except
+Part 1 (preliminary), Part 11 (repealed) and Parts 13–16 (inspection, general
+and final provisions).
 
-A system built on this must not answer "what are my rights under the Employment
-Act?". It can answer "how much notice am I owed?" and "can I claim wrongful
-dismissal?", and nothing else.
+**246 assertions**, 0 errors, 0 warnings.
+
+Two limits to hold in mind:
+
+- **Part 9 is the current law only.** s 76 carries three qualifying rules side
+  by side — for confinements before 1 May 2013, between then and 22 August 2015,
+  and after. Only the last is encoded. A confinement before 22 August 2015 is
+  outside this encoding entirely and the rules for it differ.
+- **Everything prescribed is a supplied fact.** Record retention periods, pay
+  slip timing, the Fifth Schedule reckoning, the s 95A minimum period of
+  service. The regulations were not retrieved.
+
+Not encoded within the Parts covered: s 19, s 34, s 39, ss 41–41A, ss 47–53,
+s 66, ss 70–75, ss 84–87A (including childcare leave), s 90, ss 97–101.
 
 ## Four observations
 
@@ -107,3 +114,96 @@ one a manager and one not.
 - Parts 3, 4, 9 and 10, which is where most of the Act's value to an employee is.
 - The Employment Claims Act 2016, which s 14(2) routes the remedy through.
 - No case law was searched.
+
+
+---
+
+# Added with Parts 3 to 12
+
+## A harness trap worth recording
+
+**`MODULO` does not return a fractional part on this toolchain.** `3.5 MODULO 1`
+evaluates to **3.5**, not 0.5. A floor written as `n MINUS (n MODULO 1)` is
+therefore the identity function, and a round-half-up built on it silently
+returns its input — which is exactly what the first version of the s 88A(2)
+proportioning did. It type-checked, ran clean, and gave wrong answers; only the
+assertions caught it.
+
+On integers `MODULO` behaves: `42 MODULO 12` is 6. The rule was rebuilt to stay
+in integer arithmetic throughout — the entitlement in days and the months in the
+year are both whole numbers, so the division is a numerator over 12 and the
+rounding comes off the remainder. See `the proportion rounded half up` in
+`ea-part10-leave.l4`.
+
+## Observations, Part by Part
+
+**s 16 yields to the contract in either direction.** "Subject to anything in the
+contract of service to the contrary" — unlike s 8, which strikes down only terms
+*less favourable* to the employee. So the measure of damages for breach can be
+contracted below the statutory default.
+
+**s 29's three requirements come apart.** A deduction for damage or loss is
+capped at the actual loss, capped again at a quarter of a month's wages, and
+forbidden until the employee has had an opportunity to show cause. The
+Commissioner may lift the *second* ceiling only. Not the first, and not the
+procedural one.
+
+**Three heads escape the s 32 overall cap** — absence, recovery of advances and
+loans, and cooperative society payments. An employee repaying a loan can be
+deducted more than half their salary and s 32 has nothing to say; what limits it
+is s 31(5)'s quarter per instalment. Note also the asymmetry inside s 31: the
+12-month ceiling applies to *advances* only, and s 31(4) gives loans no period
+limit at all.
+
+**s 38(8)'s absolute 12-hour ceiling is excepted by s 38(2)(a) to (e) but not by
+(f).** The economic and essential-services ground raises the s 38(1) limits and
+leaves the 12-hour one standing.
+
+**ss 45 and 46 are expressed negatively**, and so is s 76(2B). None of them
+creates an entitlement; each bars one below a threshold. The Act nowhere says
+what a retrenchment benefit *is* or how much it is.
+
+**s 35 and s 33(1) are word for word identical** — same two paragraphs, same
+$4,500 and $2,600, same exclusions, same substitution power — governing two
+entirely different questions: who has a rest day and a right to overtime, and
+who gets priority for unpaid salary in an insolvency. They are not
+cross-referenced. The encoding uses one rule for both, so the duplication is
+visible rather than mirrored; if an amendment moved one figure and not the
+other, this encoding would give one answer where the Act gave two.
+
+**s 54 voids the whole contract of service**, not merely the offending term.
+Compare s 8, which voids a term "to the extent that it is so less favourable".
+An employer who writes part of the salary as payable in goods destroys the
+contract, not just that clause — on the face of it, including every term
+protecting the workman.
+
+**The maternity benefit period is shorter than the maternity absence.** Under
+s 76(1)(a) and (b) the absence is 12 weeks; under s 76(1A) the paid benefit
+period is 8 weeks in every case. Four weeks of the statutory absence are unpaid.
+
+**s 76(3) pays a day worked inside the benefit period twice over** — the gross
+rate for that day, *plus* either another day's pay or a day's absence at the end.
+
+**s 95(3) and s 96(4) deem a failure regardless of knowledge.** An incomplete or
+inaccurate employee record or pay slip is a breach "whether or not the employer
+knew". Asserted as a pair on the knowledge fact, where the answer does not move.
+
+**Part 7 is one sentence, and its effect is exclusion.** The Act does not apply
+to a domestic worker at all unless the Minister has applied it by notification.
+Nothing in the encoding can decide whether such a notification exists.
+
+**s 69 bars a young person only from undertakings the Minister has named.**
+Industrial work as such is not forbidden to a 15-year-old; a declaration is
+needed. Contrast s 68, where the prohibition on employing a child is general and
+the exceptions are narrow.
+
+## What would still need doing
+
+- Parts 13–16, and Part 1.
+- ss 84, 84A and 87A — dismissal before confinement, and childcare leave. s 87A
+  is the one an employee is most likely to ask about of those left out.
+- The historical limbs of s 76 and ss 84–84A, if anything before 22 August 2015
+  matters.
+- The regulations, which carry every prescribed period and the Fifth Schedule.
+- The Employment Claims Act 2016, which s 14(2) routes the remedy through.
+- No case law was searched, and no human gate has been sought.

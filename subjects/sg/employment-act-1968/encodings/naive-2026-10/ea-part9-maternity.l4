@@ -1,0 +1,176 @@
+IMPORT prelude
+
+-- Employment Act 1968 (Singapore) -- PART 9, MATERNITY PROTECTION AND BENEFITS
+-- AND CHILDCARE LEAVE FOR PARENT, ss 76 to 83.
+--
+-- Source: ../../registers/source-bundle/EmA1968.txt
+--
+-- NAIVE ENCODING. Straight from the text with the writing-l4-rules skill. No
+-- pipeline, no independent test pass, no human gate.
+--
+-- THE CURRENT LAW ONLY. s 76 carries three qualifying rules side by side --
+-- s 76(2) for children delivered before 1 May 2013, s 76(2A) for 1 May 2013 to
+-- 22 August 2015, and s 76(2B) for 22 August 2015 onwards -- and ss 84 and 84A
+-- do the same for dismissal. Only the CURRENT limb, s 76(2B), is encoded. A
+-- confinement before 22 August 2015 is outside this encoding entirely, and the
+-- rules for it are different. That is a deliberate scope choice and it is the
+-- first thing to check before relying on anything here.
+--
+-- NOT ENCODED: ss 84, 84A (dismissal without sufficient cause or on grounds of
+-- redundancy before confinement, each with its own historical limbs), s 85,
+-- s 87 (contracting out), s 87A (childcare leave), and the Fifth Schedule
+-- reckoning used by s 76(1)(c)(ii).
+
+§ `Employment Act 1968 -- Part 9`
+
+§§ `76(1) -- the three ways of taking the absence`
+
+-- s 76(1): every female employee is entitled to absent herself from work --
+--   (a) 4 weeks immediately BEFORE confinement and 8 weeks immediately AFTER;
+--   (b) a single period of 12 weeks, as agreed, starting no earlier than 28 days
+--       before and no later than the day of confinement; or
+--   (c) 8 weeks as agreed on the same start window, PLUS further periods agreed
+--       between them, in aggregate no shorter than the Fifth Schedule reckoning
+--       or 24 days whichever is lower, all within 12 months of confinement.
+--
+-- Sixteen weeks in total under (a) and (b). (c) is the flexible arrangement:
+-- 8 weeks around the birth and the balance taken in pieces across the year.
+DECLARE AbsenceArrangement IS ONE OF
+    `the default -- 4 weeks before and 8 weeks after`           -- s 76(1)(a)
+    `a single agreed period of 12 weeks`                        -- s 76(1)(b)
+    `8 agreed weeks plus further agreed periods within 12 months` -- s 76(1)(c)
+
+-- s 76(1A): the BENEFIT PERIOD -- the part of the absence that is PAID -- is
+-- shorter than the absence in two of the three cases:
+--   (a) the 4 weeks before plus THE FIRST 4 WEEKS of the 8 weeks after = 8 weeks;
+--   (b) THE FIRST 8 WEEKS of the 12 = 8 weeks;
+--   (c) the 8 weeks referred to in (1)(c)(i) = 8 weeks.
+--
+-- So the benefit period is 8 weeks on every arrangement, and under (a) and (b)
+-- the employee may be absent for longer than she is paid for.
+GIVEN `the arrangement` IS AN AbsenceArrangement
+GIVETH A NUMBER
+DECIDE `the weeks of absence under section 76(1)` IS
+    CONSIDER `the arrangement`
+    WHEN `the default -- 4 weeks before and 8 weeks after` THEN 12
+    WHEN `a single agreed period of 12 weeks` THEN 12
+    OTHERWISE 8
+
+GIVEN `the arrangement` IS AN AbsenceArrangement
+GIVETH A NUMBER
+DECIDE `the weeks of the benefit period under section 76(1A)` IS
+    CONSIDER `the arrangement`
+    WHEN `the default -- 4 weeks before and 8 weeks after` THEN 8
+    WHEN `a single agreed period of 12 weeks` THEN 8
+    OTHERWISE 8
+
+GIVEN `the arrangement` IS AN AbsenceArrangement
+GIVETH A NUMBER
+DECIDE `the weeks of absence that are unpaid` IS
+    `the weeks of absence under section 76(1)` `the arrangement`
+        MINUS `the weeks of the benefit period under section 76(1A)` `the arrangement`
+
+§§ `76(2B) -- the qualifying service for payment`
+
+-- s 76(2B): a female employee who delivers on or after 22 August 2015 (or
+-- before, with an estimated delivery date on or after) "is NOT entitled to any
+-- pay during the benefit period if she has NOT SERVED her employer for a period
+-- of AT LEAST 3 MONTHS preceding the day of her confinement."
+--
+-- Expressed negatively, like ss 45 and 46: it bars payment below the threshold
+-- rather than conferring it above.
+DECLARE MaternityFacts HAS
+    `the arrangement`                           IS AN AbsenceArrangement
+    `delivered on or after 22 August 2015, or with an estimated delivery date on or after that day` IS A BOOLEAN
+    `months served preceding the day of confinement` IS A NUMBER
+    `the gross rate of pay for one day`         IS A NUMBER
+    -- s 76(3): a day worked during the benefit period before confinement.
+    `days worked during the benefit period before confinement` IS A NUMBER
+    -- s 83
+    `has worked for another employer after absenting herself under this Part` IS A BOOLEAN
+
+GIVEN `the facts` IS A MaternityFacts
+GIVETH A BOOLEAN
+DECIDE `section 76(2B) governs the entitlement` IF
+    `the facts`'s `delivered on or after 22 August 2015, or with an estimated delivery date on or after that day`
+
+GIVEN `the facts` IS A MaternityFacts
+GIVETH A BOOLEAN
+DECIDE `payment during the benefit period is barred for want of service` IF
+        `section 76(2B) governs the entitlement` `the facts`
+    AND `the facts`'s `months served preceding the day of confinement` LESS THAN 3
+
+-- s 83: "If a female employee works for ANY OTHER EMPLOYER after she has
+-- absented herself from work under the provisions of this Part, she FORFEITS
+-- her claim to any payment ... AND IS LIABLE TO DISMISSAL."
+GIVEN `the facts` IS A MaternityFacts
+GIVETH A BOOLEAN
+DECIDE `the claim to payment is forfeited under section 83` IF
+    `the facts`'s `has worked for another employer after absenting herself under this Part`
+
+GIVEN `the facts` IS A MaternityFacts
+GIVETH A BOOLEAN
+DECIDE `she is entitled to payment during the benefit period` IF
+        `section 76(2B) governs the entitlement` `the facts`
+    AND NOT `payment during the benefit period is barred for want of service` `the facts`
+    AND NOT `the claim to payment is forfeited under section 83` `the facts`
+
+-- The amount, at the gross rate of pay for the benefit period. 7 days a week,
+-- because the benefit period is stated in weeks of absence rather than in
+-- working days.
+GIVEN `the facts` IS A MaternityFacts
+GIVETH A NUMBER
+DECIDE `the payment for the benefit period` IS
+    IF   NOT `she is entitled to payment during the benefit period` `the facts`
+    THEN 0
+    ELSE (`the weeks of the benefit period under section 76(1A)` (`the facts`'s `the arrangement`)
+              TIMES 7)
+             TIMES `the facts`'s `the gross rate of pay for one day`
+
+-- s 76(3): where she has WORKED on a day during the benefit period before
+-- confinement, she is entitled, IN ADDITION to her gross rate of pay for that
+-- day, to either another day's pay or a day's absence at the end of the benefit
+-- period. So a day worked in the benefit period is paid twice over.
+GIVEN `the facts` IS A MaternityFacts
+GIVETH A NUMBER
+DECIDE `the additional payment for days worked in the benefit period` IS
+    `the facts`'s `days worked during the benefit period before confinement`
+        TIMES `the facts`'s `the gross rate of pay for one day`
+
+§§ `81 and 82 -- protection during the absence`
+
+-- s 81: "when a female employee absents herself from work in accordance with
+-- the provisions of this Part it is NOT LAWFUL for her employer to give her
+-- notice of dismissal DURING her absence OR ON SUCH A DAY THAT THE NOTICE WILL
+-- EXPIRE DURING HER ABSENCE."
+--
+-- Two limbs, and the second is the one that does the work: an employer cannot
+-- time a notice so that it lands inside the protected period.
+GIVEN `the employee is absent in accordance with this Part` IS A BOOLEAN
+    , `notice of dismissal was given during the absence` IS A BOOLEAN
+    , `the notice would expire during the absence` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the notice of dismissal is unlawful under section 81` IF
+        `the employee is absent in accordance with this Part`
+    AND `the notice falls within either limb of section 81` `notice of dismissal was given during the absence` `the notice would expire during the absence`
+
+GIVEN `notice of dismissal was given during the absence` IS A BOOLEAN
+    , `the notice would expire during the absence` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the notice falls within either limb of section 81` IF
+        `notice of dismissal was given during the absence`
+    OR  `the notice would expire during the absence`
+
+-- s 82: "Any employer who KNOWINGLY employs a female employee at any time
+-- during the period of 4 WEEKS immediately following her confinement shall be
+-- guilty of an offence."
+--
+-- Note the direction. This is not a protection the employee may waive by
+-- agreeing to come back: it is an offence by the employer, and the only mental
+-- element is knowledge of the employment, not of any objection.
+GIVEN `the employer employed her during the 4 weeks immediately following confinement` IS A BOOLEAN
+    , `the employer knew` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the employer is guilty of an offence under section 82` IF
+        `the employer employed her during the 4 weeks immediately following confinement`
+    AND `the employer knew`

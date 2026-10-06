@@ -1,0 +1,215 @@
+IMPORT prelude
+
+-- Employment Act 1968 (Singapore) -- PART 10, HOLIDAY, ANNUAL LEAVE AND SICK
+-- LEAVE ENTITLEMENTS, ss 88 to 89.
+--
+-- Source: ../../registers/source-bundle/EmA1968.txt
+--
+-- NAIVE ENCODING. Straight from the text with the writing-l4-rules skill. No
+-- pipeline, no independent test pass, no human gate.
+--
+-- Part 10 is the most answerable Part in the Act: "how many days do I get?" has
+-- a number for an answer, and both tables -- the annual leave ladder and the
+-- sick leave bands -- are stated in full in the text rather than left to
+-- regulations.
+--
+-- NOT ENCODED: s 90 (offence), and the parts of s 89(3) that define when an
+-- employee counts as hospitalised, which turn on prescribed circumstances and
+-- on certificates from approved hospitals.
+
+§ `Employment Act 1968 -- Part 10`
+
+§§ `88 -- Public holidays`
+
+-- s 88(1): "Every employee is entitled to a paid holiday AT HIS OR HER GROSS
+-- RATE OF PAY on a public holiday that falls during the time that he or she is
+-- employed", subject to --
+--   (a) substitution of another day by agreement;
+--   (b) a public holiday falling on a REST DAY -> the next working day is the
+--       paid holiday;
+--   (c) a public holiday falling on a day the employee is not required to work
+--       -> the employer may pay OR give a day off in substitution.
+-- s 88(2): no holiday pay where the day falls during unpaid leave granted at
+-- the employee's request.
+DECLARE PublicHolidayFacts HAS
+    `the day is a public holiday falling during the employment` IS A BOOLEAN
+    `another day was substituted by agreement`  IS A BOOLEAN   -- (a)
+    `the public holiday falls on a rest day`    IS A BOOLEAN   -- (b)
+    `the public holiday falls on a day the employee is not required to work` IS A BOOLEAN   -- (c)
+    `the employee is on leave of absence without pay granted at the employee's request` IS A BOOLEAN   -- (2)
+    `the employer gave a day off in substitution` IS A BOOLEAN
+
+GIVEN `the facts` IS A PublicHolidayFacts
+GIVETH A BOOLEAN
+DECIDE `the employee is entitled to a paid holiday` IF
+        `the facts`'s `the day is a public holiday falling during the employment`
+    AND NOT `the facts`'s `the employee is on leave of absence without pay granted at the employee's request`
+    AND NOT `the entitlement is answered by a substituted day` `the facts`
+
+-- (a) and (c) both allow the employer to answer the entitlement with a day off
+-- instead of pay. (b) does not: it moves the paid holiday to the next working
+-- day rather than replacing it.
+GIVEN `the facts` IS A PublicHolidayFacts
+GIVETH A BOOLEAN
+DECIDE `the entitlement is answered by a substituted day` IF
+        `the facts`'s `another day was substituted by agreement`
+    OR  `a day off was given for a non-working day` `the facts`
+
+GIVEN `the facts` IS A PublicHolidayFacts
+GIVETH A BOOLEAN
+DECIDE `a day off was given for a non-working day` IF
+        `the facts`'s `the public holiday falls on a day the employee is not required to work`
+    AND `the facts`'s `the employer gave a day off in substitution`
+
+-- s 88(1)(b): the holiday moves, it is not lost.
+GIVEN `the facts` IS A PublicHolidayFacts
+GIVETH A BOOLEAN
+DECIDE `the next working day after the rest day is the paid holiday` IF
+    `the facts`'s `the public holiday falls on a rest day`
+
+§§ `88A -- Annual leave`
+
+-- s 88A(1): an employee who has served "NOT LESS THAN 3 MONTHS" is entitled to
+--   (a) 7 days for the first 12 months of continuous service;
+--   (b) an additional ONE day for every subsequent 12 months;
+--   (c) a MAXIMUM of 14 days.
+--
+-- So the ladder runs 7, 8, 9 ... 14 and stops: 14 days is reached in the eighth
+-- year of service and never rises again.
+`the first year annual leave entitlement` MEANS 7
+`the maximum annual leave entitlement` MEANS 14
+
+DECLARE LeaveService HAS
+    `completed months of service with the employer` IS A NUMBER
+    `completed 12 month periods of continuous service` IS A NUMBER
+    -- s 88A(2): where 3 months are served but 12 are not completed in the year.
+    `completed months of service in that year` IS A NUMBER
+    -- s 88A(5): the forfeiture.
+    `absent without permission or reasonable excuse for more than 20% of the working days` IS A BOOLEAN
+
+GIVEN `the service` IS A LeaveService
+GIVETH A BOOLEAN
+DECIDE `the employee qualifies for annual leave at all` IF
+        `the service`'s `completed months of service with the employer` AT LEAST 3
+    AND NOT `the service`'s `absent without permission or reasonable excuse for more than 20% of the working days`
+
+-- The full-year entitlement, before any proportioning: 7 for the first 12
+-- months, plus one for each subsequent 12, capped at 14.
+GIVEN `the service` IS A LeaveService
+GIVETH A NUMBER
+DECIDE `the uncapped annual leave days` IS
+    `the first year annual leave entitlement`
+        PLUS (`the service`'s `completed 12 month periods of continuous service` MINUS 1)
+
+GIVEN `the service` IS A LeaveService
+GIVETH A NUMBER
+DECIDE `the full year annual leave entitlement` IS
+    IF   `the uncapped annual leave days` `the service` GREATER THAN `the maximum annual leave entitlement`
+    THEN `the maximum annual leave entitlement`
+    ELSE `the uncapped annual leave days` `the service`
+
+-- s 88A(2) and (3): where 12 months are not completed in the year, the
+-- entitlement is proportionate to completed months, and a fraction of a day
+-- "less than one-half ... must be disregarded", while "one-half or more ... must
+-- be regarded as one day". That is round-half-up.
+--
+-- Done in INTEGER arithmetic, deliberately. `MODULO` on this toolchain does not
+-- return the fractional part of a non-integer -- `3.5 MODULO 1` evaluates to 3.5,
+-- not 0.5 -- so a floor built that way silently returns its input. On integers
+-- it behaves: 42 MODULO 12 is 6. The entitlement in days and the months in the
+-- year are both whole numbers, so the division is expressed as a numerator over
+-- 12 and rounded from the remainder, which never leaves integer arithmetic.
+GIVEN `the numerator` IS A NUMBER, `the denominator` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the proportion rounded half up` IS
+    IF   2 TIMES (`the numerator` MODULO `the denominator`) AT LEAST `the denominator`
+    THEN `the whole part` `the numerator` `the denominator` PLUS 1
+    ELSE `the whole part` `the numerator` `the denominator`
+
+GIVEN `the numerator` IS A NUMBER, `the denominator` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the whole part` IS
+    (`the numerator` MINUS (`the numerator` MODULO `the denominator`))
+        DIVIDED BY `the denominator`
+
+GIVEN `the service` IS A LeaveService
+GIVETH A NUMBER
+DECIDE `the proportionate annual leave days` IS
+    `the proportion rounded half up`
+        ((`the full year annual leave entitlement` `the service`)
+             TIMES `the service`'s `completed months of service in that year`)
+        12
+
+GIVEN `the service` IS A LeaveService
+GIVETH A NUMBER
+DECIDE `the annual leave days the employee is entitled to` IS
+    BRANCH
+        IF NOT `the employee qualifies for annual leave at all` `the service` THEN 0
+        IF `the service`'s `completed months of service in that year` AT LEAST 12
+            THEN `the full year annual leave entitlement` `the service`
+        OTHERWISE `the proportionate annual leave days` `the service`
+
+§§ `89 -- Sick leave`
+
+-- s 89(1) and (2) are one table in two subsections. Service bands, and for each
+-- a non-hospitalisation figure and a hospitalisation cap:
+--
+--   at least 6 months        14 days   /  the lesser of 60 and (14 + days hospitalised)
+--   at least 5, under 6      11 days   /  the lesser of 45 and (11 + days hospitalised)
+--   at least 4, under 5       8 days   /  the lesser of 30 and ( 8 + days hospitalised)
+--   at least 3, under 4       5 days   /  the lesser of 15 and ( 5 + days hospitalised)
+--   under 3 months            none
+--
+-- Every entitlement is "after examination by a medical practitioner" and only
+-- "as may be certified by" that practitioner, so the certificate is a condition
+-- and the figures below are ceilings, not amounts due.
+DECLARE SickLeaveFacts HAS
+    `completed months of service with the employer` IS A NUMBER
+    `examined by a medical practitioner`        IS A BOOLEAN
+    `hospitalisation is necessary`              IS A BOOLEAN
+    `days on which the employee is hospitalised` IS A NUMBER
+
+GIVEN `the facts` IS A SickLeaveFacts
+GIVETH A NUMBER
+DECIDE `the non-hospitalisation sick leave ceiling` IS
+    BRANCH
+        IF `the facts`'s `completed months of service with the employer` AT LEAST 6 THEN 14
+        IF `the facts`'s `completed months of service with the employer` AT LEAST 5 THEN 11
+        IF `the facts`'s `completed months of service with the employer` AT LEAST 4 THEN 8
+        IF `the facts`'s `completed months of service with the employer` AT LEAST 3 THEN 5
+        OTHERWISE 0
+
+GIVEN `the facts` IS A SickLeaveFacts
+GIVETH A NUMBER
+DECIDE `the hospitalisation annual cap` IS
+    BRANCH
+        IF `the facts`'s `completed months of service with the employer` AT LEAST 6 THEN 60
+        IF `the facts`'s `completed months of service with the employer` AT LEAST 5 THEN 45
+        IF `the facts`'s `completed months of service with the employer` AT LEAST 4 THEN 30
+        IF `the facts`'s `completed months of service with the employer` AT LEAST 3 THEN 15
+        OTHERWISE 0
+
+-- "the LESSER of (i) N days in each year; (ii) the aggregate of M days plus the
+-- number of days on which the employee is hospitalised".
+GIVEN `the facts` IS A SickLeaveFacts
+GIVETH A NUMBER
+DECIDE `the aggregate limb` IS
+    `the non-hospitalisation sick leave ceiling` `the facts`
+        PLUS `the facts`'s `days on which the employee is hospitalised`
+
+GIVEN `the facts` IS A SickLeaveFacts
+GIVETH A NUMBER
+DECIDE `the hospitalisation sick leave ceiling` IS
+    IF   `the aggregate limb` `the facts` GREATER THAN `the hospitalisation annual cap` `the facts`
+    THEN `the hospitalisation annual cap` `the facts`
+    ELSE `the aggregate limb` `the facts`
+
+GIVEN `the facts` IS A SickLeaveFacts
+GIVETH A NUMBER
+DECIDE `the paid sick leave ceiling in days` IS
+    BRANCH
+        IF NOT `the facts`'s `examined by a medical practitioner` THEN 0
+        IF `the facts`'s `completed months of service with the employer` LESS THAN 3 THEN 0
+        IF `the facts`'s `hospitalisation is necessary`
+            THEN `the hospitalisation sick leave ceiling` `the facts`
+        OTHERWISE `the non-hospitalisation sick leave ceiling` `the facts`

@@ -1,0 +1,290 @@
+IMPORT prelude
+
+-- Employment Act 1968 (Singapore) -- PARTS 5, 6, 6A, 7 and 8.
+--
+--   Part 5  Truck system                      ss 54-64
+--   Part 6  Contractors and contracting       ss 65-66
+--   Part 6A Part-time employees               ss 66A-66B
+--   Part 7  Domestic workers                  s 67
+--   Part 8  Employment of children and young persons  ss 67A-75
+--
+-- Source: ../../registers/source-bundle/EmA1968.txt
+--
+-- NAIVE ENCODING. Straight from the text with the writing-l4-rules skill. No
+-- pipeline, no independent test pass, no human gate.
+--
+-- These five Parts are short and share a shape: each one says what a contract
+-- or an employment arrangement MAY NOT be, rather than computing an amount.
+-- Part 5 is the oldest machinery in the Act -- the truck acts' prohibition on
+-- paying workers in goods or scrip -- and it still reads that way.
+--
+-- NOT ENCODED: s 66 (registration of contractors), s 70 and s 71 (powers to
+-- prescribe conditions and minimum rates for children and young persons),
+-- ss 72-75 (offences and the Youth Court's powers). Those confer powers or
+-- state consequences rather than decide anything.
+
+§ `Employment Act 1968 -- Parts 5 to 8`
+
+§§ `Part 5 -- Truck system`
+
+-- The Part applies to a WORKMAN, not to every employee -- ss 54, 56, 57 and 58
+-- all say "workman" -- and s 64 takes out any body of persons working on an
+-- agreement of cooperation.
+DECLARE TruckFacts HAS
+    `the person is a workman`                   IS A BOOLEAN
+    `a body of persons working on an agreement of cooperation` IS A BOOLEAN   -- s 64
+    -- s 54: the whole or part of the salary made payable otherwise than in
+    -- legal tender.
+    `the contract makes salary payable otherwise than in legal tender` IS A BOOLEAN
+    -- s 55: terms as to where, how or with whom the salary is to be spent.
+    `the contract contains terms as to the place, manner or person with whom the salary is to be spent` IS A BOOLEAN
+    -- s 63(1): the two permitted ways that are not caught by ss 54 and 56.
+    `paid into an account at a bank in Singapore in the workman's name or jointly` IS A BOOLEAN
+    `paid by cheque made payable to or to the order of the workman` IS A BOOLEAN
+    -- s 58
+    `the employer made a deduction by way of discount, interest or similar charge on an advance of salary` IS A BOOLEAN
+    -- s 59
+    `the employer gave noxious drugs or intoxicating liquor by way of remuneration` IS A BOOLEAN
+    -- s 60(1)
+    `the workman was compelled by the contract to purchase goods at the employer's shop or canteen` IS A BOOLEAN
+
+GIVEN `the facts` IS A TruckFacts
+GIVETH A BOOLEAN
+DECIDE `Part 5 applies` IF
+        `the facts`'s `the person is a workman`
+    AND NOT `the facts`'s `a body of persons working on an agreement of cooperation`
+
+-- s 63(1): "Nothing in section 54 or 56 operates so as to render unlawful or
+-- invalid any payment of salary ... (a) payment into an account at a bank in
+-- Singapore ...; (b) payment by cheque ..."
+GIVEN `the facts` IS A TruckFacts
+GIVETH A BOOLEAN
+DECIDE `the payment is within the section 63 saving` IF
+        `the facts`'s `paid into an account at a bank in Singapore in the workman's name or jointly`
+    OR  `the facts`'s `paid by cheque made payable to or to the order of the workman`
+
+-- s 54: "The salary of a workman must be payable in legal tender and not
+-- otherwise and if in any contract of service the whole or any part of the
+-- salary is made payable in any other manner THE CONTRACT OF SERVICE IS ILLEGAL
+-- AND VOID."
+--
+-- Note how far that goes. s 8 voids a term "to the extent that it is so less
+-- favourable"; s 54 voids THE CONTRACT OF SERVICE. See NOTES.md.
+GIVEN `the facts` IS A TruckFacts
+GIVETH A BOOLEAN
+DECIDE `the contract of service is illegal and void under section 54` IF
+        `Part 5 applies` `the facts`
+    AND `the facts`'s `the contract makes salary payable otherwise than in legal tender`
+    AND NOT `the payment is within the section 63 saving` `the facts`
+
+-- s 55: a contract containing terms as to where, how or with whom the salary is
+-- to be spent "is illegal and void" -- again the whole contract.
+GIVEN `the facts` IS A TruckFacts
+GIVETH A BOOLEAN
+DECIDE `the contract of service is illegal and void under section 55` IF
+        `Part 5 applies` `the facts`
+    AND `the facts`'s `the contract contains terms as to the place, manner or person with whom the salary is to be spent`
+
+-- s 57: the workman may recover so much of the salary, less lawful deductions,
+-- as has not actually been paid in legal tender. s 63(2) takes away that right
+-- for anything paid by bank transfer or cheque.
+GIVEN `the salary earned` IS A NUMBER
+    , `sums lawfully deducted under this Act` IS A NUMBER
+    , `the amount actually paid in legal tender or within the section 63 saving` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the amount recoverable under section 57` IS
+    (`the salary earned` MINUS `sums lawfully deducted under this Act`)
+        MINUS `the amount actually paid in legal tender or within the section 63 saving`
+
+-- ss 58, 59 and 60(1): three flat prohibitions on the employer.
+GIVEN `the facts` IS A TruckFacts
+GIVETH A BOOLEAN
+DECIDE `the employer has contravened Part 5` IF
+        `the employer has done one of the prohibited things` `the facts`
+    AND `Part 5 applies` `the facts`
+
+GIVEN `the facts` IS A TruckFacts
+GIVETH A BOOLEAN
+DECIDE `the employer has done one of the prohibited things` IF
+        `the facts`'s `the employer made a deduction by way of discount, interest or similar charge on an advance of salary`
+    ..  `the facts`'s `the employer gave noxious drugs or intoxicating liquor by way of remuneration`
+    OR  `the facts`'s `the workman was compelled by the contract to purchase goods at the employer's shop or canteen`
+
+§§ `Part 6 -- Contractors and contracting`
+
+-- s 65(1): where a principal contracts with a contractor for the supply of
+-- labour or the execution of work, and salary is due to a workman by the
+-- contractor or a subcontractor, "the principal and the contractor and any such
+-- subcontractor (NOT BEING THE EMPLOYER) are JOINTLY AND SEVERALLY LIABLE with
+-- the employer to pay the workman AS IF THE WORKMAN HAD BEEN IMMEDIATELY
+-- EMPLOYED BY THE PRINCIPAL".
+--
+-- s 65(1A): but no such person "is jointly and severally liable ... for MORE
+-- THAN THE SALARY EARNED IN ONE MONTH for work done by the employer."
+-- s 65(1B): for CONSTRUCTIONAL work, the principal is not liable "unless the
+-- principal is also a constructional contractor."
+DECLARE ContractingChain HAS
+    `the principal contracted in the course of or for the purposes of the principal's trade or business` IS A BOOLEAN
+    `salary is due to the workman by the contractor or a subcontractor` IS A BOOLEAN
+    `the person from whom salary is claimed is the employer` IS A BOOLEAN
+    `the contract is for constructional work`   IS A BOOLEAN
+    `the principal is also a constructional contractor` IS A BOOLEAN
+    `the salary due`                            IS A NUMBER
+    `the salary earned in one month for work done by the employer` IS A NUMBER
+
+GIVEN `the chain` IS A ContractingChain
+GIVETH A BOOLEAN
+DECIDE `section 65(1) makes the person jointly and severally liable` IF
+        `the chain`'s `the principal contracted in the course of or for the purposes of the principal's trade or business`
+    AND `the chain`'s `salary is due to the workman by the contractor or a subcontractor`
+    AND NOT `the chain`'s `the person from whom salary is claimed is the employer`
+    AND NOT `section 65(1B) excludes the principal` `the chain`
+
+-- s 65(1B): the constructional carve-out.
+GIVEN `the chain` IS A ContractingChain
+GIVETH A BOOLEAN
+DECIDE `section 65(1B) excludes the principal` IF
+        `the chain`'s `the contract is for constructional work`
+    AND NOT `the chain`'s `the principal is also a constructional contractor`
+
+-- s 65(1A): the one-month ceiling on what may be recovered from someone other
+-- than the employer.
+GIVEN `the chain` IS A ContractingChain
+GIVETH A NUMBER
+DECIDE `the amount recoverable from the principal or contractor` IS
+    IF   NOT `section 65(1) makes the person jointly and severally liable` `the chain`
+    THEN 0
+    ELSE `the lesser of the salary due and one month's salary` `the chain`
+
+GIVEN `the chain` IS A ContractingChain
+GIVETH A NUMBER
+DECIDE `the lesser of the salary due and one month's salary` IS
+    IF   `the chain`'s `the salary due`
+             GREATER THAN `the chain`'s `the salary earned in one month for work done by the employer`
+    THEN `the chain`'s `the salary earned in one month for work done by the employer`
+    ELSE `the chain`'s `the salary due`
+
+§§ `Part 6A -- Part-time employees`
+
+-- s 66A(1): "'part-time employee' means an employee who is required under his
+-- or her contract of service with an employer to work for LESS THAN 35 HOURS A
+-- WEEK."
+-- s 66A(2): the Minister may declare that an employee or class is NOT to be
+-- regarded as a part-time employee despite that.
+`the part-time threshold in hours a week` MEANS 35
+
+GIVEN `hours required under the contract of service each week` IS A NUMBER
+    , `the Minister has declared the employee not to be a part-time employee` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the employee is a part-time employee` IF
+        `hours required under the contract of service each week`
+            LESS THAN `the part-time threshold in hours a week`
+    AND NOT `the Minister has declared the employee not to be a part-time employee`
+
+§§ `Part 7 -- Domestic workers`
+
+-- s 67: "The Minister MAY, by notification in the Gazette, apply all or any of
+-- the provisions of this Act ... to all domestic workers or to any group, class
+-- or number of domestic workers ..."
+--
+-- The whole Part is one sentence, and the effect is that the Act does NOT apply
+-- to a domestic worker unless the Minister has said so. Nothing here can decide
+-- whether such a notification exists; that is a fact, and it is the fact the
+-- entire Part turns on.
+GIVEN `the person is a domestic worker` IS A BOOLEAN
+    , `the Minister has by notification applied this provision to them` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `this Act applies to the domestic worker` IF
+        `the person is a domestic worker`
+    AND `the Minister has by notification applied this provision to them`
+
+§§ `Part 8 -- Employment of children and young persons`
+
+-- s 67A: "'child' means a person who has NOT COMPLETED his or her 15TH YEAR of
+-- age"; "'young person' means a person who HAS COMPLETED his or her 15th year
+-- of age but who has NOT COMPLETED his or her 16TH YEAR of age."
+--
+-- Note the idiom: "completed his or her 15th year" is the 15th birthday, so a
+-- child is anyone under 15 and a young person is 15 but under 16.
+DECLARE YoungWorker HAS
+    `age in completed years`                IS A NUMBER
+    `employed in an industrial undertaking` IS A BOOLEAN
+    `employed in a non-industrial undertaking` IS A BOOLEAN
+    -- s 68(2)
+    `the industrial undertaking employs only members of the same family` IS A BOOLEAN
+    -- s 68(3)
+    `the work is light work suited to the child's capacity` IS A BOOLEAN
+    -- s 68(4): "the certificate of a medical officer is CONCLUSIVE upon the
+    -- question of whether any work is suited to the capacity of any particular
+    -- child."
+    `a medical officer has certified the work suited to the child's capacity` IS A BOOLEAN
+    -- s 69
+    `the Minister has declared this an industrial undertaking in which a young person must not be employed` IS A BOOLEAN
+
+GIVEN `the worker` IS A YoungWorker
+GIVETH A BOOLEAN
+DECIDE `the person is a child` IF
+    `the worker`'s `age in completed years` LESS THAN 15
+
+GIVEN `the worker` IS A YoungWorker
+GIVETH A BOOLEAN
+DECIDE `the person is a young person` IF
+        `the worker`'s `age in completed years` AT LEAST 15
+    AND `the worker`'s `age in completed years` LESS THAN 16
+
+-- s 68(2): the family-undertaking exception.
+GIVEN `the worker` IS A YoungWorker
+GIVETH A BOOLEAN
+DECIDE `section 68(2) permits the employment` IF
+        `the worker`'s `employed in an industrial undertaking`
+    AND `the worker`'s `the industrial undertaking employs only members of the same family`
+
+-- s 68(3): light work in a non-industrial undertaking, for a child of 13 or
+-- above. s 68(4) makes a medical officer's certificate conclusive on
+-- suitability, so the certificate settles the question where there is one.
+GIVEN `the worker` IS A YoungWorker
+GIVETH A BOOLEAN
+DECIDE `the work is suited to the child's capacity` IF
+        `the worker`'s `a medical officer has certified the work suited to the child's capacity`
+    OR  `the worker`'s `the work is light work suited to the child's capacity`
+
+GIVEN `the worker` IS A YoungWorker
+GIVETH A BOOLEAN
+DECIDE `section 68(3) permits the employment` IF
+        `the worker`'s `employed in a non-industrial undertaking`
+    AND `the worker`'s `age in completed years` AT LEAST 13
+    AND `the work is suited to the child's capacity` `the worker`
+
+-- s 68(1): "A person MUST NOT employ a child in an industrial or a
+-- non-industrial undertaking EXCEPT as provided for in subsections (2) and (3)."
+GIVEN `the worker` IS A YoungWorker
+GIVETH A BOOLEAN
+DECIDE `employing this child contravenes section 68(1)` IF
+        `the person is a child` `the worker`
+    AND `the child is employed in an undertaking` `the worker`
+    AND NOT `an exception in section 68 applies` `the worker`
+
+GIVEN `the worker` IS A YoungWorker
+GIVETH A BOOLEAN
+DECIDE `the child is employed in an undertaking` IF
+        `the worker`'s `employed in an industrial undertaking`
+    OR  `the worker`'s `employed in a non-industrial undertaking`
+
+GIVEN `the worker` IS A YoungWorker
+GIVETH A BOOLEAN
+DECIDE `an exception in section 68 applies` IF
+        `section 68(2) permits the employment` `the worker`
+    OR  `section 68(3) permits the employment` `the worker`
+
+-- s 69: "A young person MUST NOT be employed in any industrial undertaking
+-- which the Minister by notification in the Gazette DECLARES to be an
+-- industrial undertaking in which a young person must not be employed."
+--
+-- So for a young person the prohibition is not general: it bites only on
+-- undertakings the Minister has named.
+GIVEN `the worker` IS A YoungWorker
+GIVETH A BOOLEAN
+DECIDE `employing this young person contravenes section 69` IF
+        `the person is a young person` `the worker`
+    AND `the worker`'s `employed in an industrial undertaking`
+    AND `the worker`'s `the Minister has declared this an industrial undertaking in which a young person must not be employed`
