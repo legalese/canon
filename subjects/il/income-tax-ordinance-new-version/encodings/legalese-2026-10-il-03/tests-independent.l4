@@ -1,0 +1,393 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `ito-il03-nouns`
+IMPORT `ito-120b-indexation`
+IMPORT `ito-121-individual-rates`
+IMPORT `ito-121b-additional-tax`
+
+-- INDEPENDENT TESTS for row IL-03, written by fid-il-03.
+-- Every expected value below was decided from the Hebrew source alone and written down in
+-- DECIDED-ANSWERS.md (stamped Tue Oct  6 14:02:44 UTC 2026) BEFORE any .l4 file or
+-- NOTES.md in this directory was opened. The ids (A01, S07, ...) are that file's ids.
+-- A failing assertion here is a finding. No expected value was edited after a run.
+--
+-- Numbers that are not in the source are inputs I chose:
+--   * 721,560 as the s 121B(a) amount: taken from the editorial note only as a convenient
+--     value; it is not law (DECIDED-ANSWERS R0.2);
+--   * every index reading and every s 120B base amount: hypothetical.
+-- The fixtures below are my own; the encoder's tests module is not imported.
+
+§ `Independent tests`
+
+§§ `Fixtures — items of income`
+
+-- Employment income: s 2(2), from personal exertion, on the s 121 scale.
+GIVEN n IS A NUMBER
+GIVETH AN `An item of income`
+`wages of` n MEANS
+    `An item of income` WITH
+        `amount`                                                               IS n
+        `from personal exertion`                                               IS TRUE
+        `under section 2(1) or 2(2)`                                           IS TRUE
+        `charged at the rates in section 121`                                  IS TRUE
+        `subject to a duty to keep books of account, and acceptable books were not kept` IS FALSE
+        `inflationary amount, as defined in section 88`                        IS 0
+
+-- A pension from a former employer: personal exertion under s 1 def. (1), not s 2(1)/(2).
+GIVEN n IS A NUMBER
+GIVETH AN `An item of income`
+`a pension of` n MEANS
+    `An item of income` WITH
+        `amount`                                                               IS n
+        `from personal exertion`                                               IS TRUE
+        `under section 2(1) or 2(2)`                                           IS FALSE
+        `charged at the rates in section 121`                                  IS TRUE
+        `subject to a duty to keep books of account, and acceptable books were not kept` IS FALSE
+        `inflationary amount, as defined in section 88`                        IS 0
+
+-- Business income (s 2(1)) for which books were required and acceptable books were kept.
+GIVEN n IS A NUMBER
+GIVETH AN `An item of income`
+`trade income with acceptable books of` n MEANS
+    `An item of income` WITH
+        `amount`                                                               IS n
+        `from personal exertion`                                               IS TRUE
+        `under section 2(1) or 2(2)`                                           IS TRUE
+        `charged at the rates in section 121`                                  IS TRUE
+        `subject to a duty to keep books of account, and acceptable books were not kept` IS FALSE
+        `inflationary amount, as defined in section 88`                        IS 0
+
+-- Business income (s 2(1)) for which books were required and acceptable books were NOT kept.
+GIVEN n IS A NUMBER
+GIVETH AN `An item of income`
+`trade income lacking the books it required of` n MEANS
+    `An item of income` WITH
+        `amount`                                                               IS n
+        `from personal exertion`                                               IS TRUE
+        `under section 2(1) or 2(2)`                                           IS TRUE
+        `charged at the rates in section 121`                                  IS TRUE
+        `subject to a duty to keep books of account, and acceptable books were not kept` IS TRUE
+        `inflationary amount, as defined in section 88`                        IS 0
+
+-- Rent taxed on the s 121 scale: not personal exertion, not s 2(1)/(2), so a capital source.
+GIVEN n IS A NUMBER
+GIVETH AN `An item of income`
+`rent on the scale of` n MEANS
+    `An item of income` WITH
+        `amount`                                                               IS n
+        `from personal exertion`                                               IS FALSE
+        `under section 2(1) or 2(2)`                                           IS FALSE
+        `charged at the rates in section 121`                                  IS TRUE
+        `subject to a duty to keep books of account, and acceptable books were not kept` IS FALSE
+        `inflationary amount, as defined in section 88`                        IS 0
+
+-- A dividend charged at a rate of its own (not on the s 121 scale): a capital source.
+GIVEN n IS A NUMBER
+GIVETH AN `An item of income`
+`a dividend at its own rate of` n MEANS
+    `An item of income` WITH
+        `amount`                                                               IS n
+        `from personal exertion`                                               IS FALSE
+        `under section 2(1) or 2(2)`                                           IS FALSE
+        `charged at the rates in section 121`                                  IS FALSE
+        `subject to a duty to keep books of account, and acceptable books were not kept` IS FALSE
+        `inflationary amount, as defined in section 88`                        IS 0
+
+-- A capital gain of n, of which m is the s 88 inflationary amount.
+GIVEN n IS A NUMBER
+      m IS A NUMBER
+GIVETH AN `An item of income`
+`a capital gain with an inflationary part` n m MEANS
+    `An item of income` WITH
+        `amount`                                                               IS n
+        `from personal exertion`                                               IS FALSE
+        `under section 2(1) or 2(2)`                                           IS FALSE
+        `charged at the rates in section 121`                                  IS FALSE
+        `subject to a duty to keep books of account, and acceptable books were not kept` IS FALSE
+        `inflationary amount, as defined in section 88`                        IS m
+
+§§ `Fixtures — sales of real estate`
+
+GIVEN b  IS A NUMBER
+      v  IS A NUMBER
+      ex IS A BOOLEAN
+GIVETH A `A sale of a right in real estate`
+`a residential sale` b v ex MEANS
+    `A sale of a right in real estate` WITH
+        `betterment`                                                                    IS b
+        `inflationary amount, as defined in section 47 of the Real Estate Taxation Law` IS 0
+        `in a residential apartment`                                                    IS TRUE
+        `sale value`                                                                    IS v
+        `exempt from tax under any law`                                                 IS ex
+
+GIVEN b IS A NUMBER
+GIVETH A `A sale of a right in real estate`
+`a non-residential sale with betterment` b MEANS
+    `A sale of a right in real estate` WITH
+        `betterment`                                                                    IS b
+        `inflationary amount, as defined in section 47 of the Real Estate Taxation Law` IS 0
+        `in a residential apartment`                                                    IS FALSE
+        `sale value`                                                                    IS 1_000_000
+        `exempt from tax under any law`                                                 IS FALSE
+
+§§ `Fixtures — individuals`
+
+GIVEN y     IS A NUMBER
+      dob   IS A DATE
+      items IS A LIST OF `An item of income`
+      sales IS A LIST OF `A sale of a right in real estate`
+GIVETH AN `An individual in a tax year`
+`a taxpayer` y dob items sales MEANS
+    `An individual in a tax year` WITH
+        `tax year`                       IS y
+        `date of birth`                  IS dob
+        `items of income`                IS items
+        `sales of rights in real estate` IS sales
+
+-- Under 60 in every year tested (born 1980).
+GIVEN y     IS A NUMBER
+      items IS A LIST OF `An item of income`
+GIVETH AN `An individual in a tax year`
+`under 60` y items MEANS `a taxpayer` y (YMD 1980 6 15) items (EMPTY)
+
+-- 60 reached well before every year tested (born 1960).
+GIVEN y     IS A NUMBER
+      items IS A LIST OF `An item of income`
+GIVETH AN `An individual in a tax year`
+`over 60` y items MEANS `a taxpayer` y (YMD 1960 3 1) items (EMPTY)
+
+GIVEN y     IS A NUMBER
+      items IS A LIST OF `An item of income`
+      sales IS A LIST OF `A sale of a right in real estate`
+GIVETH AN `An individual in a tax year`
+`under 60 with sales` y items sales MEANS `a taxpayer` y (YMD 1980 6 15) items sales
+
+GIVEN i IS AN `An individual in a tax year`
+GIVETH AN EITHER `A problem with the facts` NUMBER
+`s121` i MEANS `the tax under section 121 for` i
+
+-- 121B with my chosen input amount 721,560 (DECIDED-ANSWERS R0.2).
+GIVEN i IS AN `An individual in a tax year`
+GIVETH AN EITHER `A problem with the facts` NUMBER
+`s121B at 721,560` i MEANS `the additional tax under section 121B for` i `, with the amount in section 121B(a) at` 721_560
+
+§§ `1A — s 121(a) standard scale, tax years 2026 and 2027`
+
+#ASSERT `s121` (`under 60` 2026 (LIST `rent on the scale of` 0))           EQUALS RIGHT 0
+#ASSERT `s121` (`under 60` 2026 (LIST `rent on the scale of` 1))           EQUALS RIGHT 0.31
+#ASSERT `s121` (`under 60` 2026 (LIST `rent on the scale of` 100_000))     EQUALS RIGHT 31_000
+#ASSERT `s121` (`under 60` 2026 (LIST `rent on the scale of` 301_199))     EQUALS RIGHT 93_371.69
+#ASSERT `s121` (`under 60` 2026 (LIST `rent on the scale of` 301_200))     EQUALS RIGHT 93_372
+#ASSERT `s121` (`under 60` 2026 (LIST `rent on the scale of` 301_201))     EQUALS RIGHT 93_372.35
+#ASSERT `s121` (`under 60` 2026 (LIST `rent on the scale of` 400_000))     EQUALS RIGHT 127_952
+#ASSERT `s121` (`under 60` 2026 (LIST `rent on the scale of` 560_279))     EQUALS RIGHT 184_049.65
+#ASSERT `s121` (`under 60` 2026 (LIST `rent on the scale of` 560_280))     EQUALS RIGHT 184_050
+#ASSERT `s121` (`under 60` 2026 (LIST `rent on the scale of` 560_281))     EQUALS RIGHT 184_050.47
+#ASSERT `s121` (`under 60` 2026 (LIST `rent on the scale of` 1_000_000))   EQUALS RIGHT 390_718.4
+#ASSERT `s121` (`under 60` 2026 (LIST `rent on the scale of` 301_200.5))   EQUALS RIGHT 93_372.175
+
+#ASSERT `s121` (`under 60` 2027 (LIST `rent on the scale of` 0))           EQUALS RIGHT 0
+#ASSERT `s121` (`under 60` 2027 (LIST `rent on the scale of` 1))           EQUALS RIGHT 0.31
+#ASSERT `s121` (`under 60` 2027 (LIST `rent on the scale of` 100_000))     EQUALS RIGHT 31_000
+#ASSERT `s121` (`under 60` 2027 (LIST `rent on the scale of` 301_199))     EQUALS RIGHT 93_371.69
+#ASSERT `s121` (`under 60` 2027 (LIST `rent on the scale of` 301_200))     EQUALS RIGHT 93_372
+#ASSERT `s121` (`under 60` 2027 (LIST `rent on the scale of` 301_201))     EQUALS RIGHT 93_372.35
+#ASSERT `s121` (`under 60` 2027 (LIST `rent on the scale of` 400_000))     EQUALS RIGHT 127_952
+#ASSERT `s121` (`under 60` 2027 (LIST `rent on the scale of` 560_279))     EQUALS RIGHT 184_049.65
+#ASSERT `s121` (`under 60` 2027 (LIST `rent on the scale of` 560_280))     EQUALS RIGHT 184_050
+#ASSERT `s121` (`under 60` 2027 (LIST `rent on the scale of` 560_281))     EQUALS RIGHT 184_050.47
+#ASSERT `s121` (`under 60` 2027 (LIST `rent on the scale of` 1_000_000))   EQUALS RIGHT 390_718.4
+#ASSERT `s121` (`under 60` 2027 (LIST `rent on the scale of` 301_200.5))   EQUALS RIGHT 93_372.175
+
+§§ `1B — s 121(b)(1) reduced scale, tax years 2026 and 2027`
+
+#ASSERT `s121` (`under 60` 2026 (LIST `wages of` 0))           EQUALS RIGHT 0
+#ASSERT `s121` (`under 60` 2026 (LIST `wages of` 84_119))      EQUALS RIGHT 8_411.9
+#ASSERT `s121` (`under 60` 2026 (LIST `wages of` 84_120))      EQUALS RIGHT 8_412
+#ASSERT `s121` (`under 60` 2026 (LIST `wages of` 84_121))      EQUALS RIGHT 8_412.14
+#ASSERT `s121` (`under 60` 2026 (LIST `wages of` 100_000))     EQUALS RIGHT 10_635.2
+#ASSERT `s121` (`under 60` 2026 (LIST `wages of` 120_719))     EQUALS RIGHT 13_535.86
+#ASSERT `s121` (`under 60` 2026 (LIST `wages of` 120_720))     EQUALS RIGHT 13_536
+#ASSERT `s121` (`under 60` 2026 (LIST `wages of` 120_721))     EQUALS RIGHT 13_536.2
+#ASSERT `s121` (`under 60` 2026 (LIST `wages of` 227_999))     EQUALS RIGHT 34_991.8
+#ASSERT `s121` (`under 60` 2026 (LIST `wages of` 228_000))     EQUALS RIGHT 34_992
+#ASSERT `s121` (`under 60` 2026 (LIST `wages of` 228_001))     EQUALS RIGHT 34_992.31
+#ASSERT `s121` (`under 60` 2026 (LIST `wages of` 301_199))     EQUALS RIGHT 57_683.69
+#ASSERT `s121` (`under 60` 2026 (LIST `wages of` 301_200))     EQUALS RIGHT 57_684
+#ASSERT `s121` (`under 60` 2026 (LIST `wages of` 301_201))     EQUALS RIGHT 57_684.35
+#ASSERT `s121` (`under 60` 2026 (LIST `wages of` 400_000))     EQUALS RIGHT 92_264
+#ASSERT `s121` (`under 60` 2026 (LIST `wages of` 560_280))     EQUALS RIGHT 148_362
+#ASSERT `s121` (`under 60` 2026 (LIST `wages of` 560_281))     EQUALS RIGHT 148_362.47
+#ASSERT `s121` (`under 60` 2026 (LIST `wages of` 1_000_000))   EQUALS RIGHT 355_030.4
+
+#ASSERT `s121` (`under 60` 2027 (LIST `wages of` 0))           EQUALS RIGHT 0
+#ASSERT `s121` (`under 60` 2027 (LIST `wages of` 84_119))      EQUALS RIGHT 8_411.9
+#ASSERT `s121` (`under 60` 2027 (LIST `wages of` 84_120))      EQUALS RIGHT 8_412
+#ASSERT `s121` (`under 60` 2027 (LIST `wages of` 84_121))      EQUALS RIGHT 8_412.14
+#ASSERT `s121` (`under 60` 2027 (LIST `wages of` 100_000))     EQUALS RIGHT 10_635.2
+#ASSERT `s121` (`under 60` 2027 (LIST `wages of` 120_719))     EQUALS RIGHT 13_535.86
+#ASSERT `s121` (`under 60` 2027 (LIST `wages of` 120_720))     EQUALS RIGHT 13_536
+#ASSERT `s121` (`under 60` 2027 (LIST `wages of` 120_721))     EQUALS RIGHT 13_536.2
+#ASSERT `s121` (`under 60` 2027 (LIST `wages of` 227_999))     EQUALS RIGHT 34_991.8
+#ASSERT `s121` (`under 60` 2027 (LIST `wages of` 228_000))     EQUALS RIGHT 34_992
+#ASSERT `s121` (`under 60` 2027 (LIST `wages of` 228_001))     EQUALS RIGHT 34_992.31
+#ASSERT `s121` (`under 60` 2027 (LIST `wages of` 301_199))     EQUALS RIGHT 57_683.69
+#ASSERT `s121` (`under 60` 2027 (LIST `wages of` 301_200))     EQUALS RIGHT 57_684
+#ASSERT `s121` (`under 60` 2027 (LIST `wages of` 301_201))     EQUALS RIGHT 57_684.35
+#ASSERT `s121` (`under 60` 2027 (LIST `wages of` 400_000))     EQUALS RIGHT 92_264
+#ASSERT `s121` (`under 60` 2027 (LIST `wages of` 560_280))     EQUALS RIGHT 148_362
+#ASSERT `s121` (`under 60` 2027 (LIST `wages of` 560_281))     EQUALS RIGHT 148_362.47
+#ASSERT `s121` (`under 60` 2027 (LIST `wages of` 1_000_000))   EQUALS RIGHT 355_030.4
+
+§§ `1C — routes into and out of the reduced scale, 100,000, tax years 2026 and 2027`
+
+-- C01 books required and kept; C02 books required, not kept; C03 not personal exertion;
+-- C04 60+ not personal exertion; C05 60+ business without required books; C06 60+ wages.
+#ASSERT `s121` (`under 60` 2026 (LIST `trade income with acceptable books of` 100_000))           EQUALS RIGHT 10_635.2
+#ASSERT `s121` (`under 60` 2026 (LIST `trade income lacking the books it required of` 100_000))   EQUALS RIGHT 31_000
+#ASSERT `s121` (`under 60` 2026 (LIST `rent on the scale of` 100_000))                            EQUALS RIGHT 31_000
+#ASSERT `s121` (`over 60`  2026 (LIST `rent on the scale of` 100_000))                            EQUALS RIGHT 10_635.2
+#ASSERT `s121` (`over 60`  2026 (LIST `trade income lacking the books it required of` 100_000))   EQUALS RIGHT 31_000
+#ASSERT `s121` (`over 60`  2026 (LIST `wages of` 100_000))                                        EQUALS RIGHT 10_635.2
+
+#ASSERT `s121` (`under 60` 2027 (LIST `trade income with acceptable books of` 100_000))           EQUALS RIGHT 10_635.2
+#ASSERT `s121` (`under 60` 2027 (LIST `trade income lacking the books it required of` 100_000))   EQUALS RIGHT 31_000
+#ASSERT `s121` (`under 60` 2027 (LIST `rent on the scale of` 100_000))                            EQUALS RIGHT 31_000
+#ASSERT `s121` (`over 60`  2027 (LIST `rent on the scale of` 100_000))                            EQUALS RIGHT 10_635.2
+#ASSERT `s121` (`over 60`  2027 (LIST `trade income lacking the books it required of` 100_000))   EQUALS RIGHT 31_000
+#ASSERT `s121` (`over 60`  2027 (LIST `wages of` 100_000))                                        EQUALS RIGHT 10_635.2
+
+§§ `1D — the age-60 date edge, tax year 2026, rent of 100,000`
+
+-- D01 60 on 2025-12-31; D02 60 on 2026-01-01; D03-D05 60 during 2026 (expected REFUSE,
+-- DECIDED-ANSWERS R0.5); D06 60 on 2027-01-01.
+#ASSERT         `s121` (`a taxpayer` 2026 (YMD 1965 12 31) (LIST `rent on the scale of` 100_000) (EMPTY)) EQUALS RIGHT 10_635.2
+#ASSERT         `s121` (`a taxpayer` 2026 (YMD 1966 1 1)   (LIST `rent on the scale of` 100_000) (EMPTY)) EQUALS RIGHT 10_635.2
+#ASSERT REFUSED `s121` (`a taxpayer` 2026 (YMD 1966 1 2)   (LIST `rent on the scale of` 100_000) (EMPTY))
+#ASSERT REFUSED `s121` (`a taxpayer` 2026 (YMD 1966 6 15)  (LIST `rent on the scale of` 100_000) (EMPTY))
+#ASSERT REFUSED `s121` (`a taxpayer` 2026 (YMD 1966 12 31) (LIST `rent on the scale of` 100_000) (EMPTY))
+#ASSERT         `s121` (`a taxpayer` 2026 (YMD 1967 1 1)   (LIST `rent on the scale of` 100_000) (EMPTY)) EQUALS RIGHT 31_000
+
+§§ `1E — tax years the source does not carry for s 121`
+
+#ASSERT REFUSED `s121` (`under 60` 2025 (LIST `rent on the scale of` 100_000))
+#ASSERT REFUSED `s121` (`under 60` 2025 (LIST `wages of` 200_000))
+#ASSERT REFUSED `s121` (`under 60` 2024 (LIST `rent on the scale of` 100_000))
+#ASSERT REFUSED `s121` (`under 60` 2028 (LIST `rent on the scale of` 100_000))
+#ASSERT REFUSED `s121` (`under 60` 2023 (LIST `rent on the scale of` 100_000))
+
+§§ `1F — other cases s 121 does not answer`
+
+-- F01 mixed personal-exertion and other income under 60 (R0.6); F02 the same gap through
+-- (b)(2); F03 negative taxable income (low confidence).
+#ASSERT REFUSED `s121` (`under 60` 2026 (LIST `wages of` 60_000, `rent on the scale of` 60_000))
+#ASSERT REFUSED `s121` (`under 60` 2026 (LIST `wages of` 30_000, `trade income lacking the books it required of` 30_000))
+#ASSERT REFUSED `s121` (`under 60` 2026 (LIST `wages of` -1_000))
+
+§§ `2 — s 120B indexation`
+
+GIVEN s IS A NUMBER
+      e IS A NUMBER
+GIVETH AN `Index readings for a period`
+`readings` s e MEANS
+    `Index readings for a period` WITH
+        `index last published before the start of the period` IS s
+        `index last published before the end of the period`   IS e
+
+GIVEN y      IS A NUMBER
+      prev   IS A NUMBER
+      r      IS AN `Index readings for a period`
+      before IS A NUMBER
+      after  IS A NUMBER
+GIVETH AN `An amount on 1 January of a tax year`
+`a ceiling` y prev r before after MEANS
+    `An amount on 1 January of a tax year` WITH
+        `kind`                                                          IS `an income ceiling`
+        `tax year`                                                      IS y
+        `amount on 1 January of the previous tax year, before rounding` IS prev
+        `readings for the previous tax year`                            IS r
+        `amount on 1 January 2024, before rounding`                     IS before
+        `amount on 1 January 2024, after rounding`                      IS after
+
+GIVEN y IS A NUMBER
+      m IS A MAYBE NUMBER
+GIVETH A `A pension-point amount in a tax year`
+`a pension point of 1,000` y m MEANS
+    `A pension-point amount in a tax year` WITH
+        `tax year`                                                    IS y
+        `amount on 1 January of the tax year`                         IS 1_000
+        `month from which an agreed cost-of-living increment is paid` IS m
+        `readings from the start of the tax year to the end of that month` IS `readings` 100 101.5
+
+-- I01-I05: the s 1 arithmetic through s 120B(a).
+#ASSERT `s 120B(a) — adjust` 100_000 `by the index over` (`readings` 100 103)   EQUALS 103_000
+#ASSERT `s 120B(a) — adjust` 50_000  `by the index over` (`readings` 100 110)   EQUALS 55_000
+#ASSERT `s 120B(a) — adjust` 84_120  `by the index over` (`readings` 100 102.5) EQUALS 86_223
+#ASSERT `s 120B(a) — adjust` 75_960  `by the index over` (`readings` 100 99.4)  EQUALS 75_504.24
+#ASSERT `s 120B(a) — adjust` 75_960  `by the index over` (`readings` 100 100)   EQUALS 75_960
+-- I06: the rate alone.
+#ASSERT `the rate of increase of the index over` (`readings` 104 106.08) EQUALS 0.02
+
+-- I07-I09: the freeze. The unrounded 2024 figure is set apart from the rounded one on purpose.
+#ASSERT `s 120B — the amount for the tax year` (`a ceiling` 2025 200_000 (`readings` 100 104) 193_795.5 193_800) EQUALS `fixed by section 120B(e)(1) at` 193_800
+#ASSERT `s 120B — the amount for the tax year` (`a ceiling` 2026 200_000 (`readings` 100 104) 193_795.5 193_800) EQUALS `fixed by section 120B(e)(1) at` 193_800
+#ASSERT `s 120B — the amount for the tax year` (`a ceiling` 2027 200_000 (`readings` 100 104) 193_795.5 193_800) EQUALS `fixed by section 120B(e)(1) at` 193_800
+#ASSERT `s 120B — the amount in force in the tax year` (`a ceiling` 2025 200_000 (`readings` 100 104) 193_795.5 193_800) EQUALS 193_800
+#ASSERT `s 120B — the amount in force in the tax year` (`a ceiling` 2026 200_000 (`readings` 100 104) 193_795.5 193_800) EQUALS 193_800
+#ASSERT `s 120B — the amount in force in the tax year` (`a ceiling` 2027 200_000 (`readings` 100 104) 193_795.5 193_800) EQUALS 193_800
+
+-- I10: the 2028 restart from the 2024 figure BEFORE rounding, by the 2027 index only.
+#ASSERT `s 120B — the amount for the tax year` (`a ceiling` 2028 84_120 (`readings` 105 107.1) 84_000 84_120) EQUALS `adjusted, before rounding, to` 85_680
+-- I11 (caller holds only the rounded 2024 figure): not expressible; the record requires both.
+-- I12: 2029, the ordinary (a) adjustment from the 1 January 2028 figure.
+#ASSERT `s 120B — the amount for the tax year` (`a ceiling` 2029 85_680 (`readings` 107.1 109.242) 84_000 84_120) EQUALS `adjusted, before rounding, to` 87_393.6
+-- I13: a rounded adjusted amount is declined.
+#ASSERT REFUSED `s 120B — the amount in force in the tax year` (`a ceiling` 2028 84_120 (`readings` 105 107.1) 84_000 84_120)
+#ASSERT REFUSED `s 120B — the amount in force in the tax year` (`a ceiling` 2029 85_680 (`readings` 107.1 109.242) 84_000 84_120)
+-- I14: the 1 January 2024 adjustment (low confidence).
+#ASSERT REFUSED `s 120B — the amount for the tax year` (`a ceiling` 2024 80_000 (`readings` 100 103) 84_000 84_120)
+-- I15: (b) cost-of-living increment from month 6 of 2029; I16: none in a freeze year.
+#ASSERT `s 120B(b) — the pension-point amount from the month of an agreed cost-of-living increment` (`a pension point of 1,000` 2029 (JUST 6)) EQUALS 1_015
+#ASSERT `s 120B(b) — the pension-point amount from the month of an agreed cost-of-living increment` (`a pension point of 1,000` 2026 (JUST 6)) EQUALS 1_000
+
+§§ `3 — s 121B, with the s 121B(a) amount supplied as 721,560`
+
+-- S01-S04 thresholds; S05-S08 the (a1) capital limb; S09-S10 what is not capital.
+#ASSERT `s121B at 721,560` (`under 60` 2026 (LIST `wages of` 721_559))                                               EQUALS RIGHT 0
+#ASSERT `s121B at 721,560` (`under 60` 2026 (LIST `wages of` 721_560))                                               EQUALS RIGHT 0
+#ASSERT `s121B at 721,560` (`under 60` 2026 (LIST `wages of` 721_561))                                               EQUALS RIGHT 0.03
+#ASSERT `s121B at 721,560` (`under 60` 2026 (LIST `wages of` 1_000_000))                                             EQUALS RIGHT 8_353.2
+#ASSERT `s121B at 721,560` (`under 60` 2026 (LIST `wages of` 100_000, `a dividend at its own rate of` 721_560))      EQUALS RIGHT 3_000
+#ASSERT `s121B at 721,560` (`under 60` 2026 (LIST `a dividend at its own rate of` 721_561))                          EQUALS RIGHT 0.05
+#ASSERT `s121B at 721,560` (`under 60` 2026 (LIST `a dividend at its own rate of` 900_000))                          EQUALS RIGHT 8_922
+#ASSERT `s121B at 721,560` (`under 60` 2026 (LIST `wages of` 500_000, `a dividend at its own rate of` 500_000))      EQUALS RIGHT 8_353.2
+#ASSERT `s121B at 721,560` (`over 60`  2026 (LIST `a pension of` 900_000))                                           EQUALS RIGHT 5_353.2
+#ASSERT `s121B at 721,560` (`under 60` 2026 (LIST `trade income with acceptable books of` 900_000))                  EQUALS RIGHT 5_353.2
+-- S11 (no amount supplied -> refuse): not expressible as an assertion; the amount is a
+-- required argument of the s 121B rule, so the case cannot be posed. Satisfied by the types.
+-- S12 (640,000 used without input): checked by reading, not by assertion; see findings.
+-- S13: tax year 2025, amount supplied; S14: tax year 2024.
+#ASSERT         `s121B at 721,560` (`under 60` 2025 (LIST `a dividend at its own rate of` 900_000))                  EQUALS RIGHT 8_922
+#ASSERT REFUSED `s121B at 721,560` (`under 60` 2024 (LIST `a dividend at its own rate of` 900_000))
+
+§§ `3A — the s 121B(e) definition of taxable income`
+
+-- S20 s 88 inflationary amount excluded; S21 non-residential betterment included;
+-- S22-S24 the residential-apartment limb; S25 the same in 2025; S26 a residential sale in
+-- 2027; S27 betterment is capital-source income.
+#ASSERT         `s121B at 721,560` (`under 60 with sales` 2026 (LIST `wages of` 700_000, `a capital gain with an inflationary part` 100_000 50_000) (EMPTY)) EQUALS RIGHT 853.2
+#ASSERT         `s121B at 721,560` (`under 60 with sales` 2026 (LIST `wages of` 600_000) (LIST `a non-residential sale with betterment` 200_000))         EQUALS RIGHT 2_353.2
+#ASSERT         `s121B at 721,560` (`under 60 with sales` 2026 (LIST `wages of` 600_000) (LIST `a residential sale` 200_000 5_385_285 FALSE))            EQUALS RIGHT 0
+#ASSERT         `s121B at 721,560` (`under 60 with sales` 2026 (LIST `wages of` 600_000) (LIST `a residential sale` 200_000 5_385_286 FALSE))            EQUALS RIGHT 2_353.2
+#ASSERT         `s121B at 721,560` (`under 60 with sales` 2026 (LIST `wages of` 600_000) (LIST `a residential sale` 200_000 6_000_000 TRUE))             EQUALS RIGHT 0
+#ASSERT         `s121B at 721,560` (`under 60 with sales` 2025 (LIST `wages of` 600_000) (LIST `a residential sale` 200_000 5_385_286 FALSE))            EQUALS RIGHT 2_353.2
+#ASSERT REFUSED `s121B at 721,560` (`under 60 with sales` 2027 (LIST `wages of` 600_000) (LIST `a residential sale` 200_000 5_385_286 FALSE))
+#ASSERT         `s121B at 721,560` (`under 60 with sales` 2026 (LIST `rent on the scale of` 600_000) (LIST `a non-residential sale with betterment` 200_000)) EQUALS RIGHT 3_922
+
+§§ `3B — provisions with no number`
+
+-- S30: s 91(d) does not apply to income chargeable to the additional tax.
+#ASSERT `s 121B(b) — section 91(d) on advance payments applies to income chargeable to additional tax under (a) or (a1)` EQUALS FALSE
+-- S31 (s 121B(c), notwithstanding any enactment) and S32 (s 121B(d), s 8(c) spreading as an
+-- input): nothing in the interface to assert against; recorded as not expressible.
