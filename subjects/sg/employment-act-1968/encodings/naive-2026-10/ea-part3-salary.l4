@@ -1,0 +1,427 @@
+IMPORT prelude
+
+-- Employment Act 1968 (Singapore) -- PART 3, PAYMENT OF SALARY, ss 20 to 33.
+--
+-- Source: ../../registers/source-bundle/EmA1968.txt
+--
+-- NAIVE ENCODING. Straight from the text with the writing-l4-rules skill. No
+-- pipeline, no independent test pass, no human gate.
+--
+-- WHAT THIS PART DOES. Three things: it fixes WHEN salary must be paid, it
+-- computes salary for a month the employee did not work in full, and it says
+-- what may be DEDUCTED and by how much. The deduction limits are the most
+-- useful part, because they are the only place in the Act where an employee can
+-- check an arithmetic answer against a payslip.
+--
+-- EVERY LIMIT IS SUBSTITUTABLE. "one-quarter (or such other proportion
+-- prescribed in substitution by the Minister)" appears four times, and the 50%
+-- cap in s 32 the same way. Each is carried as a supplied fact rather than as a
+-- literal, so a prescribing order moves the answer and no rule needs rewriting.
+
+§ `Employment Act 1968 -- Part 3, Payment of Salary`
+
+§§ `The prescribed proportions`
+
+-- The figures the Minister may substitute. Defaults are the Act's own.
+DECLARE Proportions HAS
+    -- s 29(1): deduction for damage or loss.
+    `the damages deduction proportion of one month's wages` IS A NUMBER
+    -- s 30(2): accommodation, amenity and service, per salary period.
+    `the accommodation deduction proportion of the salary for the period` IS A NUMBER
+    -- s 31(3) and (5): each instalment recovering an advance or a loan.
+    `the instalment proportion of the salary for the period` IS A NUMBER
+    -- s 32(1): the overall cap.
+    `the overall deduction percentage` IS A NUMBER
+
+`the proportions as the Act states them` MEANS Proportions WITH
+    `the damages deduction proportion of one month's wages` IS 0.25
+    `the accommodation deduction proportion of the salary for the period` IS 0.25
+    `the instalment proportion of the salary for the period` IS 0.25
+    `the overall deduction percentage` IS 0.5
+
+§§ `20 -- Fixation of salary period`
+
+-- s 20(1): the employer may fix salary periods. s 20(2): "A salary period MUST
+-- NOT EXCEED ONE MONTH." s 20(3): "In the absence of a salary period so fixed,
+-- the salary period is DEEMED TO BE ONE MONTH."
+DECLARE SalaryPeriod HAS
+    `a salary period has been fixed by the employer` IS A BOOLEAN
+    `the fixed period, in months`                    IS A NUMBER
+
+GIVEN `the period` IS A SalaryPeriod
+GIVETH A BOOLEAN
+DECIDE `the fixed salary period contravenes section 20(2)` IF
+        `the period`'s `a salary period has been fixed by the employer`
+    AND `the period`'s `the fixed period, in months` GREATER THAN 1
+
+-- s 20(3): the deeming.
+GIVEN `the period` IS A SalaryPeriod
+GIVETH A NUMBER
+DECIDE `the salary period, in months` IS
+    IF   `the period`'s `a salary period has been fixed by the employer`
+    THEN `the period`'s `the fixed period, in months`
+    ELSE 1
+
+§§ `20A -- Computation of salary for an incomplete month's work`
+
+-- s 20A(1): where a monthly-rated employee has not completed a whole month
+-- because they started after the first of the month, left before the end, took
+-- unpaid leave, or took leave for national service under the Enlistment Act
+-- 1970, the salary is:
+--
+--     monthly gross rate of pay
+--     --------------------------------------  x  days actually worked
+--     days the employee is required to work
+--
+-- s 20A(2): "any day on which an employee is required to work for 5 HOURS OR
+-- LESS under his or her contract of service is regarded as HALF A DAY."
+DECLARE IncompleteMonth HAS
+    `the employee is monthly-rated`             IS A BOOLEAN
+    `commenced employment after the first day of the month` IS A BOOLEAN   -- (a)
+    `employment was terminated before the end of the month` IS A BOOLEAN   -- (b)
+    `took leave of absence without pay for one or more days` IS A BOOLEAN  -- (c)
+    `took leave of absence to perform national service under the Enlistment Act 1970` IS A BOOLEAN   -- (d)
+    `the monthly gross rate of pay`             IS A NUMBER
+    `full days the employee is required to work in that month` IS A NUMBER
+    `short days the employee is required to work in that month, of 5 hours or less` IS A NUMBER
+    `full days actually worked`                 IS A NUMBER
+    `short days actually worked, of 5 hours or less` IS A NUMBER
+
+GIVEN `the month` IS AN IncompleteMonth
+GIVETH A BOOLEAN
+DECIDE `section 20A applies` IF
+        `the month`'s `the employee is monthly-rated`
+    AND `a reason in section 20A(1) applies` `the month`
+
+GIVEN `the month` IS AN IncompleteMonth
+GIVETH A BOOLEAN
+DECIDE `a reason in section 20A(1) applies` IF
+        `the month`'s `commenced employment after the first day of the month`
+    ..  `the month`'s `employment was terminated before the end of the month`
+    ..  `the month`'s `took leave of absence without pay for one or more days`
+    OR  `the month`'s `took leave of absence to perform national service under the Enlistment Act 1970`
+
+-- s 20A(2) applied to both sides of the fraction: a short day counts as a half.
+GIVEN `the month` IS AN IncompleteMonth
+GIVETH A NUMBER
+DECIDE `the days required to work, counting short days as half` IS
+    `the month`'s `full days the employee is required to work in that month`
+        PLUS (0.5 TIMES `the month`'s `short days the employee is required to work in that month, of 5 hours or less`)
+
+GIVEN `the month` IS AN IncompleteMonth
+GIVETH A NUMBER
+DECIDE `the days actually worked, counting short days as half` IS
+    `the month`'s `full days actually worked`
+        PLUS (0.5 TIMES `the month`'s `short days actually worked, of 5 hours or less`)
+
+GIVEN `the month` IS AN IncompleteMonth
+GIVETH A NUMBER
+DECIDE `the salary due for the incomplete month` IS
+    (`the month`'s `the monthly gross rate of pay`
+        DIVIDED BY `the days required to work, counting short days as half` `the month`)
+    TIMES `the days actually worked, counting short days as half` `the month`
+
+§§ `21 to 25 -- when salary must be paid`
+
+-- s 21(1): ordinary salary, "before the expiry of the 7th day after the last day
+-- of the salary period".
+-- s 21(2): overtime, "not later than 14 days after the last day of the salary
+-- period during which the overtime work was performed."
+-- s 21(3): on completion of the contract, on completion.
+-- s 22: on DISMISSAL, "on the day of dismissal or, if this is not possible,
+-- within 3 days thereafter, not being a rest day or public holiday".
+-- s 23(1): where the employee terminates WITH due notice or pays in lieu under
+-- s 11, on the day of termination.
+-- s 23(2): where the employee terminates WITHOUT notice, within 7 days.
+--
+-- Note the shape: the employer who dismisses has 3 days; the employee who walks
+-- out gives the employer 7. The deadlines are stated as the number of days
+-- after the trigger.
+`the ordinary salary deadline in days after the end of the salary period` MEANS 7
+`the overtime deadline in days after the end of the salary period` MEANS 14
+`the deadline on dismissal in days` MEANS 3
+`the deadline where the employee leaves without notice in days` MEANS 7
+-- s 24(2): payment must not be delayed more than 30 days after notice to the
+-- Comptroller of Income Tax.
+`the maximum delay after notice to the Comptroller in days` MEANS 30
+
+DECLARE PaymentOccasion IS ONE OF
+    `ordinary salary for a salary period`
+    `additional payment for overtime work`
+    `completion of the contract of service`
+    `dismissal by the employer`
+    `termination by the employee with due notice or payment in lieu`
+    `termination by the employee without notice`
+
+GIVEN `the occasion` IS A PaymentOccasion
+GIVETH A NUMBER
+DECIDE `the number of days allowed for payment` IS
+    CONSIDER `the occasion`
+    WHEN `ordinary salary for a salary period` THEN 7
+    WHEN `additional payment for overtime work` THEN 14
+    WHEN `completion of the contract of service` THEN 0
+    WHEN `dismissal by the employer` THEN 3
+    WHEN `termination by the employee with due notice or payment in lieu` THEN 0
+    OTHERWISE 7
+
+GIVEN `the occasion` IS A PaymentOccasion, `the days taken to pay` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the payment was late` IF
+    `the days taken to pay` GREATER THAN `the number of days allowed for payment` `the occasion`
+
+-- s 25(1): payment must be made on a working day, during working hours, at the
+-- place of work or another agreed place. s 25(2) disapplies that where salary
+-- is paid into the employee's bank account in Singapore.
+DECLARE PaymentManner HAS
+    `paid into an account with a bank in Singapore in the employee's name or jointly` IS A BOOLEAN
+    `paid on a working day during working hours` IS A BOOLEAN
+    `paid at the place of work or another place agreed between employer and employee` IS A BOOLEAN
+
+GIVEN `the manner` IS A PaymentManner
+GIVETH A BOOLEAN
+DECIDE `the manner of payment satisfies section 25` IF
+        `the manner`'s `paid into an account with a bank in Singapore in the employee's name or jointly`
+    OR  `the payment satisfies section 25(1)` `the manner`
+
+GIVEN `the manner` IS A PaymentManner
+GIVETH A BOOLEAN
+DECIDE `the payment satisfies section 25(1)` IF
+        `the manner`'s `paid on a working day during working hours`
+    AND `the manner`'s `paid at the place of work or another place agreed between employer and employee`
+
+§§ `26 and 27 -- what may be deducted at all`
+
+-- s 26(1): "NO deduction is to be made by an employer from the salary of an
+-- employee, UNLESS the deduction is authorised by or under any provision of
+-- this Act or is required to be made" by a court order, a tax or premium
+-- recovery declaration, or a direction of the Comptroller.
+--
+-- s 27(1) lists the authorised deductions, (a) to (k). (c) and (g) were
+-- repealed.
+DECLARE DeductionKind IS ONE OF
+    `absence from work`                                     -- s 27(1)(a)
+    `damage to or loss of goods or money entrusted`         -- s 27(1)(b)
+    `house accommodation supplied by the employer`          -- s 27(1)(d)
+    `amenities and services supplied by the employer`       -- s 27(1)(e)
+    `recovery of an advance, loan, unearned employment benefit or overpayment` -- s 27(1)(f)
+    `contributions under the Central Provident Fund Act 1953` -- s 27(1)(h)
+    `any other deduction with the employee's written consent` -- s 27(1)(i)
+    `payments to a registered cooperative society`          -- s 27(1)(j)
+    `a prescribed deduction`                                -- s 27(1)(k)
+    `required by a court order or a tax or premium recovery declaration` -- s 26(1)(a)-(e)
+    `not authorised by the Act at all`
+
+GIVEN `the kind` IS A DeductionKind
+GIVETH A BOOLEAN
+DECIDE `the deduction is authorised` IF
+    CONSIDER `the kind`
+    WHEN `not authorised by the Act at all` THEN FALSE
+    OTHERWISE TRUE
+
+-- s 27(1)(d), (e), (i) and (j) each require the employee's WRITTEN CONSENT,
+-- and s 27(1A) lets the employee withdraw it "at any time before the deduction
+-- is made". s 27(1B): "An employee CANNOT BE PENALISED for withdrawing" it.
+GIVEN `the kind` IS A DeductionKind
+GIVETH A BOOLEAN
+DECIDE `the deduction requires the employee's written consent` IF
+    CONSIDER `the kind`
+    WHEN `house accommodation supplied by the employer` THEN TRUE
+    WHEN `amenities and services supplied by the employer` THEN TRUE
+    WHEN `any other deduction with the employee's written consent` THEN TRUE
+    WHEN `payments to a registered cooperative society` THEN TRUE
+    OTHERWISE FALSE
+
+DECLARE Consent HAS
+    `written consent was given`                 IS A BOOLEAN
+    `written notice of withdrawal was given before the deduction was made` IS A BOOLEAN
+
+GIVEN `the consent` IS A Consent
+GIVETH A BOOLEAN
+DECIDE `the consent stands at the time of the deduction` IF
+        `the consent`'s `written consent was given`
+    AND NOT `the consent`'s `written notice of withdrawal was given before the deduction was made`
+
+GIVEN `the kind` IS A DeductionKind, `the consent` IS A Consent
+GIVETH A BOOLEAN
+DECIDE `the deduction may lawfully be made` IF
+        `the deduction is authorised` `the kind`
+    AND `consent, where it is needed, stands` `the kind` `the consent`
+
+GIVEN `the kind` IS A DeductionKind, `the consent` IS A Consent
+GIVETH A BOOLEAN
+DECIDE `consent, where it is needed, stands` IF
+        NOT `the deduction requires the employee's written consent` `the kind`
+    OR  `the consent stands at the time of the deduction` `the consent`
+
+§§ `28 to 31 -- how much may be deducted, head by head`
+
+-- s 28(2): the deduction for absence "must not bear a larger proportion to the
+-- salary payable at the gross rate of pay ... than the proportion the period
+-- for which the employee was absent bears to the total period ... during which
+-- the employee was required to work".
+GIVEN `the salary for the period at the gross rate` IS A NUMBER
+    , `the period for which the employee was absent` IS A NUMBER
+    , `the total period the employee was required to work` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the maximum deduction for absence` IS
+    `the salary for the period at the gross rate`
+        TIMES (`the period for which the employee was absent`
+                   DIVIDED BY `the total period the employee was required to work`)
+
+-- s 29(1): a deduction for damage or loss "must not exceed the amount of the
+-- damages or loss caused ... and, EXCEPT WITH THE COMMISSIONER'S PERMISSION,
+-- must not in any case exceed one-quarter ... of one month's wages and MUST NOT
+-- BE MADE UNTIL THE EMPLOYEE HAS BEEN GIVEN AN OPPORTUNITY OF SHOWING CAUSE
+-- against the deduction."
+--
+-- Three separate requirements: a ceiling at the actual loss, a ceiling at a
+-- quarter of a month's wages which the Commissioner may lift, and a procedural
+-- precondition which the Commissioner may not.
+DECLARE DamagesDeduction HAS
+    `the amount of the damages or loss caused by the employee's neglect or default` IS A NUMBER
+    `one month's wages`                         IS A NUMBER
+    `the amount the employer proposes to deduct` IS A NUMBER
+    `the Commissioner has permitted a larger deduction` IS A BOOLEAN
+    `the employee has been given an opportunity of showing cause` IS A BOOLEAN
+
+GIVEN `the deduction` IS A DamagesDeduction, `the proportions` IS A Proportions
+GIVETH A NUMBER
+DECIDE `the quarter-of-a-month ceiling` IS
+    `the deduction`'s `one month's wages`
+        TIMES `the proportions`'s `the damages deduction proportion of one month's wages`
+
+GIVEN `the deduction` IS A DamagesDeduction, `the proportions` IS A Proportions
+GIVETH A BOOLEAN
+DECIDE `the damages deduction is within the limits` IF
+        `the deduction`'s `the amount the employer proposes to deduct`
+            AT MOST `the deduction`'s `the amount of the damages or loss caused by the employee's neglect or default`
+    AND `the proportionate ceiling is satisfied or lifted` `the deduction` `the proportions`
+
+GIVEN `the deduction` IS A DamagesDeduction, `the proportions` IS A Proportions
+GIVETH A BOOLEAN
+DECIDE `the proportionate ceiling is satisfied or lifted` IF
+        `the deduction`'s `the Commissioner has permitted a larger deduction`
+    OR  `the deduction`'s `the amount the employer proposes to deduct`
+            AT MOST `the quarter-of-a-month ceiling` `the deduction` `the proportions`
+
+-- The procedural precondition is separate and is not lifted by the
+-- Commissioner's permission: "must not be made until the employee has been
+-- given an opportunity of showing cause".
+GIVEN `the deduction` IS A DamagesDeduction, `the proportions` IS A Proportions
+GIVETH A BOOLEAN
+DECIDE `the damages deduction may be made` IF
+        `the damages deduction is within the limits` `the deduction` `the proportions`
+    AND `the deduction`'s `the employee has been given an opportunity of showing cause`
+
+-- s 30(2): a deduction for accommodation, amenity or service "must not exceed
+-- an amount equivalent to the VALUE of the house accommodation, amenity or
+-- service supplied", and the TOTAL of such deductions in any one salary period
+-- "must not in any case exceed one-quarter ... of the salary payable to the
+-- employee in respect of that period."
+GIVEN `the total of such deductions in the period` IS A NUMBER
+    , `the value of what was supplied` IS A NUMBER
+    , `the salary payable for the period` IS A NUMBER
+    , `the proportions` IS A Proportions
+GIVETH A BOOLEAN
+DECIDE `the accommodation deductions are within section 30` IF
+        `the total of such deductions in the period` AT MOST `the value of what was supplied`
+    AND `the total of such deductions in the period`
+            AT MOST (`the salary payable for the period`
+                         TIMES `the proportions`'s `the accommodation deduction proportion of the salary for the period`)
+
+-- s 31(2): an ADVANCE may be recovered "in instalments by deductions from
+-- salary spread over NOT MORE THAN 12 MONTHS". s 31(3) and (5): an instalment,
+-- whether for an advance or a loan, must not exceed a quarter of the salary due
+-- for the salary period.
+--
+-- Note the asymmetry: the 12-month ceiling applies to ADVANCES only. s 31(4)
+-- says loans "may be recovered in instalments by deductions from salary" with
+-- no period limit at all.
+GIVEN `the months over which the advance is spread` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the advance is spread within section 31(2)` IF
+    `the months over which the advance is spread` AT MOST 12
+
+GIVEN `the instalment` IS A NUMBER
+    , `the salary due for the salary period` IS A NUMBER
+    , `the proportions` IS A Proportions
+GIVETH A BOOLEAN
+DECIDE `the instalment is within the limit` IF
+    `the instalment` AT MOST (`the salary due for the salary period`
+                                  TIMES `the proportions`'s `the instalment proportion of the salary for the period`)
+
+§§ `32 -- the overall cap, and what escapes it`
+
+-- s 32(1): "The total amount of ALL deductions made from an employee's salary
+-- by an employer in any one salary period, OTHER THAN deductions under
+-- section 27(1)(a), (f) or (j), must not exceed 50% ... of the salary payable to
+-- the employee in respect of that period."
+--
+-- Three heads escape the cap: absence (a), recovery of advances, loans,
+-- unearned benefits and overpayments (f), and payments to a cooperative
+-- society (j). So an employee repaying a loan can be deducted more than half
+-- their salary and s 32 has nothing to say about it; what limits that is
+-- s 31(5)'s quarter per instalment.
+--
+-- s 32(2): the cap "does not apply to deductions made from the LAST salary due
+-- to an employee on termination ... or on completion of his or her contract".
+GIVEN `the kind` IS A DeductionKind
+GIVETH A BOOLEAN
+DECIDE `the deduction counts towards the section 32 cap` IF
+    CONSIDER `the kind`
+    WHEN `absence from work` THEN FALSE
+    WHEN `recovery of an advance, loan, unearned employment benefit or overpayment` THEN FALSE
+    WHEN `payments to a registered cooperative society` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the total of countable deductions in the period` IS A NUMBER
+    , `the salary payable for the period` IS A NUMBER
+    , `this is the last salary on termination or completion` IS A BOOLEAN
+    , `the proportions` IS A Proportions
+GIVETH A BOOLEAN
+DECIDE `the section 32 cap is satisfied` IF
+        `this is the last salary on termination or completion`
+    OR  `the total of countable deductions in the period`
+            AT MOST (`the salary payable for the period`
+                         TIMES `the proportions`'s `the overall deduction percentage`)
+
+§§ `33 -- priority of salary to other debts`
+
+-- s 33(1): the section applies to -- (a) WORKMEN earning not more than $4,500 a
+-- month excluding overtime, bonus, annual wage supplement, productivity
+-- incentive and allowances; and (b) every EMPLOYEE other than a workman or a
+-- person in a managerial or executive position earning not more than $2,600 a
+-- month on the same exclusions. Both figures are substitutable by the Minister.
+DECLARE Worker HAS
+    `is a workman`                              IS A BOOLEAN
+    `is employed in a managerial or an executive position` IS A BOOLEAN
+    `monthly salary excluding overtime, bonus, annual wage supplement, productivity incentive and allowances` IS A NUMBER
+
+DECLARE SalaryCaps HAS
+    `the workman cap`   IS A NUMBER
+    `the employee cap`  IS A NUMBER
+
+`the caps as the Act states them` MEANS SalaryCaps WITH
+    `the workman cap` IS 4500
+    `the employee cap` IS 2600
+
+GIVEN `the worker` IS A Worker, `the caps` IS A SalaryCaps
+GIVETH A BOOLEAN
+DECIDE `section 33 applies to the worker` IF
+        `section 33(1)(a) applies` `the worker` `the caps`
+    OR  `section 33(1)(b) applies` `the worker` `the caps`
+
+GIVEN `the worker` IS A Worker, `the caps` IS A SalaryCaps
+GIVETH A BOOLEAN
+DECIDE `section 33(1)(a) applies` IF
+        `the worker`'s `is a workman`
+    AND `the worker`'s `monthly salary excluding overtime, bonus, annual wage supplement, productivity incentive and allowances`
+            AT MOST `the caps`'s `the workman cap`
+
+GIVEN `the worker` IS A Worker, `the caps` IS A SalaryCaps
+GIVETH A BOOLEAN
+DECIDE `section 33(1)(b) applies` IF
+        NOT `the worker`'s `is a workman`
+    AND NOT `the worker`'s `is employed in a managerial or an executive position`
+    AND `the worker`'s `monthly salary excluding overtime, bonus, annual wage supplement, productivity incentive and allowances`
+            AT MOST `the caps`'s `the employee cap`

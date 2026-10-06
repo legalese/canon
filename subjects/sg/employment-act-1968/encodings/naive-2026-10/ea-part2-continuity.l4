@@ -1,0 +1,180 @@
+IMPORT prelude
+
+-- Employment Act 1968 (Singapore) -- PART 2, ss 15 to 18A.
+--
+-- The rest of Part 2, after the termination and dismissal rules already encoded
+-- in ea-part2.l4. These sections do two things: s 15 gives the employee one
+-- further route out, s 16 fixes what a breach costs, and ss 18 and 18A keep the
+-- CONTINUITY of a period of employment across changes of employer.
+--
+-- Continuity is why these matter and are not mere machinery: every band in the
+-- s 10(3) notice table, and the qualifying periods for retrenchment and
+-- retirement benefits in Part 4, are measured in length of service. ss 18 and
+-- 18A decide whether that clock is reset when the employer changes.
+--
+-- NAIVE ENCODING. Straight from the text with the writing-l4-rules skill. No
+-- pipeline, no independent test pass, no human gate.
+
+§ `Employment Act 1968 -- Part 2, sections 15 to 18A`
+
+§§ `15 -- Termination by employee threatened by danger`
+
+-- s 15: "An employee may terminate his or her contract of service with his or
+-- her employer WITHOUT NOTICE where the employee or the employee's dependant is
+-- IMMEDIATELY THREATENED by danger to the person BY VIOLENCE OR DISEASE that
+-- the employee DID NOT BY HIS OR HER CONTRACT OF SERVICE UNDERTAKE TO RUN."
+--
+-- Four conditions, all of them cumulative: the threat must be immediate, it
+-- must be to the person, it must be violence or disease, and it must be a risk
+-- outside what the contract undertook. The last limb is what keeps a nurse or a
+-- security guard from relying on it for the ordinary risks of the job.
+DECLARE DangerFacts HAS
+    `the threat is to the employee or the employee's dependant` IS A BOOLEAN
+    `the danger is immediate`                           IS A BOOLEAN
+    `the danger is to the person`                       IS A BOOLEAN
+    `the danger is by violence or disease`              IS A BOOLEAN
+    `the employee undertook by the contract of service to run that risk` IS A BOOLEAN
+
+GIVEN `the facts` IS A DangerFacts
+GIVETH A BOOLEAN
+DECIDE `the employee may terminate without notice under section 15` IF
+        `the facts`'s `the threat is to the employee or the employee's dependant`
+    AND `the facts`'s `the danger is immediate`
+    AND `the facts`'s `the danger is to the person`
+    AND `the facts`'s `the danger is by violence or disease`
+    AND NOT `the facts`'s `the employee undertook by the contract of service to run that risk`
+
+§§ `16 -- Liability on breach of contract`
+
+-- s 16: "SUBJECT TO ANYTHING IN THE CONTRACT OF SERVICE TO THE CONTRARY, the
+-- party who breaks the contract of service is liable to pay to the other party
+-- a sum EQUAL TO THE AMOUNT the firstmentioned party would have been liable to
+-- pay UNDER SECTION 11 had the firstmentioned party terminated the contract of
+-- service without notice or with insufficient notice."
+--
+-- So the measure of damages for breach is the payment in lieu of notice: the
+-- salary that would have accrued over the notice period. Note the opening
+-- words -- unlike s 8, which strikes down a contract term less favourable to the
+-- employee, s 16 YIELDS to the contract in either direction.
+GIVEN `the gross daily rate of pay` IS A NUMBER
+    , `the notice period that governs, in days` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the sum payable on breach under section 16` IS
+    `the gross daily rate of pay` TIMES `the notice period that governs, in days`
+
+-- "Subject to anything in the contract of service to the contrary": where the
+-- contract provides its own measure, that governs instead.
+GIVEN `the contract provides a different measure` IS A BOOLEAN
+    , `the contractual measure` IS A NUMBER
+    , `the gross daily rate of pay` IS A NUMBER
+    , `the notice period that governs, in days` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the amount recoverable for breach` IS
+    IF   `the contract provides a different measure`
+    THEN `the contractual measure`
+    ELSE `the sum payable on breach under section 16`
+             `the gross daily rate of pay` `the notice period that governs, in days`
+
+§§ `17 -- Trade union rights cannot be restricted by contract`
+
+-- s 17: "Subject to any other written law for the time being in force, NOTHING
+-- IN ANY CONTRACT OF SERVICE RESTRICTS, IN ANY WAY, the right of any employee
+-- who is a party to such contract -- (a) to join a registered trade union;
+-- (b) to participate in the activities of a registered trade union, whether as
+-- an officer of the trade union or otherwise; or (c) to associate with any
+-- other persons for the purpose of organising a trade union in accordance with
+-- the provisions of the Trade Unions Act 1940."
+--
+-- Expressed as a statement about contracts rather than as a prohibition on
+-- employers, so the rule is about whether a purported restriction has effect.
+DECLARE PurportedRestriction HAS
+    `on joining a registered trade union`                   IS A BOOLEAN   -- (a)
+    `on participating in the activities of a registered trade union` IS A BOOLEAN   -- (b)
+    `on associating with others to organise a trade union under the Trade Unions Act 1940` IS A BOOLEAN   -- (c)
+
+GIVEN `the restriction` IS A PurportedRestriction
+GIVETH A BOOLEAN
+DECIDE `the contractual restriction has no effect under section 17` IF
+        `the restriction`'s `on joining a registered trade union`
+    ..  `the restriction`'s `on participating in the activities of a registered trade union`
+    OR  `the restriction`'s `on associating with others to organise a trade union under the Trade Unions Act 1940`
+
+§§ `18 and 18A -- continuity of the period of employment`
+
+-- s 18 preserves continuity in three cases, s 18A in a fourth. In every one the
+-- formula is the same: the earlier period "counts as a period of employment
+-- with" the new employer, and the change "does not break the continuity of the
+-- period of employment".
+DECLARE EmployerChange HAS
+    -- s 18(1): a statutory substitution of one body corporate for another.
+    `a body corporate was substituted as employer by or under written law` IS A BOOLEAN
+    -- s 18(2): the employer died and the employee was taken into the employment
+    -- of the personal representatives or trustees.
+    `the employer died and the employee was taken into the employment of the personal representatives or trustees` IS A BOOLEAN
+    -- s 18(3): a change in the partners, personal representatives or trustees.
+    `there was a change in the partners, personal representatives or trustees who employ the person` IS A BOOLEAN
+    -- s 18A(1): an undertaking or part of one was transferred.
+    `an undertaking or part of one was transferred from one person to another` IS A BOOLEAN
+    `the employee was employed by the transferor in the undertaking or part transferred` IS A BOOLEAN
+
+GIVEN `the change` IS AN EmployerChange
+GIVETH A BOOLEAN
+DECIDE `section 18A applies to the change` IF
+        `the change`'s `an undertaking or part of one was transferred from one person to another`
+    AND `the change`'s `the employee was employed by the transferor in the undertaking or part transferred`
+
+GIVEN `the change` IS AN EmployerChange
+GIVETH A BOOLEAN
+DECIDE `the continuity of the period of employment is preserved` IF
+        `the change`'s `a body corporate was substituted as employer by or under written law`
+    ..  `the change`'s `the employer died and the employee was taken into the employment of the personal representatives or trustees`
+    ..  `the change`'s `there was a change in the partners, personal representatives or trustees who employ the person`
+    OR  `section 18A applies to the change` `the change`
+
+-- s 18A(1)(a): the transfer "DOES NOT OPERATE TO TERMINATE the contract of
+-- service ... but such contract of service has effect after the transfer AS IF
+-- ORIGINALLY MADE between the person so employed and the transferee".
+GIVEN `the change` IS AN EmployerChange
+GIVETH A BOOLEAN
+DECIDE `the transfer does not terminate the contract of service` IF
+    `section 18A applies to the change` `the change`
+
+-- s 18A(2): on completion, the transferor's rights, powers, duties and
+-- liabilities pass, and acts or omissions on either side before the transfer
+-- are deemed done by or in relation to the transferee. So the transferee
+-- inherits not only the contract but its history.
+GIVEN `the change` IS AN EmployerChange
+GIVETH A BOOLEAN
+DECIDE `acts and omissions before the transfer are deemed to be the transferee's` IF
+    `section 18A applies to the change` `the change`
+
+-- s 18A(3): "it is declared FOR THE AVOIDANCE OF DOUBT that the terms and
+-- conditions of service ... are THE SAME as those enjoyed by the employee
+-- immediately prior to the transfer."
+GIVEN `the change` IS AN EmployerChange
+GIVETH A BOOLEAN
+DECIDE `the terms and conditions of service are unchanged by the transfer` IF
+    `section 18A applies to the change` `the change`
+
+-- s 18A(5): before the transfer the TRANSFEROR must notify the affected
+-- employees and any trade union of three things, so that consultation can take
+-- place; s 18A(6) requires the TRANSFEREE to give the transferor the
+-- information needed to do it. The duty is on the transferor and the knowledge
+-- is with the transferee, which is why (6) exists.
+DECLARE TransferNotice HAS
+    `the fact, approximate date and reasons for the transfer were notified` IS A BOOLEAN   -- (5)(a)
+    `the implications and the measures the transferor envisages were notified` IS A BOOLEAN   -- (5)(b)
+    `the measures the transferee envisages were notified` IS A BOOLEAN   -- (5)(c)
+    `the transferee gave the transferor the information needed` IS A BOOLEAN   -- (6)
+
+GIVEN `the notice` IS A TransferNotice
+GIVETH A BOOLEAN
+DECIDE `the transferor has discharged the section 18A(5) duty` IF
+        `the notice`'s `the fact, approximate date and reasons for the transfer were notified`
+    AND `the notice`'s `the implications and the measures the transferor envisages were notified`
+    AND `the notice`'s `the measures the transferee envisages were notified`
+
+GIVEN `the notice` IS A TransferNotice
+GIVETH A BOOLEAN
+DECIDE `the transferee has discharged the section 18A(6) duty` IF
+    `the notice`'s `the transferee gave the transferor the information needed`

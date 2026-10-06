@@ -1,0 +1,338 @@
+IMPORT prelude
+
+-- Employment Act 1968 (Singapore) -- PART 4, REST DAYS, HOURS OF WORK AND
+-- OTHER CONDITIONS OF SERVICE, ss 36 to 46.
+--
+-- Source: ../../registers/source-bundle/EmA1968.txt
+--
+-- NAIVE ENCODING. Straight from the text with the writing-l4-rules skill. No
+-- pipeline, no independent test pass, no human gate.
+--
+-- This is the arithmetic Part: a rest day each week, a payment table for
+-- working on it, limits on hours, overtime at one and a half times, and two
+-- qualifying periods for benefits. It is the Part an employee can most readily
+-- check a payslip against.
+--
+-- NOT ENCODED: s 35 (which employees this Part applies to at all -- a threshold
+-- question that turns on prescribed salary limits and on the definition of
+-- "workman"), s 39 (task work), ss 41 and 41A (the meaning of "week" and the
+-- power to exempt), ss 47 to 53. s 35 is a real omission and is flagged in
+-- NOTES.md: everything below states the rule WITHOUT deciding whether the
+-- employee is within the Part.
+
+§ `Employment Act 1968 -- Part 4`
+
+§§ `36 -- Rest day`
+
+-- s 36(1): "Every employee must be allowed IN EACH WEEK a rest day WITHOUT PAY
+-- of ONE WHOLE DAY which must be Sunday or such other day as the employer may
+-- determine from time to time."
+-- s 36(2): for shift workers, any continuous 30 hours may be substituted.
+-- s 36(4): where the employer determines the day, it must prepare a roster
+-- BEFORE the month begins.
+DECLARE RestDayArrangement HAS
+    `a rest day of one whole day was allowed in the week` IS A BOOLEAN
+    `the employee is engaged in shift work`      IS A BOOLEAN
+    `a continuous period of 30 hours was substituted` IS A BOOLEAN
+    `the substituted period commenced before 6 p.m. on a Sunday` IS A BOOLEAN
+    `the employer determines the rest day`       IS A BOOLEAN
+    `a roster was prepared before the commencement of the month` IS A BOOLEAN
+
+GIVEN `the arrangement` IS A RestDayArrangement
+GIVETH A BOOLEAN
+DECIDE `a rest day was allowed in the week` IF
+        `the arrangement`'s `a rest day of one whole day was allowed in the week`
+    OR  `a valid 30 hour substitution was made` `the arrangement`
+
+-- s 36(2) permits the substitution only for an employee engaged in shift work.
+GIVEN `the arrangement` IS A RestDayArrangement
+GIVETH A BOOLEAN
+DECIDE `a valid 30 hour substitution was made` IF
+        `the arrangement`'s `the employee is engaged in shift work`
+    AND `the arrangement`'s `a continuous period of 30 hours was substituted`
+
+-- s 36(3): where the substituted 30 hours begins before 6 p.m. on a Sunday, the
+-- rest day is deemed granted within the week EVEN THOUGH the period ends after
+-- the week. A deeming rule that saves an arrangement which would otherwise
+-- straddle two weeks.
+GIVEN `the arrangement` IS A RestDayArrangement
+GIVETH A BOOLEAN
+DECIDE `the rest day is deemed granted within the week` IF
+        `a valid 30 hour substitution was made` `the arrangement`
+    AND `the arrangement`'s `the substituted period commenced before 6 p.m. on a Sunday`
+
+GIVEN `the arrangement` IS A RestDayArrangement
+GIVETH A BOOLEAN
+DECIDE `the employer has contravened the section 36(4) roster duty` IF
+        `the arrangement`'s `the employer determines the rest day`
+    AND NOT `the arrangement`'s `a roster was prepared before the commencement of the month`
+
+§§ `37 -- Work on a rest day, and what it must be paid`
+
+-- s 37(3A)(a): "'normal hours of work' means the number of hours of work ...
+-- agreed between an employer and an employee to be the usual hours of work per
+-- day; or IN THE ABSENCE OF ANY SUCH AGREEMENT, IS DEEMED TO BE 8 HOURS A DAY."
+DECLARE RestDayWork HAS
+    `hours agreed as the usual hours of work per day were agreed` IS A BOOLEAN
+    `the agreed usual hours of work per day`     IS A NUMBER
+    `the hours actually worked on the rest day`  IS A NUMBER
+    `the basic rate of pay for one day's work`   IS A NUMBER
+    `the hourly basic rate of pay`               IS A NUMBER
+    -- s 37(2) against s 37(3): the whole table turns on whose request it was.
+    `the work was at the employee's own request` IS A BOOLEAN
+
+GIVEN `the work` IS A RestDayWork
+GIVETH A NUMBER
+DECIDE `normal hours of work` IS
+    IF   `the work`'s `hours agreed as the usual hours of work per day were agreed`
+    THEN `the work`'s `the agreed usual hours of work per day`
+    ELSE 8
+
+GIVEN `the work` IS A RestDayWork
+GIVETH A NUMBER
+DECIDE `the hours in excess of normal hours` IS
+    IF   `the work`'s `the hours actually worked on the rest day`
+             GREATER THAN `normal hours of work` `the work`
+    THEN `the work`'s `the hours actually worked on the rest day`
+             MINUS `normal hours of work` `the work`
+    ELSE 0
+
+-- s 37(2)(c)(ii) and s 37(3)(c)(ii): the excess is paid at "not less than ONE
+-- AND A HALF TIMES the employee's hourly basic rate of pay for EACH HOUR OR
+-- PART THEREOF". The same multiplier as s 38(4) overtime.
+`the overtime multiplier` MEANS 1.5
+
+GIVEN `the work` IS A RestDayWork
+GIVETH A NUMBER
+DECIDE `the excess hours component` IS
+    `the hours in excess of normal hours` `the work`
+        TIMES `the work`'s `the hourly basic rate of pay`
+        TIMES `the overtime multiplier`
+
+-- s 37(2): work at the EMPLOYEE'S OWN request --
+--   (a) not more than half the normal hours: half a day's pay;
+--   (b) more than half but not more than normal hours: one day's pay;
+--   (c) more than normal hours: one day's pay PLUS the excess at 1.5x.
+GIVEN `the work` IS A RestDayWork
+GIVETH A NUMBER
+DECIDE `the day component where the work was at the employee's own request` IS
+    BRANCH
+        IF `the work`'s `the hours actually worked on the rest day`
+               GREATER THAN `normal hours of work` `the work`
+            THEN `the work`'s `the basic rate of pay for one day's work`
+        IF `the work`'s `the hours actually worked on the rest day`
+               GREATER THAN (0.5 TIMES (`normal hours of work` `the work`))
+            THEN `the work`'s `the basic rate of pay for one day's work`
+        OTHERWISE 0.5 TIMES `the work`'s `the basic rate of pay for one day's work`
+
+-- s 37(3): work at the EMPLOYER'S request -- each band is doubled.
+--   (a) not more than half the normal hours: ONE day's pay;
+--   (b) more than half but not more than normal hours: TWO days' pay;
+--   (c) more than normal hours: TWO days' pay PLUS the excess at 1.5x.
+GIVEN `the work` IS A RestDayWork
+GIVETH A NUMBER
+DECIDE `the day component where the work was at the employer's request` IS
+    BRANCH
+        IF `the work`'s `the hours actually worked on the rest day`
+               GREATER THAN `normal hours of work` `the work`
+            THEN 2 TIMES `the work`'s `the basic rate of pay for one day's work`
+        IF `the work`'s `the hours actually worked on the rest day`
+               GREATER THAN (0.5 TIMES (`normal hours of work` `the work`))
+            THEN 2 TIMES `the work`'s `the basic rate of pay for one day's work`
+        OTHERWISE `the work`'s `the basic rate of pay for one day's work`
+
+GIVEN `the work` IS A RestDayWork
+GIVETH A NUMBER
+DECIDE `the payment for working on the rest day` IS
+    IF   `the work`'s `the work was at the employee's own request`
+    THEN `the day component where the work was at the employee's own request` `the work`
+             PLUS `the excess hours component` `the work`
+    ELSE `the day component where the work was at the employer's request` `the work`
+             PLUS `the excess hours component` `the work`
+
+-- s 37(1): an employee "MUST NOT BE COMPELLED to work on a rest day unless he
+-- or she is engaged in work which by reason of its nature requires to be
+-- carried on continuously by a succession of shifts" -- subject to the
+-- emergency cases in s 38(2).
+GIVEN `the employee was compelled to work on the rest day` IS A BOOLEAN
+    , `the work by its nature requires to be carried on continuously by a succession of shifts` IS A BOOLEAN
+    , `a section 38(2) circumstance applies` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `section 37(1) was contravened` IF
+        `the employee was compelled to work on the rest day`
+    AND NOT `the work by its nature requires to be carried on continuously by a succession of shifts`
+    AND NOT `a section 38(2) circumstance applies`
+
+§§ `38 -- Hours of work and overtime`
+
+-- s 38(1): an employee must not be required to work --
+--   (a) more than 6 CONSECUTIVE hours without a period of leisure;
+--   (b) more than 8 hours in one day or more than 44 hours in one week,
+-- subject to four provisos that raise the daily or weekly limit where the
+-- contract is arranged a particular way:
+--   (d) shorter days elsewhere in the week -> up to 9 a day, 44 a week;
+--   (e) a week of not more than 5 working days -> up to 9 a day, 44 a week;
+--   (f) alternate weeks under 44 -> up to 48 in a week, 88 in any 2 weeks.
+DECLARE WorkPattern HAS
+    -- which proviso, if any, the contract engages
+    `by agreement, hours on one or more days of the week are less than 8` IS A BOOLEAN   -- (d)
+    `by agreement, the employee works not more than 5 days a week` IS A BOOLEAN          -- (e)
+    `by agreement, hours in every alternate week are less than 44` IS A BOOLEAN          -- (f)
+
+-- The daily ceiling: 8, or 9 where proviso (d) or (e) is engaged.
+GIVEN `the pattern` IS A WorkPattern
+GIVETH A NUMBER
+DECIDE `the daily hours ceiling` IS
+    IF   `proviso (d) or (e) is engaged` `the pattern`
+    THEN 9
+    ELSE 8
+
+GIVEN `the pattern` IS A WorkPattern
+GIVETH A BOOLEAN
+DECIDE `proviso (d) or (e) is engaged` IF
+        `the pattern`'s `by agreement, hours on one or more days of the week are less than 8`
+    OR  `the pattern`'s `by agreement, the employee works not more than 5 days a week`
+
+-- The weekly ceiling: 44, or 48 where proviso (f) is engaged.
+GIVEN `the pattern` IS A WorkPattern
+GIVETH A NUMBER
+DECIDE `the weekly hours ceiling` IS
+    IF   `the pattern`'s `by agreement, hours in every alternate week are less than 44`
+    THEN 48
+    ELSE 44
+
+-- And where (f) is engaged there is a further ceiling across two weeks.
+`the two week ceiling where proviso (f) is engaged` MEANS 88
+
+DECLARE HoursWorked HAS
+    `the pattern`                           IS A WorkPattern
+    `hours worked in the day`               IS A NUMBER
+    `hours worked in the week`              IS A NUMBER
+    `hours worked in the continuous period of 2 weeks` IS A NUMBER
+    `consecutive hours worked without a period of leisure` IS A NUMBER
+    `the hourly basic rate of pay`          IS A NUMBER
+    `overtime hours worked in the month`    IS A NUMBER
+    `a section 38(2) circumstance applies`  IS A BOOLEAN
+
+-- s 38(1)(a): the six-consecutive-hour rule, which has no proviso.
+GIVEN `the hours` IS A HoursWorked
+GIVETH A BOOLEAN
+DECIDE `section 38(1)(a) was contravened` IF
+    `the hours`'s `consecutive hours worked without a period of leisure` GREATER THAN 6
+
+-- s 38(4): the employee "must be paid for the EXTRA WORK at the rate of NOT
+-- LESS THAN ONE AND A HALF TIMES the employee's hourly basic rate of pay
+-- IRRESPECTIVE OF THE BASIS on which the employee's rate of pay is fixed."
+GIVEN `the hours` IS A HoursWorked
+GIVETH A NUMBER
+DECIDE `the daily hours attracting overtime` IS
+    IF   `the hours`'s `hours worked in the day`
+             GREATER THAN `the daily hours ceiling` (`the hours`'s `the pattern`)
+    THEN `the hours`'s `hours worked in the day`
+             MINUS `the daily hours ceiling` (`the hours`'s `the pattern`)
+    ELSE 0
+
+GIVEN `the hours` IS A HoursWorked
+GIVETH A NUMBER
+DECIDE `the weekly hours attracting overtime` IS
+    IF   `the hours`'s `hours worked in the week`
+             GREATER THAN `the weekly hours ceiling` (`the hours`'s `the pattern`)
+    THEN `the hours`'s `hours worked in the week`
+             MINUS `the weekly hours ceiling` (`the hours`'s `the pattern`)
+    ELSE 0
+
+GIVEN `the extra hours` IS A NUMBER, `the hourly basic rate of pay` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the overtime payment` IS
+    `the extra hours` TIMES `the hourly basic rate of pay` TIMES `the overtime multiplier`
+
+-- s 38(5): "An employee must not be permitted to work overtime for MORE THAN
+-- 72 HOURS A MONTH."
+`the monthly overtime ceiling` MEANS 72
+
+GIVEN `the hours` IS A HoursWorked
+GIVETH A BOOLEAN
+DECIDE `section 38(5) was contravened` IF
+    `the hours`'s `overtime hours worked in the month` GREATER THAN `the monthly overtime ceiling`
+
+-- s 38(8): "EXCEPT in the circumstances described in subsection (2)(a), (b),
+-- (c), (d) and (e), an employee must not UNDER ANY CIRCUMSTANCES work for more
+-- than 12 HOURS IN ANY ONE DAY."
+--
+-- Note which paragraphs are excepted: (a) to (e), not (f). So the economic and
+-- essential-services ground in s 38(2)(f) raises the limits in s 38(1) but does
+-- NOT lift the 12-hour absolute ceiling.
+`the absolute daily ceiling` MEANS 12
+
+GIVEN `the hours` IS A HoursWorked
+    , `a circumstance in section 38(2)(a) to (e) applies` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `section 38(8) was contravened` IF
+        `the hours`'s `hours worked in the day` GREATER THAN `the absolute daily ceiling`
+    AND NOT `a circumstance in section 38(2)(a) to (e) applies`
+
+§§ `40 -- Shift workers`
+
+-- s 40(1): "Despite section 38(1), an employee who is engaged ... in regular
+-- shift work or who has otherwise CONSENTED IN WRITING ... may be required to
+-- work more than 6 consecutive hours, more than 8 hours in any one day or more
+-- than 44 hours in any one week BUT THE AVERAGE number of hours worked over any
+-- continuous period of 3 WEEKS must not exceed 44 HOURS PER WEEK."
+-- s 40(2): no consent is valid unless ss 38 and 40 have been explained to the
+-- employee.
+DECLARE ShiftArrangement HAS
+    `engaged under the contract of service in regular shift work` IS A BOOLEAN
+    `consented in writing to work the section 40 hours` IS A BOOLEAN
+    `sections 38 and 40 were explained to the employee before consent` IS A BOOLEAN
+    `total hours worked over the continuous period of 3 weeks` IS A NUMBER
+
+GIVEN `the arrangement` IS A ShiftArrangement
+GIVETH A BOOLEAN
+DECIDE `the consent is valid under section 40(2)` IF
+        `the arrangement`'s `consented in writing to work the section 40 hours`
+    AND `the arrangement`'s `sections 38 and 40 were explained to the employee before consent`
+
+GIVEN `the arrangement` IS A ShiftArrangement
+GIVETH A BOOLEAN
+DECIDE `section 40 applies to the employee` IF
+        `the arrangement`'s `engaged under the contract of service in regular shift work`
+    OR  `the consent is valid under section 40(2)` `the arrangement`
+
+-- The averaging ceiling: 44 hours a week over 3 weeks is 132 hours.
+`the three week ceiling` MEANS 132
+
+GIVEN `the arrangement` IS A ShiftArrangement
+GIVETH A BOOLEAN
+DECIDE `the section 40(1) average was exceeded` IF
+        `section 40 applies to the employee` `the arrangement`
+    AND `the arrangement`'s `total hours worked over the continuous period of 3 weeks`
+            GREATER THAN `the three week ceiling`
+
+§§ `45 and 46 -- the two qualifying periods`
+
+-- s 45: "NO employee who has been in continuous service with an employer for
+-- LESS THAN 2 YEARS is entitled to any retrenchment benefit on his or her
+-- dismissal on the ground of redundancy or by reason of any reorganisation ..."
+-- s 46: "NO employee who has been in continuous service with an employer for
+-- LESS THAN 5 YEARS is entitled to any retirement benefit OTHER THAN the sums
+-- payable under the Central Provident Fund Act 1953 ..."
+--
+-- Both are expressed NEGATIVELY. Neither creates an entitlement: they bar one
+-- below the threshold and say nothing about what is owed above it. See the note
+-- in NOTES.md.
+DECLARE ServiceForBenefits HAS
+    `years of continuous service with the employer` IS A NUMBER
+    `dismissed on the ground of redundancy or by reason of a reorganisation` IS A BOOLEAN
+    `the service has ceased`                        IS A BOOLEAN
+
+GIVEN `the service` IS A ServiceForBenefits
+GIVETH A BOOLEAN
+DECIDE `section 45 bars any retrenchment benefit` IF
+        `the service`'s `dismissed on the ground of redundancy or by reason of a reorganisation`
+    AND `the service`'s `years of continuous service with the employer` LESS THAN 2
+
+GIVEN `the service` IS A ServiceForBenefits
+GIVETH A BOOLEAN
+DECIDE `section 46 bars any retirement benefit other than CPF sums` IF
+        `the service`'s `the service has ceased`
+    AND `the service`'s `years of continuous service with the employer` LESS THAN 5
