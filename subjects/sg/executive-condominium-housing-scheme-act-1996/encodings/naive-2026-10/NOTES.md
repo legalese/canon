@@ -12,9 +12,11 @@ pass, no human gate.
 
 ## What is encoded
 
-ss 5, 6, 7 and 9 — who may not buy, what the developer must do when someone
-disqualified has bought, the two windows in which the home may not be
-transferred, and the nine grounds for compulsory acquisition.
+**ss 3 to 13 — the whole Act** except s 1 (short title), s 2 (interpretation)
+and s 14 (the Minister's general power). `ec-act.l4` covers who may not buy,
+the developer's duties, the transfer prohibition and compulsory acquisition;
+`ec-death-and-transfer.l4` covers the regulation power, developers, death of
+the owner, the resale premium, service, immunity and transfer to a non-citizen.
 
 Two things the Act leaves elsewhere and this encoding therefore takes as facts:
 the **minimum occupation period**, which is prescribed rather than stated, and
@@ -71,9 +73,9 @@ while an appeal is pending (s 5(5)); it takes no view on the ouster.
 
 - The minimum occupation period and the s 3(2) regulations carry a large part of
   the operative content and were not retrieved.
-- s 8, transmission on death within 10 years of the permit, is not encoded and
-  interacts with s 7.
 - No case law was searched.
+
+*(Superseded in part — see the section added with ss 3, 4, 8 and 10 to 13 below.)*
 
 
 ---
