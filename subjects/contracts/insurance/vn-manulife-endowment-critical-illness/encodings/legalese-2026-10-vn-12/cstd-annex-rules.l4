@@ -1,0 +1,143 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `cstd-nouns`
+IMPORT `cstd-annex-tables`
+
+-- Manulife CSTD terms, Annexes 1 to 3: reading one diagnosis against the lists. The lists
+-- themselves (where each condition is listed, the thresholds and excluded causes each
+-- definition states, and the bars between conditions) are data in cstd-annex-tables.l4.
+-- Which benefit of Article 13 a listed condition answers, and how much, is Article 13's
+-- business (cstd-ch2-benefits.l4).
+--
+-- WHAT IS AND IS NOT COMPUTED HERE. Every number a definition states is a threshold the
+-- diagnosis is tested against. Everything else in a definition (which specialist must
+-- diagnose, which tests must confirm it, the clinical picture, a classification such as
+-- TNM T1a) is the qualitative part, which the specialist certifies, and which this encoding
+-- takes as one fact (`the rest of the definition certified as met`). A definition's
+-- exclusions are split the same way: an excluded CAUSE (alcohol, HIV, a self-inflicted
+-- injury, ...) is tested against `the causes` of the diagnosis; any other exclusion is part
+-- of the qualitative certificate.
+
+§ `Annexes 1 to 3 — reading a diagnosis against the lists`
+
+§§ `The value of a measured quantity`
+
+-- A threshold that a definition states, and that the diagnosis does not report a value for,
+-- cannot be decided: the answer turns on a fact that is not in the record.
+GIVEN a IS A TYPE
+GIVETH AN a
+`the diagnosis does not report a quantity whose threshold the definition states` MEANS
+    REFUSE "the diagnosis does not report a quantity whose threshold the definition states"
+
+GIVEN q  IS A `A measured quantity`
+      ms IS A LIST OF `A measurement`
+GIVETH A NUMBER
+`the value of` q `in` ms MEANS
+    CONSIDER filter (GIVEN m YIELD m's `the quantity` EQUALS q) ms
+    WHEN EMPTY                THEN `the diagnosis does not report a quantity whose threshold the definition states`
+    WHEN m FOLLOWED BY others THEN m's `the value`
+
+§§ `The activities of daily living (late-stage annex, a to f)`
+
+-- src:2410 | Chức Năng Sinh Hoạt Hàng Ngày:
+-- src:2411 | a)
+-- src:2412 | Tắm rửa: là khả năng tắm trong bồn hoặc dưới vòi hoa
+-- src:2413 | sen (bao gồm cả việc vào và ra khỏi bồn tắm hoặc nhà
+-- src:2414 | tắm) hay tắm/rửa bằng các phương tiện khác.
+-- src:2415 | b)
+-- src:2416 | Thay quần áo: là việc mặc và cởi các món quần áo, dây
+-- src:2417 | đeo, chân tay giả hay các phụ kiện lắp vào sau phẫu
+-- src:2418 | thuật.
+-- src:2419 | c)
+-- src:2420 | Chuyển chỗ: là việc di chuyển từ giường sang ghế ngồi
+-- src:2421 | hoặc xe lăn và ngược lại.
+-- src:2422 | d)
+-- src:2423 | Di chuyển: là khả năng di chuyển trong nhà, từ phòng
+-- src:2424 | này sang phòng khác trên mặt bằng.
+-- src:2425 | e)
+-- src:2426 | Vệ sinh: là khả năng sử dụng phòng vệ sinh, hoặc kiểm
+-- src:2427 | soát chức năng của ruột và bọng đái để duy trì vệ sinh
+-- src:2428 | cá nhân.
+-- src:2429 | f)
+-- src:2430 | Ăn uống: là việc tự ăn uống các thức ăn đã được chuẩn bị.
+-- "2 (hai) trong 6 (sáu)" and "3 (ba) trong 6 (sáu)" count the six activities; an activity
+-- named twice counts once.
+GIVEN acts IS A LIST OF `An activity of daily living`
+GIVETH A NUMBER
+`the number of activities of daily living in` acts MEANS
+    sum (map (GIVEN a YIELD IF elem a acts THEN 1 ELSE 0)
+             (LIST `washing`, `dressing`, `transferring`, `moving about`, `toileting`, `feeding`))
+
+-- What the diagnosis measures, with the count of the activities the insured cannot perform
+-- put first, so that it answers for that quantity.
+GIVEN d IS A `A diagnosis`
+GIVETH A LIST OF `A measurement`
+`the measurements reported by` d MEANS
+        (`A measurement` OF `number of activities of daily living the insured cannot perform`,
+                            `the number of activities of daily living in` (d's `the activities of daily living the insured cannot perform`))
+    FOLLOWED BY d's `the measurements`
+
+§§ `Meeting the stated thresholds`
+
+-- One criterion of the table, against the measurements reported, with the qualitative
+-- alternative certified or not. "và" is `all of`, "hoặc" is `any of`.
+GIVEN k   IS A `A criterion`
+      ms  IS A LIST OF `A measurement`
+      alt IS A BOOLEAN
+GIVETH A BOOLEAN
+`the criterion` k `is met by` ms `with the qualitative alternative` alt MEANS
+    CONSIDER k
+    WHEN `at least`  q t THEN `the value of` q `in` ms AT LEAST t
+    WHEN `at most`   q t THEN `the value of` q `in` ms AT MOST t
+    WHEN `more than` q t THEN `the value of` q `in` ms GREATER THAN t
+    WHEN `less than` q t THEN `the value of` q `in` ms LESS THAN t
+    WHEN `all of` ks     THEN all (GIVEN x YIELD `the criterion` x `is met by` ms `with the qualitative alternative` alt) ks
+    WHEN `any of` ks     THEN any (GIVEN x YIELD `the criterion` x `is met by` ms `with the qualitative alternative` alt) ks
+    WHEN `the stated qualitative alternative` THEN alt
+
+GIVEN c   IS A `A listed condition`
+      ms  IS A LIST OF `A measurement`
+      alt IS A BOOLEAN
+GIVETH A BOOLEAN
+`the thresholds of` c `are met by` ms `with the qualitative alternative` alt MEANS
+    `the criterion` (`the measured criteria of` c) `is met by` ms `with the qualitative alternative` alt
+
+§§ `Meeting the definition of a listed condition`
+
+-- A cause the definition itself excludes ("Loại trừ ... do ...") defeats the diagnosis.
+GIVEN d IS A `A diagnosis`
+GIVETH A BOOLEAN
+`a cause the definition excludes is present in` d MEANS
+    any (GIVEN x YIELD elem x (d's `the causes`))
+        (`the causes excluded by the definition of` (d's `the condition`))
+
+-- The definition of the condition the diagnosis names is met: the qualitative part is
+-- certified, no excluded cause is present, and every stated threshold is met. The
+-- certificate is tested first, so that a diagnosis the specialist does not certify is
+-- answered FALSE without asking for measurements it need not report.
+GIVEN d IS A `A diagnosis`
+GIVETH A BOOLEAN
+`the definition of the listed condition is met by` d MEANS
+        d's `the rest of the definition certified as met`
+    AND NOT (`a cause the definition excludes is present in` d)
+    AND `the thresholds of` (d's `the condition`)
+            `are met by` (`the measurements reported by` d)
+            `with the qualitative alternative` (d's `the qualitative alternative certified`)
+
+§§ `The bars one listed condition puts on another`
+
+-- src:1556-1559, 2090-2095, 2105-2108 (quoted in cstd-annex-tables.l4): a claim for one of
+-- the conditions named in the bar defeats this one, whenever made and whether or not paid.
+GIVEN c       IS A `A listed condition`
+      claimed IS A LIST OF `A listed condition`
+GIVETH A BOOLEAN
+`a claim for another condition bars` c `given the claims` claimed MEANS
+    any (GIVEN x YIELD elem x claimed) (`the conditions whose claim bars` c)
+
+-- src:1849-1851: an earlier PAYMENT for one of the named conditions defeats this one.
+GIVEN c    IS A `A listed condition`
+      paid IS A LIST OF `A listed condition`
+GIVETH A BOOLEAN
+`a payment for another condition bars` c `given the payments` paid MEANS
+    any (GIVEN x YIELD elem x paid) (`the conditions whose payment bars` c)
