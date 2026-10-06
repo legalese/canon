@@ -216,3 +216,201 @@ Read from the sibling directories on 2026-10-06, read-only; nothing imported.
 
 Nothing under `/Volumes/transcend/src/Axiom/`, no `rulespec-*`, no Axiom Foundation repository or encoding, no `ENCODING-GAPS.md`, no `.axiom/`, no `tax-benefit-source-map.json`, and no `specs/research/AXIOM-*` was read, searched or fetched.
 The one web search was restricted to gov.il, knesset.gov.il and taxes.gov.il and asked for the commencement of the 5784 amending Act.
+
+## Comparison with Axiom's RuleSpec (2026-10-06)
+
+Comparison author lad-il-02 (one Claude session, Opus 5.5), 2026-10-06, working alone, after this encoding and its independent test pass were deposited.
+Meng's semi-cleanroom ruling of 2026-10-06 held Axiom's encoding back until ours was deposited, and released it for this row only.
+Section 10 describes the encoding run and stays true of it: nothing below informed the modules, and no module was changed.
+Each divergence is a finding, not a fix.
+Source lines are those of the deposited Hebrew file (sha256 `b87f2cf4…94b81b6`, re-verified).
+
+### What was read
+
+Axiom Foundation `rulespec-il`, a local read-only clone at `/Volumes/transcend/src/Axiom/rulespec-il`, commit `95c6f32c87c75e318631cbd77c14b840bc536c15` (2026-10-03).
+`git diff HEAD` on the two §66 files was empty.
+
+| file | read | note |
+| --- | --- | --- |
+| `il/statutes/income-tax-ordinance/section-66.yaml` | whole, 738 lines | sha256 `823dc4426b84e51fb56c4eff876c9ebbac94c86b225d2dca05537ab571a75cb0`; imports `section-34#tax_credit_points_for_israeli_resident` and `section-36#tax_credit_points_for_travel`, which were not opened |
+| `il/statutes/income-tax-ordinance/section-66.test.yaml` | whole, 714 lines, 25 cases | sha256 `96a11abaaea4ee0ef829c3c33ba8c5f92eaa09cb0bc1a4713a9ea4aa62ee3bca` |
+| `.axiom/encoding-manifests/il/statutes/income-tax-ordinance/section-66.json` | whole | model `gpt-6-astra`, run `565292ca`, 2026-09-06; its applied sha256 for the YAML is `e77b52bc…`, not the file's, because commit `4bb1177` (2026-09-10) re-quoted proof excerpts afterwards; `git diff 66e45b6 4bb1177` on the YAML touches excerpt lines only |
+| `docs/ENCODING-GAPS.md` | lines 101-103 (ITO §66 bullet of `encoder-model-mix`), 314-339 (`section-66-proof-excerpts-quote-the-earlier-corpus-render`), 395-424 (`ito-section-66-what-is-and-is-not-executable`, `…-birth-and-maturity-year-come-from-section-40`, `…-c-4-a1-election-not-applied`), 20-26 (a sentence naming the build that made §66) | the 314-339 entry still describes the excerpts as the glued "21⁄2" spelling, which the YAML no longer has |
+| `known-validation-gaps.yaml`, `known-missing-money-atoms.yaml` | whole (10 and 3 lines) | no §66 entry: `validate_failures: {}`, `total_allowed: 0` |
+| `data/coverage/tax-benefit-source-map.json` | the one entry naming ITO §66 (`instruments[0].applied_without_a_module[2]`) | the composition quotes s 40's "שנת בגרות" to place a child on §66's ladders |
+| `NOTICE`, `LICENSE`, `LICENSE-CODE` | `NOTICE` whole; the other two, their headings | licence, below |
+| `git log` of the two §66 files | subjects and dates | — |
+
+**Read outside the list I was given**, recorded so the exposure is on file:
+the heading list of `docs/ENCODING-GAPS.md`, used to locate the §66 entries (titles only, including titles of entries on other sections and instruments);
+lines 104-106, the ITO §121ב bullet next to the §66 one (encoder process, no figures);
+and lines 695-706 (`no-executable-oracle`), opened for its sentence on §66's ladders, which in the same bullets states figures for ss 34, 36, 36A and 121 (rows IL-01 and IL-03).
+Nothing below uses those lines except the §66 sentence, cited where used.
+The §66 test cases themselves carry s 34 and s 36 expected outputs (2 and 0.25); they are named in the case table and not compared.
+Not read: any other section's module or cases, anything under `national-insurance-law-1995/` or `composed/`, the body of the general ENCODING-GAPS entry on `effective_from` (only its title, `effective-from-is-not-commencement`, was seen), any other Axiom repository, and `l4-ide/specs/research/AXIOM-*`.
+
+### Licence
+
+`NOTICE` at that commit: "Encodings, companion test cases, parameter values, and provenance metadata in this repository are licensed under the Creative Commons Attribution 4.0 International license (CC BY 4.0) — see LICENSE", and "Incidental tooling and scripts … are licensed under the Apache License 2.0 — see LICENSE-CODE".
+So both §66 YAML files are **CC BY 4.0**; `LICENSE-CODE` (Apache 2.0) does not apply to them.
+The keys, values and formula fragments quoted below are short identifying snippets, attributed: *Axiom Foundation RuleSpec corpus (CC BY 4.0), https://github.com/TheAxiomFoundation*.
+Nothing of theirs is copied into our modules, which are Apache-2.0 (`encoding.json`).
+
+### Axiom's module, in brief
+
+36 rules (26 parameters, 10 derived), 10 `deferred_outputs` each carrying a reason, 25 companion cases, every case in tax year 2024, every rule `effective_from: '0001-01-01'`.
+It executes: the two children's ladders, per child, from caller-supplied birth-year and maturity-year facts; the (a)(3) age test; the (d)(1) conditions; an (a)(1) judgment for one income of one person, including the pension proviso with a computed five-year window; the s 34 and s 36 points in a separate calculation, imported from those sections; and "no ss 38, 39".
+It defers, with reasons in the module: (a)(2); the (a)(3) amount; (b); the rest of (c)(1); the application of the ½ points in (c)(2) and (c)(4); (c)(3); the birth-year and maturity-year classification; (a1); and parent totals, (4A), (6) and the set-off against the tax on income from personal exertion.
+It omits without recording it: (c)(1A), line 2462 (not in `deferred_outputs`, not in the ENCODING-GAPS §66 entries).
+
+### Divergences
+
+| id | provision | ours | theirs | source lines | classification | proposed repair to ours |
+| --- | --- | --- | --- | --- | --- | --- |
+| AX-1 | the tax years s 66 answers | refuses before 2024 at three rules; seven couple-level rules answer 2023 (independent finding V-4) | every rule `effective_from: '0001-01-01'`; no case outside 2024; a 2023 period gets the current text | 2454 (amendment list ending תשפ״ג־6, תשפ״ד־3); the text states no commencement | **theirs wrong** for years before 2024, on the ITA circulars, an aid, which print other figures "עד שנת 2023" (`ito66-tests-ita.l4:30-32`; not re-fetched here); the Hebrew text alone does not decide; ours is internally inconsistent (V-4, already recorded) | the V-4 repair: wrap the seven rules in `in tax year … , the answer is`, or name one entry point and call the rest helpers |
+| AX-2 | (a)(1) proviso, the five-year window | Boolean input; the edge is the caller's | `qualifying_separate_calculation_years_before_pension_started >= 1 and … <= pension_separate_calculation_lookback_years` (5); case 22 (5) holds, case 23 (6) does not; 0 is the value for "no history" | 2456 "בחמש השנים האחרונות שלפני תחילת תשלום הקיצבה" | **scope difference**: Axiom computes an edge s 66 itself sets, which ours leaves to the caller; at the edge, a genuine ambiguity the text leaves open: it counts back from the start of payment and fixes no whole-year convention, and Axiom's whole-year count cannot express an entitlement earlier in the same tax year as the start | not wrong; recommended (as INDEPENDENT-FINDINGS already does): take the pension's start and the last entitlement as inputs and compute the window, or say in §1 that the caller decides it |
+| AX-3 | (d)(1)(b) | two inputs, both required | one input, `each_spouse_shared_income_directly_proportional_to_contribution`, named for the second limb only | 2481 "התואמת את תרומתו … ועומדת ביחס ישיר לתרומתו" | representational: same answer when the caller folds both limbs into the one input; probes show ours fails if either limb fails | none |
+| AX-4 | (a)(1), the unit decided and the claim | per spouse: may claim if any item within (a)(1) is above 0; made only if the spouse claims | per person and one income: "available"; no claim input; whether a calculation is made is the input `spouse_tax_is_calculated_separately` | 2456 "רשאי … לתבוע" | representational | none |
+| AX-5 | (a)(2) | encoded; a tie of non-zero incomes refuses (F3) | deferred; its reason: "The source supplies no tie-breaker for equal positive personal-exertion incomes" | 2457 | scope; agree on F3's premise | none |
+| AX-6 | (a)(3) | the amount, with F5, F6, F14, F15 | only `child_income_attribution_age_condition`: `child_age_attained_in_tax_year < 18`; the amount deferred | 2458 | scope; agree on F15 | none |
+| AX-7 | (b) | the routing and the proviso (F7); whether property qualifies is pre-sorted by the caller | deferred; `premarital_property_ownership_years: 1` declared, not applied | 2459 | scope; neither computes "שנה לפני נישואיו" or "בירושה בתקופת נישואיו" | none new; INDEPENDENT-FINDINGS' note stands |
+| AX-8 | (c)(1) | names the entitlement per provision; the counts are IL-01's | composes the s 34 and s 36 point counts, 0 when `spouse_tax_is_calculated_separately` is false; ss 35, 45A, 47, 47A, 121A, 10, 11 deferred | 2461 | scope (Axiom composes more) | none |
+| AX-9 | (c)(1A) | encoded, F8, F18 | absent, and not recorded as deferred | 2462 | scope, unrecorded on Axiom's side; F18 within it is a genuine ambiguity | none |
+| AX-10 | (c)(2) | ½ applied from the s 37 GIVEN; no ss 38, 39 | `favored_individual_separate_calculation_points: 1 / 2`, unapplied; ss 38, 39 `false` (agree) | 2463 | scope | none |
+| AX-11 | (c)(3) | the registered spouse only | deferred | 2464 | scope | none |
+| AX-12 | (c)(4), ½ under s 36A | 0.5 to the woman | `woman_separate_calculation_additional_points: 1 / 2`, unapplied | 2465 | scope | none |
+| AX-13 | (c)(4)(a), (5), the ladders | age = tax year − tax year of birth (A4, s 40(b)(3)) | the band is chosen from caller-supplied `child_is_in_birth_year`, `child_is_in_maturity_year`, `child_is_before_maturity_year`, `child_age_attained_in_tax_year` | 2466, 2474-2476; s 40(b)(3), 1644-1645 | representational; the figures agree at every age 0-19 for both ladders | none |
+| AX-14 | (c)(4)(a1) | applied: 1½ in the year of birth, 5½ the next | deferred; the output is named `woman_child_credit_points_before_birth_year_election` | 2467 | scope | none |
+| AX-15 | (c)(4A), (6) | encoded (F12) | deferred; the reason glosses them as "children of a deceased spouse", where the text says the widower's and the widow's own children ("ילדיו", "ילדיה") | 2472, 2478 | scope; the gloss is imprecise (documentation only) | none |
+| AX-16 | totals per spouse, and the set-off | summed; capped at the tax on income from personal exertion (F13) | deferred | 2465, 2473 | scope | none |
+| AX-17 | "האשה", "הגבר" | sex on each spouse; a same-sex couple refuses (F9) | no sex input; both ladders are computed for any person and the caller picks | 2465, 2473 | genuine ambiguity: the text names a woman and a man and does not say more; ours refuses, theirs leaves it to the caller | none |
+| AX-18 | labels of the (d) conditions | (d)(1)(a)-(c) | the module cites "§66(d)(1)" correctly, but ENCODING-GAPS line 398 calls them "the §66(א)(1)(א)–(ג) conditions on a shared income source" | 2479-2482 | **theirs wrong**, documentation only | none |
+| AX-19 | spent text | stubs for (c)(4)(b)-(d), (5A), (e) | nothing | 2468-2470, 2477, 2484 | scope, cosmetic | none |
+
+**By class:** theirs wrong 2 (AX-1 on the aid, AX-18 in documentation); ours wrong 0 new (AX-1 also carries the already-recorded V-4); genuine ambiguity 1 (AX-17, plus the edge inside AX-2 and F18 inside AX-9); scope 13; representational 3.
+
+### Our forks against Axiom
+
+| fork | Axiom | how |
+| --- | --- | --- |
+| F1 | silent | `spouses_income_sources_are_dependent` is one couple-named Boolean evaluated beside one income; like ours (DECIDED-ANSWERS D-8), it cannot tie an income to the common source |
+| F2 | silent | `income_is_pension` is the caller's |
+| F3 | agree on the premise, not executable | the (a)(2) deferral reason quoted at AX-5 |
+| F4 | silent | (a)(2) deferred |
+| F5 | silent | the (a)(3) amount is deferred; its reason speaks of "the registered spouse to that spouse's children", consistent with F5 |
+| F6 | silent | deferred |
+| F7 | silent | (b) deferred; its reason mentions "coordination with the same spouse's other separately calculated income" |
+| F8 | silent | (1A) absent |
+| F9 | silent | no sex input (AX-17) |
+| F10 | silent | the named rest of (c)(1) is deferred; unnamed provisions are not mentioned |
+| F11 | silent | (a1) deferred; the gap entry (lines 417-424) speaks of "the mother" |
+| F12 | silent | (4A), (6) deferred (AX-15) |
+| F13 | silent | deferred; the reason names "application against the recipient's personal-exertion income tax" and says neither cap nor ordering |
+| F14 | silent | deferred |
+| F15 | agree | `< 18` on the age attained in the tax year; case 9 (age 18) `not_holds` |
+| F16 | silent | `spouse_tax_is_calculated_separately` is a per-person input |
+| F17 | agree, by construction | the ladders take no maintenance or residence input; the parent-child relation is deferred |
+| F18 | silent | (1A) absent; Axiom's (a)(1) judgment is `not_holds` for a registered spouse (case 18), which is right for (a)(1) and says nothing about (1A) |
+
+Agree 3 (F3 on the premise, F15, F17 by construction); disagree 0; silent 15.
+
+### Numbers
+
+Axiom states every figure from `effective_from: '0001-01-01'`; ours applies them from tax year 2024 (at the three gated rules; see AX-1).
+
+| figure | line | ours | Axiom |
+| --- | --- | --- | --- |
+| 5 years, (a)(1) proviso | 2456 | none: a Boolean input | `pension_separate_calculation_lookback_years: 5`, applied as 1..5 |
+| 18, (a)(3) | 2458 | `tax year − tax year of birth` < 18 | `child_income_attribution_age_limit: 18`, applied to the caller's age |
+| 1 year, (b) | 2459 | none: pre-sorted input | `premarital_property_ownership_years: 1`, unapplied |
+| ½ under s 37, (c)(2) | 2463 | 0.5 | `1 / 2`, unapplied |
+| ½ under s 36A, (c)(4) | 2465 | 0.5 | `1 / 2`, unapplied |
+| the woman: 2½ (birth), 4½ (1-2), 3½ (3), 2½ (4-5), 2 (6 to the year before majority), ½ (majority) | 2466 | same | same, in `woman_child_credit_point_schedule` and again as named parameters |
+| one point moved, (a1) | 2467 | applied | `mother_birth_year_deferrable_points: 1`, unapplied |
+| the man: 2½, 4½, 3½, 2½, 1, none at majority | 2474-2476 | same | same, in `man_child_credit_point_schedule` and again as named parameters |
+| band edges 1, 2, 3, 4, 5, 6 | 2466, 2475-2476 | literals | named parameters (`toddler_credit_band_maximum_age: 2`, …) |
+| ss 38, 39 | 2463 | `there is no entitlement` | `false` |
+
+Axiom reports a hand comparison against the OECD TaxBEN description that agrees on "every rung of both §66(ג) child ladders" (ENCODING-GAPS lines 695-703); not verified here.
+
+**A silent hazard in Axiom's module.**
+Each child figure is stated twice: as a named parameter (`woman_credit_points_year_turning_three`, formula `3 + 1 / 2`) and as a literal in the indexed schedule (`woman_child_credit_point_schedule`, `2: 3.5`).
+The schedule does not reference the named parameters, and the entry at lines 314-339 says the composed pipeline consumes the named `*_credit_points_*` rules.
+An amendment entered in one place and not the other would change one consumer's answer with no error.
+Our ladders state each figure once.
+
+### Interface
+
+**Ours.** The caller supplies one `Spouses in a tax year`: the tax year; for each spouse, sex, items of income from personal exertion by s 1 kind with the two proviso facts, other income, the two kinds of (b) property income already classified, the two claims, widowhood and the s 37 entitlement; for each child, tax year of birth, parentage, the (a1) election and the four kinds of (a)(3) income; and a MAYBE common source with the six (d) facts.
+It gets back, rule by rule: (a)(1) may claim and made; the (a)(2) destination; the (a)(3) amount; the (b) destination; the assembled taxable income of each calculation; (c)'s entitlement per provision; (c)'s credit points per spouse; and the capped children's credit, given the value of a point and the tax as GIVENs.
+
+**Axiom.** The caller supplies flat facts for one person and one tax-year period: four facts classifying one child; the five (d) facts; whether the person is the non-registered spouse; whether one income is personal-exertion income of the kinds (a)(1) names; whether it is a pension; limb 1 as a Boolean; limb 2 as a whole number of years; whether the spouses' sources are dependent; whether the person's tax is calculated separately; and residence for ss 34 and 36.
+It gets back ten outputs: two band indices, the woman's and the man's points for that child before the election, the (a)(3) age condition, the (d) conditions, the (a)(1) judgment, the s 34 and s 36 points in a separate calculation, and the ss 38-39 judgment.
+
+**On the two conditions our tester found we take as inputs:** Axiom computes the (a)(1) five-year window itself, from a whole-year count (AX-2); it does not compute the (b) property conditions either, since (b) is deferred and its one-year parameter is unapplied (AX-7).
+
+### The independent-test findings, in Axiom
+
+**V-4, tax year 2023 answered instead of refused.**
+Axiom has no year gate: every rule is `effective_from: '0001-01-01'`, so a 2023 period, or a 1990 one, is answered by the current text in all ten outputs.
+What our tester classified as our error in seven rules is Axiom's behaviour throughout.
+For the children's ladders the circulars, as transcribed in `ito66-tests-ita.l4:30-32`, print other figures "עד שנת 2023", so Axiom's 2023 ladder answers are the 2024 figures.
+A probe on the scratch copy repeats V-4 unchanged: our per-child rule `s 66(c)(4)-(6) — the credit points of the … for` answers 2.5 for a 2023 couple with a child born 2023, while `s 66(c) — the credit points it gives the` refuses.
+
+**E-4, a birth-year point moved out of 2023 into 2024.**
+Axiom does not apply (a1) at all (AX-14), and ENCODING-GAPS lines 422-423 say its composed pipeline "allots the birth-year points in the birth year".
+For a 2024 calculation of a child born in 2023 it gives 4½, neither refusing nor adding the point; it is silent on the fork and is evidence for neither reading.
+
+### Axiom's 25 cases, run through this encoding
+
+Each case's inputs were mapped onto our interface in a scratch module, `tests-axiom-cases.l4`, in a copy of this directory in the comparison session's scratchpad (not deposited), with every expected output asserted as Axiom states it.
+Mapping: the person is the non-registered woman of a 2024 couple with a salaried registered man; a child turning *n* is a child of both born in 2024 − *n*; Axiom's single (d)(1)(b) input is given to both of our limbs; `spouses_income_sources_are_dependent: false` is `common source of income` = NOTHING; the band indices have no counterpart, so the points they select are compared instead.
+`l4 run` (`/Users/mengwong/.local/bin/l4`, `JL4_LIBRARY_PATH` unset): 0 errors, **47 of 47 assertions satisfied**, counted as `check.sh` counts (the raw output logs each satisfied assertion twice, 94 lines).
+A control copy asserting four wrong values reported four failures.
+`check.sh` over the scratch copy also reproduced the deposited figures for every other module (`tests-independent.l4`: 101 satisfied, 2 failed).
+
+| # | case | Axiom expects | result |
+| --- | --- | --- | --- |
+| 1 | `birth_year_selects_zero_band_and_mixed_number_points` | woman 2.5, man 2.5, (a)(3) age test holds (bands 0, 0) | match |
+| 2 | `year_after_birth` | 4.5, 4.5 | match |
+| 3 | `year_turning_two` | 4.5, 4.5 | match |
+| 4 | `year_turning_three` | 3.5, 3.5 | match |
+| 5 | `year_turning_four` | 2.5, 2.5 | match |
+| 6 | `year_turning_five` | 2.5, 2.5 | match |
+| 7 | `ladders_diverge_when_child_turns_six` | woman 2, man 1 | match |
+| 8 | `child_below_attribution_age_limit` | age 17: age test holds; 2, 1 | match |
+| 9 | `externally_classified_maturity_year` | age 18: woman 0.5, man 0, age test fails | match |
+| 10 | `after_final_bounded_child_credit_row` | age 19: 0, 0 | match |
+| 11 | `all_shared_source_conditions_satisfied` | (d) conditions hold; (a)(1) holds; s 34 points 2; s 36 points 0.25; ss 38, 39 not allowed | match on 3 of 5 outputs; the s 34 and s 36 counts not run (IL-01's) |
+| 12 | `required_personal_exertion_missing` | (d) fails; (a)(1) fails | match |
+| 13 | `shared_income_not_proportional_to_contribution` | (d) fails; (a)(1) fails | match |
+| 14 | `home_not_regularly_used_for_shared_source` | (d) fails; (a)(1) fails | match |
+| 15 | `most_activity_not_at_home` | (d) fails; (a)(1) fails | match |
+| 16 | `home_qualifications_do_not_apply_to_income_produced_elsewhere` | (d) holds; (a)(1) holds | match |
+| 17 | `independent_sources_do_not_require_shared_source_contribution_test` | (d) conditions fail, but no dependency: (a)(1) holds | match |
+| 18 | `nonregistered_spouse_condition_missing` | (a)(1) fails for the registered spouse | match on (a)(1); a probe shows ours lets the same spouse request under (c)(1A) (F18), which Axiom does not encode |
+| 19 | `income_outside_personal_exertion_categories` | (a)(1) fails | match |
+| 20 | `pension_without_either_qualifying_history` | (a)(1) fails | match |
+| 21 | `pension_based_on_qualifying_employment` | (a)(1) holds | match |
+| 22 | `pension_history_in_fifth_preceding_year` (5) | (a)(1) holds | match, with limb 2 set TRUE by hand: ours does not compute the window (AX-2) |
+| 23 | `pension_history_outside_five_preceding_years` (6) | (a)(1) fails | match, with limb 2 set FALSE by hand (AX-2) |
+| 24 | `separate_calculation_credit_outputs_inoperative_without_separate_calculation` | s 34 and s 36 points 0 | not run: the counts are IL-01's |
+| 25 | `imported_residence_conditions_remain_required` | s 34 and s 36 points 0 for a non-resident | not run: the counts and residence are not in this row |
+
+**Matched 20; matched with the window supplied by hand 2; matched in part 1; diverged 0; could not be run 2.**
+
+### What each covers that the other does not
+
+**Axiom, not ours:** the (a)(1) five-year window, computed; the s 34 and s 36 point counts composed into the separate calculation; a proof atom quoting the Hebrew for each figure; each deferral recorded with its reason inside the module.
+
+**Ours, not Axiom:** (a)(2), with the tie refused; the (a)(3) amount; (b) and its proviso; the assembled taxable income of each calculation; (c)(1A); the application of (c)(2), (c)(3) and the ½ under s 36A; (a1); (4A) and (6); per-spouse totals and the cap against the tax on income from personal exertion; refusals where the text is silent (pre-2024 years, the tie, a same-sex couple, an unnamed provision); stubs for the spent text; the ITA circular tests; and an independent test pass.
+
+### Bottom line
+
+On every value both encodings compute, they agree: both ladders at every age, the (a)(3) age test, the (d) conditions, the (a)(1) judgment with its pension proviso, and the exclusion of ss 38 and 39.
+None of Axiom's 25 cases diverges from ours; 2 rest on the five-year window, which ours takes as given, and 3 test s 34 and s 36 counts this row does not hold.
+Axiom's module is narrower than ours: it defers most of (a)(2), (a)(3), (b) and (c), and omits (c)(1A) without saying so.
+It is broader in two places: it computes the five-year window and composes the s 34 and s 36 points.
+The one substantive disagreement is the tax year: Axiom answers every year with the current text, which the ITA circulars contradict for the children's figures before 2024; ours refuses at three rules and, per V-4, not at seven.
+This comparison found nothing in our encoding that Axiom shows to be wrong.
+The agreement is evidence about the ladders and the gates, not about the forks: Axiom is silent on 15 of F1-F18 and contradicts none.
