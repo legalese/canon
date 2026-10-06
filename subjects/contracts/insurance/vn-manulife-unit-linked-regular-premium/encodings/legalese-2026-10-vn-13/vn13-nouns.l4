@@ -1,0 +1,469 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+
+-- Manulife Vietnam, regular-premium unit-linked life insurance contract terms
+-- ("Maxx Phúc Lộc Thịnh Vượng"; attached to Ministry of Finance letter 5485/BTC-BH of
+-- 13 May 2008). Row VN-13, encoding legalese-2026-10-vn-13.
+--
+-- THE NOUNS: DECLARE and nothing else. Every rule module imports this one.
+--
+-- Source: ../../source/raw/manulife-maxx.txt, the `pdftotext` reading-order rendering of
+-- manulife-maxx.pdf (sha256 a880b414...e88df), retrieved 2026-10-06 from manulife.com.vn.
+-- A `src:N` comment quotes line N of that text, generated mechanically by
+-- tools/vnsrc.py; no Vietnamese here is typed by hand.
+--
+-- Money is Vietnamese dong (Article 10), a bare NUMBER. A rate or a share is a fraction
+-- (5% is 0.05). Dates are calendar dates (daydate).
+-- Membership test for this module: a witness of ordinary competence could testify to the
+-- fact, or the Policy Schedule, an endorsement, a fund price list or the Company's records
+-- show it. Whether a fact makes something payable is a rule, and lives in the module for
+-- the Article that says so.
+
+§ `Nouns`
+
+§§ `The parties`
+
+-- Article 1 names the Company and the Policyholder; Article 16 the Beneficiary.
+-- src:15 | “Công ty” là Công ty Trách nhiệm Hữu hạn Manulife (Việt
+-- src:16 | Nam). Công ty có các quyền hạn và bị ràng buộc bởi các nghĩa
+-- src:17 | vụ được nêu trong các điều khoản của Hợp đồng bảo hiểm.
+-- src:18 | "Bên mua bảo hiểm" là Người được ghi tên Bên mua bảo
+-- src:19 | hiểm trong Trang hợp đồng. Bên mua bảo hiểm sẽ có tất cả các
+-- src:20 | quyền và bị ràng buộc bởi các nghĩa vụ được quy định cho Bên
+-- src:21 | mua bảo hiểm theo quy định của pháp luật.
+-- src:694 | Người thụ hưởng là người được Bên mua bảo hiểm chỉ định …
+DECLARE `A party` IS ONE OF
+    `the Company`
+    `the Policyholder`
+    `a Beneficiary` HAS `name` IS A STRING
+
+§§ `The Life Insured`
+
+-- Article 1: the Life Insured IS the Policyholder, resident in Vietnam at issue, issue
+-- age 18 to 65. Whether those hold is a rule (vn13-art01-02-definitions.l4); the facts
+-- it reads are here.
+-- src:22 | “Người được bảo hiểm” là người mà tính mạng và sức khỏe của
+-- src:23 | người đó là đối tượng của Hợp đồng bảo hiểm. Người được bảo
+-- src:24 | hiểm là Bên mua bảo hiểm của Hợp đồng bảo hiểm. Người được
+-- src:25 | bảo hiểm phải cư trú tại nước Cộng Hòa Xã Hội Chủ Nghĩa Việt
+-- src:26 | Nam vào lúc được cấp Hợp đồng bảo hiểm. Tuổi cấp Hợp đồng bảo
+-- src:27 | hiểm của Người được bảo hiểm là từ 18 tuổi đến 65 tuổi.
+DECLARE `The Life Insured` HAS
+    `date of birth`                               IS A DATE
+    `resident in Vietnam on the issue date`       IS A BOOLEAN
+    `the same person as the Policyholder`         IS A BOOLEAN
+
+§§ `The units and the funds`
+
+-- Annex 1 names three funds; Article 11.4 lets the Company establish more.
+-- src:813 | Bao Gồm 3 Quỹ Liên Kết Đầu Tư: Quỹ Tăng Trưởng, Quỹ Phát Triển, Quỹ Cân Bằng
+-- src:468 | Bất kỳ lúc nào Công ty có thể thiết lập các Quỹ liên kết
+-- src:469 | đơn vị mới. Tất cả các điều khoản của Hợp đồng bảo
+DECLARE `A unit-linked fund` IS ONE OF
+    `the Growth Fund`                                       -- Quỹ Tăng Trưởng
+    `the Development Fund`                                  -- Quỹ Phát Triển
+    `the Balanced Fund`                                     -- Quỹ Cân Bằng
+    `a fund established later under Article 11.4` HAS `fund name` IS A STRING
+
+-- One fund on one Valuation Date, as the Company's valuation records it (Article 11.2).
+-- The bid and offer prices are computed from these by the rule in Article 11.2.
+DECLARE `A fund on a valuation date` HAS
+    `fund`                                        IS A `A unit-linked fund`
+    `valuation date`                              IS A DATE
+    `net asset value`                             IS A NUMBER
+    `units in issue`                              IS A NUMBER
+
+-- The Policyholder's holding in one fund on one Valuation Date: the units the account
+-- holds and the bid price ("Giá mua") of a unit that day.
+DECLARE `A holding in a fund` HAS
+    `fund`                                        IS A `A unit-linked fund`
+    `units held`                                  IS A NUMBER
+    `bid price`                                   IS A NUMBER
+
+-- The policy's account on one Valuation Date: every holding, and the premium debt
+-- ("Nợ phí") outstanding that day. A list of these, one per Valuation Date, is how a
+-- case says which day is "the next Valuation Date after" an event (Article 1, src 74-75).
+DECLARE `A valuation of the account` HAS
+    `valuation date`                              IS A DATE
+    `holdings`                                    IS A LIST OF `A holding in a fund`
+    `premium debt`                                IS A NUMBER
+
+-- A share of a premium directed to a fund ("Tỷ lệ phân bổ quỹ"), as a fraction.
+DECLARE `An allocation to a fund` HAS
+    `fund`                                        IS A `A unit-linked fund`
+    `share`                                       IS A NUMBER
+
+-- Article 11.3 lists the operations that change the number of units.
+DECLARE `A reason the units change` IS ONE OF
+    `allocation of a regular basic premium or a top-up premium`       -- 11.3 i
+    `a loyalty bonus`                                                 -- 11.3 ii
+    `a fund switch`                                                   -- 11.3 iii
+    `a partial withdrawal or a surrender`                             -- 11.3 iv
+    `the risk premium, the monthly policy fee or another fund charge` -- 11.3 v
+    `a reason Article 11.3 does not list`
+
+DECLARE `A change in units` HAS
+    `fund`                                        IS A `A unit-linked fund`
+    `reason`                                      IS A `A reason the units change`
+    `units added`                                 IS A NUMBER
+
+§§ `The Policy Schedule and its endorsements`
+
+-- Everything the document leaves to the Policy Schedule ("Trang hợp đồng") or to an
+-- endorsement ("Xác nhận thay đổi hợp đồng") is an input. No field has a default.
+-- `regular basic premium` is one instalment at `premium frequency`.
+-- `rider premium` is the premium of all riders for one instalment; 0 where there are none.
+DECLARE `A premium frequency` IS ONE OF
+    `annual premiums`                             -- Hợp đồng đóng phí năm
+    `half-yearly premiums`                        -- Hợp đồng đóng phí nửa năm
+    `quarterly premiums`                          -- Hợp đồng đóng phí quý
+    `monthly premiums`                            -- Hợp đồng đóng phí tháng
+
+DECLARE `The Policy Schedule` HAS
+    `issue date`                                  IS A DATE
+    `effective date`                              IS A DATE
+    `expiry date`                                 IS A DATE
+    `sum assured`                                 IS A NUMBER
+    `regular basic premium`                       IS A NUMBER
+    `premium frequency`                           IS A `A premium frequency`
+    `rider premium`                               IS A NUMBER
+    `fund allocation`                             IS A LIST OF `An allocation to a fund`
+
+-- The charges the Policy Schedule states (Article 13), for one month or one transaction.
+-- `risk premium rate` is the monthly rate applied to the sum assured (Article 13.3);
+-- `bid-offer spread` and the rates are fractions.
+DECLARE `The charges in the Policy Schedule` HAS
+    `monthly policy fee`                          IS A NUMBER
+    `risk premium rate`                           IS A NUMBER
+    `switching fee`                               IS A NUMBER
+    `partial withdrawal fee`                      IS A NUMBER
+    `bid-offer spread`                            IS A NUMBER
+    `fund management fee rate per year`           IS A NUMBER
+
+-- What has been collected over the life of the contract, which Articles 6, 7 and 8 refund.
+DECLARE `The charges collected` HAS
+    `initial charges collected`                   IS A NUMBER
+    `risk premiums collected`                     IS A NUMBER
+    `policy fees collected`                       IS A NUMBER
+
+-- The contract's own history, from the Company's records. NOTHING where it never happened.
+DECLARE `The history of the contract` HAS
+    `date of the latest lapse or termination`     IS A MAYBE DATE
+    `date of the latest reinstatement`            IS A MAYBE DATE
+
+§§ `Premiums`
+
+-- One instalment of the regular basic premium, numbered from the first ("Phí BHCBĐK lần"
+-- in the Article 13.9 table), with the initial charge rate the Policy Schedule states for it.
+DECLARE `A regular basic premium instalment` HAS
+    `instalment number`                           IS A NUMBER
+    `frequency`                                   IS A `A premium frequency`
+    `amount`                                      IS A NUMBER
+    `initial charge rate`                         IS A NUMBER
+
+-- A top-up premium ("Phí bảo hiểm đóng thêm"), with its scheduled initial charge rate.
+DECLARE `A top-up premium` HAS
+    `date paid`                                   IS A DATE
+    `amount`                                      IS A NUMBER
+    `initial charge rate`                         IS A NUMBER
+
+-- Article 3.3, fourth condition: the dated top-ups and withdrawals before the 15th anniversary.
+DECLARE `A movement of the account value` IS ONE OF
+    `a top-up premium paid`                       HAS `on` IS A DATE
+                                                      `amount` IS A NUMBER
+    `a withdrawal of account value`               HAS `on` IS A DATE
+                                                      `amount` IS A NUMBER
+
+-- Article 3.3: the facts the loyalty bonus turns on. `valuations` are the account on the
+-- Valuation Dates around the 15th policy anniversary.
+DECLARE `The facts for the loyalty bonus` HAS
+    `the schedule at issue`                       IS A `The Policy Schedule`
+    `in force at the 15th policy anniversary`     IS A BOOLEAN
+    `every regular basic premium paid in full over the years` IS A BOOLEAN
+    `ever ended as Article 20 describes`          IS A BOOLEAN
+    `ever on a premium holiday`                   IS A BOOLEAN
+    `top-ups and withdrawals`                     IS A LIST OF `A movement of the account value`
+    `sum assured ever reduced before the bonus`   IS A BOOLEAN
+    `valuations`                                  IS A LIST OF `A valuation of the account`
+
+§§ `Events and claims`
+
+-- Article 6: the true and the declared date of birth, and whether sex was misstated.
+DECLARE `A misstatement of age or sex` HAS
+    `true date of birth`                          IS A DATE
+    `declared date of birth`                      IS A DATE
+    `sex misstated`                               IS A BOOLEAN
+    `date discovered`                             IS A DATE
+    `reasonable medical expenses`                 IS A NUMBER
+    `monthly deductions charged to discovery`     IS A NUMBER
+    `monthly deductions at the true age and sex`  IS A NUMBER
+
+-- Article 7: a failure to disclose, or a misstatement, in the evidence of insurability.
+-- `the Company's decision date` is the date the Company treats the contract as void
+-- ("ngày Công ty từ chối hợp đồng"); NOTHING where it has not done so.
+DECLARE `A non-disclosure or misstatement` HAS
+    `could affect the underwriting decision`      IS A BOOLEAN
+    `not itself disclosed by the Policyholder`    IS A BOOLEAN
+    `about age or sex`                            IS A BOOLEAN
+    `in a supplementary part of the contract`     IS A BOOLEAN
+    `insurance fraud`                             IS A BOOLEAN
+    `the Company's decision date`                 IS A MAYBE DATE
+
+-- A death and the claim made on it. The cause flags are findings of fact. Article 3.2(i)
+-- names the offence without saying whose; the case records both, and the fork register
+-- (NOTES.md) says which one the rule reads.
+-- `amounts deducted from the death to the notice` are the risk premiums and rider premiums
+-- the Company deducted between the date of death and the date it was notified (3.1 iii).
+-- `unpaid charges of a grace period` are the risk premiums and policy fees left unpaid in a
+-- grace period running at the death (Article 9.4, src 378-381); 0 where none.
+-- `valuations after the death` are the account on each Valuation Date from the death on.
+DECLARE `A death claim` HAS
+    `the schedule`                                          IS A `The Policy Schedule`
+    `the Life Insured`                                      IS A `The Life Insured`
+    `the history`                                           IS A `The history of the contract`
+    `date of death`                                         IS A DATE
+    `caused directly or indirectly by an offence of the Life Insured`        IS A BOOLEAN
+    `caused directly or indirectly by an offence of another person`          IS A BOOLEAN
+    `related to AIDS, ARC or HIV infection`                 IS A BOOLEAN
+    `suicide`                                               IS A BOOLEAN
+    `date the Company received notice of the death`         IS A DATE
+    `date the claim was first made`                         IS A DATE
+    `date the Company received the complete and valid claim` IS A DATE
+    `valuations after the death`                            IS A LIST OF `A valuation of the account`
+    `amounts deducted from the death to the notice`         IS A NUMBER
+    `rider benefits payable`                                IS A NUMBER
+    `unpaid charges of a grace period`                      IS A NUMBER
+    `the charges collected`                                 IS A `The charges collected`
+    `a misstatement of age or sex`                          IS A MAYBE `A misstatement of age or sex`
+    `a non-disclosure`                                      IS A MAYBE `A non-disclosure or misstatement`
+    `days of force majeure or other objective obstacle`     IS A NUMBER
+    `date the Policyholder learned of the death, if the Policyholder proves not knowing of it` IS A MAYBE DATE
+
+-- Article 4: a refusal in the free-look period.
+DECLARE `A free-look refusal` HAS
+    `date the policy documents were received`     IS A DATE
+    `date the written notice reached the Company` IS A DATE
+    `a benefit has been paid`                     IS A BOOLEAN
+    `the original receipts and the policy documents were returned` IS A BOOLEAN
+    `premiums paid`                               IS A NUMBER
+    `medical and health-check expenses`           IS A NUMBER
+
+-- Article 18: a claim, by its dates.
+DECLARE `A claim for a benefit` HAS
+    `date of the insured event`                   IS A DATE
+    `date the claim was made`                     IS A DATE
+    `days of force majeure or other objective obstacle` IS A NUMBER
+    `date the Policyholder learned of the event, if the Policyholder proves not knowing of it` IS A MAYBE DATE
+
+-- The documents Article 18 lists, i) to v).
+DECLARE `The claim documents` HAS
+    `the policy contract`                         IS A BOOLEAN
+    `the completed claim forms`                   IS A BOOLEAN
+    `evidence of the claimants' relationship`     IS A BOOLEAN
+    `evidence of the insured event`               IS A BOOLEAN
+    `evidence of the Life Insured's age`          IS A BOOLEAN
+    `age already proved to the Company`           IS A BOOLEAN
+
+§§ `Premium payment, holidays, grace and reinstatement (Article 9)`
+
+-- Article 9.4: a regular basic premium instalment and when it was paid, if it was.
+DECLARE `A regular premium falling due` HAS
+    `due date`                                    IS A DATE
+    `date paid`                                   IS A MAYBE DATE
+
+-- Article 9.3 and 9.4: the account at one monthly deduction, against what is due.
+DECLARE `The account at a monthly deduction` HAS
+    `surrender value`                             IS A NUMBER
+    `risk premium`                                IS A NUMBER
+    `policy fee`                                  IS A NUMBER
+    `rider premium`                               IS A NUMBER
+
+-- Article 9.5: a request to reinstate.
+DECLARE `A reinstatement request` HAS
+    `lapse date`                                  IS A DATE
+    `request date`                                IS A DATE
+    `the Life Insured alive on the request date`  IS A BOOLEAN
+    `surrendered for its surrender value`         IS A BOOLEAN
+    `request in writing`                          IS A BOOLEAN
+    `evidence of insurability accepted by the Company` IS A BOOLEAN
+    `the amount the Company set has been paid`    IS A BOOLEAN
+
+§§ `Results the rules return`
+
+-- What a death claim pays, by the Article that decides it. Each payload is VND.
+DECLARE `The payment on a death` IS ONE OF
+    `the death benefit under Article 3.1`             HAS `amount` IS A NUMBER
+    `the surrender value under Article 3.2`           HAS `amount` IS A NUMBER
+    `the refund under Article 8`                      HAS `amount` IS A NUMBER
+    `the payment under Article 6`                     HAS `amount` IS A NUMBER
+    `the refund on avoidance under Article 7`         HAS `amount` IS A NUMBER
+    `nothing, because the contract was not in force at the death`
+    `nothing, because the claim was made after the Article 18 time limit`
+
+-- Article 9.4: what follows from a regular basic premium falling due. In the first policy
+-- year a missed premium opens a grace period; from the second, a missed premium alone opens
+-- none (the grace period then runs from a shortfall of the surrender value).
+DECLARE `The outcome of a regular premium falling due` IS ONE OF
+    `paid on or before the due date`
+    `paid within the grace period`
+    `the contract lapses on`                      HAS `lapse date` IS A DATE
+    `no grace period, the premium falling due after the first policy year`
+
+-- Article 9.3 and 9.4: the state of the contract at one monthly deduction.
+DECLARE `The contract at a monthly deduction` IS ONE OF
+    `the deductions are met, riders included`
+    `the riders end, and the surrender value meets only the risk premium and policy fee`
+    `the grace period of Article 9.4 begins`
+
+-- Article 9.4 from the second policy year: the end of a grace period.
+DECLARE `The end of a grace period from the second policy year` IS ONE OF
+    `the contract continues, a sufficient payment having been received`
+    `the contract ends without surrender value on` HAS `end date` IS A DATE
+
+-- Annex 2 D and E: what a request does in one fund.
+DECLARE `The effect of a withdrawal in a fund` IS ONE OF
+    `the amount requested is withdrawn`           HAS `amount` IS A NUMBER
+    `every unit of the fund is withdrawn`         HAS `amount` IS A NUMBER
+    `refused: below the minimum withdrawal`
+    `refused: the maximum number of withdrawals in the policy year is reached`
+    `refused: not requested in writing on the Company's form`
+
+DECLARE `The effect of a switch out of a fund` IS ONE OF
+    `the amount requested is switched`            HAS `amount` IS A NUMBER
+    `every unit of the fund is switched`          HAS `amount` IS A NUMBER
+    `refused: below the minimum switch or above the fund's account value`
+    `refused: not requested in writing on the Company's form`
+
+§§ `The tables`
+
+-- One row of the Article 13.9(a) table: a frequency, the instalments the row covers
+-- ("1-2", "4 trở lên"), and the guaranteed maximum initial charge rate. `last instalment`
+-- is NOTHING for an open row ("trở lên", and over).
+DECLARE `A row of the Article 13.9(a) table` HAS
+    `frequency`                                   IS A `A premium frequency`
+    `first instalment`                            IS A NUMBER
+    `last instalment`                             IS A MAYBE NUMBER
+    `maximum initial charge rate`                 IS A NUMBER
+
+-- Annex 1 section 2: the share of a fund invested in shares, lowest and highest.
+DECLARE `An equity band` HAS
+    `lowest equity share`                         IS A NUMBER
+    `highest equity share`                        IS A NUMBER
+
+§§ `Funds under Annex 1`
+
+-- Annex 1 section 3: the measures of one fund's portfolio that the restrictions test,
+-- each a fraction. The issuer measures exclude Government bonds, as 3.1 and 3.2 do.
+-- The last flag is the condition Annex 1 3.7 puts on any excess.
+DECLARE `A fund's portfolio` HAS
+    `fund`                                                      IS A `A unit-linked fund`
+    `equity share`                                              IS A NUMBER
+    `largest share of one issuer's outstanding securities`      IS A NUMBER
+    `largest share of net assets in one issuer's security`      IS A NUMBER
+    `largest share of net assets with one domestic credit institution` IS A NUMBER
+    `largest share of net assets with one foreign credit institution`  IS A NUMBER
+    `largest share of net assets in one group of related companies`    IS A NUMBER
+    `direct investment in real estate`                          IS A BOOLEAN
+    `any excess caused by market movements or lawful payments of the fund` IS A BOOLEAN
+
+§§ `Annex 2 requests`
+
+-- Annex 2 A: a document handed in at the cashier or customer-service counter. Whether a
+-- day is a working day, and which day is the next one, come from the Company's calendar,
+-- which the document does not contain.
+DECLARE `A submission at the counter` HAS
+    `date`                                        IS A DATE
+    `hour`                                        IS A NUMBER
+    `minute`                                      IS A NUMBER
+    `on a working day`                            IS A BOOLEAN
+    `next working day`                            IS A DATE
+    `complete and valid`                          IS A BOOLEAN
+    `a transaction of the contract awaiting a price` IS A BOOLEAN
+
+-- Annex 2 B: a top-up request. The minimum is not stated anywhere in the document; it is
+-- an input (NOTES.md, findings).
+DECLARE `A top-up request` HAS
+    `amount`                                      IS A NUMBER
+    `top-ups already paid in the policy year`     IS A NUMBER
+    `annualised regular basic premium at issue`   IS A NUMBER
+    `minimum top-up`                              IS A NUMBER
+    `in writing on the Company's form`            IS A BOOLEAN
+    `every regular basic premium due has been paid` IS A BOOLEAN
+    `every premium debt has been paid`            IS A BOOLEAN
+    `approved by the Company`                     IS A BOOLEAN
+    `during a premium holiday`                    IS A BOOLEAN
+
+-- Annex 2 D: a partial withdrawal request in one fund.
+DECLARE `A withdrawal request in a fund` HAS
+    `amount requested`                            IS A NUMBER
+    `account value of the fund`                   IS A NUMBER
+    `minimum withdrawal`                          IS A NUMBER
+    `minimum balance`                             IS A NUMBER
+    `withdrawals already made in the policy year` IS A NUMBER
+    `maximum withdrawals in a policy year`        IS A NUMBER
+    `in writing on the Company's form`            IS A BOOLEAN
+
+-- Annex 2 E: a switch request out of one fund.
+DECLARE `A switch request out of a fund` HAS
+    `amount requested`                            IS A NUMBER
+    `switching fee`                               IS A NUMBER
+    `account value of the fund`                   IS A NUMBER
+    `minimum switch`                              IS A NUMBER
+    `minimum balance`                             IS A NUMBER
+    `in writing on the Company's form`            IS A BOOLEAN
+
+-- Annex 2 F: a request to change the sum assured.
+DECLARE `A sum assured change request` HAS
+    `request date`                                IS A DATE
+    `end of the free-look period`                 IS A DATE
+    `an increase`                                 IS A BOOLEAN
+    `difference`                                  IS A NUMBER
+    `minimum difference`                          IS A NUMBER
+    `in writing on the Company's form`            IS A BOOLEAN
+    `evidence of insurability supplied`           IS A BOOLEAN
+    `additional premium paid`                     IS A BOOLEAN
+    `approved by the Company`                     IS A BOOLEAN
+    `date the Company approved`                   IS A DATE
+    `paid-to date`                                IS A DATE
+
+§§ `Changes, notices and disputes`
+
+-- Article 2: a change to the contract.
+DECLARE `A change to the contract` HAS
+    `in writing`                                  IS A BOOLEAN
+    `signed by the General Director or a Deputy General Director` IS A BOOLEAN
+    `with the Policyholder's consent`             IS A BOOLEAN
+
+-- Article 11.4 and 11.7: what the Company may do to a fund.
+DECLARE `A measure on the funds` IS ONE OF
+    `closing a fund to move its assets to a new fund with the same objectives`  -- 11.7 a
+    `renaming a fund`                                                           -- 11.7 b
+    `splitting or merging units`                                                -- 11.7 c
+    `suspending valuation and transactions while the exchange is suspended`     -- 11.7 d
+    `another measure required by a competent authority and by law`              -- 11.7 e
+    `closing or renaming a fund under Article 11.4`
+
+-- Article 13: a change in a charge.
+DECLARE `A change in a charge` HAS
+    `date of the written notice`                  IS A DATE
+    `date the new charge applies`                 IS A DATE
+    `agreed in writing by the Policyholder`       IS A BOOLEAN
+    `new level`                                   IS A NUMBER
+    `guaranteed maximum`                          IS A NUMBER
+
+-- Article 10: the currency of a payment.
+DECLARE `A currency` IS ONE OF
+    `Vietnamese dong`
+    `another currency`
+
+§§ `Acts, for the regulative rules`
+
+DECLARE `An act` IS ONE OF
+    `refuse the contract by written notice`
+    `refund the premiums paid, less medical expenses`
+    `pay the regular basic premium`
+    `pay the surrender value`
+    `pay the benefit`
+    `pay the benefit with interest`
+    `send the annual report`
