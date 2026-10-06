@@ -14,7 +14,7 @@ The exceptions to that blindness are listed in section 8.
 
 ## 2. The numbers
 
-594 findings in 24 rows, between 16 and 49 per row (median about 25).
+594 findings in 24 rows, between 16 and 49 per row (median 24).
 By line of business: motor and the motor decree 139 (6 rows), health, accident and travel 157 (5 rows), life 146 (6 rows), property, liability and engineering 152 (7 rows).
 
 How firm the encoder says the finding is (its own label, copied by the extraction):
@@ -143,7 +143,7 @@ Each is a record in `analysis/vn-insurance-findings/`; the numbers are the encod
 - **One dong decides who pays the independent assessment.** An assessment of 10,000,000 leaves the policyholder paying; 10,000,001 "differs", so the insurer pays (VN-15 X23).
 - **A passenger's death is unpaid because of the driver's paperwork.** An expired inspection certificate or a red-light offence by the driver removes the passenger accident cover, and a third party's claim fails the same way (VN-17 X-19).
 - **The excess-liability formula promises 60m and the layer rule pays 0** (VN-18 X19; CONTESTED).
-- **A flooded electric motor is excluded and the flood add-on does not buy it back** (VN-18 X21; the lead checked it against source lines 784-785 and 1189-1191, and the same insurer's other product, VN-17, covers all engine types in a flood, source lines 1307-1314).
+- **A flooded electric motor is excluded and the flood add-on does not buy it back** (VN-18 X21; the lead checked it against source lines 784-785 and 1190-1192, and the same insurer's other product, VN-17, covers all engine types in a flood, source lines 1307-1314).
 - **Compulsory insurance (Decree 67/2023):** a cyclist who causes an accident halves a pedestrian's compensation (75m instead of 150m) while a passenger in the same crash gets 150m (VN-10 R4); a parked car that rolls into a pedestrian is outside the cover (R2); a pillion rider who is not a "hành khách" is neither third party nor passenger (R1, CONTESTED).
 
 ### 5.2 Health, accident and travel
@@ -210,10 +210,10 @@ What it lacks:
 ## 8. Limits and disclosures
 
 - VN-12 (Manulife endowment and critical illness) and VN-16 (PTI via Gras Savoye) are not in the 594; their encoders were interrupted by a usage limit and were being resumed when this was written.
-- The extraction agents classified and cross-matched; the lead verified a sample against sources: VN-10 R5 against the gazette text, VN-18 X21 against source lines 784-785 and 1189-1191 and VN-17's flood clause at lines 1307-1314, the headline numbers of VN-01 X3, VN-13 finding 2, VN-25 FD5 and VN-26 F-02 against the findings assertions, and the five motor causal-link records against the encoders' notes.
+- The extraction agents classified and cross-matched; the lead verified a sample against sources: VN-10 R5 against the gazette text, VN-18 X21 against source lines 784-785 and 1190-1192 and VN-17's flood clause at lines 1307-1314, the headline numbers of VN-01 X3, VN-13 finding 2, VN-25 FD5 and VN-26 F-02 against the findings assertions, and the five motor causal-link records against the encoders' notes.
   The rest are as reported.
 - Blind-rule exceptions: VN-01's expander read VN-08's template header before the encoder noticed and stopped; VN-11 read part of VN-13's material (the file was deleted, and Meng ruled the contamination acceptable); an encoder ran a `pkill` on a pattern that may have killed a sibling's run.
-- The quotation volume in the encodings is high (42% to 100% of source characters by row) and is accepted by Meng's ruling of 2026-10-07: "accept it as is. Unavoidable."
+- The quotation volume in the encodings is high (by character, about 30% to 100% of the source by row) and is accepted by Meng's ruling of 2026-10-07: "accept it as is. Unavoidable."
   Nothing here is pushed.
 - Counts of classes depend on the extraction agents' judgment on borderline cases; the primary-class counts are not an independent classification.
 
