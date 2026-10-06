@@ -1,0 +1,243 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `ita-types`
+
+-- Income Tax Act 1947 — PART 5: WHAT MAY BE DEDUCTED IN ASCERTAINING INCOME?
+--
+-- s 14 (the general rule, interest, rent, repairs, bad debts, employer's CPF
+-- and medisave contributions, family remuneration, S-plated cars, the medical
+-- expenses cap), s 15 (deductions not allowed), and the further and enhanced
+-- deductions of ss 14A-14ZJ: those in force for YA 2024 onwards are encoded
+-- with their figures (14C, 14D, 14EA, 14N, 14Z, 14ZG); the rest (most tied to
+-- YAs before 2024, or to an approval) are carried in the coverage table.
+--
+-- Source: ../source/ITA1947.txt lines 8328-13588; formulas printed as images
+-- are transcribed in ../source/PROVENANCE.md.
+
+§ `Part 5 — deductions`
+
+§§ `The general rule (s 14(1)) and what is not allowed (s 15)`
+
+-- s 14(1): "there are to be deducted all outgoings and expenses wholly and
+-- exclusively incurred during that period by that person in the production of
+-- the income". s 15(1) lists what is never deductible.
+DECLARE `Kind of outgoing` IS ONE OF
+    `an outgoing wholly and exclusively incurred in producing the income`
+    `interest on money borrowed for capital employed in acquiring the income`   -- s 14(1)(a)
+    `rent for premises occupied to acquire the income`                          -- (b)
+    `repairs, but not renewal of plant with allowances or reconstruction`       -- (c)
+    `a bad or doubtful debt of the trade`                                       -- (d)
+    `zakat, fitrah or religious dues paid under written law`                    -- (g)
+    `domestic or private expenses`                                              -- s 15(1)(a)
+    `not wholly and exclusively for acquiring the income`                       -- (b)
+    `capital withdrawn or employed as capital`                                  -- (c), (d)
+    `recoverable under insurance or indemnity`                                  -- (e)
+    `income tax, or tax on income abroad, or top-up tax`                        -- (g), (ga)
+    `GST claimable as input tax, or due because the person failed to register`   -- (h), (m)
+    `a payment to a provident or savings fund not excepted`                     -- (i)
+    `an s 12(6) payment between persons outside Singapore without withholding`  -- (j)
+    `expenses of a private car (S-plated, up to 7 passengers)`                  -- (k)
+    `expenses for a designated unit trust held`                                 -- (l)
+    `share-based costs for rights not granted by reason of a Singapore office`  -- (p), (q)
+    `a payment in furtherance of a corruption or bribery offence`               -- (r)
+
+@ref s 14(1), s 15(1)
+GIVEN k IS A `Kind of outgoing`
+GIVETH A BOOLEAN
+DECIDE `deductible, an outgoing of kind` k IF
+    elem k (LIST `an outgoing wholly and exclusively incurred in producing the income`,
+                 `interest on money borrowed for capital employed in acquiring the income`,
+                 `rent for premises occupied to acquire the income`,
+                 `repairs, but not renewal of plant with allowances or reconstruction`,
+                 `a bad or doubtful debt of the trade`,
+                 `zakat, fitrah or religious dues paid under written law`)
+
+§§ `Employer's contributions (s 14(1)(e), (fb), (fc))`
+
+-- s 14(1)(e) proviso (i)(D): the deduction for an employer's CPF contribution,
+-- for any period from 1 January 2015, "must not exceed 17% ... of the
+-- remuneration paid by the employer to the employee for that period"; (iii):
+-- none for an employee who holds a professional visit pass or work pass.
+@ref s 14(1)(e) proviso (i)(D), (iii)
+GIVEN contribution     IS A NUMBER
+      remuneration     IS A NUMBER
+      `the employee holds a work pass or professional visit pass` IS A BOOLEAN
+GIVETH A NUMBER
+`the deduction for an employer's CPF contribution of` contribution `on remuneration of` remuneration `, work pass:` `the employee holds a work pass or professional visit pass` MEANS
+    IF   `the employee holds a work pass or professional visit pass`
+    THEN 0
+    ELSE IF contribution GREATER THAN remuneration TIMES 17% THEN remuneration TIMES 17% ELSE contribution
+
+-- s 14(1)(fb), (fc): employer's (and prescribed persons') medisave
+-- contributions, "up to a maximum deduction for each ... medisave account, of
+-- ... (ii) $2,730 per year (for contributions made in 2018 and in each
+-- subsequent year)", less contributions already made under the other paragraph.
+@ref s 14(1)(fb), (fc)
+GIVEN contribution        IS A NUMBER
+      `already deducted under the other paragraph` IS A NUMBER
+GIVETH A NUMBER
+`the medisave contribution deduction for` contribution `, already deducted` `already deducted under the other paragraph` MEANS
+    IF contribution GREATER THAN `room` THEN `room` ELSE contribution
+    WHERE
+        `room` MEANS IF `already deducted under the other paragraph` GREATER THAN 2730 THEN 0 ELSE 2730 MINUS `already deducted under the other paragraph`
+
+§§ `Motor cars and the medical expenses cap (s 14(3)-(7))`
+
+-- s 14(3): for a car to which it applies (registered before 1 April 1998 as a
+-- business service passenger vehicle, (4)), the deduction is limited to the
+-- amount that "bears to such outgoings and expenses the same proportion as
+-- $35,000 bears to the capital expenditure ..., where such capital expenditure
+-- exceeds $35,000". (3A): renewal not more than $35,000.
+@ref s 14(3), (3A), (4)
+GIVEN expenses         IS A NUMBER
+      `capital expenditure on the car` IS A NUMBER
+GIVETH A NUMBER
+`the deduction for business-car expenses of` expenses `, the car costing` `capital expenditure on the car` MEANS
+    IF   `capital expenditure on the car` GREATER THAN 35000
+    THEN expenses TIMES 35000 DIVIDED BY `capital expenditure on the car`
+    ELSE expenses
+
+-- s 14(5), (6A), (6B): an employer's medical expenses are allowed up to "the
+-- maximum allowable amount": (6A)(a) 2% of total remuneration where the employer
+-- contributes medisave for enough local employees or has a specified insurance
+-- plan; otherwise (6B): (a) without qualifying insurance, "A + B", A the lower of
+-- the medical expenses (less general contributions) and 1% of remuneration, B the
+-- lower of the general contributions and 2% of remuneration less A; (b) with
+-- qualifying insurance, "C + D", C the lower of the riders' cost and 1%, D the
+-- lower of the other medical expenses and 2% less C. (5): the excess is not
+-- deductible; (6): for an employer with exempt or concessionary income, the
+-- excess is deemed income.
+DECLARE `Medical expense facts` HAS
+    `total remuneration of employees`               IS A NUMBER
+    `portable medical benefits (6A)(a) met`          IS A BOOLEAN
+    `total medical expenses`                        IS A NUMBER   -- s 14(8) "medical expenses": all of them, including insurance, riders and medisave contributions
+    `qualifying insurance expenses`                 IS A NUMBER
+    `general contributions`                         IS A NUMBER
+    `riders`                                        IS A NUMBER
+
+@ref s 14(6A), (6B)
+GIVEN f IS A `Medical expense facts`
+GIVETH A NUMBER
+`the maximum allowable medical expenses for` f MEANS
+    BRANCH IF f's `portable medical benefits (6A)(a) met`
+              THEN `two percent`                                   -- (6A)(a)
+           IF f's `qualifying insurance expenses` EQUALS 0
+              THEN `A` PLUS `B`                                    -- (6B)(a)
+           OTHERWISE `C` PLUS `D`                                  -- (6B)(b)
+    WHERE
+        `lower` a b MEANS IF a LESS THAN b THEN a ELSE b
+        `one percent` MEANS f's `total remuneration of employees` TIMES 1%
+        `two percent` MEANS f's `total remuneration of employees` TIMES 2%
+        -- (6B)(a): A, the lower of the medical expenses "excluding the total amount of
+        -- general contributions" and 1%; B, the lower of the general contributions and
+        -- 2% less A
+        `A` MEANS `lower` (f's `total medical expenses` MINUS f's `general contributions`) `one percent`
+        `B` MEANS `lower` (f's `general contributions`) (`two percent` MINUS `A`)
+        -- (6B)(b): C, the lower of the riders and 1%; D, the lower of the medical expenses
+        -- "excluding the total amount of expenses ... in providing riders" and 2% less C
+        `C` MEANS `lower` (f's `riders`) `one percent`
+        `D` MEANS `lower` (f's `total medical expenses` MINUS f's `riders`) (`two percent` MINUS `C`)
+
+DECLARE `Medical expense outcome` HAS
+    `deductible`                IS A NUMBER
+    `excess deemed income`      IS A NUMBER
+
+@ref s 14(5), (6)
+GIVEN `medical expenses incurred` IS A NUMBER
+      maximum                     IS A NUMBER
+      `has exempt or concessionary income` IS A BOOLEAN
+GIVETH A `Medical expense outcome`
+`the medical expenses outcome, incurred` `medical expenses incurred` `, maximum` maximum `, exempt or concessionary income:` `has exempt or concessionary income` MEANS
+    IF   `medical expenses incurred` AT MOST maximum
+    THEN `Medical expense outcome` WITH `deductible` IS `medical expenses incurred`, `excess deemed income` IS 0
+    ELSE IF `has exempt or concessionary income`
+         THEN `Medical expense outcome` WITH `deductible` IS `medical expenses incurred`, `excess deemed income` IS `medical expenses incurred` MINUS maximum   -- (6)
+         ELSE `Medical expense outcome` WITH `deductible` IS maximum, `excess deemed income` IS 0                                                         -- (5)
+
+§§ `Research and development, innovation and training (ss 14C, 14D, 14EA, 14ZG)`
+
+-- s 14C(1)(a): R&D undertaken directly and related to the trade is deductible
+-- (100%), except capital expenditure on plant, machinery, land or buildings.
+-- s 14D(1): for YAs 2009-2028, an additional "(U + V) × A%", U the qualifying
+-- expenditure on local R&D undertaken directly, V payments to an R&D
+-- organisation (and cost-sharing amounts) for local R&D, A 150% for YAs
+-- 2019-2028 (50% for YAs 2009-2018). s 14D(1A): for YAs 2024-2028, a further
+-- "T × 150%", T the lower of U + V and $400,000.
+@ref ss 14C(1), 14D(1), (1A)
+GIVEN ya   IS A NUMBER
+      U    IS A NUMBER
+      V    IS A NUMBER
+GIVETH A NUMBER
+`the R&D deductions for YA` ya `, own local R&D` U `, paid local R&D` V MEANS
+    `14C` PLUS `14D(1)` PLUS `14D(1A)`
+    WHERE
+        `14C` MEANS U PLUS V
+        `A` MEANS
+            BRANCH IF ya AT LEAST 2009 AND ya AT MOST 2018 THEN 50%
+                   IF ya AT LEAST 2019 AND ya AT MOST 2028 THEN 150%
+                   OTHERWISE 0
+        `14D(1)` MEANS (U PLUS V) TIMES `A`
+        `T` MEANS IF U PLUS V LESS THAN 400000 THEN U PLUS V ELSE 400000
+        `14D(1A)` MEANS IF ya AT LEAST 2024 AND ya AT MOST 2028 THEN `T` TIMES 150% ELSE 0
+
+-- s 14EA(1): for YAs 2024-2028, qualifying expenditure on a qualifying
+-- innovation project, "A × 400%", A the lower of the expenditure and $50,000.
+-- (4): if claimed, no deduction under s 14C or 14D for that expenditure.
+@ref s 14EA(1), (4)
+GIVEN ya          IS A NUMBER
+      expenditure IS A NUMBER
+GIVETH A NUMBER
+`the innovation project deduction for YA` ya `on` expenditure MEANS
+    IF ya AT LEAST 2024 AND ya AT MOST 2028
+    THEN (IF expenditure LESS THAN 50000 THEN expenditure ELSE 50000) TIMES 400%
+    ELSE 0
+
+-- s 14ZG(1): for YAs 2024-2028, "in addition to the deduction under section
+-- 14", qualifying training expenditure, "A × 300%", A the lower of the
+-- expenditure and $400,000. (2): only for expenditure deductible under s 14.
+@ref s 14ZG(1), (2)
+GIVEN ya          IS A NUMBER
+      expenditure IS A NUMBER
+      `deductible under s 14` IS A BOOLEAN
+GIVETH A NUMBER
+`the training deduction for YA` ya `on` expenditure `, deductible under s 14:` `deductible under s 14` MEANS
+    IF ya AT LEAST 2024 AND ya AT MOST 2028 AND `deductible under s 14`
+    THEN (IF expenditure LESS THAN 400000 THEN expenditure ELSE 400000) TIMES 300%
+    ELSE 0
+
+§§ `Renovation and refurbishment (s 14N)`
+
+-- s 14N(3): one-third in the year incurred and the balance over the next 2 YAs;
+-- (3A): for expenditure in the basis period for YA 2021, 2022, 2024 or later,
+-- "the full amount" in that YA unless the person elects for (3). (7)(f): not
+-- more than $300,000 in a specified period of 3 consecutive basis periods ((8):
+-- the periods restart with YA 2025).
+@ref s 14N(3), (3A), (7)(f)
+GIVEN ya                   IS A NUMBER
+      expenditure          IS A NUMBER
+      `already deducted in the specified period` IS A NUMBER
+      `elected the 3-year spread` IS A BOOLEAN
+GIVETH A NUMBER
+`the renovation deduction for YA` ya `of expenditure` expenditure `, already in the period` `already deducted in the specified period` `, spread:` `elected the 3-year spread` MEANS
+    IF   (ya EQUALS 2021 OR ya EQUALS 2022 OR ya AT LEAST 2024) AND NOT `elected the 3-year spread`
+    THEN `allowed`
+    ELSE `allowed` DIVIDED BY 3
+    WHERE
+        `room` MEANS IF `already deducted in the specified period` GREATER THAN 300000 THEN 0 ELSE 300000 MINUS `already deducted in the specified period`
+        `allowed` MEANS IF expenditure GREATER THAN `room` THEN `room` ELSE expenditure
+
+§§ `Services and secondments to an IPC (s 14Z)`
+
+-- s 14Z(1A), (1B): for qualifying expenditure from 1 July 2016 to 31 December
+-- 2026: "a further deduction equal to 150%" of the endorsed amount where the
+-- expenditure is deductible under s 14; "a deduction equal to 250%" where it is
+-- not.
+@ref s 14Z(1)-(1B)
+GIVEN `endorsed amount`         IS A NUMBER
+      `deductible under s 14`   IS A BOOLEAN
+      `incurred on`             IS A DATE
+GIVETH A NUMBER
+`the IPC secondment deduction for` `endorsed amount` `, deductible under s 14:` `deductible under s 14` `, incurred on` `incurred on` MEANS
+    IF   `incurred on` LESS THAN YMD 2016 7 1 OR `incurred on` GREATER THAN YMD 2026 12 31
+    THEN 0
+    ELSE IF `deductible under s 14` THEN `endorsed amount` TIMES 150% ELSE `endorsed amount` TIMES 250%

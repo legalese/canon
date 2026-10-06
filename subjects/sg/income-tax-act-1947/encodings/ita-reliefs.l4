@@ -1,0 +1,445 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `ita-types`
+IMPORT `ita-rates`
+
+-- Income Tax Act 1947 — PART 10: CHARGEABLE INCOME AND PERSONAL RELIEFS.
+--
+-- s 38 (chargeable income = assessable income less the Part 10 reliefs),
+-- s 39 (reliefs for a resident individual), s 39A (the $80,000 cap), s 41
+-- (proof), and the Fifth Schedule (child relief). The facts are those of the
+-- year preceding the year of assessment.
+--
+-- Source: ../source/ITA1947.txt.
+
+§ `Part 10 — reliefs`
+
+§§ `The facts`
+
+DECLARE `Child facts` HAS
+    `unmarried throughout the preceding year`       IS A BOOLEAN
+    `below 16 at any time in the preceding year`    IS A BOOLEAN   -- s 39(2)(e)(i)
+    `in full-time instruction`                      IS A BOOLEAN   -- (ii)
+    `serving under articles or indentures`          IS A BOOLEAN   -- (iii)
+    `incapacitated by physical or mental infirmity` IS A BOOLEAN   -- (iv)
+    `income in the preceding year, excluding scholarships` IS A NUMBER   -- Fifth Schedule para 3A, 3B
+    `engaged in employment or a trade, other than under articles` IS A BOOLEAN   -- para 3
+    `maintained by the claimant`                    IS A BOOLEAN
+    `claimant's share of the relief`                IS A NUMBER    -- para 4: a fraction, 1 if sole claimant
+    `a Singapore citizen`                           IS A BOOLEAN   -- para 5(1A), (1AB)
+    `order among the mother's eligible children`    IS A NUMBER    -- para 5: 1, 2, 3 ...; 0 if the claimant is not the mother claiming WMCR
+    `the para 5 date`                               IS A DATE      -- para 5(1AA), (1AC): birth, marriage, adoption or citizenship
+
+DECLARE `Dependant facts` HAS
+    `a parent, grandparent or great-grandparent of the claimant or spouse` IS A BOOLEAN
+    `living in Singapore`                           IS A BOOLEAN
+    `age at any time in the preceding year`         IS A NUMBER    -- not less than 55
+    `income in the preceding year`                  IS A NUMBER
+    `incapacitated by physical or mental infirmity` IS A BOOLEAN
+    `living with the claimant in the same household` IS A BOOLEAN
+    `spent by the claimant on maintenance`          IS A NUMBER    -- at least $2,000 if not living together
+    `claimant's share of the relief`                IS A NUMBER    -- s 39(2)(i)(vii): agreed, else equal
+
+DECLARE `National service status` IS ONE OF
+    `not an operationally ready national serviceman`
+    `NSman who performed ORNS in the relevant period`
+    `NSman who performed ORNS, key command and staff appointment holder`
+    `NSman who did not perform ORNS in the relevant period`
+    `NSman who did not perform ORNS, key command and staff appointment holder`
+
+DECLARE `Individual relief facts` HAS
+    `earned income`                                 IS A NUMBER    -- s 2 "earned income"
+    `age reached by 31 December of the preceding year` IS A NUMBER
+    `totally blind or permanently and severely disabled` IS A BOOLEAN   -- s 39(1)(b)
+    `a female claimant (married, divorced or widowed)`  IS A BOOLEAN  -- Fifth Schedule para 5, s 39(2)(p)
+    -- spouse (s 39(2)(a), (c), (d))
+    `had a spouse living with or maintained by the claimant` IS A BOOLEAN
+    `spouse's income in the preceding year`         IS A NUMBER
+    `spouse incapacitated by physical or mental infirmity` IS A BOOLEAN
+    `payments to a former spouse under a court order or deed` IS A NUMBER
+    -- children (s 39(2)(e), Fifth Schedule)
+    `children`                                      IS A LIST OF `Child facts`
+    -- insurance and contributions (s 39(2)(g), (ga), (h), (ha), (haa))
+    `life insurance premiums, capped at 7% of the capital sum` IS A NUMBER
+    `obligatory CPF or approved fund contributions as an employee` IS A NUMBER
+    `self-employed: assessable income from the trade or profession` IS A NUMBER
+    `self-employed: obligatory CPF contributions on that income` IS A NUMBER
+    `self-employed: voluntary CPF contributions`    IS A NUMBER
+    -- dependants (s 39(2)(i), (j))
+    `dependants`                                    IS A LIST OF `Dependant facts`
+    `incapacitated siblings maintained`             IS A NUMBER
+    -- other reliefs
+    `course fees`                                   IS A NUMBER    -- s 39(2)(k), (12), (12A), (12B)
+    `national service`                              IS A `National service status`   -- s 39(2A), (2B)
+    `wife or widow of an NSman, claiming`           IS A BOOLEAN   -- s 39(2)(m)
+    `parent of an NSman, claiming`                  IS A BOOLEAN   -- s 39(2)(n)
+    `SRS contributions`                             IS A NUMBER    -- s 39(2)(o)
+    `SRS contribution cap`                          IS A NUMBER    -- regulations under s 10G
+    `SRS account suspended, or the contribution withdrawn in the year` IS A BOOLEAN
+    `grandparent caregiver: the caregiver's trade or employment income` IS A MAYBE NUMBER   -- s 39(2)(p); NOTHING if no claim
+    `CPF cash top-ups for family, after grants and capped as prescribed` IS A NUMBER   -- s 39(3)
+    `CPF cash top-ups for self, after grants and capped as prescribed`   IS A NUMBER   -- s 39(3A)
+    `prescribed deduction limit for s 39(3)`        IS A NUMBER
+    `prescribed deduction limit for s 39(3A)`       IS A NUMBER
+    `foreign domestic worker levy paid, for one worker` IS A NUMBER   -- s 39(11), YA 2024 and before
+
+§§ `Earned income relief (s 39(1))`
+
+-- s 39(1): "(a) ... $1,000 or the amount of the earned income; (b) without
+-- affecting any deduction allowable under paragraph (c) or (d), [where] totally
+-- blind or [with a] physical or mental disability which permanently and
+-- severely restricted the individual's capacity for work, ... $4,000 ...; (c)
+-- ... above 55 years of age but ... not above 60 ..., $6,000 ...; and (d) ...
+-- above 60 years of age, $8,000 ..., whichever is less."
+-- FORK I3: the age band is the one reached by 31 December of the preceding
+-- year; (b) is added to (c) or (d) ("without affecting"), and replaces (a).
+@ref s 39(1)
+GIVEN f IS AN `Individual relief facts`
+GIVETH A NUMBER
+`the earned income relief for` f MEANS
+    IF `the sum` GREATER THAN f's `earned income` THEN `at least 0` (f's `earned income`) ELSE `the sum`
+    WHERE
+        `age` MEANS f's `age reached by 31 December of the preceding year`
+        `(c) or (d)` MEANS
+            BRANCH IF `age` GREATER THAN 60 THEN 8000      -- (d)
+                   IF `age` GREATER THAN 55 THEN 6000      -- (c)
+                   OTHERWISE 0
+        `the sum` MEANS
+            IF   f's `totally blind or permanently and severely disabled`
+            THEN 4000 PLUS `(c) or (d)`                                         -- (b)
+            ELSE IF `(c) or (d)` GREATER THAN 0 THEN `(c) or (d)` ELSE 1000     -- (a)
+        `at least 0` x MEANS IF x LESS THAN 0 THEN 0 ELSE x
+
+§§ `Spouse reliefs (s 39(2)(a), (c), (d))`
+
+-- (a): "had a spouse, living with or maintained by him or her, whose income was
+-- not more than $4,000 [YA 2010-2024] or not more than $8,000 [YA 2025 on] ...
+-- a deduction of $2,000". (c): payments under a court order or deed of
+-- separation, up to $2,000, "the total deductions ... under this paragraph and
+-- paragraph (a) must not exceed $2,000". (d): a spouse incapacitated by
+-- infirmity, $5,500 (or, if separated, the payments up to $5,500); with (a) or
+-- (c), not more than $5,500.
+@ref s 39(2)(a), (c), (d)
+GIVEN ya IS A NUMBER
+      f  IS AN `Individual relief facts`
+GIVETH A NUMBER
+`the spouse reliefs for YA` ya `:` f MEANS
+    IF   f's `spouse incapacitated by physical or mental infirmity`
+    THEN `capped` (`(a)` PLUS `(c)` PLUS `(d)`) 5500
+    ELSE `capped` (`(a)` PLUS `(c)`) 2000
+    WHERE
+        `limit` MEANS IF ya AT MOST 2024 THEN 4000 ELSE 8000
+        `(a)` MEANS IF f's `had a spouse living with or maintained by the claimant` AND f's `spouse's income in the preceding year` AT MOST `limit` THEN 2000 ELSE 0
+        `(c)` MEANS `capped` (f's `payments to a former spouse under a court order or deed`) 2000
+        `(d)` MEANS
+            IF   f's `payments to a former spouse under a court order or deed` GREATER THAN 0
+            THEN `capped` (f's `payments to a former spouse under a court order or deed`) 5500        -- (v)
+            ELSE IF f's `had a spouse living with or maintained by the claimant` THEN 5500 ELSE 0    -- (iv)
+        `capped` x c MEANS IF x GREATER THAN c THEN c ELSE x
+
+§§ `Child relief (s 39(2)(e); Fifth Schedule)`
+
+-- s 39(2)(e): a maintained child "unmarried throughout the year preceding the
+-- year of assessment and — (i) being below 16 years of age ...; (ii) receiving
+-- full-time instruction ...; (iii) serving under articles or indentures ...;
+-- or (iv) incapacitated". Fifth Schedule para 3: none for a child "engaged in
+-- any employment, other than under articles or indentures, or [carrying] on ... a
+-- trade"; para 3A (YAs 2012-2024) and 3B (YA 2025 on): none for a child not
+-- incapacitated whose income exceeded $4,000 (3A) or $8,000 (3B).
+@ref s 39(2)(e); Fifth Schedule paras 3, 3A, 3B
+GIVEN ya IS A NUMBER
+      c  IS A `Child facts`
+GIVETH A BOOLEAN
+DECIDE `an eligible child for YA` ya `:` c IF
+        c's `maintained by the claimant`
+    AND c's `unmarried throughout the preceding year`
+    AND (    "(i)"   ... c's `below 16 at any time in the preceding year`
+         OR  "(ii)"  ... c's `in full-time instruction`
+         OR  "(iii)" ... c's `serving under articles or indentures`
+         OR  "(iv)"  ... c's `incapacitated by physical or mental infirmity`)
+    AND NOT "para 3" ... c's `engaged in employment or a trade, other than under articles`
+    AND NOT "para 3A, 3B" ... (    (NOT c's `incapacitated by physical or mental infirmity`)
+                               AND c's `income in the preceding year, excluding scholarships` GREATER THAN `the income limit`)
+    WHERE
+        `the income limit` MEANS IF ya AT MOST 2024 THEN 4000 ELSE 8000
+
+-- Fifth Schedule para 1: $4,000 for each eligible child (YA 2012 on). s 39(2)(e)
+-- proviso (v), (vi): for an incapacitated child, $7,500 (YA 2015 on). para 4:
+-- apportioned between claimants.
+@ref Fifth Schedule para 1; s 39(2)(e) provisos (v), (vi); para 4
+GIVEN ya IS A NUMBER
+      c  IS A `Child facts`
+GIVETH A NUMBER
+`the qualifying child relief for YA` ya `:` c MEANS
+    IF   `an eligible child for YA` ya `:` c
+    THEN (IF c's `incapacitated by physical or mental infirmity` THEN 7500 ELSE 4000) TIMES c's `claimant's share of the relief`
+    ELSE 0
+
+-- Fifth Schedule para 5(1A): for a child whose para 5 date is on or before
+-- 31 December 2023, a married woman, divorcee or widow gets "(c) if X is the
+-- first eligible child — 15% of her earned income; (d) ... second ... — 20%;
+-- (e) ... third ... or a subsequent eligible child — 25%". (1AB): for a para 5
+-- date on or after 1 January 2024, for YA 2025 on: "$8,000", "$10,000",
+-- "$12,000". The child must be a citizen (31 December of the year, or at death).
+@ref Fifth Schedule para 5(1A), (1AA), (1AB), (1AC)
+GIVEN ya               IS A NUMBER
+      `earned income`  IS A NUMBER
+      c                IS A `Child facts`
+GIVETH A NUMBER
+`the working mother's child relief for YA` ya `, earned income` `earned income` `:` c MEANS
+    BRANCH IF NOT (`an eligible child for YA` ya `:` c AND c's `a Singapore citizen` AND `order` AT LEAST 1)
+              THEN 0
+           IF c's `the para 5 date` AT MOST YMD 2023 12 31
+              THEN `earned income` TIMES (BRANCH IF `order` EQUALS 1 THEN 15% IF `order` EQUALS 2 THEN 20% OTHERWISE 25%)
+           IF ya AT LEAST 2025
+              THEN (BRANCH IF `order` EQUALS 1 THEN 8000 IF `order` EQUALS 2 THEN 10000 OTHERWISE 12000)
+           OTHERWISE 0
+    WHERE
+        `order` MEANS c's `order among the mother's eligible children`
+
+-- Fifth Schedule para 5(3): the working mother's reliefs "must not exceed 100%
+-- of her earned income". para 6(2): the reliefs for the same child "must not
+-- exceed $50,000", the qualifying child relief allowed first (6(3)).
+@ref Fifth Schedule paras 5(3), 6(2), 6(3)
+GIVEN ya IS A NUMBER
+      f  IS AN `Individual relief facts`
+GIVETH A NUMBER
+`the child reliefs for YA` ya `:` f MEANS
+    sum (map `QCR` (f's `children`)) PLUS `WMCR total`
+    WHERE
+        `QCR` c MEANS `the qualifying child relief for YA` ya `:` c
+        `WMCR for` c MEANS
+            IF   f's `a female claimant (married, divorced or widowed)`
+            THEN `capped` (`the working mother's child relief for YA` ya `, earned income` (f's `earned income`) `:` c) (50000 MINUS `QCR` c)
+            ELSE 0
+        `WMCR total` MEANS `capped` (sum (map `WMCR for` (f's `children`))) (f's `earned income`)
+        `capped` x c MEANS IF x GREATER THAN c THEN (IF c LESS THAN 0 THEN 0 ELSE c) ELSE x
+
+§§ `Life insurance and CPF (s 39(2)(g), (ga), (h), (ha), (haa), (10B))`
+
+-- (g) (YA 2025 or before) and (ga), (10A)(b) (YA 2026 on): premiums and
+-- contributions together "must not exceed $5,000, except that where the sum of
+-- the contributions [to CPF and approved funds] exceeds $5,000, then the
+-- deduction ... must be that sum".
+-- (h) (YA 2025 or before): a self-employed person's CPF contributions, up to the
+-- lesser of 37% of the assessable income from the trade and $37,740 (YA
+-- 2017-2025); with (g), contributions over $5,000 exclude life insurance, and
+-- pension contributions together are capped at $37,740.
+-- (ha), (haa) (YA 2026 on): obligatory contributions on trade income (haa), and
+-- voluntary contributions up to A - B, A the lesser of 37% of the trade income
+-- and $37,740, B the (haa) deduction; (10B) the same $5,000 and $37,740 rules.
+-- FORK I4: the prescribed alternatives ("or such other amount as may be
+-- prescribed") are not in the source; the printed figures are used.
+@ref s 39(2)(g), (ga), (h), (ha), (haa), (10A), (10B)
+GIVEN ya IS A NUMBER
+      f  IS AN `Individual relief facts`
+GIVETH A NUMBER
+`the insurance and CPF reliefs for YA` ya `:` f MEANS
+    IF   `contributions` GREATER THAN 5000
+    THEN `contributions`                                                  -- life insurance excluded
+    ELSE `capped` (`contributions` PLUS f's `life insurance premiums, capped at 7% of the capital sum`) 5000
+    WHERE
+        `capped` x c MEANS IF x GREATER THAN c THEN c ELSE x
+        `employee` MEANS f's `obligatory CPF or approved fund contributions as an employee`
+        `37% cap` MEANS `capped` (f's `self-employed: assessable income from the trade or profession` TIMES 37%) 37740
+        `self-employed` MEANS
+            IF   ya AT MOST 2025
+            THEN `capped` (f's `self-employed: obligatory CPF contributions on that income` PLUS f's `self-employed: voluntary CPF contributions`) `37% cap`   -- (h)
+            ELSE f's `self-employed: obligatory CPF contributions on that income`                                                                           -- (haa)
+                 PLUS `at least 0` (`capped` (f's `self-employed: voluntary CPF contributions`) (`37% cap` MINUS f's `self-employed: obligatory CPF contributions on that income`))   -- (ha): A - B
+        `at least 0` x MEANS IF x LESS THAN 0 THEN 0 ELSE x
+        `contributions` MEANS
+            IF   `employee` AT LEAST 37740
+            THEN `employee`                                                -- (h)(iii), (10B)(c): no self-employed deduction
+            ELSE `capped` (`employee` PLUS `self-employed`) 37740           -- (h)(ii), (10B)(b)
+
+§§ `Dependants (s 39(2)(i), (j))`
+
+-- (i): for each parent, grandparent or great-grandparent (of the claimant or
+-- spouse) living in Singapore, "not less than 55 years of age and whose income
+-- was not more than $4,000 [YA 2010-2024] or ... $8,000 [YA 2025 on]": $9,000 if
+-- living together, $5,500 if not but at least $2,000 was spent maintaining
+-- them; if incapacitated: $14,000 / $10,000. "(vi) no individual may obtain a
+-- deduction under this paragraph for more than 2 dependants"; (vii) shares.
+@ref s 39(2)(i)
+GIVEN ya IS A NUMBER
+      d  IS A `Dependant facts`
+GIVETH A NUMBER
+`the parent relief for YA` ya `:` d MEANS
+    IF   NOT (d's `a parent, grandparent or great-grandparent of the claimant or spouse` AND d's `living in Singapore`)
+    THEN 0
+    ELSE `amount` TIMES d's `claimant's share of the relief`
+    WHERE
+        `limit` MEANS IF ya AT MOST 2024 THEN 4000 ELSE 8000
+        `maintained apart` MEANS d's `spent by the claimant on maintenance` AT LEAST 2000
+        `amount` MEANS
+            BRANCH IF d's `incapacitated by physical or mental infirmity`
+                      THEN (IF d's `living with the claimant in the same household` THEN 14000 ELSE IF `maintained apart` THEN 10000 ELSE 0)   -- (v)
+                   IF d's `age at any time in the preceding year` AT LEAST 55 AND d's `income in the preceding year` AT MOST `limit`
+                      THEN (IF d's `living with the claimant in the same household` THEN 9000 ELSE IF `maintained apart` THEN 5500 ELSE 0)     -- (iv)
+                   OTHERWISE 0
+
+@ref s 39(2)(i)(vi)
+GIVEN ya IS A NUMBER
+      f  IS AN `Individual relief facts`
+GIVETH A NUMBER
+`the parent reliefs for YA` ya `:` f MEANS
+    `the best two` (map (GIVEN d YIELD `the parent relief for YA` ya `:` d) (f's `dependants`))
+    WHERE
+        `the best two` xs MEANS
+            CONSIDER `sorted` xs
+            WHEN a FOLLOWED BY rest THEN
+                CONSIDER rest
+                WHEN b FOLLOWED BY more THEN a PLUS b
+                WHEN EMPTY THEN a
+            WHEN EMPTY THEN 0
+        `sorted` xs MEANS
+            CONSIDER xs
+            WHEN EMPTY THEN EMPTY
+            WHEN x FOLLOWED BY rest THEN `insert` x (`sorted` rest)
+        `insert` x ys MEANS
+            CONSIDER ys
+            WHEN EMPTY THEN LIST x
+            WHEN y FOLLOWED BY rest THEN IF x AT LEAST y THEN x FOLLOWED BY ys ELSE y FOLLOWED BY (`insert` x rest)
+
+§§ `Other reliefs (s 39(2)(k)-(p), (2A), (2B), (3), (3A), (11))`
+
+@ref s 39(2)(k), (12B), (12C)
+GIVEN ya IS A NUMBER
+      f  IS AN `Individual relief facts`
+GIVETH A NUMBER
+`the course fees relief for YA` ya `:` f MEANS
+    IF ya AT LEAST 2026 THEN 0                                                   -- (12C)
+    ELSE IF f's `course fees` GREATER THAN 5500 THEN 5500 ELSE f's `course fees`   -- (12B)
+
+-- (2A): an NSman who performed ORNS in the relevant period: $3,000, or $5,000
+-- for a key command and staff appointment holder; (2B): one who did not:
+-- $1,500, or $3,500. (m), (n): $750 for a wife or widow, and for a parent.
+@ref s 39(2)(m), (n), (2A), (2B)
+GIVEN f IS AN `Individual relief facts`
+GIVETH A NUMBER
+`the NSman reliefs:` f MEANS
+    `self` PLUS (IF f's `wife or widow of an NSman, claiming` THEN 750 ELSE 0) PLUS (IF f's `parent of an NSman, claiming` THEN 750 ELSE 0)
+    WHERE
+        `self` MEANS
+            CONSIDER f's `national service`
+            WHEN `not an operationally ready national serviceman`                          THEN 0
+            WHEN `NSman who performed ORNS in the relevant period`                         THEN 3000
+            WHEN `NSman who performed ORNS, key command and staff appointment holder`      THEN 5000
+            WHEN `NSman who did not perform ORNS in the relevant period`                   THEN 1500
+            WHEN `NSman who did not perform ORNS, key command and staff appointment holder` THEN 3500
+
+-- (o): SRS contributions up to the SRS contribution cap, unless the account is
+-- suspended at 31 December or the contribution was withdrawn in the year.
+@ref s 39(2)(o)
+GIVEN f IS AN `Individual relief facts`
+GIVETH A NUMBER
+`the SRS relief:` f MEANS
+    IF   f's `SRS account suspended, or the contribution withdrawn in the year`
+    THEN 0
+    ELSE IF f's `SRS contributions` GREATER THAN f's `SRS contribution cap` THEN f's `SRS contribution cap` ELSE f's `SRS contributions`
+
+-- (p): a married woman, widow or divorcee whose (or whose husband's) parent or
+-- grandparent looked after her child: $3,000, if the caregiver "(B) where the
+-- year of assessment is ... 2024 — did not derive income that exceeds ...
+-- $4,000 ...; (C) ... 2025 or any subsequent year ... — ... $8,000".
+@ref s 39(2)(p)
+GIVEN ya IS A NUMBER
+      f  IS AN `Individual relief facts`
+GIVETH A NUMBER
+`the grandparent caregiver relief for YA` ya `:` f MEANS
+    CONSIDER f's `grandparent caregiver: the caregiver's trade or employment income`
+    WHEN NOTHING THEN 0
+    WHEN JUST i  THEN IF f's `a female claimant (married, divorced or widowed)` AND i AT MOST (IF ya AT MOST 2024 THEN 4000 ELSE 8000) THEN 3000 ELSE 0
+
+-- (3), (3A): CPF cash top-ups, "the lower of" the amounts (after grants, each
+-- capped at the prescribed maximum relief amount) and "the deduction limit for
+-- the year of assessment prescribed by rules". The prescribed figures are
+-- inputs.
+@ref s 39(3), (3A)
+GIVEN f IS AN `Individual relief facts`
+GIVETH A NUMBER
+`the CPF top-up reliefs:` f MEANS
+    `lower` (f's `CPF cash top-ups for family, after grants and capped as prescribed`) (f's `prescribed deduction limit for s 39(3)`)
+    PLUS `lower` (f's `CPF cash top-ups for self, after grants and capped as prescribed`) (f's `prescribed deduction limit for s 39(3A)`)
+    WHERE
+        `lower` a b MEANS IF a LESS THAN b THEN a ELSE b
+
+-- (11): for YA 2024 and before, a qualifying woman's deduction "equal to twice
+-- the amount of levy ... in respect of one domestic servant".
+@ref s 39(11)
+GIVEN ya IS A NUMBER
+      f  IS AN `Individual relief facts`
+GIVETH A NUMBER
+`the foreign domestic worker levy relief for YA` ya `:` f MEANS
+    IF ya AT MOST 2024 AND f's `a female claimant (married, divorced or widowed)` THEN 2 TIMES f's `foreign domestic worker levy paid, for one worker` ELSE 0
+
+§§ `All the reliefs, and the cap (ss 38, 39, 39A)`
+
+DECLARE `Relief breakdown` HAS
+    `earned income relief`       IS A NUMBER
+    `spouse reliefs`             IS A NUMBER
+    `child reliefs`              IS A NUMBER
+    `insurance and CPF`          IS A NUMBER
+    `parents`                    IS A NUMBER
+    `incapacitated siblings`     IS A NUMBER
+    `course fees`                IS A NUMBER
+    `NSman`                      IS A NUMBER
+    `SRS`                        IS A NUMBER
+    `grandparent caregiver`      IS A NUMBER
+    `CPF top-ups`                IS A NUMBER
+    `domestic worker levy`       IS A NUMBER
+    `total before the cap`       IS A NUMBER
+    `total allowed`              IS A NUMBER    -- s 39A
+
+-- s 39A: "for the year of assessment 2018 and every subsequent year of
+-- assessment, the total amount of all deductions allowable to any individual
+-- under section 39 must not exceed $80,000".
+-- s 39 applies only to "an individual resident in Singapore in the year of
+-- assessment".
+@ref ss 39, 39A
+GIVEN ya       IS A NUMBER
+      resident IS A BOOLEAN
+      f        IS AN `Individual relief facts`
+GIVETH A `Relief breakdown`
+`the personal reliefs for YA` ya `, resident:` resident `:` f MEANS
+    `Relief breakdown` WITH
+        `earned income relief`   IS `r1`
+        `spouse reliefs`         IS `r2`
+        `child reliefs`          IS `r3`
+        `insurance and CPF`      IS `r4`
+        `parents`                IS `r5`
+        `incapacitated siblings` IS `r6`
+        `course fees`            IS `r7`
+        `NSman`                  IS `r8`
+        `SRS`                    IS `r9`
+        `grandparent caregiver`  IS `r10`
+        `CPF top-ups`            IS `r11`
+        `domestic worker levy`   IS `r12`
+        `total before the cap`   IS `total`
+        `total allowed`          IS IF ya AT LEAST 2018 AND `total` GREATER THAN 80000 THEN 80000 ELSE `total`
+    WHERE
+        `if resident` x MEANS IF resident THEN x ELSE 0
+        `r1`  MEANS `if resident` (`the earned income relief for` f)
+        `r2`  MEANS `if resident` (`the spouse reliefs for YA` ya `:` f)
+        `r3`  MEANS `if resident` (`the child reliefs for YA` ya `:` f)
+        `r4`  MEANS `if resident` (`the insurance and CPF reliefs for YA` ya `:` f)
+        `r5`  MEANS `if resident` (`the parent reliefs for YA` ya `:` f)
+        `r6`  MEANS `if resident` (5500 TIMES f's `incapacitated siblings maintained`)
+        `r7`  MEANS `if resident` (`the course fees relief for YA` ya `:` f)
+        `r8`  MEANS `if resident` (`the NSman reliefs:` f)
+        `r9`  MEANS `if resident` (`the SRS relief:` f)
+        `r10` MEANS `if resident` (`the grandparent caregiver relief for YA` ya `:` f)
+        `r11` MEANS `if resident` (`the CPF top-up reliefs:` f)
+        `r12` MEANS `if resident` (`the foreign domestic worker levy relief for YA` ya `:` f)
+        `total` MEANS `r1` PLUS `r2` PLUS `r3` PLUS `r4` PLUS `r5` PLUS `r6` PLUS `r7` PLUS `r8` PLUS `r9` PLUS `r10` PLUS `r11` PLUS `r12`
+
+-- s 38: "The chargeable income of any person for any year of assessment is the
+-- remainder of the person's assessable income for that year after the reliefs
+-- and deductions allowed in this Part have been made."
+@ref s 38
+GIVEN `assessable income` IS A NUMBER
+      reliefs             IS A NUMBER
+GIVETH A NUMBER
+`the chargeable income from assessable income` `assessable income` `less reliefs` reliefs MEANS
+    IF reliefs GREATER THAN `assessable income` THEN 0 ELSE `assessable income` MINUS reliefs

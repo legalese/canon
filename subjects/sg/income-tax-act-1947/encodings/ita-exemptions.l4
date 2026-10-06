@@ -1,0 +1,233 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `ita-types`
+
+-- Income Tax Act 1947 — PART 4: IS THIS INCOME EXEMPT?
+--
+-- s 13 (exempt income, with the foreign-income exemptions of s 13(7A)-(9) and
+-- short-term employment in s 13(6)-(7)), ss 13A-13X (the exemption regimes),
+-- and the First Schedule (exempt bodies).
+--
+-- Most regimes in ss 13A-13X turn on an approval or a prescription by the
+-- Minister or an authorised body, given by regulations or letter; their
+-- conditions are the approval's. Those grounds are encoded as: exempt if the
+-- approval (or prescription) covers the income — an input. Grounds whose
+-- conditions the Act itself states are encoded as rules.
+--
+-- Source: ../source/ITA1947.txt lines 3457-8328, 34113-34180.
+
+§ `Part 4 — exemptions`
+
+§§ `The grounds of exemption`
+
+DECLARE `Exemption ground` IS ONE OF
+    -- s 13(1), conditions in the Act
+    `s 13(1)(za) dividend from a company resident in Singapore`
+    `s 13(1)(zd) individual's interest on a deposit with an approved bank or licensed finance company`
+    `s 13(1)(ze), (zf), (zh), (zi), (zj) individual's specified investment income`
+    `s 13(1)(t), (ta) non-resident's interest on a deposit with an approved bank`
+    `s 13(1)(w) employment on a Singapore ship substantially outside Singapore`
+    `s 13(1)(jd) voluntary medisave contribution for a self-employed individual`
+    `s 13(1)(j) CPF sums`
+    `s 13(1)(d) gains in an SRS account`
+    `s 13(1)(i) death gratuities, consolidated compensation for death or injuries`
+    `s 13(1)(zb) employer's childcare subsidy`
+    `s 13(1)(e) a First Schedule body`
+    `s 13(1)(m), (ma) a trade union or platform work association, not from a trade`
+    `s 13(1)(zm) a registered or exempt charity`
+    `s 13(1) another paragraph whose conditions are met`        -- (a)-(c), (f), (h), (ja), (jb), (k), (l), (oa), (q)-(rb), (v), (x), (y), (zf)-(zy)
+    -- s 13(6)-(10)
+    `s 13(6) short-term employment of a non-resident`
+    `s 13(7A) foreign income received by an individual`
+    `s 13(8) foreign dividends, branch profits or service income of a resident`
+    -- ss 13A-13X
+    `s 13W gain on disposing of shares`
+    `s 13Q, 13QA a resident beneficiary's share of trust or estate income`
+    `an approved or prescribed regime under ss 13A-13V, 13X`
+
+DECLARE `Exemption facts` HAS
+    `recipient`                                    IS A `Kind of person`
+    `recipient resident in Singapore`             IS A BOOLEAN
+    `received through a partnership in Singapore` IS A BOOLEAN
+    `derived from carrying on a trade, business or profession` IS A BOOLEAN
+    `derived or paid on`                          IS A DATE
+    `the payer is a company resident in Singapore` IS A BOOLEAN          -- (za)
+    `the recipient has a business or PE in Singapore` IS A BOOLEAN       -- (t)
+    `days employment exercised in Singapore`      IS A NUMBER            -- s 13(6)
+    `as a director of a company`                  IS A BOOLEAN           -- s 13(7)(a)
+    `as a public entertainer not substantially supported from foreign public funds` IS A BOOLEAN   -- s 13(7)(b)
+    `subject to tax in the territory it comes from` IS A BOOLEAN         -- s 13(9)(a), (9A)
+    `that territory's headline corporate rate`    IS A NUMBER            -- s 13(9)(b)
+    `the Comptroller is satisfied the exemption is beneficial` IS A BOOLEAN   -- s 13(7A)(b), (9)(c)
+    `the s 13(9)(a) condition waived`             IS A BOOLEAN           -- s 13(9B)
+    `on a Singapore ship, exercised substantially outside Singapore` IS A BOOLEAN   -- (w)
+    `amount of the income`                        IS A NUMBER
+    `an approval or prescription covers the income` IS A BOOLEAN         -- the regimes
+    `the conditions of the paragraph are met`     IS A BOOLEAN           -- the other s 13(1) paragraphs
+    `the beneficiary's share would be exempt if received directly` IS A BOOLEAN   -- s 13Q, 13QA
+
+§§ `The rules`
+
+-- s 13(1)(za): "any dividends paid on or after 1 January 2008 by any company
+-- resident in Singapore".
+-- (zd): interest derived on or after 1 January 2005 by any individual from a
+-- deposit with an approved bank or licensed finance company.
+-- (ze), (zf), (zh), (zi), (zj)(i): an individual's interest from debt
+-- securities, annuities (not employer- or SRS-bought), life policies, unit
+-- trust and REIT distributions, Islamic debt securities, structured products,
+-- "except where such income is derived through a partnership in Singapore or
+-- is derived from the carrying on of a trade, business or profession".
+-- (t): deposit interest of a non-resident individual, or of a non-individual
+-- without a business or PE in Singapore ((ta): with a PE, if the funds are
+-- not from it — an input as `the conditions … are met`).
+-- (w): "employment exercised on board a Singapore ship ... if the employment is
+-- exercised substantially outside Singapore".
+-- (jd): a voluntary medisave contribution for a self-employed individual, "up
+-- to ... (ii) $2,730 per year (for contributions made in 2018 and ... each
+-- subsequent year)", less earlier contributions as employer.
+-- s 13(6): employment "exercised in Singapore for not more than 60 days in the
+-- year preceding any year of assessment by a person who is not resident in
+-- Singapore", (7) not a director's emoluments nor a public entertainer's
+-- (unless substantially supported from foreign public funds).
+-- s 13(7A): foreign income received in Singapore "(a) by any individual who is
+-- not resident in Singapore; and (b) on or after 1 January 2004 by any
+-- individual who is resident in Singapore if the Comptroller is satisfied that
+-- the tax exemption would be beneficial ..., but excludes such income received
+-- ... through a partnership in Singapore."
+-- s 13(8), (9): foreign dividends, branch profits and service income received
+-- by a resident (not an individual, or an individual through a partnership),
+-- if "(a) the income is subject to tax of a similar character ... (b) ... the
+-- highest rate of tax ... on any gains or profits from any trade or business
+-- carried on by any company in that territory ... is not less than 15%; and
+-- (c) the Comptroller is satisfied that the tax exemption would be beneficial";
+-- (9B) (a) may be waived.
+@ref s 13(1), (6), (7), (7A), (8), (9), (9B); ss 13Q, 13QA; First Schedule
+GIVEN g IS AN `Exemption ground`
+      f IS AN `Exemption facts`
+GIVETH A BOOLEAN
+DECIDE `the income is exempt under` g `:` f IF
+    CONSIDER g
+    WHEN `s 13(1)(za) dividend from a company resident in Singapore` THEN
+            f's `the payer is a company resident in Singapore`
+        AND f's `derived or paid on` AT LEAST YMD 2008 1 1
+    WHEN `s 13(1)(zd) individual's interest on a deposit with an approved bank or licensed finance company` THEN
+            `an individual`
+        AND f's `derived or paid on` AT LEAST YMD 2005 1 1
+    WHEN `s 13(1)(ze), (zf), (zh), (zi), (zj) individual's specified investment income` THEN
+            `an individual`
+        AND NOT f's `received through a partnership in Singapore`
+        AND NOT f's `derived from carrying on a trade, business or profession`
+    WHEN `s 13(1)(t), (ta) non-resident's interest on a deposit with an approved bank` THEN
+            NOT f's `recipient resident in Singapore`
+        AND (`an individual` OR (NOT f's `the recipient has a business or PE in Singapore`) OR f's `the conditions of the paragraph are met`)
+    WHEN `s 13(1)(w) employment on a Singapore ship substantially outside Singapore` THEN
+        f's `on a Singapore ship, exercised substantially outside Singapore`
+    WHEN `s 13(1)(jd) voluntary medisave contribution for a self-employed individual` THEN
+        f's `amount of the income` GREATER THAN 0      -- exempt "up to" $2,730: see `the exempt part of a voluntary medisave contribution of`
+    WHEN `s 13(1)(j) CPF sums` THEN TRUE
+    WHEN `s 13(1)(d) gains in an SRS account` THEN TRUE
+    WHEN `s 13(1)(i) death gratuities, consolidated compensation for death or injuries` THEN TRUE
+    WHEN `s 13(1)(zb) employer's childcare subsidy` THEN TRUE
+    WHEN `s 13(1)(e) a First Schedule body` THEN TRUE
+    WHEN `s 13(1)(m), (ma) a trade union or platform work association, not from a trade` THEN
+        NOT f's `derived from carrying on a trade, business or profession`
+    WHEN `s 13(1)(zm) a registered or exempt charity` THEN TRUE
+    WHEN `s 13(1) another paragraph whose conditions are met` THEN f's `the conditions of the paragraph are met`
+    WHEN `s 13(6) short-term employment of a non-resident` THEN
+            NOT f's `recipient resident in Singapore`
+        AND f's `days employment exercised in Singapore` AT MOST 60
+        AND NOT "(7)(a)" ... f's `as a director of a company`
+        AND NOT "(7)(b)" ... f's `as a public entertainer not substantially supported from foreign public funds`
+    WHEN `s 13(7A) foreign income received by an individual` THEN
+            `an individual`
+        AND (    "(a)" ... NOT f's `recipient resident in Singapore`
+             OR  "(b)" ... (    f's `derived or paid on` AT LEAST YMD 2004 1 1
+                            AND f's `the Comptroller is satisfied the exemption is beneficial`
+                            AND NOT f's `received through a partnership in Singapore`))
+    WHEN `s 13(8) foreign dividends, branch profits or service income of a resident` THEN
+            f's `recipient resident in Singapore`
+        AND (    "(d)" ... ((NOT `an individual`) AND f's `derived or paid on` AT LEAST YMD 2003 6 1)
+             OR  "(f)" ... (`an individual` AND f's `received through a partnership in Singapore` AND f's `derived or paid on` AT LEAST YMD 2004 1 1))
+        AND "(9)(a)" ... (f's `subject to tax in the territory it comes from` OR f's `the s 13(9)(a) condition waived`)
+        AND "(9)(b)" ... f's `that territory's headline corporate rate` AT LEAST 15%
+        AND "(9)(c)" ... f's `the Comptroller is satisfied the exemption is beneficial`
+    WHEN `s 13W gain on disposing of shares` THEN f's `the conditions of the paragraph are met`   -- see `the share disposal gain is exempt …`
+    WHEN `s 13Q, 13QA a resident beneficiary's share of trust or estate income` THEN
+        f's `recipient resident in Singapore` AND f's `the beneficiary's share would be exempt if received directly`
+    WHEN `an approved or prescribed regime under ss 13A-13V, 13X` THEN f's `an approval or prescription covers the income`
+    WHERE
+        `an individual` MEANS f's `recipient` EQUALS `an individual`
+
+§§ `Disposal of shares (s 13W)`
+
+-- s 13W(1): a company's gains on disposing of ordinary shares "(a) during the
+-- period between 1 June 2012 to 31 December 2025 ...; and (b) after [it] has,
+-- at all times during a continuous period of at least 24 months ending on the
+-- date immediately prior to the date of disposal ..., legally and beneficially
+-- owned at least 20% of the ordinary shares". (1A): from 1 January 2026,
+-- ordinary or preference shares, with at least 20% of the ordinary shares or
+-- of the paid-up ordinary and preference share capital by value. (1B): from
+-- 1 January 2026, the 20% may be held with group companies (more than 50%
+-- links, (1C)) at the start of the 24 months, the subject shares themselves held
+-- for 24 months.
+-- The exclusions in s 13W(3) onwards (unlisted property companies, insurers,
+-- partnerships, and the like) are an input.
+DECLARE `Share disposal` HAS
+    `disposed on`                                      IS A DATE
+    `ordinary shares only`                             IS A BOOLEAN
+    `months the 20% holding was held continuously before disposal` IS A NUMBER
+    `the 20% counts group companies' holdings`         IS A BOOLEAN   -- (1B)
+    `the subject shares held for at least 24 months`   IS A BOOLEAN   -- (1B)(b)
+    `an exclusion in s 13W(3) onwards applies`         IS A BOOLEAN
+
+@ref s 13W(1), (1A), (1B)
+GIVEN d IS A `Share disposal`
+GIVETH A BOOLEAN
+DECIDE `the share disposal gain is exempt under s 13W:` d IF
+        NOT d's `an exclusion in s 13W(3) onwards applies`
+    AND d's `months the 20% holding was held continuously before disposal` AT LEAST 24
+    AND (    "(1)"  ... (d's `ordinary shares only` AND (NOT d's `the 20% counts group companies' holdings`) AND d's `disposed on` AT LEAST YMD 2012 6 1 AND d's `disposed on` AT MOST YMD 2025 12 31)
+         OR  "(1A)" ... ((NOT d's `the 20% counts group companies' holdings`) AND d's `disposed on` AT LEAST YMD 2026 1 1)
+         OR  "(1B)" ... (d's `the 20% counts group companies' holdings` AND d's `the subject shares held for at least 24 months` AND d's `disposed on` AT LEAST YMD 2026 1 1))
+
+§§ `The First Schedule`
+
+@ref First Schedule Parts A, B
+GIVETH A LIST OF STRING
+`the First Schedule bodies` MEANS
+    LIST "Bankruptcy Estates Account", "Central Co-operative Fund", "Central Sikh Gurdwara Board", "Common Fund",
+         "Dependants' Protection Insurance Fund", "Education Finance Board", "Hindu Endowments Board", "Home Protection Fund",
+         "Hotels Licensing Board", "Institute of Technical Education, Singapore", "Land Surveyors Board",
+         "Majlis Ugama Islam, Singapura", "MediShield Life Fund", "Minister for Finance", "National Arts Council",
+         "National Council of Social Service", "National Heritage Board", "National Library Board", "People's Association",
+         "Science Centre Board", "Singapore Academy of Law", "Singapore Corporation of Rehabilitative Enterprises",
+         "Catholic Young Men's Association", "Lee Kuan Yew Exchange Fellowship", "Metropolitan Young Men's Christian Association",
+         "National Crime Prevention Council of Singapore", "SAFRA National Service Association", "HomeTeamNS",
+         "Titular Anglican Bishop of Singapore", "Titular Roman Catholic Archbishop of Singapore",
+         "Young Men's Christian Association", "Young Women's Christian Association"
+
+-- Part A item 23: "Any specified statutory corporation within the meaning of
+-- section 3 of the Statutory Corporations (Contributions to Consolidated Fund)
+-- Act 1989" — an input.
+@ref s 13(1)(e); First Schedule
+GIVEN body IS A STRING
+      `a specified statutory corporation` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a First Schedule body:` body `, specified statutory corporation:` `a specified statutory corporation` IF
+    elem body `the First Schedule bodies` OR `a specified statutory corporation`
+
+§§ `The exempt amount of a medisave contribution (s 13(1)(jd))`
+
+-- s 13(1)(jd): a voluntary medisave contribution for a self-employed individual
+-- is exempt "up to ... (ii) $2,730 per year (for contributions made in 2018 and in
+-- each subsequent year), less any previous contribution ... in the person's
+-- capacity as an employer". Found by the independent test pass: the exemption
+-- reaches the first $2,730, not only contributions of $2,730 or less.
+@ref s 13(1)(jd)
+GIVEN contribution             IS A NUMBER
+      `earlier as an employer` IS A NUMBER
+GIVETH A NUMBER
+`the exempt part of a voluntary medisave contribution of` contribution `, earlier as an employer` `earlier as an employer` MEANS
+    IF contribution GREATER THAN `room` THEN `room` ELSE contribution
+    WHERE
+        `room` MEANS IF `earlier as an employer` GREATER THAN 2730 THEN 0 ELSE 2730 MINUS `earlier as an employer`

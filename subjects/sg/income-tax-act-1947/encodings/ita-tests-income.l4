@@ -1,0 +1,270 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `ita-types`
+IMPORT `ita-charge`
+IMPORT `ita-exemptions`
+IMPORT `ita-deductions`
+IMPORT `ita-capital-allowances`
+IMPORT `ita-assessable`
+
+-- Income Tax Act 1947 — TESTS: FROM INCOME TO ASSESSABLE INCOME (Parts 3-9).
+-- Expected values worked by hand from ../source/ITA1947.txt.
+
+§ `Tests — income`
+
+§§ `The charge and sources (ss 2A, 10, 12)`
+
+#ASSERT NOT `within the charge to tax, being` `outside Singapore and not received in Singapore`
+#ASSERT     `within the charge to tax, being` `received in Singapore from outside Singapore`
+#ASSERT     `foreign income is received in Singapore, remitted:` FALSE `, applied to a trade debt:` TRUE `, applied to property brought in:` FALSE
+#ASSERT NOT `foreign income is received in Singapore, remitted:` FALSE `, applied to a trade debt:` FALSE `, applied to property brought in:` FALSE
+#ASSERT     `employment income is derived from Singapore, exercised here:` TRUE `, for the Government abroad:` FALSE `, citizen or resident:` FALSE
+#ASSERT     `employment income is derived from Singapore, exercised here:` FALSE `, for the Government abroad:` TRUE `, citizen or resident:` TRUE
+#ASSERT NOT `employment income is derived from Singapore, exercised here:` FALSE `, for the Government abroad:` FALSE `, citizen or resident:` TRUE
+
+GIVEN borne IS A BOOLEAN, ded IS A BOOLEAN, loan IS A BOOLEAN, outside IS A BOOLEAN, soft IS A BOOLEAN, trip IS A BOOLEAN
+GIVETH A `Deemed source facts`
+`source facts` borne ded loan outside soft trip MEANS
+    `Deemed source facts` WITH
+        `borne by a Singapore resident or PE, not for a business abroad through a foreign PE` IS borne
+        `deductible against income derived from Singapore` IS ded
+        `loan funds brought into or used in Singapore` IS loan
+        `performed outside Singapore by a non-resident not doing business here through a PE or otherwise` IS outside
+        `software or digitised goods without a right to exploit the copyright` IS soft
+        `rent for movable property used abroad on a business trip or for a representative office` IS trip
+
+#ASSERT     `a payment of` `interest, or a payment for a loan's arrangement, management, guarantee or service` `is deemed derived from Singapore:` (`source facts` TRUE FALSE FALSE FALSE FALSE FALSE)
+#ASSERT     `a payment of` `interest, or a payment for a loan's arrangement, management, guarantee or service` `is deemed derived from Singapore:` (`source facts` FALSE FALSE TRUE FALSE FALSE FALSE)
+#ASSERT NOT `a payment of` `payment for know-how, or for assistance or service in applying it` `is deemed derived from Singapore:` (`source facts` TRUE FALSE FALSE TRUE FALSE FALSE)
+#ASSERT     `a payment of` `payment for management or assistance in management` `is deemed derived from Singapore:` (`source facts` TRUE FALSE FALSE FALSE FALSE FALSE)
+#ASSERT NOT `a payment of` `royalty or payment for the use of movable property` `is deemed derived from Singapore:` (`source facts` TRUE FALSE FALSE FALSE TRUE FALSE)
+#ASSERT NOT `a payment of` `rent for movable property` `is deemed derived from Singapore:` (`source facts` TRUE FALSE FALSE FALSE FALSE TRUE)
+#ASSERT NOT `a payment of` `royalty or payment for the use of movable property` `is deemed derived from Singapore:` (`source facts` FALSE FALSE FALSE FALSE FALSE FALSE)
+
+§§ `Employment benefits and deeming rules (s 10)`
+
+#ASSERT `the housing benefit, employer's rent` (JUST 36000) `, annual value` 30000 `, employee's rent` 6000 EQUALS 36000
+#ASSERT `the housing benefit, employer's rent` NOTHING `, annual value` 30000 `, employee's rent` 6000 EQUALS 24000
+-- s 10(6): (5 - 2) x 1,000
+#ASSERT `the gain from an employee share right, price` 5 `, paid` 2 `, shares` 1000 EQUALS 3000
+-- s 10(7)(c): the later of one month before cessation and the grant
+#ASSERT `the date the s 10(7) gains are deemed derived, ceasing on` (YMD 2026 6 30) `, granted on` (YMD 2026 1 1) EQUALS YMD 2026 5 30
+#ASSERT `the date the s 10(7) gains are deemed derived, ceasing on` (YMD 2026 6 30) `, granted on` (YMD 2026 6 15) EQUALS YMD 2026 6 15
+#ASSERT     `the deemed exercise rule applies, foreigner leaving:` TRUE `, unexercised:` TRUE `, undertaking:` FALSE
+#ASSERT NOT `the deemed exercise rule applies, foreigner leaving:` TRUE `, unexercised:` TRUE `, undertaking:` TRUE
+#ASSERT     `a revision under s 10(7AC) is still open for an event in` 2031 `, deemed in` 2026
+#ASSERT NOT `a revision under s 10(7AC) is still open for an event in` 2032 `, deemed in` 2026
+#ASSERT `the excess CPF contributions deemed income` 1200 `and` 800 EQUALS 2000
+-- s 10(9): 3% of 100,000
+#ASSERT `the annuity income, received` 5000 `, consideration` 100000 `, recovered:` FALSE `, employer-bought:` FALSE `, SRS:` FALSE EQUALS 3000
+#ASSERT `the annuity income, received` 5000 `, consideration` 100000 `, recovered:` TRUE `, employer-bought:` FALSE `, SRS:` FALSE EQUALS 5000
+#ASSERT `the annuity income, received` 5000 `, consideration` 100000 `, recovered:` FALSE `, employer-bought:` FALSE `, SRS:` TRUE EQUALS 5000
+#ASSERT NOT `the payment is income, being maintenance:` TRUE
+-- s 10(14)-(14B): lesser of net and 10% (YA 2026), 40% (YA 2027), 70% (YA 2028) of gross; none from YA 2029
+#ASSERT `the author's royalty income for YA` 2026 `, gross` 100000 `, net` 60000 `, newspaper:` FALSE EQUALS 10000
+#ASSERT `the author's royalty income for YA` 2027 `, gross` 100000 `, net` 60000 `, newspaper:` FALSE EQUALS 40000
+#ASSERT `the author's royalty income for YA` 2028 `, gross` 100000 `, net` 60000 `, newspaper:` FALSE EQUALS 60000
+#ASSERT `the author's royalty income for YA` 2029 `, gross` 100000 `, net` 60000 `, newspaper:` FALSE EQUALS 60000
+#ASSERT `the author's royalty income for YA` 2026 `, gross` 100000 `, net` 60000 `, newspaper:` TRUE EQUALS 60000
+-- s 10G: 50% on retirement; 5% penalty on a premature withdrawal
+#ASSERT `the SRS withdrawal of` 30000 `, contributed` 0 `, on ground` `on or after the prescribed retirement age at first contribution` EQUALS `SRS result` OF 15000, 0
+#ASSERT `the SRS withdrawal of` 30000 `, contributed` 0 `, on ground` `before the prescribed retirement age, on no special ground` EQUALS `SRS result` OF 30000, 1500
+#ASSERT `the SRS withdrawal of` 30000 `, contributed` 10000 `, on ground` `on incapacity, mental disorder or terminal illness` EQUALS `SRS result` OF 10000, 0
+
+GIVEN sold IS A DATE, group IS A BOOLEAN, ip IS A BOOLEAN, excl IS A BOOLEAN, other IS A BOOLEAN
+GIVETH A `Foreign asset sale`
+`a foreign sale on` sold group ip excl other MEANS
+    `Foreign asset sale` WITH
+        `sold on` IS sold
+        `the seller is a member of a relevant group` IS group
+        `the asset is situated outside Singapore` IS TRUE
+        `gains received in Singapore` IS 100000
+        `otherwise chargeable as income under s 10(1)` IS other
+        `otherwise exempt from tax` IS FALSE
+        `an intellectual property right` IS ip
+        `incidental to a prescribed financial institution's business, or to an incentive-income activity` IS FALSE
+        `an excluded entity in the basis period` IS excl
+        `deductible expenditure and losses` IS 30000
+
+-- s 10L: 100,000 received less 30,000 deductible
+#ASSERT `the foreign asset gains chargeable under s 10L:` (`a foreign sale on` (YMD 2024 6 1) TRUE FALSE FALSE FALSE) EQUALS 70000
+#ASSERT `the foreign asset gains chargeable under s 10L:` (`a foreign sale on` (YMD 2023 12 31) TRUE FALSE FALSE FALSE) EQUALS 0
+#ASSERT `the foreign asset gains chargeable under s 10L:` (`a foreign sale on` (YMD 2024 6 1) TRUE FALSE TRUE FALSE) EQUALS 0
+#ASSERT `the foreign asset gains chargeable under s 10L:` (`a foreign sale on` (YMD 2024 6 1) TRUE TRUE TRUE FALSE) EQUALS 70000
+#ASSERT `the foreign asset gains chargeable under s 10L:` (`a foreign sale on` (YMD 2024 6 1) FALSE FALSE FALSE FALSE) EQUALS 0
+#ASSERT `the foreign asset gains chargeable under s 10L:` (`a foreign sale on` (YMD 2024 6 1) TRUE FALSE FALSE TRUE) EQUALS 0
+-- s 11(1)
+#ASSERT     `the club is deemed to carry on a business, member receipts` 40 `of` 100
+#ASSERT NOT `the club is deemed to carry on a business, member receipts` 50 `of` 100
+
+§§ `Exemptions (s 13 etc.)`
+
+#ASSERT     `the income is exempt under` `s 13(1)(za) dividend from a company resident in Singapore` `:` (`Exemption facts` WITH `recipient` IS `an individual`, `recipient resident in Singapore` IS TRUE, `received through a partnership in Singapore` IS FALSE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS TRUE, `the recipient has a business or PE in Singapore` IS FALSE, `days employment exercised in Singapore` IS 0, `as a director of a company` IS FALSE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS FALSE, `that territory's headline corporate rate` IS 0, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS FALSE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 0, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+#ASSERT NOT `the income is exempt under` `s 13(1)(za) dividend from a company resident in Singapore` `:` (`Exemption facts` WITH `recipient` IS `an individual`, `recipient resident in Singapore` IS TRUE, `received through a partnership in Singapore` IS FALSE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS FALSE, `the recipient has a business or PE in Singapore` IS FALSE, `days employment exercised in Singapore` IS 0, `as a director of a company` IS FALSE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS FALSE, `that territory's headline corporate rate` IS 0, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS FALSE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 0, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+#ASSERT     `the income is exempt under` `s 13(1)(zd) individual's interest on a deposit with an approved bank or licensed finance company` `:` (`Exemption facts` WITH `recipient` IS `an individual`, `recipient resident in Singapore` IS TRUE, `received through a partnership in Singapore` IS FALSE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS FALSE, `the recipient has a business or PE in Singapore` IS FALSE, `days employment exercised in Singapore` IS 0, `as a director of a company` IS FALSE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS FALSE, `that territory's headline corporate rate` IS 0, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS FALSE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 0, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+#ASSERT NOT `the income is exempt under` `s 13(1)(zd) individual's interest on a deposit with an approved bank or licensed finance company` `:` (`Exemption facts` WITH `recipient` IS `a company`, `recipient resident in Singapore` IS TRUE, `received through a partnership in Singapore` IS FALSE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS FALSE, `the recipient has a business or PE in Singapore` IS FALSE, `days employment exercised in Singapore` IS 0, `as a director of a company` IS FALSE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS FALSE, `that territory's headline corporate rate` IS 0, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS FALSE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 0, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+#ASSERT     `the income is exempt under` `s 13(1)(ze), (zf), (zh), (zi), (zj) individual's specified investment income` `:` (`Exemption facts` WITH `recipient` IS `an individual`, `recipient resident in Singapore` IS TRUE, `received through a partnership in Singapore` IS FALSE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS FALSE, `the recipient has a business or PE in Singapore` IS FALSE, `days employment exercised in Singapore` IS 0, `as a director of a company` IS FALSE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS FALSE, `that territory's headline corporate rate` IS 0, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS FALSE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 0, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+#ASSERT NOT `the income is exempt under` `s 13(1)(ze), (zf), (zh), (zi), (zj) individual's specified investment income` `:` (`Exemption facts` WITH `recipient` IS `an individual`, `recipient resident in Singapore` IS TRUE, `received through a partnership in Singapore` IS TRUE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS FALSE, `the recipient has a business or PE in Singapore` IS FALSE, `days employment exercised in Singapore` IS 0, `as a director of a company` IS FALSE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS FALSE, `that territory's headline corporate rate` IS 0, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS FALSE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 0, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+#ASSERT     `the income is exempt under` `s 13(6) short-term employment of a non-resident` `:` (`Exemption facts` WITH `recipient` IS `an individual`, `recipient resident in Singapore` IS FALSE, `received through a partnership in Singapore` IS FALSE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS FALSE, `the recipient has a business or PE in Singapore` IS FALSE, `days employment exercised in Singapore` IS 60, `as a director of a company` IS FALSE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS FALSE, `that territory's headline corporate rate` IS 0, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS FALSE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 0, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+#ASSERT NOT `the income is exempt under` `s 13(6) short-term employment of a non-resident` `:` (`Exemption facts` WITH `recipient` IS `an individual`, `recipient resident in Singapore` IS FALSE, `received through a partnership in Singapore` IS FALSE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS FALSE, `the recipient has a business or PE in Singapore` IS FALSE, `days employment exercised in Singapore` IS 61, `as a director of a company` IS FALSE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS FALSE, `that territory's headline corporate rate` IS 0, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS FALSE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 0, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+#ASSERT NOT `the income is exempt under` `s 13(6) short-term employment of a non-resident` `:` (`Exemption facts` WITH `recipient` IS `an individual`, `recipient resident in Singapore` IS FALSE, `received through a partnership in Singapore` IS FALSE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS FALSE, `the recipient has a business or PE in Singapore` IS FALSE, `days employment exercised in Singapore` IS 30, `as a director of a company` IS TRUE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS FALSE, `that territory's headline corporate rate` IS 0, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS FALSE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 0, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+#ASSERT     `the income is exempt under` `s 13(7A) foreign income received by an individual` `:` (`Exemption facts` WITH `recipient` IS `an individual`, `recipient resident in Singapore` IS TRUE, `received through a partnership in Singapore` IS FALSE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS FALSE, `the recipient has a business or PE in Singapore` IS FALSE, `days employment exercised in Singapore` IS 0, `as a director of a company` IS FALSE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS FALSE, `that territory's headline corporate rate` IS 0, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS FALSE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 0, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+#ASSERT NOT `the income is exempt under` `s 13(7A) foreign income received by an individual` `:` (`Exemption facts` WITH `recipient` IS `an individual`, `recipient resident in Singapore` IS TRUE, `received through a partnership in Singapore` IS TRUE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS FALSE, `the recipient has a business or PE in Singapore` IS FALSE, `days employment exercised in Singapore` IS 0, `as a director of a company` IS FALSE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS FALSE, `that territory's headline corporate rate` IS 0, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS FALSE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 0, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+#ASSERT     `the income is exempt under` `s 13(7A) foreign income received by an individual` `:` (`Exemption facts` WITH `recipient` IS `an individual`, `recipient resident in Singapore` IS FALSE, `received through a partnership in Singapore` IS TRUE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS FALSE, `the recipient has a business or PE in Singapore` IS FALSE, `days employment exercised in Singapore` IS 0, `as a director of a company` IS FALSE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS FALSE, `that territory's headline corporate rate` IS 0, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS FALSE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 0, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+#ASSERT     `the income is exempt under` `s 13(8) foreign dividends, branch profits or service income of a resident` `:` (`Exemption facts` WITH `recipient` IS `a company`, `recipient resident in Singapore` IS TRUE, `received through a partnership in Singapore` IS FALSE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS FALSE, `the recipient has a business or PE in Singapore` IS FALSE, `days employment exercised in Singapore` IS 0, `as a director of a company` IS FALSE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS TRUE, `that territory's headline corporate rate` IS 17%, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS FALSE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 0, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+#ASSERT NOT `the income is exempt under` `s 13(8) foreign dividends, branch profits or service income of a resident` `:` (`Exemption facts` WITH `recipient` IS `a company`, `recipient resident in Singapore` IS TRUE, `received through a partnership in Singapore` IS FALSE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS FALSE, `the recipient has a business or PE in Singapore` IS FALSE, `days employment exercised in Singapore` IS 0, `as a director of a company` IS FALSE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS TRUE, `that territory's headline corporate rate` IS 10%, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS FALSE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 0, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+#ASSERT     `the income is exempt under` `s 13(8) foreign dividends, branch profits or service income of a resident` `:` (`Exemption facts` WITH `recipient` IS `a company`, `recipient resident in Singapore` IS TRUE, `received through a partnership in Singapore` IS FALSE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS FALSE, `the recipient has a business or PE in Singapore` IS FALSE, `days employment exercised in Singapore` IS 0, `as a director of a company` IS FALSE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS FALSE, `that territory's headline corporate rate` IS 15%, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS TRUE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 0, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+#ASSERT NOT `the income is exempt under` `s 13(8) foreign dividends, branch profits or service income of a resident` `:` (`Exemption facts` WITH `recipient` IS `an individual`, `recipient resident in Singapore` IS TRUE, `received through a partnership in Singapore` IS FALSE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS FALSE, `the recipient has a business or PE in Singapore` IS FALSE, `days employment exercised in Singapore` IS 0, `as a director of a company` IS FALSE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS TRUE, `that territory's headline corporate rate` IS 17%, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS FALSE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 0, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+#ASSERT     `the income is exempt under` `s 13(1)(jd) voluntary medisave contribution for a self-employed individual` `:` (`Exemption facts` WITH `recipient` IS `an individual`, `recipient resident in Singapore` IS TRUE, `received through a partnership in Singapore` IS FALSE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS FALSE, `the recipient has a business or PE in Singapore` IS FALSE, `days employment exercised in Singapore` IS 0, `as a director of a company` IS FALSE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS FALSE, `that territory's headline corporate rate` IS 0, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS FALSE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 2730, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+#ASSERT     `the income is exempt under` `s 13(1)(jd) voluntary medisave contribution for a self-employed individual` `:` (`Exemption facts` WITH `recipient` IS `an individual`, `recipient resident in Singapore` IS TRUE, `received through a partnership in Singapore` IS FALSE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS FALSE, `the recipient has a business or PE in Singapore` IS FALSE, `days employment exercised in Singapore` IS 0, `as a director of a company` IS FALSE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS FALSE, `that territory's headline corporate rate` IS 0, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS FALSE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 2731, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+-- corrected after the independent test pass: a 2,731 contribution is exempt up to 2,730
+#ASSERT `the exempt part of a voluntary medisave contribution of` 2731 `, earlier as an employer` 0 EQUALS 2730
+#ASSERT `the exempt part of a voluntary medisave contribution of` 3000 `, earlier as an employer` 1000 EQUALS 1730
+#ASSERT     `the income is exempt under` `s 13(1)(t), (ta) non-resident's interest on a deposit with an approved bank` `:` (`Exemption facts` WITH `recipient` IS `a company`, `recipient resident in Singapore` IS FALSE, `received through a partnership in Singapore` IS FALSE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS FALSE, `the recipient has a business or PE in Singapore` IS FALSE, `days employment exercised in Singapore` IS 0, `as a director of a company` IS FALSE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS FALSE, `that territory's headline corporate rate` IS 0, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS FALSE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 0, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+#ASSERT NOT `the income is exempt under` `s 13(1)(t), (ta) non-resident's interest on a deposit with an approved bank` `:` (`Exemption facts` WITH `recipient` IS `a company`, `recipient resident in Singapore` IS FALSE, `received through a partnership in Singapore` IS FALSE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS FALSE, `the recipient has a business or PE in Singapore` IS TRUE, `days employment exercised in Singapore` IS 0, `as a director of a company` IS FALSE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS FALSE, `that territory's headline corporate rate` IS 0, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS FALSE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 0, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+#ASSERT NOT `the income is exempt under` `an approved or prescribed regime under ss 13A-13V, 13X` `:` (`Exemption facts` WITH `recipient` IS `an individual`, `recipient resident in Singapore` IS TRUE, `received through a partnership in Singapore` IS FALSE, `derived from carrying on a trade, business or profession` IS FALSE, `derived or paid on` IS YMD 2025 6 1, `the payer is a company resident in Singapore` IS FALSE, `the recipient has a business or PE in Singapore` IS FALSE, `days employment exercised in Singapore` IS 0, `as a director of a company` IS FALSE, `as a public entertainer not substantially supported from foreign public funds` IS FALSE, `subject to tax in the territory it comes from` IS FALSE, `that territory's headline corporate rate` IS 0, `the Comptroller is satisfied the exemption is beneficial` IS TRUE, `the s 13(9)(a) condition waived` IS FALSE, `on a Singapore ship, exercised substantially outside Singapore` IS FALSE, `amount of the income` IS 0, `an approval or prescription covers the income` IS FALSE, `the conditions of the paragraph are met` IS FALSE, `the beneficiary's share would be exempt if received directly` IS FALSE)
+
+GIVEN d IS A DATE, ord IS A BOOLEAN, months IS A NUMBER, group IS A BOOLEAN, held IS A BOOLEAN, excl IS A BOOLEAN
+GIVETH A `Share disposal`
+`a disposal on` d ord months group held excl MEANS
+    `Share disposal` WITH `disposed on` IS d, `ordinary shares only` IS ord, `months the 20% holding was held continuously before disposal` IS months, `the 20% counts group companies' holdings` IS group, `the subject shares held for at least 24 months` IS held, `an exclusion in s 13W(3) onwards applies` IS excl
+
+#ASSERT     `the share disposal gain is exempt under s 13W:` (`a disposal on` (YMD 2025 6 1) TRUE 24 FALSE FALSE FALSE)
+#ASSERT NOT `the share disposal gain is exempt under s 13W:` (`a disposal on` (YMD 2025 6 1) TRUE 23 FALSE FALSE FALSE)
+#ASSERT NOT `the share disposal gain is exempt under s 13W:` (`a disposal on` (YMD 2025 6 1) FALSE 30 FALSE FALSE FALSE)
+#ASSERT     `the share disposal gain is exempt under s 13W:` (`a disposal on` (YMD 2026 3 1) FALSE 30 FALSE FALSE FALSE)
+#ASSERT NOT `the share disposal gain is exempt under s 13W:` (`a disposal on` (YMD 2025 6 1) TRUE 30 TRUE TRUE FALSE)
+#ASSERT     `the share disposal gain is exempt under s 13W:` (`a disposal on` (YMD 2026 3 1) TRUE 30 TRUE TRUE FALSE)
+#ASSERT NOT `the share disposal gain is exempt under s 13W:` (`a disposal on` (YMD 2025 6 1) TRUE 30 FALSE FALSE TRUE)
+#ASSERT     `a First Schedule body:` "National Library Board" `, specified statutory corporation:` FALSE
+#ASSERT NOT `a First Schedule body:` "Acme Pte Ltd" `, specified statutory corporation:` FALSE
+#ASSERT     `a First Schedule body:` "A New Board" `, specified statutory corporation:` TRUE
+
+§§ `Deductions (Part 5)`
+
+#ASSERT NOT `deductible, an outgoing of kind` `domestic or private expenses`
+#ASSERT     `deductible, an outgoing of kind` `interest on money borrowed for capital employed in acquiring the income`
+#ASSERT NOT `deductible, an outgoing of kind` `a payment in furtherance of a corruption or bribery offence`
+-- s 14(1)(e): 17% of 10,000 = 1,700
+#ASSERT `the deduction for an employer's CPF contribution of` 2000 `on remuneration of` 10000 `, work pass:` FALSE EQUALS 1700
+#ASSERT `the deduction for an employer's CPF contribution of` 1500 `on remuneration of` 10000 `, work pass:` FALSE EQUALS 1500
+#ASSERT `the deduction for an employer's CPF contribution of` 1500 `on remuneration of` 10000 `, work pass:` TRUE EQUALS 0
+#ASSERT `the medisave contribution deduction for` 3000 `, already deducted` 0 EQUALS 2730
+#ASSERT `the medisave contribution deduction for` 3000 `, already deducted` 1000 EQUALS 1730
+-- s 14(3): 10,000 x 35,000 / 70,000
+#ASSERT `the deduction for business-car expenses of` 10000 `, the car costing` 70000 EQUALS 5000
+#ASSERT `the deduction for business-car expenses of` 10000 `, the car costing` 30000 EQUALS 10000
+
+GIVEN rem IS A NUMBER, pmb IS A BOOLEAN, total IS A NUMBER, ins IS A NUMBER, gen IS A NUMBER, riders IS A NUMBER
+GIVETH A `Medical expense facts`
+`medical` rem pmb total ins gen riders MEANS `Medical expense facts` WITH `total remuneration of employees` IS rem, `portable medical benefits (6A)(a) met` IS pmb, `total medical expenses` IS total, `qualifying insurance expenses` IS ins, `general contributions` IS gen, `riders` IS riders
+
+-- (6A)(a): 2% of 1,000,000
+#ASSERT `the maximum allowable medical expenses for` (`medical` 1000000 TRUE 50000 0 0 0) EQUALS 20000
+-- (6B)(a): A = lower of (23,000 - 8,000) and 10,000 = 10,000; B = lower of 8,000 and 20,000 - 10,000 = 8,000
+#ASSERT `the maximum allowable medical expenses for` (`medical` 1000000 FALSE 23000 0 8000 0) EQUALS 18000
+-- (6B)(b): C = lower of 3,000 and 10,000 = 3,000; D = lower of (20,000 - 3,000) and 20,000 - 3,000 = 17,000
+#ASSERT `the maximum allowable medical expenses for` (`medical` 1000000 FALSE 20000 5000 0 3000) EQUALS 20000
+#ASSERT `the maximum allowable medical expenses for` (`medical` 1000000 FALSE 12000 5000 0 3000) EQUALS 12000
+#ASSERT `the medical expenses outcome, incurred` 25000 `, maximum` 20000 `, exempt or concessionary income:` FALSE EQUALS `Medical expense outcome` OF 20000, 0
+#ASSERT `the medical expenses outcome, incurred` 25000 `, maximum` 20000 `, exempt or concessionary income:` TRUE EQUALS `Medical expense outcome` OF 25000, 5000
+-- R&D YA 2025: s 14C 400,000; s 14D(1) 150% = 600,000; s 14D(1A) 400,000 x 150% = 600,000
+#ASSERT `the R&D deductions for YA` 2025 `, own local R&D` 300000 `, paid local R&D` 100000 EQUALS 1600000
+#ASSERT `the R&D deductions for YA` 2025 `, own local R&D` 600000 `, paid local R&D` 0 EQUALS 2100000
+#ASSERT `the R&D deductions for YA` 2018 `, own local R&D` 100000 `, paid local R&D` 0 EQUALS 150000
+#ASSERT `the R&D deductions for YA` 2029 `, own local R&D` 100000 `, paid local R&D` 0 EQUALS 100000
+-- s 14EA: lower of expenditure and 50,000, x 400%
+#ASSERT `the innovation project deduction for YA` 2025 `on` 80000 EQUALS 200000
+#ASSERT `the innovation project deduction for YA` 2025 `on` 30000 EQUALS 120000
+#ASSERT `the innovation project deduction for YA` 2029 `on` 30000 EQUALS 0
+-- s 14ZG: lower of expenditure and 400,000, x 300%
+#ASSERT `the training deduction for YA` 2025 `on` 500000 `, deductible under s 14:` TRUE EQUALS 1200000
+#ASSERT `the training deduction for YA` 2025 `on` 500000 `, deductible under s 14:` FALSE EQUALS 0
+-- s 14N: full deduction from YA 2024 unless spread; 300,000 in the period
+#ASSERT `the renovation deduction for YA` 2025 `of expenditure` 120000 `, already in the period` 0 `, spread:` FALSE EQUALS 120000
+#ASSERT `the renovation deduction for YA` 2025 `of expenditure` 120000 `, already in the period` 0 `, spread:` TRUE EQUALS 40000
+#ASSERT `the renovation deduction for YA` 2025 `of expenditure` 120000 `, already in the period` 250000 `, spread:` FALSE EQUALS 50000
+#ASSERT `the renovation deduction for YA` 2023 `of expenditure` 90000 `, already in the period` 0 `, spread:` FALSE EQUALS 30000
+-- s 14Z
+#ASSERT `the IPC secondment deduction for` 10000 `, deductible under s 14:` TRUE `, incurred on` (YMD 2026 6 1) EQUALS 15000
+#ASSERT `the IPC secondment deduction for` 10000 `, deductible under s 14:` FALSE `, incurred on` (YMD 2026 6 1) EQUALS 25000
+#ASSERT `the IPC secondment deduction for` 10000 `, deductible under s 14:` TRUE `, incurred on` (YMD 2027 1 1) EQUALS 0
+
+§§ `Capital allowances (Part 6)`
+
+#ASSERT `the working life in years of` `office data handling equipment` EQUALS 8
+#ASSERT `the working life in years of` `vessels, barges, tugs and similar` EQUALS 16
+#ASSERT `the working life in years of` `taxis` EQUALS 5
+#ASSERT `the s 19 initial allowance on` 100000 EQUALS 20000
+-- s 19(2)(a): (100,000 - 20,000) / 8
+#ASSERT `the s 19 annual allowance on` 100000 `, class` `electrical equipment` `, acquired for YA` 2022 `, years elected` 0 EQUALS 10000
+-- (2)(bb): 80,000 / 6
+#ASSERT `the s 19 annual allowance on` 100000 `, class` `electrical equipment` `, acquired for YA` 2025 `, years elected` 6 EQUALS 80000 DIVIDED BY 6
+#ASSERT REFUSED `the s 19 annual allowance on` 100000 `, class` `electrical equipment` `, acquired for YA` 2025 `, years elected` 16
+#ASSERT `the s 19 annual allowance on` 100000 `, class` `bank vaults` `, acquired for YA` 2025 `, years elected` 16 EQUALS 5000
+#ASSERT `the s 19A allowance by` `s 19A(1) 3-year write-off` `on` 90000 `incurred for YA` 2025 `, for YA` 2026 EQUALS 30000
+#ASSERT `the s 19A allowance by` `s 19A(1) 3-year write-off` `on` 90000 `incurred for YA` 2025 `, for YA` 2028 EQUALS 0
+#ASSERT `the s 19A allowance by` `s 19A(1E) 2-year write-off` `on` 120000 `incurred for YA` 2024 `, for YA` 2024 EQUALS 90000
+#ASSERT `the s 19A allowance by` `s 19A(1E) 2-year write-off` `on` 120000 `incurred for YA` 2024 `, for YA` 2025 EQUALS 30000
+#ASSERT REFUSED `the s 19A allowance by` `s 19A(1E) 2-year write-off` `on` 120000 `incurred for YA` 2025 `, for YA` 2025
+#ASSERT `the s 19A allowance by` `s 19A(2) computer or prescribed automation, 100%` `on` 5000 `incurred for YA` 2025 `, for YA` 2025 EQUALS 5000
+#ASSERT REFUSED `the s 19A allowance by` `s 19A(10A) low-value asset, 100%` `on` 6000 `incurred for YA` 2025 `, for YA` 2025
+#ASSERT `the s 19A allowance by` `s 19A(10A) low-value asset, 100%` `on` 4000 `incurred for YA` 2025 `, for YA` 2025 EQUALS 4000
+#ASSERT `the low-value asset allowances allowed, claims` (LIST 20000, 15000) EQUALS 30000
+-- s 20
+#ASSERT `the balancing adjustment, unallowed` 40000 `, sale moneys` 30000 `, allowances made` 60000 EQUALS `a balancing allowance` 10000
+#ASSERT `the balancing adjustment, unallowed` 40000 `, sale moneys` 70000 `, allowances made` 50000 EQUALS `a balancing charge` 30000
+#ASSERT `the balancing adjustment, unallowed` 0 `, sale moneys` 120000 `, allowances made` 100000 EQUALS `a balancing charge` 100000
+#ASSERT `the balancing adjustment, unallowed` 40000 `, sale moneys` 40000 `, allowances made` 60000 EQUALS `no adjustment`
+-- ss 22A, 23
+#ASSERT `the allowances used, brought forward` 30000 `, current` 20000 `, against income` 40000 `, business continuing:` TRUE EQUALS `Allowances used` OF 40000, 10000
+#ASSERT `the allowances used, brought forward` 30000 `, current` 20000 `, against income` 40000 `, business continuing:` FALSE EQUALS `Allowances used` OF 40000, 0
+#ASSERT     `a company may carry forward allowances, same shareholders holding` (50%) `, exempted:` FALSE
+#ASSERT NOT `a company may carry forward allowances, same shareholders holding` (49%) `, exempted:` FALSE
+#ASSERT     `a company may carry forward allowances, same shareholders holding` (10%) `, exempted:` TRUE
+
+§§ `Statutory and assessable income (Parts 7-9)`
+
+-- s 35(2A): allowances against trade income first, then other income
+#ASSERT `the statutory income, trade income` 100000 `, other income` 20000 `, allowances` 110000 EQUALS `Statutory income` OF 0, 10000, 10000, 0
+#ASSERT `the statutory income, trade income` 100000 `, other income` 20000 `, allowances` 150000 EQUALS `Statutory income` OF 0, 0, 0, 30000
+#ASSERT `the statutory income, trade income` 100000 `, other income` 20000 `, allowances` 30000 EQUALS `Statutory income` OF 70000, 20000, 90000, 0
+-- s 37(3A): 2.5 times for 2016-2026, 3 times for 2015
+#ASSERT `the deduction for a donation of` 1000 `made on` (YMD 2025 5 1) EQUALS 2500
+#ASSERT `the deduction for a donation of` 1000 `made on` (YMD 2015 5 1) EQUALS 3000
+#ASSERT `the deduction for a donation of` 1000 `made on` (YMD 2027 1 1) EQUALS 2000
+#ASSERT `the deduction for a donation of` 1000 `made on` (YMD 2010 1 1) EQUALS 2500
+-- s 37: 100,000 statutory; losses 30,000 first; donations 80,000 against the remaining 70,000
+#ASSERT `the assessable income from statutory income` 100000 `, losses brought forward` 30000 `, current loss` 0 `, donations` 80000 `, shareholders:` TRUE EQUALS `Assessable income` OF 30000, 0, 70000, 10000, 0
+-- s 37(12): the shareholder test failed — brought-forward losses and donations disregarded
+#ASSERT `the assessable income from statutory income` 100000 `, losses brought forward` 30000 `, current loss` 0 `, donations` 80000 `, shareholders:` FALSE EQUALS `Assessable income` OF 0, 0, 0, 0, 100000
+#ASSERT     `an unused donation from YA` 2025 `may still be deducted in YA` 2030
+#ASSERT NOT `an unused donation from YA` 2025 `may still be deducted in YA` 2031
+#ASSERT     `a company's losses and donations survive, same shareholders holding` (50%) `, exempted:` FALSE
+#ASSERT NOT `a company's losses and donations survive, same shareholders holding` (30%) `, exempted:` FALSE
+-- s 37B
+#ASSERT     `group relief may be transferred, holding` (75%) `, residual entitlement:` TRUE `, same year end:` TRUE `, elected:` TRUE
+#ASSERT NOT `group relief may be transferred, holding` (74%) `, residual entitlement:` TRUE `, same year end:` TRUE `, elected:` TRUE
+#ASSERT NOT `group relief may be transferred, holding` (80%) `, residual entitlement:` TRUE `, same year end:` FALSE `, elected:` TRUE
+#ASSERT `the effective holding through the chain` (LIST 0.9, 0.85) EQUALS 0.765
+-- s 37D: at most 100,000 and the preceding year's income
+#ASSERT `the carry-back allowed, deduction` 150000 `, preceding income` 200000 EQUALS 100000
+#ASSERT `the carry-back allowed, deduction` 50000 `, preceding income` 30000 EQUALS 30000
+-- s 37R: A x 20%, A at most 100,000; at least 400 of selected expenditure
+#ASSERT `the EIS cash payout for YA` 2025 `on selected expenditure of` 300 EQUALS 0
+#ASSERT `the EIS cash payout for YA` 2025 `on selected expenditure of` 50000 EQUALS 10000
+#ASSERT `the EIS cash payout for YA` 2025 `on selected expenditure of` 500000 EQUALS 20000
+#ASSERT `the EIS cash payout for YA` 2029 `on selected expenditure of` 50000 EQUALS 0
+-- s 27: 2m / 50m x 10m
+#ASSERT `the Singapore profits of a non-resident shipowner, Singapore receipts` 2000000 `, total profits` 10000000 `, total receipts` 50000000 EQUALS 400000
+-- s 27(4): 5% of 2m without a certificate; (6) a casual call
+#ASSERT `the Singapore profits of a non-resident shipowner, certificate:` FALSE `, casual call:` FALSE `, Singapore receipts` 2000000 `, total profits` 10000000 `, total receipts` 50000000 EQUALS 100000
+#ASSERT `the Singapore profits of a non-resident shipowner, certificate:` TRUE `, casual call:` FALSE `, Singapore receipts` 2000000 `, total profits` 10000000 `, total receipts` 50000000 EQUALS 400000
+#ASSERT `the Singapore profits of a non-resident shipowner, certificate:` FALSE `, casual call:` TRUE `, Singapore receipts` 2000000 `, total profits` 10000000 `, total receipts` 50000000 EQUALS 0
+#ASSERT `the s 33A surcharge for YA` 2024 `on additional tax of` 100000 EQUALS 50000
+#ASSERT `the s 33A surcharge for YA` 2022 `on additional tax of` 100000 EQUALS 0
+#ASSERT `the transfer-pricing surcharge for YA` 2025 `on an adjustment of` 1000000 EQUALS 50000
+#ASSERT     `transfer-pricing documentation is required for YA` 2025 `, gross revenue` 12000000 `, required before:` FALSE `, exempt:` FALSE
+#ASSERT NOT `transfer-pricing documentation is required for YA` 2025 `, gross revenue` 10000000 `, required before:` FALSE `, exempt:` FALSE
+#ASSERT     `transfer-pricing documentation is required for YA` 2025 `, gross revenue` 9000000 `, required before:` TRUE `, exempt:` FALSE
+#ASSERT NOT `transfer-pricing documentation is required for YA` 2025 `, gross revenue` 12000000 `, required before:` FALSE `, exempt:` TRUE

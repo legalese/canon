@@ -1,0 +1,229 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `ita-types`
+
+-- Income Tax Act 1947 — PARTS 16 TO 19: RETURNS, ASSESSMENTS, OBJECTIONS,
+-- APPEALS, PAYMENT AND REPAYMENT.
+--
+-- What must be filed or notified and by when (ss 62-71), records (s 67), when
+-- the Comptroller may assess or reassess (ss 72-75), objections and appeals
+-- (ss 76-84), when tax is due and what is added if it is late (ss 85, 87),
+-- refunds and error relief (ss 93, 93A), and service by post (s 8).
+--
+-- Source: ../source/ITA1947.txt lines 843-1264, 29934-32750.
+
+§ `Parts 16 to 19 — process`
+
+§§ `Notices and returns (ss 62, 63)`
+
+-- s 62(4): a chargeable person not required "within 3 months after the
+-- commencement of such year of assessment" to make a return must notify the
+-- Comptroller "within 14 days after the end of that period". (5): an individual
+-- arriving during a YA must notify "within one month of the date of the
+-- individual's arrival".
+@ref s 62(4)
+GIVEN ya IS A NUMBER
+GIVETH A DATE
+`the last day to notify chargeability for YA` ya MEANS
+    YMD ya 3 31 PLUS 14
+
+@ref s 62(5)
+GIVEN `arrived on` IS A DATE
+GIVETH A DATE
+`the last day for a new arrival to notify chargeability, arriving` `arrived on` MEANS
+    `add months` `arrived on` 1
+
+-- s 63(1): a person other than an individual that has not made a return must
+-- furnish an estimate of chargeable income "within 3 months after the end of the
+-- accounting period relating to that year of assessment". (1A), (1B): an
+-- individual in business likewise, except for YAs 2026-2030.
+@ref s 63(1), (1A), (1B)
+GIVEN ya                    IS A NUMBER
+      `an individual`       IS A BOOLEAN
+      `accounting period ends on` IS A DATE
+GIVETH A MAYBE DATE
+`the last day to file an estimate of chargeable income for YA` ya `, individual:` `an individual` `, period ending` `accounting period ends on` MEANS
+    IF   `an individual` AND ya AT LEAST 2026 AND ya AT MOST 2030
+    THEN NOTHING
+    ELSE JUST (`add months` `accounting period ends on` 3)
+
+§§ `Records (s 67)`
+
+-- s 67(1)(a): records kept "for a period of 5 years from the year of assessment
+-- to which any income relates". (1)(b): serially numbered receipts where the
+-- preceding year's gross receipts exceeded "$18,000 from the sale of goods, or
+-- $12,000 from the performance of services".
+@ref s 67(1)(a)
+GIVEN ya IS A NUMBER
+GIVETH A NUMBER
+`the last year records must be kept for YA` ya MEANS
+    ya PLUS 5
+
+@ref s 67(1)(b)
+GIVEN `receipts from goods last year`    IS A NUMBER
+      `receipts from services last year` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `numbered receipts must be issued, goods` `receipts from goods last year` `, services` `receipts from services last year` IF
+    `receipts from goods last year` GREATER THAN 18000 OR `receipts from services last year` GREATER THAN 12000
+
+§§ `Assessments (ss 72-75)`
+
+-- s 74(1): an assessment or additional assessment "within the year of
+-- assessment or within ... 4 years (if the year of assessment is 2008 or a
+-- subsequent year of assessment) after the expiry of that year of assessment".
+-- (2): "at any time" where there has been fraud or wilful default; (2A), (2B):
+-- at any time under a mutual agreement or advance pricing arrangement.
+@ref s 74(1), (2), (2A)
+GIVEN ya                         IS A NUMBER
+      d                          IS A DATE
+      `fraud or wilful default`  IS A BOOLEAN
+      `under a MAP or APA agreement` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Comptroller may still assess YA` ya `on` d `, fraud or wilful default:` `fraud or wilful default` `, MAP or APA:` `under a MAP or APA agreement` IF
+        `fraud or wilful default`
+    OR  `under a MAP or APA agreement`
+    OR  d AT MOST YMD (ya PLUS (IF ya AT LEAST 2008 THEN 4 ELSE 6)) 12 31
+
+-- s 75: an assessment may be waived where the tax "does not exceed $15 or such
+-- other amount as the Minister may by order prescribe".
+@ref s 75
+GIVEN tax IS A NUMBER
+      `a prescribed amount` IS A MAYBE NUMBER
+GIVETH A BOOLEAN
+DECIDE `the Comptroller may waive an assessment of` tax `, prescribed amount` `a prescribed amount` IF
+    CONSIDER `a prescribed amount`
+    WHEN JUST p  THEN tax AT MOST p
+    WHEN NOTHING THEN tax AT MOST 15
+
+§§ `Objections and appeals (ss 76-84)`
+
+-- s 76(3): an objection "must state precisely the grounds" and be made within
+-- "(a) if the person is a company and the notice of assessment is served on the
+-- person on or after 1 January 2014, 2 months; or (b) in any other case, 30
+-- days". (4): extended for absence, sickness or other reasonable cause.
+@ref s 76(3), (4)
+GIVEN `a company`        IS A BOOLEAN
+      `served on`        IS A DATE
+GIVETH A DATE
+`the last day to object, a company:` `a company` `, notice served on` `served on` MEANS
+    IF   `a company` AND `served on` AT LEAST YMD 2014 1 1
+    THEN `add months` `served on` 2
+    ELSE `served on` PLUS 30
+
+-- s 79(1): "(a) within 30 days after the date of the Comptroller's refusal to
+-- amend the assessment, a notice of appeal; and (b) within 30 days after the
+-- date on which the notice of appeal was lodged, a petition of appeal". (3): the
+-- notice is deemed withdrawn without a petition. (11): late filing may be
+-- permitted for reasonable cause.
+DECLARE `Appeal deadlines` HAS
+    `notice of appeal by`     IS A DATE
+    `petition of appeal by`   IS A MAYBE DATE
+
+@ref s 79(1), (3)
+GIVEN `refused on`         IS A DATE
+      `notice lodged on`   IS A MAYBE DATE
+GIVETH AN `Appeal deadlines`
+`the appeal deadlines after a refusal on` `refused on` `, notice lodged on` `notice lodged on` MEANS
+    `Appeal deadlines` WITH
+        `notice of appeal by`   IS `refused on` PLUS 30
+        `petition of appeal by` IS CONSIDER `notice lodged on`
+                                   WHEN NOTHING THEN NOTHING
+                                   WHEN JUST n  THEN JUST (n PLUS 30)
+
+-- s 81(1)-(2): the Board's decision is final, except that where the tax payable
+-- (or refund, or notional tax benefit) as determined by the Board "exceeds
+-- $200", either side may appeal to the High Court "upon any question of law or of
+-- mixed law and fact".
+@ref s 81(1), (2)
+GIVEN `amount determined by the Board` IS A NUMBER
+      `a question of law or mixed law and fact` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `an appeal from the Board lies, amount` `amount determined by the Board` `, question of law:` `a question of law or mixed law and fact` IF
+    `amount determined by the Board` GREATER THAN 200 AND `a question of law or mixed law and fact`
+
+§§ `Payment and late payment (ss 85, 87)`
+
+-- s 85(1): tax is payable "despite any objection or appeal ... within one month
+-- after the service of the notice". (2): the Comptroller may extend the time.
+@ref s 85(1)
+GIVEN `notice served on` IS A DATE
+GIVETH A DATE
+`the last day to pay tax assessed by a notice served on` `notice served on` MEANS
+    `add months` `notice served on` 1
+
+-- s 87(1): if tax is not paid in time, "(a) a sum equal to 5% of the amount of
+-- tax payable is added ...; (b) the Comptroller must serve a demand note ...;
+-- (c) ... if the amount of tax outstanding is not paid within 60 days of the
+-- imposition of the penalty ..., an additional penalty of 1% of the tax
+-- outstanding is payable for each completed month that the tax remains unpaid,
+-- but the total additional penalty must not exceed 12% of the amount of tax
+-- outstanding". (2): may be remitted for good cause.
+-- FORK I7 (as for the carbon tax): the 5% is imposed the day after the last day
+-- to pay; completed months run from 60 days after that; the amount outstanding
+-- is taken as constant.
+DECLARE `Late tax penalty` HAS
+    `the 5% penalty`             IS A NUMBER
+    `the additional penalty`     IS A NUMBER
+    `total`                      IS A NUMBER
+
+@ref s 87(1)
+GIVEN outstanding IS A NUMBER
+      `last day`  IS A DATE
+      `as at`     IS A DATE
+GIVETH A `Late tax penalty`
+`the late payment penalty on tax of` outstanding `due by` `last day` `, as at` `as at` MEANS
+    `Late tax penalty` WITH
+        `the 5% penalty`         IS `five`
+        `the additional penalty` IS `additional`
+        `total`                  IS `five` PLUS `additional`
+    WHERE
+        `imposed on` MEANS `last day` PLUS 1
+        `five` MEANS IF outstanding GREATER THAN 0 AND `as at` AT LEAST `imposed on` THEN outstanding TIMES 5% ELSE 0
+        `start` MEANS `imposed on` PLUS 60
+        `months` MEANS `count from` 0
+        `count from` n MEANS IF `add months` `start` (n PLUS 1) AT MOST `as at` THEN `count from` (n PLUS 1) ELSE n
+        `uncapped` MEANS IF outstanding GREATER THAN 0 AND `as at` GREATER THAN `start` THEN outstanding TIMES 1% TIMES `months` ELSE 0
+        `additional` MEANS IF `uncapped` GREATER THAN outstanding TIMES 12% THEN outstanding TIMES 12% ELSE `uncapped`
+
+@ref s 87(1)(b)
+GIVEN `demand note served on` IS A DATE
+GIVETH A DATE
+`the last day to pay a demand note served on` `demand note served on` MEANS
+    `add months` `demand note served on` 1
+
+§§ `Refunds and error relief (ss 93, 93A)`
+
+-- s 93(2): a claim for repayment of tax overpaid "must be made within ... 4 years
+-- (if the year of assessment to which the claim relates is 2008 or a subsequent
+-- year of assessment) from the end of the year of assessment".
+-- s 93A(1): relief for an error or mistake in a return, "not later than ... 4
+-- years (if the year of assessment within which the assessment is made is 2008
+-- or a subsequent year ...) after the end of the year of assessment within which
+-- the assessment was made". (1A): for YA 2019 on, a related-party error needs
+-- transfer-pricing documentation.
+@ref s 93(2)
+GIVEN ya          IS A NUMBER
+      `claimed on` IS A DATE
+GIVETH A BOOLEAN
+DECIDE `a repayment claim for YA` ya `made on` `claimed on` `is in time` IF
+    `claimed on` AT MOST YMD (ya PLUS (IF ya AT LEAST 2008 THEN 4 ELSE 6)) 12 31
+
+@ref s 93A(1), (1A)
+GIVEN `YA in which the assessment was made` IS A NUMBER
+      `applied on`                          IS A DATE
+      `a related-party error without TP documentation` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `error relief may be applied for, the assessment made in YA` `YA in which the assessment was made` `, applied on` `applied on` `, undocumented related-party error:` `a related-party error without TP documentation` IF
+        `applied on` AT MOST YMD (`YA in which the assessment was made` PLUS (IF `YA in which the assessment was made` AT LEAST 2008 THEN 4 ELSE 6)) 12 31
+    AND NOT `a related-party error without TP documentation`
+
+§§ `Service by post (s 8(2))`
+
+-- s 8(2): a notice sent by post "is deemed to have been served on the day
+-- succeeding the day on which the notice would have been received in the
+-- ordinary course of post" (that day is an input).
+@ref s 8(2)
+GIVEN `would be received in the ordinary course of post on` IS A DATE
+GIVETH A DATE
+`the day a posted notice is served, ordinarily received on` `would be received in the ordinary course of post on` MEANS
+    `would be received in the ordinary course of post on` PLUS 1

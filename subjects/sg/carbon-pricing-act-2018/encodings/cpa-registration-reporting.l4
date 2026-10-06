@@ -1,0 +1,360 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `cpa-types`
+IMPORT `cpa-schedules`
+
+-- Carbon Pricing Act 2018 — GOAL 1: MUST THIS PERSON REGISTER, OR MAY IT
+-- DEREGISTER? and GOAL 2: WHAT MUST IT REPORT, AND BY WHEN?
+--
+-- Parts 1 to 4: what a business facility is and who controls it (ss 3-5),
+-- registration and deregistration (ss 7-10), emissions reports, verification
+-- and monitoring plans (ss 11-15), and the saving for 2019 (s 79).
+--
+-- Source: ../source/CPA2018.txt.
+
+§ `Goals 1 and 2 — registration and reporting`
+
+§§ `The period this encoding states the law for`
+
+-- The text is consolidated as at 6 Oct 2026. Act 37 of 2022, in force
+-- 1 January 2024, rewrote registration (s 7(1A), (5)-(7), s 8(1)(a)(ii),
+-- (4)(b)), reporting periods (s 11(2A)-(2D)), the tax (s 16(1A), (4)) and
+-- payment (Part 5 Divisions 1A, 3-6). The earlier text was not supplied, so
+-- an emissions year or event before 2024 refuses (FORK F1).
+@ref Act 37 of 2022; Legislative History item 7
+GIVEN year IS A NUMBER
+GIVETH A BOOLEAN
+`the law is encoded for the year` year MEANS
+    IF   year LESS THAN 2024
+    THEN REFUSE "the Act as it stood before the Carbon Pricing (Amendment) Act 2022 (in force 1 January 2024) is not encoded"
+    ELSE TRUE
+
+§§ `What a business facility is, and who controls it (ss 3-5)`
+
+-- s 3(1): "A business facility is a single site at which any business activity
+-- is carried out." s 3(3): activities on more than one parcel are at a single
+-- site "if the same person has operational control over the business activity,
+-- and — (a) the parcels of land are contiguous, adjacent or adjoining, or
+-- separated only by any road or pathway ..., or drain or waterway; or (b) where
+-- paragraph (a) does not apply, there is a dependency between the activities
+-- ..., having regard to any circumstances prescribed."
+@ref s 3(1), (3)
+GIVEN f IS A `Site facts`
+GIVETH A BOOLEAN
+DECIDE `carried out at a single site:` f IF
+        NOT f's `carried out on more than one parcel of land`
+    OR  (    f's `the same person has operational control over the activity`
+         AND (    "(a)" ... f's `parcels contiguous, adjacent, adjoining, or separated only by a road, pathway, drain or waterway`
+              OR  "(b)" ... f's `a prescribed dependency between the activities on the parcels`))
+
+-- s 4(1): a person has operational control if it may introduce and implement
+-- "one or more of" operating, health and safety, or environmental policies.
+-- s 4(2): "Only one person can have operational control ... at any one time."
+-- s 4(3): if more than one qualifies, "the person that has the greatest
+-- authority" does. The Act gives no answer for a tie at the greatest.
+@ref s 4
+GIVEN candidates IS A LIST OF `Policy authority`
+GIVETH A MAYBE STRING
+`the person with operational control among` candidates MEANS
+    CONSIDER `qualifying`
+    WHEN EMPTY THEN NOTHING
+    WHEN c FOLLOWED BY rest THEN
+        IF   count (filter (GIVEN x YIELD x's `rank of authority` EQUALS `the greatest`) `qualifying`) GREATER THAN 1
+        THEN REFUSE "s 4(3): two or more persons share the greatest authority, and s 4(2) allows only one"
+        ELSE JUST (`the one with` `the greatest`)
+    WHERE
+        `qualifying` MEANS filter (GIVEN x YIELD    x's `may introduce and implement operating policies`
+                                                 OR x's `may introduce and implement health and safety policies`
+                                                 OR x's `may introduce and implement environmental policies`) candidates
+        `the greatest` MEANS `the largest of` (map (GIVEN x YIELD x's `rank of authority`) `qualifying`)
+        `the largest of` ns MEANS
+            CONSIDER ns
+            WHEN EMPTY THEN 0
+            WHEN n FOLLOWED BY rest THEN IF null rest THEN n ELSE (IF n GREATER THAN `the largest of` rest THEN n ELSE `the largest of` rest)
+        `the one with` r MEANS
+            CONSIDER filter (GIVEN x YIELD x's `rank of authority` EQUALS r) `qualifying`
+            WHEN x FOLLOWED BY rest THEN x's `person`
+            WHEN EMPTY THEN ""
+
+-- s 5(1): "This Act applies only to industry sectors prescribed." s 74: the
+-- Minister may exempt a facility or person by order — an input.
+@ref s 5(1), s 74
+GIVEN f IS A `Site facts`
+      `exempted by order under s 74` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Act applies to the facility:` f `, exempted:` `exempted by order under s 74` IF
+        f's `in a prescribed industry sector`
+    AND NOT `exempted by order under s 74`
+
+§§ `Goal 1a — registration on reaching a threshold (ss 7(1)-(4), 8)`
+
+DECLARE `Applications required` HAS
+    `to be registered as a registered person`             IS A BOOLEAN   -- s 7(1)(a), (5)(c)
+    `to register the facility as a reportable facility`   IS A BOOLEAN   -- s 7(1)(b), (5)(d)
+    `to register the facility as a taxable facility`      IS A BOOLEAN   -- s 7(1)(c), (5)(d)
+    `no later than`                                       IS A MAYBE DATE -- s 8(1)(a)
+    `registration in force from`                          IS A MAYBE DATE -- s 8(4)
+
+-- s 7(1): where the reckonable emissions of a facility attain the first
+-- emissions threshold in a year (the trigger year), the person with
+-- operational control on 31 December of that year (s 7(1A)) must apply (a)
+-- to be a registered person, (b) to register the facility as a reportable
+-- facility, and (c) if they also attain the second threshold, to register it
+-- as a taxable facility. (2): (a) does not apply if the person is already
+-- registered, or if the facility "will cease to be under the operational
+-- control of the person by the time the person must make the application".
+-- (3), (4): (b) and (c) do not apply if already so registered.
+-- s 8(1)(a)(i): "no later than 30 June of the year immediately after the
+-- trigger year"; s 8(4)(a): in force "starting on 1 January of the year
+-- immediately after the trigger year".
+@ref ss 7(1)-(4), 8(1)(a)(i), 8(4)(a)
+GIVEN `trigger year`        IS A NUMBER
+      `reckonable tCO2e`    IS A NUMBER
+      status                IS A `Registration status`
+      `control will cease before the application is due` IS A BOOLEAN
+GIVETH AN `Applications required`
+`the applications required for the year` `trigger year` `, reckonable tCO2e` `reckonable tCO2e` `, status` status `, control ceasing:` `control will cease before the application is due` MEANS
+    IF NOT `the law is encoded for the year` `trigger year`
+    THEN REFUSE "no source is encoded for this year"
+    ELSE `Applications required` WITH
+            `to be registered as a registered person`           IS `(a)`
+            `to register the facility as a reportable facility` IS `(b)`
+            `to register the facility as a taxable facility`    IS `(c)`
+            `no later than`                                     IS (IF `any` THEN JUST (YMD (`trigger year` PLUS 1) 6 30) ELSE NOTHING)
+            `registration in force from`                        IS (IF `any` THEN JUST (YMD (`trigger year` PLUS 1) 1 1) ELSE NOTHING)
+    WHERE
+        `triggered` MEANS `reckonable tCO2e` AT LEAST `the first emissions threshold`
+        `(a)` MEANS     `triggered`
+                    AND NOT "(2)(a)" ... status's `a registered person`
+                    AND NOT "(2)(b)" ... `control will cease before the application is due`
+        `(b)` MEANS `triggered` AND NOT "(3)" ... status's `registered as a reportable facility of the person`
+        `(c)` MEANS     `triggered`
+                    AND `reckonable tCO2e` AT LEAST `the second emissions threshold`
+                    AND NOT "(4)" ... status's `registered as a taxable facility of the person`
+        `any` MEANS `(a)` OR `(b)` OR `(c)`
+
+§§ `Goal 1b — registration on a transfer of operational control (ss 7(5)-(7), 8)`
+
+-- s 7(5): where X (a registered person of the facility, or the person with
+-- control on 31 December of a trigger year) transfers operational control to
+-- Y, Y must apply (c) to be a registered person (unless already one, (6)),
+-- and (d) to register the facility "as a reportable facility or as both a
+-- reportable facility and a taxable facility (as the case may be)".
+-- FORK F2: "as the case may be" is read from the deadlines in s 8(1)(a)(ii),
+-- which provide for Y's taxable registration in cases (B) and (C): Y registers
+-- the facility as taxable where it was a taxable facility of X, or where its
+-- reckonable emissions attained the second threshold in the year before the
+-- transfer.
+-- s 8(1)(a)(ii): "(A) if, in the year immediately before the year of the
+-- transfer, the total amount of reckonable GHG emissions ... does not attain
+-- the second emissions threshold — no later than 30 June of the year
+-- immediately after the year of the transfer; (B) if — (BA) ... not
+-- registered as a taxable facility of X; and (BB) [the previous year's
+-- emissions attain the second threshold], no later than the later of ...
+-- (BC) 30 June of the year of the transfer; (BD) 30 days after the date of
+-- the transfer; and (C) if ... registered as a taxable facility of X — no
+-- later than 30 days after the date of the transfer". s 8(4)(b): in force from
+-- the date of the transfer.
+@ref ss 7(5)-(7), 8(1)(a)(ii), 8(4)(b)
+GIVEN t                       IS A `Transfer of control`
+      `Y is already a registered person` IS A BOOLEAN
+GIVETH AN `Applications required`
+`the applications Y must make on the transfer` t `, Y already registered:` `Y is already a registered person` MEANS
+    BRANCH IF NOT `the law is encoded for the year` (DATE_YEAR (t's `date of transfer`))
+              THEN REFUSE "no source is encoded for this year"
+           IF NOT t's `X was a registered person of the facility, or had control on 31 December of a trigger year`
+              THEN `Applications required` WITH
+                      `to be registered as a registered person`           IS FALSE
+                      `to register the facility as a reportable facility` IS FALSE
+                      `to register the facility as a taxable facility`    IS FALSE
+                      `no later than`                                     IS NOTHING
+                      `registration in force from`                        IS NOTHING
+           OTHERWISE `Applications required` WITH
+                      `to be registered as a registered person`           IS NOT `Y is already a registered person`   -- (5)(c), (6)
+                      `to register the facility as a reportable facility` IS TRUE                                    -- (5)(d)
+                      `to register the facility as a taxable facility`    IS `taxable for Y`                         -- (5)(d), F2
+                      `no later than`                                     IS JUST `the deadline`
+                      `registration in force from`                        IS JUST (t's `date of transfer`)
+    WHERE
+        `transfer` MEANS t's `date of transfer`
+        `previous year at the second threshold` MEANS t's `reckonable tCO2e in the year before the transfer` AT LEAST `the second emissions threshold`
+        `taxable for Y` MEANS t's `the facility was registered as a taxable facility of X` OR `previous year at the second threshold`
+        `the deadline` MEANS
+            BRANCH IF t's `the facility was registered as a taxable facility of X`
+                      THEN `transfer` PLUS 30                                                  -- (C)
+                   IF `previous year at the second threshold`
+                      THEN `the later of` (YMD (DATE_YEAR `transfer`) 6 30) (`transfer` PLUS 30) -- (B)
+                   OTHERWISE YMD (DATE_YEAR `transfer` PLUS 1) 6 30                            -- (A)
+
+§§ `Goal 1c — deregistration (ss 9, 10)`
+
+DECLARE `Kind of registration` IS ONE OF
+    `as a taxable facility`
+    `as a reportable facility`
+
+-- s 9(1) (taxable) and (3) (reportable): the registered person may apply to
+-- deregister if "(a) [it] ceases to have operational control ...; (aa) [it]
+-- has ceased to operate the business facility and has no intention of
+-- resuming its business activity within the next 36 months ...; (b) the total
+-- amount of reckonable GHG emissions ... does not attain the [second (taxable)
+-- or first (reportable)] emissions threshold for each of 3 consecutive years;
+-- or (c) where any modification ... is completed and — (i) [the emissions] in
+-- the year in which the modification is completed ... [do] not attain the
+-- threshold; and (ii) [are] unlikely to attain the threshold in each of the
+-- 2 consecutive years immediately following."
+@ref s 9(1), (3)
+GIVEN k IS A `Kind of registration`
+      f IS A `Deregistration facts`
+GIVETH A BOOLEAN
+DECIDE `the registered person may apply to deregister the facility` k `:` f IF
+        "(a)"  ... f's `ceased to have operational control`
+    ..  "(aa)" ... f's `ceased to operate with no intention to resume within 36 months`
+    ..  "(b)"  ... (count (f's `reckonable tCO2e in each of the last 3 consecutive years`) EQUALS 3 AND all `under` (f's `reckonable tCO2e in each of the last 3 consecutive years`))
+    OR  "(c)"  ... (    f's `a modification was completed`
+                    AND `under` (f's `reckonable tCO2e in the year the modification was completed`)
+                    AND count (f's `likely tCO2e in each of the next 2 years`) EQUALS 2
+                    AND all `under` (f's `likely tCO2e in each of the next 2 years`))
+    WHERE
+        `threshold` MEANS
+            CONSIDER k
+            WHEN `as a taxable facility`    THEN `the second emissions threshold`
+            WHEN `as a reportable facility` THEN `the first emissions threshold`
+        `under` x MEANS x LESS THAN `threshold`
+
+-- s 9(4): a registered person may apply to deregister "as such if there is no
+-- longer any business facility registered as a reportable facility". s 9(5):
+-- the Agency may deregister on its own if the person "has been wound up or
+-- dissolved or has otherwise ceased to exist". s 10(4): "Except where
+-- section 9(5) applies, the Agency must not deregister a registered person ...
+-- if the registered person has not discharged all obligations and liabilities
+-- under this Act".
+@ref s 9(4), (5), s 10(4)
+GIVEN f IS A `Deregistration facts`
+GIVETH A BOOLEAN
+DECIDE `the registered person may be deregistered as such:` f IF
+        "s 9(5)" ... f's `wound up, dissolved or otherwise ceased to exist`
+    OR  (    "s 9(4)"  ... f's `no reportable facility remains registered to the person`
+         AND "s 10(4)" ... f's `all obligations and liabilities under the Act discharged`)
+
+-- s 9(2): "a registered person must give the Agency advance written notice of
+-- the date that the operational control ... is to cease, at least 45 days
+-- before that date." (Offence: s 54(5).)
+@ref s 9(2)
+GIVEN `control ceases on` IS A DATE
+GIVETH A DATE
+`the last day to notify the Agency, control ceasing on` `control ceases on` MEANS
+    IF   `the law is encoded for the year` (DATE_YEAR `control ceases on`)
+    THEN `control ceases on` MINUS 45
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+
+§§ `Goal 2 — emissions reports, verification and monitoring plans (ss 11-15)`
+
+DECLARE `Reporting duties` HAS
+    `an emissions report for the year`                      IS A BOOLEAN   -- s 11(1)
+    `the report must be verified by an accredited external auditor` IS A BOOLEAN   -- s 12(1)
+    `an approved monitoring plan is required`               IS A BOOLEAN   -- s 13(1)
+
+-- s 11(1): a registered person with operational control "for any part of a
+-- year" over a reportable facility must submit an emissions report for that
+-- year. s 12(1): where the facility is a taxable facility, the report must be
+-- prepared on a monitoring plan (s 13(1)), verified by an accredited external
+-- auditor, and accompanied by the auditor's report. s 12(3): not for any part
+-- of the period "(a) before the approval of the Agency under section 13 for
+-- the monitoring plan; or (b) after the deregistration of the business facility
+-- as a taxable facility". s 12(2): the non-reckonable part need not be
+-- verified.
+@ref ss 11(1), 12(1), (3), 13(1)
+GIVEN `controlled for part of the year`  IS A BOOLEAN
+      status                             IS A `Registration status`
+      `monitoring plan approved`         IS A BOOLEAN
+GIVETH A `Reporting duties`
+`the reporting duties, controlled:` `controlled for part of the year` `, status` status `, plan approved:` `monitoring plan approved` MEANS
+    `Reporting duties` WITH
+        `an emissions report for the year`                              IS `reportable`
+        `the report must be verified by an accredited external auditor` IS `reportable` AND `taxable` AND `monitoring plan approved`
+        `an approved monitoring plan is required`                       IS `reportable` AND `taxable`
+    WHERE
+        `reportable` MEANS     `controlled for part of the year`
+                           AND status's `a registered person`
+                           AND status's `registered as a reportable facility of the person`
+        `taxable` MEANS status's `registered as a taxable facility of the person`
+
+-- s 11(2A): "the reporting period for year R is the whole or the part of year R
+-- ... for which the business facility is under the operational control of the
+-- registered person". s 11(3): the obligation "arises at the end of the
+-- reporting period".
+@ref s 11(2A), (3)
+GIVEN year              IS A NUMBER
+      `control from`    IS A DATE
+      `control until`   IS A MAYBE DATE
+GIVETH A LIST OF DATE
+`the reporting period in` year `, control from` `control from` `until` `control until` MEANS
+    IF   `the law is encoded for the year` (year)
+    THEN LIST `start`, `end`
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+    WHERE
+        `start` MEANS IF `control from` GREATER THAN YMD year 1 1 THEN `control from` ELSE YMD year 1 1
+        `end` MEANS
+            CONSIDER `control until`
+            WHEN NOTHING THEN YMD year 12 31
+            WHEN JUST u  THEN IF u LESS THAN YMD year 12 31 THEN u ELSE YMD year 12 31
+
+-- s 15(1): a registered person that discovers an error or omission "must notify
+-- the Agency ... within 7 working days after the discovery". FORK F3: "working
+-- day" is not defined in the Act; read as a day other than a Saturday, a Sunday
+-- or a public holiday, the holidays being an input.
+@ref s 15(1)
+GIVEN discovered         IS A DATE
+      `public holidays`  IS A LIST OF DATE
+GIVETH A DATE
+`the last day to notify an error discovered on` discovered `, holidays` `public holidays` MEANS
+    IF   `the law is encoded for the year` (DATE_YEAR discovered)
+    THEN `working days after` discovered 7
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+    WHERE
+        `a working day` d MEANS     NOT `Weekday of` d EQUALS 0
+                                AND NOT `Weekday of` d EQUALS 6
+                                AND NOT elem d `public holidays`
+        `working days after` d n MEANS
+            IF   n AT MOST 0 THEN d
+            ELSE IF `a working day` (d PLUS 1)
+                 THEN `working days after` (d PLUS 1) (n MINUS 1)
+                 ELSE `working days after` (d PLUS 1) n
+
+-- s 13(2): before approving a monitoring plan the Agency MAY direct an external
+-- auditor's assessment where "(a) ... specialised technical knowledge is
+-- required ...; (b) the Agency disagrees with the registered person on any
+-- matter set out in the monitoring plan".
+@ref s 13(2)
+GIVEN `specialised technical knowledge required` IS A BOOLEAN
+      `the Agency disagrees with the plan`       IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Agency may direct an external auditor's assessment of the plan, technical:` `specialised technical knowledge required` `, disagreement:` `the Agency disagrees with the plan` IF
+        "(a)" ... `specialised technical knowledge required`
+    OR  "(b)" ... `the Agency disagrees with the plan`
+
+§§ `Saving for 2019 (s 79)`
+
+-- s 79(1): a corporation registered under the Energy Conservation Act 2012 on
+-- 31 December 2018 that submitted a monitoring plan in 2018 is, from 1 January
+-- 2019, a registered person, and the activity "both a reportable facility and
+-- a taxable facility". s 79(2): one whose reckonable emissions attained
+-- 2,000 tCO2e in 2017 and that, on 31 December 2018, still had control and was
+-- a registered corporation under that Act, is a registered person with a
+-- reportable facility.
+@ref s 79(1), (2)
+GIVEN `ECA-registered on 31 December 2018`          IS A BOOLEAN
+      `submitted a monitoring plan in 2018 under ECA s 26C` IS A BOOLEAN
+      `reckonable tCO2e in 2017`                     IS A NUMBER
+      `still had operational control on 31 December 2018` IS A BOOLEAN
+GIVETH A `Registration status`
+`the status from 1 January 2019 under s 79, ECA-registered:` `ECA-registered on 31 December 2018` `, plan in 2018:` `submitted a monitoring plan in 2018 under ECA s 26C` `, 2017 tCO2e` `reckonable tCO2e in 2017` `, control kept:` `still had operational control on 31 December 2018` MEANS
+    `Registration status` WITH
+        `a registered person`                               IS `(1)` OR `(2)`
+        `registered as a reportable facility of the person` IS `(1)` OR `(2)`
+        `registered as a taxable facility of the person`    IS `(1)`
+    WHERE
+        `(1)` MEANS `ECA-registered on 31 December 2018` AND `submitted a monitoring plan in 2018 under ECA s 26C`
+        `(2)` MEANS     `reckonable tCO2e in 2017` AT LEAST 2000
+                    AND `still had operational control on 31 December 2018`
+                    AND `ECA-registered on 31 December 2018`

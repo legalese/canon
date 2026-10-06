@@ -1,0 +1,464 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `cpa-types`
+IMPORT `cpa-schedules`
+IMPORT `cpa-registration-reporting`
+IMPORT `cpa-tax-payment`
+IMPORT `cpa-process-offences`
+IMPORT `cpa-goal`
+
+-- Carbon Pricing Act 2018 — INDEPENDENT TESTS.
+--
+-- Expected values were decided from ../source/CPA2018.txt, ../source/PROVENANCE.md
+-- and BRIEF.md before any .l4 file was opened; they are recorded, scenario by
+-- scenario, in independent-expectations.md (ids in the comments, e.g. [A17]).
+-- A failing assertion here is a finding; expected values were not changed to
+-- match the encoding.
+
+§ `Independent tests`
+
+§§ `Helpers (record builders only)`
+
+GIVEN g IS A STRING, t IS A NUMBER, c IS A `Circumstance of emission`
+GIVETH A `GHG emission`
+`em` g t c MEANS `GHG emission` WITH `gas` IS g, `mass in tonnes` IS t, `circumstance` IS c
+
+`elsewise` MEANS `in any other circumstances`
+
+GIVEN g IS A STRING
+GIVETH A NUMBER
+`gwp of` g MEANS `the tCO2e of` (`em` g 1 `elsewise`)
+
+GIVEN p IS A BOOLEAN, r IS A BOOLEAN, t IS A BOOLEAN
+GIVETH A `Registration status`
+`st` p r t MEANS `Registration status` WITH `a registered person` IS p, `registered as a reportable facility of the person` IS r, `registered as a taxable facility of the person` IS t
+
+GIVEN d IS A DATE, xq IS A BOOLEAN, xt IS A BOOLEAN, prev IS A NUMBER
+GIVETH A `Transfer of control`
+`xfer` d xq xt prev MEANS
+    `Transfer of control` WITH
+        `date of transfer`                                         IS d
+        `X was a registered person of the facility, or had control on 31 December of a trigger year` IS xq
+        `the facility was registered as a taxable facility of X`   IS xt
+        `reckonable tCO2e in the year before the transfer`         IS prev
+
+GIVEN a          IS A BOOLEAN
+      aa         IS A BOOLEAN
+      three      IS A LIST OF NUMBER
+      mo         IS A BOOLEAN
+      moyear     IS A NUMBER
+      next2      IS A LIST OF NUMBER
+      nonleft    IS A BOOLEAN
+      wound      IS A BOOLEAN
+      discharged IS A BOOLEAN
+GIVETH A `Deregistration facts`
+`df` a aa three mo moyear next2 nonleft wound discharged MEANS
+    `Deregistration facts` WITH
+        `ceased to have operational control`                        IS a
+        `ceased to operate with no intention to resume within 36 months` IS aa
+        `reckonable tCO2e in each of the last 3 consecutive years` IS three
+        `a modification was completed`                              IS mo
+        `reckonable tCO2e in the year the modification was completed` IS moyear
+        `likely tCO2e in each of the next 2 years`                  IS next2
+        `no reportable facility remains registered to the person`   IS nonleft
+        `wound up, dissolved or otherwise ceased to exist`          IS wound
+        `all obligations and liabilities under the Act discharged`  IS discharged
+
+GIVEN many IS A BOOLEAN, same IS A BOOLEAN, contig IS A BOOLEAN, dep IS A BOOLEAN, sector IS A BOOLEAN
+GIVETH A `Site facts`
+`sf` many same contig dep sector MEANS
+    `Site facts` WITH
+        `carried out on more than one parcel of land`                     IS many
+        `the same person has operational control over the activity`       IS same
+        `parcels contiguous, adjacent, adjoining, or separated only by a road, pathway, drain or waterway` IS contig
+        `a prescribed dependency between the activities on the parcels`   IS dep
+        `in a prescribed industry sector`                                 IS sector
+
+GIVEN who IS A STRING, ops IS A BOOLEAN, hs IS A BOOLEAN, env IS A BOOLEAN, rank IS A NUMBER
+GIVETH A `Policy authority`
+`pa` who ops hs env rank MEANS
+    `Policy authority` WITH
+        `person` IS who
+        `may introduce and implement operating policies` IS ops
+        `may introduce and implement health and safety policies` IS hs
+        `may introduce and implement environmental policies` IS env
+        `rank of authority` IS rank
+
+GIVEN y IS A NUMBER, taxable IS A BOOLEAN, t IS A NUMBER, c IS A MAYBE NUMBER, m IS A MAYBE NUMBER, lastyr IS A MAYBE NUMBER
+GIVETH AN `Emissions year facts`
+`yf` y taxable t c m lastyr MEANS
+    `Emissions year facts` WITH
+        `emissions year`                                     IS y
+        `a taxable facility of the registered person in that year` IS taxable
+        `reckonable tCO2e in the verified and approved reports` IS t
+        `allowance awarded for the year, in tCO2e`           IS c
+        `the award's minimum tax per tonne`                  IS m
+        `the last emissions year Division 1A applies to`     IS lastyr
+
+GIVEN f IS A NUMBER, i IS A NUMBER, lim IS A NUMBER, perm IS A BOOLEAN, ok IS A BOOLEAN
+GIVETH A `Surrender`
+`sur` f i lim perm ok MEANS
+    `Surrender` WITH
+        `fixed-price carbon credits`                IS f
+        `eligible international carbon credits`     IS i
+        `the prescribed ICC limit`                  IS lim
+        `the Minister permits more ICCs`            IS perm
+        `ICCs may be used for that tax and emissions year` IS ok
+
+GIVEN f IS A NUMBER, m IS A NUMBER, d IS A NUMBER
+GIVETH A `CPA penalty`
+`pen` f m d MEANS `CPA penalty` WITH `fine` IS f, `imprisonment in months` IS m, `continuing, per day` IS d
+
+GIVEN o IS A `CPA offence`
+GIVETH A `CPA penalty`
+`max first` o MEANS `the maximum penalty for` o `, a second or subsequent offence:` FALSE `, tax figure` 0
+
+GIVEN o IS A `CPA offence`
+GIVETH A `CPA penalty`
+`max repeat` o MEANS `the maximum penalty for` o `, a second or subsequent offence:` TRUE `, tax figure` 0
+
+GIVEN off IS A BOOLEAN, con IS A BOOLEAN, kc IS A BOOLEAN, kn IS A BOOLEAN
+GIVETH AN `Officer facts`
+`of` off con kc kn MEANS
+    `Officer facts` WITH
+        `an officer, partner, committee member or manager able to influence the conduct` IS off
+        `consented, connived or conspired`                               IS con
+        `knowingly concerned in or party to it`                          IS kc
+        `knew or ought to have known, and did not take all reasonable steps` IS kn
+
+-- [B29] 20,000 t CO2 natural gas + 200 t CH4 process + 1 t SF6 electrical + 5,000 t CO2 vehicle
+`the B29 emissions` MEANS
+    LIST `em` "Carbon dioxide" 20000 `elsewise`,
+         `em` "Methane" 200 `elsewise`,
+         `em` "Sulphur hexafluoride" 1 `in manufacturing, installing, using or disposing of electrical equipment`,
+         `em` "Carbon dioxide" 5000 `in using a vehicle to transport persons or goods`
+
+GIVEN y IS A NUMBER, sector IS A BOOLEAN, s IS A `Registration status`, served IS A MAYBE DATE, paid IS A NUMBER, asat IS A DATE
+GIVETH A `Facility year`
+`fy` y sector s served paid asat MEANS
+    `Facility year` WITH
+        `emissions year`                         IS y
+        `site`                                   IS `sf` FALSE TRUE FALSE FALSE sector
+        `exempted by order under s 74`           IS FALSE
+        `emissions`                              IS `the B29 emissions`
+        `status at the start of the year`        IS s
+        `control will cease before the application is due` IS FALSE
+        `controlled for part of the year`        IS TRUE
+        `monitoring plan approved`               IS TRUE
+        `allowance awarded for the year, in tCO2e` IS NOTHING
+        `the award's minimum tax per tonne`      IS NOTHING
+        `assessment`                             IS `an assessment under s 21(1)`
+        `notice of assessment served on`         IS served
+        `tax paid by the last day`               IS paid
+        `as at`                                  IS asat
+
+§§ `A. First Schedule — GWP and CO2e`
+
+#ASSERT `gwp of` "Carbon dioxide" EQUALS 1                                                     -- [A1]
+#ASSERT `gwp of` "Methane" EQUALS 28                                                           -- [A2]
+#ASSERT `gwp of` "Nitrous oxide" EQUALS 265                                                    -- [A3]
+#ASSERT `gwp of` "Nitrogen trifluoride" EQUALS 16100                                           -- [A4]
+#ASSERT `gwp of` "Sulphur hexafluoride" EQUALS 23500                                           -- [A5]
+#ASSERT `gwp of` "HFC-23" EQUALS 12400                                                         -- [A6]
+#ASSERT `gwp of` "HFC-161" EQUALS 4                                                            -- [A7]
+#ASSERT `gwp of` "HFC-134a" EQUALS 1300                                                        -- [A8]
+#ASSERT `gwp of` "HFC-1132a" EQUALS 1                                                          -- [A9]
+#ASSERT `gwp of` "(Z)-HFC-1336" EQUALS 2                                                       -- [A10]
+#ASSERT `gwp of` "3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,10-Heptadecafluorodec-1-ene" EQUALS 1      -- [A11]
+#ASSERT `gwp of` "PFC-14" EQUALS 6630                                                          -- [A12]
+#ASSERT `gwp of` "PFC-116" EQUALS 11100                                                        -- [A13]
+#ASSERT `gwp of` "Perfluorocyclopentene" EQUALS 2                                              -- [A14]
+#ASSERT `gwp of` "Perfluorodecalin (trans)" EQUALS 6290                                        -- [A15]
+#ASSERT `gwp of` "Perfluorobut-2-ene" EQUALS 2                                                 -- [A16]
+#ASSERT `the tCO2e of` (`em` "Methane" 10 `elsewise`) EQUALS 280                               -- [A17]
+#ASSERT `the tCO2e of` (`em` "Sulphur hexafluoride" 2 `elsewise`) EQUALS 47000                 -- [A18]
+#ASSERT `the tCO2e of` (`em` "HFC-23" 0.5 `elsewise`) EQUALS 6200                              -- [A19]
+
+§§ `B. Second Schedule`
+
+#ASSERT `the first emissions threshold` EQUALS 2000                                            -- [B1]
+#ASSERT `the second emissions threshold` EQUALS 25000                                          -- [B2]
+#ASSERT `a non-reckonable GHG emission:` (`em` "Sulphur hexafluoride" 1 `in manufacturing, installing, using or disposing of electrical equipment`)   -- [B3]
+#ASSERT NOT `a non-reckonable GHG emission:` (`em` "Sulphur hexafluoride" 1 `elsewise`)          -- [B4]
+#ASSERT `a non-reckonable GHG emission:` (`em` "Carbon dioxide" 1 `used and emitted in purging`) -- [B5]
+#ASSERT `a non-reckonable GHG emission:` (`em` "Carbon dioxide" 1 `used and emitted in blasting`) -- [B6]
+#ASSERT `a non-reckonable GHG emission:` (`em` "Carbon dioxide" 1 `in using any lubricant or paraffin wax`) -- [B7]
+#ASSERT `a non-reckonable GHG emission:` (`em` "Carbon dioxide" 1 `in the combustion of a biomass fuel listed in item 3(d)`) -- [B8]
+#ASSERT NOT `a non-reckonable GHG emission:` (`em` "Carbon dioxide" 1 `elsewise`)               -- [B9]
+#ASSERT NOT `a non-reckonable GHG emission:` (`em` "Methane" 1 `used and emitted in purging`)   -- [B10]
+#ASSERT `a non-reckonable GHG emission:` (`em` "HFC-134a" 1 `in using refrigeration or air-conditioning equipment for non-manufacturing purposes`) -- [B11]
+#ASSERT NOT `a non-reckonable GHG emission:` (`em` "HFC-134a" 1 `elsewise`)                     -- [B12]
+#ASSERT `a non-reckonable GHG emission:` (`em` "HFC-1234yf" 1 `elsewise`)                       -- [B13]
+#ASSERT NOT `a non-reckonable GHG emission:` (`em` "HFC-23" 1 `elsewise`)                       -- [B14]
+#ASSERT `a non-reckonable GHG emission:` (`em` "PFC-14" 1 `in using refrigeration or air-conditioning equipment for non-manufacturing purposes`) -- [B15]
+#ASSERT NOT `a non-reckonable GHG emission:` (`em` "PFC-14" 1 `elsewise`)                       -- [B16]
+#ASSERT `a non-reckonable GHG emission:` (`em` "PFC-1114" 1 `elsewise`)                         -- [B17]
+#ASSERT `a non-reckonable GHG emission:` (`em` "Nitrous oxide" 1 `in using any fire protection equipment`) -- [B18]
+#ASSERT `a non-reckonable GHG emission:` (`em` "Methane" 1 `as a fugitive emission, not flaring or venting`) -- [B19]
+#ASSERT NOT `a non-reckonable GHG emission:` (`em` "Methane" 1 `elsewise`)                      -- [B20] flaring falls in "other"
+#ASSERT `a non-reckonable GHG emission:` (`em` "Carbon dioxide" 1 `in using a vehicle to transport persons or goods`) -- [B21]
+#ASSERT `a non-reckonable GHG emission:` (`em` "Carbon dioxide" 1 `in using a fuel on which excise duty is payable or exempt under the Customs Act 1960`) -- [B22]
+#ASSERT `a non-reckonable GHG emission:` (`em` "Methane" 1 `in carrying out AFOLU activities`)  -- [B23]
+#ASSERT `an excluded GHG emission:` (`em` "Carbon dioxide" 1 `in using a vehicle to transport persons or goods`) -- [B24]
+#ASSERT `an excluded GHG emission:` (`em` "Methane" 1 `in carrying out AFOLU activities`)       -- [B25]
+#ASSERT NOT `an excluded GHG emission:` (`em` "Methane" 1 `as a fugitive emission, not flaring or venting`) -- [B26]
+#ASSERT NOT `an excluded GHG emission:` (`em` "Nitrous oxide" 1 `in using any fire protection equipment`) -- [B27]
+#ASSERT `a reckonable GHG emission:` (`em` "Carbon dioxide" 1 `elsewise`)                       -- [B28]
+#ASSERT `the reckonable tCO2e of` `the B29 emissions` EQUALS 25600                              -- [B29]
+
+§§ `C. ss 3-5`
+
+#ASSERT `carried out at a single site:` (`sf` TRUE TRUE TRUE FALSE TRUE)                        -- [C1], [C2]
+#ASSERT `carried out at a single site:` (`sf` TRUE TRUE FALSE TRUE TRUE)                        -- [C3]
+#ASSERT NOT `carried out at a single site:` (`sf` TRUE TRUE FALSE FALSE TRUE)                   -- [C4]
+#ASSERT NOT `carried out at a single site:` (`sf` TRUE FALSE TRUE FALSE TRUE)                   -- [C5]
+#ASSERT `the person with operational control among` (LIST `pa` "A" FALSE FALSE TRUE 1) EQUALS JUST "A"   -- [C6]
+#ASSERT `the person with operational control among` (LIST `pa` "A" FALSE FALSE FALSE 1) EQUALS NOTHING   -- [C7]
+#ASSERT `the person with operational control among` (LIST `pa` "A" TRUE FALSE FALSE 3, `pa` "B" TRUE TRUE TRUE 2) EQUALS JUST "A" -- [C8]
+#ASSERT REFUSED `the person with operational control among` (LIST `pa` "A" TRUE FALSE FALSE 2, `pa` "B" FALSE FALSE TRUE 2)        -- [C9]
+#ASSERT `the Act applies to the facility:` (`sf` FALSE TRUE FALSE FALSE TRUE) `, exempted:` FALSE  -- [C10] input TRUE
+#ASSERT NOT `the Act applies to the facility:` (`sf` FALSE TRUE FALSE FALSE FALSE) `, exempted:` FALSE -- [C10] input FALSE
+#ASSERT NOT `may be prosecuted under the Act, the accused being the Government:` TRUE        -- [C11]
+#ASSERT `may be prosecuted under the Act, the accused being the Government:` FALSE           -- [C12]
+
+§§ `D. ss 7-8 — registration`
+
+#ASSERT `the applications required for the year` 2025 `, reckonable tCO2e` 1999.9 `, status` (`st` FALSE FALSE FALSE) `, control ceasing:` FALSE EQUALS (`Applications required` OF FALSE, FALSE, FALSE, NOTHING, NOTHING)    -- [D1]
+#ASSERT `the applications required for the year` 2025 `, reckonable tCO2e` 2000 `, status` (`st` FALSE FALSE FALSE) `, control ceasing:` FALSE EQUALS (`Applications required` OF TRUE, TRUE, FALSE, JUST (YMD 2026 6 30), JUST (YMD 2026 1 1))   -- [D2], [D10], [D11]
+#ASSERT `the applications required for the year` 2025 `, reckonable tCO2e` 24999 `, status` (`st` FALSE FALSE FALSE) `, control ceasing:` FALSE EQUALS (`Applications required` OF TRUE, TRUE, FALSE, JUST (YMD 2026 6 30), JUST (YMD 2026 1 1))  -- [D3]
+#ASSERT `the applications required for the year` 2025 `, reckonable tCO2e` 25000 `, status` (`st` FALSE FALSE FALSE) `, control ceasing:` FALSE EQUALS (`Applications required` OF TRUE, TRUE, TRUE, JUST (YMD 2026 6 30), JUST (YMD 2026 1 1))   -- [D4]
+#ASSERT `the applications required for the year` 2025 `, reckonable tCO2e` 25000 `, status` (`st` TRUE FALSE FALSE) `, control ceasing:` FALSE EQUALS (`Applications required` OF FALSE, TRUE, TRUE, JUST (YMD 2026 6 30), JUST (YMD 2026 1 1))   -- [D5]
+#ASSERT `the applications required for the year` 2025 `, reckonable tCO2e` 25000 `, status` (`st` FALSE TRUE FALSE) `, control ceasing:` FALSE EQUALS (`Applications required` OF TRUE, FALSE, TRUE, JUST (YMD 2026 6 30), JUST (YMD 2026 1 1))   -- [D6]
+#ASSERT `the applications required for the year` 2025 `, reckonable tCO2e` 25000 `, status` (`st` TRUE TRUE TRUE) `, control ceasing:` FALSE EQUALS (`Applications required` OF FALSE, FALSE, FALSE, NOTHING, NOTHING)    -- [D7]
+#ASSERT `the applications required for the year` 2025 `, reckonable tCO2e` 25000 `, status` (`st` FALSE FALSE FALSE) `, control ceasing:` TRUE EQUALS (`Applications required` OF FALSE, TRUE, TRUE, JUST (YMD 2026 6 30), JUST (YMD 2026 1 1))    -- [D8]
+#ASSERT `the applications Y must make on the transfer` (`xfer` (YMD 2025 3 10) TRUE FALSE 10000) `, Y already registered:` FALSE EQUALS (`Applications required` OF TRUE, TRUE, FALSE, JUST (YMD 2026 6 30), JUST (YMD 2025 3 10))   -- [D12], [D14], [D19]
+#ASSERT `the applications Y must make on the transfer` (`xfer` (YMD 2025 3 10) TRUE FALSE 10000) `, Y already registered:` TRUE EQUALS (`Applications required` OF FALSE, TRUE, FALSE, JUST (YMD 2026 6 30), JUST (YMD 2025 3 10))    -- [D13]
+#ASSERT `the applications Y must make on the transfer` (`xfer` (YMD 2025 3 10) TRUE FALSE 30000) `, Y already registered:` FALSE EQUALS (`Applications required` OF TRUE, TRUE, TRUE, JUST (YMD 2025 6 30), JUST (YMD 2025 3 10))    -- [D15]
+#ASSERT `the applications Y must make on the transfer` (`xfer` (YMD 2025 6 15) TRUE FALSE 30000) `, Y already registered:` FALSE EQUALS (`Applications required` OF TRUE, TRUE, TRUE, JUST (YMD 2025 7 15), JUST (YMD 2025 6 15))    -- [D16]
+#ASSERT `the applications Y must make on the transfer` (`xfer` (YMD 2025 6 15) TRUE TRUE 30000) `, Y already registered:` FALSE EQUALS (`Applications required` OF TRUE, TRUE, TRUE, JUST (YMD 2025 7 15), JUST (YMD 2025 6 15))     -- [D17]
+#ASSERT `the applications Y must make on the transfer` (`xfer` (YMD 2025 12 20) TRUE TRUE 30000) `, Y already registered:` TRUE EQUALS (`Applications required` OF FALSE, TRUE, TRUE, JUST (YMD 2026 1 19), JUST (YMD 2025 12 20))   -- [D18]
+#ASSERT REFUSED `the applications required for the year` 2023 `, reckonable tCO2e` 30000 `, status` (`st` FALSE FALSE FALSE) `, control ceasing:` FALSE   -- [D21]
+#ASSERT REFUSED `the applications Y must make on the transfer` (`xfer` (YMD 2023 6 15) TRUE TRUE 30000) `, Y already registered:` FALSE                    -- [D22]
+
+§§ `E. ss 9-10 — deregistration`
+
+#ASSERT `the registered person may apply to deregister the facility` `as a taxable facility` `:` (`df` TRUE FALSE (LIST 30000, 30000, 30000) FALSE 0 (LIST 0, 0) FALSE FALSE TRUE)   -- [E1]
+#ASSERT `the registered person may apply to deregister the facility` `as a taxable facility` `:` (`df` FALSE TRUE (LIST 30000, 30000, 30000) FALSE 0 (LIST 0, 0) FALSE FALSE TRUE)   -- [E2]
+#ASSERT NOT `the registered person may apply to deregister the facility` `as a taxable facility` `:` (`df` FALSE FALSE (LIST 30000, 30000, 30000) FALSE 0 (LIST 0, 0) FALSE FALSE TRUE) -- [E3]
+#ASSERT `the registered person may apply to deregister the facility` `as a taxable facility` `:` (`df` FALSE FALSE (LIST 24999, 20000, 24999.9) FALSE 0 (LIST 0, 0) FALSE FALSE TRUE)   -- [E4]
+#ASSERT NOT `the registered person may apply to deregister the facility` `as a taxable facility` `:` (`df` FALSE FALSE (LIST 24999, 20000) FALSE 0 (LIST 0, 0) FALSE FALSE TRUE)    -- [E5]
+#ASSERT `the registered person may apply to deregister the facility` `as a taxable facility` `:` (`df` FALSE FALSE (LIST 30000, 30000, 30000) TRUE 20000 (LIST 20000, 21000) FALSE FALSE TRUE)   -- [E6]
+#ASSERT NOT `the registered person may apply to deregister the facility` `as a taxable facility` `:` (`df` FALSE FALSE (LIST 30000, 30000, 30000) TRUE 20000 (LIST 26000, 21000) FALSE FALSE TRUE) -- [E7]
+#ASSERT `the registered person may apply to deregister the facility` `as a reportable facility` `:` (`df` FALSE FALSE (LIST 1500, 1999, 1000) FALSE 0 (LIST 0, 0) FALSE FALSE TRUE)   -- [E8]
+#ASSERT NOT `the registered person may apply to deregister the facility` `as a reportable facility` `:` (`df` FALSE FALSE (LIST 1500, 2100, 1500) FALSE 0 (LIST 0, 0) FALSE FALSE TRUE) -- [E9]
+#ASSERT NOT `the registered person may apply to deregister the facility` `as a reportable facility` `:` (`df` FALSE FALSE (LIST 20000, 20000, 20000) FALSE 0 (LIST 0, 0) FALSE FALSE TRUE) -- [E10]
+#ASSERT `the registered person may apply to deregister the facility` `as a reportable facility` `:` (`df` FALSE FALSE (LIST 3000, 3000, 3000) TRUE 1500 (LIST 1500, 1800) FALSE FALSE TRUE)   -- [E11]
+#ASSERT `the last day to notify the Agency, control ceasing on` (YMD 2025 3 1) EQUALS YMD 2025 1 15      -- [E12]
+#ASSERT `the last day to notify the Agency, control ceasing on` (YMD 2025 12 31) EQUALS YMD 2025 11 16   -- [E13]
+#ASSERT `the registered person may be deregistered as such:` (`df` FALSE FALSE (LIST 0, 0, 0) FALSE 0 (LIST 0, 0) TRUE FALSE TRUE)       -- [E14]
+#ASSERT NOT `the registered person may be deregistered as such:` (`df` FALSE FALSE (LIST 0, 0, 0) FALSE 0 (LIST 0, 0) FALSE FALSE TRUE)   -- [E15]
+#ASSERT `the registered person may be deregistered as such:` (`df` FALSE FALSE (LIST 0, 0, 0) FALSE 0 (LIST 0, 0) FALSE TRUE FALSE)       -- [E16], [E18]
+#ASSERT NOT `the registered person may be deregistered as such:` (`df` FALSE FALSE (LIST 0, 0, 0) FALSE 0 (LIST 0, 0) TRUE FALSE FALSE)   -- [E17]
+#ASSERT REFUSED `the last day to notify the Agency, control ceasing on` (YMD 2023 6 1)                     -- vintage: event before 2024
+
+§§ `F. ss 11-15 — reporting`
+
+#ASSERT `the reporting period in` 2025 `, control from` (YMD 2019 1 1) `until` NOTHING EQUALS LIST (YMD 2025 1 1), (YMD 2025 12 31)   -- [F1]
+#ASSERT `the reporting period in` 2025 `, control from` (YMD 2025 4 1) `until` NOTHING EQUALS LIST (YMD 2025 4 1), (YMD 2025 12 31)   -- [F2]
+#ASSERT `the reporting period in` 2025 `, control from` (YMD 2019 1 1) `until` (JUST (YMD 2025 4 1)) EQUALS LIST (YMD 2025 1 1), (YMD 2025 4 1)   -- [F2] variant
+#ASSERT `the emissions to report among` `the B29 emissions` EQUALS LIST `em` "Carbon dioxide" 20000 `elsewise`, `em` "Methane" 200 `elsewise`, `em` "Sulphur hexafluoride" 1 `in manufacturing, installing, using or disposing of electrical equipment`   -- [F3]
+#ASSERT `the reporting duties, controlled:` TRUE `, status` (`st` TRUE TRUE TRUE) `, plan approved:` TRUE EQUALS (`Reporting duties` OF TRUE, TRUE, TRUE)     -- [F5]
+#ASSERT `the reporting duties, controlled:` TRUE `, status` (`st` TRUE TRUE FALSE) `, plan approved:` FALSE EQUALS (`Reporting duties` OF TRUE, FALSE, FALSE)  -- [F6]
+#ASSERT `the reporting duties, controlled:` TRUE `, status` (`st` TRUE TRUE TRUE) `, plan approved:` FALSE EQUALS (`Reporting duties` OF TRUE, FALSE, TRUE)    -- [F8]
+#ASSERT `the reporting duties, controlled:` FALSE `, status` (`st` TRUE TRUE TRUE) `, plan approved:` TRUE EQUALS (`Reporting duties` OF FALSE, FALSE, FALSE)   -- s 11(1) no control in the year
+#ASSERT `the last day to notify an error discovered on` (YMD 2025 3 3) `, holidays` EMPTY EQUALS YMD 2025 3 12                -- [F10]
+#ASSERT `the last day to notify an error discovered on` (YMD 2025 3 3) `, holidays` (LIST (YMD 2025 3 5)) EQUALS YMD 2025 3 13 -- [F10] with a holiday
+
+§§ `G. s 16, Third Schedule, Division 1A`
+
+#ASSERT `the carbon tax rate for` 2023 EQUALS 5      -- [G1]
+#ASSERT `the carbon tax rate for` 2024 EQUALS 25     -- [G2]
+#ASSERT `the carbon tax rate for` 2025 EQUALS 25     -- [G3]
+#ASSERT `the carbon tax rate for` 2026 EQUALS 45     -- [G4]
+#ASSERT `the carbon tax rate for` 2030 EQUALS 45     -- [G5]
+#ASSERT `the carbon price for credits purchased in` 2024 EQUALS 5    -- [G6]
+#ASSERT `the carbon price for credits purchased in` 2025 EQUALS 25   -- [G7]
+#ASSERT `the carbon price for credits purchased in` 2026 EQUALS 25   -- [G8]
+#ASSERT `the carbon price for credits purchased in` 2027 EQUALS 45   -- [G9]
+#ASSERT `the carbon price for credits purchased in` 2020 EQUALS 5    -- [G10]
+#ASSERT `the carbon tax charged for` (`yf` 2024 TRUE 30000.4 NOTHING NOTHING NOTHING) EQUALS 750025      -- [G11]
+#ASSERT `the carbon tax charged for` (`yf` 2026 TRUE 25000 NOTHING NOTHING NOTHING) EQUALS 1125000       -- [G12]
+#ASSERT `the carbon tax charged for` (`yf` 2026 TRUE 24999.9 NOTHING NOTHING NOTHING) EQUALS 0           -- [G13]
+#ASSERT `the carbon tax charged for` (`yf` 2025 TRUE 40000 NOTHING NOTHING NOTHING) EQUALS 1000000       -- [G14]
+#ASSERT REFUSED `the carbon tax charged for` (`yf` 2023 TRUE 40000 NOTHING NOTHING NOTHING)              -- [G15]
+#ASSERT `the carbon tax charged for` (`yf` 2024 TRUE 30000.4 (JUST 10000.5) NOTHING NOTHING) EQUALS 500025   -- [G16]
+#ASSERT `the carbon tax charged for` (`yf` 2026 TRUE 50000 (JUST 20000) NOTHING NOTHING) EQUALS 1350000      -- [G17]
+#ASSERT `the carbon tax charged for` (`yf` 2026 TRUE 50000 (JUST 20000) NOTHING (JUST 2025)) EQUALS 2250000  -- [G20] Division 1A ended 2025
+#ASSERT `the carbon tax charged for` (`yf` 2026 FALSE 50000 NOTHING NOTHING NOTHING) EQUALS 0                -- s 16(1) not a taxable facility
+
+§§ `H. Payment, credits, penalties, refunds, registry`
+
+#ASSERT `the last day to pay the tax for` 2025 `, assessed by` `an assessment under s 21(1)` `, served on` (YMD 2026 8 1) EQUALS YMD 2026 9 30            -- [H1]
+#ASSERT `the last day to pay the tax for` 2025 `, assessed by` `an assessment under s 21(1)` `, served on` (YMD 2026 9 15) EQUALS YMD 2026 10 15          -- [H2]
+#ASSERT `the last day to pay the tax for` 2025 `, assessed by` `an assessment under s 21(1)` `, served on` (YMD 2026 8 31) EQUALS YMD 2026 9 30           -- [H3]
+#ASSERT `the last day to pay the tax for` 2025 `, assessed by` `a best-judgment assessment under s 21(2)` `, served on` (YMD 2026 10 1) EQUALS YMD 2026 10 31   -- [H4]
+#ASSERT `the last day to pay the tax for` 2025 `, assessed by` `an advance assessment under s 22` `, served on` (YMD 2026 3 1) EQUALS YMD 2026 3 31        -- [H5]
+#ASSERT `the last day to pay the tax for` 2025 `, assessed by` `a revised assessment under s 23` `, served on` (YMD 2026 8 1) EQUALS YMD 2026 8 31         -- [H6]
+#ASSERT REFUSED `the last day to pay the tax for` 2023 `, assessed by` `an assessment under s 21(1)` `, served on` (YMD 2024 8 1)                          -- vintage: emissions year 2023
+#ASSERT `the fixed-price carbon credits to surrender for tax of` 750025 `, bought in` 2025 `, revised:` FALSE EQUALS 30001     -- [H7]
+#ASSERT `the fixed-price carbon credits to surrender for tax of` 1125000 `, bought in` 2027 `, revised:` FALSE EQUALS 25000    -- [H8]
+#ASSERT `the fixed-price carbon credits to surrender for tax of` 100 `, bought in` 2027 `, revised:` TRUE EQUALS 2             -- [H9]
+#ASSERT `the fixed-price carbon credits to surrender for tax of` 1000 `, bought in` 2026 `, revised:` TRUE EQUALS 40           -- [H10]
+#ASSERT `the eligible ICCs that count, of` (`sur` 0 8 10 FALSE TRUE) EQUALS 8      -- [H12]
+#ASSERT `the eligible ICCs that count, of` (`sur` 0 15 10 FALSE TRUE) EQUALS 10    -- [H13]
+#ASSERT `the eligible ICCs that count, of` (`sur` 0 15 10 TRUE TRUE) EQUALS 15     -- [H14]
+#ASSERT `the eligible ICCs that count, of` (`sur` 0 15 10 FALSE FALSE) EQUALS 0    -- s 17(3A) not prescribed for that year
+#ASSERT `the tax treated as paid by` (`sur` 100 15 10 FALSE TRUE) `, at a carbon price of` 25 EQUALS 2750   -- s 28(2), 33B(3), 33C: (100+10)×25
+#ASSERT (`the late payment penalty on` 100000 `unpaid after` (YMD 2025 9 30) `, as at` (YMD 2025 10 1))'s `the 5% penalty` EQUALS 5000            -- [H15]
+#ASSERT (`the late payment penalty on` 0 `unpaid after` (YMD 2025 9 30) `, as at` (YMD 2026 10 1))'s `total` EQUALS 0                           -- [H16]
+#ASSERT (`the late payment penalty on` 100000 `unpaid after` (YMD 2025 9 30) `, as at` (YMD 2026 5 10))'s `the additional 1% penalties` EQUALS 5000   -- [H17]
+#ASSERT (`the late payment penalty on` 100000 `unpaid after` (YMD 2025 9 30) `, as at` (YMD 2025 11 29))'s `the additional 1% penalties` EQUALS 0     -- [H18]
+#ASSERT (`the late payment penalty on` 100000 `unpaid after` (YMD 2025 9 30) `, as at` (YMD 2060 1 1))'s `the additional 1% penalties` EQUALS 300000  -- [H19]
+#ASSERT (`the late payment penalty on` 100000 `unpaid after` (YMD 2025 9 30) `, as at` (YMD 2050 11 10))'s `the additional 1% penalties` EQUALS 299000 -- [H20] 299 months, under the cap
+#ASSERT `a refund application on` (YMD 2029 3 10) `is in time, the tax reduced on` (YMD 2025 3 10)          -- [H21]
+#ASSERT NOT `a refund application on` (YMD 2029 3 11) `is in time, the tax reduced on` (YMD 2025 3 10)      -- [H21]
+#ASSERT `the refund of` 1000 `, account held:` TRUE `, not the Agency's error:` TRUE `, in` 2027 EQUALS `fixed-price carbon credits credited to the FPCC account` 22   -- [H22]
+#ASSERT `the refund of` 1000 `, account held:` TRUE `, not the Agency's error:` TRUE `, in` 2026 EQUALS `fixed-price carbon credits credited to the FPCC account` 40   -- [H23]
+#ASSERT `the refund of` 1000 `, account held:` TRUE `, not the Agency's error:` FALSE `, in` 2027 EQUALS `as the Agency effects it otherwise`                          -- [H24]
+#ASSERT `the Agency may demand back an erroneous refund of` (YMD 2025 5 1) `on` (YMD 2029 5 1)          -- [H25]
+#ASSERT NOT `the Agency may demand back an erroneous refund of` (YMD 2025 5 1) `on` (YMD 2029 5 2)      -- [H25]
+#ASSERT `the Agency may waive the assessment of` 125 `for` 2025 `, higher amount` NOTHING        -- [H26]
+#ASSERT NOT `the Agency may waive the assessment of` 126 `for` 2025 `, higher amount` NOTHING    -- [H27]
+#ASSERT `the Agency may waive the assessment of` 225 `for` 2026 `, higher amount` NOTHING        -- [H28]
+#ASSERT `the Agency may waive the assessment of` 125 `for` 2024 `, higher amount` NOTHING        -- [H29]
+#ASSERT NOT `the Agency may waive the assessment of` 126 `for` 2024 `, higher amount` NOTHING    -- [H29]
+#ASSERT REFUSED `the Agency may waive the assessment of` 20 `for` 2023 `, higher amount` NOTHING -- vintage: emissions year 2023
+#ASSERT `the tax treated as paid by cancelling` 10 `credits at` 25 `, fraudulent:` FALSE EQUALS 250   -- [H30] s 29(1)
+#ASSERT `the tax treated as paid by cancelling` 10 `credits at` 25 `, fraudulent:` TRUE EQUALS 0      -- s 29(3)
+#ASSERT `the credits after conversion, of` 100 `bought the year before` 2025 EQUALS 20   -- [H32]
+#ASSERT `the credits after conversion, of` 7 `bought the year before` 2025 EQUALS 1      -- [H33]
+#ASSERT `the credits after conversion, of` 100 `bought the year before` 2027 EQUALS 55   -- [H34]
+#ASSERT `the credits after conversion, of` 100 `bought the year before` 2026 EQUALS 100  -- [H35]
+#ASSERT `the longest suspension ends on, suspended from` (YMD 2025 3 1) EQUALS YMD 2026 3 1   -- [H36]
+#ASSERT `the account is inactive for 5 years on` (YMD 2030 3 1) `, the last transaction on` (YMD 2025 3 1)       -- [H37]
+#ASSERT NOT `the account is inactive for 5 years on` (YMD 2029 3 1) `, the last transaction on` (YMD 2025 3 1)   -- [H37]
+#ASSERT `the Agency may close the account on ground` `(a) on application, the facility deregistered` `, notice` NOTHING `, objections by` NOTHING `, objection:` FALSE      -- [H38]
+#ASSERT NOT `the Agency may close the account on ground` `(c) inactive for 5 years` `, notice` NOTHING `, objections by` NOTHING `, objection:` FALSE                      -- [H38]
+#ASSERT `the Agency may close the account on ground` `(c) inactive for 5 years` `, notice` (JUST (YMD 2025 2 1)) `, objections by` (JUST (YMD 2025 3 3)) `, objection:` FALSE      -- [H39], [H41]
+#ASSERT NOT `the Agency may close the account on ground` `(d) the person no longer registered` `, notice` (JUST (YMD 2025 2 1)) `, objections by` (JUST (YMD 2025 3 2)) `, objection:` FALSE   -- [H39]
+#ASSERT NOT `the Agency may close the account on ground` `(c) inactive for 5 years` `, notice` (JUST (YMD 2025 2 1)) `, objections by` (JUST (YMD 2025 3 3)) `, objection:` TRUE   -- [H40]
+#ASSERT `the refund on closing the account on ground` `(a) on application, the facility deregistered` `, credits` 100 `at` 25 EQUALS 2500   -- [H42]
+#ASSERT `the refund on closing the account on ground` `(b) used for a criminal offence` `, credits` 100 `at` 25 EQUALS 0                      -- [H43]
+#ASSERT `how the tax is paid, the FPCC account being` `suspended` EQUALS `in the form and manner the Agency requires`                     -- s 17(2)(b)
+#ASSERT `how the tax is paid, the FPCC account being` `open` EQUALS `by surrendering fixed-price carbon credits (and any eligible ICCs)`  -- s 17(2)(a)
+
+§§ `I. Assessments, objections, appeals`
+
+#ASSERT `the Agency may make a best-judgment assessment on` (YMD 2026 6 1) `for` 2025 `, report submitted:` FALSE `, approved on` NOTHING       -- [I1]
+#ASSERT `the Agency may make a best-judgment assessment on` (YMD 2026 8 16) `for` 2025 `, report submitted:` TRUE `, approved on` NOTHING       -- [I2]
+#ASSERT NOT `the Agency may make a best-judgment assessment on` (YMD 2026 8 16) `for` 2025 `, report submitted:` TRUE `, approved on` (JUST (YMD 2026 8 1))   -- [I3]
+#ASSERT `the Agency may make an advance assessment, control ceasing:` TRUE `, already assessed:` FALSE       -- [I4]
+#ASSERT NOT `the Agency may make an advance assessment, control ceasing:` TRUE `, already assessed:` TRUE    -- [I5]
+#ASSERT `the Agency may still revise of its own motion on` (YMD 2029 9 1) `an assessment served on` (YMD 2025 9 1)       -- [I6]
+#ASSERT NOT `the Agency may still revise of its own motion on` (YMD 2029 9 2) `an assessment served on` (YMD 2025 9 1)   -- [I6]
+#ASSERT `an objection on` (YMD 2025 10 1) `to an assessment served on` (YMD 2025 9 1) `is valid, extended to` NOTHING `, about the allowance:` FALSE `, grounds precise:` TRUE        -- [I7]
+#ASSERT NOT `an objection on` (YMD 2025 10 2) `to an assessment served on` (YMD 2025 9 1) `is valid, extended to` NOTHING `, about the allowance:` FALSE `, grounds precise:` TRUE    -- [I7]
+#ASSERT `an objection on` (YMD 2025 10 20) `to an assessment served on` (YMD 2025 9 1) `is valid, extended to` (JUST (YMD 2025 10 31)) `, about the allowance:` FALSE `, grounds precise:` TRUE   -- [I8]
+#ASSERT NOT `an objection on` (YMD 2025 9 10) `to an assessment served on` (YMD 2025 9 1) `is valid, extended to` NOTHING `, about the allowance:` TRUE `, grounds precise:` TRUE      -- [I9]
+#ASSERT `an appeal to the Minister lies against` `refusing to deregister a taxable facility` `served on` (YMD 2025 5 10) `, lodged on` (YMD 2025 6 9)        -- [I10], [I11]
+#ASSERT NOT `an appeal to the Minister lies against` `refusing to deregister a taxable facility` `served on` (YMD 2025 5 10) `, lodged on` (YMD 2025 6 10)   -- [I10]
+#ASSERT NOT `an appeal to the Minister lies against` `some other decision` `served on` (YMD 2025 5 10) `, lodged on` (YMD 2025 5 20)                         -- [I12]
+#ASSERT `an appeal to the Minister lies against` `refusing to approve a verified emissions report or monitoring plan` `served on` (YMD 2025 5 10) `, lodged on` (YMD 2025 5 20)  -- [I13]
+#ASSERT `an appeal to the Minister lies against` `refusing a refund or a credit of FPCCs under s 19` `served on` (YMD 2025 5 10) `, lodged on` (YMD 2025 5 20)   -- [I14]
+#ASSERT `an appeal to the Minister lies against` `refusing to revise an assessment under s 23` `served on` (YMD 2025 5 10) `, lodged on` (YMD 2025 5 20)         -- [I15]
+#ASSERT NOT `the change of` 11249 `in the tax for` 2026 `is large enough for a High Court appeal`   -- [I16]
+#ASSERT `the change of` 11250 `in the tax for` 2026 `is large enough for a High Court appeal`       -- [I17]
+#ASSERT `the change of` 6250 `in the tax for` 2024 `is large enough for a High Court appeal`        -- [I18]
+#ASSERT NOT `the change of` 6249 `in the tax for` 2024 `is large enough for a High Court appeal`    -- [I18]
+#ASSERT REFUSED `the change of` 6249 `in the tax for` 2023 `is large enough for a High Court appeal` -- vintage: emissions year 2023
+#ASSERT `an Appeal Panel of` 3 `members with` 1 `specialists is properly composed`         -- [I19]
+#ASSERT NOT `an Appeal Panel of` 2 `members with` 1 `specialists is properly composed`     -- [I19]
+#ASSERT NOT `an Appeal Panel of` 3 `members with` 0 `specialists is properly composed`     -- [I19]
+
+§§ `J. Records, service, extensions`
+
+#ASSERT `the last day to notify a change made on` (YMD 2025 1 10) EQUALS YMD 2025 1 24     -- [J1]
+#ASSERT `the day service takes effect, sent` `by prepaid registered post` `on` (YMD 2025 3 3) `, email consented:` FALSE EQUALS JUST (YMD 2025 3 5)               -- [J2]
+#ASSERT `the day service takes effect, sent` `by fax, with notice of successful transmission` `on` (YMD 2025 3 3) `, email consented:` FALSE EQUALS JUST (YMD 2025 3 3)   -- [J3]
+#ASSERT `the day service takes effect, sent` `by email` `on` (YMD 2025 3 3) `, email consented:` FALSE EQUALS NOTHING                                             -- [J4]
+#ASSERT `the day service takes effect, sent` `by email` `on` (YMD 2025 3 3) `, email consented:` TRUE EQUALS JUST (YMD 2025 3 3)                                  -- [J5]
+#ASSERT `an extension may still be granted after expiry, applied on` (YMD 2025 3 1) `, time expiring` (YMD 2025 3 5)       -- [J6]
+#ASSERT NOT `an extension may still be granted after expiry, applied on` (YMD 2025 3 6) `, time expiring` (YMD 2025 3 5)   -- [J7]
+
+§§ `K. Offences`
+
+#ASSERT `max first` `s 47(2) — refusing or misstating name, address or particulars` EQUALS `pen` 10000 12 0      -- [K1]
+#ASSERT `max first` `s 48(3) — failing to comply with a requirement on search` EQUALS `pen` 10000 12 100         -- [K2]
+#ASSERT `max first` `s 49(4) — failing to comply with a notice to provide information` EQUALS `pen` 10000 12 100 -- [K3]
+#ASSERT `max first` `s 51(2) — failing to carry out a test or inspection` EQUALS `pen` 2000 0 0                  -- [K4]
+#ASSERT `max first` `s 52 — obstructing the Agency or an authorised officer` EQUALS `pen` 10000 12 0             -- [K5]
+#ASSERT `max first` `s 53 — false entries or false information` EQUALS `pen` 5000 6 0                            -- [K6]
+#ASSERT `max first` `s 54(1) — failing to apply to be a registered person` EQUALS `pen` 5000 0 0                 -- [K7]
+#ASSERT `max first` `s 54(2) — failing to apply to register a reportable facility` EQUALS `pen` 5000 0 0         -- [K8]
+#ASSERT `the maximum penalty for` `s 54(3) — failing to apply to register a taxable facility` `, a second or subsequent offence:` FALSE `, tax figure` 1000000 EQUALS `pen` 110000 0 50   -- [K9]
+#ASSERT `max first` `s 54(4) — false statement in a registration application` EQUALS `pen` 5000 6 0              -- [K10]
+#ASSERT `max first` `s 54(5) — failing to give 45 days' notice of ceasing control` EQUALS `pen` 10000 0 0        -- [K11]
+#ASSERT `max first` `s 55(1) — failing to submit an unverified emissions report` EQUALS `pen` 1000 0 50          -- [K12]
+#ASSERT `max first` `s 55(2) — submitting an inaccurate unverified emissions report` EQUALS `pen` 10000 0 0      -- [K13]
+#ASSERT `max repeat` `s 55(2) — submitting an inaccurate unverified emissions report` EQUALS `pen` 20000 0 0     -- [K14]
+#ASSERT NOT `an inaccuracy offence under s 55(2) or 57(2) can be committed, notified:` TRUE                       -- [K15], [K24]
+#ASSERT `an inaccuracy offence under s 55(2) or 57(2) can be committed, notified:` FALSE
+#ASSERT `max first` `s 56(1) — failing to submit a verified emissions report` EQUALS `pen` 1000 0 50             -- [K16]
+#ASSERT `the penalty for an inaccurate verified report, culpability` `none shown` `, tax undercharged` 20000 `, notified:` FALSE EQUALS `pen` 20000 0 0     -- [K17]
+#ASSERT `the penalty for an inaccurate verified report, culpability` `without reasonable excuse or through negligence` `, tax undercharged` 20000 `, notified:` FALSE EQUALS `pen` 45000 36 0   -- [K18]
+#ASSERT `the penalty for an inaccurate verified report, culpability` `wilfully with intent to evade` `, tax undercharged` 20000 `, notified:` FALSE EQUALS `pen` 70000 36 0   -- [K19]
+#ASSERT `the penalty for an inaccurate verified report, culpability` `by fraud, art or contrivance, wilfully with intent to evade` `, tax undercharged` 20000 `, notified:` FALSE EQUALS `pen` 130000 60 0   -- [K20]
+#ASSERT `the penalty for an inaccurate verified report, culpability` `wilfully with intent to evade` `, tax undercharged` 20000 `, notified:` TRUE EQUALS `pen` 0 0 0   -- [K21]
+#ASSERT `max first` `s 57(1) — failing to submit a monitoring plan` EQUALS `pen` 1000 0 0                        -- [K22]
+#ASSERT `max first` `s 57(2) — submitting an inaccurate monitoring plan` EQUALS `pen` 50000 0 0                  -- [K23]
+#ASSERT `max first` `s 58 — failing to comply with a direction under s 13(2), 14 or 15(2), or with s 15(1)` EQUALS `pen` 5000 0 0   -- [K25]
+#ASSERT `the fine for not paying a demand note for` 100000 EQUALS 300000                                         -- [K26]
+#ASSERT `max first` `s 60 — offences by authorised and unauthorised persons` EQUALS `pen` 10000 36 0             -- [K27]
+#ASSERT `max first` `s 61(1) — failing to comply with the Minister's requirement` EQUALS `pen` 10000 0 0         -- [K28]
+#ASSERT `max first` `s 61(2) — failing to attend before an Appeal Panel` EQUALS `pen` 10000 0 0                  -- [K28]
+#ASSERT `max first` `s 62(1) — failing to keep records` EQUALS `pen` 5000 0 0                                    -- [K29]
+#ASSERT `max repeat` `s 62(1) — failing to keep records` EQUALS `pen` 10000 36 0                                 -- [K30]
+#ASSERT `max first` `s 62(2) — failing to notify a change in particulars` EQUALS `pen` 5000 0 0                  -- [K31]
+#ASSERT `max first` `s 70(3) — failing to comply with a court's remedial order` EQUALS `pen` 0 0 1000            -- [K32] $1,000 per day
+#ASSERT `max first` `s 76(4) — contravening the regulations` EQUALS `pen` 50000 24 0                             -- [K33]
+#ASSERT `the composition limit for a maximum fine of` 5000 EQUALS 2500     -- [K34]
+#ASSERT `the composition limit for a maximum fine of` 10000 EQUALS 5000    -- [K35]
+#ASSERT `the composition limit for a maximum fine of` 50000 EQUALS 5000    -- [K36]
+#ASSERT `the composition limit for a maximum fine of` 2000 EQUALS 1000     -- [K37]
+#ASSERT `the officer is guilty of the same offence:` (`of` TRUE TRUE FALSE FALSE) `, the body having committed it:` TRUE           -- [K39]
+#ASSERT NOT `the officer is guilty of the same offence:` (`of` TRUE FALSE FALSE FALSE) `, the body having committed it:` TRUE       -- [K40]
+#ASSERT `the officer is guilty of the same offence:` (`of` TRUE FALSE TRUE FALSE) `, the body having committed it:` TRUE           -- [K41]
+#ASSERT `the officer is guilty of the same offence:` (`of` TRUE FALSE FALSE TRUE) `, the body having committed it:` TRUE           -- s 68(2)(b)(iii)
+#ASSERT NOT `the officer is guilty of the same offence:` (`of` FALSE TRUE FALSE FALSE) `, the body having committed it:` TRUE      -- s 68(2)(a) not an officer
+
+§§ `L. s 79 saving`
+
+#ASSERT `the status from 1 January 2019 under s 79, ECA-registered:` TRUE `, plan in 2018:` TRUE `, 2017 tCO2e` 0 `, control kept:` FALSE EQUALS `st` TRUE TRUE TRUE      -- [L1]
+#ASSERT `the status from 1 January 2019 under s 79, ECA-registered:` TRUE `, plan in 2018:` FALSE `, 2017 tCO2e` 2000 `, control kept:` TRUE EQUALS `st` TRUE TRUE FALSE   -- [L2]
+#ASSERT `the status from 1 January 2019 under s 79, ECA-registered:` TRUE `, plan in 2018:` FALSE `, 2017 tCO2e` 1999 `, control kept:` TRUE EQUALS `st` FALSE FALSE FALSE  -- [L3]
+
+§§ `M. The top-level goal`
+
+-- B29 facility, 2026, all registered; tax 25,600 × 45 = 1,152,000; 25,600 credits at the 2027 price $45;
+-- s 21(1) notice served 2027-08-01 → last day 2027-09-30; paid in full → no penalty.
+#ASSERT (`the carbon pricing position for` (`fy` 2026 TRUE (`st` TRUE TRUE TRUE) (JUST (YMD 2027 8 1)) 1152000 (YMD 2028 1 1)))'s `reckonable tCO2e` EQUALS 25600
+#ASSERT (`the carbon pricing position for` (`fy` 2026 TRUE (`st` TRUE TRUE TRUE) (JUST (YMD 2027 8 1)) 1152000 (YMD 2028 1 1)))'s `carbon tax charged` EQUALS 1152000
+#ASSERT (`the carbon pricing position for` (`fy` 2026 TRUE (`st` TRUE TRUE TRUE) (JUST (YMD 2027 8 1)) 1152000 (YMD 2028 1 1)))'s `fixed-price carbon credits to surrender` EQUALS 25600
+#ASSERT (`the carbon pricing position for` (`fy` 2026 TRUE (`st` TRUE TRUE TRUE) (JUST (YMD 2027 8 1)) 1152000 (YMD 2028 1 1)))'s `last day to pay` EQUALS JUST (YMD 2027 9 30)
+#ASSERT (`the carbon pricing position for` (`fy` 2026 TRUE (`st` TRUE TRUE TRUE) (JUST (YMD 2027 8 1)) 1152000 (YMD 2028 1 1)))'s `late payment penalty` EQUALS 0
+#ASSERT (`the carbon pricing position for` (`fy` 2026 TRUE (`st` TRUE TRUE TRUE) (JUST (YMD 2027 8 1)) 1152000 (YMD 2028 1 1)))'s `applications required` EQUALS (`Applications required` OF FALSE, FALSE, FALSE, NOTHING, NOTHING)
+-- Same facility, unregistered at the start of 2026: must apply for all three by 2027-06-30; no tax (not a taxable facility in 2026).
+#ASSERT (`the carbon pricing position for` (`fy` 2026 TRUE (`st` FALSE FALSE FALSE) NOTHING 0 (YMD 2027 1 1)))'s `applications required` EQUALS (`Applications required` OF TRUE, TRUE, TRUE, JUST (YMD 2027 6 30), JUST (YMD 2027 1 1))
+#ASSERT (`the carbon pricing position for` (`fy` 2026 TRUE (`st` FALSE FALSE FALSE) NOTHING 0 (YMD 2027 1 1)))'s `carbon tax charged` EQUALS 0
+-- Paid nothing; as at 2027-10-01 (the day after the last day): 5% of 1,152,000 = 57,600.
+#ASSERT (`the carbon pricing position for` (`fy` 2026 TRUE (`st` TRUE TRUE TRUE) (JUST (YMD 2027 8 1)) 0 (YMD 2027 10 1)))'s `late payment penalty` EQUALS 57600
+-- Not a prescribed sector: the Act does not apply, no tax.
+#ASSERT NOT (`the carbon pricing position for` (`fy` 2026 FALSE (`st` TRUE TRUE TRUE) (JUST (YMD 2027 8 1)) 0 (YMD 2028 1 1)))'s `the Act applies`
+#ASSERT (`the carbon pricing position for` (`fy` 2026 FALSE (`st` TRUE TRUE TRUE) (JUST (YMD 2027 8 1)) 0 (YMD 2028 1 1)))'s `carbon tax charged` EQUALS 0
+-- Vintage.
+#ASSERT REFUSED `the carbon pricing position for` (`fy` 2023 TRUE (`st` TRUE TRUE TRUE) (JUST (YMD 2024 8 1)) 0 (YMD 2025 1 1))

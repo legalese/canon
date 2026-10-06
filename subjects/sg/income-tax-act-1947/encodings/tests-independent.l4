@@ -1,0 +1,649 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `ita-types`
+IMPORT `ita-rates`
+IMPORT `ita-reliefs`
+IMPORT `ita-charge`
+IMPORT `ita-exemptions`
+IMPORT `ita-deductions`
+IMPORT `ita-capital-allowances`
+IMPORT `ita-assessable`
+IMPORT `ita-withholding-credits`
+IMPORT `ita-process`
+IMPORT `ita-offences`
+IMPORT `ita-concessions`
+IMPORT `ita-administration`
+IMPORT `ita-goal`
+
+-- Income Tax Act 1947 — INDEPENDENT TESTS.
+-- Every expected value below was decided from ../source/ITA1947.txt before any
+-- .l4 file was opened; see independent-expectations.md (scenario ids in the
+-- comments). A failing assertion is a finding and is left failing.
+
+§ `Independent tests`
+
+§§ `Helpers (record builders only)`
+
+GIVEN ei     IS A NUMBER
+      ag     IS A NUMBER
+      dis    IS A BOOLEAN
+      fem    IS A BOOLEAN
+      sp     IS A BOOLEAN
+      spinc  IS A NUMBER
+      spinf  IS A BOOLEAN
+      kids   IS A LIST OF `Child facts`
+      prem   IS A NUMBER
+      cpf    IS A NUMBER
+      seai   IS A NUMBER
+      seob   IS A NUMBER
+      deps   IS A LIST OF `Dependant facts`
+      fees   IS A NUMBER
+      nss    IS A `National service status`
+      gpi    IS A MAYBE NUMBER
+      levy   IS A NUMBER
+GIVETH AN `Individual relief facts`
+`rf` ei ag dis fem sp spinc spinf kids prem cpf seai seob deps fees nss gpi levy MEANS
+    `Individual relief facts` WITH
+        `earned income` IS ei
+        `age reached by 31 December of the preceding year` IS ag
+        `totally blind or permanently and severely disabled` IS dis
+        `a female claimant (married, divorced or widowed)` IS fem
+        `had a spouse living with or maintained by the claimant` IS sp
+        `spouse's income in the preceding year` IS spinc
+        `spouse incapacitated by physical or mental infirmity` IS spinf
+        `payments to a former spouse under a court order or deed` IS 0
+        `children` IS kids
+        `life insurance premiums, capped at 7% of the capital sum` IS prem
+        `obligatory CPF or approved fund contributions as an employee` IS cpf
+        `self-employed: assessable income from the trade or profession` IS seai
+        `self-employed: obligatory CPF contributions on that income` IS seob
+        `self-employed: voluntary CPF contributions` IS 0
+        `dependants` IS deps
+        `incapacitated siblings maintained` IS 0
+        `course fees` IS fees
+        `national service` IS nss
+        `wife or widow of an NSman, claiming` IS FALSE
+        `parent of an NSman, claiming` IS FALSE
+        `SRS contributions` IS 0
+        `SRS contribution cap` IS 0
+        `SRS account suspended, or the contribution withdrawn in the year` IS FALSE
+        `grandparent caregiver: the caregiver's trade or employment income` IS gpi
+        `CPF cash top-ups for family, after grants and capped as prescribed` IS 0
+        `CPF cash top-ups for self, after grants and capped as prescribed` IS 0
+        `prescribed deduction limit for s 39(3)` IS 0
+        `prescribed deduction limit for s 39(3A)` IS 0
+        `foreign domestic worker levy paid, for one worker` IS levy
+
+`no NS` MEANS `not an operationally ready national serviceman`
+
+GIVEN ei IS A NUMBER
+      ag IS A NUMBER
+GIVETH AN `Individual relief facts`
+`basic` ei ag MEANS `rf` ei ag FALSE FALSE FALSE 0 FALSE EMPTY 0 0 0 0 EMPTY 0 `no NS` NOTHING 0
+
+GIVEN inc   IS A BOOLEAN
+      cinc  IS A NUMBER
+      ord   IS A NUMBER
+      pd    IS A DATE
+GIVETH A `Child facts`
+`kid` inc cinc ord pd MEANS
+    `Child facts` WITH
+        `unmarried throughout the preceding year` IS TRUE
+        `below 16 at any time in the preceding year` IS TRUE
+        `in full-time instruction` IS FALSE
+        `serving under articles or indentures` IS FALSE
+        `incapacitated by physical or mental infirmity` IS inc
+        `income in the preceding year, excluding scholarships` IS cinc
+        `engaged in employment or a trade, other than under articles` IS FALSE
+        `maintained by the claimant` IS TRUE
+        `claimant's share of the relief` IS 1
+        `a Singapore citizen` IS TRUE
+        `order among the mother's eligible children` IS ord
+        `the para 5 date` IS pd
+
+GIVEN dage  IS A NUMBER
+      dinc  IS A NUMBER
+      dinf  IS A BOOLEAN
+      dliv  IS A BOOLEAN
+      dspent IS A NUMBER
+GIVETH A `Dependant facts`
+`dep` dage dinc dinf dliv dspent MEANS
+    `Dependant facts` WITH
+        `a parent, grandparent or great-grandparent of the claimant or spouse` IS TRUE
+        `living in Singapore` IS TRUE
+        `age at any time in the preceding year` IS dage
+        `income in the preceding year` IS dinc
+        `incapacitated by physical or mental infirmity` IS dinf
+        `living with the claimant in the same household` IS dliv
+        `spent by the claimant on maintenance` IS dspent
+        `claimant's share of the relief` IS 1
+
+GIVEN rec   IS A `Kind of person`
+      res   IS A BOOLEAN
+      part  IS A BOOLEAN
+      trd   IS A BOOLEAN
+      dd    IS A DATE
+      payr  IS A BOOLEAN
+      pe    IS A BOOLEAN
+      dys   IS A NUMBER
+      dir   IS A BOOLEAN
+      subj  IS A BOOLEAN
+      head  IS A NUMBER
+      ben   IS A BOOLEAN
+      amt   IS A NUMBER
+GIVETH AN `Exemption facts`
+`ef` rec res part trd dd payr pe dys dir subj head ben amt MEANS
+    `Exemption facts` WITH
+        `recipient` IS rec
+        `recipient resident in Singapore` IS res
+        `received through a partnership in Singapore` IS part
+        `derived from carrying on a trade, business or profession` IS trd
+        `derived or paid on` IS dd
+        `the payer is a company resident in Singapore` IS payr
+        `the recipient has a business or PE in Singapore` IS pe
+        `days employment exercised in Singapore` IS dys
+        `as a director of a company` IS dir
+        `as a public entertainer not substantially supported from foreign public funds` IS FALSE
+        `subject to tax in the territory it comes from` IS subj
+        `that territory's headline corporate rate` IS head
+        `the Comptroller is satisfied the exemption is beneficial` IS ben
+        `the s 13(9)(a) condition waived` IS FALSE
+        `on a Singapore ship, exercised substantially outside Singapore` IS FALSE
+        `amount of the income` IS amt
+        `an approval or prescription covers the income` IS FALSE
+        `the conditions of the paragraph are met` IS FALSE
+        `the beneficiary's share would be exempt if received directly` IS FALSE
+
+`d25` MEANS YMD 2025 6 1
+
+GIVEN incorp IS A BOOLEAN
+      resi   IS A BOOLEAN
+      nsh    IS A NUMBER
+      allind IS A BOOLEAN
+      ten    IS A BOOLEAN
+      post13 IS A BOOLEAN
+      propdev IS A BOOLEAN
+      invonly IS A BOOLEAN
+      yinc   IS A NUMBER
+GIVETH A `Start-up facts`
+`co` incorp resi nsh allind ten post13 propdev invonly yinc MEANS
+    `Start-up facts` WITH
+        `incorporated in Singapore` IS incorp
+        `resident in Singapore for the YA` IS resi
+        `limited by guarantee` IS FALSE
+        `number of shareholders, directly and beneficially` IS nsh
+        `all shareholders (or members) individuals throughout the basis period` IS allind
+        `an individual held at least 10% throughout the basis period` IS ten
+        `incorporated on or after 26 February 2013` IS post13
+        `undertakes property development, itself or as a partner` IS propdev
+        `its only activity is holding investments, itself or through a partnership` IS invonly
+        `YA of incorporation` IS yinc
+
+GIVEN sold   IS A DATE
+      grp    IS A BOOLEAN
+      oth    IS A BOOLEAN
+GIVETH A `Foreign asset sale`
+`sale` sold grp oth MEANS
+    `Foreign asset sale` WITH
+        `sold on` IS sold
+        `the seller is a member of a relevant group` IS grp
+        `the asset is situated outside Singapore` IS TRUE
+        `gains received in Singapore` IS 1000000
+        `otherwise chargeable as income under s 10(1)` IS FALSE   -- encoder's plumbing edit after the field was split (see the report's triage)
+        `otherwise exempt from tax` IS oth
+        `an intellectual property right` IS FALSE
+        `incidental to a prescribed financial institution's business, or to an incentive-income activity` IS FALSE
+        `an excluded entity in the basis period` IS FALSE
+        `deductible expenditure and losses` IS 0
+
+§§ `A. Residence (s 2)`
+
+#ASSERT     `resident in Singapore:` `an individual` `,` (`Residence facts` OF FALSE, 183, 0, FALSE)
+#ASSERT NOT `resident in Singapore:` `an individual` `,` (`Residence facts` OF FALSE, 182, 0, FALSE)
+#ASSERT     `resident in Singapore:` `an individual` `,` (`Residence facts` OF FALSE, 100, 200, FALSE)
+-- A4: a director's 200 days are not employment days for the second limb
+#ASSERT NOT `resident in Singapore:` `an individual` `,` (`Residence facts` OF FALSE, 100, 0, FALSE)
+#ASSERT     `resident in Singapore:` `an individual` `,` (`Residence facts` OF TRUE, 30, 0, FALSE)
+#ASSERT     `resident in Singapore:` `a company` `,` (`Residence facts` OF FALSE, 0, 0, TRUE)
+#ASSERT NOT `resident in Singapore:` `a company` `,` (`Residence facts` OF FALSE, 0, 0, FALSE)
+
+§§ `B. Second Schedule Part A`
+
+#ASSERT `the resident individual rates for YA` 2016 `on chargeable income of` 20000 EQUALS 0
+#ASSERT `the resident individual rates for YA` 2016 `on chargeable income of` 30000 EQUALS 200
+#ASSERT `the resident individual rates for YA` 2016 `on chargeable income of` 80000 EQUALS 3350
+#ASSERT `the resident individual rates for YA` 2016 `on chargeable income of` 200000 EQUALS 20750
+#ASSERT `the resident individual rates for YA` 2016 `on chargeable income of` 320000 EQUALS 42350
+#ASSERT `the resident individual rates for YA` 2016 `on chargeable income of` 500000 EQUALS 78350
+#ASSERT `the resident individual rates for YA` 2023 `on chargeable income of` 40000 EQUALS 550
+#ASSERT `the resident individual rates for YA` 2023 `on chargeable income of` 120000 EQUALS 7950
+#ASSERT `the resident individual rates for YA` 2023 `on chargeable income of` 200000 EQUALS 21150
+#ASSERT `the resident individual rates for YA` 2023 `on chargeable income of` 320000 EQUALS 44550
+#ASSERT `the resident individual rates for YA` 2023 `on chargeable income of` 1000000 EQUALS 194150
+#ASSERT `the resident individual rates for YA` 2025 `on chargeable income of` 20000 EQUALS 0
+#ASSERT `the resident individual rates for YA` 2025 `on chargeable income of` 30000 EQUALS 200
+#ASSERT `the resident individual rates for YA` 2025 `on chargeable income of` 160000 EQUALS 13950
+#ASSERT `the resident individual rates for YA` 2025 `on chargeable income of` 320000 EQUALS 44550
+#ASSERT `the resident individual rates for YA` 2025 `on chargeable income of` 500000 EQUALS 84150
+#ASSERT `the resident individual rates for YA` 2025 `on chargeable income of` 1000000 EQUALS 199150
+#ASSERT `the resident individual rates for YA` 2025 `on chargeable income of` 1200000 EQUALS 247150
+#ASSERT REFUSED `the resident individual rates for YA` 2011 `on chargeable income of` 100000
+
+§§ `C. s 43 rates and the s 43(6) exemptions`
+
+#ASSERT `the company rate for YA` 2025 EQUALS 17%
+#ASSERT `the non-resident individual rate for YA` 2023 EQUALS 22%
+#ASSERT `the non-resident individual rate for YA` 2025 EQUALS 24%
+#ASSERT `the basis of charge for YA` 2025 `on` `a trustee of another trust` `, resident:` TRUE EQUALS `a flat rate` (17%)
+#ASSERT `the basis of charge for YA` 2025 `on` `an executor` `, resident:` TRUE EQUALS `a flat rate` (17%)
+#ASSERT `the company rate for YA` 2006 EQUALS 20%
+#ASSERT `the company rate for YA` 2009 EQUALS 18%
+#ASSERT `the company rate for YA` 2010 EQUALS 17%
+#ASSERT (`the chargeable income taxed, after the s 43(6) exemptions, for` `a company` `, start-up:` FALSE `, YA` 2025 `, on` 10000) TIMES 17% EQUALS 425
+#ASSERT (`the chargeable income taxed, after the s 43(6) exemptions, for` `a company` `, start-up:` FALSE `, YA` 2025 `, on` 200000) TIMES 17% EQUALS 16575
+#ASSERT (`the chargeable income taxed, after the s 43(6) exemptions, for` `a company` `, start-up:` FALSE `, YA` 2025 `, on` 300000) TIMES 17% EQUALS 33575
+#ASSERT (`the chargeable income taxed, after the s 43(6) exemptions, for` `a company` `, start-up:` FALSE `, YA` 2025 `, on` 1000000) TIMES 17% EQUALS 152575
+#ASSERT (`the chargeable income taxed, after the s 43(6) exemptions, for` `a company` `, start-up:` TRUE `, YA` 2025 `, on` 100000) TIMES 17% EQUALS 4250
+#ASSERT (`the chargeable income taxed, after the s 43(6) exemptions, for` `a company` `, start-up:` TRUE `, YA` 2025 `, on` 200000) TIMES 17% EQUALS 12750
+#ASSERT (`the chargeable income taxed, after the s 43(6) exemptions, for` `a company` `, start-up:` TRUE `, YA` 2025 `, on` 300000) TIMES 17% EQUALS 29750
+-- C15: in its 4th YA the start-up exemption no longer applies
+#ASSERT NOT `the start-up exemption applies to` (`co` TRUE TRUE 5 TRUE TRUE TRUE FALSE FALSE 2022) `for YA` 2025
+#ASSERT     `the start-up exemption applies to` (`co` TRUE TRUE 5 TRUE TRUE TRUE FALSE FALSE 2023) `for YA` 2025
+#ASSERT (`the chargeable income taxed, after the s 43(6) exemptions, for` `a company` `, start-up:` FALSE `, YA` 2019 `, on` 300000) TIMES 17% EQUALS 25075
+#ASSERT (`the chargeable income taxed, after the s 43(6) exemptions, for` `a company` `, start-up:` TRUE `, YA` 2019 `, on` 300000) TIMES 17% EQUALS 17000
+
+§§ `D. Qualifying company (s 43(10)-(11))`
+
+#ASSERT     `a qualifying company under s 43(10):` (`co` TRUE TRUE 20 TRUE FALSE TRUE FALSE FALSE 2024)
+#ASSERT NOT `a qualifying company under s 43(10):` (`co` TRUE TRUE 21 TRUE TRUE TRUE FALSE FALSE 2024)
+#ASSERT     `a qualifying company under s 43(10):` (`co` TRUE TRUE 5 FALSE TRUE TRUE FALSE FALSE 2024)
+#ASSERT NOT `a qualifying company under s 43(10):` (`co` TRUE TRUE 5 FALSE FALSE TRUE FALSE FALSE 2024)
+#ASSERT NOT `a qualifying company under s 43(10):` (`co` TRUE TRUE 5 TRUE TRUE TRUE TRUE FALSE 2016)
+#ASSERT NOT `a qualifying company under s 43(10):` (`co` TRUE TRUE 5 TRUE TRUE TRUE FALSE TRUE 2016)
+#ASSERT NOT `a qualifying company under s 43(10):` (`co` TRUE FALSE 5 TRUE TRUE TRUE FALSE FALSE 2024)
+
+§§ `E. Gross-income rates (s 43(3)-(5))`
+
+#ASSERT `the gross-income rate for` `s 12(6) interest, commission, fee or other payment for a loan or indebtedness` `paid on` (YMD 2025 6 1) `, opted:` FALSE EQUALS JUST (15%)
+#ASSERT `the gross-income rate for` `s 12(7)(a) or (b) royalty or payment for the use of movable property` `paid on` (YMD 2025 6 1) `, opted:` FALSE EQUALS JUST (10%)
+#ASSERT `the gross-income rate for` `s 12(7)(d) rent or payment for the use of movable property` `paid on` (YMD 2025 6 1) `, opted:` FALSE EQUALS JUST (15%)
+#ASSERT `the gross-income rate for` `professional income of a non-resident individual or foreign firm` `paid on` (YMD 2025 6 1) `, opted:` FALSE EQUALS JUST (15%)
+#ASSERT `the gross-income rate for` `income as a non-resident arbitrator or mediator` `paid on` (YMD 2025 6 1) `, opted:` FALSE EQUALS JUST (10%)
+#ASSERT `the gross-income rate for` `income as a non-resident arbitrator or mediator` `paid on` (YMD 2028 6 1) `, opted:` FALSE EQUALS JUST (15%)
+#ASSERT `the last day to opt for s 43(1)(b), payment liable on` (YMD 2025 3 10) EQUALS YMD 2025 5 15
+#ASSERT `the last day to opt for s 43(1)(b), payment liable on` (YMD 2025 12 5) EQUALS YMD 2026 2 15
+
+§§ `F. Non-resident reliefs (ss 40A, 40B)`
+
+#ASSERT `the tax with the non-resident relief for income` `as a non-resident employee` `, chargeable` 100000 `, from the source` 100000 `, assessable` 100000 `, only source:` TRUE `, resident tax` 5650 `, YA` 2025 EQUALS 15000
+#ASSERT `the tax with the non-resident relief for income` `as a non-resident employee` `, chargeable` 1000000 `, from the source` 1000000 `, assessable` 1000000 `, only source:` TRUE `, resident tax` 199150 `, YA` 2025 EQUALS 199150
+#ASSERT `the tax with the non-resident relief for income` `as a public entertainer` `, chargeable` 100000 `, from the source` 100000 `, assessable` 100000 `, only source:` TRUE `, resident tax` 0 `, YA` 2025 EQUALS 15000
+#ASSERT `the tax with the non-resident relief for income` `as a non-resident employee` `, chargeable` 100000 `, from the source` 60000 `, assessable` 100000 `, only source:` FALSE `, resident tax` 3390 `, YA` 2025 EQUALS 18600
+
+§§ `G. Parenthood rebates (s 42A)`
+
+#ASSERT `the parenthood rebate for a` `first child of the family` `, event on` (YMD 2010 3 1) `, citizen:` TRUE `, adopted before marriage:` FALSE EQUALS 5000
+#ASSERT `the parenthood rebate for a` `first child of the family` `, event on` (YMD 2007 3 1) `, citizen:` TRUE `, adopted before marriage:` FALSE EQUALS 0
+#ASSERT `the parenthood rebate for a` `second child of the family` `, event on` (YMD 2004 1 1) `, citizen:` TRUE `, adopted before marriage:` FALSE EQUALS 10000
+#ASSERT `the parenthood rebate for a` `second child of the family` `, event on` (YMD 2003 12 31) `, citizen:` TRUE `, adopted before marriage:` FALSE EQUALS 0
+#ASSERT `the parenthood rebate for a` `third child of the family` `, event on` (YMD 2015 3 1) `, citizen:` TRUE `, adopted before marriage:` FALSE EQUALS 20000
+#ASSERT `the parenthood rebate for a` `fourth child of the family` `, event on` (YMD 2015 3 1) `, citizen:` TRUE `, adopted before marriage:` FALSE EQUALS 20000
+#ASSERT `the parenthood rebate for a` `fifth or subsequent child of the family` `, event on` (YMD 2015 3 1) `, citizen:` TRUE `, adopted before marriage:` FALSE EQUALS 20000
+#ASSERT `the parenthood rebate for a` `fifth or subsequent child of the family` `, event on` (YMD 2006 3 1) `, citizen:` TRUE `, adopted before marriage:` FALSE EQUALS 0
+#ASSERT `a rebate of` 20000 `against tax of` 5000 EQUALS `Rebate applied` OF 0, 15000
+
+§§ `H. Company remissions (ss 92J, 92L)`
+
+#ASSERT `the company remission for YA` 2025 `on tax of` 33575 `, local CPF:` TRUE `, barred:` FALSE EQUALS `Company remission` OF 14787.5, 2000
+#ASSERT `the company remission for YA` 2025 `on tax of` 33575 `, local CPF:` FALSE `, barred:` FALSE EQUALS `Company remission` OF 16787.5, 0
+#ASSERT `the company remission for YA` 2025 `on tax of` 200000 `, local CPF:` TRUE `, barred:` FALSE EQUALS `Company remission` OF 38000, 2000
+#ASSERT `the company remission for YA` 2025 `on tax of` 200000 `, local CPF:` FALSE `, barred:` FALSE EQUALS `Company remission` OF 40000, 0
+#ASSERT `the company remission for YA` 2025 `on tax of` 3000 `, local CPF:` TRUE `, barred:` FALSE EQUALS `Company remission` OF 0, 2000
+#ASSERT `the company remission for YA` 2024 `on tax of` 100000 `, local CPF:` TRUE `, barred:` FALSE EQUALS `Company remission` OF 38000, 2000
+#ASSERT `the company remission for YA` 2024 `on tax of` 3000 `, local CPF:` TRUE `, barred:` FALSE EQUALS `Company remission` OF 0, 2000
+#ASSERT (`the company remission for YA` 2025 `on tax of` 100000 `, local CPF:` TRUE `, barred:` TRUE)'s `cash grant` EQUALS 0
+
+§§ `I. Section 39 reliefs`
+
+#ASSERT `the earned income relief for` (`basic` 50000 40) EQUALS 1000
+#ASSERT `the earned income relief for` (`basic` 500 40) EQUALS 500
+#ASSERT `the earned income relief for` (`basic` 50000 57) EQUALS 6000
+#ASSERT `the earned income relief for` (`basic` 50000 65) EQUALS 8000
+#ASSERT `the earned income relief for` (`rf` 50000 40 TRUE FALSE FALSE 0 FALSE EMPTY 0 0 0 0 EMPTY 0 `no NS` NOTHING 0) EQUALS 4000
+#ASSERT `the spouse reliefs for YA` 2024 `:` (`rf` 50000 40 FALSE FALSE TRUE 5000 FALSE EMPTY 0 0 0 0 EMPTY 0 `no NS` NOTHING 0) EQUALS 0
+#ASSERT `the spouse reliefs for YA` 2025 `:` (`rf` 50000 40 FALSE FALSE TRUE 5000 FALSE EMPTY 0 0 0 0 EMPTY 0 `no NS` NOTHING 0) EQUALS 2000
+#ASSERT `the spouse reliefs for YA` 2025 `:` (`rf` 50000 40 FALSE FALSE TRUE 9000 FALSE EMPTY 0 0 0 0 EMPTY 0 `no NS` NOTHING 0) EQUALS 0
+#ASSERT `the spouse reliefs for YA` 2025 `:` (`rf` 50000 40 FALSE FALSE TRUE 0 TRUE EMPTY 0 0 0 0 EMPTY 0 `no NS` NOTHING 0) EQUALS 5500
+#ASSERT `the qualifying child relief for YA` 2025 `:` (`kid` FALSE 0 0 (YMD 2020 1 1)) EQUALS 4000
+#ASSERT `the qualifying child relief for YA` 2025 `:` (`kid` TRUE 0 0 (YMD 2020 1 1)) EQUALS 7500
+#ASSERT     `an eligible child for YA` 2025 `:` (`kid` FALSE 6000 0 (YMD 2020 1 1))
+#ASSERT NOT `an eligible child for YA` 2024 `:` (`kid` FALSE 6000 0 (YMD 2020 1 1))
+#ASSERT `the working mother's child relief for YA` 2025 `, earned income` 100000 `:` (`kid` FALSE 0 1 (YMD 2020 1 1)) EQUALS 15000
+#ASSERT `the working mother's child relief for YA` 2025 `, earned income` 100000 `:` (`kid` FALSE 0 2 (YMD 2020 1 1)) EQUALS 20000
+#ASSERT `the working mother's child relief for YA` 2025 `, earned income` 100000 `:` (`kid` FALSE 0 3 (YMD 2020 1 1)) EQUALS 25000
+#ASSERT `the working mother's child relief for YA` 2025 `, earned income` 100000 `:` (`kid` FALSE 0 1 (YMD 2024 3 1)) EQUALS 8000
+#ASSERT `the working mother's child relief for YA` 2025 `, earned income` 100000 `:` (`kid` FALSE 0 2 (YMD 2024 3 1)) EQUALS 10000
+#ASSERT `the working mother's child relief for YA` 2025 `, earned income` 100000 `:` (`kid` FALSE 0 3 (YMD 2024 3 1)) EQUALS 12000
+#ASSERT `the working mother's child relief for YA` 2024 `, earned income` 100000 `:` (`kid` FALSE 0 1 (YMD 2024 3 1)) EQUALS 0
+-- I21: QCR 3 x 4,000 + WMCR 7,500 + 10,000 + 12,500
+#ASSERT `the child reliefs for YA` 2025 `:` (`rf` 50000 40 FALSE TRUE FALSE 0 FALSE (LIST (`kid` FALSE 0 1 (YMD 2018 1 1)), (`kid` FALSE 0 2 (YMD 2019 1 1)), (`kid` FALSE 0 3 (YMD 2020 1 1))) 0 0 0 0 EMPTY 0 `no NS` NOTHING 0) EQUALS 42000
+-- I22: six children; WMCR 135% of 10,000 capped at 10,000; QCR 24,000
+#ASSERT `the child reliefs for YA` 2025 `:` (`rf` 10000 40 FALSE TRUE FALSE 0 FALSE (LIST (`kid` FALSE 0 1 (YMD 2015 1 1)), (`kid` FALSE 0 2 (YMD 2016 1 1)), (`kid` FALSE 0 3 (YMD 2017 1 1)), (`kid` FALSE 0 4 (YMD 2018 1 1)), (`kid` FALSE 0 5 (YMD 2019 1 1)), (`kid` FALSE 0 6 (YMD 2020 1 1))) 0 0 0 0 EMPTY 0 `no NS` NOTHING 0) EQUALS 34000
+-- I23: para 6(2) cap of 50,000 for the same child
+#ASSERT `the child reliefs for YA` 2025 `:` (`rf` 400000 40 FALSE TRUE FALSE 0 FALSE (LIST (`kid` FALSE 0 3 (YMD 2020 1 1))) 0 0 0 0 EMPTY 0 `no NS` NOTHING 0) EQUALS 50000
+#ASSERT `the insurance and CPF reliefs for YA` 2025 `:` (`rf` 50000 40 FALSE FALSE FALSE 0 FALSE EMPTY 4000 3000 0 0 EMPTY 0 `no NS` NOTHING 0) EQUALS 5000
+#ASSERT `the insurance and CPF reliefs for YA` 2025 `:` (`rf` 50000 40 FALSE FALSE FALSE 0 FALSE EMPTY 2000 6000 0 0 EMPTY 0 `no NS` NOTHING 0) EQUALS 6000
+#ASSERT `the insurance and CPF reliefs for YA` 2025 `:` (`rf` 50000 40 FALSE FALSE FALSE 0 FALSE EMPTY 0 0 50000 20000 EMPTY 0 `no NS` NOTHING 0) EQUALS 18500
+#ASSERT `the insurance and CPF reliefs for YA` 2025 `:` (`rf` 50000 40 FALSE FALSE FALSE 0 FALSE EMPTY 0 0 200000 40000 EMPTY 0 `no NS` NOTHING 0) EQUALS 37740
+#ASSERT `the parent relief for YA` 2025 `:` (`dep` 60 6000 FALSE TRUE 0) EQUALS 9000
+#ASSERT `the parent relief for YA` 2025 `:` (`dep` 60 6000 FALSE FALSE 2000) EQUALS 5500
+#ASSERT `the parent relief for YA` 2025 `:` (`dep` 60 6000 TRUE TRUE 0) EQUALS 14000
+#ASSERT `the parent relief for YA` 2025 `:` (`dep` 60 6000 TRUE FALSE 2000) EQUALS 10000
+#ASSERT `the parent relief for YA` 2024 `:` (`dep` 60 6000 FALSE TRUE 0) EQUALS 0
+#ASSERT `the parent reliefs for YA` 2025 `:` (`rf` 50000 40 FALSE FALSE FALSE 0 FALSE EMPTY 0 0 0 0 (LIST (`dep` 60 0 FALSE TRUE 0), (`dep` 62 0 FALSE TRUE 0), (`dep` 80 0 FALSE TRUE 0)) 0 `no NS` NOTHING 0) EQUALS 18000
+#ASSERT `the NSman reliefs:` (`rf` 50000 40 FALSE FALSE FALSE 0 FALSE EMPTY 0 0 0 0 EMPTY 0 `NSman who performed ORNS in the relevant period` NOTHING 0) EQUALS 3000
+#ASSERT `the NSman reliefs:` (`rf` 50000 40 FALSE FALSE FALSE 0 FALSE EMPTY 0 0 0 0 EMPTY 0 `NSman who performed ORNS, key command and staff appointment holder` NOTHING 0) EQUALS 5000
+#ASSERT `the NSman reliefs:` (`rf` 50000 40 FALSE FALSE FALSE 0 FALSE EMPTY 0 0 0 0 EMPTY 0 `NSman who did not perform ORNS in the relevant period` NOTHING 0) EQUALS 1500
+#ASSERT `the NSman reliefs:` (`rf` 50000 40 FALSE FALSE FALSE 0 FALSE EMPTY 0 0 0 0 EMPTY 0 `NSman who did not perform ORNS, key command and staff appointment holder` NOTHING 0) EQUALS 3500
+#ASSERT `the grandparent caregiver relief for YA` 2025 `:` (`rf` 50000 40 FALSE TRUE FALSE 0 FALSE EMPTY 0 0 0 0 EMPTY 0 `no NS` (JUST 6000) 0) EQUALS 3000
+#ASSERT `the grandparent caregiver relief for YA` 2024 `:` (`rf` 50000 40 FALSE TRUE FALSE 0 FALSE EMPTY 0 0 0 0 EMPTY 0 `no NS` (JUST 6000) 0) EQUALS 0
+#ASSERT `the course fees relief for YA` 2025 `:` (`rf` 50000 40 FALSE FALSE FALSE 0 FALSE EMPTY 0 0 0 0 EMPTY 8000 `no NS` NOTHING 0) EQUALS 5500
+#ASSERT `the course fees relief for YA` 2026 `:` (`rf` 50000 40 FALSE FALSE FALSE 0 FALSE EMPTY 0 0 0 0 EMPTY 8000 `no NS` NOTHING 0) EQUALS 0
+#ASSERT `the foreign domestic worker levy relief for YA` 2024 `:` (`rf` 50000 40 FALSE TRUE FALSE 0 FALSE EMPTY 0 0 0 0 EMPTY 0 `no NS` NOTHING 3600) EQUALS 7200
+#ASSERT `the foreign domestic worker levy relief for YA` 2025 `:` (`rf` 50000 40 FALSE TRUE FALSE 0 FALSE EMPTY 0 0 0 0 EMPTY 0 `no NS` NOTHING 3600) EQUALS 0
+-- I47: EIR 1,000 + child 50,000 + CPF 37,740 = 88,740, capped at 80,000
+#ASSERT (`the personal reliefs for YA` 2025 `, resident:` TRUE `:` (`rf` 400000 40 FALSE TRUE FALSE 0 FALSE (LIST (`kid` FALSE 0 3 (YMD 2020 1 1))) 0 37740 0 0 EMPTY 0 `no NS` NOTHING 0))'s `total allowed` EQUALS 80000
+#ASSERT `the chargeable income from assessable income` 120000 `less reliefs` 20000 EQUALS 100000
+
+§§ `J. Income charged (ss 10, 10G, 10L, 11, 12)`
+
+#ASSERT `the housing benefit, employer's rent` (JUST 60000) `, annual value` 30000 `, employee's rent` 12000 EQUALS 60000
+#ASSERT `the housing benefit, employer's rent` NOTHING `, annual value` 30000 `, employee's rent` 6000 EQUALS 24000
+#ASSERT `the gain from an employee share right, price` 50000 `, paid` 20000 `, shares` 1 EQUALS 30000
+#ASSERT `the gain from an employee share right, price` 60000 `, paid` 20000 `, shares` 1 EQUALS 40000
+#ASSERT `the date the s 10(7) gains are deemed derived, ceasing on` (YMD 2025 6 30) `, granted on` (YMD 2023 1 1) EQUALS YMD 2025 5 30
+#ASSERT `the date the s 10(7) gains are deemed derived, ceasing on` (YMD 2025 6 30) `, granted on` (YMD 2025 6 15) EQUALS YMD 2025 6 15
+#ASSERT `the annuity income, received` 8000 `, consideration` 100000 `, recovered:` FALSE `, employer-bought:` FALSE `, SRS:` FALSE EQUALS 3000
+#ASSERT `the annuity income, received` 8000 `, consideration` 100000 `, recovered:` FALSE `, employer-bought:` TRUE `, SRS:` FALSE EQUALS 8000
+#ASSERT `the author's royalty income for YA` 2026 `, gross` 100000 `, net` 80000 `, newspaper:` FALSE EQUALS 10000
+#ASSERT `the author's royalty income for YA` 2027 `, gross` 100000 `, net` 80000 `, newspaper:` FALSE EQUALS 40000
+#ASSERT `the author's royalty income for YA` 2028 `, gross` 100000 `, net` 80000 `, newspaper:` FALSE EQUALS 70000
+#ASSERT `the author's royalty income for YA` 2029 `, gross` 100000 `, net` 80000 `, newspaper:` FALSE EQUALS 80000
+#ASSERT `the author's royalty income for YA` 2026 `, gross` 100000 `, net` 80000 `, newspaper:` TRUE EQUALS 80000
+#ASSERT `the SRS withdrawal of` 10000 `, contributed` 0 `, on ground` `before the prescribed retirement age, on no special ground` EQUALS `SRS result` OF 10000, 500
+#ASSERT `the SRS withdrawal of` 10000 `, contributed` 0 `, on ground` `on or after the prescribed retirement age at first contribution` EQUALS `SRS result` OF 5000, 0
+#ASSERT `the SRS withdrawal of` 10000 `, contributed` 4000 `, on ground` `before the prescribed retirement age, on no special ground` EQUALS `SRS result` OF 6000, 300
+#ASSERT `the foreign asset gains chargeable under s 10L:` (`sale` (YMD 2024 6 1) TRUE FALSE) EQUALS 1000000
+#ASSERT `the foreign asset gains chargeable under s 10L:` (`sale` (YMD 2023 12 31) TRUE FALSE) EQUALS 0
+#ASSERT `the foreign asset gains chargeable under s 10L:` (`sale` (YMD 2024 6 1) FALSE FALSE) EQUALS 0
+-- J17b: s 10L(2)(b) — gains that "would otherwise be exempt from tax" ARE caught
+#ASSERT `the foreign asset gains chargeable under s 10L:` (`sale` (YMD 2024 6 1) TRUE TRUE) EQUALS 1000000
+#ASSERT NOT `the club is deemed to carry on a business, member receipts` 60 `of` 100
+#ASSERT     `the club is deemed to carry on a business, member receipts` 40 `of` 100
+#ASSERT `employment income is derived from Singapore, exercised here:` TRUE `, for the Government abroad:` FALSE `, citizen or resident:` FALSE
+#ASSERT `a payment of` `interest, or a payment for a loan's arrangement, management, guarantee or service` `is deemed derived from Singapore:` (`Deemed source facts` OF TRUE, FALSE, FALSE, FALSE, FALSE, FALSE)
+#ASSERT `a payment of` `royalty or payment for the use of movable property` `is deemed derived from Singapore:` (`Deemed source facts` OF TRUE, FALSE, FALSE, FALSE, FALSE, FALSE)
+
+§§ `K. Exemptions (Part 4)`
+
+#ASSERT     `the income is exempt under` `s 13(1)(za) dividend from a company resident in Singapore` `:` (`ef` `a company` TRUE FALSE FALSE `d25` TRUE FALSE 0 FALSE FALSE 0 FALSE 0)
+#ASSERT     `the income is exempt under` `s 13(1)(zd) individual's interest on a deposit with an approved bank or licensed finance company` `:` (`ef` `an individual` TRUE FALSE FALSE `d25` FALSE FALSE 0 FALSE FALSE 0 FALSE 0)
+#ASSERT     `the income is exempt under` `s 13(1)(ze), (zf), (zh), (zi), (zj) individual's specified investment income` `:` (`ef` `an individual` TRUE FALSE FALSE `d25` FALSE FALSE 0 FALSE FALSE 0 FALSE 0)
+#ASSERT NOT `the income is exempt under` `s 13(1)(ze), (zf), (zh), (zi), (zj) individual's specified investment income` `:` (`ef` `an individual` TRUE FALSE TRUE `d25` FALSE FALSE 0 FALSE FALSE 0 FALSE 0)
+#ASSERT     `the income is exempt under` `s 13(1)(t), (ta) non-resident's interest on a deposit with an approved bank` `:` (`ef` `an individual` FALSE FALSE FALSE `d25` FALSE FALSE 0 FALSE FALSE 0 FALSE 0)
+#ASSERT     `the income is exempt under` `s 13(1)(jd) voluntary medisave contribution for a self-employed individual` `:` (`ef` `an individual` TRUE FALSE FALSE `d25` FALSE FALSE 0 FALSE FALSE 0 FALSE 2730)
+-- K6: a 3,000 contribution is exempt "up to $2,730"; the exemption still applies (to 2,730 of it)
+#ASSERT     `the income is exempt under` `s 13(1)(jd) voluntary medisave contribution for a self-employed individual` `:` (`ef` `an individual` TRUE FALSE FALSE `d25` FALSE FALSE 0 FALSE FALSE 0 FALSE 3000)
+#ASSERT     `the income is exempt under` `s 13(6) short-term employment of a non-resident` `:` (`ef` `an individual` FALSE FALSE FALSE `d25` FALSE FALSE 60 FALSE FALSE 0 FALSE 0)
+#ASSERT NOT `the income is exempt under` `s 13(6) short-term employment of a non-resident` `:` (`ef` `an individual` FALSE FALSE FALSE `d25` FALSE FALSE 61 FALSE FALSE 0 FALSE 0)
+#ASSERT NOT `the income is exempt under` `s 13(6) short-term employment of a non-resident` `:` (`ef` `an individual` FALSE FALSE FALSE `d25` FALSE FALSE 30 TRUE FALSE 0 FALSE 0)
+#ASSERT     `the income is exempt under` `s 13(7A) foreign income received by an individual` `:` (`ef` `an individual` TRUE FALSE FALSE `d25` FALSE FALSE 0 FALSE FALSE 0 TRUE 0)
+#ASSERT NOT `the income is exempt under` `s 13(7A) foreign income received by an individual` `:` (`ef` `an individual` TRUE TRUE FALSE `d25` FALSE FALSE 0 FALSE FALSE 0 TRUE 0)
+#ASSERT     `the income is exempt under` `s 13(8) foreign dividends, branch profits or service income of a resident` `:` (`ef` `a company` TRUE FALSE FALSE `d25` FALSE FALSE 0 FALSE TRUE (17%) TRUE 0)
+#ASSERT NOT `the income is exempt under` `s 13(8) foreign dividends, branch profits or service income of a resident` `:` (`ef` `a company` TRUE FALSE FALSE `d25` FALSE FALSE 0 FALSE TRUE (14%) TRUE 0)
+#ASSERT     `the share disposal gain is exempt under s 13W:` (`Share disposal` OF (YMD 2025 6 1), TRUE, 30, FALSE, TRUE, FALSE)
+#ASSERT NOT `the share disposal gain is exempt under s 13W:` (`Share disposal` OF (YMD 2025 6 1), TRUE, 20, FALSE, TRUE, FALSE)
+#ASSERT NOT `the share disposal gain is exempt under s 13W:` (`Share disposal` OF (YMD 2012 5 31), TRUE, 30, FALSE, TRUE, FALSE)
+#ASSERT     `a First Schedule body:` "National Library Board" `, specified statutory corporation:` FALSE
+
+§§ `L. Deductions (Part 5)`
+
+#ASSERT `the deduction for an employer's CPF contribution of` 20000 `on remuneration of` 100000 `, work pass:` FALSE EQUALS 17000
+#ASSERT `the medisave contribution deduction for` 3000 `, already deducted` 0 EQUALS 2730
+#ASSERT `the deduction for business-car expenses of` 10000 `, the car costing` 70000 EQUALS 5000
+#ASSERT `the deduction for business-car expenses of` 10000 `, the car costing` 30000 EQUALS 10000
+#ASSERT `the maximum allowable medical expenses for` (`Medical expense facts` OF 1000000, TRUE, 0, 0, 0, 0) EQUALS 20000
+#ASSERT `the maximum allowable medical expenses for` (`Medical expense facts` OF 1000000, FALSE, 35000, 0, 5000, 0) EQUALS 15000
+#ASSERT `the R&D deductions for YA` 2025 `, own local R&D` 100000 `, paid local R&D` 0 EQUALS 400000
+#ASSERT `the R&D deductions for YA` 2025 `, own local R&D` 1000000 `, paid local R&D` 0 EQUALS 3100000
+#ASSERT `the R&D deductions for YA` 2029 `, own local R&D` 100000 `, paid local R&D` 0 EQUALS 100000
+#ASSERT `the innovation project deduction for YA` 2025 `on` 80000 EQUALS 200000
+#ASSERT `the innovation project deduction for YA` 2025 `on` 30000 EQUALS 120000
+#ASSERT `the training deduction for YA` 2025 `on` 500000 `, deductible under s 14:` TRUE EQUALS 1200000
+#ASSERT `the renovation deduction for YA` 2025 `of expenditure` 90000 `, already in the period` 0 `, spread:` FALSE EQUALS 90000
+#ASSERT `the renovation deduction for YA` 2025 `of expenditure` 90000 `, already in the period` 0 `, spread:` TRUE EQUALS 30000
+#ASSERT `the renovation deduction for YA` 2025 `of expenditure` 400000 `, already in the period` 0 `, spread:` FALSE EQUALS 300000
+#ASSERT `the IPC secondment deduction for` 10000 `, deductible under s 14:` TRUE `, incurred on` (YMD 2025 6 1) EQUALS 15000
+#ASSERT `the IPC secondment deduction for` 10000 `, deductible under s 14:` FALSE `, incurred on` (YMD 2025 6 1) EQUALS 25000
+
+§§ `M. Capital allowances (Part 6)`
+
+#ASSERT `the s 19 initial allowance on` 120000 EQUALS 24000
+#ASSERT `the s 19 annual allowance on` 120000 `, class` `electronic equipment` `, acquired for YA` 2022 `, years elected` 0 EQUALS 12000
+#ASSERT `the s 19 annual allowance on` 120000 `, class` `electronic equipment` `, acquired for YA` 2025 `, years elected` 6 EQUALS 16000
+#ASSERT `the s 19 annual allowance on` 120000 `, class` `electronic equipment` `, acquired for YA` 2025 `, years elected` 12 EQUALS 8000
+#ASSERT `the s 19 annual allowance on` 120000 `, class` `vessels, barges, tugs and similar` `, acquired for YA` 2025 `, years elected` 16 EQUALS 6000
+#ASSERT REFUSED `the s 19 annual allowance on` 120000 `, class` `electronic equipment` `, acquired for YA` 2025 `, years elected` 16
+#ASSERT `the working life in years of` `aircraft` EQUALS 5
+#ASSERT `the working life in years of` `electronic equipment` EQUALS 8
+#ASSERT `the working life in years of` `vessels, barges, tugs and similar` EQUALS 16
+#ASSERT `the working life in years of` `taxis` EQUALS 5
+#ASSERT `the working life in years of` `office furniture and fixtures` EQUALS 10
+#ASSERT `the s 19A allowance by` `s 19A(1) 3-year write-off` `on` 90000 `incurred for YA` 2025 `, for YA` 2025 EQUALS 30000
+#ASSERT `the s 19A allowance by` `s 19A(1E) 2-year write-off` `on` 100000 `incurred for YA` 2024 `, for YA` 2024 EQUALS 75000
+#ASSERT `the s 19A allowance by` `s 19A(1E) 2-year write-off` `on` 100000 `incurred for YA` 2024 `, for YA` 2025 EQUALS 25000
+#ASSERT REFUSED `the s 19A allowance by` `s 19A(1E) 2-year write-off` `on` 100000 `incurred for YA` 2023 `, for YA` 2023
+#ASSERT REFUSED `the s 19A allowance by` `s 19A(1E) 2-year write-off` `on` 100000 `incurred for YA` 2025 `, for YA` 2025
+#ASSERT `the s 19A allowance by` `s 19A(2) computer or prescribed automation, 100%` `on` 12000 `incurred for YA` 2025 `, for YA` 2025 EQUALS 12000
+#ASSERT `the low-value asset allowances allowed, claims` (LIST 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000) EQUALS 30000
+#ASSERT REFUSED `the s 19A allowance by` `s 19A(10A) low-value asset, 100%` `on` 6000 `incurred for YA` 2025 `, for YA` 2025
+#ASSERT `the balancing adjustment, unallowed` 40000 `, sale moneys` 30000 `, allowances made` 60000 EQUALS `a balancing allowance` 10000
+#ASSERT `the balancing adjustment, unallowed` 40000 `, sale moneys` 50000 `, allowances made` 60000 EQUALS `a balancing charge` 10000
+#ASSERT `the balancing adjustment, unallowed` 40000 `, sale moneys` 120000 `, allowances made` 60000 EQUALS `a balancing charge` 60000
+#ASSERT     `a company may carry forward allowances, same shareholders holding` (50%) `, exempted:` FALSE
+#ASSERT NOT `a company may carry forward allowances, same shareholders holding` (49%) `, exempted:` FALSE
+
+§§ `N. Statutory and assessable income, losses, donations`
+
+#ASSERT `the statutory income, trade income` 20000 `, other income` 50000 `, allowances` 30000 EQUALS `Statutory income` OF 0, 40000, 40000, 0
+#ASSERT `the deduction for a donation of` 1000 `made on` (YMD 2025 6 1) EQUALS 2500
+#ASSERT `the deduction for a donation of` 1000 `made on` (YMD 2015 6 1) EQUALS 3000
+#ASSERT `the deduction for a donation of` 1000 `made on` (YMD 2027 6 1) EQUALS 2000
+#ASSERT `the deduction for a donation of` 1000 `made on` (YMD 2012 6 1) EQUALS 2500
+#ASSERT     `an unused donation from YA` 2025 `may still be deducted in YA` 2030
+#ASSERT NOT `an unused donation from YA` 2025 `may still be deducted in YA` 2031
+#ASSERT     `a company's losses and donations survive, same shareholders holding` (50%) `, exempted:` FALSE
+#ASSERT NOT `a company's losses and donations survive, same shareholders holding` (40%) `, exempted:` FALSE
+#ASSERT     `group relief may be transferred, holding` (75%) `, residual entitlement:` TRUE `, same year end:` TRUE `, elected:` TRUE
+#ASSERT NOT `group relief may be transferred, holding` (74%) `, residual entitlement:` TRUE `, same year end:` TRUE `, elected:` TRUE
+#ASSERT `the carry-back allowed, deduction` 150000 `, preceding income` 200000 EQUALS 100000
+#ASSERT `the carry-back allowed, deduction` 50000 `, preceding income` 30000 EQUALS 30000
+#ASSERT `the EIS cash payout for YA` 2025 `on selected expenditure of` 500000 EQUALS 20000
+#ASSERT `the EIS cash payout for YA` 2025 `on selected expenditure of` 2000 EQUALS 400
+#ASSERT `the EIS cash payout for YA` 2025 `on selected expenditure of` 399 EQUALS 0
+#ASSERT `the EIS cash payout for YA` 2025 `on selected expenditure of` 400 EQUALS 80
+#ASSERT `the EIS cash payout for YA` 2029 `on selected expenditure of` 10000 EQUALS 0
+#ASSERT `the s 33A surcharge for YA` 2025 `on additional tax of` 10000 EQUALS 5000
+#ASSERT `the transfer-pricing surcharge for YA` 2025 `on an adjustment of` 200000 EQUALS 10000
+#ASSERT NOT `transfer-pricing documentation is required for YA` 2025 `, gross revenue` 10000000 `, required before:` FALSE `, exempt:` FALSE
+#ASSERT     `transfer-pricing documentation is required for YA` 2025 `, gross revenue` 10000001 `, required before:` FALSE `, exempt:` FALSE
+#ASSERT (`the maximum penalty for` `s 34F(8) — transfer-pricing documentation`)'s `maximum fine` EQUALS 10000
+
+§§ `O. Withholding and credits`
+
+#ASSERT `the withholding rate on` `interest to an individual or Hindu joint family` EQUALS 24%
+#ASSERT `the withholding rate on` `interest to any other person` EQUALS 17%
+#ASSERT `the withholding rate on` `interest or s 12(6) payment within s 43(3)` EQUALS 15%
+#ASSERT `the withholding rate on` `royalty or s 12(7)(a)-(b) payment within s 43(3A)` EQUALS 10%
+#ASSERT `the last day to pay over tax withheld from a payment on` (YMD 2025 1 10) EQUALS YMD 2025 3 15
+#ASSERT `the last day to pay over tax withheld from a payment on` (YMD 2025 12 31) EQUALS YMD 2026 2 15
+#ASSERT `the late withholding penalty on` 10000 `due on` (YMD 2025 3 15) `, as at` (YMD 2025 3 20) EQUALS 500
+#ASSERT `the late withholding penalty on` 10000 `due on` (YMD 2025 3 15) `, as at` (YMD 2027 12 31) EQUALS 2000
+#ASSERT `the penalty for not notifying tax deducted of` 10000 `, previous convictions` 0 `, individual:` TRUE EQUALS `Withholding offence penalty` OF 30000, 10000, 36, 0
+#ASSERT (`the penalty for not notifying tax deducted of` 10000 `, previous convictions` 2 `, individual:` TRUE)'s `minimum imprisonment in months` EQUALS 6
+#ASSERT `withholding is excepted for` `interest from qualifying debt securities` `, dated` (YMD 2025 6 1)
+#ASSERT `withholding is excepted for` `interest to a Singapore branch of a foreign company` `, dated` (YMD 2025 6 1)
+#ASSERT `the foreign tax credit for foreign tax of` 20000 `on income of` 100000 `, tax before credits` 170000 `, assessable income` 1000000 `, resident:` TRUE EQUALS 17000
+#ASSERT `the foreign tax credit for foreign tax of` 10000 `on income of` 100000 `, tax before credits` 170000 `, assessable income` 1000000 `, resident:` TRUE EQUALS 10000
+#ASSERT `the foreign tax credit for foreign tax of` 10000 `on income of` 100000 `, tax before credits` 170000 `, assessable income` 1000000 `, resident:` FALSE EQUALS 0
+-- O16: elected income 176,470.59... is awkward; use elected income 200,000 at 15% average = 30,000 Singapore tax
+#ASSERT `the pooled foreign tax credit on elected income of` 200000 `, foreign taxes` 25000 `, tax before credits` 150000 `, assessable income` 1000000 EQUALS 25000
+
+§§ `P. Administration (Parts 16-19, s 8)`
+
+#ASSERT `the last day to notify chargeability for YA` 2026 EQUALS YMD 2026 4 14
+#ASSERT `the last day for a new arrival to notify chargeability, arriving` (YMD 2025 5 10) EQUALS YMD 2025 6 10
+#ASSERT `the last day to file an estimate of chargeable income for YA` 2025 `, individual:` FALSE `, period ending` (YMD 2024 12 31) EQUALS JUST (YMD 2025 3 31)
+#ASSERT `the last day to file an estimate of chargeable income for YA` 2026 `, individual:` FALSE `, period ending` (YMD 2025 6 30) EQUALS JUST (YMD 2025 9 30)
+#ASSERT `the last day to file an estimate of chargeable income for YA` 2027 `, individual:` TRUE `, period ending` (YMD 2026 12 31) EQUALS NOTHING
+#ASSERT     `numbered receipts must be issued, goods` 20000 `, services` 0
+#ASSERT NOT `numbered receipts must be issued, goods` 0 `, services` 12000
+#ASSERT     `the Comptroller may still assess YA` 2025 `on` (YMD 2029 12 31) `, fraud or wilful default:` FALSE `, MAP or APA:` FALSE
+#ASSERT NOT `the Comptroller may still assess YA` 2025 `on` (YMD 2030 1 1) `, fraud or wilful default:` FALSE `, MAP or APA:` FALSE
+#ASSERT     `the Comptroller may still assess YA` 2007 `on` (YMD 2013 12 31) `, fraud or wilful default:` FALSE `, MAP or APA:` FALSE
+#ASSERT NOT `the Comptroller may still assess YA` 2007 `on` (YMD 2014 1 1) `, fraud or wilful default:` FALSE `, MAP or APA:` FALSE
+#ASSERT     `the Comptroller may still assess YA` 2010 `on` (YMD 2026 1 1) `, fraud or wilful default:` TRUE `, MAP or APA:` FALSE
+#ASSERT     `the Comptroller may waive an assessment of` 15 `, prescribed amount` NOTHING
+#ASSERT NOT `the Comptroller may waive an assessment of` 16 `, prescribed amount` NOTHING
+#ASSERT `the last day to object, a company:` TRUE `, notice served on` (YMD 2025 3 10) EQUALS YMD 2025 5 10
+#ASSERT `the last day to object, a company:` FALSE `, notice served on` (YMD 2025 3 10) EQUALS YMD 2025 4 9
+#ASSERT `the appeal deadlines after a refusal on` (YMD 2025 6 1) `, notice lodged on` (JUST (YMD 2025 6 20)) EQUALS `Appeal deadlines` OF (YMD 2025 7 1), (JUST (YMD 2025 7 20))
+#ASSERT     `an appeal from the Board lies, amount` 201 `, question of law:` TRUE
+#ASSERT NOT `an appeal from the Board lies, amount` 200 `, question of law:` TRUE
+#ASSERT `the last day to pay tax assessed by a notice served on` (YMD 2025 4 15) EQUALS YMD 2025 5 15
+#ASSERT (`the late payment penalty on tax of` 10000 `due by` (YMD 2025 5 15) `, as at` (YMD 2025 5 20))'s `the 5% penalty` EQUALS 500
+#ASSERT (`the late payment penalty on tax of` 10000 `due by` (YMD 2025 5 15) `, as at` (YMD 2027 12 31))'s `the additional penalty` EQUALS 1200
+#ASSERT     `a repayment claim for YA` 2025 `made on` (YMD 2029 12 31) `is in time`
+#ASSERT NOT `a repayment claim for YA` 2025 `made on` (YMD 2030 1 1) `is in time`
+#ASSERT     `a repayment claim for YA` 2007 `made on` (YMD 2013 12 31) `is in time`
+#ASSERT     `error relief may be applied for, the assessment made in YA` 2026 `, applied on` (YMD 2030 12 31) `, undocumented related-party error:` FALSE
+#ASSERT NOT `error relief may be applied for, the assessment made in YA` 2026 `, applied on` (YMD 2031 1 1) `, undocumented related-party error:` FALSE
+#ASSERT `the day a posted notice is served, ordinarily received on` (YMD 2025 3 3) EQUALS YMD 2025 3 4
+
+§§ `Q. Offences (Part 20)`
+
+#ASSERT `the maximum penalty for` `s 94 — any contravention with no other penalty` EQUALS `Fixed penalty` OF 5000, 6, 0
+#ASSERT (`the penalty for failing to file, years in default` 1 `, tax assessed` 8000 `, repeat:` FALSE)'s `maximum fine` EQUALS 5000
+#ASSERT (`the penalty for failing to file, years in default` 1 `, tax assessed` 8000 `, repeat:` TRUE)'s `per day after conviction` TIMES 10 EQUALS 1000
+#ASSERT (`the penalty for failing to file, years in default` 2 `, tax assessed` 8000 `, repeat:` FALSE)'s `penalty` EQUALS 16000
+#ASSERT `the penalty for` `none shown` `, tax undercharged` 10000 `, earlier s 96 convictions` 0 `, earlier s 96A convictions` 0 EQUALS `Tax penalty` OF 10000, 0, 0, 0
+#ASSERT `the penalty for` `without reasonable excuse or through negligence` `, tax undercharged` 10000 `, earlier s 96 convictions` 0 `, earlier s 96A convictions` 0 EQUALS `Tax penalty` OF 20000, 5000, 36, 0
+#ASSERT `the penalty for` `wilfully with intent to evade` `, tax undercharged` 10000 `, earlier s 96 convictions` 0 `, earlier s 96A convictions` 0 EQUALS `Tax penalty` OF 30000, 10000, 36, 0
+#ASSERT `the penalty for` `wilfully, by false books or by fraud, art or contrivance` `, tax undercharged` 10000 `, earlier s 96 convictions` 0 `, earlier s 96A convictions` 0 EQUALS `Tax penalty` OF 40000, 50000, 60, 0
+#ASSERT (`the penalty for` `wilfully with intent to evade` `, tax undercharged` 10000 `, earlier s 96 convictions` 2 `, earlier s 96A convictions` 0)'s `minimum imprisonment in months` EQUALS 6
+#ASSERT (`the penalty for` `wilfully with intent to evade` `, tax undercharged` 10000 `, earlier s 96 convictions` 1 `, earlier s 96A convictions` 0)'s `minimum imprisonment in months` EQUALS 0
+#ASSERT (`the penalty for` `wilfully, by false books or by fraud, art or contrivance` `, tax undercharged` 10000 `, earlier s 96 convictions` 0 `, earlier s 96A convictions` 1)'s `minimum imprisonment in months` EQUALS 6
+#ASSERT (`the penalty for` `wilfully, by false books or by fraud, art or contrivance` `, tax undercharged` 10000 `, earlier s 96 convictions` 1 `, earlier s 96A convictions` 0)'s `minimum imprisonment in months` EQUALS 6
+#ASSERT (`the penalty for` `wilfully, by false books or by fraud, art or contrivance` `, tax undercharged` 10000 `, earlier s 96 convictions` 0 `, earlier s 96A convictions` 0)'s `minimum imprisonment in months` EQUALS 0
+
+§§ `R. Concessionary rates and schedules`
+
+#ASSERT `the concessionary tax under` `s 43E Finance and Treasury Centre` `at` (10%) `on` 100000 EQUALS 10000
+#ASSERT `the concessionary tax under` `s 43E Finance and Treasury Centre` `at` (8%) `on` 100000 EQUALS 8000
+#ASSERT REFUSED `the concessionary tax under` `s 43E Finance and Treasury Centre` `at` (9%) `on` 100000
+#ASSERT `the concessionary tax under` `s 43N leasing of aircraft and aircraft engines` `at` (8%) `on` 100000 EQUALS 8000
+#ASSERT `the concessionary tax under` `s 43N leasing of aircraft and aircraft engines` `at` (5%) `on` 100000 EQUALS 5000
+#ASSERT `the concessionary tax under` `s 43I global trading company` `at` (15%) `on` 100000 EQUALS 15000
+#ASSERT `the concessionary tax under` `s 43J financial sector incentive company` `at` (13.5%) `on` 100000 EQUALS 13500
+-- R10: s 43X(5) rate = base A (5%, 10% or 15%) + increases B; base 10% + 2% = 12%
+#ASSERT `the concessionary tax under` `s 43X intellectual property income` `at` (10%) `on` 100000 EQUALS 10000
+#ASSERT `the concessionary tax under` `s 43X intellectual property income` `at` (12%) `on` 100000 EQUALS 12000
+#ASSERT `the tonnage income for a ship of` 25000 `NT, green:` FALSE `, days used` 1 EQUALS 108
+#ASSERT `the tonnage income for a ship of` 25000 `NT, green:` TRUE `, days used` 1 EQUALS 78
+#ASSERT `the tonnage income for a ship of` 550 `NT, green:` FALSE `, days used` 1 EQUALS 4.5
+#ASSERT `the tonnage income for a ship of` 1000 `NT, green:` FALSE `, days used` 1 EQUALS 9
+#ASSERT (`the advance ruling fees for hours spent` 4 `, priority:` FALSE)'s `total before reimbursements` EQUALS 660
+#ASSERT (`the advance ruling fees for hours spent` 10 `, priority:` FALSE)'s `total before reimbursements` EQUALS 1650
+#ASSERT (`the advance ruling fees for hours spent` 4.5 `, priority:` FALSE)'s `total before reimbursements` EQUALS 825
+#ASSERT (`the advance ruling fees for hours spent` 10 `, priority:` TRUE)'s `most for priority` EQUALS 3300
+
+§§ `S. Whole taxpayer and the YA boundary`
+
+GIVEN ya IS A NUMBER
+GIVETH A `Taxpayer year`
+`a resident employee for YA` ya MEANS `Taxpayer year` WITH
+    `year of assessment` IS ya
+    `kind of person` IS `an individual`
+    `residence` IS (`Residence facts` OF TRUE, 365, 250, FALSE)
+    `income` IS LIST (`Income item` WITH `description` IS "salary", `head` IS `(b) gains or profits from employment`, `source` IS `accruing in or derived from Singapore`, `gross amount` IS 100000, `deductions` IS 0, `exemption claim` IS NOTHING)
+    `capital allowances available` IS 0
+    `losses brought forward` IS 0
+    `donation deductions available` IS 0
+    `same shareholders test met, or not a company` IS TRUE
+    `relief facts` IS JUST (`rf` 100000 40 FALSE FALSE FALSE 0 FALSE (LIST (`kid` FALSE 0 0 (YMD 2020 1 1))) 0 20000 0 0 EMPTY 0 `no NS` NOTHING 0)
+    `start-up facts` IS NOTHING
+    `CPF for a local employee in the preceding calendar year` IS FALSE
+    `parenthood rebates available` IS 0
+    `foreign tax credits allowed` IS 0
+    `tax deducted at source` IS 0
+    `notice of assessment served on` IS JUST (YMD 2025 4 15)
+    `paid by the last day` IS 3000
+    `as at` IS YMD 2025 6 1
+
+GIVEN ya IS A NUMBER
+GIVETH A `Taxpayer year`
+`a trading company for YA` ya MEANS `Taxpayer year` WITH
+    `year of assessment` IS ya
+    `kind of person` IS `a company`
+    `residence` IS (`Residence facts` OF FALSE, 0, 0, TRUE)
+    `income` IS LIST (`Income item` WITH `description` IS "trade", `head` IS `(a) gains or profits from a trade, business, profession or vocation`, `source` IS `accruing in or derived from Singapore`, `gross amount` IS 300000, `deductions` IS 0, `exemption claim` IS NOTHING)
+    `capital allowances available` IS 0
+    `losses brought forward` IS 0
+    `donation deductions available` IS 0
+    `same shareholders test met, or not a company` IS TRUE
+    `relief facts` IS NOTHING
+    `start-up facts` IS NOTHING
+    `CPF for a local employee in the preceding calendar year` IS TRUE
+    `parenthood rebates available` IS 0
+    `foreign tax credits allowed` IS 0
+    `tax deducted at source` IS 0
+    `notice of assessment served on` IS NOTHING
+    `paid by the last day` IS 0
+    `as at` IS YMD 2025 6 1
+
+`a non-resident employee` MEANS `Taxpayer year` WITH
+    `year of assessment` IS 2025
+    `kind of person` IS `an individual`
+    `residence` IS (`Residence facts` OF FALSE, 100, 100, FALSE)
+    `income` IS LIST (`Income item` WITH `description` IS "salary", `head` IS `(b) gains or profits from employment`, `source` IS `accruing in or derived from Singapore`, `gross amount` IS 100000, `deductions` IS 0, `exemption claim` IS NOTHING)
+    `capital allowances available` IS 0
+    `losses brought forward` IS 0
+    `donation deductions available` IS 0
+    `same shareholders test met, or not a company` IS TRUE
+    `relief facts` IS NOTHING
+    `start-up facts` IS NOTHING
+    `CPF for a local employee in the preceding calendar year` IS FALSE
+    `parenthood rebates available` IS 0
+    `foreign tax credits allowed` IS 0
+    `tax deducted at source` IS 0
+    `notice of assessment served on` IS NOTHING
+    `paid by the last day` IS 0
+    `as at` IS YMD 2025 6 1
+
+-- S1: reliefs 1,000 + 20,000 + 4,000 = 25,000; CI 75,000; tax 550 + 35,000 x 7% = 3,000
+#ASSERT (`the income tax position for` (`a resident employee for YA` 2025))'s `personal reliefs` EQUALS 25000
+#ASSERT (`the income tax position for` (`a resident employee for YA` 2025))'s `chargeable income` EQUALS 75000
+#ASSERT (`the income tax position for` (`a resident employee for YA` 2025))'s `tax payable` EQUALS 3000
+#ASSERT (`the income tax position for` (`a resident employee for YA` 2025))'s `last day to pay` EQUALS JUST (YMD 2025 5 15)
+#ASSERT (`the income tax position for` (`a resident employee for YA` 2025))'s `late payment penalty` EQUALS 0
+-- S2: 33,575 less the s 92L remission of 14,787.50
+#ASSERT (`the income tax position for` (`a trading company for YA` 2025))'s `tax before rebates` EQUALS 33575
+#ASSERT (`the income tax position for` (`a trading company for YA` 2025))'s `rebates and remissions` EQUALS 14787.5
+#ASSERT (`the income tax position for` (`a trading company for YA` 2025))'s `tax payable` EQUALS 18787.5
+-- S3: s 40B, 15% of 100,000
+#ASSERT (`the income tax position for` `a non-resident employee`)'s `tax payable` EQUALS 15000
+#ASSERT NOT (`the income tax position for` `a non-resident employee`)'s `resident in Singapore`
+-- S4, S6: YA 2023 refuses; S5: the printed table still answers
+#ASSERT REFUSED `the income tax position for` (`a resident employee for YA` 2023)
+#ASSERT REFUSED `the income tax position for` (`a trading company for YA` 2023)
+#ASSERT `the resident individual rates for YA` 2023 `on chargeable income of` 80000 EQUALS 3350

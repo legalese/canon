@@ -1,7 +1,7 @@
 # Source license
 
-The quoted text of **Carbon Pricing Act 2018** is sourced from
-[Singapore Statutes Online](https://sso.agc.gov.sg/) at https://sso.agc.gov.sg/Act/CPA2018, provided by the
+The quoted text of **Income Tax Act 1947** is sourced from
+[Singapore Statutes Online](https://sso.agc.gov.sg/) at https://sso.agc.gov.sg/Act/ITA1947, provided by the
 Legislation Division of the Attorney-General's Chambers of Singapore ("AGC").
 
 - **Copyright owner**: Government of Singapore.
@@ -9,7 +9,7 @@ Legislation Division of the Attorney-General's Chambers of Singapore ("AGC").
   grant in [SSO's Terms of Use](https://sso.agc.gov.sg/Terms-of-Use) cl.13,
   subject to the conditions reproduced below. AGC may modify or revoke that
   permission at any time without notice (cl.14).
-- **Retrieved**: indexed 2026-10-01 from https://sso.agc.gov.sg/Act/CPA2018; the deposited text in `source/` is from a PDF created 2026-10-06 ("Current version as at 06 Oct 2026"), downloaded by the user and supplied on 2026-10-06 (see `source/PROVENANCE.md`; the PDF itself is not deposited).
+- **Retrieved**: PDF created 2026-10-06 ("Current version as at 06 Oct 2026"), downloaded from https://sso.agc.gov.sg/Act/ITA1947 by the user and supplied on 2026-10-06. Its text is `../source/ITA1947.txt`; the PDF is not deposited (see `../source/PROVENANCE.md`).
 - **Excluded from the grant**: graphics and images on SSO, which may not be
   reproduced without AGC's prior written permission (cl.6).
 
@@ -27,11 +27,9 @@ Legislation Division of the Attorney-General's Chambers of Singapore ("AGC").
 - **No suggestion of endorsement** (cl.13(c)(i)): nothing in this repository
   conveys that AGC or SSO is associated or affiliated with, or endorses, this
   work or its producers.
-- **Extraction window** (cl.13(d)(i)): the automated extraction that produced
-  this file was carried out between 3 a.m. and 7 a.m. Singapore Time, and was
-  rate-limited to SSO's published crawl-delay. The text in `source/` was not
-  extracted automatically: the user downloaded the PDF by hand, and whether the
-  window applies to that is undetermined.
+- **Extraction window** (cl.13(d)(i)): undetermined. The PDF was downloaded by
+  hand by the user; whether the 3 a.m. to 7 a.m. condition on automated
+  extraction applies to that is not known.
 
 ## Status of the text (cl.8)
 

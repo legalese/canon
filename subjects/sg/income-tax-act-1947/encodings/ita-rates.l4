@@ -1,0 +1,434 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `ita-types`
+
+-- Income Tax Act 1947 — THE RATE OF TAX ON CHARGEABLE INCOME.
+--
+-- Who is resident (s 2); the rates (ss 42, 43, Second Schedule), the partial
+-- and start-up exemptions for companies (s 43(6)-(6D), (10)-(13)), the flat
+-- rates on non-residents' gross income (s 43(3)-(5)), the non-resident reliefs
+-- (ss 40A-40D), the child rebate (s 42A), and the company remissions for
+-- YA 2024 and YA 2025 (ss 92J, 92L).
+--
+-- Source: ../source/ITA1947.txt.
+
+§ `The rate of tax`
+
+§§ `The period this encoding states the law for`
+
+-- The text is consolidated as at 6 Oct 2026. Most provisions are stated by
+-- year of assessment, and the earlier versions of many were replaced without
+-- their old text being kept. The computation of tax is encoded for YA 2024
+-- onwards (FORK I1); an earlier YA refuses. Tables the Act itself keeps for
+-- earlier YAs (the Second Schedule) are encoded as printed.
+@ref s 2 "year of assessment"; Legislative History
+GIVEN ya IS A NUMBER
+GIVETH A BOOLEAN
+`the law is encoded for YA` ya MEANS
+    IF   ya LESS THAN 2024
+    THEN REFUSE "the Act as it applied before the year of assessment 2024 is not encoded"
+    ELSE TRUE
+
+§§ `Residence (s 2)`
+
+-- s 2 "resident in Singapore": "(a) in relation to an individual, means a person
+-- who, in the year preceding the year of assessment, resides in Singapore except
+-- for such temporary absences therefrom as may be reasonable and not
+-- inconsistent with a claim by such person to be resident in Singapore, and
+-- includes a person who is physically present or who exercises an employment
+-- (other than as a director of a company) in Singapore for 183 days or more
+-- during the year preceding the year of assessment; and (b) in relation to a
+-- company or body of persons, means a company or body of persons the control
+-- and management of whose business is exercised in Singapore". s 2(2): a part
+-- of a day counts as a day.
+@ref s 2 "resident in Singapore", s 2(2)
+GIVEN k IS A `Kind of person`
+      r IS A `Residence facts`
+GIVETH A BOOLEAN
+DECIDE `resident in Singapore:` k `,` r IF
+    CONSIDER k
+    WHEN `an individual` THEN
+            r's `resides in Singapore, except reasonable temporary absences`
+        OR  r's `days physically present in Singapore` AT LEAST 183
+        OR  r's `days exercising an employment in Singapore, other than as a director` AT LEAST 183
+    WHEN `a company`         THEN r's `control and management of the business exercised in Singapore`
+    WHEN `a body of persons` THEN r's `control and management of the business exercised in Singapore`
+    OTHERWISE REFUSE "s 2 defines residence only for individuals, companies and bodies of persons; for this person it is an input"
+
+§§ `The Second Schedule — rates on an individual's chargeable income`
+
+-- A band of a progressive table: the width of the band, and the rate on every
+-- dollar in it. The last band of each table is open-ended.
+DECLARE `Band` HAS
+    `width` IS A NUMBER
+    `rate`  IS A NUMBER
+
+GIVEN bands IS A LIST OF `Band`
+      income IS A NUMBER
+GIVETH A NUMBER
+`the tax by bands` bands `on` income MEANS
+    CONSIDER bands
+    WHEN EMPTY THEN 0
+    WHEN b FOLLOWED BY rest THEN
+        IF   null rest OR income AT MOST b's `width`
+        THEN (IF income GREATER THAN 0 THEN income TIMES b's `rate` ELSE 0)
+        ELSE b's `width` TIMES b's `rate` PLUS `the tax by bands` rest `on` (income MINUS b's `width`)
+
+-- Second Schedule Part A, Table 1: YA 2012 (individual or Hindu joint family)
+-- and YAs 2013-2016 (individual).
+@ref Second Schedule Part A Table 1
+GIVETH A LIST OF `Band`
+`Table 1` MEANS
+    --        width    rate
+    LIST (`Band` OF 20000, 0),
+         (`Band` OF 10000, 2%),
+         (`Band` OF 10000, 3.5%),
+         (`Band` OF 40000, 7%),
+         (`Band` OF 40000, 11.5%),
+         (`Band` OF 40000, 15%),
+         (`Band` OF 40000, 17%),
+         (`Band` OF 120000, 18%),
+         (`Band` OF 0, 20%)
+
+-- Table 2: YAs 2017-2023.
+@ref Second Schedule Part A Table 2
+GIVETH A LIST OF `Band`
+`Table 2` MEANS
+    LIST (`Band` OF 20000, 0),
+         (`Band` OF 10000, 2%),
+         (`Band` OF 10000, 3.5%),
+         (`Band` OF 40000, 7%),
+         (`Band` OF 40000, 11.5%),
+         (`Band` OF 40000, 15%),
+         (`Band` OF 40000, 18%),
+         (`Band` OF 40000, 19%),
+         (`Band` OF 40000, 19.5%),
+         (`Band` OF 40000, 20%),
+         (`Band` OF 0, 22%)
+
+-- Table 3: YA 2024 and subsequent YAs.
+@ref Second Schedule Part A Table 3
+GIVETH A LIST OF `Band`
+`Table 3` MEANS
+    LIST (`Band` OF 20000, 0),
+         (`Band` OF 10000, 2%),
+         (`Band` OF 10000, 3.5%),
+         (`Band` OF 40000, 7%),
+         (`Band` OF 40000, 11.5%),
+         (`Band` OF 40000, 15%),
+         (`Band` OF 40000, 18%),
+         (`Band` OF 40000, 19%),
+         (`Band` OF 40000, 19.5%),
+         (`Band` OF 40000, 20%),
+         (`Band` OF 180000, 22%),
+         (`Band` OF 500000, 23%),
+         (`Band` OF 0, 24%)
+
+-- The open-ended last band has width 0 in the tables; `the tax by bands`
+-- treats the last band as unlimited.
+@ref s 42(1); Second Schedule Part A
+GIVEN ya     IS A NUMBER
+      income IS A NUMBER
+GIVETH A NUMBER
+`the resident individual rates for YA` ya `on chargeable income of` income MEANS
+    BRANCH IF ya LESS THAN 2012 THEN REFUSE "the Second Schedule does not print rates before the year of assessment 2012"
+           IF ya AT MOST 2016   THEN `the tax by bands` `Table 1` `on` income
+           IF ya AT MOST 2023   THEN `the tax by bands` `Table 2` `on` income
+           OTHERWISE                 `the tax by bands` `Table 3` `on` income
+
+§§ `Section 43 — companies, non-residents, trustees and executors`
+
+-- s 43(1): "(a) every company or body of persons, tax at the rate of 17% ...;
+-- (b) every individual not resident in Singapore — (i) for the year of
+-- assessment 2023 or a preceding year of assessment, ... 22% ...; and (ii)
+-- for the year of assessment 2024 and subsequent years of assessment, ...
+-- 24% ...; and (c) every other person not resident in Singapore, trustee (other
+-- than the trustee of an incapacitated person) and executor, ... 17%".
+-- s 43(8): 17% reads 20% for YAs 2005-2007 and 18% for YAs 2008-2009.
+@ref s 43(1), (8)
+GIVEN ya IS A NUMBER
+GIVETH A NUMBER
+`the company rate for YA` ya MEANS
+    BRANCH IF ya AT MOST 2004 THEN REFUSE "s 43(8) gives the rate only from the year of assessment 2005"
+           IF ya AT MOST 2007 THEN 20%
+           IF ya AT MOST 2009 THEN 18%
+           OTHERWISE 17%
+
+@ref s 43(1)(b)
+GIVEN ya IS A NUMBER
+GIVETH A NUMBER
+`the non-resident individual rate for YA` ya MEANS
+    IF ya AT MOST 2023 THEN 22% ELSE 24%
+
+DECLARE `Basis of charge` IS ONE OF
+    `the Second Schedule rates for a resident individual`   -- s 42(1)
+    `a flat rate` HAS `rate` IS A NUMBER                    -- s 43(1)
+
+-- s 42(1): the Second Schedule applies to "every person (other than a body of
+-- persons, a company, a person not resident in Singapore, a trustee who is not
+-- the trustee of an incapacitated person, or an executor)"; s 43(1) to the
+-- rest. A Hindu joint family falls under s 42(1) if resident.
+@ref ss 42(1), 43(1)
+GIVEN ya         IS A NUMBER
+      k          IS A `Kind of person`
+      resident   IS A BOOLEAN
+GIVETH A `Basis of charge`
+`the basis of charge for YA` ya `on` k `, resident:` resident MEANS
+    CONSIDER k
+    WHEN `a company`                 THEN `a flat rate` (`the company rate for YA` ya)                 -- (1)(a)
+    WHEN `a body of persons`         THEN `a flat rate` (`the company rate for YA` ya)                 -- (1)(a)
+    WHEN `a trustee of another trust` THEN `a flat rate` (`the company rate for YA` ya)                -- (1)(c)
+    WHEN `an executor`               THEN `a flat rate` (`the company rate for YA` ya)                 -- (1)(c)
+    WHEN `an individual` THEN
+        IF resident THEN `the Second Schedule rates for a resident individual` ELSE `a flat rate` (`the non-resident individual rate for YA` ya)   -- (1)(b)
+    OTHERWISE
+        IF resident THEN `the Second Schedule rates for a resident individual` ELSE `a flat rate` (`the company rate for YA` ya)              -- (1)(c)
+
+§§ `Partial and start-up exemptions for companies (s 43(6)-(6D), (10)-(13))`
+
+-- The facts that make a company a "qualifying company" (s 43(10), (11)).
+DECLARE `Start-up facts` HAS
+    `incorporated in Singapore`                         IS A BOOLEAN
+    `resident in Singapore for the YA`                  IS A BOOLEAN
+    `limited by guarantee`                              IS A BOOLEAN
+    `number of shareholders, directly and beneficially` IS A NUMBER
+    `all shareholders (or members) individuals throughout the basis period` IS A BOOLEAN
+    `an individual held at least 10% throughout the basis period` IS A BOOLEAN   -- of issued ordinary shares, or of contributions on winding up
+    `incorporated on or after 26 February 2013`         IS A BOOLEAN
+    `undertakes property development, itself or as a partner` IS A BOOLEAN       -- s 43(11)(a)-(b), (12)
+    `its only activity is holding investments, itself or through a partnership` IS A BOOLEAN   -- s 43(11)(c)-(d)
+    `YA of incorporation`                               IS A NUMBER  -- the YA whose basis period includes incorporation
+
+-- s 43(10) "qualifying company"; s 43(11): one incorporated on or after
+-- 26 February 2013 is not, if it undertakes property development or its only
+-- activity is holding investments.
+@ref s 43(10) "qualifying company", (11)
+GIVEN f IS A `Start-up facts`
+GIVETH A BOOLEAN
+DECIDE `a qualifying company under s 43(10):` f IF
+        f's `incorporated in Singapore`
+    AND "(a)" ... f's `resident in Singapore for the YA`
+    AND "(b)" ... `ownership test`
+    AND NOT "(11)" ... (    f's `incorporated on or after 26 February 2013`
+                        AND (    f's `undertakes property development, itself or as a partner`
+                             OR  f's `its only activity is holding investments, itself or through a partnership`))
+    WHERE
+        `ownership test` MEANS
+            IF   f's `limited by guarantee`
+            THEN "(b)(ii)" ... (f's `all shareholders (or members) individuals throughout the basis period` OR f's `an individual held at least 10% throughout the basis period`)
+            ELSE "(b)(i)"  ... (    f's `number of shareholders, directly and beneficially` AT MOST 20
+                               AND (f's `all shareholders (or members) individuals throughout the basis period` OR f's `an individual held at least 10% throughout the basis period`))
+
+-- s 43(6C): in any of "the first 3 years of assessment" (s 43(10): the YA of
+-- incorporation and the 2 following) falling in or after YA 2008, a
+-- qualifying company is taxed under (6D).
+@ref s 43(6C), (10) "first 3 years of assessment"
+GIVEN f  IS A `Start-up facts`
+      ya IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the start-up exemption applies to` f `for YA` ya IF
+        `a qualifying company under s 43(10):` f
+    AND ya AT LEAST 2008
+    AND ya AT LEAST f's `YA of incorporation`
+    AND ya AT MOST f's `YA of incorporation` PLUS 2
+
+-- The part of chargeable income that is chargeable with tax.
+-- s 43(6B) (YA 2020 onwards, every company or body of persons): "(a) for every
+-- dollar of the first $10,000 ..., only 25% is chargeable with tax; and (b) for
+-- every dollar of the next $190,000 ..., only 50% is chargeable".
+-- s 43(6D)(b) (YA 2020 onwards, a qualifying company in its first 3 YAs): "(i)
+-- for every dollar of the first $100,000 ..., only 25% ...; and (ii) for every
+-- dollar of the next $100,000 ..., only 50%".
+-- (6A), (6D)(a): the earlier tables, for YAs 2008-2019.
+@ref s 43(6)-(6D)
+GIVEN k            IS A `Kind of person`
+      `start-up`   IS A BOOLEAN
+      ya           IS A NUMBER
+      income       IS A NUMBER
+GIVETH A NUMBER
+`the chargeable income taxed, after the s 43(6) exemptions, for` k `, start-up:` `start-up` `, YA` ya `, on` income MEANS
+    BRANCH IF NOT (k EQUALS `a company` OR k EQUALS `a body of persons`)
+              THEN income
+           IF `start-up` AND k EQUALS `a company` AND ya AT LEAST 2020
+              THEN `the tax by bands` (LIST (`Band` OF 100000, 25%), (`Band` OF 100000, 50%), (`Band` OF 0, 100%)) `on` income    -- (6D)(b)
+           IF `start-up` AND k EQUALS `a company` AND ya AT LEAST 2008
+              THEN `the tax by bands` (LIST (`Band` OF 100000, 0), (`Band` OF 200000, 50%), (`Band` OF 0, 100%)) `on` income       -- (6D)(a)
+           IF ya AT LEAST 2020
+              THEN `the tax by bands` (LIST (`Band` OF 10000, 25%), (`Band` OF 190000, 50%), (`Band` OF 0, 100%)) `on` income      -- (6B)
+           IF (k EQUALS `a company` AND ya AT LEAST 2008) OR (k EQUALS `a body of persons` AND ya AT LEAST 2010)
+              THEN `the tax by bands` (LIST (`Band` OF 10000, 25%), (`Band` OF 290000, 50%), (`Band` OF 0, 100%)) `on` income      -- (6A)
+           OTHERWISE income
+
+§§ `Flat rates on non-residents' gross income (s 43(3)-(5))`
+
+DECLARE `Non-resident gross income` IS ONE OF
+    `s 12(6) interest, commission, fee or other payment for a loan or indebtedness`    -- s 43(3)(a): 15%
+    `s 12(7)(a) or (b) royalty or payment for the use of movable property`           -- s 43(3A): 10%
+    `s 12(7)(d) rent or payment for the use of movable property`                                 -- s 43(3)(b): 15%
+    `a REIT distribution to a non-individual without a Singapore PE`                -- s 43(3B): 10%
+    `an approved REIT ETF distribution to a non-individual without a Singapore PE`  -- s 43(3C): 10%
+    `professional income of a non-resident individual or foreign firm`               -- s 43(4): 15%
+    `income as a non-resident arbitrator or mediator`                               -- s 43(4A): 10%
+
+-- s 43(3), (3A), (3B), (3C), (4), (4A): tax on "the gross amount", where the
+-- income is not from a trade or business carried on in Singapore and not
+-- effectively connected with a permanent establishment here. (3B) and (3C): for
+-- distributions made up to 31 December 2030. (4A): for income derived from
+-- 1 April 2023 to 31 December 2027. (5): the individual or firm may opt
+-- irrevocably for the s 43(1)(b) rate instead.
+@ref s 43(3)-(5)
+GIVEN i         IS A `Non-resident gross income`
+      `payment date` IS A DATE
+      `opted for s 43(1)(b)` IS A BOOLEAN
+GIVETH A MAYBE NUMBER
+`the gross-income rate for` i `paid on` `payment date` `, opted:` `opted for s 43(1)(b)` MEANS
+    CONSIDER i
+    WHEN `s 12(6) interest, commission, fee or other payment for a loan or indebtedness`  THEN JUST (15%)
+    WHEN `s 12(7)(a) or (b) royalty or payment for the use of movable property`         THEN JUST (10%)
+    WHEN `s 12(7)(d) rent or payment for the use of movable property`                               THEN JUST (15%)
+    WHEN `a REIT distribution to a non-individual without a Singapore PE`               THEN IF `payment date` AT LEAST YMD 2005 2 18 AND `payment date` AT MOST YMD 2030 12 31 THEN JUST (10%) ELSE NOTHING
+    WHEN `an approved REIT ETF distribution to a non-individual without a Singapore PE` THEN IF `payment date` AT LEAST YMD 2018 7 1 AND `payment date` AT MOST YMD 2030 12 31 THEN JUST (10%) ELSE NOTHING
+    WHEN `professional income of a non-resident individual or foreign firm`              THEN IF `opted for s 43(1)(b)` THEN NOTHING ELSE JUST (15%)
+    WHEN `income as a non-resident arbitrator or mediator`                              THEN
+        BRANCH IF `opted for s 43(1)(b)` THEN NOTHING
+               IF `payment date` AT LEAST YMD 2023 4 1 AND `payment date` AT MOST YMD 2027 12 31 THEN JUST (10%)
+               OTHERWISE JUST (15%)
+
+-- s 43(5): the option must be made "by the 15th day of the second month
+-- following the month in which the payment of the income is liable to be made".
+@ref s 43(5)
+GIVEN `payment liable to be made on` IS A DATE
+GIVETH A DATE
+`the last day to opt for s 43(1)(b), payment liable on` `payment liable to be made on` MEANS
+    YMD (DATE_YEAR `two months on`) (DATE_MONTH `two months on`) 15
+    WHERE
+        `two months on` MEANS `add months` (YMD (DATE_YEAR `payment liable to be made on`) (DATE_MONTH `payment liable to be made on`) 1) 2
+
+§§ `Reliefs for non-residents (ss 40A-40D)`
+
+DECLARE `Non-resident relief income` IS ONE OF
+    `as a public entertainer`              -- s 40A
+    `as a non-resident employee`           -- s 40B
+    `from SRS withdrawals`                 -- s 40C
+
+-- ss 40A(2), 40B(2), 40C(2): the rate is reduced to 15% "on every dollar of
+-- the chargeable income" where that is the only source, or where total
+-- assessable income does not exceed the statutory income from that source;
+-- otherwise "on such part of the chargeable income as bears the same proportion
+-- to the total chargeable income as the statutory income attributable to [the
+-- activity] bears to the total assessable income". s 40A(2A): 10% for a public
+-- entertainer's income derived 22 February 2010 to 31 March 2022.
+-- ss 40B(3), 40C(3): the relief is "so limited that the tax payable in respect
+-- of such income must not be less than that which would be payable by a
+-- resident of Singapore in the same circumstances" (with s 39A, (3A)). s 40A
+-- has no such limit since Act 41 of 2020 deleted its (3).
+-- FORK I2: "the tax ... in respect of such income" is read as the tax on the
+-- part of chargeable income the relief reaches; the resident comparison is the
+-- caller's figure for that part (`resident tax on that part`). s 40D (two or
+-- more of these sources) applies the same rates source by source and is
+-- carried as text.
+@ref ss 40A(2), (2A), 40B(2)-(3A), 40C(2)-(3A)
+GIVEN source                   IS A `Non-resident relief income`
+      `chargeable income`      IS A NUMBER
+      `statutory income from the source` IS A NUMBER
+      `total assessable income` IS A NUMBER
+      `the only source in Singapore` IS A BOOLEAN
+      `resident tax on that part`   IS A NUMBER
+      ya                       IS A NUMBER
+GIVETH A NUMBER
+`the tax with the non-resident relief for income` source `, chargeable` `chargeable income` `, from the source` `statutory income from the source` `, assessable` `total assessable income` `, only source:` `the only source in Singapore` `, resident tax` `resident tax on that part` `, YA` ya MEANS
+    `relieved tax` PLUS `the rest` TIMES `the non-resident individual rate for YA` ya
+    WHERE
+        `the part` MEANS
+            IF   `the only source in Singapore` OR `total assessable income` AT MOST `statutory income from the source`
+            THEN `chargeable income`
+            ELSE `chargeable income` TIMES `statutory income from the source` DIVIDED BY `total assessable income`
+        `the rest` MEANS `chargeable income` MINUS `the part`
+        `at 15%` MEANS `the part` TIMES 15%
+        `relieved tax` MEANS
+            CONSIDER source
+            WHEN `as a public entertainer` THEN `at 15%`
+            OTHERWISE IF `at 15%` LESS THAN `resident tax on that part` THEN `resident tax on that part` ELSE `at 15%`
+
+§§ `Rebates and remissions against tax payable`
+
+DECLARE `Order of child` IS ONE OF
+    `first child of the family`
+    `second child of the family`
+    `third child of the family`
+    `fourth child of the family`
+    `fifth or subsequent child of the family`
+
+-- s 42A(1), (2), (2A), (2B): a resident individual is allowed, for the YA
+-- following the birth (or marriage, or adoption), a rebate "against the tax
+-- payable" of $5,000 (first child, from 1 January 2008), $10,000 (second, from
+-- 1 January 2004), $20,000 (third or fourth, from 1 January 2004), $20,000
+-- (fifth or subsequent, from 1 January 2008). (11): the order counts siblings
+-- in the same household at the time; the child must be a Singapore citizen
+-- then or within 12 months. (10A): none for a child adopted before the
+-- individual married.
+@ref s 42A(1), (2), (2A), (2B), (10A), (11)
+GIVEN order               IS AN `Order of child`
+      `the event date`    IS A DATE      -- birth, the parents' marriage, or adoption
+      `a citizen then or within 12 months` IS A BOOLEAN
+      `adopted before the claimant married` IS A BOOLEAN
+GIVETH A NUMBER
+`the parenthood rebate for a` order `, event on` `the event date` `, citizen:` `a citizen then or within 12 months` `, adopted before marriage:` `adopted before the claimant married` MEANS
+    IF   (NOT `a citizen then or within 12 months`) OR `adopted before the claimant married`
+    THEN 0
+    ELSE CONSIDER order
+         WHEN `first child of the family`               THEN IF `the event date` AT LEAST YMD 2008 1 1 THEN 5000 ELSE 0
+         WHEN `second child of the family`              THEN IF `the event date` AT LEAST YMD 2004 1 1 THEN 10000 ELSE 0
+         WHEN `third child of the family`               THEN IF `the event date` AT LEAST YMD 2004 1 1 THEN 20000 ELSE 0
+         WHEN `fourth child of the family`              THEN IF `the event date` AT LEAST YMD 2004 1 1 THEN 20000 ELSE 0
+         WHEN `fifth or subsequent child of the family` THEN IF `the event date` AT LEAST YMD 2008 1 1 THEN 20000 ELSE 0
+
+-- s 42A(3): a rebate that cannot be given full effect "by reason of an
+-- insufficiency of the tax payable" is carried forward to following YAs.
+DECLARE `Rebate applied` HAS
+    `tax after rebate`     IS A NUMBER
+    `rebate carried forward` IS A NUMBER
+
+@ref s 42A(3)
+GIVEN rebate IS A NUMBER
+      tax    IS A NUMBER
+GIVETH A `Rebate applied`
+`a rebate of` rebate `against tax of` tax MEANS
+    IF   rebate GREATER THAN tax
+    THEN `Rebate applied` WITH `tax after rebate` IS 0,              `rebate carried forward` IS rebate MINUS tax
+    ELSE `Rebate applied` WITH `tax after rebate` IS tax MINUS rebate, `rebate carried forward` IS 0
+
+DECLARE `Company remission` HAS
+    `tax remitted`  IS A NUMBER
+    `cash grant`    IS A NUMBER
+
+-- ss 92J (YA 2024) and 92L (YA 2025): remission of "the lower of — (a) 50% of
+-- the tax payable for that year of assessment (excluding any tax levied under
+-- section 43(3), (3A), (3B) and (3C)), less the cash grant of $2,000 made to
+-- the company under subsection (3), where applicable; (b) $40,000, less the cash
+-- grant of $2,000 ..., where applicable." (2): "where 50% of the tax payable
+-- under subsection (1)(a) is less than the cash grant of $2,000, the amount in
+-- subsection (1)(a) is nil." (3): the $2,000 grant if the company made a CPF
+-- contribution for at least one local employee in the preceding calendar year.
+-- s 92L(4): no grant (unless permitted) if, at disbursement, the company is not
+-- carrying on a trade or business, is in liquidation or receivership, or has
+-- ceased to exist.
+@ref ss 92J, 92L
+GIVEN ya                     IS A NUMBER
+      `tax payable, excluding s 43(3)-(3C)` IS A NUMBER
+      `CPF for a local employee in the preceding calendar year` IS A BOOLEAN
+      `a s 92L(4) bar at disbursement` IS A BOOLEAN
+GIVETH A `Company remission`
+`the company remission for YA` ya `on tax of` `tax payable, excluding s 43(3)-(3C)` `, local CPF:` `CPF for a local employee in the preceding calendar year` `, barred:` `a s 92L(4) bar at disbursement` MEANS
+    IF   NOT (ya EQUALS 2024 OR ya EQUALS 2025)
+    THEN `Company remission` WITH `tax remitted` IS 0, `cash grant` IS 0
+    ELSE `Company remission` WITH `tax remitted` IS `remitted`, `cash grant` IS `grant`
+    WHERE
+        `grant` MEANS
+            IF   `CPF for a local employee in the preceding calendar year` AND NOT (ya EQUALS 2025 AND `a s 92L(4) bar at disbursement`)
+            THEN 2000
+            ELSE 0
+        `half` MEANS `tax payable, excluding s 43(3)-(3C)` TIMES 50%
+        `(a)` MEANS IF `half` LESS THAN `grant` THEN 0 ELSE `half` MINUS `grant`
+        `(b)` MEANS 40000 MINUS `grant`
+        `remitted` MEANS IF `(a)` LESS THAN `(b)` THEN `(a)` ELSE `(b)`

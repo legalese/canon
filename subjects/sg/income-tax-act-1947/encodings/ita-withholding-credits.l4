@@ -1,0 +1,202 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `ita-types`
+
+-- Income Tax Act 1947 — PARTS 12 TO 15: WITHHOLDING, CREDITS AND PERSONS
+-- CHARGEABLE.
+--
+-- Part 12 (withholding of tax from payments to non-residents, ss 45-45J),
+-- Part 13 (s 46, tax deducted is a credit), Part 14 (double taxation relief,
+-- ss 49-50C), Part 15 (persons chargeable, ss 51-60).
+--
+-- Source: ../source/ITA1947.txt lines 28619-29934.
+
+§ `Parts 12 to 15 — withholding and credits`
+
+§§ `Withholding rates (ss 45-45H)`
+
+DECLARE `Payment to a non-resident` IS ONE OF
+    `interest to an individual or Hindu joint family`          -- s 45(1)(a)(i): 24%
+    `interest to any other person`                             -- s 45(1)(a)(ii): 17%
+    `interest or s 12(6) payment within s 43(3)`               -- s 45(1)(a)(iii), 43(3): 15%
+    `royalty or s 12(7)(a)-(b) payment within s 43(3A)`        -- s 45A, 43(3A): 10%
+    `management or technical fee, s 12(7), to a non-individual` -- s 45A, 43(1)(a) via (a)(ii): 17%
+    `director's remuneration to a non-resident director`       -- s 45B: 24%
+    `consideration for real property disposed of by a non-resident trader`  -- s 45D: 15%
+    `professional income of a non-resident individual or foreign firm`      -- s 45F, 43(4): 15% of gross
+    `income of a non-resident public entertainer`              -- s 45GA, 40A: 15%
+    `commission to a licensed international market agent`     -- s 45H: 3%
+
+-- s 45(1)(a): "(i) where the person to be paid is an individual or a Hindu joint
+-- family, at the rate of 24%; (ii) where the person to be paid is any other
+-- person, at the rate of 17%; or (iii) where section 43(3) or (3A) is applicable
+-- ..., at the rate specified in that provision". s 45B(2): 24% for directors'
+-- remuneration. s 45D(1): 15% of the consideration for real property. s 45H:
+-- 3%. (1C): rules may substitute a rate; (2)(b) the Comptroller may direct a
+-- different rate — inputs where they apply.
+@ref ss 45(1)(a), 45A, 45B(2), 45D(1), 45F, 45GA, 45H
+GIVEN p IS A `Payment to a non-resident`
+GIVETH A NUMBER
+`the withholding rate on` p MEANS
+    CONSIDER p
+    WHEN `interest to an individual or Hindu joint family`          THEN 24%
+    WHEN `interest to any other person`                             THEN 17%
+    WHEN `interest or s 12(6) payment within s 43(3)`               THEN 15%
+    WHEN `royalty or s 12(7)(a)-(b) payment within s 43(3A)`        THEN 10%
+    WHEN `management or technical fee, s 12(7), to a non-individual` THEN 17%
+    WHEN `director's remuneration to a non-resident director`       THEN 24%
+    WHEN `consideration for real property disposed of by a non-resident trader` THEN 15%
+    WHEN `professional income of a non-resident individual or foreign firm`      THEN 15%
+    WHEN `income of a non-resident public entertainer`              THEN 15%
+    WHEN `commission to a licensed international market agent`     THEN 3%
+
+-- s 45(1)(b), (4)(a): the tax withheld is paid "by the 15th day of the second
+-- month following the month in which the interest ... is paid".
+@ref s 45(4)(a)
+GIVEN `paid on` IS A DATE
+GIVETH A DATE
+`the last day to pay over tax withheld from a payment on` `paid on` MEANS
+    YMD (DATE_YEAR `two months on`) (DATE_MONTH `two months on`) 15
+    WHERE
+        `two months on` MEANS `add months` (YMD (DATE_YEAR `paid on`) (DATE_MONTH `paid on`) 1) 2
+
+-- s 45(4): if not paid by that date, "(a) ... a sum equal to 5% of such amount
+-- of tax is payable; and (b) within 30 days after the time specified in
+-- paragraph (a), an additional penalty of 1% of such amount of tax is payable
+-- for each completed month that the tax remains unpaid, but the total additional
+-- penalty under this paragraph must not exceed 15% of the amount of tax
+-- outstanding." FORK I6: (b)'s completed months are counted from the end of the
+-- 30 days after the due date.
+@ref s 45(4)
+GIVEN tax        IS A NUMBER
+      `due date` IS A DATE
+      `as at`    IS A DATE
+GIVETH A NUMBER
+`the late withholding penalty on` tax `due on` `due date` `, as at` `as at` MEANS
+    IF `as at` AT MOST `due date` THEN 0 ELSE tax TIMES 5% PLUS `additional`
+    WHERE
+        `start` MEANS `due date` PLUS 30
+        `months` MEANS `count from` 0
+        `count from` n MEANS IF `add months` `start` (n PLUS 1) AT MOST `as at` THEN `count from` (n PLUS 1) ELSE n
+        `uncapped` MEANS IF `as at` GREATER THAN `start` THEN tax TIMES 1% TIMES `months` ELSE 0
+        `additional` MEANS IF `uncapped` GREATER THAN tax TIMES 15% THEN tax TIMES 15% ELSE `uncapped`
+
+-- s 45(5): failing to give notice of tax deducted by the due date is an offence:
+-- "a penalty equal to 3 times the amount of tax so deducted" and "a fine not
+-- exceeding $10,000 or ... imprisonment for a term not exceeding 3 years or
+-- ... both". (6): at least 6 months' imprisonment on a third or later
+-- conviction of an individual.
+DECLARE `Withholding offence penalty` HAS
+    `penalty`                 IS A NUMBER
+    `maximum fine`            IS A NUMBER
+    `maximum imprisonment in months` IS A NUMBER
+    `minimum imprisonment in months` IS A NUMBER
+
+@ref s 45(5), (6)
+GIVEN `tax deducted`          IS A NUMBER
+      `previous convictions`  IS A NUMBER
+      `an individual`         IS A BOOLEAN
+GIVETH A `Withholding offence penalty`
+`the penalty for not notifying tax deducted of` `tax deducted` `, previous convictions` `previous convictions` `, individual:` `an individual` MEANS
+    `Withholding offence penalty` WITH
+        `penalty`                        IS 3 TIMES `tax deducted`
+        `maximum fine`                   IS 10000
+        `maximum imprisonment in months` IS 36
+        `minimum imprisonment in months` IS IF `an individual` AND `previous convictions` AT LEAST 2 THEN 6 ELSE 0
+
+-- s 45(9): no withholding on interest from qualifying debt securities issued
+-- 27 February 1999 to 31 December 2028, on qualifying project debt securities
+-- issued 1 November 2006 to 31 December 2025, or on interest paid from
+-- 21 February 2014 to a Singapore branch of a foreign company.
+DECLARE `Withholding exception` IS ONE OF
+    `interest from qualifying debt securities`
+    `interest from qualifying project debt securities`
+    `interest to a Singapore branch of a foreign company`
+    `none`
+
+@ref s 45(9)
+GIVEN e          IS A `Withholding exception`
+      `the date`  IS A DATE    -- of issue, or of the liability to pay for the branch case
+GIVETH A BOOLEAN
+DECIDE `withholding is excepted for` e `, dated` `the date` IF
+    CONSIDER e
+    WHEN `interest from qualifying debt securities` THEN `the date` AT LEAST YMD 1999 2 27 AND `the date` AT MOST YMD 2028 12 31
+    WHEN `interest from qualifying project debt securities` THEN `the date` AT LEAST YMD 2006 11 1 AND `the date` AT MOST YMD 2025 12 31
+    WHEN `interest to a Singapore branch of a foreign company` THEN `the date` AT LEAST YMD 2014 2 21
+    WHEN `none` THEN FALSE
+
+§§ `Foreign tax credits (ss 50, 50A, 50C)`
+
+-- s 50(2): the credit reduces the tax on that income, but only for a person
+-- resident in Singapore that year. (3): it "must not exceed the amount which would
+-- be produced by computing the amount of the income ... and then charging it to
+-- income tax at a rate ascertained by dividing the income tax chargeable (before
+-- allowance of credit ...) on the assessable income ... by the amount of the
+-- person's assessable income". (4): all the credits together not more than the
+-- tax payable (excluding s 45 tax).
+@ref s 50(2), (3)
+GIVEN `foreign tax`           IS A NUMBER
+      `the foreign income`    IS A NUMBER
+      `tax before credits`    IS A NUMBER
+      `assessable income`     IS A NUMBER
+      resident                IS A BOOLEAN
+GIVETH A NUMBER
+`the foreign tax credit for foreign tax of` `foreign tax` `on income of` `the foreign income` `, tax before credits` `tax before credits` `, assessable income` `assessable income` `, resident:` resident MEANS
+    IF   (NOT resident) OR `assessable income` EQUALS 0
+    THEN 0
+    ELSE IF `foreign tax` LESS THAN `the limit` THEN `foreign tax` ELSE `the limit`
+    WHERE
+        `the limit` MEANS `the foreign income` TIMES `tax before credits` DIVIDED BY `assessable income`
+
+-- s 50C(2), (4): a pooled credit for YA 2012 on, where tax was paid abroad on
+-- each elected income, the foreign headline rate was at least 15%, and the
+-- Singapore tax on it is not nil: "the lower of — (a) the aggregate of the
+-- income tax chargeable ... on all the elected income; and (b) the aggregate of
+-- the taxes paid on all the elected income" abroad.
+@ref s 50C(2), (4), (5)
+GIVEN `elected income`        IS A NUMBER
+      `foreign taxes paid`    IS A NUMBER
+      `tax before credits`    IS A NUMBER
+      `assessable income`     IS A NUMBER
+GIVETH A NUMBER
+`the pooled foreign tax credit on elected income of` `elected income` `, foreign taxes` `foreign taxes paid` `, tax before credits` `tax before credits` `, assessable income` `assessable income` MEANS
+    IF `foreign taxes paid` LESS THAN `the Singapore tax` THEN `foreign taxes paid` ELSE `the Singapore tax`
+    WHERE
+        `the Singapore tax` MEANS IF `assessable income` EQUALS 0 THEN 0 ELSE `elected income` TIMES `tax before credits` DIVIDED BY `assessable income`
+
+-- s 50(4): the total of all credits "must not exceed the total income tax
+-- payable by the person for that year of assessment, excluding any tax payable by
+-- the person under section 45".
+@ref s 50(4)
+GIVEN credits IS A LIST OF NUMBER
+      `tax payable, excluding s 45 tax` IS A NUMBER
+GIVETH A NUMBER
+`the total foreign tax credits allowed, credits` credits `, tax payable` `tax payable, excluding s 45 tax` MEANS
+    IF sum credits GREATER THAN `tax payable, excluding s 45 tax` THEN `tax payable, excluding s 45 tax` ELSE sum credits
+
+§§ `Persons chargeable (ss 51-60)`
+
+-- s 51(1): "The income of a married woman must ... be charged in her own name."
+-- s 52: a trustee or guardian of an incapacitated person is chargeable as that
+-- person would be. s 53: a non-resident is chargeable in the name of an agent,
+-- branch or manager. s 58: a deceased person's liability passes to the executor.
+-- s 60: joint trustees are jointly and severally liable.
+DECLARE `Kind of chargeable person` IS ONE OF
+    `the person in their own name`
+    `the trustee, guardian or committee of an incapacitated person`
+    `the agent, branch or manager of a non-resident`
+    `the executor of a deceased person`
+    `joint trustees, jointly and severally`
+
+@ref ss 51-53, 58, 60
+GIVEN `incapacitated` IS A BOOLEAN
+      `non-resident acting through an agent` IS A BOOLEAN
+      `deceased`      IS A BOOLEAN
+      `held by joint trustees` IS A BOOLEAN
+GIVETH A `Kind of chargeable person`
+`who is charged, incapacitated:` `incapacitated` `, non-resident with agent:` `non-resident acting through an agent` `, deceased:` `deceased` `, joint trustees:` `held by joint trustees` MEANS
+    BRANCH IF `deceased`                               THEN `the executor of a deceased person`
+           IF `held by joint trustees`                 THEN `joint trustees, jointly and severally`
+           IF `incapacitated`                          THEN `the trustee, guardian or committee of an incapacitated person`
+           IF `non-resident acting through an agent`   THEN `the agent, branch or manager of a non-resident`
+           OTHERWISE `the person in their own name`

@@ -1,0 +1,310 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `ita-types`
+
+-- Income Tax Act 1947 — PART 3: WHAT INCOME IS CHARGED?
+--
+-- s 2A (the purpose: income accruing in or derived from Singapore, or
+-- received in Singapore from outside), s 10 (the charge, its heads and its
+-- deeming rules), ss 10A-10L (special cases), s 11 (clubs and associations),
+-- s 12 (when income is derived from Singapore).
+--
+-- Source: ../source/ITA1947.txt lines 1264-3457.
+
+§ `Part 3 — the charge`
+
+§§ `The charge (ss 2A, 10(1), 10(25))`
+
+-- s 2A(1), s 10(1): tax is payable "upon the income of any person accruing in or
+-- derived from Singapore or received in Singapore from outside Singapore". Income
+-- outside Singapore and not received here is not charged. s 10(25): income is
+-- received in Singapore if remitted, applied to a Singapore trade debt, or
+-- applied to movable property brought into Singapore.
+@ref s 2A(1), s 10(1), (25)
+GIVEN source IS A `Source of income`
+GIVETH A BOOLEAN
+DECIDE `within the charge to tax, being` source IF
+    NOT source EQUALS `outside Singapore and not received in Singapore`
+
+@ref s 10(25)
+GIVEN `remitted, transmitted or brought into Singapore` IS A BOOLEAN
+      `applied to a debt of a trade carried on in Singapore` IS A BOOLEAN
+      `applied to movable property brought into Singapore`   IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `foreign income is received in Singapore, remitted:` `remitted, transmitted or brought into Singapore` `, applied to a trade debt:` `applied to a debt of a trade carried on in Singapore` `, applied to property brought in:` `applied to movable property brought into Singapore` IF
+        "(a)" ... `remitted, transmitted or brought into Singapore`
+    OR  "(b)" ... `applied to a debt of a trade carried on in Singapore`
+    OR  "(c)" ... `applied to movable property brought into Singapore`
+
+§§ `Where income is derived (s 12)`
+
+-- s 12(4): "The gains or profits from any employment exercised in Singapore are
+-- deemed to be derived from Singapore whether ... received in Singapore or not."
+-- (5): employment abroad on behalf of the Government, unless the individual is
+-- neither a citizen nor a resident.
+@ref s 12(4), (5)
+GIVEN `exercised in Singapore`             IS A BOOLEAN
+      `abroad for the Government in governmental functions` IS A BOOLEAN
+      `a citizen or resident of Singapore` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `employment income is derived from Singapore, exercised here:` `exercised in Singapore` `, for the Government abroad:` `abroad for the Government in governmental functions` `, citizen or resident:` `a citizen or resident of Singapore` IF
+        "(4)" ... `exercised in Singapore`
+    OR  "(5)" ... (`abroad for the Government in governmental functions` AND `a citizen or resident of Singapore`)
+
+-- s 12(6), (7): interest and loan fees, and royalties, know-how, management fees
+-- and rent for movable property, are deemed derived from Singapore where "borne,
+-- directly or indirectly, by a person resident in Singapore or a permanent
+-- establishment in Singapore (except in respect of any business carried on
+-- outside Singapore through a permanent establishment outside Singapore ...) or
+-- ... deductible against any income accruing in or derived from Singapore";
+-- (6)(b): also income from loans whose funds are brought into or used in
+-- Singapore. (6A), (7A): not services, guarantees or management performed
+-- outside Singapore by a non-resident not carrying on business, and without a
+-- PE, in Singapore (or not through it); nor (7A)(c) software or digitised goods
+-- without a right to exploit the copyright. (7AB): not rent for movable property
+-- used abroad on a business trip or for a representative office.
+DECLARE `Deemed source facts` HAS
+    `borne by a Singapore resident or PE, not for a business abroad through a foreign PE` IS A BOOLEAN
+    `deductible against income derived from Singapore`   IS A BOOLEAN
+    `loan funds brought into or used in Singapore`       IS A BOOLEAN   -- s 12(6)(b), interest only
+    `performed outside Singapore by a non-resident not doing business here through a PE or otherwise` IS A BOOLEAN   -- (6A), (7A)(a)-(b)
+    `software or digitised goods without a right to exploit the copyright` IS A BOOLEAN   -- (7A)(c)
+    `rent for movable property used abroad on a business trip or for a representative office` IS A BOOLEAN   -- (7AB)
+
+DECLARE `Kind of s 12 payment` IS ONE OF
+    `interest, or a payment for a loan's arrangement, management, guarantee or service`   -- s 12(6)
+    `royalty or payment for the use of movable property`                                  -- s 12(7)(a)
+    `payment for know-how, or for assistance or service in applying it`                   -- s 12(7)(b)
+    `payment for management or assistance in management`                                  -- s 12(7)(c)
+    `rent for movable property`                                                           -- s 12(7)(d)
+
+@ref s 12(6), (6A), (7), (7A), (7AB)
+GIVEN k IS A `Kind of s 12 payment`
+      f IS A `Deemed source facts`
+GIVETH A BOOLEAN
+DECIDE `a payment of` k `is deemed derived from Singapore:` f IF
+        (    f's `borne by a Singapore resident or PE, not for a business abroad through a foreign PE`
+         OR  f's `deductible against income derived from Singapore`
+         OR  (k EQUALS `interest, or a payment for a loan's arrangement, management, guarantee or service` AND f's `loan funds brought into or used in Singapore`))
+    AND NOT `an exception`
+    WHERE
+        `an exception` MEANS
+            CONSIDER k
+            WHEN `interest, or a payment for a loan's arrangement, management, guarantee or service` THEN FALSE   -- (6A) reaches only the services and guarantees: an input to "performed outside"
+            WHEN `payment for know-how, or for assistance or service in applying it` THEN f's `performed outside Singapore by a non-resident not doing business here through a PE or otherwise`  -- (7A)(a)
+            WHEN `payment for management or assistance in management`               THEN f's `performed outside Singapore by a non-resident not doing business here through a PE or otherwise`  -- (7A)(b)
+            WHEN `royalty or payment for the use of movable property`               THEN f's `software or digitised goods without a right to exploit the copyright`                           -- (7A)(c)
+            WHEN `rent for movable property`                                        THEN f's `rent for movable property used abroad on a business trip or for a representative office`         -- (7AB)
+
+§§ `Employment income (s 10(2), (6)-(8))`
+
+-- s 10(2)(cb): for YA 2020 on, the benefit of a place of residence provided by
+-- the employer is "(i) the rent paid by the employer ... including for any
+-- furniture and fittings ...; or (ii) if no such rent is paid, the annual value
+-- of such place or part, less any rent paid by the employee". (2AA): where the
+-- rent is not reasonable the Comptroller may adopt the annual value (an input
+-- here: `rent paid by the employer` as adopted).
+-- FORK I5: (cb)(i) does not mention the employee's rent; read literally, the
+-- employee's rent is deducted only under (ii).
+@ref s 10(2)(cb), (2AA)-(2AC)
+GIVEN `rent paid by the employer`  IS A MAYBE NUMBER
+      `annual value`               IS A NUMBER
+      `rent paid by the employee`  IS A NUMBER
+GIVETH A NUMBER
+`the housing benefit, employer's rent` `rent paid by the employer` `, annual value` `annual value` `, employee's rent` `rent paid by the employee` MEANS
+    CONSIDER `rent paid by the employer`
+    WHEN JUST r  THEN r                                                                  -- (i)
+    WHEN NOTHING THEN IF `annual value` GREATER THAN `rent paid by the employee` THEN `annual value` MINUS `rent paid by the employee` ELSE 0   -- (ii)
+
+-- s 10(6): gains from a right to acquire shares, granted on or after 1 January
+-- 2003 by reason of employment: "(a) where the right or benefit is exercised,
+-- assigned, released or acquired — ... the price of the shares in the open
+-- market at that time, less any amount paid for the shares; (b) ... where the
+-- right ... is subject to any restriction on the sale of the shares ... — at the
+-- time the restriction ceases ...; ... (d) ... [for a company listed on the
+-- Singapore Exchange] A - B", A the price at the last transaction on the date
+-- the shares are first listed after acquisition (or, for treasury shares, the
+-- date of the Depository Register entry), B the amount paid.
+@ref s 10(6)(a), (b), (d)
+GIVEN `open-market price at the relevant time` IS A NUMBER   -- (a) exercise, or (b) restriction ending, or (d) "A"
+      `amount paid for the shares`             IS A NUMBER
+      `number of shares`                       IS A NUMBER
+GIVETH A NUMBER
+`the gain from an employee share right, price` `open-market price at the relevant time` `, paid` `amount paid for the shares` `, shares` `number of shares` MEANS
+    (`open-market price at the relevant time` MINUS `amount paid for the shares`) TIMES `number of shares`
+
+-- s 10(7): for an individual who is not a citizen or permanent resident (or a
+-- PR leaving permanently) and ceases employment with the right unexercised (or a
+-- sale restriction still running), the gains are deemed derived "one month
+-- before the date of cessation of employment or the date the right or benefit is
+-- granted, whichever is the later", at the open-market price on that date less
+-- the amount paid. (7AA)-(7AC): if within 5 years after that year the right is
+-- exercised (or the restriction ends) at a lower gain, or (7AB) lapses, the
+-- individual may apply for the assessment to be revised. (7A)-(7B): not if the
+-- employer has given an accepted undertaking.
+@ref s 10(7)(c)
+GIVEN `ceased employment on` IS A DATE
+      `granted on`           IS A DATE
+GIVETH A DATE
+`the date the s 10(7) gains are deemed derived, ceasing on` `ceased employment on` `, granted on` `granted on` MEANS
+    `the later of` (`add months` `ceased employment on` (0 MINUS 1)) `granted on`
+
+@ref s 10(7)
+GIVEN `neither citizen nor PR, or a PR leaving permanently` IS A BOOLEAN
+      `the right unexercised or the restriction running at cessation` IS A BOOLEAN
+      `the employer gave an accepted undertaking` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the deemed exercise rule applies, foreigner leaving:` `neither citizen nor PR, or a PR leaving permanently` `, unexercised:` `the right unexercised or the restriction running at cessation` `, undertaking:` `the employer gave an accepted undertaking` IF
+        `neither citizen nor PR, or a PR leaving permanently`
+    AND `the right unexercised or the restriction running at cessation`
+    AND NOT "(7B)" ... `the employer gave an accepted undertaking`
+
+@ref s 10(7AA)-(7AC)
+GIVEN `the later event in year` IS A NUMBER
+      `year of the deemed date` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `a revision under s 10(7AC) is still open for an event in` `the later event in year` `, deemed in` `year of the deemed date` IF
+    `the later event in year` AT MOST `year of the deemed date` PLUS 5
+
+-- s 10B(1): the employer's CPF contributions that are not obligatory, or are on
+-- additional wages above the specified amount, "are deemed to be income
+-- accruing to the employee". s 10BA: the same for a platform operator's
+-- voluntary contributions.
+@ref s 10B(1), s 10BA
+GIVEN `employer's contributions not obligatory` IS A NUMBER
+      `contributions on additional wages above the specified amount` IS A NUMBER
+GIVETH A NUMBER
+`the excess CPF contributions deemed income` `employer's contributions not obligatory` `and` `contributions on additional wages above the specified amount` MEANS
+    `employer's contributions not obligatory` PLUS `contributions on additional wages above the specified amount`
+
+§§ `Annuities, maintenance, royalties (s 10(9)-(16))`
+
+-- s 10(9): income from an annuity for any year "is deemed to be an amount equal
+-- to 3% of the total consideration ... except that the whole amount of the
+-- annuity is deemed to be income if — (a) the person ... has previously received
+-- sums equal to the total consideration ...; or (b) the annuity is purchased by
+-- the employer ... on or after 1 January 1993 ... in lieu of any pension".
+-- (10): not an SRS annuity.
+@ref s 10(9), (10)
+GIVEN `annuity received in the year`       IS A NUMBER
+      `total consideration for the annuity` IS A NUMBER
+      `consideration already recovered`    IS A BOOLEAN
+      `bought by the employer in lieu of a pension` IS A BOOLEAN
+      `bought under the SRS`               IS A BOOLEAN
+GIVETH A NUMBER
+`the annuity income, received` `annuity received in the year` `, consideration` `total consideration for the annuity` `, recovered:` `consideration already recovered` `, employer-bought:` `bought by the employer in lieu of a pension` `, SRS:` `bought under the SRS` MEANS
+    BRANCH IF `bought under the SRS` THEN `annuity received in the year`
+           IF `consideration already recovered` OR `bought by the employer in lieu of a pension` THEN `annuity received in the year`
+           OTHERWISE IF `three percent` LESS THAN `annuity received in the year` THEN `three percent` ELSE `annuity received in the year`
+    WHERE
+        `three percent` MEANS `total consideration for the annuity` TIMES 3%
+
+-- s 10(13): a maintenance payment received by a child under a maintenance
+-- order or deed, or by a parent under the Maintenance of Parents Act 1995, "is
+-- not deemed to be income".
+@ref s 10(13)
+GIVEN `a maintenance payment to a child or under the Maintenance of Parents Act` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the payment is income, being maintenance:` `a maintenance payment to a child or under the Maintenance of Parents Act` IF
+    NOT `a maintenance payment to a child or under the Maintenance of Parents Act`
+
+-- s 10(14): an author's, composer's or choreographer's copyright royalties are
+-- deemed to be the lesser of "(a) the amount ... remaining after the deductions
+-- allowable under Parts 5 and 6 ...; or (b) an amount equal to 10% of the gross
+-- amount". (14A): 40% for YA 2027, 70% for YA 2028. (14B): not from YA 2029.
+-- (15): not for works published in a newspaper or periodical.
+@ref s 10(14)-(15)
+GIVEN ya          IS A NUMBER
+      gross       IS A NUMBER
+      net         IS A NUMBER
+      `in a newspaper or periodical` IS A BOOLEAN
+GIVETH A NUMBER
+`the author's royalty income for YA` ya `, gross` gross `, net` net `, newspaper:` `in a newspaper or periodical` MEANS
+    IF   `in a newspaper or periodical` OR ya AT LEAST 2029
+    THEN net
+    ELSE IF net LESS THAN gross TIMES `percent` THEN net ELSE gross TIMES `percent`
+    WHERE
+        `percent` MEANS
+            BRANCH IF ya EQUALS 2027 THEN 40%
+                   IF ya EQUALS 2028 THEN 70%
+                   OTHERWISE 10%
+
+§§ `SRS withdrawals (s 10G)`
+
+DECLARE `SRS withdrawal ground` IS ONE OF
+    `before the prescribed retirement age, on no special ground`
+    `on or after the prescribed retirement age at first contribution`    -- (3)(b)
+    `the whole account by a foreigner of 10 years with a 10-year account` -- (3)(a)
+    `on incapacity, mental disorder or terminal illness`                 -- (3)(c)
+    `on death, or by the Official Assignee`
+
+-- s 10G(1): the excess of withdrawals in a year over contributions in that year
+-- is income. (3): "only 50%" of withdrawals under (a)-(c) is income. (2): a
+-- penalty of 5% of the amount deemed income, deducted by the operator, except
+-- for withdrawals under (3), (4), (8) and the like, and by the Official
+-- Assignee.
+DECLARE `SRS result` HAS
+    `income`   IS A NUMBER
+    `penalty`  IS A NUMBER
+
+@ref s 10G(1)-(3)
+GIVEN withdrawn     IS A NUMBER
+      contributed   IS A NUMBER
+      ground        IS AN `SRS withdrawal ground`
+GIVETH AN `SRS result`
+`the SRS withdrawal of` withdrawn `, contributed` contributed `, on ground` ground MEANS
+    `SRS result` WITH `income` IS `income`, `penalty` IS `penalty`
+    WHERE
+        `excess` MEANS IF withdrawn GREATER THAN contributed THEN withdrawn MINUS contributed ELSE 0
+        `half` MEANS elem ground (LIST `on or after the prescribed retirement age at first contribution`, `the whole account by a foreigner of 10 years with a 10-year account`, `on incapacity, mental disorder or terminal illness`)
+        `income` MEANS IF `half` THEN `excess` TIMES 50% ELSE `excess`
+        `penalty` MEANS IF ground EQUALS `before the prescribed retirement age, on no special ground` THEN `income` TIMES 5% ELSE 0
+
+§§ `Gains from the sale of foreign assets (s 10L)`
+
+DECLARE `Foreign asset sale` HAS
+    `sold on`                                          IS A DATE
+    `the seller is a member of a relevant group`      IS A BOOLEAN    -- (5)
+    `the asset is situated outside Singapore`          IS A BOOLEAN
+    `gains received in Singapore`                      IS A NUMBER     -- (9)
+    `otherwise chargeable as income under s 10(1)`     IS A BOOLEAN    -- (2)(a)
+    `otherwise exempt from tax`                        IS A BOOLEAN    -- (2)(b)
+    `an intellectual property right`                   IS A BOOLEAN
+    `incidental to a prescribed financial institution's business, or to an incentive-income activity` IS A BOOLEAN  -- (8)(a)-(c)
+    `an excluded entity in the basis period`           IS A BOOLEAN    -- (8)(d): economic substance
+    `deductible expenditure and losses`                IS A NUMBER     -- (12)-(13)
+
+-- s 10L(1): gains of a group entity from selling a foreign asset, received in
+-- Singapore, are income under s 10(1)(g); (2): only if not otherwise chargeable
+-- (2): only if "(a) the gains would not otherwise be chargeable to tax as income
+-- under section 10(1); or (b) the gains would otherwise be exempt"; (3): sales on or after 1 January 2024; (8): not for the listed
+-- businesses (other than IP rights) or an excluded entity; (12): less the
+-- expenditure and losses allowed.
+@ref s 10L(1)-(3), (8), (12)
+GIVEN s IS A `Foreign asset sale`
+GIVETH A NUMBER
+`the foreign asset gains chargeable under s 10L:` s MEANS
+    IF   `caught`
+    THEN (IF s's `gains received in Singapore` GREATER THAN s's `deductible expenditure and losses` THEN s's `gains received in Singapore` MINUS s's `deductible expenditure and losses` ELSE 0)
+    ELSE 0
+    WHERE
+        `caught` MEANS
+                s's `sold on` AT LEAST YMD 2024 1 1                     -- (3)
+            AND s's `the seller is a member of a relevant group`         -- (1), (5)
+            AND s's `the asset is situated outside Singapore`
+            AND (    "(2)(a)" ... NOT s's `otherwise chargeable as income under s 10(1)`
+                 OR  "(2)(b)" ... s's `otherwise exempt from tax`)   -- (2): found by the independent test pass
+            AND NOT (    (NOT s's `an intellectual property right`)
+                     AND (s's `incidental to a prescribed financial institution's business, or to an incentive-income activity` OR s's `an excluded entity in the basis period`))   -- (8)
+
+§§ `Clubs and trade associations (s 11)`
+
+-- s 11(1): a club receiving from its members "not less than half of its gross
+-- receipts on revenue account" is not carrying on a business; otherwise the whole
+-- of its income from members and others is from a business.
+@ref s 11(1)
+GIVEN `receipts from members`   IS A NUMBER
+      `gross receipts`          IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the club is deemed to carry on a business, member receipts` `receipts from members` `of` `gross receipts` IF
+    `receipts from members` LESS THAN `gross receipts` DIVIDED BY 2
