@@ -7,8 +7,8 @@ pass, no human gate.
 **Edition:** 2020 Revised Edition, informal consolidation in force from
 1 December 2025.
 
-**Checks:** `l4 run ec-cases.l4` — 41 assertions satisfied, 0 errors,
-0 warnings.
+**Checks:** `l4 run ec-cases.l4` and `l4 run ec-death-and-transfer-cases.l4`
+— 83 assertions satisfied, 0 errors, 0 warnings.
 
 ## What is encoded
 
@@ -74,3 +74,73 @@ while an appeal is pending (s 5(5)); it takes no view on the ouster.
 - s 8, transmission on death within 10 years of the permit, is not encoded and
   interacts with s 7.
 - No case law was searched.
+
+
+---
+
+# Added with sections 3, 4, 8 and 10 to 13
+
+## s 8: three clocks, and a family can lose the home by meeting only two
+
+When the owner dies **within 10 years** of the temporary occupation permit, the
+transmission cannot be registered without the Minister's **prior written
+consent** — testate or intestate alike, so a will makes no difference. s 8(3)
+then gives the Minister three independent grounds to vest the home in the Board:
+
+- **(a)** no representation taken out within **12 months** of the death;
+- **(b)** representation taken out, but no application for consent within
+  **6 months** of the date of representation;
+- **(c)** consent obtained, but the transfer not effected within the period the
+  Minister specified.
+
+These do not reinforce each other — they stack. A family that probates promptly,
+satisfying (a), and then takes seven months to write to the Minister loses the
+home on (b). Asserted as exactly that case: `limb (a)` not made out, `limb (b)`
+made out, home vested.
+
+And on registration the title vests **"free from all encumbrances"**, with the
+Registrar required to cancel any mortgage or charge overreached. The lender's
+security goes with the family's title.
+
+The only procedural protection is s 8(4): written notice, stating the
+compensation and a lodging date **not earlier than 28 days** after service. Read
+that against s 11(1), which deems service effected by **affixing the notice to a
+conspicuous part of the accommodation**, and s 11(2), which lets it be addressed
+to "the owner" **without further name or description**. The 28 days can begin on
+a notice pinned to the door of a house whose owner has died, addressed to
+nobody.
+
+## s 12 protects good faith alone
+
+"No suit ... shall lie ... for or on account of ... anything which is **in good
+faith** done or intended to be done" by the Government, the Board, a public
+officer or a person acting under the Minister's direction.
+
+There is **no reasonable-care limb**. Compare s 19(1) of the Silver Support
+Scheme Act 2015 and s 19(1) of the Advance Medical Directive Act 1996, both of
+which require good faith **and** reasonable care. Here an honest but negligent
+decision to vest someone's home in the Board attracts no suit at all. Whether
+that difference is deliberate is not something the text settles; it is visible
+only when the three Acts are put side by side.
+
+## Two smaller points
+
+**Almost none of the eligibility test is in the Act.** s 3(2)(b) leaves to
+regulations "the qualifications as to income, the minimum size of the family,
+citizenship of and ownership of any other properties". s 5(1)(d) then makes a
+breach of those regulations a disqualifying ground in its own right, which is
+how they bind. The Act supplies the enforcement and the regulations supply the
+rules. Asserted as a list of what is left out.
+
+**s 10 creates a duty with no amount.** A purchaser who previously bought public
+housing from the Board "must pay to the Board a premium of **such amount as the
+Board may determine**" — no formula, no ceiling, no appeal. The trigger is
+encodable; the quantum is not in the Act at all.
+
+## What would still need doing
+
+- s 14, and the s 13(1) excepting circumstances, which the deposited text sets
+  out in a list this encoding carried as one supplied fact.
+- The minimum occupation period and the s 3(2) regulations.
+- The compensation and High Court deposit machinery in s 8(6).
+- No case law was searched, and no human gate has been sought.
