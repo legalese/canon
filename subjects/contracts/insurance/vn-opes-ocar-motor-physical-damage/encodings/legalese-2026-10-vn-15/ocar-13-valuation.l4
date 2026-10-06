@@ -1,0 +1,119 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `ocar-11-12-cover`
+
+-- IMPORTS form one chain (each module imports the one before it), because l4 checks a
+-- module again for every path it is imported by. Names are visible down the chain. This
+-- module draws on: ocar-nouns, ocar-01-definitions.
+
+-- O-Car rules, Article 13 (how the sum insured and the vehicle's value are determined).
+-- Quotations are generated from ../../source/raw/opes-ocar.txt.
+--
+-- WHAT IS HERE. 13.1 describes how the Insurer finds the market value of a new and of a used
+-- vehicle; those are descriptions of a valuation, which the caller supplies as `market value
+-- when insured`. 13.2 gives a formula for when the parties cannot determine it, with a table
+-- of minimum remaining-quality rates. Its last bullet says that under- and over-insurance are
+-- settled on the market value; 14.1.2 applies that.
+
+§ `Article 13 — Determining the sum insured`
+
+§§ `13.1 — insuring at or below market value; how the market value is found`
+
+-- Inert: the Policyholder may insure at or below market value (1.10 says the same; tested
+-- there), and the two bullets describe the valuation the caller supplies.
+-- src:726 | 13.1 Bên Mua Bảo Hiểm có thể thỏa thuận tham gia bảo hiểm bằng hoặc thấp hơn
+-- src:727 | Giá Trị Thị Trường của Xe Được Bảo Hiểm.
+§§ `13.2 — when the market value cannot be determined`
+
+-- src:736 | 13.2 Trường hợp Bên Mua Bảo Hiểm và Công Ty Bảo Hiểm không xác định được
+-- src:737 | Giá Thị Trường của Xe Ô Tô tại thời điểm tham gia bảo hiểm, khi đó giá trị của
+-- src:738 | xe sẽ được xác định như sau:
+-- src:739 | (i) Đối với Xe Ô Tô sản xuất trong nước đã qua sử dụng: giá trị của xe tại thời
+-- src:740 | điểm tham gia bảo hiểm là giá xe mới (100%) nhân (x) với tỷ lệ (%) tối
+-- src:741 | thiểu chất lượng còn lại của xe;
+-- src:742 | (ii) Đối với Xe Ô Tô nhập khẩu đã qua sử dụng: giá trị của xe là giá xe mới
+-- src:743 | (100%) nhân (x) với tỷ lệ (%) tối thiểu chất lượng còn lại được xác định
+-- src:744 | trong tờ khai hải quan nhập khẩu;
+-- src:745 | Tỷ lệ (%) tối thiểu chất lượng còn lại của xe tham gia bảo hiểm được xác định
+-- src:746 | như sau:
+-- The table of minimum remaining-quality rates, by time in use (1.15, in months; fork F10).
+-- "đến 01 năm" is up to and including 12 months; "từ trên 01 năm đến hết 03 năm" is over 12
+-- and up to and including 36; and so on.
+-- src:747 | o Thời gian đã sử dụng đến 01 năm: 100%
+-- src:748 | o Thời gian đã sử dụng từ trên 01 năm đến hết 03 năm: 85% o
+-- src:749 | Thời gian đã sử dụng từ trên 03 năm đến hết 06 năm: 70% o
+-- src:750 | Thời gian đã sử dụng từ trên 06 năm đến hết 10 năm: 55% o
+-- src:751 | Thời gian đã sử dụng trên 10 năm: 40%
+@ref O-Car rules, Article 13.2 table (src:747-751)
+GIVEN `the time in use, in months` IS A NUMBER
+GIVETH A NUMBER
+`13.2 — the minimum remaining-quality rate for a time in use, in months, of` `the time in use, in months` MEANS
+    BRANCH IF `the time in use, in months` AT MOST  12 THEN 100%
+           IF `the time in use, in months` AT MOST  36 THEN  85%
+           IF `the time in use, in months` AT MOST  72 THEN  70%
+           IF `the time in use, in months` AT MOST 120 THEN  55%
+           OTHERWISE                                       40%
+
+-- Fork F22: the table applies to (i), a used vehicle made in Vietnam; (ii), a vehicle imported
+-- after use abroad, takes the rate "xác định trong tờ khai hải quan nhập khẩu" (stated in the
+-- import customs declaration). Fork F23: "nhập khẩu đã qua sử dụng" in (ii) is read as 1.15
+-- reads it, imported after use abroad. A vehicle imported new and now used, or a new vehicle,
+-- whose market value cannot be determined, is in neither limb (finding X10): declined.
+@ref O-Car rules, Article 13.2(ii) (src:742-744)
+GIVEN a IS A TYPE
+GIVETH AN a
+`13.2(ii) takes the rate from the import customs declaration, and none is recorded` MEANS
+    REFUSE "13.2(ii) takes the rate from the import customs declaration, and none is recorded"
+
+@ref O-Car rules, Article 13.2 (src:736-744)
+GIVEN a IS A TYPE
+GIVETH AN a
+`13.2 gives no value for a new vehicle, or one imported new, whose market value cannot be determined` MEANS
+    REFUSE "13.2 gives no value for a new vehicle, or one imported new, whose market value cannot be determined"
+
+@ref O-Car rules, Article 13.2(i)-(ii) (src:739-744)
+GIVEN p IS A `The policy`
+GIVETH A NUMBER
+`13.2 — the value of the vehicle when insured, by formula, on` p MEANS
+    IF   p's `vehicle`'s `new (100%) when insured`
+    THEN `13.2 gives no value for a new vehicle, or one imported new, whose market value cannot be determined`
+    ELSE CONSIDER p's `vehicle`'s `origin`
+         WHEN `manufactured in Vietnam` THEN
+             p's `price of the vehicle new (100%)`
+             TIMES `13.2 — the minimum remaining-quality rate for a time in use, in months, of` (`1.15 — the time in use of the vehicle, in months` p)
+         WHEN `imported after use abroad` THEN
+             CONSIDER p's `minimum remaining-quality rate in the import customs declaration`
+             WHEN JUST r  THEN p's `price of the vehicle new (100%)` TIMES r
+             WHEN NOTHING THEN `13.2(ii) takes the rate from the import customs declaration, and none is recorded`
+         WHEN `imported new` THEN
+             `13.2 gives no value for a new vehicle, or one imported new, whose market value cannot be determined`
+
+-- The value the settlement rests on: the market value when the parties determined it (13.1),
+-- else the 13.2 formula.
+@ref O-Car rules, Articles 13.1 and 13.2 (src:726-751)
+GIVEN p IS A `The policy`
+GIVETH A NUMBER
+`13 — the value of the vehicle when insured, on` p MEANS
+    CONSIDER p's `market value when insured`
+    WHEN JUST v  THEN v
+    WHEN NOTHING THEN `13.2 — the value of the vehicle when insured, by formula, on` p
+
+§§ `13.2 last bullet — the declared value, and under- and over-insurance`
+
+-- src:752 | - Giá trị khai báo là giá trị Xe Ô Tô mà Bên Mua Bảo Hiểm kê khai khi yêu cầu
+-- src:753 | bảo hiểm và được ghi trên Hợp Đồng Bảo Hiểm/Giấy Chứng Nhận Bảo Hiểm.
+-- src:754 | Trường hợp giá trị khai báo thấp hơn (bảo hiểm dưới giá trị) hoặc cao hơn Giá
+-- src:755 | Thị Trường (bảo hiểm trên giá trị) thì Giá Thị Trường sẽ là cơ sở để Công Ty Bảo
+-- src:756 | Hiểm giải quyết bồi thường.
+@ref O-Car rules, Article 13.2 last bullet (src:752-756)
+GIVEN p IS A `The policy`
+GIVETH A BOOLEAN
+`13 — insured below value, on` p MEANS
+    p's `sum insured` LESS THAN `13 — the value of the vehicle when insured, on` p
+
+@ref O-Car rules, Article 13.2 last bullet (src:752-756); Article 1.10 (src:96-98)
+GIVEN p IS A `The policy`
+GIVETH A BOOLEAN
+`13 — insured above value, on` p MEANS
+    NOT `1.10 — the sum insured is not greater than the market value when insured` (p's `sum insured`) (`13 — the value of the vehicle when insured, on` p)

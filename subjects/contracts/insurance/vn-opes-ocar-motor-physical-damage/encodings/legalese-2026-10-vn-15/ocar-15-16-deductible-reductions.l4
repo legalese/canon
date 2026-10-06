@@ -1,0 +1,375 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `ocar-13-valuation`
+
+-- IMPORTS form one chain (each module imports the one before it), because l4 checks a
+-- module again for every path it is imported by. Names are visible down the chain. This
+-- module draws on: ocar-nouns, ocar-01-definitions, ocar-17-supplementary.
+
+-- O-Car rules, Article 15 (deductible), with 1.8 and 12.20, and Article 16 (reduction of the
+-- indemnity). Quotations are generated from ../../source/raw/opes-ocar.txt.
+--
+-- ARTICLE 16 IS A DISCRETION. "Công Ty Bảo Hiểm có quyền": the Insurer MAY reduce, by a rate in
+-- a range ("từ 05% đến 10%", "tối đa 25%" ...), with no criterion for where in the range
+-- (finding X14). So this module says which reductions are open and between which rates
+-- (phrasebook 8.5: say who is eligible, do not pick); the rate actually applied is the
+-- Insurer's decision, which ocar-claim.l4 takes as an argument and checks against the range.
+
+§ `Article 15 — The deductible`
+
+-- src:893 | Điều 15: Mức khấu trừ
+-- src:894 | 15.1 Mức Khấu Trừ là số tiền được ấn định trên Hợp Đồng Bảo Hiểm/Giấy Chứng
+-- src:895 | Nhận Bảo Hiểm mà Bên Mua Bảo Hiểm phải tự gánh chịu trong mỗi và mọi
+-- src:896 | vụ tổn thất bộ phận của xe tham gia bảo hiểm tại Công Ty Bảo Hiểm.
+-- src:897 | 15.2 Mức Khấu Trừ tối thiểu và bắt buộc là 500.000 (năm trăm ngàn) đồng/mỗi và
+-- src:898 | mọi vụ tổn thất trong thời hạn bảo hiểm. Trường hợp áp dụng mức khấu trừ
+-- src:899 | cao hơn, Mức Khấu Trừ sẽ được quy định cụ thể trong Hợp Đồng Bảo Hiểm/Giấy
+-- src:900 | Chứng Nhận Bảo Hiểm.
+`15.2 — the minimum deductible` MEANS 500_000
+
+-- 15.2: at least 500,000 a loss, mandatory; a higher figure where the contract states one.
+-- Fork F24: a figure the contract states BELOW 500,000 is raised to it ("tối thiểu và bắt
+-- buộc"), not applied as written.
+@ref O-Car rules, Article 15.2 (src:897-900)
+GIVEN p IS A `The policy`
+GIVETH A NUMBER
+`15 — the deductible on` p MEANS
+    CONSIDER p's `deductible stated in the contract`
+    WHEN NOTHING THEN `15.2 — the minimum deductible`
+    WHEN JUST d  THEN max d `15.2 — the minimum deductible`
+
+-- 15.1 applies the deductible to "mỗi và mọi vụ tổn thất bộ phận" (every PARTIAL loss); 1.8
+-- and 15.2 say "mỗi vụ tổn thất" (every loss). Fork F25: no deductible on a total loss (15.1, the
+-- article on the deductible, and the reading that favours the Policyholder; LAW: Law on
+-- Insurance Business Article 24, law text line 588). Finding X15 records the conflict.
+-- src:87 | 1.8. “Mức khấu trừ” là số tiền mà Người Được Bảo Hiểm phải tự chi trả đối với mỗi
+-- src:88 | vụ tổn thất có thể được bồi thường theo Giấy Chứng Nhận Bảo Hiểm và/hoặc
+-- src:89 | Hợp Đồng Bảo Hiểm. Mức khấu trừ được quy định trên Giấy Chứng Nhận Bảo
+-- src:90 | Hiểm và/hoặc Hợp Đồng Bảo Hiểm sẽ được trừ vào số tiền bồi thường thuộc
+-- src:91 | trách nhiệm bảo hiểm.
+
+-- 1.8 and 12.20: the deductible is taken off the amount the Insurer is liable for; a loss whose
+-- amount is at or below the deductible is excluded outright.
+-- src:694 | 12.20 Những vụ tổn thất có số tiền thuộc trách nhiệm bảo hiểm bằng hoặc nhỏ hơn
+-- src:695 | Mức Khấu Trừ (mức miễn thường có khấu trừ).
+@ref O-Car rules, Article 12.20 (src:694-695)
+GIVEN `the amount` IS A NUMBER
+      `the deductible` IS A NUMBER
+GIVETH A BOOLEAN
+`12.20 — applies to an amount of` `the amount` `with a deductible of` `the deductible` MEANS
+    `the amount` AT MOST `the deductible`
+
+@ref O-Car rules, Article 1.8 (src:87-91), Article 12.20 (src:694-695)
+GIVEN `the deductible` IS A NUMBER
+      `the amount` IS A NUMBER
+GIVETH A NUMBER
+`1.8 — the amount after a deductible of` `the deductible` `on` `the amount` MEANS
+    IF   `12.20 — applies to an amount of` `the amount` `with a deductible of` `the deductible`
+    THEN 0
+    ELSE `the amount` MINUS `the deductible`
+
+-- Which deductible: BS03's for a loss that rests on BS03 (the flood peril, or engine water
+-- damage that only BS03's cancellation of 12.12 lets in), BS05's for one that rests on BS05
+-- (the parts-theft peril, or a lost part that only its cancellation of 12.15 lets in), else
+-- 15.2's. Fork F15.
+@ref O-Car rules, Article 15.2; BS03 (src:1054-1057); BS05 (src:1100-1103)
+GIVEN p IS A `The policy`
+      l IS A `The loss`
+GIVETH A BOOLEAN
+`the loss rests on BS03, on` p `for` l MEANS
+        l's `peril` EQUALS `driving into flood water`
+    OR  (    `12 — the supplementary clause` `BS03 flood damage` `extends the cover on` p
+         AND any (GIVEN i YIELD i's `engine damage from water: flood water or hydrolock` AND NOT i's `water entered after an accidental plunge into a pond, lake, river or stream`) (l's `items`))
+
+GIVEN p IS A `The policy`
+      l IS A `The loss`
+GIVETH A BOOLEAN
+`the loss rests on BS05, on` p `for` l MEANS
+        l's `peril` EQUALS `theft or robbery of parts`
+    OR  (    `12 — the supplementary clause` `BS05 loss of parts` `extends the cover on` p
+         AND any (GIVEN i YIELD i's `lost` AND NOT i's `damaged or lost by the same cause and at the same time as other parts in the same accident`) (l's `items`))
+
+@ref O-Car rules, Article 15.2; BS03 (src:1054-1057); BS05 (src:1100-1103)
+GIVEN p IS A `The policy`
+      l IS A `The loss`
+      `the indemnity` IS A NUMBER
+GIVETH A NUMBER
+`15 — the deductible for a partial loss, on` p `for` l `with an indemnity of` `the indemnity` MEANS
+    BRANCH IF `the loss rests on BS03, on` p `for` l THEN `BS03 — the deductible on` p `for an indemnity of` `the indemnity`
+           IF `the loss rests on BS05, on` p `for` l THEN `BS05 — the deductible on` p `for an indemnity of` `the indemnity`
+           OTHERWISE `15 — the deductible on` p
+
+§ `Article 16 — Reduction of the indemnity`
+
+-- src:912 | Điều 16: Giảm trừ bồi thường
+-- src:913 | 16.1 Công Ty Bảo Hiểm có quyền thực hiện giảm mức bồi thường theo tỷ lệ trong
+-- src:914 | một số trường hợp sau đây (trừ trường hợp Công Ty Bảo Hiểm quy định mức
+-- src:915 | giảm trừ hơn trong Hợp Đồng Bảo Hiểm/Giấy Chứng Nhận Bảo Hiểm):
+-- The chapeau lets the contract state "mức giảm trừ hơn" — a reduction "more ..." than what?
+-- The comparative has lost its adjective (higher? lower?). A contract that states a reduction
+-- level is therefore declined (finding X16).
+@ref O-Car rules, Article 16.1 chapeau (src:913-915)
+GIVEN a IS A TYPE
+GIVETH AN a
+`16.1 lets the contract state a reduction level, but its comparative is incomplete` MEANS
+    REFUSE "16.1 lets the contract state a reduction level, but its comparative is incomplete"
+
+§§ `16.1.1 — from 5% to 10%`
+
+-- Bullet 1: no notice of the loss within five DAYS (not working days, unlike 5.2: finding X3)
+-- of the loss, save for force majeure, an assessment by the Insurer within those days, or a call
+-- to the hotline at the time of the accident. Fork F7: day 5 after the loss is the last day.
+-- src:916 | 16.1.1 Giảm từ 05% đến 10% số tiền bồi thường trong các trường hợp sau:
+-- src:917 | - Bên Mua Bảo Hiểm/Người Được Bảo Hiểm/Chủ Xe/Lái Xe không gửi Thông báo
+-- src:918 | tổn thất (bằng văn bản hoặc theo các hình thức khác theo thỏa thuận tại Hợp
+-- src:919 | Đồng Bảo Hiểm/Giấy Chứng Nhận Bảo Hiểm) cho Công Ty Bảo Hiểm trong thời
+-- src:920 | hạn năm (5) ngày kể từ ngày xảy ra tổn thất (trừ trường hợp bất khả kháng hoặc
+-- src:921 | đã được Công Ty Bảo Hiểm giám định thiệt hại trong thời gian này hoặc đã
+-- src:922 | thông báo cho Công Ty Bảo Hiểm theo số điện thoại đường dây nóng tại thời
+-- src:923 | điểm xảy ra tai nạn);
+@ref O-Car rules, Article 16.1.1 bullet 1 (src:917-923)
+GIVEN l IS A `The loss`
+GIVETH A BOOLEAN
+`16.1.1 — notice of the loss was not sent within 5 days, for` l MEANS
+        `not sent in time`
+    AND NOT c's `force majeure prevented notice`
+    AND NOT c's `the Insurer assessed the damage within those 5 days`
+    AND NOT c's `the hotline was told at the time of the accident`
+    WHERE
+        c MEANS l's `conduct`
+        `not sent in time` MEANS
+            CONSIDER c's `date the Insurer was notified of the loss`
+            WHEN NOTHING THEN TRUE
+            WHEN JUST d  THEN (Day d MINUS Day (l's `date of the loss`)) GREATER THAN 5
+
+-- src:924 | - Bên Mua Bảo Hiểm/Người Được Bảo Hiểm/Chủ Xe/Lái Xe không thực hiện đầy
+-- src:925 | đủ các biện pháp cứu chữa, hạn chế thiệt hại, không thông báo ngay cho cơ
+-- src:926 | quan công an hoặc chính quyền địa phương nơi gần nhất, không thông báo
+-- src:927 | ngay cho Công Ty Bảo Hiểm về tình hình tổn thất hoặc không thực hiện theo
+-- src:928 | hướng dẫn của Công Ty Bảo Hiểm.
+@ref O-Car rules, Article 16.1.1 bullet 2 (src:924-928)
+GIVEN l IS A `The loss`
+GIVETH A BOOLEAN
+`16.1.1 — mitigation, reporting or instructions were not followed, for` l MEANS
+        c's `rescue and mitigation measures were not fully taken`
+    OR  c's `the police or local authority were not told at once`
+    OR  c's `the Insurer was not told at once`
+    OR  c's `the Insurer's instructions were not followed`
+    WHERE
+        c MEANS l's `conduct`
+
+-- src:929 | - Bên Mua Bảo Hiểm/Người Được Bảo Hiểm/Chủ Xe/Lái Xe đỗ xe trên địa hình
+-- src:930 | dốc nhưng không sử dụng hệ thống phanh, chèn bánh (lốp) xe để xe trôi gây
+-- src:931 | tổn thất, thiệt hại cho xe.
+@ref O-Car rules, Article 16.1.1 bullet 3 (src:929-931)
+GIVEN l IS A `The loss`
+GIVETH A BOOLEAN
+`16.1.1 — parked on a slope without brakes or chocks, for` l MEANS
+    l's `conduct`'s `parked on a slope without brakes or chocks, so it rolled`
+
+§§ `16.1.2 — up to 25%`
+
+-- Speeding found by a written conclusion to be "từ 20% trở lên đến 50%": 20% to 50%, both
+-- included. Above 50% is 12.21's exclusion.
+-- src:932 | 16.1.2 Giảm tối đa 25% số tiền bồi thường trong các trường hợp sau:
+-- src:933 | Bên Mua Bảo Hiểm/Người Được Bảo Hiểm/Chủ Xe/Lái Xe vượt quá tốc độ cho
+-- src:934 | phép và có kết luận bằng văn bản của cơ quan chức năng xác định vượt quá từ
+-- src:935 | 20% trở lên đến 50%.
+@ref O-Car rules, Article 16.1.2 (src:932-935)
+GIVEN l IS A `The loss`
+GIVETH A BOOLEAN
+`16.1.2 — speeding by 20% to 50%, for` l MEANS
+    CONSIDER l's `load and speed`'s `speed above the limit, by an authority's written conclusion`
+    WHEN NOTHING THEN FALSE
+    WHEN JUST s  THEN s AT LEAST 20% AND s AT MOST 50%
+
+§§ `16.1.3 — up to 80%`
+
+-- Dismantling or repairing without the Insurer's approval, save where necessary. 5.2 lets the
+-- Policyholder dismantle or repair once the Insurer has said nothing for five working days
+-- after notice; 16.1.3 does not mention that. Fork F26: silence for five working days counts as
+-- the approval 16.1.3 asks for (finding X17).
+-- src:936 | 16.1.3 Giảm tối đa 80% số tiền bồi thường trong các trường hợp sau:
+-- src:937 | Bên Mua Bảo Hiểm/Người Được Bảo Hiểm/Chủ Xe/Lái Xe tự ý tháo gỡ hoặc sửa
+-- src:938 | xe khi chưa có ý kiến chấp thuận của Công Ty Bảo Hiểm (trừ trường hợp cần
+-- src:939 | thiết để đảm bảo an toàn, đề phòng hạn chế thiệt hại về người và tài sản hoặc
+-- src:940 | phải thi hành theo yêu cầu của cơ quan có thẩm quyền);
+@ref O-Car rules, Article 16.1.3 (src:936-940); Article 5.2 (src:326-329)
+GIVEN l IS A `The loss`
+GIVETH A BOOLEAN
+`16.1.3 — dismantled or repaired without approval, for` l MEANS
+        c's `dismantled or repaired without the Insurer's approval`
+    AND NOT c's `it was necessary for safety, to limit loss, or on an authority's order`
+    AND NOT c's `the Insurer gave no opinion within 5 working days of the notice`
+    WHERE
+        c MEANS l's `conduct`
+
+§§ `16.1.4 — up to 30%`
+
+-- src:941 | 16.1.4 Giảm tối đa 30% số tiền bồi thường trong các trường hợp sau:
+-- src:942 | - Không bảo vệ hiện trường, tự ý di chuyển xe khỏi hiện trường xảy ra tổn thất,
+-- src:943 | thiệt hại (trừ trường hợp cần thiết để đảm bảo an toàn, đề phòng hạn chế thiệt
+-- src:944 | hại về người và tài sản hoặc phải thi hành theo yêu cầu của cơ quan chức năng).
+-- src:945 | - Chủ Xe không bảo lưu quyền khiếu nại và chuyển quyền đòi người thứ ba cho
+-- src:946 | Công TY Bảo Hiểm kèm theo toàn bộ hồ sơ, các căn cứ tài liệu cần thiết, không
+-- src:947 | hợp tác chặt chẽ với doanh nghiệp bảo hiểm để đòi lại người thứ ba hoặc tự
+-- src:948 | động thỏa thuận bồi thường với người thứ ba gây thiệt hại cho doanh nghiệp
+-- src:949 | bảo hiểm
+-- src:950 | - Chủ Xe cơ giới không trung thực trong việc cung cấp các thông tin, tài liệu,
+-- src:951 | chứng từ trong hồ sơ bồi thường.
+@ref O-Car rules, Article 16.1.4 bullet 1 (src:942-944)
+GIVEN l IS A `The loss`
+GIVETH A BOOLEAN
+`16.1.4 — the scene was not protected or the vehicle was moved, for` l MEANS
+        l's `conduct`'s `the scene was not protected or the vehicle was moved from it`
+    AND NOT l's `conduct`'s `it was necessary for safety, to limit loss, or on an authority's order`
+
+@ref O-Car rules, Article 16.1.4 bullet 2 (src:945-949)
+GIVEN l IS A `The loss`
+GIVETH A BOOLEAN
+`16.1.4 — the claim against the third party was not preserved or transferred, for` l MEANS
+    l's `conduct`'s `the Owner did not preserve and transfer the claim against the third party`
+
+-- Bullet 3 overlaps 12.22, which EXCLUDES the loss where the Insurer PROVES the claim
+-- information untruthful (finding X6). Here it is a reduction of up to 30%, with no proof
+-- required.
+@ref O-Car rules, Article 16.1.4 bullet 3 (src:950-951)
+GIVEN l IS A `The loss`
+GIVETH A BOOLEAN
+`16.1.4 — the claim documents were untruthful, for` l MEANS
+    l's `conduct`'s `the Owner was untruthful in the claim documents`
+
+§§ `16.1.5 — by the overload`
+
+-- The indemnity is reduced by the percentage of overload, where it is over 20% and under 50%.
+-- Unlike 12.18, 16.1.5 does not leave children under 7 out of the count (finding X4); goods
+-- vehicles by load, passenger vehicles by persons, and a mixed vehicle by the higher of the two
+-- (fork F27).
+-- src:962 | 16.1.5 Giảm số tiền bồi thường tương ứng với tỷ lệ % chở quá trọng tải, số người (từ
+-- src:963 | trên 20% đến dưới 50%) theo quy định trong Giấy chứng nhận kiểm định an
+-- src:964 | toàn kỹ thuật và bảo vệ môi trường phương tiện giao thông cơ giới đường bộ.
+@ref O-Car rules, Article 16.1.5 (src:962-964)
+GIVEN v IS A `The vehicle`
+      l IS A `The loss`
+GIVETH A NUMBER
+`16.1.5 — the overload of` v `on` l MEANS
+    CONSIDER v's `carries`
+    WHEN `goods`                THEN `by load`
+    WHEN `passengers`           THEN `by persons`
+    WHEN `goods and passengers` THEN max `by load` `by persons`
+    WHERE
+        `by load` MEANS
+            ((l's `load and speed`'s `load carried`) MINUS (v's `permitted load in the inspection certificate`))
+            DIVIDED BY (v's `permitted load in the inspection certificate`)
+        `by persons` MEANS
+            ((l's `load and speed`'s `persons carried, counting children under 7`) MINUS (v's `permitted number of persons in the inspection certificate`))
+            DIVIDED BY (v's `permitted number of persons in the inspection certificate`)
+
+@ref O-Car rules, Article 16.1.5 (src:962-964)
+GIVEN v IS A `The vehicle`
+      l IS A `The loss`
+GIVETH A BOOLEAN
+`16.1.5 — overloaded by over 20% and under 50%` v `on` l MEANS
+        `16.1.5 — the overload of` v `on` l GREATER THAN 20%
+    AND `16.1.5 — the overload of` v `on` l LESS THAN    50%
+
+§§ `16.1.6 — by the premium shortfall`
+
+-- The indemnity is reduced in the ratio of premium paid to premium payable, where the use was
+-- misdeclared or an increase in risk was not notified. The reduction RATE is one minus that
+-- ratio.
+-- src:965 | 16.1.6 Giảm số tiền bồi thường theo tỷ lệ giữa số phí thực nộp và số phí phải nộp theo
+-- src:966 | quy định trong trường hợp:
+-- src:967 | - Bên Mua Bảo Hiểm kê khai sai khi yêu cầu bảo hiểm (không đúng mục đích
+-- src:968 | sử dụng của xe) làm thu thiếu Phí Bảo Hiểm so với quy định;
+-- src:969 | - Bên Mua Bảo Hiểm/Người Được Bảo Hiểm/Chủ Xe không thông báo cho Công
+-- src:970 | Ty Bảo Hiểm trong trường hợp có sự gia tăng mức độ rủi ro bảo hiểm để bổ
+-- src:971 | sung Phí Bảo Hiểm (như chuyển đổi mục đích sử dụng, hoán cải, nâng cấp làm
+-- src:972 | tăng giá xe).
+@ref O-Car rules, Article 16.1.6 (src:965-972)
+GIVEN p IS A `The policy`
+      l IS A `The loss`
+GIVETH A NUMBER
+`16.1.6 — the rate of the premium shortfall, on` p `for` l MEANS
+    max 0 (1 MINUS (p's `premium paid` DIVIDED BY l's `conduct`'s `premium that should have been paid`))
+
+§§ `16.1 — the reductions open to the Insurer`
+
+@ref O-Car rules, Article 16.1 (src:913-972)
+GIVEN p IS A `The policy`
+      l IS A `The loss`
+GIVETH A LIST OF `A reduction the Insurer may make`
+`16.1 — the reductions open to the Insurer, on` p `for` l MEANS
+    IF   `the contract states a reduction level`
+    THEN `16.1 lets the contract state a reduction level, but its comparative is incomplete`
+    ELSE mapMaybe `if open` `the table of 16.1`
+    WHERE
+        --   the reduction                                                                                         lowest rate   highest rate
+        `the table of 16.1` MEANS
+            LIST (`A reduction the Insurer may make` OF `16.1.1 notice of the loss not sent within 5 days`                 , 5%          , 10%)
+               , (`A reduction the Insurer may make` OF `16.1.1 mitigation, reporting or instructions not followed`        , 5%          , 10%)
+               , (`A reduction the Insurer may make` OF `16.1.1 parked on a slope without brakes or chocks`                , 5%          , 10%)
+               , (`A reduction the Insurer may make` OF `16.1.2 speeding by 20% to 50%`                                    , 0           , 25%)
+               , (`A reduction the Insurer may make` OF `16.1.3 dismantled or repaired without approval`                   , 0           , 80%)
+               , (`A reduction the Insurer may make` OF `16.1.4 scene not protected or vehicle moved`                      , 0           , 30%)
+               , (`A reduction the Insurer may make` OF `16.1.4 claim against the third party not preserved or transferred`, 0           , 30%)
+               , (`A reduction the Insurer may make` OF `16.1.4 untruthful claim documents`                                , 0           , 30%)
+               , (`A reduction the Insurer may make` OF `16.1.5 overloading by over 20% and under 50%`                     , `overload`  , `overload`)
+               , (`A reduction the Insurer may make` OF `16.1.6 use misdeclared`                                           , `shortfall` , `shortfall`)
+               , (`A reduction the Insurer may make` OF `16.1.6 increase in risk not notified`                             , `shortfall` , `shortfall`)
+        `the contract states a reduction level` MEANS
+            CONSIDER p's `reduction level stated in the contract`
+            WHEN NOTHING THEN FALSE
+            WHEN JUST x  THEN TRUE
+        `overload`  MEANS `16.1.5 — the overload of` (p's `vehicle`) `on` l
+        `shortfall` MEANS `16.1.6 — the rate of the premium shortfall, on` p `for` l
+        `if open` r MEANS
+            IF   `the ground is made out` (r's `ground`)
+            THEN JUST r
+            ELSE NOTHING
+        `the ground is made out` g MEANS
+            CONSIDER g
+            WHEN `16.1.1 notice of the loss not sent within 5 days`                   THEN `16.1.1 — notice of the loss was not sent within 5 days, for` l
+            WHEN `16.1.1 mitigation, reporting or instructions not followed`          THEN `16.1.1 — mitigation, reporting or instructions were not followed, for` l
+            WHEN `16.1.1 parked on a slope without brakes or chocks`                  THEN `16.1.1 — parked on a slope without brakes or chocks, for` l
+            WHEN `16.1.2 speeding by 20% to 50%`                                      THEN `16.1.2 — speeding by 20% to 50%, for` l
+            WHEN `16.1.3 dismantled or repaired without approval`                     THEN `16.1.3 — dismantled or repaired without approval, for` l
+            WHEN `16.1.4 scene not protected or vehicle moved`                        THEN `16.1.4 — the scene was not protected or the vehicle was moved, for` l
+            WHEN `16.1.4 claim against the third party not preserved or transferred`  THEN `16.1.4 — the claim against the third party was not preserved or transferred, for` l
+            WHEN `16.1.4 untruthful claim documents`                                  THEN `16.1.4 — the claim documents were untruthful, for` l
+            WHEN `16.1.5 overloading by over 20% and under 50%`                       THEN `16.1.5 — overloaded by over 20% and under 50%` (p's `vehicle`) `on` l
+            WHEN `16.1.6 use misdeclared`                                             THEN l's `conduct`'s `the use of the vehicle was misdeclared, so less premium was charged` AND `shortfall` GREATER THAN 0
+            WHEN `16.1.6 increase in risk not notified`                               THEN l's `conduct`'s `an increase in risk was not notified` AND `shortfall` GREATER THAN 0
+
+§§ `16.2 — one reduction only, the highest`
+
+-- Where several reductions are open, the Insurer applies only one, "theo tỷ lệ cao nhất" (at the
+-- highest rate). Read as: the reduction whose highest rate is the highest, at a rate within its
+-- range; or none.
+-- src:973 | 16.2 Nguyên tắc giảm trừ số tiền bồi thường:
+-- src:974 | Khi Chủ Xe bị giảm trừ số tiền bồi thường theo nhiều tỷ lệ khác nhau cho các
+-- src:975 | hành vi vi phạm khác nhau, Công Ty Bảo Hiểm sẽ lựa chọn áp dụng duy nhất
+-- src:976 | một loại giảm trừ số tiền bồi thường theo tỷ lệ cao nhất.
+@ref O-Car rules, Article 16.2 (src:973-976)
+GIVEN p IS A `The policy`
+      l IS A `The loss`
+GIVETH A NUMBER
+`16.2 — the highest rate the Insurer may apply, on` p `for` l MEANS
+    CONSIDER `16.1 — the reductions open to the Insurer, on` p `for` l
+    WHEN EMPTY THEN 0
+    WHEN r FOLLOWED BY rest THEN maximum (map (GIVEN x YIELD x's `highest rate`) (r FOLLOWED BY rest))
+
+-- Whether rate r is one the Insurer may apply: none (0), or a rate within the range of a
+-- reduction whose highest rate is the highest open.
+@ref O-Car rules, Articles 16.1 and 16.2 (src:913-976)
+GIVEN p IS A `The policy`
+      l IS A `The loss`
+      r IS A NUMBER
+GIVETH A BOOLEAN
+`16 — the Insurer may apply a reduction, on` p `for` l `, at the rate` r MEANS
+        r EQUALS 0
+    OR  any (GIVEN x YIELD     x's `highest rate` EQUALS `16.2 — the highest rate the Insurer may apply, on` p `for` l
+                           AND r AT LEAST x's `lowest rate`
+                           AND r AT MOST  x's `highest rate`)
+            (`16.1 — the reductions open to the Insurer, on` p `for` l)

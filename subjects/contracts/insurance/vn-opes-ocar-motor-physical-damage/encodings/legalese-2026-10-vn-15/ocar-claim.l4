@@ -1,0 +1,118 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `ocar-personal-data`
+
+-- IMPORTS form one chain (each module imports the one before it), because l4 checks a
+-- module again for every path it is imported by. Names are visible down the chain. This
+-- module draws on: every module above.
+
+-- O-Car rules: one claim, from cover to the amount paid. This module adds no rule of its own;
+-- it puts Articles 9, 11-16 and BS01-BS07 together in an order, and the ORDER is the encoder's,
+-- not the document's (fork F31):
+--
+--   1. is the event covered (Articles 1.1, 2.1, 3.1.1, 11.1, 12; personal data clause 9)?
+--   2. the indemnity: a total loss under 14.2 and 14.3.2, or a partial loss under 14.1 and
+--      14.1.2(a)/(b) or BS04, item by item with 12's item exclusions;
+--   3. times the Insurer's share under double insurance (Article 9);
+--   4. less the deductible, partial losses only (1.8, 12.20, 15; BS03, BS05; fork F25);
+--   5. less the one reduction of Article 16 the Insurer chooses to make (16.2);
+--   6. plus the costs of 11.2 (fork F18);
+--   7. not more than the sum insured (11.2, last bullet; fork F19).
+--
+-- BS06 (safe journey) is a separate benefit with its own limit, outside the sum insured
+-- (fork F35), and is given by its own rule below.
+
+§ `One claim`
+
+-- The event is covered, the contract having been made (personal data clause 9).
+@ref O-Car rules, Articles 1.1, 2.1, 3.1.1, 11.1, 12; personal data clause 9 (src:1237-1241)
+GIVEN c IS A `The claim`
+GIVETH A BOOLEAN
+`the event is covered, on the claim` c MEANS
+        `data clause 9 — the contract stands, on` (c's `policy`)
+    AND `11 and 12 — the event is covered, on` (c's `policy`) `for` (c's `loss`)
+
+-- Step 2: the indemnity before the share, the deductible and any reduction. A theft of the whole
+-- vehicle is not yet payable without the judgment or decision 14.2.2 asks for: 0 for now.
+@ref O-Car rules, Articles 14.1-14.3
+GIVEN c IS A `The claim`
+GIVETH A NUMBER
+`the indemnity under Article 14, on the claim` c MEANS
+    BRANCH IF NOT `the event is covered, on the claim` c                       THEN 0
+           IF `14.2.2 — a theft of the whole vehicle, for` l
+              AND NOT `14.2.2 — the theft may now be paid as a total loss, for` l THEN 0
+           IF `14.2 — a total loss, for` l                                     THEN `14.2 and 14.3.2 — the indemnity for the total loss, on` p `for` l
+           OTHERWISE `14.1.2 — the indemnity for the partial loss on` c
+    WHERE
+        p MEANS c's `policy`
+        l MEANS c's `loss`
+
+-- Steps 3 and 4.
+@ref O-Car rules, Articles 9, 1.8, 12.20, 15; BS03, BS05
+GIVEN c IS A `The claim`
+GIVETH A NUMBER
+`the indemnity after the share and the deductible, on the claim` c MEANS
+    IF   `14.2 — a total loss, for` l
+    THEN `the shared indemnity`
+    ELSE `1.8 — the amount after a deductible of` (`15 — the deductible for a partial loss, on` p `for` l `with an indemnity of` `the shared indemnity`) `on` `the shared indemnity`
+    WHERE
+        p MEANS c's `policy`
+        l MEANS c's `loss`
+        `the shared indemnity` MEANS `the indemnity under Article 14, on the claim` c TIMES `9 — the Insurer's share under double insurance, on` p
+
+-- Steps 5 to 7, at a reduction rate r the Insurer applies.
+@ref O-Car rules, Articles 16, 11.2
+GIVEN r IS A NUMBER
+      c IS A `The claim`
+GIVETH A NUMBER
+`the amount payable at a reduction rate of` r `, on the claim` c MEANS
+    `11.2 — capped at the sum insured of` (c's `policy`) `:`
+        ((`the indemnity after the share and the deductible, on the claim` c TIMES (1 MINUS r))
+         PLUS `the costs`)
+    WHERE
+        `the costs` MEANS
+            IF   `the event is covered, on the claim` c
+            THEN `11.2 — the costs payable besides the indemnity, for` (c's `loss`)
+            ELSE 0
+
+§ `What the Policyholder can be told`
+
+@export The most OPES pays on an O-Car motor physical damage claim: the amount if the Insurer makes no reduction under Article 16 (VND)
+GIVEN c IS A `The claim` @desc the policy as the certificate records it, the loss as assessed, and earlier payments in the period
+GIVETH A NUMBER
+`the amount payable on the claim, with no reduction under Article 16` c MEANS
+    `the amount payable at a reduction rate of` 0 `, on the claim` c
+
+@export The least OPES pays on an O-Car motor physical damage claim: the amount after the largest reduction Article 16 lets the Insurer make (VND)
+GIVEN c IS A `The claim` @desc the policy as the certificate records it, the loss as assessed, and earlier payments in the period
+GIVETH A NUMBER
+`the amount payable on the claim, after the largest reduction Article 16 allows` c MEANS
+    `the amount payable at a reduction rate of` (`16.2 — the highest rate the Insurer may apply, on` (c's `policy`) `for` (c's `loss`)) `, on the claim` c
+
+@ref O-Car rules, Articles 16.1 and 16.2
+GIVEN r IS A NUMBER
+      c IS A `The claim`
+GIVETH AN EITHER `A problem with the facts` NUMBER
+`the amount payable on the claim, at the reduction rate the Insurer chose:` r `, on the claim` c MEANS
+    IF   `16 — the Insurer may apply a reduction, on` (c's `policy`) `for` (c's `loss`) `, at the rate` r
+    THEN RIGHT (`the amount payable at a reduction rate of` r `, on the claim` c)
+    ELSE LEFT `the reduction rate is not one Article 16 allows`
+
+@export The Article 12 exclusions that defeat the whole O-Car claim, in the order Article 12 lists them
+GIVEN c IS A `The claim` @desc the policy as the certificate records it, and the loss as assessed
+GIVETH A LIST OF `An exclusion in Article 12`
+`the exclusions that defeat the claim` c MEANS
+    `12 — the exclusions of the event, on` (c's `policy`) `for` (c's `loss`)
+
+@export The reductions Article 16 lets OPES make on the O-Car claim, each with its lowest and highest rate
+GIVEN c IS A `The claim` @desc the policy as the certificate records it, and the loss as assessed
+GIVETH A LIST OF `A reduction the Insurer may make`
+`the reductions open on the claim` c MEANS
+    `16.1 — the reductions open to the Insurer, on` (c's `policy`) `for` (c's `loss`)
+
+@export The BS06 safe-journey benefit on an O-Car claim (VND), paid besides the indemnity
+GIVEN c IS A `The claim` @desc the policy, the loss, and the journey costs after the accident
+GIVETH A NUMBER
+`the safe-journey benefit on the claim` c MEANS
+    `BS06 — the safe-journey benefit on` (c's `policy`) `for` (c's `safe-journey costs`) `,` (`the event is covered, on the claim` c)

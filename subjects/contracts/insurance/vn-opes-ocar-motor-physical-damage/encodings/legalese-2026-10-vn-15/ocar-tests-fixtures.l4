@@ -1,0 +1,561 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `ocar-nouns`
+
+-- TEST FIXTURES for the O-Car encoding: named cases, and helpers that build them. No rule and
+-- no directive is here; the tests modules import this one.
+--
+-- Every figure here is a SCENARIO VALUE, chosen to make the arithmetic visible: a sum insured of
+-- 600,000,000, a premium of 12,000,000, a loss on Wednesday 10 June 2026. None is a figure the
+-- document prints; the figures the document prints are asserted in the tests, each beside its
+-- source line.
+--
+-- The nouns ask the caller for every fact, with no default. These helpers are a TEST convenience
+-- only: a fact not named in the list a helper is given is taken as absent. They are not part of
+-- what an API caller sees.
+
+§ `Test fixtures`
+
+§§ `The vehicle`
+
+GIVEN `the origin`                IS A `The origin of the vehicle`
+      `new when insured`          IS A BOOLEAN
+      `first registered`          IS A DATE
+      `made in`                   IS A NUMBER
+      `the use`                   IS A `A use that raises depreciation`
+GIVETH A `The vehicle`
+`a car` `the origin` `, new:` `new when insured` `, first registered` `first registered` `, made in` `made in` `, used as` `the use` MEANS
+    `The vehicle` WITH
+        `number of wheels`                                          IS 4
+        `runs on rails`                                             IS FALSE
+        `a two- or three-wheeled motorcycle or a similar vehicle`   IS FALSE
+        `origin`                                                    IS `the origin`
+        `new (100%) when insured`                                   IS `new when insured`
+        `date of first registration in Vietnam`                     IS `first registered`
+        `year of manufacture`                                       IS `made in`
+        `use`                                                       IS `the use`
+        `carries`                                                   IS `passengers`
+        `permitted load in the inspection certificate`              IS 1000
+        `permitted number of persons in the inspection certificate` IS 5
+
+-- A private five-seat car made in Vietnam, first registered 15 March 2022: on a contract made
+-- in January 2026 its time in use is 46 months (1.15).
+`the private car` MEANS
+    `a car` `manufactured in Vietnam` `, new:` FALSE `, first registered` (YMD 2022 3 15) `, made in` 2022 `, used as` `none of the uses listed in 14.1.2(b)`
+
+GIVEN `carries what` IS A `What the vehicle carries`
+      `permitted load` IS A NUMBER
+      `permitted persons` IS A NUMBER
+GIVETH A `The vehicle`
+`a vehicle carrying` `carries what` `, permitted load` `permitted load` `, permitted persons` `permitted persons` MEANS
+    `The vehicle` WITH
+        `number of wheels`                                          IS 4
+        `runs on rails`                                             IS FALSE
+        `a two- or three-wheeled motorcycle or a similar vehicle`   IS FALSE
+        `origin`                                                    IS `manufactured in Vietnam`
+        `new (100%) when insured`                                   IS FALSE
+        `date of first registration in Vietnam`                     IS YMD 2022 3 15
+        `year of manufacture`                                       IS 2022
+        `use`                                                       IS `none of the uses listed in 14.1.2(b)`
+        `carries`                                                   IS `carries what`
+        `permitted load in the inspection certificate`              IS `permitted load`
+        `permitted number of persons in the inspection certificate` IS `permitted persons`
+
+§§ `The supplementary clauses`
+
+GIVEN c IS A `A supplementary clause`
+GIVETH A `A supplementary clause on the policy`
+`clause accepted and paid in full and on time:` c MEANS
+    `A supplementary clause on the policy` WITH
+        `clause`                            IS c
+        `accepted by the Insurer`           IS TRUE
+        `premium paid in full`              IS TRUE
+        `premium paid on time`              IS TRUE
+        `sub-limit in the contract`         IS NOTHING
+        `benefit limit in the contract`     IS NOTHING
+        `deductible otherwise agreed`       IS NOTHING
+        `number of losses otherwise agreed` IS NOTHING
+
+GIVEN c IS A `A supplementary clause`
+GIVETH A `A supplementary clause on the policy`
+`clause accepted and paid in full but late:` c MEANS
+    `A supplementary clause on the policy` WITH
+        `clause`                            IS c
+        `accepted by the Insurer`           IS TRUE
+        `premium paid in full`              IS TRUE
+        `premium paid on time`              IS FALSE
+        `sub-limit in the contract`         IS NOTHING
+        `benefit limit in the contract`     IS NOTHING
+        `deductible otherwise agreed`       IS NOTHING
+        `number of losses otherwise agreed` IS NOTHING
+
+GIVEN `the sub-limit` IS A NUMBER
+GIVETH A `A supplementary clause on the policy`
+`BS04 with a sub-limit of` `the sub-limit` MEANS
+    `A supplementary clause on the policy` WITH
+        `clause`                            IS `BS04 settlement up to a limit of liability`
+        `accepted by the Insurer`           IS TRUE
+        `premium paid in full`              IS TRUE
+        `premium paid on time`              IS TRUE
+        `sub-limit in the contract`         IS JUST `the sub-limit`
+        `benefit limit in the contract`     IS NOTHING
+        `deductible otherwise agreed`       IS NOTHING
+        `number of losses otherwise agreed` IS NOTHING
+
+GIVEN `the limit` IS A NUMBER
+GIVETH A `A supplementary clause on the policy`
+`BS06 with a limit of` `the limit` MEANS
+    `A supplementary clause on the policy` WITH
+        `clause`                            IS `BS06 safe journey`
+        `accepted by the Insurer`           IS TRUE
+        `premium paid in full`              IS TRUE
+        `premium paid on time`              IS TRUE
+        `sub-limit in the contract`         IS NOTHING
+        `benefit limit in the contract`     IS JUST `the limit`
+        `deductible otherwise agreed`       IS NOTHING
+        `number of losses otherwise agreed` IS NOTHING
+
+§§ `The policy`
+
+-- A policy for the calendar year 2026, concluded 1 January 2026, sum insured 600,000,000, with
+-- the vehicle, the market value, the supplementary clauses and the contract date as given.
+GIVEN v                 IS A `The vehicle`
+      `concluded on`    IS A DATE
+      `the sum insured` IS A NUMBER
+      `the market value` IS A MAYBE NUMBER
+      `the clauses`     IS A LIST OF `A supplementary clause on the policy`
+GIVETH A `The policy`
+`a 2026 policy on` v `, concluded on` `concluded on` `, insured for` `the sum insured` `, market value` `the market value` `, with` `the clauses` MEANS
+    `The policy` WITH
+        `vehicle`                                                         IS v
+        `date the contract was concluded`                                 IS `concluded on`
+        `start of the insurance period`                                   IS YMD 2026 1 1
+        `last day of the insurance period`                                IS YMD 2026 12 31
+        `sum insured`                                                     IS `the sum insured`
+        `market value when insured`                                       IS `the market value`
+        `price of the vehicle new (100%)`                                 IS 800_000_000
+        `minimum remaining-quality rate in the import customs declaration` IS NOTHING
+        `deductible stated in the contract`                               IS NOTHING
+        `reduction level stated in the contract`                          IS NOTHING
+        `premium`                                                         IS 12_000_000
+        `premium paid`                                                    IS 12_000_000
+        `last day for paying the premium`                                 IS YMD 2026 1 15
+        `the Insurer agreed that the premium may be owed`                 IS FALSE
+        `supplementary clauses`                                           IS `the clauses`
+        `other policies on the vehicle`                                   IS EMPTY
+        `the personal data clause is part of the contract`                IS TRUE
+        `the data subject agreed to the whole personal data clause`       IS TRUE
+
+GIVEN `the clauses` IS A LIST OF `A supplementary clause on the policy`
+GIVETH A `The policy`
+`the 2026 policy with` `the clauses` MEANS
+    `a 2026 policy on` `the private car` `, concluded on` (YMD 2026 1 1) `, insured for` 600_000_000 `, market value` (JUST 600_000_000) `, with` `the clauses`
+
+-- The plain policy: no supplementary clause, insured at its market value.
+`the plain policy` MEANS `the 2026 policy with` EMPTY
+
+-- The same car insured for 400,000,000 against a market value of 600,000,000.
+GIVEN `the clauses` IS A LIST OF `A supplementary clause on the policy`
+GIVETH A `The policy`
+`the under-insured policy with` `the clauses` MEANS
+    `a 2026 policy on` `the private car` `, concluded on` (YMD 2026 1 1) `, insured for` 400_000_000 `, market value` (JUST 600_000_000) `, with` `the clauses`
+
+-- Variants on the premium, the deductible and the contract's own figures.
+GIVEN `the deductible` IS A MAYBE NUMBER
+      `the reduction level` IS A MAYBE NUMBER
+      `paid` IS A NUMBER
+      `owed allowed` IS A BOOLEAN
+      `others` IS A LIST OF `Another policy on the vehicle`
+GIVETH A `The policy`
+`the plain policy with deductible` `the deductible` `, reduction level` `the reduction level` `, premium paid` `paid` `, owing allowed` `owed allowed` `, other policies` `others` MEANS
+    `The policy` WITH
+        `vehicle`                                                         IS `the private car`
+        `date the contract was concluded`                                 IS YMD 2026 1 1
+        `start of the insurance period`                                   IS YMD 2026 1 1
+        `last day of the insurance period`                                IS YMD 2026 12 31
+        `sum insured`                                                     IS 600_000_000
+        `market value when insured`                                       IS JUST 600_000_000
+        `price of the vehicle new (100%)`                                 IS 800_000_000
+        `minimum remaining-quality rate in the import customs declaration` IS NOTHING
+        `deductible stated in the contract`                               IS `the deductible`
+        `reduction level stated in the contract`                          IS `the reduction level`
+        `premium`                                                         IS 12_000_000
+        `premium paid`                                                    IS `paid`
+        `last day for paying the premium`                                 IS YMD 2026 1 15
+        `the Insurer agreed that the premium may be owed`                 IS `owed allowed`
+        `supplementary clauses`                                           IS EMPTY
+        `other policies on the vehicle`                                   IS `others`
+        `the personal data clause is part of the contract`                IS TRUE
+        `the data subject agreed to the whole personal data clause`       IS TRUE
+
+-- Variants on the insurance period (for BS05's limit by the length of the contract).
+GIVEN `the first day` IS A DATE
+      `the last day`  IS A DATE
+      `the clauses`   IS A LIST OF `A supplementary clause on the policy`
+GIVETH A `The policy`
+`a policy from` `the first day` `to` `the last day` `, with` `the clauses` MEANS
+    `The policy` WITH
+        `vehicle`                                                         IS `the private car`
+        `date the contract was concluded`                                 IS `the first day`
+        `start of the insurance period`                                   IS `the first day`
+        `last day of the insurance period`                                IS `the last day`
+        `sum insured`                                                     IS 600_000_000
+        `market value when insured`                                       IS JUST 600_000_000
+        `price of the vehicle new (100%)`                                 IS 800_000_000
+        `minimum remaining-quality rate in the import customs declaration` IS NOTHING
+        `deductible stated in the contract`                               IS NOTHING
+        `reduction level stated in the contract`                          IS NOTHING
+        `premium`                                                         IS 12_000_000
+        `premium paid`                                                    IS 12_000_000
+        `last day for paying the premium`                                 IS `the first day`
+        `the Insurer agreed that the premium may be owed`                 IS FALSE
+        `supplementary clauses`                                           IS `the clauses`
+        `other policies on the vehicle`                                   IS EMPTY
+        `the personal data clause is part of the contract`                IS TRUE
+        `the data subject agreed to the whole personal data clause`       IS TRUE
+
+-- Variants on the valuation (13.2): the market value not determined, a customs rate.
+GIVEN v IS A `The vehicle`
+      `the customs rate` IS A MAYBE NUMBER
+GIVETH A `The policy`
+`a policy with no market value on` v `, customs rate` `the customs rate` MEANS
+    `The policy` WITH
+        `vehicle`                                                         IS v
+        `date the contract was concluded`                                 IS YMD 2026 1 1
+        `start of the insurance period`                                   IS YMD 2026 1 1
+        `last day of the insurance period`                                IS YMD 2026 12 31
+        `sum insured`                                                     IS 400_000_000
+        `market value when insured`                                       IS NOTHING
+        `price of the vehicle new (100%)`                                 IS 800_000_000
+        `minimum remaining-quality rate in the import customs declaration` IS `the customs rate`
+        `deductible stated in the contract`                               IS NOTHING
+        `reduction level stated in the contract`                          IS NOTHING
+        `premium`                                                         IS 12_000_000
+        `premium paid`                                                    IS 12_000_000
+        `last day for paying the premium`                                 IS YMD 2026 1 15
+        `the Insurer agreed that the premium may be owed`                 IS FALSE
+        `supplementary clauses`                                           IS EMPTY
+        `other policies on the vehicle`                                   IS EMPTY
+        `the personal data clause is part of the contract`                IS TRUE
+        `the data subject agreed to the whole personal data clause`       IS TRUE
+
+§§ `The circumstances of the loss`
+
+-- The boolean facts of `The circumstances of the loss`, one member each, so that a test can say
+-- which hold. Test-only.
+DECLARE `A circumstance in a test` IS ONE OF
+    `fact 12.1 deliberately caused`
+    `fact 11.1 the malicious act was by an interested person`
+    `fact not in traffic`
+    `fact 12.3 no licence is required`
+    `fact 12.4 over the alcohol limit`
+    `fact 12.4 drugs`
+    `fact 12.5 prohibited manoeuvre`
+    `fact 12.6 prohibited parking`
+    `fact 12.7 driving practice`
+    `fact 12.7 driving practice agreed`
+    `fact 12.7 racing`
+    `fact 12.7 unlawful towing`
+    `fact 12.8 unlawful carriage of goods`
+    `fact 12.9 outside Vietnam`
+    `fact 12.10 war or riot`
+    `fact 12.16 fraud or abuse of trust`
+    `fact 12.17 own special equipment`
+    `fact 12.22 proven untruthful`
+    `fact 12.22 important information omitted`
+    `fact 12.22 the omission was inadvertent`
+    `fact 12.24 not re-inspected`
+
+GIVEN `the certificate` IS A `The inspection certificate`
+      `the licence` IS A `The driving licence`
+      fs IS A LIST OF `A circumstance in a test`
+GIVETH A `The circumstances of the loss`
+`the circumstances, certificate` `the certificate` `, licence` `the licence` `, with` fs MEANS
+    `The circumstances of the loss` WITH
+        `deliberately caused by the Policyholder, the Owner, the Driver or a person with an interest in the vehicle` IS elem `fact 12.1 deliberately caused` fs
+        `the malicious act was by the Policyholder, the Insured, the Owner, the Driver or a person with an interest in the vehicle` IS elem `fact 11.1 the malicious act was by an interested person` fs
+        `in traffic`                                                  IS NOT elem `fact not in traffic` fs
+        `inspection certificate`                                      IS `the certificate`
+        `driving licence`                                             IS `the licence`
+        `a licence is required for this type of vehicle`              IS NOT elem `fact 12.3 no licence is required` fs
+        `the Driver was over the legal alcohol limit`                 IS elem `fact 12.4 over the alcohol limit` fs
+        `the Driver had used drugs or prohibited stimulants`          IS elem `fact 12.4 drugs` fs
+        `a prohibited manoeuvre listed in 12.5`                       IS elem `fact 12.5 prohibited manoeuvre` fs
+        `stopped or parked where prohibited, leading to the damage`   IS elem `fact 12.6 prohibited parking` fs
+        `used for driving practice`                                   IS elem `fact 12.7 driving practice` fs
+        `driving practice was agreed`                                 IS elem `fact 12.7 driving practice agreed` fs
+        `used for racing`                                             IS elem `fact 12.7 racing` fs
+        `towing another vehicle unlawfully`                           IS elem `fact 12.7 unlawful towing` fs
+        `carrying goods unlawfully or without the loading safety rules` IS elem `fact 12.8 unlawful carriage of goods` fs
+        `in Vietnam`                                                  IS NOT elem `fact 12.9 outside Vietnam` fs
+        `war, terrorism, civil war, strike or riot`                   IS elem `fact 12.10 war or riot` fs
+        `total loss by fraud or abuse of trust`                       IS elem `fact 12.16 fraud or abuse of trust` fs
+        `caused by the vehicle's own special-purpose equipment`       IS elem `fact 12.17 own special equipment` fs
+        `claim information proven by the Insurer untruthful or forged` IS elem `fact 12.22 proven untruthful` fs
+        `important information omitted`                               IS elem `fact 12.22 important information omitted` fs
+        `the omission was inadvertent`                                IS elem `fact 12.22 the omission was inadvertent` fs
+        `overhauled, modified or converted and not yet re-inspected`   IS elem `fact 12.24 not re-inspected` fs
+
+GIVEN fs IS A LIST OF `A circumstance in a test`
+GIVETH A `The circumstances of the loss`
+`the circumstances with` fs MEANS
+    `the circumstances, certificate` `valid and in force` `, licence` `a valid licence appropriate to the vehicle` `, with` fs
+
+§§ `The conduct after the loss`
+
+DECLARE `A conduct in a test` IS ONE OF
+    `conduct force majeure`
+    `conduct assessed within 5 days`
+    `conduct hotline told`
+    `conduct mitigation not taken`
+    `conduct police not told`
+    `conduct Insurer not told at once`
+    `conduct instructions not followed`
+    `conduct parked on a slope`
+    `conduct dismantled without approval`
+    `conduct Insurer silent 5 working days`
+    `conduct scene not protected`
+    `conduct necessary`
+    `conduct claim against third party not preserved`
+    `conduct untruthful`
+    `conduct use misdeclared`
+    `conduct increase in risk not notified`
+
+GIVEN `notified on` IS A MAYBE DATE
+      `premium due` IS A NUMBER
+      cs IS A LIST OF `A conduct in a test`
+GIVETH A `The conduct after the loss`
+`the conduct, notified on` `notified on` `, premium that should have been paid` `premium due` `, where` cs MEANS
+    `The conduct after the loss` WITH
+        `date the Insurer was notified of the loss`                       IS `notified on`
+        `force majeure prevented notice`                                  IS elem `conduct force majeure` cs
+        `the Insurer assessed the damage within those 5 days`             IS elem `conduct assessed within 5 days` cs
+        `the hotline was told at the time of the accident`                IS elem `conduct hotline told` cs
+        `rescue and mitigation measures were not fully taken`             IS elem `conduct mitigation not taken` cs
+        `the police or local authority were not told at once`             IS elem `conduct police not told` cs
+        `the Insurer was not told at once`                                IS elem `conduct Insurer not told at once` cs
+        `the Insurer's instructions were not followed`                    IS elem `conduct instructions not followed` cs
+        `parked on a slope without brakes or chocks, so it rolled`        IS elem `conduct parked on a slope` cs
+        `dismantled or repaired without the Insurer's approval`           IS elem `conduct dismantled without approval` cs
+        `the Insurer gave no opinion within 5 working days of the notice` IS elem `conduct Insurer silent 5 working days` cs
+        `the scene was not protected or the vehicle was moved from it`    IS elem `conduct scene not protected` cs
+        `it was necessary for safety, to limit loss, or on an authority's order` IS elem `conduct necessary` cs
+        `the Owner did not preserve and transfer the claim against the third party` IS elem `conduct claim against third party not preserved` cs
+        `the Owner was untruthful in the claim documents`                 IS elem `conduct untruthful` cs
+        `the use of the vehicle was misdeclared, so less premium was charged` IS elem `conduct use misdeclared` cs
+        `an increase in risk was not notified`                            IS elem `conduct increase in risk not notified` cs
+        `premium that should have been paid`                              IS `premium due`
+
+GIVEN cs IS A LIST OF `A conduct in a test`
+GIVETH A `The conduct after the loss`
+`the conduct where` cs MEANS
+    `the conduct, notified on` (JUST (YMD 2026 6 10)) `, premium that should have been paid` 12_000_000 `, where` cs
+
+-- Prompt notice, on the day of the loss, and nothing else.
+`good conduct` MEANS `the conduct where` EMPTY
+
+§§ `The load and speed`
+
+GIVEN `load` IS A NUMBER
+      `persons with children` IS A NUMBER
+      `persons without children` IS A NUMBER
+      `speed` IS A MAYBE NUMBER
+GIVETH A `The load and speed`
+`carrying` `load` `, persons counting children` `persons with children` `, not counting them` `persons without children` `, speed over the limit` `speed` MEANS
+    `The load and speed` WITH
+        `load carried`                                     IS `load`
+        `persons carried, counting children under 7`       IS `persons with children`
+        `persons carried, not counting children under 7`   IS `persons without children`
+        `speed above the limit, by an authority's written conclusion` IS `speed`
+
+`normal load` MEANS `carrying` 0 `, persons counting children` 2 `, not counting them` 2 `, speed over the limit` NOTHING
+
+§§ `The damaged items`
+
+DECLARE `An item fact in a test` IS ONE OF
+    `item lost`
+    `item same cause and time as other parts`
+    `item wear or defect`
+    `item indirect loss`
+    `item consequential loss`
+    `item engine water damage`
+    `item accidental plunge`
+    `item breakdown not from an insured peril`
+    `item short circuit`
+    `item caused by the modification`
+    `item approved by the registry`
+    `item cannot be repaired`
+
+GIVEN k     IS A `A kind of part`
+      how   IS A `How the item is put right`
+      `repair cost` IS A NUMBER
+      `new cost`    IS A NUMBER
+      `used cost`   IS A NUMBER
+      fs    IS A LIST OF `An item fact in a test`
+      `agreed rate` IS A MAYBE NUMBER
+GIVETH A `A damaged item`
+`an item` k `put right by` how `, repair` `repair cost` `, new` `new cost` `, used` `used cost` `, facts` fs `, agreed rate` `agreed rate` MEANS
+    `A damaged item` WITH
+        `kind`                                                     IS k
+        `put right by`                                             IS how
+        `can be repaired`                                          IS NOT elem `item cannot be repaired` fs
+        `reasonable cost of repair`                                IS `repair cost`
+        `cost of a new replacement`                                IS `new cost`
+        `cost of the used replacement part`                        IS `used cost`
+        `lost`                                                     IS elem `item lost` fs
+        `damaged or lost by the same cause and at the same time as other parts in the same accident` IS elem `item same cause and time as other parts` fs
+        `wear and tear, inherent nature, defect, or damage in repair` IS elem `item wear or defect` fs
+        `an indirect loss: lower commercial value, or loss tied to using the vehicle` IS elem `item indirect loss` fs
+        `a consequential loss, as 12.23 defines it`                IS elem `item consequential loss` fs
+        `engine damage from water: flood water or hydrolock`       IS elem `item engine water damage` fs
+        `water entered after an accidental plunge into a pond, lake, river or stream` IS elem `item accidental plunge` fs
+        `electrical or mechanical breakdown not caused by an insured peril` IS elem `item breakdown not from an insured peril` fs
+        `electrical damage from overload, overpressure, short circuit, self-heating, arcing or leakage` IS elem `item short circuit` fs
+        `the loss was caused by the added equipment or the modification` IS elem `item caused by the modification` fs
+        `approved by the registry and within the inspection's validity` IS elem `item approved by the registry` fs
+        `depreciation rate agreed at the assessment`                IS `agreed rate`
+
+-- An ordinary part repaired for n.
+GIVEN n IS A NUMBER
+GIVETH A `A damaged item`
+`a part repaired for` n MEANS
+    `an item` `an ordinary part` `put right by` `repaired` `, repair` n `, new` (2 TIMES n) `, used` 0 `, facts` EMPTY `, agreed rate` NOTHING
+
+-- A part of kind k that cannot be repaired, replaced with a new one costing n.
+GIVEN k IS A `A kind of part`
+      n IS A NUMBER
+GIVETH A `A damaged item`
+`a` k `replaced new for` n MEANS
+    `an item` k `put right by` `replaced with a new part` `, repair` 0 `, new` n `, used` 0 `, facts` (LIST `item cannot be repaired`) `, agreed rate` NOTHING
+
+-- An ordinary part of kind k, repaired for n, with the item facts fs.
+GIVEN k  IS A `A kind of part`
+      n  IS A NUMBER
+      fs IS A LIST OF `An item fact in a test`
+GIVETH A `A damaged item`
+`a` k `repaired for` n `where` fs MEANS
+    `an item` k `put right by` `repaired` `, repair` n `, new` (2 TIMES n) `, used` 0 `, facts` fs `, agreed rate` NOTHING
+
+§§ `The loss`
+
+GIVEN `the date`  IS A DATE
+      `the peril` IS A `A peril`
+      c        IS A `The circumstances of the loss`
+      ls       IS A `The load and speed`
+      cd       IS A `The conduct after the loss`
+      `the items` IS A LIST OF `A damaged item`
+GIVETH A `The loss`
+`a loss on` `the date` `by` `the peril` `, circumstances` c `, load` ls `, conduct` cd `, items` `the items` MEANS
+    `The loss` WITH
+        `date of the loss`                                          IS `the date`
+        `peril`                                                     IS `the peril`
+        `sudden and unforeseeable`                                  IS TRUE
+        `circumstances`                                             IS c
+        `load and speed`                                            IS ls
+        `conduct`                                                   IS cd
+        `items`                                                     IS `the items`
+        `share of the painted area damaged`                         IS 0
+        `cost of repainting the damaged panels`                     IS 0
+        `cost of repainting the whole vehicle`                      IS 0
+        `cost of protecting the scene and preventing further loss`  IS 0
+        `cost of rescue and transport to the nearest repair shop`   IS 0
+        `the costs were incurred at the Insurer's request and direction` IS FALSE
+        `market value immediately before the loss`                  IS 600_000_000
+        `assessed damage`                                           IS 10_000_000
+        `assessed cost of repair`                                   IS 10_000_000
+        `a court judgment, or a decision to suspend the investigation or not to prosecute` IS FALSE
+        `the Owner asks to keep the wreck`                          IS FALSE
+        `value of the wreck, as valued`                             IS 0
+
+-- A collision on Wednesday 10 June 2026, with the given circumstances and items.
+GIVEN c  IS A `The circumstances of the loss`
+      `the items` IS A LIST OF `A damaged item`
+GIVETH A `The loss`
+`a collision with` c `, items` `the items` MEANS
+    `a loss on` (YMD 2026 6 10) `by` `collision or impact, including with another object` `, circumstances` c `, load` `normal load` `, conduct` `good conduct` `, items` `the items`
+
+-- The plain collision: one ordinary part repaired for 10,000,000, nothing amiss.
+`the plain collision` MEANS `a collision with` (`the circumstances with` EMPTY) `, items` (LIST `a part repaired for` 10_000_000)
+
+-- A loss by peril p, otherwise plain.
+GIVEN p  IS A `A peril`
+      `the items` IS A LIST OF `A damaged item`
+GIVETH A `The loss`
+`a loss by` p `, items` `the items` MEANS
+    `a loss on` (YMD 2026 6 10) `by` p `, circumstances` (`the circumstances with` EMPTY) `, load` `normal load` `, conduct` `good conduct` `, items` `the items`
+
+-- A total-loss case: the assessed damage and repair cost, and the wreck.
+GIVEN `damage`  IS A NUMBER
+      `repair`  IS A NUMBER
+      `market value before` IS A NUMBER
+      `keeps wreck` IS A BOOLEAN
+      `wreck value` IS A NUMBER
+      `the peril` IS A `A peril`
+      `judgment` IS A BOOLEAN
+GIVETH A `The loss`
+`a loss assessed at` `damage` `, repair` `repair` `, market value before` `market value before` `, wreck kept` `keeps wreck` `at` `wreck value` `, by` `the peril` `, judgment` `judgment` MEANS
+    `The loss` WITH
+        `date of the loss`                                          IS YMD 2026 6 10
+        `peril`                                                     IS `the peril`
+        `sudden and unforeseeable`                                  IS TRUE
+        `circumstances`                                             IS `the circumstances with` EMPTY
+        `load and speed`                                            IS `normal load`
+        `conduct`                                                   IS `good conduct`
+        `items`                                                     IS EMPTY
+        `share of the painted area damaged`                         IS 0
+        `cost of repainting the damaged panels`                     IS 0
+        `cost of repainting the whole vehicle`                      IS 0
+        `cost of protecting the scene and preventing further loss`  IS 0
+        `cost of rescue and transport to the nearest repair shop`   IS 0
+        `the costs were incurred at the Insurer's request and direction` IS FALSE
+        `market value immediately before the loss`                  IS `market value before`
+        `assessed damage`                                           IS `damage`
+        `assessed cost of repair`                                   IS `repair`
+        `a court judgment, or a decision to suspend the investigation or not to prosecute` IS `judgment`
+        `the Owner asks to keep the wreck`                          IS `keeps wreck`
+        `value of the wreck, as valued`                             IS `wreck value`
+
+§§ `The claim`
+
+`no earlier claims` MEANS `The earlier claims in the period` WITH
+    `indemnity already paid under BS04 in the period`    IS 0
+    `parts losses already paid under BS05 in the period` IS 0
+
+`no journey costs` MEANS `The safe-journey costs` WITH
+    `the vehicle could not move or be driven safely`                                       IS FALSE
+    `cost of overnight stay and transport to the destination for the driver and occupants` IS 0
+    `valid financial invoices were supplied`                                               IS FALSE
+
+GIVEN p IS A `The policy`
+      l IS A `The loss`
+GIVETH A `The claim`
+`a claim on` p `for` l MEANS
+    `The claim` WITH
+        `policy`             IS p
+        `loss`               IS l
+        `earlier claims`     IS `no earlier claims`
+        `safe-journey costs` IS `no journey costs`
+
+GIVEN p IS A `The policy`
+      l IS A `The loss`
+      h IS A `The earlier claims in the period`
+      j IS A `The safe-journey costs`
+GIVETH A `The claim`
+`a claim on` p `for` l `, earlier` h `, journey` j MEANS
+    `The claim` WITH
+        `policy`             IS p
+        `loss`               IS l
+        `earlier claims`     IS h
+        `safe-journey costs` IS j
+
+§§ `Non-working days`
+
+-- A HYPOTHETICAL calendar for the tests: the Saturdays and Sundays from June to October 2026,
+-- and no public holiday. It is a test value, not a statement of which days are working days in
+-- Vietnam (the rules do not say: fork F8).
+`the test calendar` MEANS
+    LIST (YMD 2026 6 6),  (YMD 2026 6 7),  (YMD 2026 6 13), (YMD 2026 6 14), (YMD 2026 6 20), (YMD 2026 6 21),
+         (YMD 2026 6 27), (YMD 2026 6 28), (YMD 2026 7 4),  (YMD 2026 7 5),  (YMD 2026 7 11), (YMD 2026 7 12),
+         (YMD 2026 7 18), (YMD 2026 7 19), (YMD 2026 7 25), (YMD 2026 7 26), (YMD 2026 8 1),  (YMD 2026 8 2),
+         (YMD 2026 10 3), (YMD 2026 10 4), (YMD 2026 10 10), (YMD 2026 10 11), (YMD 2026 10 17), (YMD 2026 10 18)

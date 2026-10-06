@@ -1,0 +1,396 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `ocar-tests-fixtures`
+IMPORT `ocar-claim`
+
+-- TESTS for how much is payable: Articles 1.15, 9, 11.2, 13, 14, 15 and 16, and BS01, BS03-BS06.
+-- Every expected value is worked by hand from the rule and the figure the source prints (the
+-- working is in the comment beside it), before the assertion was run. A failing assertion here
+-- is a finding, not a value to edit.
+--
+-- The plain policy: sum insured 600,000,000 = market value; a private car first registered in
+-- March 2022, contract January 2026, so 46 months in use (1.15), so new parts depreciate 15%
+-- (14.1.2(b), src:796-797). The loss: 10 June 2026.
+
+§ `Tests — amounts`
+
+§§ `1.15 — time in use`
+
+-- src:126-127: from the month of first registration (March 2022) to the contract month (January
+-- 2026): 2026*12+1 - (2022*12+3) = 46.
+#ASSERT `1.15 — the time in use of the vehicle, in months` `the plain policy` EQUALS 46
+-- src:127-129: imported after use abroad, made 2020: from January 2020 to January 2026 = 72.
+`the imported used car` MEANS `a car` `imported after use abroad` `, new:` FALSE `, first registered` (YMD 2023 5 1) `, made in` 2020 `, used as` `none of the uses listed in 14.1.2(b)`
+#ASSERT `1.15 — the time in use of the vehicle, in months` (`a policy with no market value on` `the imported used car` `, customs rate` (JUST (60%))) EQUALS 72
+
+§§ `13 — the value when the market value cannot be determined`
+
+-- src:739-741 with the table at src:749 (over 3 to 6 years: 70%): 800,000,000 x 70%.
+#ASSERT `13 — the value of the vehicle when insured, on` (`a policy with no market value on` `the private car` `, customs rate` NOTHING) EQUALS 560_000_000
+-- src:742-744: imported after use abroad, the customs declaration's rate: 800,000,000 x 60%.
+#ASSERT `13 — the value of the vehicle when insured, on` (`a policy with no market value on` `the imported used car` `, customs rate` (JUST (60%))) EQUALS 480_000_000
+#ASSERT REFUSED `13 — the value of the vehicle when insured, on` (`a policy with no market value on` `the imported used car` `, customs rate` NOTHING) BECAUSE "13.2(ii) takes the rate from the import customs declaration, and none is recorded"
+-- Neither limb of 13.2 reaches a vehicle imported new, or a new vehicle (finding X10).
+#ASSERT REFUSED `13 — the value of the vehicle when insured, on` (`a policy with no market value on` (`a car` `imported new` `, new:` FALSE `, first registered` (YMD 2022 3 15) `, made in` 2022 `, used as` `none of the uses listed in 14.1.2(b)`) `, customs rate` NOTHING) BECAUSE "13.2 gives no value for a new vehicle, or one imported new, whose market value cannot be determined"
+#ASSERT REFUSED `13 — the value of the vehicle when insured, on` (`a policy with no market value on` (`a car` `manufactured in Vietnam` `, new:` TRUE `, first registered` (YMD 2025 12 20) `, made in` 2025 `, used as` `none of the uses listed in 14.1.2(b)`) `, customs rate` NOTHING) BECAUSE "13.2 gives no value for a new vehicle, or one imported new, whose market value cannot be determined"
+-- The market value, where determined, is the value (13.1); 400,000,000 against 560,000,000 is
+-- insurance below value (13.2 last bullet).
+#ASSERT `13 — the value of the vehicle when insured, on` `the plain policy` EQUALS 600_000_000
+#ASSERT `13 — insured below value, on` (`a policy with no market value on` `the private car` `, customs rate` NOTHING)
+#ASSERT NOT `13 — insured below value, on` `the plain policy`
+-- 1.10: the sum insured may not exceed the market value when insured.
+#ASSERT `1.10 — the sum insured is not greater than the market value when insured` 600_000_000 600_000_000
+#ASSERT NOT `1.10 — the sum insured is not greater than the market value when insured` 600_000_001 600_000_000
+
+§§ `14.1 — the cost allowed for an item`
+
+GIVEN p IS A `The policy`
+      i IS A `A damaged item`
+GIVETH A NUMBER
+`the cost allowed on` p `for` i MEANS
+    `14.1 — the cost allowed, on` p `for` `the plain collision` `, for the item` i
+
+-- src:796-797: a new part on a car 46 months in use: 15%. 10,000,000 x 85%.
+#ASSERT `the cost allowed on` `the plain policy` `for` (`a` `an ordinary part` `replaced new for` 10_000_000) EQUALS 8_500_000
+-- src:838-839: glass and mirrors are never depreciated.
+#ASSERT `the cost allowed on` `the plain policy` `for` (`a` `glass or a mirror` `replaced new for` 10_000_000) EQUALS 10_000_000
+-- src:830-833: a battery after its first year of use: 50%.
+#ASSERT `the cost allowed on` `the plain policy` `for` (`a` `a battery` `replaced new for` 10_000_000) EQUALS 5_000_000
+-- ... and in the year of first registration: 30% (fork F28).
+`the policy on a car registered in 2026` MEANS `a 2026 policy on` (`a car` `manufactured in Vietnam` `, new:` TRUE `, first registered` (YMD 2026 1 1) `, made in` 2025 `, used as` `none of the uses listed in 14.1.2(b)`) `, concluded on` (YMD 2026 1 1) `, insured for` 600_000_000 `, market value` (JUST 600_000_000) `, with` EMPTY
+#ASSERT `the cost allowed on` `the policy on a car registered in 2026` `for` (`a` `a battery` `replaced new for` 10_000_000) EQUALS 7_000_000
+-- src:834-837: tyres at the rate agreed at the assessment, not below 30%.
+GIVEN `the agreed rate` IS A MAYBE NUMBER
+GIVETH A `A damaged item`
+`a tyre replaced new for 10,000,000 at an agreed rate of` `the agreed rate` MEANS
+    `an item` `a tyre or an inner tube` `put right by` `replaced with a new part` `, repair` 0 `, new` 10_000_000 `, used` 0 `, facts` (LIST `item cannot be repaired`, `item same cause and time as other parts`) `, agreed rate` `the agreed rate`
+#ASSERT `the cost allowed on` `the plain policy` `for` (`a tyre replaced new for 10,000,000 at an agreed rate of` (JUST (20%))) EQUALS 7_000_000
+#ASSERT `the cost allowed on` `the plain policy` `for` (`a tyre replaced new for 10,000,000 at an agreed rate of` (JUST (40%))) EQUALS 6_000_000
+#ASSERT REFUSED `the cost allowed on` `the plain policy` `for` (`a tyre replaced new for 10,000,000 at an agreed rate of` NOTHING) BECAUSE "14.1.2(d) leaves the rate for tyres, inner tubes and labels to agreement at the assessment, and none is recorded"
+-- src:819-822: an equivalent used part agreed by all three: no depreciation; its own cost.
+#ASSERT `the cost allowed on` `the plain policy` `for` (`an item` `an ordinary part` `put right by` `replaced with an equivalent used part, as the shop, the Policyholder and the Insurer agreed` `, repair` 0 `, new` 10_000_000 `, used` 4_000_000 `, facts` EMPTY `, agreed rate` NOTHING) EQUALS 4_000_000
+-- src:842-844: replacement only where the repair would cost more than 50% of a new part; else
+-- the repair cost. 5,000,000 is not more than 50% of 10,000,000; 5,000,001 is (then 85%).
+#ASSERT `the cost allowed on` `the plain policy` `for` (`an item` `an ordinary part` `put right by` `replaced with a new part` `, repair` 5_000_000 `, new` 10_000_000 `, used` 0 `, facts` EMPTY `, agreed rate` NOTHING) EQUALS 5_000_000
+#ASSERT `the cost allowed on` `the plain policy` `for` (`an item` `an ordinary part` `put right by` `replaced with a new part` `, repair` 5_000_001 `, new` 10_000_000 `, used` 0 `, facts` EMPTY `, agreed rate` NOTHING) EQUALS 8_500_000
+-- src:803-818: a taxi 46 months in use: 150% of 15% = 22.5%. 10,000,000 x 77.5%.
+`the policy on a taxi` MEANS `a 2026 policy on` (`a car` `manufactured in Vietnam` `, new:` FALSE `, first registered` (YMD 2022 3 15) `, made in` 2022 `, used as` `a taxi`) `, concluded on` (YMD 2026 1 1) `, insured for` 600_000_000 `, market value` (JUST 600_000_000) `, with` EMPTY
+#ASSERT `the cost allowed on` `the policy on a taxi` `for` (`a` `an ordinary part` `replaced new for` 10_000_000) EQUALS 7_750_000
+
+§§ `14.1.2(c) and BS01 — no depreciation, in each version`
+
+-- src:823-827 (2019 and 2022) and src:1017-1023 (BS01, 2022). A car registered January 2018.
+`the 2018 car` MEANS `a car` `manufactured in Vietnam` `, new:` FALSE `, first registered` (YMD 2018 1 15) `, made in` 2018 `, used as` `none of the uses listed in 14.1.2(b)`
+`the 2021 contract with the no-depreciation clause` MEANS `a 2026 policy on` `the 2018 car` `, concluded on` (YMD 2021 6 1) `, insured for` 600_000_000 `, market value` (JUST 600_000_000) `, with` (LIST `clause accepted and paid in full and on time:` `BS01 no depreciation on new parts and materials`)
+`the 2022 contract with BS01` MEANS `a 2026 policy on` `the 2018 car` `, concluded on` (YMD 2022 6 1) `, insured for` 600_000_000 `, market value` (JUST 600_000_000) `, with` (LIST `clause accepted and paid in full and on time:` `BS01 no depreciation on new parts and materials`)
+-- 1.15: 41 and 53 months; both 15% without the clause.
+#ASSERT `1.15 — the time in use of the vehicle, in months` `the 2021 contract with the no-depreciation clause` EQUALS 41
+#ASSERT `1.15 — the time in use of the vehicle, in months` `the 2022 contract with BS01` EQUALS 53
+-- An ordinary part: no depreciation in either version.
+#ASSERT `the cost allowed on` `the 2021 contract with the no-depreciation clause` `for` (`a` `an ordinary part` `replaced new for` 10_000_000) EQUALS 10_000_000
+#ASSERT `the cost allowed on` `the 2022 contract with BS01` `for` (`a` `an ordinary part` `replaced new for` 10_000_000) EQUALS 10_000_000
+-- A periodically replaced part (a filter): 14.1.2(c) does not except it, BS01 does.
+#ASSERT `the cost allowed on` `the 2021 contract with the no-depreciation clause` `for` (`a` `a periodically replaced consumable` `replaced new for` 10_000_000) EQUALS 10_000_000
+#ASSERT `the cost allowed on` `the 2022 contract with BS01` `for` (`a` `a periodically replaced consumable` `replaced new for` 10_000_000) EQUALS 8_500_000
+-- A battery: (c) and BS01 do not except it, (d) depreciates it "in every case" (fork F29): 50%.
+#ASSERT `the cost allowed on` `the 2022 contract with BS01` `for` (`a` `a battery` `replaced new for` 10_000_000) EQUALS 5_000_000
+
+§§ `14.1.4 — repainting`
+
+GIVEN `the share` IS A NUMBER
+GIVETH A `The loss`
+`a collision with a painted area damaged of` `the share` MEANS
+    `The loss` WITH
+        `date of the loss`                                          IS YMD 2026 6 10
+        `peril`                                                     IS `collision or impact, including with another object`
+        `sudden and unforeseeable`                                  IS TRUE
+        `circumstances`                                             IS `the circumstances with` EMPTY
+        `load and speed`                                            IS `normal load`
+        `conduct`                                                   IS `good conduct`
+        `items`                                                     IS EMPTY
+        `share of the painted area damaged`                         IS `the share`
+        `cost of repainting the damaged panels`                     IS 3_000_000
+        `cost of repainting the whole vehicle`                      IS 15_000_000
+        `cost of protecting the scene and preventing further loss`  IS 0
+        `cost of rescue and transport to the nearest repair shop`   IS 0
+        `the costs were incurred at the Insurer's request and direction` IS FALSE
+        `market value immediately before the loss`                  IS 600_000_000
+        `assessed damage`                                           IS 3_000_000
+        `assessed cost of repair`                                   IS 3_000_000
+        `a court judgment, or a decision to suspend the investigation or not to prosecute` IS FALSE
+        `the Owner asks to keep the wreck`                          IS FALSE
+        `value of the wreck, as valued`                             IS 0
+-- src:845: "trên 50%": at 50% the panels only; above it, the whole vehicle.
+#ASSERT `14.1.4 — the cost of repainting allowed for` (`a collision with a painted area damaged of` (50%)) EQUALS 3_000_000
+#ASSERT `14.1.4 — the cost of repainting allowed for` (`a collision with a painted area damaged of` (51%)) EQUALS 15_000_000
+
+§§ `14.1.2(a) and BS04 — under-insurance`
+
+-- src:785-787: 400,000,000 insured against 600,000,000: the indemnity is two thirds of the cost.
+#ASSERT `14.1.2 — the indemnity for the partial loss on` (`a claim on` (`the under-insured policy with` EMPTY) `for` `the plain collision`) EQUALS 20_000_000 DIVIDED BY 3
+#ASSERT `14.1.2 — the indemnity for the partial loss on` (`a claim on` `the plain policy` `for` `the plain collision`) EQUALS 10_000_000
+-- BS04, src:1067-1071: settled as if at full value while the sub-limit lasts.
+#ASSERT `14.1.2 — the indemnity for the partial loss on` (`a claim on` (`the under-insured policy with` (LIST `BS04 with a sub-limit of` 100_000_000)) `for` `the plain collision`) EQUALS 10_000_000
+-- ... and beyond what remains of it, nothing in the rules answers (finding X7).
+`95,000,000 already paid under BS04` MEANS `The earlier claims in the period` WITH
+    `indemnity already paid under BS04 in the period`    IS 95_000_000
+    `parts losses already paid under BS05 in the period` IS 0
+#ASSERT REFUSED `14.1.2 — the indemnity for the partial loss on` (`a claim on` (`the under-insured policy with` (LIST `BS04 with a sub-limit of` 100_000_000)) `for` `the plain collision` `, earlier` `95,000,000 already paid under BS04` `, journey` `no journey costs`) BECAUSE "BS04 does not say how a partial loss is settled beyond the sub-limit"
+#ASSERT REFUSED `14.1.2 — the indemnity for the partial loss on` (`a claim on` (`the under-insured policy with` (LIST `clause accepted and paid in full and on time:` `BS04 settlement up to a limit of liability`)) `for` `the plain collision`) BECAUSE "BS04 leaves the sub-limit to the contract, and the contract states none"
+
+§§ `15 and 12.20 — the deductible`
+
+-- src:897-900: 500,000 where the contract states none; the contract's figure where higher; and
+-- (fork F24) not below 500,000.
+#ASSERT `15 — the deductible on` `the plain policy` EQUALS 500_000
+#ASSERT `15 — the deductible on` (`the plain policy with deductible` (JUST 2_000_000) `, reduction level` NOTHING `, premium paid` 12_000_000 `, owing allowed` FALSE `, other policies` EMPTY) EQUALS 2_000_000
+#ASSERT `15 — the deductible on` (`the plain policy with deductible` (JUST 300_000) `, reduction level` NOTHING `, premium paid` 12_000_000 `, owing allowed` FALSE `, other policies` EMPTY) EQUALS 500_000
+-- src:694-695: at or below the deductible, nothing; above it, the excess.
+#ASSERT `1.8 — the amount after a deductible of` 500_000 `on` 500_000 EQUALS 0
+#ASSERT `1.8 — the amount after a deductible of` 500_000 `on` 500_001 EQUALS 1
+#ASSERT `12.20 — applies to an amount of` 500_000 `with a deductible of` 500_000
+#ASSERT NOT `12.20 — applies to an amount of` 500_001 `with a deductible of` 500_000
+
+§§ `One claim, layer by layer`
+
+GIVEN p IS A `The policy`
+      l IS A `The loss`
+GIVETH A NUMBER
+`the most payable on` p `for` l MEANS
+    `the amount payable on the claim, with no reduction under Article 16` (`a claim on` p `for` l)
+
+GIVEN p IS A `The policy`
+      l IS A `The loss`
+GIVETH A NUMBER
+`the least payable on` p `for` l MEANS
+    `the amount payable on the claim, after the largest reduction Article 16 allows` (`a claim on` p `for` l)
+
+-- The plain claim: 10,000,000 less the 500,000 deductible.
+#ASSERT `the most payable on` `the plain policy` `for` `the plain collision` EQUALS 9_500_000
+#ASSERT `the least payable on` `the plain policy` `for` `the plain collision` EQUALS 9_500_000
+-- Under-insured: two thirds of 10,000,000, less 500,000.
+#ASSERT `the most payable on` (`the under-insured policy with` EMPTY) `for` `the plain collision` EQUALS (20_000_000 DIVIDED BY 3) MINUS 500_000
+-- Excluded (12.4): nothing.
+#ASSERT `the most payable on` `the plain policy` `for` (`a collision with` (`the circumstances with` (LIST `fact 12.4 over the alcohol limit`)) `, items` (LIST `a part repaired for` 10_000_000)) EQUALS 0
+-- At the deductible (12.20): nothing; one dong over: one dong.
+#ASSERT `the most payable on` `the plain policy` `for` (`a collision with` (`the circumstances with` EMPTY) `, items` (LIST `a part repaired for` 500_000)) EQUALS 0
+#ASSERT `the most payable on` `the plain policy` `for` (`a collision with` (`the circumstances with` EMPTY) `, items` (LIST `a part repaired for` 500_001)) EQUALS 1
+
+-- 11.2 costs, at the Insurer's request: 1,000,000 + 2,000,000 added after the deductible.
+GIVEN `at the Insurer's request` IS A BOOLEAN
+GIVETH A `The loss`
+`a collision with rescue costs, at the Insurer's request:` `at the Insurer's request` MEANS
+    `The loss` WITH
+        `date of the loss`                                          IS YMD 2026 6 10
+        `peril`                                                     IS `collision or impact, including with another object`
+        `sudden and unforeseeable`                                  IS TRUE
+        `circumstances`                                             IS `the circumstances with` EMPTY
+        `load and speed`                                            IS `normal load`
+        `conduct`                                                   IS `good conduct`
+        `items`                                                     IS LIST (`a part repaired for` 10_000_000)
+        `share of the painted area damaged`                         IS 0
+        `cost of repainting the damaged panels`                     IS 0
+        `cost of repainting the whole vehicle`                      IS 0
+        `cost of protecting the scene and preventing further loss`  IS 1_000_000
+        `cost of rescue and transport to the nearest repair shop`   IS 2_000_000
+        `the costs were incurred at the Insurer's request and direction` IS `at the Insurer's request`
+        `market value immediately before the loss`                  IS 600_000_000
+        `assessed damage`                                           IS 10_000_000
+        `assessed cost of repair`                                   IS 10_000_000
+        `a court judgment, or a decision to suspend the investigation or not to prosecute` IS FALSE
+        `the Owner asks to keep the wreck`                          IS FALSE
+        `value of the wreck, as valued`                             IS 0
+#ASSERT `the most payable on` `the plain policy` `for` (`a collision with rescue costs, at the Insurer's request:` TRUE) EQUALS 12_500_000
+#ASSERT `the most payable on` `the plain policy` `for` (`a collision with rescue costs, at the Insurer's request:` FALSE) EQUALS 9_500_000
+
+-- Article 9, src:517-523: another insurer's policy of 600,000,000 on the same terms: half of
+-- 10,000,000, then the deductible.
+`another insurer's policy of 600,000,000` MEANS `Another policy on the vehicle` WITH
+    `issued by another insurer`                            IS TRUE
+    `sum insured`                                          IS 600_000_000
+    `same subject, same conditions and same insured event` IS TRUE
+    `in force at the time of the loss`                     IS TRUE
+`the policy with another insurer's` MEANS `the plain policy with deductible` NOTHING `, reduction level` NOTHING `, premium paid` 12_000_000 `, owing allowed` FALSE `, other policies` (LIST `another insurer's policy of 600,000,000`)
+#ASSERT `9 — the Insurer's share under double insurance, on` `the policy with another insurer's` EQUALS (50%)
+#ASSERT `the most payable on` `the policy with another insurer's` `for` `the plain collision` EQUALS 4_500_000
+-- src:524-526: a policy that does not overlap is left out.
+#ASSERT `9 — the Insurer's share under double insurance, on` (`the plain policy with deductible` NOTHING `, reduction level` NOTHING `, premium paid` 12_000_000 `, owing allowed` FALSE `, other policies` (LIST (`Another policy on the vehicle` WITH `issued by another insurer` IS TRUE, `sum insured` IS 600_000_000, `same subject, same conditions and same insured event` IS FALSE, `in force at the time of the loss` IS TRUE))) EQUALS 1
+
+§§ `Article 16 — the reductions`
+
+GIVEN cd IS A `The conduct after the loss`
+      ls IS A `The load and speed`
+GIVETH A `The loss`
+`a plain collision, conduct` cd `, load` ls MEANS
+    `a loss on` (YMD 2026 6 10) `by` `collision or impact, including with another object` `, circumstances` (`the circumstances with` EMPTY) `, load` ls `, conduct` cd `, items` (LIST `a part repaired for` 10_000_000)
+
+`a collision never notified` MEANS `a plain collision, conduct` (`the conduct, notified on` NOTHING `, premium that should have been paid` 12_000_000 `, where` EMPTY) `, load` `normal load`
+
+-- 16.1.1, src:916-923: never notified: 5% to 10%; the most taken is 10%: 9,500,000 x 90%.
+#ASSERT `the least payable on` `the plain policy` `for` `a collision never notified` EQUALS 8_550_000
+#ASSERT `the most payable on` `the plain policy` `for` `a collision never notified` EQUALS 9_500_000
+-- The Insurer may choose 7% (within 5%-10%), or none; not 3%.
+#ASSERT `the amount payable on the claim, at the reduction rate the Insurer chose:` (7%) `, on the claim` (`a claim on` `the plain policy` `for` `a collision never notified`) EQUALS RIGHT 8_835_000
+#ASSERT `the amount payable on the claim, at the reduction rate the Insurer chose:` 0 `, on the claim` (`a claim on` `the plain policy` `for` `a collision never notified`) EQUALS RIGHT 9_500_000
+#ASSERT `the amount payable on the claim, at the reduction rate the Insurer chose:` (3%) `, on the claim` (`a claim on` `the plain policy` `for` `a collision never notified`) EQUALS LEFT `the reduction rate is not one Article 16 allows`
+-- Notified on day 5 after the loss: in time for 16.1.1; on day 6: not. The exceptions: force
+-- majeure, an assessment within the 5 days, a call to the hotline at the time.
+#ASSERT `16.1.1 — notice of the loss was not sent within 5 days, for` (`a plain collision, conduct` (`the conduct, notified on` (JUST (YMD 2026 6 15)) `, premium that should have been paid` 12_000_000 `, where` EMPTY) `, load` `normal load`) EQUALS FALSE
+#ASSERT `16.1.1 — notice of the loss was not sent within 5 days, for` (`a plain collision, conduct` (`the conduct, notified on` (JUST (YMD 2026 6 16)) `, premium that should have been paid` 12_000_000 `, where` EMPTY) `, load` `normal load`) EQUALS TRUE
+#ASSERT `16.1.1 — notice of the loss was not sent within 5 days, for` (`a plain collision, conduct` (`the conduct, notified on` NOTHING `, premium that should have been paid` 12_000_000 `, where` (LIST `conduct force majeure`)) `, load` `normal load`) EQUALS FALSE
+#ASSERT `16.1.1 — notice of the loss was not sent within 5 days, for` (`a plain collision, conduct` (`the conduct, notified on` NOTHING `, premium that should have been paid` 12_000_000 `, where` (LIST `conduct assessed within 5 days`)) `, load` `normal load`) EQUALS FALSE
+#ASSERT `16.1.1 — notice of the loss was not sent within 5 days, for` (`a plain collision, conduct` (`the conduct, notified on` NOTHING `, premium that should have been paid` 12_000_000 `, where` (LIST `conduct hotline told`)) `, load` `normal load`) EQUALS FALSE
+-- 16.1.1 bullets 2 and 3.
+#ASSERT `16.1.1 — mitigation, reporting or instructions were not followed, for` (`a plain collision, conduct` (`the conduct where` (LIST `conduct police not told`)) `, load` `normal load`)
+#ASSERT `16.1.1 — parked on a slope without brakes or chocks, for` (`a plain collision, conduct` (`the conduct where` (LIST `conduct parked on a slope`)) `, load` `normal load`)
+-- 16.1.2, src:932-935: 20% and 50% over the limit are both in; 19% is not.
+#ASSERT `16.1.2 — speeding by 20% to 50%, for` (`a plain collision, conduct` `good conduct` `, load` (`carrying` 0 `, persons counting children` 2 `, not counting them` 2 `, speed over the limit` (JUST (20%))))
+#ASSERT `16.1.2 — speeding by 20% to 50%, for` (`a plain collision, conduct` `good conduct` `, load` (`carrying` 0 `, persons counting children` 2 `, not counting them` 2 `, speed over the limit` (JUST (50%))))
+#ASSERT NOT `16.1.2 — speeding by 20% to 50%, for` (`a plain collision, conduct` `good conduct` `, load` (`carrying` 0 `, persons counting children` 2 `, not counting them` 2 `, speed over the limit` (JUST (19%))))
+-- 16.1.3, src:936-940: save where necessary, and (fork F26) after five working days' silence.
+#ASSERT `16.1.3 — dismantled or repaired without approval, for` (`a plain collision, conduct` (`the conduct where` (LIST `conduct dismantled without approval`)) `, load` `normal load`)
+#ASSERT NOT `16.1.3 — dismantled or repaired without approval, for` (`a plain collision, conduct` (`the conduct where` (LIST `conduct dismantled without approval`, `conduct necessary`)) `, load` `normal load`)
+#ASSERT NOT `16.1.3 — dismantled or repaired without approval, for` (`a plain collision, conduct` (`the conduct where` (LIST `conduct dismantled without approval`, `conduct Insurer silent 5 working days`)) `, load` `normal load`)
+-- 16.1.4, src:941-951.
+#ASSERT `16.1.4 — the scene was not protected or the vehicle was moved, for` (`a plain collision, conduct` (`the conduct where` (LIST `conduct scene not protected`)) `, load` `normal load`)
+#ASSERT NOT `16.1.4 — the scene was not protected or the vehicle was moved, for` (`a plain collision, conduct` (`the conduct where` (LIST `conduct scene not protected`, `conduct necessary`)) `, load` `normal load`)
+#ASSERT `16.1.4 — the claim against the third party was not preserved or transferred, for` (`a plain collision, conduct` (`the conduct where` (LIST `conduct claim against third party not preserved`)) `, load` `normal load`)
+#ASSERT `16.1.4 — the claim documents were untruthful, for` (`a plain collision, conduct` (`the conduct where` (LIST `conduct untruthful`)) `, load` `normal load`)
+-- 16.2, src:973-976: late notice (to 10%) and an unprotected scene (to 30%): one reduction, the
+-- highest: up to 30%, and 7% is within it.
+`a collision never notified, scene not protected` MEANS `a plain collision, conduct` (`the conduct, notified on` NOTHING `, premium that should have been paid` 12_000_000 `, where` (LIST `conduct scene not protected`)) `, load` `normal load`
+#ASSERT `16.2 — the highest rate the Insurer may apply, on` `the plain policy` `for` `a collision never notified, scene not protected` EQUALS (30%)
+#ASSERT `the least payable on` `the plain policy` `for` `a collision never notified, scene not protected` EQUALS 6_650_000
+#ASSERT `16 — the Insurer may apply a reduction, on` `the plain policy` `for` `a collision never notified, scene not protected` `, at the rate` (7%)
+#ASSERT NOT `16 — the Insurer may apply a reduction, on` `the plain policy` `for` `a collision never notified, scene not protected` `, at the rate` (35%)
+-- 16.1.5, src:962-964: 7 persons in a 5-seat car is 40% over: reduced by 40%; 6 persons, 20%,
+-- is not "over 20%". (12.18 counts without children: 6 of 5 is 20%, no exclusion.)
+#ASSERT `the least payable on` `the plain policy` `for` (`a plain collision, conduct` `good conduct` `, load` (`carrying` 0 `, persons counting children` 7 `, not counting them` 6 `, speed over the limit` NOTHING)) EQUALS 5_700_000
+#ASSERT `the least payable on` `the plain policy` `for` (`a plain collision, conduct` `good conduct` `, load` (`carrying` 0 `, persons counting children` 6 `, not counting them` 6 `, speed over the limit` NOTHING)) EQUALS 9_500_000
+-- 16.1.6, src:965-972: use misdeclared; 12,000,000 paid against 15,000,000 due: x 12/15.
+#ASSERT `the least payable on` `the plain policy` `for` (`a plain collision, conduct` (`the conduct, notified on` (JUST (YMD 2026 6 10)) `, premium that should have been paid` 15_000_000 `, where` (LIST `conduct use misdeclared`)) `, load` `normal load`) EQUALS 7_600_000
+-- The 16.1 chapeau: a contract that states its own reduction level is declined (finding X16).
+#ASSERT REFUSED `16.1 — the reductions open to the Insurer, on` (`the plain policy with deductible` NOTHING `, reduction level` (JUST (5%)) `, premium paid` 12_000_000 `, owing allowed` FALSE `, other policies` EMPTY) `for` `the plain collision` BECAUSE "16.1 lets the contract state a reduction level, but its comparative is incomplete"
+
+§§ `14.2 — total loss`
+
+-- src:849-852: damage MORE THAN 75% of 600,000,000 (450,000,000), or repair cost 75% OR MORE.
+#ASSERT NOT `14.2.1 — a total loss by the extent of the damage, for` (`a loss assessed at` 450_000_000 `, repair` 440_000_000 `, market value before` 600_000_000 `, wreck kept` FALSE `at` 0 `, by` `collision or impact, including with another object` `, judgment` FALSE)
+#ASSERT     `14.2.1 — a total loss by the extent of the damage, for` (`a loss assessed at` 450_000_001 `, repair` 440_000_000 `, market value before` 600_000_000 `, wreck kept` FALSE `at` 0 `, by` `collision or impact, including with another object` `, judgment` FALSE)
+#ASSERT     `14.2.1 — a total loss by the extent of the damage, for` (`a loss assessed at` 440_000_000 `, repair` 450_000_000 `, market value before` 600_000_000 `, wreck kept` FALSE `at` 0 `, by` `collision or impact, including with another object` `, judgment` FALSE)
+-- src:867-871: the market value before the loss, not more than the sum insured; no deductible
+-- on a total loss (fork F25).
+-- (Damage of 600,000,000 is over 75% of 700,000,000 = 525,000,000. A first draft of this test
+-- had damage of 500,000,000, which is NOT a total loss against 700,000,000: the facts were
+-- wrong for the case meant, and were corrected; the expected value was not touched.)
+#ASSERT `the most payable on` `the plain policy` `for` (`a loss assessed at` 600_000_000 `, repair` 600_000_000 `, market value before` 700_000_000 `, wreck kept` FALSE `at` 0 `, by` `collision or impact, including with another object` `, judgment` FALSE) EQUALS 600_000_000
+#ASSERT `the most payable on` `the plain policy` `for` (`a loss assessed at` 500_000_000 `, repair` 500_000_000 `, market value before` 550_000_000 `, wreck kept` FALSE `at` 0 `, by` `collision or impact, including with another object` `, judgment` FALSE) EQUALS 550_000_000
+-- src:880-888: the Owner keeps the wreck valued at 50,000,000: 600,000,000 - 50,000,000.
+#ASSERT `the most payable on` `the plain policy` `for` (`a loss assessed at` 500_000_000 `, repair` 500_000_000 `, market value before` 600_000_000 `, wreck kept` TRUE `at` 50_000_000 `, by` `collision or impact, including with another object` `, judgment` FALSE) EQUALS 550_000_000
+-- Under-insured (400 of 600): the Insurer's share of a 60,000,000 wreck is 40,000,000 (fork F30):
+-- min(600,000,000, 400,000,000) - 40,000,000.
+#ASSERT `the most payable on` (`the under-insured policy with` EMPTY) `for` (`a loss assessed at` 500_000_000 `, repair` 500_000_000 `, market value before` 600_000_000 `, wreck kept` TRUE `at` 60_000_000 `, by` `collision or impact, including with another object` `, judgment` FALSE) EQUALS 360_000_000
+-- src:853-856: theft of the whole vehicle: nothing until a judgment or a decision; then the
+-- total-loss amount.
+#ASSERT `the most payable on` `the plain policy` `for` (`a loss assessed at` 0 `, repair` 0 `, market value before` 600_000_000 `, wreck kept` FALSE `at` 0 `, by` `theft or robbery of the whole vehicle` `, judgment` FALSE) EQUALS 0
+#ASSERT `the most payable on` `the plain policy` `for` (`a loss assessed at` 0 `, repair` 0 `, market value before` 600_000_000 `, wreck kept` FALSE `at` 0 `, by` `theft or robbery of the whole vehicle` `, judgment` TRUE) EQUALS 600_000_000
+
+§§ `BS03 — flood damage`
+
+`an engine flooded, repaired for 50,000,000` MEANS `a` `an ordinary part` `repaired for` 50_000_000 `where` (LIST `item engine water damage`)
+`a drive into flood water` MEANS `a loss by` `driving into flood water` `, items` (LIST `an engine flooded, repaired for 50,000,000`)
+`a flood catastrophe flooding the engine` MEANS `a loss by` `a natural catastrophe` `, items` (LIST `an engine flooded, repaired for 50,000,000`)
+`the policy with BS03, deductible agreed at 1,000,000` MEANS `the 2026 policy with` (LIST (`A supplementary clause on the policy` WITH `clause` IS `BS03 flood damage`, `accepted by the Insurer` IS TRUE, `premium paid in full` IS TRUE, `premium paid on time` IS TRUE, `sub-limit in the contract` IS NOTHING, `benefit limit in the contract` IS NOTHING, `deductible otherwise agreed` IS JUST 1_000_000, `number of losses otherwise agreed` IS NOTHING))
+-- src:1051-1057: covered with BS03; deductible 10% of 50,000,000 = 5,000,000 (above 3,000,000).
+#ASSERT `the most payable on` (`the 2026 policy with` (LIST `clause accepted and paid in full and on time:` `BS03 flood damage`)) `for` `a drive into flood water` EQUALS 45_000_000
+#ASSERT `the most payable on` `the plain policy` `for` `a drive into flood water` EQUALS 0
+#ASSERT `the most payable on` `the policy with BS03, deductible agreed at 1,000,000` `for` `a drive into flood water` EQUALS 49_000_000
+-- A natural catastrophe: the engine is excluded by 12.12 without BS03; with it, BS03's deductible
+-- applies (fork F15).
+#ASSERT `the most payable on` `the plain policy` `for` `a flood catastrophe flooding the engine` EQUALS 0
+#ASSERT `the most payable on` (`the 2026 policy with` (LIST `clause accepted and paid in full and on time:` `BS03 flood damage`)) `for` `a flood catastrophe flooding the engine` EQUALS 45_000_000
+-- BS03 reaches engine and electrical damage only: a seat soaked on the drive is not covered.
+#ASSERT `the most payable on` (`the 2026 policy with` (LIST `clause accepted and paid in full and on time:` `BS03 flood damage`)) `for` (`a loss by` `driving into flood water` `, items` (LIST `a part repaired for` 5_000_000)) EQUALS 0
+
+§§ `BS05 — loss of parts`
+
+`a mirror assembly stolen` MEANS `an item` `an ordinary part` `put right by` `replaced with a new part` `, repair` 0 `, new` 10_000_000 `, used` 0 `, facts` (LIST `item lost`, `item cannot be repaired`) `, agreed rate` NOTHING
+`a remote stolen` MEANS `an item` `a key or a remote` `put right by` `replaced with a new part` `, repair` 0 `, new` 3_000_000 `, used` 0 `, facts` (LIST `item lost`, `item cannot be repaired`) `, agreed rate` NOTHING
+-- src:1082-1085, 1100-1103: 10,000,000 x 85% = 8,500,000; deductible 20% = 1,700,000, so the
+-- 2,000,000 floor: 6,500,000.
+#ASSERT `the most payable on` (`the 2026 policy with` (LIST `clause accepted and paid in full and on time:` `BS05 loss of parts`)) `for` (`a loss by` `theft or robbery of parts` `, items` (LIST `a mirror assembly stolen`)) EQUALS 6_500_000
+#ASSERT `the most payable on` `the plain policy` `for` (`a loss by` `theft or robbery of parts` `, items` (LIST `a mirror assembly stolen`)) EQUALS 0
+-- Keys and remotes are left out (src:1084-1085).
+#ASSERT `the most payable on` (`the 2026 policy with` (LIST `clause accepted and paid in full and on time:` `BS05 loss of parts`)) `for` (`a loss by` `theft or robbery of parts` `, items` (LIST `a remote stolen`)) EQUALS 0
+-- The limit, src:1097-1099: 2 losses for 12 to 18 months, 3 over 18; under 12, none stated.
+#ASSERT `BS05 — the number of parts losses covered on` (`a policy from` (YMD 2026 1 1) `to` (YMD 2026 12 31) `, with` (LIST `clause accepted and paid in full and on time:` `BS05 loss of parts`)) EQUALS 2
+#ASSERT `BS05 — the number of parts losses covered on` (`a policy from` (YMD 2026 1 1) `to` (YMD 2027 6 30) `, with` (LIST `clause accepted and paid in full and on time:` `BS05 loss of parts`)) EQUALS 2
+#ASSERT `BS05 — the number of parts losses covered on` (`a policy from` (YMD 2026 1 1) `to` (YMD 2027 7 1) `, with` (LIST `clause accepted and paid in full and on time:` `BS05 loss of parts`)) EQUALS 3
+#ASSERT REFUSED `BS05 — the number of parts losses covered on` (`a policy from` (YMD 2026 1 1) `to` (YMD 2026 12 30) `, with` (LIST `clause accepted and paid in full and on time:` `BS05 loss of parts`)) BECAUSE "BS05 states no limit for a contract shorter than 12 months"
+
+§§ `BS06 — safe journey; BS02 — repair shop`
+
+GIVEN `the cost` IS A NUMBER
+      `invoices`  IS A BOOLEAN
+GIVETH A `The safe-journey costs`
+`journey costs of` `the cost` `, invoices:` `invoices` MEANS
+    `The safe-journey costs` WITH
+        `the vehicle could not move or be driven safely`                                       IS TRUE
+        `cost of overnight stay and transport to the destination for the driver and occupants` IS `the cost`
+        `valid financial invoices were supplied`                                               IS `invoices`
+-- src:1106-1115: up to the limit in the contract, on valid invoices.
+#ASSERT `the safe-journey benefit on the claim` (`a claim on` (`the 2026 policy with` (LIST `BS06 with a limit of` 5_000_000)) `for` `the plain collision` `, earlier` `no earlier claims` `, journey` (`journey costs of` 3_000_000 `, invoices:` TRUE)) EQUALS 3_000_000
+#ASSERT `the safe-journey benefit on the claim` (`a claim on` (`the 2026 policy with` (LIST `BS06 with a limit of` 5_000_000)) `for` `the plain collision` `, earlier` `no earlier claims` `, journey` (`journey costs of` 8_000_000 `, invoices:` TRUE)) EQUALS 5_000_000
+#ASSERT `the safe-journey benefit on the claim` (`a claim on` (`the 2026 policy with` (LIST `BS06 with a limit of` 5_000_000)) `for` `the plain collision` `, earlier` `no earlier claims` `, journey` (`journey costs of` 3_000_000 `, invoices:` FALSE)) EQUALS 0
+#ASSERT `the safe-journey benefit on the claim` (`a claim on` `the plain policy` `for` `the plain collision` `, earlier` `no earlier claims` `, journey` (`journey costs of` 3_000_000 `, invoices:` TRUE)) EQUALS 0
+#ASSERT REFUSED `the safe-journey benefit on the claim` (`a claim on` (`the 2026 policy with` (LIST `clause accepted and paid in full and on time:` `BS06 safe journey`)) `for` `the plain collision` `, earlier` `no earlier claims` `, journey` (`journey costs of` 3_000_000 `, invoices:` TRUE)) BECAUSE "BS06 leaves the benefit limit to the contract, and the contract states none"
+-- BS02, src:1029-1036: the chosen shop's price only up to the reasonable price nearby.
+#ASSERT `BS02 — the repair cost OPES accepts` 12_000_000 10_000_000 FALSE EQUALS 10_000_000
+#ASSERT `BS02 — the repair cost OPES accepts` 9_000_000 10_000_000 FALSE EQUALS 9_000_000
+#ASSERT `BS02 — the repair cost OPES accepts` 12_000_000 10_000_000 TRUE EQUALS 12_000_000
+
+§§ `The layers together`
+
+-- One claim through every layer: cover, item exclusions, depreciation, 14.1.3, repainting,
+-- under-insurance, deductible, the Article 16 reduction, 11.2 costs, the cap.
+--   bumper, new 12,000,000, cannot be repaired: x 85%          = 10,200,000  (14.1.2(b))
+--   windscreen glass, new 6,000,000:                            =  6,000,000  (14.1.2(d) note)
+--   headlamp: new chosen, repairable at 2,000,000 of 5,000,000:  =  2,000,000  (14.1.3)
+--   tyre, damaged alone, new 3,000,000:                         =          0  (12.14)
+--   door panel repaired:                                        =  4,000,000
+--   paint, 30% of the area: the damaged panels                  =  3,000,000  (14.1.4)
+--   cost of putting it right                                    = 25,200,000
+--   insured 400,000,000 of 600,000,000: x 2/3                   = 16,800,000  (14.1.2(a))
+--   less the 500,000 deductible                                 = 16,300,000  (15.2)
+--   notified on the 7th day: 16.1.1, up to 10%: x 90%           = 14,670,000  (16.1.1, 16.2)
+--   plus towing to the shop at the Insurer's request, 2,000,000 = 16,670,000  (11.2)
+--   not more than 400,000,000                                   = 16,670,000  (11.2 last bullet)
+`the layered collision` MEANS `The loss` WITH
+    `date of the loss`                                          IS YMD 2026 6 10
+    `peril`                                                     IS `collision or impact, including with another object`
+    `sudden and unforeseeable`                                  IS TRUE
+    `circumstances`                                             IS `the circumstances with` EMPTY
+    `load and speed`                                            IS `normal load`
+    `conduct`                                                   IS `the conduct, notified on` (JUST (YMD 2026 6 17)) `, premium that should have been paid` 12_000_000 `, where` EMPTY
+    `items`                                                     IS LIST (`a` `an ordinary part` `replaced new for` 12_000_000)
+                                                                      , (`a` `glass or a mirror` `replaced new for` 6_000_000)
+                                                                      , (`an item` `an ordinary part` `put right by` `replaced with a new part` `, repair` 2_000_000 `, new` 5_000_000 `, used` 0 `, facts` EMPTY `, agreed rate` NOTHING)
+                                                                      , (`a` `a tyre or an inner tube` `replaced new for` 3_000_000)
+                                                                      , (`a part repaired for` 4_000_000)
+    `share of the painted area damaged`                         IS (30%)
+    `cost of repainting the damaged panels`                     IS 3_000_000
+    `cost of repainting the whole vehicle`                      IS 15_000_000
+    `cost of protecting the scene and preventing further loss`  IS 0
+    `cost of rescue and transport to the nearest repair shop`   IS 2_000_000
+    `the costs were incurred at the Insurer's request and direction` IS TRUE
+    `market value immediately before the loss`                  IS 600_000_000
+    `assessed damage`                                           IS 25_200_000
+    `assessed cost of repair`                                   IS 25_200_000
+    `a court judgment, or a decision to suspend the investigation or not to prosecute` IS FALSE
+    `the Owner asks to keep the wreck`                          IS FALSE
+    `value of the wreck, as valued`                             IS 0
+#ASSERT `14.1 — the reasonable cost of putting the partial loss right, on` (`the under-insured policy with` EMPTY) `for` `the layered collision` EQUALS 25_200_000
+#ASSERT `14.1.2 — the indemnity for the partial loss on` (`a claim on` (`the under-insured policy with` EMPTY) `for` `the layered collision`) EQUALS 16_800_000
+#ASSERT `the most payable on` (`the under-insured policy with` EMPTY) `for` `the layered collision` EQUALS 18_300_000
+#ASSERT `the least payable on` (`the under-insured policy with` EMPTY) `for` `the layered collision` EQUALS 16_670_000
