@@ -1,0 +1,137 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `ita-types`
+IMPORT `ita-withholding-credits`
+IMPORT `ita-process`
+IMPORT `ita-offences`
+IMPORT `ita-concessions`
+IMPORT `ita-administration`
+
+-- Income Tax Act 1947 — TESTS: WITHHOLDING, CREDITS, PROCESS, OFFENCES,
+-- CONCESSIONARY RATES, ADMINISTRATION. Expected values worked by hand from
+-- ../source/ITA1947.txt; arithmetic shown where not obvious.
+
+§ `Tests — process`
+
+§§ `Withholding (ss 45-45H)`
+
+#ASSERT `the withholding rate on` `interest to an individual or Hindu joint family` EQUALS 24%
+#ASSERT `the withholding rate on` `interest to any other person` EQUALS 17%
+#ASSERT `the withholding rate on` `interest or s 12(6) payment within s 43(3)` EQUALS 15%
+#ASSERT `the withholding rate on` `royalty or s 12(7)(a)-(b) payment within s 43(3A)` EQUALS 10%
+#ASSERT `the withholding rate on` `director's remuneration to a non-resident director` EQUALS 24%
+#ASSERT `the withholding rate on` `consideration for real property disposed of by a non-resident trader` EQUALS 15%
+#ASSERT `the withholding rate on` `commission to a licensed international market agent` EQUALS 3%
+-- s 45(4)(a): the 15th day of the second month after the month of payment
+#ASSERT `the last day to pay over tax withheld from a payment on` (YMD 2026 3 20) EQUALS YMD 2026 5 15
+#ASSERT `the last day to pay over tax withheld from a payment on` (YMD 2026 11 30) EQUALS YMD 2027 1 15
+-- s 45(4): 5%, then 1% a completed month from 30 days after the due date, the 1%s capped at 15%
+#ASSERT `the late withholding penalty on` 10000 `due on` (YMD 2026 5 15) `, as at` (YMD 2026 5 15) EQUALS 0
+#ASSERT `the late withholding penalty on` 10000 `due on` (YMD 2026 5 15) `, as at` (YMD 2026 5 16) EQUALS 500
+-- 30 days after 15 May is 14 June; the first completed month ends 14 July
+#ASSERT `the late withholding penalty on` 10000 `due on` (YMD 2026 5 15) `, as at` (YMD 2026 7 14) EQUALS 600
+#ASSERT `the late withholding penalty on` 10000 `due on` (YMD 2026 5 15) `, as at` (YMD 2030 1 1) EQUALS 2000
+-- s 45(5), (6)
+#ASSERT `the penalty for not notifying tax deducted of` 10000 `, previous convictions` 0 `, individual:` TRUE EQUALS `Withholding offence penalty` OF 30000, 10000, 36, 0
+#ASSERT `the penalty for not notifying tax deducted of` 10000 `, previous convictions` 2 `, individual:` TRUE EQUALS `Withholding offence penalty` OF 30000, 10000, 36, 6
+-- s 45(9)
+#ASSERT     `withholding is excepted for` `interest from qualifying debt securities` `, dated` (YMD 2028 12 31)
+#ASSERT NOT `withholding is excepted for` `interest from qualifying debt securities` `, dated` (YMD 2029 1 1)
+#ASSERT     `withholding is excepted for` `interest to a Singapore branch of a foreign company` `, dated` (YMD 2014 2 21)
+#ASSERT NOT `withholding is excepted for` `none` `, dated` (YMD 2026 1 1)
+
+§§ `Foreign tax credits (ss 50, 50C)`
+
+-- s 50(3): limit = 100,000 x 170,000 / 1,000,000 = 17,000
+#ASSERT `the foreign tax credit for foreign tax of` 20000 `on income of` 100000 `, tax before credits` 170000 `, assessable income` 1000000 `, resident:` TRUE EQUALS 17000
+#ASSERT `the foreign tax credit for foreign tax of` 10000 `on income of` 100000 `, tax before credits` 170000 `, assessable income` 1000000 `, resident:` TRUE EQUALS 10000
+#ASSERT `the foreign tax credit for foreign tax of` 10000 `on income of` 100000 `, tax before credits` 170000 `, assessable income` 1000000 `, resident:` FALSE EQUALS 0
+-- s 50C(4): lower of 200,000 x 17% = 34,000 and 30,000
+#ASSERT `the pooled foreign tax credit on elected income of` 200000 `, foreign taxes` 30000 `, tax before credits` 170000 `, assessable income` 1000000 EQUALS 30000
+#ASSERT `the pooled foreign tax credit on elected income of` 200000 `, foreign taxes` 40000 `, tax before credits` 170000 `, assessable income` 1000000 EQUALS 34000
+-- s 50(4)
+#ASSERT `the total foreign tax credits allowed, credits` (LIST 10000, 20000) `, tax payable` 25000 EQUALS 25000
+#ASSERT `who is charged, incapacitated:` FALSE `, non-resident with agent:` TRUE `, deceased:` TRUE `, joint trustees:` FALSE EQUALS `the executor of a deceased person`
+#ASSERT `who is charged, incapacitated:` TRUE `, non-resident with agent:` FALSE `, deceased:` FALSE `, joint trustees:` FALSE EQUALS `the trustee, guardian or committee of an incapacitated person`
+#ASSERT `who is charged, incapacitated:` FALSE `, non-resident with agent:` FALSE `, deceased:` FALSE `, joint trustees:` FALSE EQUALS `the person in their own name`
+
+§§ `Returns, records, assessments (ss 62-75)`
+
+-- s 62(4): 3 months from 1 January end on 31 March; 14 days later is 14 April
+#ASSERT `the last day to notify chargeability for YA` 2026 EQUALS YMD 2026 4 14
+#ASSERT `the last day for a new arrival to notify chargeability, arriving` (YMD 2026 3 31) EQUALS YMD 2026 4 30
+#ASSERT `the last day to file an estimate of chargeable income for YA` 2026 `, individual:` FALSE `, period ending` (YMD 2025 12 31) EQUALS JUST (YMD 2026 3 31)
+#ASSERT `the last day to file an estimate of chargeable income for YA` 2026 `, individual:` TRUE `, period ending` (YMD 2025 12 31) EQUALS NOTHING
+#ASSERT `the last day to file an estimate of chargeable income for YA` 2025 `, individual:` TRUE `, period ending` (YMD 2024 12 31) EQUALS JUST (YMD 2025 3 31)
+#ASSERT `the last year records must be kept for YA` 2025 EQUALS 2030
+#ASSERT     `numbered receipts must be issued, goods` 20000 `, services` 0
+#ASSERT NOT `numbered receipts must be issued, goods` 18000 `, services` 12000
+-- s 74(1): within 4 years after the expiry of YA 2025, i.e. by 31 December 2029
+#ASSERT     `the Comptroller may still assess YA` 2025 `on` (YMD 2029 12 31) `, fraud or wilful default:` FALSE `, MAP or APA:` FALSE
+#ASSERT NOT `the Comptroller may still assess YA` 2025 `on` (YMD 2030 1 1) `, fraud or wilful default:` FALSE `, MAP or APA:` FALSE
+#ASSERT     `the Comptroller may still assess YA` 2025 `on` (YMD 2040 1 1) `, fraud or wilful default:` TRUE `, MAP or APA:` FALSE
+#ASSERT     `the Comptroller may waive an assessment of` 15 `, prescribed amount` NOTHING
+#ASSERT NOT `the Comptroller may waive an assessment of` 16 `, prescribed amount` NOTHING
+#ASSERT     `the Comptroller may waive an assessment of` 16 `, prescribed amount` (JUST 20)
+
+§§ `Objections, appeals, payment, refunds (ss 76-93A)`
+
+#ASSERT `the last day to object, a company:` TRUE `, notice served on` (YMD 2026 5 10) EQUALS YMD 2026 7 10
+#ASSERT `the last day to object, a company:` FALSE `, notice served on` (YMD 2026 5 10) EQUALS YMD 2026 6 9
+#ASSERT `the appeal deadlines after a refusal on` (YMD 2026 6 1) `, notice lodged on` (JUST (YMD 2026 6 20)) EQUALS `Appeal deadlines` OF (YMD 2026 7 1), JUST (YMD 2026 7 20)
+#ASSERT     `an appeal from the Board lies, amount` 201 `, question of law:` TRUE
+#ASSERT NOT `an appeal from the Board lies, amount` 200 `, question of law:` TRUE
+#ASSERT `the last day to pay tax assessed by a notice served on` (YMD 2026 5 10) EQUALS YMD 2026 6 10
+-- s 87: 5% the day after; 1% a completed month from 60 days after that, capped at 12%
+#ASSERT (`the late payment penalty on tax of` 10000 `due by` (YMD 2026 6 10) `, as at` (YMD 2026 6 10))'s `total` EQUALS 0
+#ASSERT (`the late payment penalty on tax of` 10000 `due by` (YMD 2026 6 10) `, as at` (YMD 2026 6 11))'s `total` EQUALS 500
+-- imposed 11 June; 60 days later is 10 August; first completed month ends 10 September
+#ASSERT (`the late payment penalty on tax of` 10000 `due by` (YMD 2026 6 10) `, as at` (YMD 2026 9 9))'s `total` EQUALS 500
+#ASSERT (`the late payment penalty on tax of` 10000 `due by` (YMD 2026 6 10) `, as at` (YMD 2026 9 10))'s `total` EQUALS 600
+#ASSERT (`the late payment penalty on tax of` 10000 `due by` (YMD 2026 6 10) `, as at` (YMD 2035 1 1))'s `total` EQUALS 1700
+#ASSERT `the last day to pay a demand note served on` (YMD 2026 7 1) EQUALS YMD 2026 8 1
+#ASSERT     `a repayment claim for YA` 2025 `made on` (YMD 2029 12 31) `is in time`
+#ASSERT NOT `a repayment claim for YA` 2025 `made on` (YMD 2030 1 1) `is in time`
+#ASSERT     `error relief may be applied for, the assessment made in YA` 2025 `, applied on` (YMD 2029 12 31) `, undocumented related-party error:` FALSE
+#ASSERT NOT `error relief may be applied for, the assessment made in YA` 2025 `, applied on` (YMD 2029 12 31) `, undocumented related-party error:` TRUE
+#ASSERT `the day a posted notice is served, ordinarily received on` (YMD 2026 5 12) EQUALS YMD 2026 5 13
+
+§§ `Offences (Part 20)`
+
+#ASSERT `the penalty for` `none shown` `, tax undercharged` 10000 `, earlier s 96 convictions` 0 `, earlier s 96A convictions` 0 EQUALS `Tax penalty` OF 10000, 0, 0, 0
+#ASSERT `the penalty for` `without reasonable excuse or through negligence` `, tax undercharged` 10000 `, earlier s 96 convictions` 0 `, earlier s 96A convictions` 0 EQUALS `Tax penalty` OF 20000, 5000, 36, 0
+#ASSERT `the penalty for` `wilfully with intent to evade` `, tax undercharged` 10000 `, earlier s 96 convictions` 0 `, earlier s 96A convictions` 0 EQUALS `Tax penalty` OF 30000, 10000, 36, 0
+#ASSERT `the penalty for` `wilfully with intent to evade` `, tax undercharged` 10000 `, earlier s 96 convictions` 2 `, earlier s 96A convictions` 0 EQUALS `Tax penalty` OF 30000, 10000, 36, 6
+#ASSERT `the penalty for` `wilfully, by false books or by fraud, art or contrivance` `, tax undercharged` 10000 `, earlier s 96 convictions` 0 `, earlier s 96A convictions` 0 EQUALS `Tax penalty` OF 40000, 50000, 60, 0
+#ASSERT `the penalty for` `wilfully, by false books or by fraud, art or contrivance` `, tax undercharged` 10000 `, earlier s 96 convictions` 0 `, earlier s 96A convictions` 1 EQUALS `Tax penalty` OF 40000, 50000, 60, 6
+#ASSERT `the penalty for failing to file, years in default` 1 `, tax assessed` 8000 `, repeat:` FALSE EQUALS `Filing penalty` OF 0, 5000, 0, 6
+#ASSERT `the penalty for failing to file, years in default` 2 `, tax assessed` 8000 `, repeat:` TRUE EQUALS `Filing penalty` OF 16000, 5000, 100, 6
+#ASSERT `the maximum penalty for` `s 94 — any contravention with no other penalty` EQUALS `Fixed penalty` OF 5000, 6, 0
+#ASSERT `the maximum penalty for` `s 65C(1) — failing to comply with a notice under ss 64-65B` EQUALS `Fixed penalty` OF 10000, 12, 100
+#ASSERT `the maximum penalty for` `s 98 — obstructing the Comptroller or an officer` EQUALS `Fixed penalty` OF 10000, 12, 0
+#ASSERT `the maximum penalty for` `s 34F(8) — transfer-pricing documentation` EQUALS `Fixed penalty` OF 10000, 0, 0
+#ASSERT `the total owed, tax` 10000 `and penalty` 20000 EQUALS 30000
+
+§§ `Concessionary rates and the tonnage basis`
+
+#ASSERT `the rates allowed under` `s 43I global trading company` EQUALS LIST 5%, 10%, 15%
+#ASSERT `the concessionary tax under` `s 43I global trading company` `at` (10%) `on` 1000000 EQUALS 100000
+#ASSERT REFUSED `the concessionary tax under` `s 43I global trading company` `at` (8%) `on` 1000000
+#ASSERT `the concessionary tax under` `s 43X intellectual property income` `at` (5%) `on` 1000000 EQUALS 50000
+-- Twelfth Schedule: 5,000 NT, not green: 10 x 0.90 + 40 x 0.60 = 33 a day; 365 days = 12,045
+#ASSERT `the tonnage income for a ship of` 5000 `NT, green:` FALSE `, days used` 365 EQUALS 12045
+-- 10,000 NT green: 10 x 0.60 + 90 x 0.30 = 33 (the Schedule's "First 10,000 NT ... $33")
+#ASSERT `the tonnage income for a ship of` 10000 `NT, green:` TRUE `, days used` 1 EQUALS 33
+-- 10,000 NT not green: 9 + 54 = 63 (the Schedule's "$63")
+#ASSERT `the tonnage income for a ship of` 10000 `NT, green:` FALSE `, days used` 1 EQUALS 63
+-- 1,050 NT: rounded down to 1,000 NT = $9
+#ASSERT `the tonnage income for a ship of` 1050 `NT, green:` FALSE `, days used` 1 EQUALS 9
+
+§§ `Administration`
+
+#ASSERT (`the advance ruling fees for hours spent` 3.5 `, priority:` FALSE)'s `total before reimbursements` EQUALS 660
+-- 6.5 hours: 2.5 hours beyond 4, charged as 3 at $165 = 495
+#ASSERT (`the advance ruling fees for hours spent` 6.5 `, priority:` FALSE)'s `total before reimbursements` EQUALS 1155
+-- priority: up to 2 x 1,155 more
+#ASSERT (`the advance ruling fees for hours spent` 6.5 `, priority:` TRUE)'s `total before reimbursements` EQUALS 3465
+#ASSERT `a prosecution under ss 37L, 37M, 37S, 45(5), 94-96A or 105M may proceed, consent:` TRUE

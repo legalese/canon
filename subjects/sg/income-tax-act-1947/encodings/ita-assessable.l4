@@ -1,0 +1,248 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `ita-types`
+
+-- Income Tax Act 1947 — PARTS 7 TO 9: FROM INCOME TO ASSESSABLE INCOME.
+--
+-- Part 7 (special ascertainment): non-resident shipping (ss 27, 28), the
+-- anti-avoidance surcharge (s 33A), the transfer-pricing surcharge and
+-- documentation (ss 34E, 34F). The other Part 7 regimes (insurers, Lloyd's,
+-- financial-instrument accounting, amalgamations, redomiciled companies,
+-- tonnage tax) produce an adjusted income figure that is an input.
+-- Part 8 (statutory income, ss 35-36C). Part 9 (assessable income, ss 37-37S):
+-- losses, donations, group relief, carry-back, the EIS cash payout.
+--
+-- Source: ../source/ITA1947.txt lines 16643-24855.
+
+§ `Parts 7 to 9 — statutory and assessable income`
+
+§§ `Statutory income (s 35)`
+
+-- s 35(1): "the statutory income is the full amount of the person's income for
+-- the year preceding the year of assessment from each source of income after
+-- the deduction provided under subsection (2)". (2), (2A): capital allowances
+-- (ss 16-20) are deducted "firstly, against income from any trade, business,
+-- profession or vocation; and secondly, against income from any other source".
+-- Unused allowances carry forward under s 23.
+DECLARE `Statutory income` HAS
+    `from trades and professions`  IS A NUMBER
+    `from other sources`           IS A NUMBER
+    `total`                        IS A NUMBER
+    `allowances unused`            IS A NUMBER
+
+@ref s 35(1)-(2A)
+GIVEN `trade income`     IS A NUMBER
+      `other income`     IS A NUMBER
+      allowances         IS A NUMBER
+GIVETH A `Statutory income`
+`the statutory income, trade income` `trade income` `, other income` `other income` `, allowances` allowances MEANS
+    `Statutory income` WITH
+        `from trades and professions` IS `trade after`
+        `from other sources`          IS `other after`
+        `total`                       IS `trade after` PLUS `other after`
+        `allowances unused`           IS `left after other`
+    WHERE
+        `trade` MEANS IF `trade income` LESS THAN 0 THEN 0 ELSE `trade income`
+        `against trade` MEANS IF allowances GREATER THAN `trade` THEN `trade` ELSE allowances
+        `trade after` MEANS `trade` MINUS `against trade`
+        `left` MEANS allowances MINUS `against trade`
+        `against other` MEANS IF `left` GREATER THAN `other income` THEN `other income` ELSE `left`
+        `other after` MEANS `other income` MINUS `against other`
+        `left after other` MEANS `left` MINUS `against other`
+
+§§ `Losses and donations (s 37)`
+
+-- s 37(3)(a): trade losses are deducted, "(i) firstly, any balance of such loss
+-- which remains unabsorbed at the end of the basis period for the previous year
+-- of assessment; (ii) secondly, the amount incurred during the basis period".
+-- (3)(c), (3A): donations of money to the Government or an IPC: "2.5 times the
+-- amount" for donations from 1 January 2016 to 31 December 2026 (and 2009-2014),
+-- "3 times" for 2015, otherwise twice. (7): donations are deducted after
+-- losses. (8): unused donations carry forward, but any balance not used by the
+-- fifth YA after the YA of the donation "is disregarded". (12), (14): a
+-- company's losses and donations are disregarded unless "not less than 50%" of
+-- its shares are held by the same persons on both dates (or exempted, (16)).
+@ref s 37(3)(c), (3A)
+GIVEN amount     IS A NUMBER
+      `date given`  IS A DATE
+GIVETH A NUMBER
+`the deduction for a donation of` amount `made on` `date given` MEANS
+    amount TIMES `the multiple`
+    WHERE
+        `between` a b MEANS `date given` AT LEAST a AND `date given` AT MOST b
+        `the multiple` MEANS
+            BRANCH IF `between` (YMD 2015 1 1) (YMD 2015 12 31)  THEN 3
+                   IF `between` (YMD 2009 1 1) (YMD 2014 12 31) OR `between` (YMD 2016 1 1) (YMD 2026 12 31) THEN 2.5
+                   OTHERWISE 2
+
+DECLARE `Assessable income` HAS
+    `losses used`               IS A NUMBER
+    `losses carried forward`    IS A NUMBER
+    `donations used`            IS A NUMBER
+    `donations carried forward` IS A NUMBER
+    `assessable income`         IS A NUMBER
+
+@ref s 37(1), (3)(a), (7), (8), (12)
+GIVEN `statutory income`        IS A NUMBER
+      `losses brought forward`  IS A NUMBER
+      `loss of the basis period` IS A NUMBER
+      `donation deductions available` IS A NUMBER
+      `same shareholders test met, or not a company` IS A BOOLEAN
+GIVETH AN `Assessable income`
+`the assessable income from statutory income` `statutory income` `, losses brought forward` `losses brought forward` `, current loss` `loss of the basis period` `, donations` `donation deductions available` `, shareholders:` `same shareholders test met, or not a company` MEANS
+    `Assessable income` WITH
+        `losses used`               IS `losses used`
+        `losses carried forward`    IS `losses` MINUS `losses used`
+        `donations used`            IS `donations used`
+        `donations carried forward` IS `donations` MINUS `donations used`
+        `assessable income`         IS `after losses` MINUS `donations used`
+    WHERE
+        `losses` MEANS IF `same shareholders test met, or not a company` THEN `losses brought forward` PLUS `loss of the basis period` ELSE `loss of the basis period`
+        `donations` MEANS IF `same shareholders test met, or not a company` THEN `donation deductions available` ELSE 0
+        `losses used` MEANS IF `losses` GREATER THAN `statutory income` THEN `statutory income` ELSE `losses`
+        `after losses` MEANS `statutory income` MINUS `losses used`
+        `donations used` MEANS IF `donations` GREATER THAN `after losses` THEN `after losses` ELSE `donations`
+
+@ref s 37(8)
+GIVEN `YA of the donation's basis period` IS A NUMBER
+      ya                                  IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `an unused donation from YA` `YA of the donation's basis period` `may still be deducted in YA` ya IF
+    ya AT MOST `YA of the donation's basis period` PLUS 5
+
+@ref s 37(12), (14)
+GIVEN `percent held by the same persons on both dates` IS A NUMBER
+      `exempted under s 37(16)` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a company's losses and donations survive, same shareholders holding` `percent held by the same persons on both dates` `, exempted:` `exempted under s 37(16)` IF
+        `percent held by the same persons on both dates` AT LEAST 50%
+    OR  `exempted under s 37(16)`
+
+§§ `Group relief (s 37B) and carry-back (s 37D)`
+
+-- s 37B(2), (3): a transferor may transfer a qualifying deduction to a claimant
+-- of the same group, if on the last day of the basis period they are members of
+-- the same group, have accounting periods ending on the same day, and have
+-- elected; "2 Singapore companies are members of the same group if — (a) at
+-- least 75% of the total number of issued ordinary shares in one company are
+-- beneficially held ... by the other; or (b) at least 75% ... in each ... by a
+-- third Singapore company"; (4) with at least 75% of residual profits and
+-- assets; (5) indirect holdings multiply.
+@ref s 37B(2)-(5)
+GIVEN `percent held, directly or through the chain` IS A NUMBER
+      `entitled to 75% of residual profits and assets` IS A BOOLEAN
+      `same accounting year end`  IS A BOOLEAN
+      `both elected`              IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `group relief may be transferred, holding` `percent held, directly or through the chain` `, residual entitlement:` `entitled to 75% of residual profits and assets` `, same year end:` `same accounting year end` `, elected:` `both elected` IF
+        `percent held, directly or through the chain` AT LEAST 75%
+    AND `entitled to 75% of residual profits and assets`
+    AND `same accounting year end`
+    AND `both elected`
+
+-- s 37B(5): the fractions in a chain are multiplied.
+@ref s 37B(5)
+GIVEN fractions IS A LIST OF NUMBER
+GIVETH A NUMBER
+`the effective holding through the chain` fractions MEANS
+    CONSIDER fractions
+    WHEN EMPTY THEN 1
+    WHEN f FOLLOWED BY rest THEN f TIMES `the effective holding through the chain` rest
+
+-- s 37D(1), (3), (5): a qualifying deduction may be carried back against the
+-- assessable income of the immediately preceding YA, the lower of the deduction
+-- available and that income, and "must not exceed $100,000". (1A): for YA 2020
+-- or 2021, back 3 YAs, earliest first.
+@ref s 37D(1), (3), (5)
+GIVEN `qualifying deduction`              IS A NUMBER
+      `assessable income of the preceding YA` IS A NUMBER
+GIVETH A NUMBER
+`the carry-back allowed, deduction` `qualifying deduction` `, preceding income` `assessable income of the preceding YA` MEANS
+    `lowest` (`lowest` `qualifying deduction` `assessable income of the preceding YA`) 100000
+    WHERE
+        `lowest` a b MEANS IF a LESS THAN b THEN a ELSE b
+
+§§ `The Enterprise Innovation Scheme cash payout (s 37R)`
+
+-- s 37R(1), (4): for YAs 2024-2028, in lieu of the listed enhanced deductions or
+-- allowances, an eligible person may elect (for selected expenditure of at least
+-- $400) a cash payout of "A × 20%", A the lower of the selected expenditure and
+-- $100,000.
+@ref s 37R(1), (4)
+GIVEN ya                     IS A NUMBER
+      `selected expenditure` IS A NUMBER
+GIVETH A NUMBER
+`the EIS cash payout for YA` ya `on selected expenditure of` `selected expenditure` MEANS
+    BRANCH IF ya LESS THAN 2024 OR ya GREATER THAN 2028 THEN 0
+           IF `selected expenditure` LESS THAN 400       THEN 0
+           OTHERWISE (IF `selected expenditure` LESS THAN 100000 THEN `selected expenditure` ELSE 100000) TIMES 20%
+
+§§ `Part 7 — special ascertainment`
+
+-- s 27(2): with a certificate from its home tax authority, a non-resident
+-- shipowner's profits accruing in Singapore are "a sum bearing the same ratio to
+-- the sums receivable in respect of the carriage of passengers, mail, livestock
+-- and goods shipped in Singapore as the total profits for that period bear to the
+-- total sum receivable". s 28: the same for air transport and cable.
+@ref s 27(2), s 28
+GIVEN `receipts from carriage shipped in Singapore` IS A NUMBER
+      `total profits`  IS A NUMBER
+      `total receipts` IS A NUMBER
+GIVETH A NUMBER
+`the Singapore profits of a non-resident shipowner, Singapore receipts` `receipts from carriage shipped in Singapore` `, total profits` `total profits` `, total receipts` `total receipts` MEANS
+    IF `total receipts` EQUALS 0 THEN 0 ELSE `receipts from carriage shipped in Singapore` TIMES `total profits` DIVIDED BY `total receipts`
+
+-- s 27(4): without a certificate complying with (3), "the profits accruing in
+-- Singapore are deemed to be a sum equal to 5% of the full sum receivable on account
+-- of the carriage of passengers, mail, livestock and goods shipped in Singapore".
+-- (6): no tax where the Comptroller decides the call is casual and further calls
+-- improbable. (Added after the independent test pass listed it as not expressible.)
+@ref s 27(2), (4), (6)
+GIVEN `a certificate complying with s 27(3)` IS A BOOLEAN
+      `a casual call`                       IS A BOOLEAN
+      `receipts from carriage shipped in Singapore` IS A NUMBER
+      `total profits`  IS A NUMBER
+      `total receipts` IS A NUMBER
+GIVETH A NUMBER
+`the Singapore profits of a non-resident shipowner, certificate:` `a certificate complying with s 27(3)` `, casual call:` `a casual call` `, Singapore receipts` `receipts from carriage shipped in Singapore` `, total profits` `total profits` `, total receipts` `total receipts` MEANS
+    BRANCH IF `a casual call` THEN 0                                                                  -- (6)
+           IF `a certificate complying with s 27(3)`
+              THEN `the Singapore profits of a non-resident shipowner, Singapore receipts` `receipts from carriage shipped in Singapore` `, total profits` `total profits` `, total receipts` `total receipts`   -- (2)
+           OTHERWISE `receipts from carriage shipped in Singapore` TIMES 5%                           -- (4)
+
+-- s 33A(2): for YA 2023 on, where tax is imposed under the anti-avoidance rule
+-- (s 33), "a surcharge equal to 50% of the amount of tax or the additional amount
+-- of tax". (4): payable within one month after notice, despite an objection.
+-- s 34E(1): for YA 2019 on, a transfer-pricing adjustment under s 34D(1A) carries
+-- "a surcharge equal to 5% of the amount of the increase or reduction".
+@ref s 33A(2)
+GIVEN ya    IS A NUMBER
+      tax   IS A NUMBER
+GIVETH A NUMBER
+`the s 33A surcharge for YA` ya `on additional tax of` tax MEANS
+    IF ya AT LEAST 2023 THEN tax TIMES 50% ELSE 0
+
+@ref s 34E(1)
+GIVEN ya          IS A NUMBER
+      adjustment  IS A NUMBER
+GIVETH A NUMBER
+`the transfer-pricing surcharge for YA` ya `on an adjustment of` adjustment MEANS
+    IF ya AT LEAST 2019 THEN adjustment TIMES 5% ELSE 0
+
+-- s 34F(1)-(3): for YA 2019 on, a company, firm or trust must prepare
+-- transfer-pricing documentation for each related-party transaction "(a) if the
+-- gross revenue ... for the basis period concerned is more than $10 million;
+-- or (b) if documentation ... is required to be prepared for a transaction ...
+-- in the basis period immediately before", unless exempt by rules. (7): to be
+-- furnished within 30 days of a notice. (8): failure is an offence, fine up to
+-- $10,000.
+@ref s 34F(1)-(3), (7), (8)
+GIVEN ya                    IS A NUMBER
+      `gross revenue`        IS A NUMBER
+      `required the previous basis period` IS A BOOLEAN
+      `exempt by rules`      IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `transfer-pricing documentation is required for YA` ya `, gross revenue` `gross revenue` `, required before:` `required the previous basis period` `, exempt:` `exempt by rules` IF
+        ya AT LEAST 2019
+    AND NOT `exempt by rules`
+    AND (`gross revenue` GREATER THAN 10000000 OR `required the previous basis period`)

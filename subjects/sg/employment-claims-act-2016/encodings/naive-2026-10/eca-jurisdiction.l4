@@ -1,0 +1,504 @@
+IMPORT prelude
+IMPORT `eca-gateway`
+
+-- Employment Claims Act 2016 (Singapore) -- Part 3, the tribunal's jurisdiction
+-- and the rules that govern a claim once the gateway in Part 2 has been passed.
+--
+-- ss 12 to 16, 21, 22, 23, 27 and 28. Division 1 of Part 3 (ss 8 to 11, the
+-- establishment of the tribunals and the appointments) is not encoded: it
+-- constitutes bodies and decides nothing.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules
+-- skill. No pipeline, no independent test pass, no human gate.
+
+§ `Employment Claims Act 2016 -- Part 3`
+
+§§ `12 -- jurisdiction`
+
+-- s 12(1): "Subject to this Act, a tribunal has jurisdiction to hear and
+-- determine any claim in relation to which ALL APPLICABLE REQUIREMENTS set out
+-- in subsections (2) to (7) are satisfied, REGARDLESS WHETHER the dispute
+-- giving rise to the claim arose before, on or after 1 April 2017."
+--
+-- Six requirements, all of them cumulative.
+--
+-- s 12(2): the claim must be made --
+--   (a) by a PRESCRIBED employee (or a person entitled under written law to the
+--       amount in the employee's place) against that employee's employer;
+--   (b) by such an employee against a person liable under Employment Act 1968
+--       s 65 for the employee's salary; or
+--   (c) by a PRESCRIBED employer against an employee, and then only about
+--       "any matter specified in item 17 of the First Schedule or item 14 or 16
+--       of the Second Schedule", or any other Schedule matter prescribed for
+--       the purpose.
+--
+-- s 12(2)(c) is the whole of the employer's access to this tribunal, and all
+-- three named items are money an employee owes for leaving without notice or
+-- breaking the contract: salary in lieu of notice, the Employment Act s 11(1)
+-- payment, and the Employment Act s 16 payment. Everything else in both
+-- Schedules is employee-only. The tribunal is an employees' forum with a narrow
+-- counterclaim jurisdiction, and that asymmetry is in the Act rather than in
+-- practice.
+--
+-- s 12(3): the claim must be for "either or both of -- (a) one or more amounts
+--   alleged to be payable by the respondent to the claimant; (b) REINSTATEMENT
+--   ... in a case where the claim is lodged in respect of a WRONGFUL DISMISSAL
+--   DISPUTE." Reinstatement is the only non-money remedy the Act contains, and
+--   it is tied to one of the three kinds of dispute.
+-- s 12(4): each amount must relate to a specified employment dispute.
+-- s 12(5): the claim "must be SUPPORTED BY A CLAIM REFERRAL CERTIFICATE issued
+--   in respect of EVERY specified employment dispute for which the claim is
+--   lodged."
+-- s 12(6): it must be lodged "within the prescribed period after the date of
+--   issue of the claim referral certificate" -- a third time limit, and the one
+--   the Act does not state.
+-- s 12(7): the total alleged must not exceed the prescribed claim limit, counted
+--   SEPARATELY for (a) contractual and statutory disputes together and (b)
+--   wrongful dismissal disputes.
+DECLARE ClaimantKind IS ONE OF
+    `a prescribed employee suing their employer`
+    `a prescribed employee suing a person liable under Employment Act section 65`
+    `a prescribed employer suing their employee`
+    `someone the regulations do not prescribe`
+
+DECLARE Claim HAS
+    `who is bringing it` IS A ClaimantKind
+    `the kind of dispute` IS A DisputeKind
+    `the scheduled matter it concerns` IS A ScheduledMatter
+    `the matter is one prescribed for section 12(2)(c)(ii)` IS A BOOLEAN
+    `it claims one or more amounts alleged to be payable` IS A BOOLEAN
+    `it claims reinstatement` IS A BOOLEAN
+    `a claim referral certificate was issued for every dispute in the claim` IS A BOOLEAN
+    `lodged within the prescribed period after the certificate issued` IS A BOOLEAN
+    `the total for contractual and statutory disputes, in dollars` IS A NUMBER
+    `the total for wrongful dismissal disputes, in dollars` IS A NUMBER
+    `the excess over a claim limit has been abandoned under section 15` IS A BOOLEAN
+
+DECLARE ClaimLimits HAS
+    `the limit for contractual and statutory disputes under section 12(7)(a)` IS A NUMBER
+    `the limit for wrongful dismissal disputes under section 12(7)(b)` IS A NUMBER
+
+-- s 12(2)(c): the three matters an employer may claim about.
+GIVEN `the matter` IS A ScheduledMatter
+GIVETH A BOOLEAN
+DECIDE `this is a matter section 12(2)(c)(i) names` IF
+    CONSIDER `the matter`
+    WHEN `First Schedule item 17 -- salary in lieu of notice of termination` THEN TRUE
+    WHEN `Second Schedule item 14 -- the employer's entitlement under Employment Act section 11(1)` THEN TRUE
+    WHEN `Second Schedule item 16 -- the employer's entitlement under Employment Act section 16` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN `the claim` IS A Claim
+GIVETH A BOOLEAN
+DECIDE `section 12(2) is satisfied` IF
+    CONSIDER `the claim`'s `who is bringing it`
+    WHEN `a prescribed employee suing their employer` THEN TRUE
+    WHEN `a prescribed employee suing a person liable under Employment Act section 65` THEN TRUE
+    WHEN `a prescribed employer suing their employee`
+        THEN     `this is a matter section 12(2)(c)(i) names` (`the claim`'s `the scheduled matter it concerns`)
+             OR  `the claim`'s `the matter is one prescribed for section 12(2)(c)(ii)`
+    OTHERWISE FALSE
+
+-- s 12(3): reinstatement only on a wrongful dismissal dispute.
+GIVEN `the claim` IS A Claim
+GIVETH A BOOLEAN
+DECIDE `section 12(3) is satisfied` IF
+        `the claim`'s `it claims one or more amounts alleged to be payable`
+    OR  (    `the claim`'s `it claims reinstatement`
+         AND CONSIDER `the claim`'s `the kind of dispute`
+             WHEN `a wrongful dismissal dispute` THEN TRUE
+             OTHERWISE FALSE)
+
+GIVEN `the claim` IS A Claim
+GIVETH A BOOLEAN
+DECIDE `section 12(4) is satisfied` IF
+    `this is a specified employment dispute` (`the claim`'s `the kind of dispute`)
+
+-- s 12(7), read with s 15(2)(a): abandoning the excess deems the requirement
+-- satisfied.
+GIVEN `the claim` IS A Claim, `the limits` IS A ClaimLimits
+GIVETH A BOOLEAN
+DECIDE `section 12(7) is satisfied` IF
+        `the claim`'s `the excess over a claim limit has been abandoned under section 15`
+    OR  (    `the claim`'s `the total for contractual and statutory disputes, in dollars`
+                 AT MOST `the limits`'s `the limit for contractual and statutory disputes under section 12(7)(a)`
+         AND `the claim`'s `the total for wrongful dismissal disputes, in dollars`
+                 AT MOST `the limits`'s `the limit for wrongful dismissal disputes under section 12(7)(b)`)
+
+GIVEN `the claim` IS A Claim, `the limits` IS A ClaimLimits
+GIVETH A BOOLEAN
+DECIDE `the tribunal has jurisdiction` IF
+        `section 12(2) is satisfied` `the claim`
+    AND `section 12(3) is satisfied` `the claim`
+    AND `section 12(4) is satisfied` `the claim`
+    AND `the claim`'s `a claim referral certificate was issued for every dispute in the claim`
+    AND `the claim`'s `lodged within the prescribed period after the certificate issued`
+    AND `section 12(7) is satisfied` `the claim` `the limits`
+
+-- s 12(1)'s closing words: the tribunal's jurisdiction does not depend on when
+-- the dispute arose. The time limits are all in s 3(2), s 3(3)(a)(ii) and
+-- s 12(6), and none of them is in s 12(1).
+GIVETH A BOOLEAN
+DECIDE `jurisdiction depends on whether the dispute arose before 1 April 2017` IF
+    FALSE
+
+§§ `14 and 15 -- the two caps are separate, and only one can be abandoned down`
+
+-- s 14: "A claim cannot be divided and pursued in separate proceedings before a
+-- tribunal IF THE ONLY REASON for doing so is to bring the total amount alleged
+-- to be payable in each of those proceedings within the jurisdiction of a
+-- tribunal."
+--
+-- The words "if the only reason" leave room: a division for some other genuine
+-- reason is not forbidden by this section.
+--
+-- s 15(1): where either total exceeds the applicable limit, "the claimant may
+-- abandon the excess amount."
+-- s 15(2): if the claimant does, "(a) the requirement in section 12(7) is DEEMED
+-- to be satisfied; (b) the tribunal HAS jurisdiction; and (c) an order of the
+-- tribunal in relation to the claim FULLY DISCHARGES ALL DEMANDS in respect of
+-- the claim."
+-- s 15(3): "Where the claimant has abandoned the excess amount, the claimant
+-- CANNOT RECOVER THAT AMOUNT IN A TRIBUNAL OR ANY OTHER COURT."
+--
+-- So the price of the tribunal's speed and informality is the excess, and it is
+-- paid permanently and everywhere. There is no route by which the claimant takes
+-- the limit here and the balance in the District Court: s 15(3) shuts it, and
+-- s 16(2) shuts the reverse order while the claim is live.
+--
+-- s 12(7) counts the two caps separately. A claimant with amounts of both kinds
+-- is measured against each limit on its own, so one of the two may be abandoned
+-- down while the other is untouched.
+GIVEN `the claim` IS A Claim, `the limits` IS A ClaimLimits
+GIVETH A BOOLEAN
+DECIDE `the contractual and statutory total exceeds its limit` IF
+    `the claim`'s `the total for contractual and statutory disputes, in dollars`
+        GREATER THAN `the limits`'s `the limit for contractual and statutory disputes under section 12(7)(a)`
+
+GIVEN `the claim` IS A Claim, `the limits` IS A ClaimLimits
+GIVETH A BOOLEAN
+DECIDE `the wrongful dismissal total exceeds its limit` IF
+    `the claim`'s `the total for wrongful dismissal disputes, in dollars`
+        GREATER THAN `the limits`'s `the limit for wrongful dismissal disputes under section 12(7)(b)`
+
+GIVEN `the claim` IS A Claim, `the limits` IS A ClaimLimits
+GIVETH A NUMBER
+DECIDE `the amount abandoned if the claimant abandons the excess` IS
+    (IF   `the contractual and statutory total exceeds its limit` `the claim` `the limits`
+     THEN `the claim`'s `the total for contractual and statutory disputes, in dollars`
+              MINUS `the limits`'s `the limit for contractual and statutory disputes under section 12(7)(a)`
+     ELSE 0)
+    PLUS
+    (IF   `the wrongful dismissal total exceeds its limit` `the claim` `the limits`
+     THEN `the claim`'s `the total for wrongful dismissal disputes, in dollars`
+              MINUS `the limits`'s `the limit for wrongful dismissal disputes under section 12(7)(b)`
+     ELSE 0)
+
+-- s 15(3). Stated as its own function because it is the consequence a claimant
+-- is least likely to have been told about.
+GIVEN `the claim` IS A Claim
+GIVETH A BOOLEAN
+DECIDE `the abandoned amount can be recovered somewhere else` IF
+    FALSE
+
+§§ `16 -- one forum, and the order in which you choose it`
+
+-- s 16(1): a claim cannot be lodged if "(a) any proceedings relating to that
+-- claim are pending in, or HAVE BEEN HEARD AND DETERMINED BY, any other court or
+-- an Industrial Arbitration Court; or (b) a claim lodged under Employment Act
+-- 1968 s 119 in respect of that dispute is pending, or the Commissioner has
+-- inquired into and decided that dispute under s 115 of that Act."
+--
+-- s 16(2): "DESPITE ANY OTHER WRITTEN LAW, where a claim ... is lodged with a
+-- tribunal, NO PROCEEDINGS relating to that claim can be commenced in any other
+-- court or an Industrial Arbitration Court by either party against the other,
+-- unless the claim is withdrawn, discontinued or dismissed for lack of
+-- jurisdiction."
+--
+-- Note which way each subsection cures. s 16(2) lifts if the tribunal claim is
+-- withdrawn or discontinued; s 16(1)(a) does not lift if the other proceedings
+-- are withdrawn -- it reads "pending in, or have been heard and determined by",
+-- so a determined claim bars for good while a withdrawn one stops being pending.
+DECLARE OtherProceedings HAS
+    `proceedings relating to the claim are pending in another court or the Industrial Arbitration Court` IS A BOOLEAN
+    `proceedings relating to the claim have been heard and determined elsewhere` IS A BOOLEAN
+    `a claim under Employment Act section 119 in respect of the dispute is pending` IS A BOOLEAN
+    `the Commissioner has inquired into and decided the dispute under Employment Act section 115` IS A BOOLEAN
+
+GIVEN `the other` IS AN OtherProceedings
+GIVETH A BOOLEAN
+DECIDE `section 16(1) bars the claim` IF
+        `the other`'s `proceedings relating to the claim are pending in another court or the Industrial Arbitration Court`
+    OR  `the other`'s `proceedings relating to the claim have been heard and determined elsewhere`
+    OR  `the other`'s `a claim under Employment Act section 119 in respect of the dispute is pending`
+    OR  `the other`'s `the Commissioner has inquired into and decided the dispute under Employment Act section 115`
+
+GIVEN `a tribunal claim has been lodged` IS A BOOLEAN,
+      `the claim was withdrawn, discontinued or dismissed for lack of jurisdiction` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `section 16(2) bars proceedings elsewhere` IF
+        `a tribunal claim has been lodged`
+    AND NOT `the claim was withdrawn, discontinued or dismissed for lack of jurisdiction`
+
+§§ `16(3) to 16(6) -- the ministerial-representations trap`
+
+-- Two pairs of subsections, each pair doing the same thing in a different order.
+--
+-- s 16(3): where an employee is dismissed, the employee CANNOT LODGE a claim for
+-- an amount about First Schedule item 17, or Second Schedule item 13 or 15, that
+-- arises from that dismissal, if --
+--   (a) the employee has made representations in writing under Industrial
+--       Relations Act 1960 s 35(3), or under Retirement and Re-employment Act
+--       1993 s 8(1), to the Minister; AND
+--   (b) either (i) the employee DOES NOT WITHDRAW those representations, or
+--       (ii) THE MINISTER CONCERNED MAKES A DECISION on them.
+--
+-- s 16(5) is the same bar for a claim relating to a WRONGFUL DISMISSAL DISPUTE,
+-- on representations under Industrial Relations Act s 35(3) alone.
+--
+-- s 16(4): where the employee HAS LODGED such a claim and THEN makes those
+-- representations, "the claim is DEEMED TO BE DISCONTINUED ... with effect from
+-- the date on which the employee makes those representations."
+-- s 16(6) is the same for a wrongful dismissal claim.
+--
+-- THE TWO ORDERS ARE NOT THE SAME. Representations first: the bar in s 16(3)
+-- and s 16(5) is conditional, and it lifts if the employee withdraws the
+-- representations before the Minister decides -- limb (b) is then satisfied in
+-- neither of its two ways. Claim first: s 16(4) and s 16(6) deem the claim
+-- discontinued the moment the representations are made, and NOTHING IN EITHER
+-- SUBSECTION REVIVES IT IF THE REPRESENTATIONS ARE WITHDRAWN.
+--
+-- Read with s 3(2)(d) -- one month from dismissal to submit a mediation request
+-- for a wrongful dismissal claim -- the second order is usually terminal. By the
+-- time an employee has lodged, gone to the Minister and changed their mind, the
+-- month is long gone and the discontinued claim cannot be restarted.
+GIVEN `the matter` IS A ScheduledMatter
+GIVETH A BOOLEAN
+DECIDE `this is a matter section 16(3) and 16(4) name` IF
+    CONSIDER `the matter`
+    WHEN `First Schedule item 17 -- salary in lieu of notice of termination` THEN TRUE
+    WHEN `Second Schedule item 13 -- the employee's entitlement under Employment Act section 11(1)` THEN TRUE
+    WHEN `Second Schedule item 15 -- the employee's entitlement under Employment Act section 16` THEN TRUE
+    OTHERWISE FALSE
+
+DECLARE Representations HAS
+    `the employee was dismissed` IS A BOOLEAN
+    `representations in writing have been made to the Minister under Industrial Relations Act section 35(3)` IS A BOOLEAN
+    `representations in writing have been made to the Minister under Retirement and Re-employment Act section 8(1)` IS A BOOLEAN
+    `the employee withdrew those representations` IS A BOOLEAN
+    `the Minister concerned has made a decision on those representations` IS A BOOLEAN
+    `the representations were made after the claim was lodged` IS A BOOLEAN
+
+GIVEN `the representations` IS A Representations
+GIVETH A BOOLEAN
+DECIDE `representations have been made under either provision` IF
+        `the representations`'s `representations in writing have been made to the Minister under Industrial Relations Act section 35(3)`
+    OR  `the representations`'s `representations in writing have been made to the Minister under Retirement and Re-employment Act section 8(1)`
+
+-- The limb (b) condition, common to s 16(3) and s 16(5).
+GIVEN `the representations` IS A Representations
+GIVETH A BOOLEAN
+DECIDE `the condition in paragraph (b) is satisfied` IF
+        NOT `the representations`'s `the employee withdrew those representations`
+    OR  `the representations`'s `the Minister concerned has made a decision on those representations`
+
+GIVEN `the matter` IS A ScheduledMatter, `the representations` IS A Representations
+GIVETH A BOOLEAN
+DECIDE `section 16(3) bars lodging this claim` IF
+        `the representations`'s `the employee was dismissed`
+    AND `this is a matter section 16(3) and 16(4) name` `the matter`
+    AND `representations have been made under either provision` `the representations`
+    AND `the condition in paragraph (b) is satisfied` `the representations`
+    AND NOT `the representations`'s `the representations were made after the claim was lodged`
+
+GIVEN `the representations` IS A Representations
+GIVETH A BOOLEAN
+DECIDE `section 16(5) bars lodging a wrongful dismissal claim` IF
+        `the representations`'s `the employee was dismissed`
+    AND `the representations`'s `representations in writing have been made to the Minister under Industrial Relations Act section 35(3)`
+    AND `the condition in paragraph (b) is satisfied` `the representations`
+    AND NOT `the representations`'s `the representations were made after the claim was lodged`
+
+-- s 16(4) and s 16(6). No withdrawal condition, and no revival.
+GIVEN `the matter` IS A ScheduledMatter, `the representations` IS A Representations
+GIVETH A BOOLEAN
+DECIDE `section 16(4) deems the claim discontinued` IF
+        `the representations`'s `the employee was dismissed`
+    AND `this is a matter section 16(3) and 16(4) name` `the matter`
+    AND `representations have been made under either provision` `the representations`
+    AND `the representations`'s `the representations were made after the claim was lodged`
+
+GIVEN `the representations` IS A Representations
+GIVETH A BOOLEAN
+DECIDE `section 16(6) deems a wrongful dismissal claim discontinued` IF
+        `the representations`'s `the employee was dismissed`
+    AND `the representations`'s `representations in writing have been made to the Minister under Industrial Relations Act section 35(3)`
+    AND `the representations`'s `the representations were made after the claim was lodged`
+
+-- The pair of questions that make the trap visible. Whether the employee can end
+-- up with a live claim depends only on the order.
+GIVEN `the representations` IS A Representations
+GIVETH A BOOLEAN
+DECIDE `a wrongful dismissal claim can still be pursued` IF
+        NOT `section 16(5) bars lodging a wrongful dismissal claim` `the representations`
+    AND NOT `section 16(6) deems a wrongful dismissal claim discontinued` `the representations`
+
+§§ `21 -- what the tribunal may do about evidence`
+
+-- s 21(1): the tribunal "(a) is NOT BOUND BY THE RULES OF EVIDENCE ... and
+--   (b) may inform itself on any matter in any manner that the tribunal thinks
+--   fit."
+-- s 21(2): the tribunal "may draw any inferences that the tribunal thinks fit
+--   from a party's FAILURE TO COMPLY WITH ANY OBLIGATION of that party under any
+--   written law specified in the Fourth Schedule, including ... an inference
+--   that any evidence that is not available on account of that failure would, if
+--   produced, have been UNFAVOURABLE to that party."
+-- s 21(3) and (4): evidence need not be on oath, but the tribunal may require it.
+-- s 21(5) and (6): the tribunal may seek its own evidence, and must disclose
+--   whatever it obtains to every party.
+-- s 21(8): the tribunal "need not keep a record of the evidence", but must make
+--   a summary of the facts and issues and notes of the proceedings.
+--
+-- s 21(2) is the practical answer to the commonest problem in a small wage
+-- claim: the employer holds the records. An employer who has not kept the
+-- records the Employment Act requires can have the adverse inference drawn
+-- against them. Note that it is a power and not a presumption -- "may draw any
+-- inferences that the tribunal thinks fit" -- and that it is tied to the Fourth
+-- Schedule list of written laws, not to record-keeping generally.
+--
+-- s 21(8) is worth reading beside s 23(1): an appeal lies on a question of law,
+-- and the tribunal need not have recorded the evidence on which the facts were
+-- found.
+GIVEN `the party failed to comply with an obligation under a written law in the Fourth Schedule` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the tribunal may draw an adverse inference under section 21(2)` IF
+    `the party failed to comply with an obligation under a written law in the Fourth Schedule`
+
+GIVETH A BOOLEAN
+DECIDE `section 21(2) creates a presumption against the party` IF
+    FALSE
+
+GIVETH A BOOLEAN
+DECIDE `the tribunal must keep a record of the evidence` IF
+    FALSE
+
+§§ `23 -- appeal`
+
+-- s 23(1): any party may appeal to the General Division of the High Court
+-- against an order under s 22(1) "(a) on any ground involving A QUESTION OF LAW;
+-- or (b) on the ground that the claim was OUTSIDE THE JURISDICTION of the
+-- tribunal."
+-- s 23(2): "An appeal lies ... ONLY IF PERMISSION TO APPEAL IS GIVEN BY A
+--   DISTRICT COURT."
+-- s 23(4): the District Court's order giving or refusing permission "is FINAL
+--   and is not subject to any appeal."
+--
+-- So there is no appeal on the facts, and the gate to the appeal that does exist
+-- is itself unappealable. A party who says the tribunal got the facts wrong has
+-- nowhere to go; a party who says it got the law wrong must first persuade a
+-- District Court, whose refusal is the end of the matter.
+DECLARE Appeal HAS
+    `the ground involves a question of law` IS A BOOLEAN
+    `the ground is that the claim was outside the tribunal's jurisdiction` IS A BOOLEAN
+    `the ground is that the tribunal found the facts wrongly` IS A BOOLEAN
+    `a District Court has given permission to appeal` IS A BOOLEAN
+
+GIVEN `the appeal` IS AN Appeal
+GIVETH A BOOLEAN
+DECIDE `the ground is one section 23(1) allows` IF
+        `the appeal`'s `the ground involves a question of law`
+    OR  `the appeal`'s `the ground is that the claim was outside the tribunal's jurisdiction`
+
+GIVEN `the appeal` IS AN Appeal
+GIVETH A BOOLEAN
+DECIDE `an appeal lies to the General Division of the High Court` IF
+        `the ground is one section 23(1) allows` `the appeal`
+    AND `the appeal`'s `a District Court has given permission to appeal`
+
+GIVETH A BOOLEAN
+DECIDE `a refusal of permission to appeal can itself be appealed` IF
+    FALSE
+
+-- s 24(1): "An appeal ... does not operate as a stay of execution or enforcement
+-- of that order, unless a District Court or the General Division of the High
+-- Court orders otherwise."
+GIVEN `a court has ordered a stay` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the order may be enforced while the appeal is pending` IF
+    NOT `a court has ordered a stay`
+
+§§ `27 -- who has to prove what`
+
+-- s 27(1): a person who alleges that they are NOT the employer or employee of
+-- the claimant, or NOT a person with a duty under the Child Development
+-- Co-Savings Act 2001, the Employment Act 1968 or the Retirement and
+-- Re-employment Act 1993, "BEARS THE BURDEN OF PROVING that allegation."
+--
+-- s 27(2): the employer bears the burden --
+--   (a) where an employee dismissed without notice under Employment Act s 14(1)
+--       lodges a s 14(2) claim: of proving the dismissal was "with just cause or
+--       excuse";
+--   (b) where an employee is dismissed WITH NOTICE and "the notice of dismissal
+--       IS OR PURPORTS TO BE GIVEN ON THE GROUND THAT THERE HAS BEEN POOR
+--       PERFORMANCE OR MISCONDUCT": of proving that ground;
+--   (c) and (d) where a female employee is dismissed in the s 84(1)
+--       circumstances: of proving sufficient cause.
+--
+-- Limb (b) is conditional on the employer having stated a reason. An employer
+-- who gives contractual notice and says nothing about why does not come within
+-- it; an employer who writes "for poor performance" takes on the burden of
+-- proving poor performance. The incentive the subsection creates is to say
+-- nothing, which is the opposite of what an employee needs.
+DECLARE BurdenFacts HAS
+    `the person alleges they are not the employer or employee of the claimant` IS A BOOLEAN
+    `the person alleges they have no duty under one of the three named Acts` IS A BOOLEAN
+    `the employee was dismissed without notice under Employment Act section 14(1)` IS A BOOLEAN
+    `the employee lodged a claim under Employment Act section 14(2)` IS A BOOLEAN
+    `the employee was dismissed with notice` IS A BOOLEAN
+    `the notice is or purports to be given on the ground of poor performance or misconduct` IS A BOOLEAN
+    `a notice of dismissal was given to a female employee in the section 84(1) circumstances` IS A BOOLEAN
+    `the female employee lodged a claim under Employment Act section 84(2)` IS A BOOLEAN
+
+GIVEN `the facts` IS A BurdenFacts
+GIVETH A BOOLEAN
+DECIDE `the person making the allegation bears the burden under section 27(1)` IF
+        `the facts`'s `the person alleges they are not the employer or employee of the claimant`
+    OR  `the facts`'s `the person alleges they have no duty under one of the three named Acts`
+
+GIVEN `the facts` IS A BurdenFacts
+GIVETH A BOOLEAN
+DECIDE `the employer bears the burden on the reason for the dismissal` IF
+        (    `the facts`'s `the employee was dismissed without notice under Employment Act section 14(1)`
+         AND `the facts`'s `the employee lodged a claim under Employment Act section 14(2)`)
+    OR  (    `the facts`'s `the employee was dismissed with notice`
+         AND `the facts`'s `the notice is or purports to be given on the ground of poor performance or misconduct`)
+    OR  (    `the facts`'s `a notice of dismissal was given to a female employee in the section 84(1) circumstances`
+         AND `the facts`'s `the female employee lodged a claim under Employment Act section 84(2)`)
+
+§§ `28 -- contracting out`
+
+-- s 28: "Any provision in any agreement (whether made before, on or after
+-- 1 April 2017) is VOID to the extent that it purports -- (a) to exclude or
+-- limit the jurisdiction of a tribunal; or (b) to prevent a person from
+-- (i) submitting a mediation request; or (ii) making a claim, an application or
+-- an appeal under this Act."
+--
+-- "To the extent that" -- severance, not wholesale invalidity. And the section
+-- reaches an arbitration clause, a settlement that purports to bar a future
+-- claim, and an employment term requiring disputes to go elsewhere.
+DECLARE AgreementTerm HAS
+    `purports to exclude or limit the jurisdiction of a tribunal` IS A BOOLEAN
+    `purports to prevent a person from submitting a mediation request` IS A BOOLEAN
+    `purports to prevent a person from making a claim, application or appeal under this Act` IS A BOOLEAN
+    `the agreement was made before 1 April 2017` IS A BOOLEAN
+
+GIVEN `the term` IS AN AgreementTerm
+GIVETH A BOOLEAN
+DECIDE `the term is void under section 28` IF
+        `the term`'s `purports to exclude or limit the jurisdiction of a tribunal`
+    OR  `the term`'s `purports to prevent a person from submitting a mediation request`
+    OR  `the term`'s `purports to prevent a person from making a claim, application or appeal under this Act`
+
+GIVETH A BOOLEAN
+DECIDE `the date of the agreement makes any difference under section 28` IF
+    FALSE

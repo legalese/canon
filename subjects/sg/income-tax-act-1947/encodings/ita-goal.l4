@@ -1,0 +1,191 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `ita-types`
+IMPORT `ita-rates`
+IMPORT `ita-reliefs`
+IMPORT `ita-charge`
+IMPORT `ita-exemptions`
+IMPORT `ita-assessable`
+IMPORT `ita-process`
+
+-- Income Tax Act 1947 — THE TOP-LEVEL GOAL.
+--
+--   "How much income tax does this person owe for this year of assessment,
+--    and by when?"
+--
+-- One answer that runs through the Act in order:
+--   residence (s 2)
+--   -> which income is charged and which is exempt (Parts 3, 4)
+--   -> statutory income, capital allowances deducted (Parts 5-8; s 35)
+--   -> assessable income, after losses and donations (Part 9; s 37)
+--   -> chargeable income, after personal reliefs (Part 10; ss 38-39A)
+--   -> tax at the applicable rates and exemptions (Part 11; ss 40B, 42, 43)
+--   -> less rebates, remissions and credits (ss 42A, 46, 50, 92J, 92L)
+--   -> when it is due, and what is added for late payment (ss 85, 87).
+-- Each step is a rule in its goal module and can be asked on its own. The
+-- Part 5 deductions, Part 6 allowances and Part 7 special rules reach this goal
+-- as figures the caller computes with those modules: each income item carries
+-- its own deductions, and the allowances are one total.
+
+§ `The top-level goal`
+
+DECLARE `Exemption claim` HAS
+    `ground` IS AN `Exemption ground`
+    `facts`  IS AN `Exemption facts`
+
+DECLARE `Income item` HAS
+    `description`     IS A STRING
+    `head`            IS A `Head of income`
+    `source`          IS A `Source of income`
+    `gross amount`    IS A NUMBER
+    `deductions`      IS A NUMBER     -- Part 5 (s 14 etc.), as computed for this source
+    `exemption claim` IS A MAYBE `Exemption claim`
+
+DECLARE `Taxpayer year` HAS
+    `year of assessment`                 IS A NUMBER
+    `kind of person`                     IS A `Kind of person`
+    `residence`                          IS A `Residence facts`
+    `income`                             IS A LIST OF `Income item`
+    `capital allowances available`       IS A NUMBER     -- Part 6, current and brought forward
+    `losses brought forward`             IS A NUMBER
+    `donation deductions available`      IS A NUMBER     -- s 37(3)(b)-(f), already multiplied
+    `same shareholders test met, or not a company` IS A BOOLEAN
+    `relief facts`                       IS A MAYBE `Individual relief facts`    -- resident individuals
+    `start-up facts`                     IS A MAYBE `Start-up facts`              -- companies
+    `CPF for a local employee in the preceding calendar year` IS A BOOLEAN      -- ss 92J, 92L
+    `parenthood rebates available`       IS A NUMBER     -- s 42A, including amounts carried forward
+    `foreign tax credits allowed`        IS A NUMBER     -- ss 50-50C, as computed in ita-withholding-credits
+    `tax deducted at source`             IS A NUMBER     -- s 46
+    `notice of assessment served on`     IS A MAYBE DATE
+    `paid by the last day`               IS A NUMBER
+    `as at`                              IS A DATE
+
+DECLARE `Income tax position` HAS
+    `resident in Singapore`        IS A BOOLEAN
+    `income charged`               IS A NUMBER
+    `income exempt`                IS A NUMBER
+    `statutory income`             IS A NUMBER
+    `assessable income`            IS A NUMBER
+    `personal reliefs`             IS A NUMBER
+    `chargeable income`            IS A NUMBER
+    `tax before rebates`           IS A NUMBER
+    `rebates and remissions`       IS A NUMBER
+    `credits`                      IS A NUMBER
+    `tax payable`                  IS A NUMBER
+    `last day to pay`              IS A MAYBE DATE
+    `late payment penalty`         IS A NUMBER
+
+-- Whether an income item is exempt under its claim (Part 4).
+GIVEN i IS AN `Income item`
+GIVETH A BOOLEAN
+DECIDE `the item is exempt:` i IF
+    CONSIDER i's `exemption claim`
+    WHEN NOTHING THEN FALSE
+    WHEN JUST c  THEN `the income is exempt under` (c's `ground`) `:` (c's `facts`)
+
+-- The item's net income: gross less its deductions; a negative result is a loss
+-- (s 37(3)(a)) where the item is a trade.
+GIVEN i IS AN `Income item`
+GIVETH A NUMBER
+`the net income of` i MEANS i's `gross amount` MINUS i's `deductions`
+
+GIVEN i IS AN `Income item`
+GIVETH A BOOLEAN
+DECIDE `a trade item:` i IF
+    i's `head` EQUALS `(a) gains or profits from a trade, business, profession or vocation`
+
+@ref ss 2, 2A, 10, 13, 35, 37, 38, 39, 39A, 40B, 42, 42A, 43, 46, 50, 85, 87, 92J, 92L
+GIVEN t IS A `Taxpayer year`
+GIVETH AN `Income tax position`
+`the income tax position for` t MEANS
+    IF NOT `the law is encoded for YA` ya
+    THEN REFUSE "no source is encoded for this year of assessment"
+    ELSE `Income tax position` WITH
+        `resident in Singapore`  IS `resident`
+        `income charged`         IS `charged gross`
+        `income exempt`          IS `exempt gross`
+        `statutory income`       IS `statutory`'s `total`
+        `assessable income`      IS `assessable`'s `assessable income`
+        `personal reliefs`       IS `reliefs`
+        `chargeable income`      IS `chargeable`
+        `tax before rebates`     IS `tax before rebates`
+        `rebates and remissions` IS `rebates`
+        `credits`                IS `credits`
+        `tax payable`            IS `payable`
+        `last day to pay`        IS `due`
+        `late payment penalty`   IS `late`
+    WHERE
+        ya MEANS t's `year of assessment`
+        k  MEANS t's `kind of person`
+        `resident` MEANS `resident in Singapore:` k `,` (t's `residence`)
+        -- Parts 3 and 4
+        `charged items` MEANS filter (GIVEN i YIELD `within the charge to tax, being` (i's `source`) AND NOT `the item is exempt:` i) (t's `income`)
+        `exempt items`  MEANS filter (GIVEN i YIELD `within the charge to tax, being` (i's `source`) AND `the item is exempt:` i) (t's `income`)
+        `charged gross` MEANS sum (map (GIVEN i YIELD i's `gross amount`) `charged items`)
+        `exempt gross`  MEANS sum (map (GIVEN i YIELD i's `gross amount`) `exempt items`)
+        -- Part 8 (s 35): trade and other sources; a trade loss goes to Part 9
+        `trade net`  MEANS sum (map `the net income of` (filter `a trade item:` `charged items`))
+        `other net`  MEANS sum (map (GIVEN i YIELD `at least 0` (`the net income of` i)) (filter (GIVEN i YIELD NOT `a trade item:` i) `charged items`))
+        `at least 0` x MEANS IF x LESS THAN 0 THEN 0 ELSE x
+        `current loss` MEANS IF `trade net` LESS THAN 0 THEN 0 MINUS `trade net` ELSE 0
+        `statutory` MEANS `the statutory income, trade income` (`at least 0` `trade net`) `, other income` `other net` `, allowances` (t's `capital allowances available`)
+        -- Part 9 (s 37)
+        `assessable` MEANS `the assessable income from statutory income` (`statutory`'s `total`) `, losses brought forward` (t's `losses brought forward`) `, current loss` `current loss` `, donations` (t's `donation deductions available`) `, shareholders:` (t's `same shareholders test met, or not a company`)
+        -- Part 10 (ss 38-39A)
+        `an individual` MEANS k EQUALS `an individual`
+        `reliefs` MEANS
+            CONSIDER t's `relief facts`
+            WHEN JUST f  THEN IF `an individual` AND `resident` THEN (`the personal reliefs for YA` ya `, resident:` TRUE `:` f)'s `total allowed` ELSE 0
+            WHEN NOTHING THEN 0
+        `chargeable` MEANS `the chargeable income from assessable income` (`assessable`'s `assessable income`) `less reliefs` `reliefs`
+        -- Part 11
+        `start-up` MEANS
+            CONSIDER t's `start-up facts`
+            WHEN JUST s  THEN `the start-up exemption applies to` s `for YA` ya
+            WHEN NOTHING THEN FALSE
+        `tax before rebates` MEANS
+            CONSIDER `the basis of charge for YA` ya `on` k `, resident:` `resident`
+            WHEN `the Second Schedule rates for a resident individual` THEN `the resident individual rates for YA` ya `on chargeable income of` `chargeable`
+            WHEN `a flat rate` r THEN
+                IF   `an individual` AND `employment net` GREATER THAN 0
+                THEN `the tax with the non-resident relief for income` `as a non-resident employee` `, chargeable` `chargeable` `, from the source` `employment net` `, assessable` (`assessable`'s `assessable income`) `, only source:` `employment only` `, resident tax` `resident tax on that part` `, YA` ya   -- s 40B
+                ELSE (`the chargeable income taxed, after the s 43(6) exemptions, for` k `, start-up:` `start-up` `, YA` ya `, on` `chargeable`) TIMES r
+        -- s 40B: the employment share of chargeable income, and the tax a resident
+        -- would pay on it in the same circumstances (s 39A included, (3A)): resident
+        -- rates on chargeable income less the reliefs a resident would have had,
+        -- apportioned to the employment share (FORK I2)
+        `employment items` MEANS filter (GIVEN i YIELD i's `head` EQUALS `(b) gains or profits from employment`) `charged items`
+        `employment net` MEANS sum (map (GIVEN i YIELD `at least 0` (`the net income of` i)) `employment items`)
+        `employment only` MEANS count `employment items` EQUALS count `charged items`
+        `as-if-resident reliefs` MEANS
+            CONSIDER t's `relief facts`
+            WHEN JUST f  THEN (`the personal reliefs for YA` ya `, resident:` TRUE `:` f)'s `total allowed`
+            WHEN NOTHING THEN 0
+        `resident tax on that part` MEANS
+            IF   `chargeable` EQUALS 0
+            THEN 0
+            ELSE `the resident individual rates for YA` ya `on chargeable income of` (`at least 0` (`chargeable` MINUS `as-if-resident reliefs`)) TIMES `the employment share`
+        `the employment share` MEANS
+            IF   `employment only` OR `assessable`'s `assessable income` AT MOST `employment net`
+            THEN 1
+            ELSE `employment net` DIVIDED BY `assessable`'s `assessable income`
+        -- rebates and remissions
+        `parenthood` MEANS IF `an individual` AND `resident` THEN (`a rebate of` (t's `parenthood rebates available`) `against tax of` `tax before rebates`)'s `tax after rebate` ELSE `tax before rebates`
+        `remission` MEANS
+            IF k EQUALS `a company`
+            THEN (`the company remission for YA` ya `on tax of` `tax before rebates` `, local CPF:` (t's `CPF for a local employee in the preceding calendar year`) `, barred:` FALSE)'s `tax remitted`
+            ELSE 0
+        `after rebates` MEANS `at least 0` (`parenthood` MINUS `remission`)
+        `rebates` MEANS `tax before rebates` MINUS `after rebates`
+        -- credits (ss 46, 50)
+        `credits` MEANS (IF t's `foreign tax credits allowed` GREATER THAN `after rebates` THEN `after rebates` ELSE t's `foreign tax credits allowed`) PLUS t's `tax deducted at source`
+        `payable` MEANS `after rebates` MINUS `credits`
+        -- Part 19 (ss 85, 87)
+        `due` MEANS
+            CONSIDER t's `notice of assessment served on`
+            WHEN NOTHING THEN NOTHING
+            WHEN JUST s  THEN JUST (`the last day to pay tax assessed by a notice served on` s)
+        `late` MEANS
+            CONSIDER `due`
+            WHEN NOTHING THEN 0
+            WHEN JUST d  THEN (`the late payment penalty on tax of` (`at least 0` (`payable` MINUS t's `paid by the last day`)) `due by` d `, as at` (t's `as at`))'s `total`

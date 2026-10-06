@@ -1,0 +1,167 @@
+IMPORT prelude
+IMPORT daydate
+
+-- Carbon Pricing Act 2018 (Singapore) — THE NOUNS.
+--
+-- Every fact the rule modules read, and nothing else: no rules, no #EVAL.
+-- A fact here is one a witness or a record could give ("the plant burned
+-- 40,000 tonnes of natural gas in 2025"); whether that makes the plant a
+-- taxable facility is a rule.
+--
+-- Source: ../source/CPA2018.txt (SSO PDF, current version as at 06 Oct 2026).
+
+§ `Carbon Pricing Act 2018 — the nouns`
+
+§§ `Greenhouse gas emissions`
+
+-- Second Schedule Parts 2 and 3, second column: the circumstances in which a
+-- gas is emitted that the Act distinguishes. Anything else is `in any other
+-- circumstances`.
+DECLARE `Circumstance of emission` IS ONE OF
+    `in manufacturing, installing, using or disposing of electrical equipment`     -- Part 2 item 2 (SF6)
+    `used and emitted in purging`                                                   -- item 3(a) (CO2)
+    `used and emitted in blasting`                                                  -- item 3(b) (CO2)
+    `in using any lubricant or paraffin wax`                                        -- item 3(c) (CO2)
+    `in the combustion of a biomass fuel listed in item 3(d)`                       -- item 3(d) (CO2)
+    `in using refrigeration or air-conditioning equipment for non-manufacturing purposes` -- items 4, 5 (HFCs, PFCs)
+    `in using any fire protection equipment`                                        -- item 6(a)
+    `as a fugitive emission, not flaring or venting`                                -- item 6(b)
+    `in using a vehicle to transport persons or goods`                              -- item 6(c); Part 3 item 1(a)
+    `in using a fuel on which excise duty is payable or exempt under the Customs Act 1960` -- item 6(d)
+    `in carrying out AFOLU activities`                                              -- item 6(e); Part 3 item 1(b)
+    `in any other circumstances`
+
+-- One gas emitted directly from a business facility (s 2 "GHG emission"), its
+-- mass in metric tonnes, and how it was emitted. The gas is named as in the
+-- First Schedule's first column ("Carbon dioxide", "HFC-134a", "PFC-14").
+DECLARE `GHG emission` HAS
+    `gas`            IS A STRING
+    `mass in tonnes` IS A NUMBER
+    `circumstance`   IS A `Circumstance of emission`
+
+§§ `Business facilities and operational control (ss 3, 4)`
+
+-- s 3: a business facility is a single site at which a business activity is
+-- carried out; s 4: operational control. Whether a set of activities is one
+-- facility, and who has operational control, is a finding the caller makes
+-- (with s 3(3)-(4) and s 4(3)); these facts let the rules check the site test.
+DECLARE `Site facts` HAS
+    `carried out on more than one parcel of land`                     IS A BOOLEAN
+    `the same person has operational control over the activity`       IS A BOOLEAN   -- s 3(3)
+    `parcels contiguous, adjacent, adjoining, or separated only by a road, pathway, drain or waterway` IS A BOOLEAN   -- s 3(3)(a)
+    `a prescribed dependency between the activities on the parcels`   IS A BOOLEAN   -- s 3(3)(b)
+    `in a prescribed industry sector`                                 IS A BOOLEAN   -- s 5(1)
+
+DECLARE `Policy authority` HAS
+    `person`                                     IS A STRING
+    `may introduce and implement operating policies`        IS A BOOLEAN   -- s 4(1)(a)
+    `may introduce and implement health and safety policies` IS A BOOLEAN  -- s 4(1)(b)
+    `may introduce and implement environmental policies`    IS A BOOLEAN   -- s 4(1)(c)
+    `rank of authority`                          IS A NUMBER    -- s 4(3): higher is greater authority; a finding
+
+§§ `Registration (Part 3)`
+
+-- What the person (and the facility) already are, on the register.
+DECLARE `Registration status` HAS
+    `a registered person`                    IS A BOOLEAN
+    `registered as a reportable facility of the person` IS A BOOLEAN
+    `registered as a taxable facility of the person`    IS A BOOLEAN
+
+-- s 7(5), s 8(1)(a)(ii): a transfer of operational control from X to Y.
+DECLARE `Transfer of control` HAS
+    `date of transfer`                                         IS A DATE
+    `X was a registered person of the facility, or had control on 31 December of a trigger year` IS A BOOLEAN   -- s 7(5)(a)
+    `the facility was registered as a taxable facility of X`   IS A BOOLEAN   -- s 8(1)(a)(ii)(B)-(C)
+    `reckonable tCO2e in the year before the transfer`         IS A NUMBER    -- s 8(1)(a)(ii)(A)-(B)
+
+-- s 9: grounds to deregister.
+DECLARE `Deregistration facts` HAS
+    `ceased to have operational control`                        IS A BOOLEAN   -- s 9(1)(a), (3)(a)
+    `ceased to operate with no intention to resume within 36 months` IS A BOOLEAN   -- (aa)
+    `reckonable tCO2e in each of the last 3 consecutive years` IS A LIST OF NUMBER   -- (b)
+    `a modification was completed`                              IS A BOOLEAN   -- (c)
+    `reckonable tCO2e in the year the modification was completed` IS A NUMBER  -- (c)(i)
+    `likely tCO2e in each of the next 2 years`                  IS A LIST OF NUMBER   -- (c)(ii): the Agency's or the person's forecast
+    `no reportable facility remains registered to the person`   IS A BOOLEAN   -- s 9(4)
+    `wound up, dissolved or otherwise ceased to exist`          IS A BOOLEAN   -- s 9(5)
+    `all obligations and liabilities under the Act discharged`  IS A BOOLEAN   -- s 10(4)
+
+§§ `Tax, assessments and payment (Part 5)`
+
+DECLARE `Kind of assessment` IS ONE OF
+    `an assessment under s 21(1)`            -- on approving the verified report(s)
+    `a best-judgment assessment under s 21(2)`
+    `an advance assessment under s 22`
+    `a revised assessment under s 23`
+
+-- How the tax for one emissions year was, or is to be, paid.
+DECLARE `Payment record` HAS
+    `tax assessed`                              IS A NUMBER
+    `assessment`                                IS A `Kind of assessment`
+    `notice of assessment served on`            IS A DATE
+    `amount paid by the due date`               IS A NUMBER
+    `amount still unpaid on the as-at date`     IS A NUMBER
+
+-- Fixed-price and international carbon credits offered in payment.
+DECLARE `Surrender` HAS
+    `fixed-price carbon credits`                IS A NUMBER
+    `eligible international carbon credits`     IS A NUMBER
+    `the prescribed ICC limit`                  IS A NUMBER     -- s 33B(1); regulations
+    `the Minister permits more ICCs`            IS A BOOLEAN    -- s 33B(2)
+    `ICCs may be used for that tax and emissions year` IS A BOOLEAN  -- s 17(3A): prescribed
+
+DECLARE `FPCC account state` IS ONE OF
+    `open`
+    `suspended`
+    `closed`
+
+§§ `Appeals and decisions (Part 6)`
+
+DECLARE `Agency decision` IS ONE OF
+    `refusing to deregister a taxable facility`                         -- s 34(1)(a)
+    `refusing to approve a verified emissions report or monitoring plan` -- (b)
+    `refusing a refund or a credit of FPCCs under s 19`                  -- (c)
+    `refusing to revise an assessment under s 23`                        -- (d)
+    `some other decision`
+
+§§ `Offences`
+
+DECLARE `CPA offence` IS ONE OF
+    `s 47(2) — refusing or misstating name, address or particulars`
+    `s 48(3) — failing to comply with a requirement on search`
+    `s 49(4) — failing to comply with a notice to provide information`
+    `s 51(2) — failing to carry out a test or inspection`
+    `s 52 — obstructing the Agency or an authorised officer`
+    `s 53 — false entries or false information`
+    `s 54(1) — failing to apply to be a registered person`
+    `s 54(2) — failing to apply to register a reportable facility`
+    `s 54(3) — failing to apply to register a taxable facility`
+    `s 54(4) — false statement in a registration application`
+    `s 54(5) — failing to give 45 days' notice of ceasing control`
+    `s 55(1) — failing to submit an unverified emissions report`
+    `s 55(2) — submitting an inaccurate unverified emissions report`
+    `s 56(1) — failing to submit a verified emissions report`
+    `s 57(1) — failing to submit a monitoring plan`
+    `s 57(2) — submitting an inaccurate monitoring plan`
+    `s 58 — failing to comply with a direction under s 13(2), 14 or 15(2), or with s 15(1)`
+    `s 60 — offences by authorised and unauthorised persons`
+    `s 61(1) — failing to comply with the Minister's requirement`
+    `s 61(2) — failing to attend before an Appeal Panel`
+    `s 62(1) — failing to keep records`
+    `s 62(2) — failing to notify a change in particulars`
+    `s 70(3) — failing to comply with a court's remedial order`
+    `s 76(4) — contravening the regulations`
+
+-- s 56(2)-(5): the culpability behind an inaccurate verified report.
+DECLARE `Culpability` IS ONE OF
+    `none shown`                                                   -- s 56(2)
+    `without reasonable excuse or through negligence`              -- (3)
+    `wilfully with intent to evade`                                -- (4)
+    `by fraud, art or contrivance, wilfully with intent to evade` -- (5)
+
+-- What a court may impose, at most. A NUMBER of dollars; imprisonment in
+-- months; a daily amount for a continuing offence after conviction.
+DECLARE `CPA penalty` HAS
+    `fine`                       IS A NUMBER
+    `imprisonment in months`     IS A NUMBER
+    `continuing, per day`        IS A NUMBER

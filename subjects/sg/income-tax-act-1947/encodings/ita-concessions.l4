@@ -1,0 +1,113 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `ita-types`
+
+-- Income Tax Act 1947 — THE CONCESSIONARY RATES (ss 43A-43X) AND THE NET
+-- TONNAGE BASIS (s 34K, Twelfth Schedule).
+--
+-- Each concessionary-rate section lets the Minister (or an authorised body)
+-- approve a company, and the approval or award fixes which of the section's
+-- rates applies. The encoding takes the award as an input, checks the rate is
+-- one the section allows, and taxes the qualifying income at it. The
+-- qualifying income itself is a finding under the award.
+--
+-- Source: ../source/ITA1947.txt lines 26585-28619, 19746-19909, 35392-35425.
+
+§ `Concessionary rates and the tonnage basis`
+
+§§ `The concessionary-rate sections (ss 43A-43X)`
+
+DECLARE `Concession` IS ONE OF
+    `s 43A Asian Currency Unit, fund manager, securities company`     -- 10% (income before 1 January 2004)
+    `s 43C insurance and reinsurance`                                 -- 10%
+    `s 43D headquarters company`                                      -- 10%
+    `s 43E Finance and Treasury Centre`                               -- 8% or 10%
+    `s 43F offshore leasing of machinery and plant`                   -- 10%
+    `s 43G trustee company`                                           -- 10%
+    `s 43H debt securities`                                           -- 10%
+    `s 43I global trading company`                                    -- 5%, 10% or 15%
+    `s 43J financial sector incentive company`                        -- 5%, 10%, 12%, 13.5% or 15%
+    `s 43K processing services to financial institutions`             -- 5%
+    `s 43L shipping investment manager`                               -- 10%
+    `s 43N leasing of aircraft and aircraft engines`                  -- 5%, 8% or 10%
+    `s 43O aircraft investment manager`                               -- 10%
+    `s 43P container investment enterprise`                           -- 5%
+    `s 43Q container investment manager`                              -- 10%
+    `s 43R approved insurance broker`                                 -- 15%
+    `s 43S managing a REIT, business trust or company`                -- 10%
+    `s 43T ship broking and forward freight agreements`               -- 10%
+    `s 43U shipping-related support services`                         -- 10%
+    `s 43V legal services for international arbitration`              -- 5%
+    `s 43W international growth company`                              -- 10%
+    `s 43X intellectual property income`                              -- A + B: base 5%, 10% (or 15% from 17 Feb 2024) plus increases
+
+@ref ss 43A-43X
+GIVEN c IS A `Concession`
+GIVETH A LIST OF NUMBER
+`the rates allowed under` c MEANS
+    CONSIDER c
+    WHEN `s 43A Asian Currency Unit, fund manager, securities company` THEN LIST 10%
+    WHEN `s 43C insurance and reinsurance`                             THEN LIST 10%
+    WHEN `s 43D headquarters company`                                  THEN LIST 10%
+    WHEN `s 43E Finance and Treasury Centre`                           THEN LIST 8%, 10%
+    WHEN `s 43F offshore leasing of machinery and plant`               THEN LIST 10%
+    WHEN `s 43G trustee company`                                       THEN LIST 10%
+    WHEN `s 43H debt securities`                                       THEN LIST 10%
+    WHEN `s 43I global trading company`                                THEN LIST 5%, 10%, 15%
+    WHEN `s 43J financial sector incentive company`                    THEN LIST 5%, 10%, 12%, 13.5%, 15%
+    WHEN `s 43K processing services to financial institutions`         THEN LIST 5%
+    WHEN `s 43L shipping investment manager`                           THEN LIST 10%
+    WHEN `s 43N leasing of aircraft and aircraft engines`              THEN LIST 5%, 8%, 10%
+    WHEN `s 43O aircraft investment manager`                           THEN LIST 10%
+    WHEN `s 43P container investment enterprise`                       THEN LIST 5%
+    WHEN `s 43Q container investment manager`                          THEN LIST 10%
+    WHEN `s 43R approved insurance broker`                             THEN LIST 15%
+    WHEN `s 43S managing a REIT, business trust or company`            THEN LIST 10%
+    WHEN `s 43T ship broking and forward freight agreements`           THEN LIST 10%
+    WHEN `s 43U shipping-related support services`                     THEN LIST 10%
+    WHEN `s 43V legal services for international arbitration`          THEN LIST 5%
+    WHEN `s 43W international growth company`                          THEN LIST 10%
+    WHEN `s 43X intellectual property income`                          THEN LIST 5%, 10%, 15%   -- the base rates A; increases B are added (s 43X(5))
+
+-- The tax on qualifying income at the awarded rate. A rate the section does not
+-- allow is a mistake in the inputs, and refuses.
+@ref ss 43A-43X
+GIVEN c                    IS A `Concession`
+      `awarded rate`       IS A NUMBER
+      `qualifying income`  IS A NUMBER
+GIVETH A NUMBER
+`the concessionary tax under` c `at` `awarded rate` `on` `qualifying income` MEANS
+    IF   elem `awarded rate` (`the rates allowed under` c) OR `a s 43X base plus increases`
+    THEN `qualifying income` TIMES `awarded rate`
+    ELSE REFUSE "the awarded rate is not one the section allows"
+    WHERE
+        -- s 43X(5): "A + B", A a base rate of 5% or 10% (or 5%, 10% or 15% for an
+        -- approval on or after 17 February 2024), B "the sum of every rate increase
+        -- specified" (at least 0.5% each). Found by the independent test pass.
+        `a s 43X base plus increases` MEANS c EQUALS `s 43X intellectual property income` AND `awarded rate` GREATER THAN 5%
+
+-- s 43M, s 43MA: a resident beneficiary's share of trust (or estate) income is
+-- taxed at the concessionary rate it would have borne if derived directly.
+
+§§ `The net tonnage basis (s 34K, Twelfth Schedule)`
+
+-- Twelfth Schedule: the income for each day a qualifying ship is used, by net
+-- tonnage, "for each 100 NT" rounded down: a ship other than a green ship —
+-- $0.90 for each 100 NT of the first 1,000 NT, $0.60 for each 100 NT of the next
+-- 9,000 NT, $0.30 for each 100 NT above 10,000 NT; a green ship — $0.60, $0.30
+-- and $0.30.
+@ref s 34K(2); Twelfth Schedule
+GIVEN `net tons`     IS A NUMBER
+      `a green ship` IS A BOOLEAN
+      days           IS A NUMBER
+GIVETH A NUMBER
+`the tonnage income for a ship of` `net tons` `NT, green:` `a green ship` `, days used` days MEANS
+    (`band` `first` `rate 1` PLUS `band` `next` `rate 2` PLUS `band` `above` 0.30) TIMES days
+    WHERE
+        `hundreds` MEANS FLOOR (`net tons` DIVIDED BY 100)
+        `first` MEANS IF `hundreds` GREATER THAN 10 THEN 10 ELSE `hundreds`
+        `next`  MEANS IF `hundreds` GREATER THAN 100 THEN 90 ELSE (IF `hundreds` GREATER THAN 10 THEN `hundreds` MINUS 10 ELSE 0)
+        `above` MEANS IF `hundreds` GREATER THAN 100 THEN `hundreds` MINUS 100 ELSE 0
+        `rate 1` MEANS IF `a green ship` THEN 0.60 ELSE 0.90
+        `rate 2` MEANS IF `a green ship` THEN 0.30 ELSE 0.60
+        `band` n r MEANS n TIMES r

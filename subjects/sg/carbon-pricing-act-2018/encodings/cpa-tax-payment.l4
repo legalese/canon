@@ -1,0 +1,429 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `cpa-types`
+IMPORT `cpa-schedules`
+IMPORT `cpa-registration-reporting`
+
+-- Carbon Pricing Act 2018 — GOAL 3: HOW MUCH CARBON TAX IS CHARGED FOR AN
+-- EMISSIONS YEAR? and GOAL 4: HOW, AND BY WHEN, IS IT PAID — AND WHAT IF IT
+-- IS LATE?
+--
+-- Part 5: the tax (s 16), allowances (ss 20A-20G), payment, penalties,
+-- relief, refunds and recovery (ss 17-20), fixed-price carbon credits and
+-- their registry (ss 26-33), international carbon credits (ss 33A-33D), and
+-- the Third Schedule.
+--
+-- Source: ../source/CPA2018.txt; the s 31A formula is transcribed in
+-- ../source/PROVENANCE.md.
+
+§ `Goals 3 and 4 — the carbon tax and its payment`
+
+§§ `Rounding`
+
+GIVEN x IS A NUMBER
+GIVETH A NUMBER
+`rounded up to the nearest tonne` x MEANS
+    IF FLOOR x EQUALS x THEN x ELSE FLOOR x PLUS 1
+
+GIVEN x IS A NUMBER
+GIVETH A NUMBER
+`rounded down to whole credits` x MEANS FLOOR x
+
+§§ `Goal 3 — the carbon tax (ss 16, 20A-20E)`
+
+-- One emissions year of one business facility.
+DECLARE `Emissions year facts` HAS
+    `emissions year`                                     IS A NUMBER
+    `a taxable facility of the registered person in that year` IS A BOOLEAN   -- s 16(1)
+    `reckonable tCO2e in the verified and approved reports` IS A NUMBER       -- s 16(1A)
+    `allowance awarded for the year, in tCO2e`           IS A MAYBE NUMBER    -- s 20C "C"; the Minister's award (s 20E)
+    `the award's minimum tax per tonne`                  IS A MAYBE NUMBER    -- s 20E(2)(b)(i)
+    `the last emissions year Division 1A applies to`     IS A MAYBE NUMBER    -- s 20B: a date the Minister prescribes; NOTHING if none yet
+
+-- s 16(1): the carbon tax "is charged on the total amount of reckonable GHG
+-- emissions in any year ... of a business facility that is a taxable facility
+-- of any registered person in that year". (2): not "if the total amount ...
+-- does not attain the second emissions threshold". (3): "A × B, where — (a) A
+-- is the carbon dioxide equivalence ..., rounded up to the nearest metric
+-- tonne; and (b) B is the carbon tax rate specified in Part 1 of the Third
+-- Schedule."
+-- s 20B: Division 1A applies to emissions years from 1 January 2024 up to a
+-- date the Minister prescribes. s 20C: with an allowance, "(A – C) × B ... (c)
+-- (A – C) is rounded up to the nearest metric tonne". s 20E(2)(b)(i): an award
+-- may provide that the tax, "when divided by A ..., [must not] result in an
+-- amount that is less than the amount specified by the Minister in the award".
+@ref ss 16, 20B, 20C, 20E(2)(b)(i); Third Schedule Part 1
+GIVEN f IS AN `Emissions year facts`
+GIVETH A NUMBER
+`the carbon tax charged for` f MEANS
+    BRANCH IF NOT `the law is encoded for the year` (f's `emissions year`)
+              THEN REFUSE "no source is encoded for this emissions year"
+           IF NOT f's `a taxable facility of the registered person in that year`
+              THEN 0                                                                    -- s 16(1)
+           IF f's `reckonable tCO2e in the verified and approved reports` LESS THAN `the second emissions threshold`
+              THEN 0                                                                    -- s 16(2)
+           OTHERWISE `with any allowance`
+    WHERE
+        `A` MEANS `rounded up to the nearest tonne` (f's `reckonable tCO2e in the verified and approved reports`)
+        `B` MEANS `the carbon tax rate for` (f's `emissions year`)
+        `Division 1A applies` MEANS
+            CONSIDER f's `the last emissions year Division 1A applies to`
+            WHEN NOTHING   THEN TRUE
+            WHEN JUST last THEN f's `emissions year` AT MOST last
+        `with any allowance` MEANS
+            CONSIDER f's `allowance awarded for the year, in tCO2e`
+            WHEN NOTHING THEN `A` TIMES `B`                                             -- s 16(3)
+            WHEN JUST c  THEN IF `Division 1A applies` THEN `the floor applied` (`rounded up to the nearest tonne` (`at least 0` (`A` MINUS c)) TIMES `B`) ELSE `A` TIMES `B`
+        `at least 0` x MEANS IF x LESS THAN 0 THEN 0 ELSE x
+        `the floor applied` tax MEANS
+            CONSIDER f's `the award's minimum tax per tonne`
+            WHEN NOTHING   THEN tax
+            WHEN JUST m    THEN IF tax LESS THAN m TIMES `A` THEN m TIMES `A` ELSE tax
+
+-- s 20D(1): a taxable facility is eligible for allowances if "(a) the
+-- registered person is in the business of making exports or making supplies to
+-- another person who is in the business of making exports, and the taxable
+-- facility is used in connection with that business ...; and (b) the Minister
+-- determines that that business ... is of sufficient economic or strategic
+-- importance".
+@ref s 20D(1)
+GIVEN `in an export business, or supplying one, using the facility` IS A BOOLEAN
+      `the Minister's determination under s 20D(1)(b)`              IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `eligible for allowances, exporting:` `in an export business, or supplying one, using the facility` `, determined:` `the Minister's determination under s 20D(1)(b)` IF
+        "(a)" ... `in an export business, or supplying one, using the facility`
+    AND "(b)" ... `the Minister's determination under s 20D(1)(b)`
+
+-- s 23(1A): no objection to the allowance in an assessment. s 20E(5): a
+-- modified methodology cannot be applied to a year already assessed, unless
+-- the assessment is being revised.
+@ref s 20E(5)
+GIVEN `the year has been assessed`   IS A BOOLEAN
+      `the assessment is being revised` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a modified methodology may be applied, assessed:` `the year has been assessed` `, being revised:` `the assessment is being revised` IF
+        NOT `the year has been assessed`
+    OR  `the assessment is being revised`
+
+§§ `Goal 4a — when the tax is due (s 17(1))`
+
+-- s 17(1): "(a) against an assessment pursuant to section 21(1) or (2), by the
+-- later of — (i) 30 September of the year immediately following the emissions
+-- year; or (ii) 30 days after the date of service on the registered person of
+-- the notice of assessment; and (b) against any other assessment, within
+-- 30 days after the date of service".
+@ref s 17(1)
+GIVEN `emissions year` IS A NUMBER
+      k                IS A `Kind of assessment`
+      served           IS A DATE
+GIVETH A DATE
+`the last day to pay the tax for` `emissions year` `, assessed by` k `, served on` served MEANS
+    IF   `the law is encoded for the year` (`emissions year`)
+    THEN CONSIDER k
+         WHEN `an assessment under s 21(1)`             THEN `the later of` (YMD (`emissions year` PLUS 1) 9 30) (served PLUS 30)
+         WHEN `a best-judgment assessment under s 21(2)` THEN `the later of` (YMD (`emissions year` PLUS 1) 9 30) (served PLUS 30)
+         OTHERWISE served PLUS 30
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+
+§§ `Goal 4b — paying with carbon credits (ss 17(2)-(3B), 26-28, 33A-33C)`
+
+-- s 17(2): payment is "(a) ... by the surrender of fixed-price carbon credits;
+-- or (b) if ... the FPCC registry account ... is suspended or closed, in the
+-- form and manner required by the Agency."
+DECLARE `Means of payment` IS ONE OF
+    `by surrendering fixed-price carbon credits (and any eligible ICCs)`
+    `in the form and manner the Agency requires`
+
+@ref s 17(2), s 32(2)(c)
+GIVEN account IS A `FPCC account state`
+GIVETH A `Means of payment`
+`how the tax is paid, the FPCC account being` account MEANS
+    IF   account EQUALS `open`
+    THEN `by surrendering fixed-price carbon credits (and any eligible ICCs)`
+    ELSE `in the form and manner the Agency requires`
+
+-- s 17(3): "the number of fixed-price carbon credits that must be surrendered
+-- ... is the number assessed by the Agency to have a total carbon price equal
+-- to the amount of tax charged". s 17(3B)(a): for tax under a revised
+-- assessment, at the carbon price for the year of purchase, "rounded down to
+-- the nearest whole number". FORK F4: under s 17(3) the price is that of the
+-- year the credits are purchased; a fraction (which arises only if the tax
+-- rate and the price differ) is rounded up, so that the credits' total carbon
+-- price is not less than the tax.
+@ref s 17(3), (3B)(a); Third Schedule Part 2
+GIVEN tax                IS A NUMBER
+      `year of purchase` IS A NUMBER
+      `under a revision` IS A BOOLEAN
+GIVETH A NUMBER
+`the fixed-price carbon credits to surrender for tax of` tax `, bought in` `year of purchase` `, revised:` `under a revision` MEANS
+    IF   `the law is encoded for the year` (`year of purchase`)
+    THEN IF   `under a revision`
+         THEN `rounded down to whole credits` `exact`
+         ELSE `rounded up to the nearest tonne` `exact`
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+    WHERE
+        `exact` MEANS tax DIVIDED BY `the carbon price for credits purchased in` `year of purchase`
+
+-- s 17(3A): "one eligible international carbon credit may be surrendered in
+-- place of one fixed-price carbon credit, in respect of such tax for such
+-- emissions year as may be prescribed". s 33B(1): "must not exceed the
+-- prescribed limit"; (2): the Minister may permit more. s 33C: ICCs over the
+-- limit "are not treated as surrendered for the purpose of paying the tax".
+-- s 17(3B)(b): for a revised assessment, only as prescribed — an input here.
+@ref ss 17(3A), 33B, 33C
+GIVEN s IS A `Surrender`
+GIVETH A NUMBER
+`the eligible ICCs that count, of` s MEANS
+    BRANCH IF NOT s's `ICCs may be used for that tax and emissions year`
+              THEN 0
+           IF s's `the Minister permits more ICCs`
+              THEN s's `eligible international carbon credits`
+           IF s's `eligible international carbon credits` GREATER THAN s's `the prescribed ICC limit`
+              THEN s's `the prescribed ICC limit`                                      -- s 33C(a)
+           OTHERWISE s's `eligible international carbon credits`
+
+-- s 28(2): surrendered FPCCs pay the tax "to the extent of the total carbon
+-- price of the fixed-price carbon credits so surrendered"; s 33B(3): an ICC
+-- pays it "to the extent of the carbon price of the fixed-price carbon credit
+-- that [it] has been surrendered in place of".
+@ref ss 28(2), 33B(3)
+GIVEN s       IS A `Surrender`
+      price   IS A NUMBER
+GIVETH A NUMBER
+`the tax treated as paid by` s `, at a carbon price of` price MEANS
+    (s's `fixed-price carbon credits` PLUS `the eligible ICCs that count, of` s) TIMES price
+
+-- s 31A: where the carbon price for year X differs from year X-1, credits
+-- bought at the X-1 price are converted "by applying the formula R × S / T",
+-- R the credits, S the X-1 price, T the year X price; (2) rounded down.
+@ref s 31A; ../source/PROVENANCE.md
+GIVEN R IS A NUMBER
+      `year X` IS A NUMBER
+GIVETH A NUMBER
+`the credits after conversion, of` R `bought the year before` `year X` MEANS
+    IF   `the law is encoded for the year` (`year X`)
+    THEN IF   S EQUALS T
+         THEN R
+         ELSE `rounded down to whole credits` (R TIMES S DIVIDED BY T)
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+    WHERE
+        S MEANS `the carbon price for credits purchased in` (`year X` MINUS 1)
+        T MEANS `the carbon price for credits purchased in` `year X`
+
+§§ `Goal 4c — late payment (s 17(4)) and recovery (s 20)`
+
+DECLARE `Late payment penalty` HAS
+    `the 5% penalty`                  IS A NUMBER
+    `the additional 1% penalties`     IS A NUMBER
+    `total`                           IS A NUMBER
+
+-- s 17(4): if the tax is not fully paid in time, "(a) a financial penalty of 5%
+-- of the amount of tax assessed and remaining unpaid, is payable ...; (b) the
+-- Agency must serve a demand note ...; and (c) ... if the amount of tax
+-- remaining unpaid is not paid within 60 days after the imposition of the
+-- financial penalty under paragraph (a), an additional financial penalty of 1%
+-- of the amount of tax remaining unpaid is payable for each completed month
+-- that the tax remains unpaid, but not exceeding triple the amount of tax
+-- remaining unpaid in total."
+-- FORK F5: the 5% penalty is imposed on the day after the last day to pay; the
+-- completed months under (c) are counted from the end of the 60 days; and
+-- "triple ... in total" caps the additional penalties alone. The unpaid amount
+-- is taken as constant over the period.
+@ref s 17(4)
+GIVEN unpaid      IS A NUMBER
+      `last day`  IS A DATE
+      `as at`     IS A DATE
+GIVETH A `Late payment penalty`
+`the late payment penalty on` unpaid `unpaid after` `last day` `, as at` `as at` MEANS
+    IF   `the law is encoded for the year` (DATE_YEAR `last day`)
+    THEN `Late payment penalty` WITH
+             `the 5% penalty`              IS `five`
+             `the additional 1% penalties` IS `additional`
+             `total`                       IS `five` PLUS `additional`
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+    WHERE
+        `imposed on` MEANS `last day` PLUS 1
+        `five` MEANS IF unpaid GREATER THAN 0 AND `as at` AT LEAST `imposed on` THEN unpaid TIMES 5% ELSE 0
+        `months start` MEANS `imposed on` PLUS 60
+        `completed months` MEANS `months from` `months start` 0
+        `months from` d n MEANS
+            IF   `add months` `months start` (n PLUS 1) AT MOST `as at`
+            THEN `months from` d (n PLUS 1)
+            ELSE n
+        `uncapped` MEANS IF unpaid GREATER THAN 0 AND `as at` GREATER THAN `months start` THEN unpaid TIMES 1% TIMES `completed months` ELSE 0
+        `additional` MEANS IF `uncapped` GREATER THAN 3 TIMES unpaid THEN 3 TIMES unpaid ELSE `uncapped`
+
+-- s 17(4)(b): enforcement may follow if a demand note is not paid "within 30
+-- days after the date of the service of the demand note".
+@ref s 17(4)(b)
+GIVEN `demand note served on` IS A DATE
+GIVETH A DATE
+`the last day to pay a demand note served on` `demand note served on` MEANS
+    IF   `the law is encoded for the year` (DATE_YEAR `demand note served on`)
+    THEN `demand note served on` PLUS 30
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+
+-- s 20(1): unpaid tax, the s 17(4) penalties, unpaid demands and erroneous
+-- refunds are "recoverable as a debt due to the Government".
+@ref s 20(1)
+GIVEN `tax unpaid` IS A NUMBER
+      penalty      IS A `Late payment penalty`
+      `erroneous refund` IS A NUMBER
+GIVETH A NUMBER
+`the debt recoverable by the Agency, tax` `tax unpaid` `, penalty` penalty `, erroneous refund` `erroneous refund` MEANS
+    `tax unpaid` PLUS penalty's `total` PLUS `erroneous refund`
+
+§§ `Goal 4d — relief, refunds, waiver and the registry (ss 18, 19, 24, 29-33)`
+
+-- s 19(1): a refund may be applied for where the tax charged is reduced by
+-- relief or remission (s 18) or by a revision (s 23); (3) "within 4 years after
+-- the date on which the relief or remission is given, or the revision is made".
+@ref s 19(1), (3)
+GIVEN `applied on` IS A DATE
+      `reduced on` IS A DATE
+GIVETH A BOOLEAN
+DECIDE `a refund application on` `applied on` `is in time, the tax reduced on` `reduced on` IF
+    IF   `the law is encoded for the year` (DATE_YEAR `reduced on`)
+    THEN `applied on` AT MOST `add years` `reduced on` 4
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+
+DECLARE `Refund form` IS ONE OF
+    `fixed-price carbon credits credited to the FPCC account` HAS `credits` IS A NUMBER
+    `as the Agency effects it otherwise`
+
+-- s 19(2): where the person "continues to hold an FPCC registry account for the
+-- taxable facility" and "the revision was to correct an error that was not on
+-- the part of the Agency", the refund is by crediting FPCCs "with a total
+-- carbon price equal to the amount of tax so reduced"; (2A) at the price for
+-- the year the refund is made; (2B) rounded down.
+@ref s 19(2)-(2B)
+GIVEN amount                            IS A NUMBER
+      `still holds an FPCC account`     IS A BOOLEAN
+      `a revision correcting an error not the Agency's` IS A BOOLEAN
+      `year of refund`                  IS A NUMBER
+GIVETH A `Refund form`
+`the refund of` amount `, account held:` `still holds an FPCC account` `, not the Agency's error:` `a revision correcting an error not the Agency's` `, in` `year of refund` MEANS
+    IF   `the law is encoded for the year` (`year of refund`)
+    THEN IF   `still holds an FPCC account` AND `a revision correcting an error not the Agency's`
+         THEN `fixed-price carbon credits credited to the FPCC account` (`rounded down to whole credits` (amount DIVIDED BY `the carbon price for credits purchased in` `year of refund`))
+         ELSE `as the Agency effects it otherwise`
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+
+-- s 19(4): an erroneous refund or credit is payable "upon demand being made by
+-- the Agency within 4 years after the date of the erroneous refund or credit".
+@ref s 19(4)
+GIVEN `refunded on`  IS A DATE
+      `demanded on`  IS A DATE
+GIVETH A BOOLEAN
+DECIDE `the Agency may demand back an erroneous refund of` `refunded on` `on` `demanded on` IF
+    IF   `the law is encoded for the year` (DATE_YEAR `refunded on`)
+    THEN `demanded on` AT MOST `add years` `refunded on` 4
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+
+-- s 24: the Agency may waive an assessment where the tax "does not exceed an
+-- amount that is 5 times the carbon price applicable for the purchase of
+-- fixed-price carbon credits in the year immediately after the emissions year,
+-- or any higher amount as may be prescribed".
+@ref s 24
+GIVEN tax              IS A NUMBER
+      `emissions year` IS A NUMBER
+      `a prescribed higher amount` IS A MAYBE NUMBER
+GIVETH A BOOLEAN
+DECIDE `the Agency may waive the assessment of` tax `for` `emissions year` `, higher amount` `a prescribed higher amount` IF
+    IF   `the law is encoded for the year` (`emissions year`)
+    THEN tax AT MOST `the limit`
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+    WHERE
+        `five times` MEANS 5 TIMES `the carbon price for credits purchased in` (`emissions year` PLUS 1)
+        `the limit` MEANS
+            CONSIDER `a prescribed higher amount`
+            WHEN JUST h  THEN IF h GREATER THAN `five times` THEN h ELSE `five times`
+            WHEN NOTHING THEN `five times`
+
+-- s 29(1): where tax is unpaid and FPCCs are in the account, the Agency may
+-- cancel them, and the tax is treated as paid "to the extent of the carbon
+-- price". s 29(3): not for credits cancelled because obtained by fraud.
+-- s 30: no refund on FPCCs except under s 33.
+@ref s 29(1), (3)
+GIVEN `credits cancelled` IS A NUMBER
+      price               IS A NUMBER
+      `obtained by fraud or other unlawful means` IS A BOOLEAN
+GIVETH A NUMBER
+`the tax treated as paid by cancelling` `credits cancelled` `credits at` price `, fraudulent:` `obtained by fraud or other unlawful means` MEANS
+    IF `obtained by fraud or other unlawful means` THEN 0 ELSE `credits cancelled` TIMES price
+
+-- s 32(1): suspension "for a period not exceeding one year", on any of four
+-- grounds; (3) extendable a year at a time. (2): while suspended, no credits
+-- may be bought, transferred or surrendered, and s 17(2)(b) applies.
+@ref s 32(1), (3)
+GIVEN `suspended from`   IS A DATE
+GIVETH A DATE
+`the longest suspension ends on, suspended from` `suspended from` MEANS
+    IF   `the law is encoded for the year` (DATE_YEAR `suspended from`)
+    THEN `add years` `suspended from` 1
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+
+-- s 33(1): the Agency may close an FPCC account "(a) upon the application of
+-- the registered person, if the taxable facility is deregistered ...; (b) if
+-- ... used ... for the commission of any criminal offence; (c) if the account
+-- has been inactive for 5 years ...; (d) if the person ... has ceased to be
+-- registered ...; (e) in any other circumstances as may be prescribed."
+-- (2)-(5): for (c) and (d), notice first, with at least 30 days to object; an
+-- objection (not frivolous, vexatious or withdrawn) stops the closure.
+-- (6)-(7): on closing, credits are cancelled and refunded at their carbon
+-- price, except on a closure under (b).
+DECLARE `Closure ground` IS ONE OF
+    `(a) on application, the facility deregistered`
+    `(b) used for a criminal offence`
+    `(c) inactive for 5 years`
+    `(d) the person no longer registered`
+    `(e) prescribed circumstances`
+
+@ref s 33(1)(c)
+GIVEN d                     IS A DATE
+      `last transaction on` IS A DATE
+GIVETH A BOOLEAN
+DECIDE `the account is inactive for 5 years on` d `, the last transaction on` `last transaction on` IF
+    IF   `the law is encoded for the year` (DATE_YEAR d)
+    THEN d AT LEAST `add years` `last transaction on` 5
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+
+@ref s 33(2)-(5)
+GIVEN g                          IS A `Closure ground`
+      `notice served on`         IS A MAYBE DATE
+      `date set for objections`  IS A MAYBE DATE
+      `a live objection received by that date` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Agency may close the account on ground` g `, notice` `notice served on` `, objections by` `date set for objections` `, objection:` `a live objection received by that date` IF
+    IF   `notice needed`
+    THEN `notice good` AND NOT `a live objection received by that date`
+    ELSE TRUE
+    WHERE
+        `notice needed` MEANS elem g (LIST `(c) inactive for 5 years`, `(d) the person no longer registered`)
+        `notice good` MEANS
+            CONSIDER `notice served on`
+            WHEN NOTHING THEN FALSE
+            WHEN JUST n  THEN CONSIDER `date set for objections`
+                              WHEN NOTHING THEN FALSE
+                              WHEN JUST o  THEN o AT LEAST n PLUS 30
+
+@ref s 33(6), (7)
+GIVEN g          IS A `Closure ground`
+      credits    IS A NUMBER
+      price      IS A NUMBER
+GIVETH A NUMBER
+`the refund on closing the account on ground` g `, credits` credits `at` price MEANS
+    IF g EQUALS `(b) used for a criminal offence` THEN 0 ELSE credits TIMES price
+
+-- s 37(2): no appeal to the High Court where the decision "results in a change
+-- of less than 250 tCO2e × R in the amount of tax charged".
+@ref s 37(2)
+GIVEN `change in tax`  IS A NUMBER
+      `emissions year` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the change of` `change in tax` `in the tax for` `emissions year` `is large enough for a High Court appeal` IF
+    IF   `the law is encoded for the year` (`emissions year`)
+    THEN `the magnitude` AT LEAST 250 TIMES `the carbon tax rate for` `emissions year`
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+    WHERE
+        `the magnitude` MEANS IF `change in tax` LESS THAN 0 THEN 0 MINUS `change in tax` ELSE `change in tax`

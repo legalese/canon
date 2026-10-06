@@ -1,0 +1,584 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `nii-il06-nouns`
+IMPORT `nii-il06-period`
+IMPORT `nii-s1-basic-amount`
+IMPORT `nii-s65-interpretation`
+IMPORT `nii-s66-entitlement`
+IMPORT `nii-s67-count-of-children`
+IMPORT `nii-s68-amount`
+IMPORT `nii-il06-published-figures`
+IMPORT `nii-il06-family-on-a-day`
+
+-- Tests for National Insurance Law ss 65-68 (row IL-06). Every expected value was worked out
+-- by hand from the SOURCES before the assertion was run, and the working is written beside
+-- each group. None was copied from an evaluation. A failing assertion is a finding about the
+-- sources or the encoding, never a value to edit.
+--
+-- Four kinds of expected value appear, and each group says which it is:
+--   * [text]: arithmetic or a rule read directly off the Law (source line given);
+--   * [nii-basic]: the Institute's table of basic amounts (nii-il06-published-figures.l4);
+--   * [nii-rates-YYYY]: the Institute's page of per-child amounts, which prints the amount
+--     paid for the first, second, … child, and the s 68(c) supplement. Its heading:
+-- ext:[nii-rates-2026] | סכום קצבת הילדים
+--       https://www.btl.gov.il/benefits/children/Pages/%d7%a9%d7%99%d7%a2%d7%95%d7%a8%d7%99%20%d7%94%d7%a7%d7%a6%d7%91%d7%94.aspx
+--       [nii-rates-2026] fetched directly 2026-10-06 14:08 UTC, sha256 0bf54039e27ec719e1ec190d00e20012d26f88290e9ed2f5a6a4f503c1b4359c
+--                        (from 1 January 2026: 173 / 219 / 219 / 219 / 173; supplement 113)
+-- ext:[nii-rates-2026] | סכום הקצבה עבור ילדים לפי מיקומם במשפחה (החל מ- 01.01.2026)
+--       [nii-rates-2025] Internet Archive capture 20250420005113 (id_ form), sha256 3985123f0d5dfc54d3bd5ef971b23f9ecd59a6f47dd79990ac383ed70b024e64
+--                        (from 1 January 2025: 169 / 214 / 214 / 214 / 169; supplement 111)
+-- ext:[nii-rates-2025] | סכום הקצבה עבור ילדים לפי מיקומם במשפחה (החל ב- 01.01.2025)
+--       [nii-rates-2024] capture 20240806061702, sha256 0c7083ccd45f7eb327c3eda843c83b69f8431a5782262a7a8b6aa0fa798632f6
+--                        (from 1 January 2024: 169 / 214 / 214 / 214 / 169; supplement 111)
+-- ext:[nii-rates-2024] | סכום הקצבה עבור ילדים לפי מיקומם במשפחה (החל ב- 01.01.2024)
+--       [nii-rates-2020] capture 20200821105458, sha256 36b09fd990aec92110dc64e174edca48fbada24bcb895307d13bec84fc65d93c
+--                        (children born until 31 May 2003: 152 / 192 / 192 / 340 / 359; supplement 99)
+--       [nii-rates-2018] capture 20181003161656, sha256 3a7c5f6f347e48cebd7e199d94d987c0b34419021e4d59c1f1267a81dc5cdb09
+--                        (children born until 31 May 2003: 150 / 189 / 189 / 336 / 354; supplement 98)
+--     The Institute's figures for s 68(b) and (c) are rounded to whole shekels; this encoding's
+--     are before rounding (s 381 is not encoded). Those comparisons assert agreement to within
+--     one shekel, and say so.
+--   * [fork Fn]: a value that depends on a reading recorded in NOTES.md's fork register.
+
+§ `Tests`
+
+§§ `Fixtures — persons`
+
+-- Positional on purpose, under a ruler; each named fixture below says what it is.
+--                                          ch 11  housewife resident absent formerly  add.tax  inc.supp maint. >1 woman
+GIVEN n IS A STRING
+      ch11 IS A BOOLEAN
+      housewife IS A BOOLEAN
+      resident IS A BOOLEAN
+      absent IS A BOOLEAN
+      formerly IS A BOOLEAN
+      `additional tax` IS A BOOLEAN
+      `income support` IS A BOOLEAN
+      maintenance IS A BOOLEAN
+      `more than one woman` IS A BOOLEAN
+GIVETH A `A person`
+`a person` n ch11 housewife resident absent formerly `additional tax` `income support` maintenance `more than one woman` MEANS
+    `A person` WITH
+        `name`                                                                                     IS n
+        `insured under Chapter 11`                                                                 IS ch11
+        `a housewife as defined in section 238`                                                    IS housewife
+        `resident in Israel`                                                                       IS resident
+        `absent from Israel beyond a reasonable temporary absence`                                IS absent
+        `formerly insured`                                                                         IS formerly
+        `income chargeable to additional tax under section 121B of the Income Tax Ordinance`      IS `additional tax`
+        `paid, for the month, a benefit under the Income Support Law`                             IS `income support`
+        `paid, for the month, a monthly payment under the Maintenance (Assurance of Payment) Law` IS maintenance
+        `children by more than one woman`                                                          IS `more than one woman`
+
+-- An insured resident, insured under Chapter 11 (s 65 "insured" (1)).
+GIVEN n IS A STRING
+GIVETH A `A person`
+`insured` n MEANS `a person` n TRUE FALSE TRUE FALSE FALSE FALSE FALSE FALSE FALSE
+
+-- Not insured: neither under Chapter 11 nor resident.
+GIVEN n IS A STRING
+GIVETH A `A person`
+`not insured` n MEANS `a person` n FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+
+-- Was insured; on the day, has died or is no longer insured.
+GIVEN n IS A STRING
+GIVETH A `A person`
+`formerly insured` n MEANS `a person` n FALSE FALSE FALSE FALSE TRUE FALSE FALSE FALSE FALSE
+
+-- A resident housewife as defined in s 238, not insured under Chapter 11.
+GIVEN n IS A STRING
+GIVETH A `A person`
+`a housewife` n MEANS `a person` n FALSE TRUE TRUE FALSE FALSE FALSE FALSE FALSE FALSE
+
+GIVEN n IS A STRING
+GIVETH A `A person`
+`insured, with income chargeable to additional tax,` n MEANS `a person` n TRUE FALSE TRUE FALSE FALSE TRUE FALSE FALSE FALSE
+
+GIVEN n IS A STRING
+GIVETH A `A person`
+`insured, paid Income Support,` n MEANS `a person` n TRUE FALSE TRUE FALSE FALSE FALSE TRUE FALSE FALSE
+
+GIVEN n IS A STRING
+GIVETH A `A person`
+`insured, paid a maintenance payment,` n MEANS `a person` n TRUE FALSE TRUE FALSE FALSE FALSE FALSE TRUE FALSE
+
+GIVEN n IS A STRING
+GIVETH A `A person`
+`insured, with children by more than one woman,` n MEANS `a person` n TRUE FALSE TRUE FALSE FALSE FALSE FALSE FALSE TRUE
+
+§§ `Fixtures — parents in a child's record`
+
+GIVEN n IS A STRING
+      s IS A `Standing to the child`
+      fm IS A `Father or mother`
+      w IS A BOOLEAN
+      sp IS A BOOLEAN
+GIVETH A `A parent in a child's record`
+`entry` n s fm w sp MEANS
+    `A parent in a child's record` WITH
+        `name of the person`             IS n
+        `standing`                       IS s
+        `father or mother`               IS fm
+        `the child is with this person`  IS w
+        `support proven`                 IS sp
+
+GIVEN n IS A STRING
+      w IS A BOOLEAN
+GIVETH A `A parent in a child's record`
+`natural father` n w MEANS `entry` n `the child's natural parent` `the child's father` w FALSE
+
+GIVEN n IS A STRING
+      w IS A BOOLEAN
+GIVETH A `A parent in a child's record`
+`natural mother` n w MEANS `entry` n `the child's natural parent` `the child's mother` w FALSE
+
+GIVEN n IS A STRING
+      w IS A BOOLEAN
+GIVETH A `A parent in a child's record`
+`adoptive father` n w MEANS `entry` n `the child's adoptive parent` `the child's father` w FALSE
+
+GIVEN n IS A STRING
+      w IS A BOOLEAN
+GIVETH A `A parent in a child's record`
+`adoptive mother` n w MEANS `entry` n `the child's adoptive parent` `the child's mother` w FALSE
+
+GIVEN n IS A STRING
+      w IS A BOOLEAN
+GIVETH A `A parent in a child's record`
+`step-father` n w MEANS `entry` n `the child's step-parent` `the child's father` w FALSE
+
+GIVEN n IS A STRING
+      w IS A BOOLEAN
+GIVETH A `A parent in a child's record`
+`a supporter, support proven,` n w MEANS `entry` n `a person who is not the child's parent` `the child's father` w TRUE
+
+GIVEN n IS A STRING
+      w IS A BOOLEAN
+GIVETH A `A parent in a child's record`
+`a supporter, support not proven,` n w MEANS `entry` n `a person who is not the child's parent` `the child's father` w FALSE
+
+§§ `Fixtures — children and families`
+
+GIVEN n IS A STRING
+      dob IS A DATE
+      ps IS A LIST OF `A parent in a child's record`
+GIVETH A `A child`
+`a child` n dob ps MEANS
+    `A child` WITH
+        `name`                                          IS n
+        `date of birth`                                 IS dob
+        `married`                                       IS FALSE
+        `absence from Israel`                           IS NOTHING
+        `the Institute regards the child as in Israel`  IS FALSE
+        `parents`                                       IS ps
+
+GIVEN n IS A STRING
+      dob IS A DATE
+      ps IS A LIST OF `A parent in a child's record`
+GIVETH A `A child`
+`a married child` n dob ps MEANS
+    `A child` WITH
+        `name`                                          IS n
+        `date of birth`                                 IS dob
+        `married`                                       IS TRUE
+        `absence from Israel`                           IS NOTHING
+        `the Institute regards the child as in Israel`  IS FALSE
+        `parents`                                       IS ps
+
+GIVEN n IS A STRING
+      dob IS A DATE
+      ps IS A LIST OF `A parent in a child's record`
+      `left` IS A DATE
+      `returned` IS A MAYBE DATE
+      `regarded` IS A BOOLEAN
+GIVETH A `A child`
+`a child abroad` n dob ps `left` `returned` `regarded` MEANS
+    `A child` WITH
+        `name`                                          IS n
+        `date of birth`                                 IS dob
+        `married`                                       IS FALSE
+        `absence from Israel`                           IS JUST (`An absence from Israel` WITH `the day the child left Israel` IS `left`, `the day the child returned to Israel` IS `returned`)
+        `the Institute regards the child as in Israel`  IS `regarded`
+        `parents`                                       IS ps
+
+GIVEN d IS A DATE
+      ps IS A LIST OF `A person`
+      cs IS A LIST OF `A child`
+GIVETH A `A family on a day`
+`the family on` d `of` ps `and` cs MEANS
+    `A family on a day` WITH
+        `the day`        IS d
+        `the persons`    IS ps
+        `the children`   IS cs
+
+-- Avi (the natural father) and Batya (the natural mother); the child is with both.
+`Avi and Batya, with both` MEANS LIST (`natural father` "Avi" TRUE), (`natural mother` "Batya" TRUE)
+
+-- Six children, listed out of birth order on purpose (the count is ordered by birth, F4).
+`the six children` MEANS
+    LIST (`a child` "Kfir" (YMD 2021 11 30) `Avi and Batya, with both`),
+         (`a child` "Ella" (YMD 2009 1 10)  `Avi and Batya, with both`),
+         (`a child` "Ido"  (YMD 2015 9 1)   `Avi and Batya, with both`),
+         (`a child` "Gil"  (YMD 2011 3 5)   `Avi and Batya, with both`),
+         (`a child` "Yael" (YMD 2018 2 14)  `Avi and Batya, with both`),
+         (`a child` "Hila" (YMD 2013 7 20)  `Avi and Batya, with both`)
+
+`the eldest four` MEANS
+    LIST (`a child` "Ella" (YMD 2009 1 10) `Avi and Batya, with both`),
+         (`a child` "Gil"  (YMD 2011 3 5)  `Avi and Batya, with both`),
+         (`a child` "Hila" (YMD 2013 7 20) `Avi and Batya, with both`),
+         (`a child` "Ido"  (YMD 2015 9 1)  `Avi and Batya, with both`)
+
+`the eldest three` MEANS
+    LIST (`a child` "Ella" (YMD 2009 1 10) `Avi and Batya, with both`),
+         (`a child` "Gil"  (YMD 2011 3 5)  `Avi and Batya, with both`),
+         (`a child` "Hila" (YMD 2013 7 20) `Avi and Batya, with both`)
+
+`the eldest two` MEANS
+    LIST (`a child` "Ella" (YMD 2009 1 10) `Avi and Batya, with both`),
+         (`a child` "Gil"  (YMD 2011 3 5)  `Avi and Batya, with both`)
+
+-- One child, Noa, born 5 May 2016, with whatever parents a test gives her.
+GIVEN ps IS A LIST OF `A parent in a child's record`
+GIVETH A `A child`
+`Noa, with` ps MEANS `a child` "Noa" (YMD 2016 5 5) ps
+
+`15 June 2026` MEANS YMD 2026 6 15
+
+§§ `Fixtures — reading an answer`
+
+-- These read values out of an answer; they compute no law. Each declines (and so shows as a
+-- refused assertion, which check.sh counts as red) if the answer is not the shape expected.
+@ref test helper
+GIVEN a IS A TYPE
+GIVETH AN a
+`test helper: the facts had a problem` MEANS
+    REFUSE "test helper: the facts had a problem"
+
+@ref test helper
+GIVEN a IS A TYPE
+GIVETH AN a
+`test helper: there is not exactly one answer for that name` MEANS
+    REFUSE "test helper: there is not exactly one answer for that name"
+
+@ref test helper
+GIVEN a IS A TYPE
+GIVETH AN a
+`test helper: that person has no allowance` MEANS
+    REFUSE "test helper: that person has no allowance"
+
+GIVEN r IS AN EITHER `A problem with the facts` (LIST OF `A person's child allowance for the month`)
+GIVETH A LIST OF `A person's child allowance for the month`
+`the answers in` r MEANS
+    CONSIDER r
+    WHEN LEFT p   THEN `test helper: the facts had a problem`
+    WHEN RIGHT as THEN as
+
+GIVEN n IS A STRING
+      r IS AN EITHER `A problem with the facts` (LIST OF `A person's child allowance for the month`)
+GIVETH A `The child allowance of a person for the month`
+`the answer for` n `in` r MEANS
+    CONSIDER filter (GIVEN a YIELD a's `name of the person` EQUALS n) (`the answers in` r)
+    WHEN a FOLLOWED BY EMPTY THEN a's `the answer`
+    OTHERWISE `test helper: there is not exactly one answer for that name`
+
+GIVEN n IS A STRING
+      r IS AN EITHER `A problem with the facts` (LIST OF `A person's child allowance for the month`)
+GIVETH A LIST OF `The allowance for a child in the count`
+`the lines for` n `in` r MEANS
+    CONSIDER `the answer for` n `in` r
+    WHEN `a monthly child allowance` ls THEN ls
+    OTHERWISE `test helper: that person has no allowance`
+
+GIVEN n IS A STRING
+      r IS AN EITHER `A problem with the facts` (LIST OF `A person's child allowance for the month`)
+GIVETH A LIST OF NUMBER
+`the allowances for` n `in` r MEANS
+    map (GIVEN l YIELD l's `the allowance under section 68(a) or (b), before rounding`) (`the lines for` n `in` r)
+
+GIVEN n IS A STRING
+      r IS AN EITHER `A problem with the facts` (LIST OF `A person's child allowance for the month`)
+GIVETH A LIST OF NUMBER
+`the supplements for` n `in` r MEANS
+    map (GIVEN l YIELD l's `the supplement under section 68(c), before rounding`) (`the lines for` n `in` r)
+
+GIVEN n IS A STRING
+      r IS AN EITHER `A problem with the facts` (LIST OF `A person's child allowance for the month`)
+GIVETH A LIST OF `The provision that fixes the allowance for a child`
+`the provisions for` n `in` r MEANS
+    map (GIVEN l YIELD l's `the provision`) (`the lines for` n `in` r)
+
+GIVEN n IS A STRING
+      r IS AN EITHER `A problem with the facts` (LIST OF `A person's child allowance for the month`)
+GIVETH A LIST OF STRING
+`the children counted with` n `in` r MEANS
+    map (GIVEN l YIELD l's `name of the child`) (`the lines for` n `in` r)
+
+GIVEN r IS AN EITHER `A problem with the facts` (LIST OF `A person's child allowance for the month`)
+GIVETH A NUMBER
+`the family total in` r MEANS
+    `the family's total, before rounding, of` (`the answers in` r)
+
+-- "To within one shekel": the comparison with the Institute's rounded figures.
+GIVEN x IS A NUMBER
+      y IS A NUMBER
+GIVETH A BOOLEAN
+x `is within one shekel of` y MEANS
+    (x MINUS y) LESS THAN 1 AND (y MINUS x) LESS THAN 1
+
+§§ `The period the text answers`
+
+-- [text + sh-5776-247] s 29(a) of the 5776 Law: ss 1 and 68 in their present wording from 1 May 2015.
+#ASSERT `the deposited text of sections 65 to 68 was in force on` (YMD 2015 5 1)
+#ASSERT NOT `the deposited text of sections 65 to 68 was in force on` (YMD 2015 4 30)
+#ASSERT REFUSED `the child allowance of each person, in` (`the family on` (YMD 2015 4 30) `of` (LIST `insured` "Avi", `insured` "Batya") `and` `the eldest two`) `, at` `the basic amounts printed in paragraph (2)` BECAUSE "this model answers days from 1 May 2015, when sections 1 and 68 took their present wording; the text in force before then is not in its sources"
+
+§§ `The Institute's table of basic amounts`
+
+-- [nii-basic] each row from its date; the 2027 figures are not published; nothing before 1 May 2015.
+#ASSERT `the basic amounts for the child allowance the Institute published for` (YMD 2026 12 31) EQUALS `The basic amounts for the child allowance` OF 173, 219, 162
+#ASSERT `the basic amounts for the child allowance the Institute published for` (YMD 2026 1 1)   EQUALS `The basic amounts for the child allowance` OF 173, 219, 162
+#ASSERT `the basic amounts for the child allowance the Institute published for` (YMD 2025 12 31) EQUALS `The basic amounts for the child allowance` OF 169, 214, 158
+#ASSERT `the basic amounts for the child allowance the Institute published for` (YMD 2024 1 1)   EQUALS `The basic amounts for the child allowance` OF 169, 214, 158
+#ASSERT `the basic amounts for the child allowance the Institute published for` (YMD 2023 12 31) EQUALS `The basic amounts for the child allowance` OF 164, 207, 153
+#ASSERT `the basic amounts for the child allowance the Institute published for` (YMD 2019 1 1)   EQUALS `The basic amounts for the child allowance` OF 152, 191, 142
+#ASSERT `the basic amounts for the child allowance the Institute published for` (YMD 2018 1 1)   EQUALS `The basic amounts for the child allowance` OF 150, 189, 140
+#ASSERT `the basic amounts for the child allowance the Institute published for` (YMD 2017 12 31) EQUALS `The basic amounts for the child allowance` OF 150, 188, 140
+#ASSERT `the basic amounts for the child allowance the Institute published for` (YMD 2015 5 1)   EQUALS `The basic amounts for the child allowance` OF 150, 188, 140
+#ASSERT REFUSED `the basic amounts for the child allowance the Institute published for` (YMD 2027 1 1) BECAUSE "the basic amounts for the child allowance from 1 January 2027 had not been published when this model's sources were fetched"
+#ASSERT REFUSED `the basic amounts for the child allowance the Institute published for` (YMD 2015 4 30) BECAUSE "this model answers days from 1 May 2015, when sections 1 and 68 took their present wording; the text in force before then is not in its sources"
+
+-- [text, line 187-189 + nii-basic] The figures the text prints are the Institute's row from 1 May 2015.
+#ASSERT `the basic amounts printed in paragraph (2)` EQUALS `the basic amounts for the child allowance the Institute published for` (YMD 2015 5 1)
+
+§§ `Section 1, paragraph (2) — which limb fixes the basic amount for a place`
+
+-- [text, lines 187-188] (a): first, fifth and later; (b): second, third, fourth.
+#ASSERT `paragraph (2)(a) fixes the basic amount for the child at place` 1
+#ASSERT NOT `paragraph (2)(a) fixes the basic amount for the child at place` 2
+#ASSERT NOT `paragraph (2)(a) fixes the basic amount for the child at place` 3
+#ASSERT NOT `paragraph (2)(a) fixes the basic amount for the child at place` 4
+#ASSERT `paragraph (2)(a) fixes the basic amount for the child at place` 5
+#ASSERT `paragraph (2)(a) fixes the basic amount for the child at place` 6
+
+§§ `Section 65 — "insured"`
+
+-- [text, lines 802-803]
+#ASSERT `s 65 — insured` (`insured` "Avi")
+#ASSERT NOT `s 65 — insured` (`a person` "Avi" TRUE TRUE TRUE FALSE FALSE FALSE FALSE FALSE FALSE)
+#ASSERT `s 65 — insured` (`a person` "Avi" FALSE FALSE TRUE FALSE FALSE FALSE FALSE FALSE FALSE)
+#ASSERT NOT `s 65 — insured` (`a person` "Avi" FALSE FALSE TRUE TRUE FALSE FALSE FALSE FALSE FALSE)
+#ASSERT NOT `s 65 — insured` (`not insured` "Avi")
+#ASSERT NOT `s 65 — insured` (`a housewife` "Batya")
+#ASSERT `s 65 — one who was insured` (`formerly insured` "Avi")
+#ASSERT NOT `s 65 — one who was insured` (`a person` "Avi" TRUE FALSE TRUE FALSE TRUE FALSE FALSE FALSE FALSE)
+
+§§ `Section 65 — "child": age, Israel, marriage, whose child`
+
+-- [text, line 807] "has not reached 18": a child the day before the 18th birthday, not on it.
+#ASSERT `s 65 — under 18 on` (YMD 2026 6 14) `:` (`a child` "Noa" (YMD 2008 6 15) `Avi and Batya, with both`)
+#ASSERT NOT `s 65 — under 18 on` (YMD 2026 6 15) `:` (`a child` "Noa" (YMD 2008 6 15) `Avi and Batya, with both`)
+-- [fork F2] born 29 February: reaches 18 on 28 February in a common year.
+#ASSERT `s 65 — under 18 on` (YMD 2026 2 27) `:` (`a child` "Noa" (YMD 2008 2 29) `Avi and Batya, with both`)
+#ASSERT NOT `s 65 — under 18 on` (YMD 2026 2 28) `:` (`a child` "Noa" (YMD 2008 2 29) `Avi and Batya, with both`)
+
+-- [text, line 809] Left 10 January 2026, not yet back: in Israel up to and including 10 April
+-- (three months, "not exceeding"), abroad from 11 April, unless the Institute decides otherwise.
+-- [fork F3] for the absence not yet ended.
+#ASSERT `s 65 — in Israel on` (YMD 2026 4 10) `:` (`a child abroad` "Noa" (YMD 2016 5 5) `Avi and Batya, with both` (YMD 2026 1 10) NOTHING FALSE)
+#ASSERT NOT `s 65 — in Israel on` (YMD 2026 4 11) `:` (`a child abroad` "Noa" (YMD 2016 5 5) `Avi and Batya, with both` (YMD 2026 1 10) NOTHING FALSE)
+#ASSERT `s 65 — in Israel on` (YMD 2026 4 11) `:` (`a child abroad` "Noa" (YMD 2016 5 5) `Avi and Batya, with both` (YMD 2026 1 10) NOTHING TRUE)
+-- [fork F2] Left 30 November 2025: three months end on 28 February 2026 (the shorter month clamps).
+#ASSERT `s 65 — in Israel on` (YMD 2026 2 1) `:` (`a child abroad` "Noa" (YMD 2016 5 5) `Avi and Batya, with both` (YMD 2025 11 30) (JUST (YMD 2026 2 28)) FALSE)
+#ASSERT NOT `s 65 — in Israel on` (YMD 2026 2 1) `:` (`a child abroad` "Noa" (YMD 2016 5 5) `Avi and Batya, with both` (YMD 2025 11 30) (JUST (YMD 2026 3 1)) FALSE)
+
+-- [text, line 170, fork F1] a married 17-year-old is not a "child".
+#ASSERT NOT `s 65 — a child for this Chapter, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi", `insured` "Batya") `and` EMPTY) `:` (`a married child` "Noa" (YMD 2009 1 1) `Avi and Batya, with both`)
+#ASSERT `s 65 — a child for this Chapter, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi", `insured` "Batya") `and` EMPTY) `:` (`a child` "Noa" (YMD 2009 1 1) `Avi and Batya, with both`)
+
+-- [text, lines 805-806] Whose child: the child of one who was insured is a "child"; a child
+-- whose only link to an insured person is support counts only if the support is proven.
+#ASSERT `s 65 — a child for this Chapter, in` (`the family on` `15 June 2026` `of` (LIST `formerly insured` "Avi", `a housewife` "Batya") `and` EMPTY) `:` (`Noa, with` `Avi and Batya, with both`)
+#ASSERT NOT `s 65 — a child for this Chapter, in` (`the family on` `15 June 2026` `of` (LIST `not insured` "Avi", `a housewife` "Batya") `and` EMPTY) `:` (`Noa, with` `Avi and Batya, with both`)
+#ASSERT `s 65 — a child for this Chapter, in` (`the family on` `15 June 2026` `of` (LIST `not insured` "Avi", `insured` "Ezra") `and` EMPTY) `:` (`Noa, with` (LIST (`natural father` "Avi" FALSE), (`a supporter, support proven,` "Ezra" TRUE)))
+#ASSERT NOT `s 65 — a child for this Chapter, in` (`the family on` `15 June 2026` `of` (LIST `not insured` "Avi", `insured` "Ezra") `and` EMPTY) `:` (`Noa, with` (LIST (`natural father` "Avi" FALSE), (`a supporter, support not proven,` "Ezra" TRUE)))
+
+§§ `Section 66 — the right, and its exception`
+
+-- [text, line 814]
+#ASSERT `s 66 — entitled to a monthly child allowance for each child in the count` (`insured` "Avi")
+#ASSERT NOT `s 66 — entitled to a monthly child allowance for each child in the count` (`insured, with income chargeable to additional tax,` "Avi")
+#ASSERT NOT `s 66 — entitled to a monthly child allowance for each child in the count` (`not insured` "Avi")
+#ASSERT `s 66 — an insured parent with income chargeable to additional tax` (`insured, with income chargeable to additional tax,` "Avi")
+-- Additional-tax income does not matter to a person who is not insured: the exception is of an
+-- insured parent.
+#ASSERT NOT `s 66 — an insured parent with income chargeable to additional tax` (`a person` "Avi" FALSE FALSE FALSE FALSE FALSE TRUE FALSE FALSE FALSE)
+
+§§ `Section 67 — in whose count`
+
+-- [text, line 818, first limb] Two parents, both insured: the father, unless with the mother only.
+#ASSERT `s 67 — the insured parent in whose count, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi", `insured` "Batya") `and` EMPTY) `, is` (`Noa, with` (LIST (`natural father` "Avi" TRUE), (`natural mother` "Batya" TRUE))) EQUALS JUST "Avi"
+#ASSERT `s 67 — the insured parent in whose count, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi", `insured` "Batya") `and` EMPTY) `, is` (`Noa, with` (LIST (`natural father` "Avi" FALSE), (`natural mother` "Batya" TRUE))) EQUALS JUST "Batya"
+#ASSERT `s 67 — the insured parent in whose count, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi", `insured` "Batya") `and` EMPTY) `, is` (`Noa, with` (LIST (`natural father` "Avi" TRUE), (`natural mother` "Batya" FALSE))) EQUALS JUST "Avi"
+#ASSERT `s 67 — the insured parent in whose count, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi", `insured` "Batya") `and` EMPTY) `, is` (`Noa, with` (LIST (`natural father` "Avi" FALSE), (`natural mother` "Batya" FALSE))) EQUALS JUST "Avi"
+-- [fork F8] an adoptive father and a natural mother are the child's own two parents: first limb.
+#ASSERT `s 67 — the insured parent in whose count, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi", `insured` "Batya") `and` EMPTY) `, is` (`Noa, with` (LIST (`adoptive father` "Avi" TRUE), (`natural mother` "Batya" TRUE))) EQUALS JUST "Avi"
+
+-- [fork F7] One insured parent: that parent's count, wherever the child is.
+#ASSERT `s 67 — the insured parent in whose count, in` (`the family on` `15 June 2026` `of` (LIST `not insured` "Avi", `insured` "Batya") `and` EMPTY) `, is` (`Noa, with` (LIST (`natural father` "Avi" TRUE), (`natural mother` "Batya" FALSE))) EQUALS JUST "Batya"
+-- No insured parent and none formerly insured: not a "child", in no count.
+#ASSERT `s 67 — the insured parent in whose count, in` (`the family on` `15 June 2026` `of` (LIST `not insured` "Avi", `a housewife` "Batya") `and` EMPTY) `, is` (`Noa, with` `Avi and Batya, with both`) EQUALS NOTHING
+
+-- [text, line 818, second limb] A natural mother and an insured step-father: the one the child is with.
+#ASSERT `s 67 — the insured parent in whose count, in` (`the family on` `15 June 2026` `of` (LIST `not insured` "Avi", `insured` "Batya", `insured` "Gadi") `and` EMPTY) `, is` (`Noa, with` (LIST (`natural father` "Avi" FALSE), (`natural mother` "Batya" TRUE), (`step-father` "Gadi" FALSE))) EQUALS JUST "Batya"
+#ASSERT `s 67 — the insured parent in whose count, in` (`the family on` `15 June 2026` `of` (LIST `not insured` "Avi", `insured` "Batya", `insured` "Gadi") `and` EMPTY) `, is` (`Noa, with` (LIST (`natural father` "Avi" FALSE), (`natural mother` "Batya" FALSE), (`step-father` "Gadi" TRUE))) EQUALS JUST "Gadi"
+-- [fork F9] with both of them: the second limb does not say.
+#ASSERT REFUSED `s 67 — the insured parent in whose count, in` (`the family on` `15 June 2026` `of` (LIST `not insured` "Avi", `insured` "Batya", `insured` "Gadi") `and` EMPTY) `, is` (`Noa, with` (LIST (`natural father` "Avi" FALSE), (`natural mother` "Batya" TRUE), (`step-father` "Gadi" TRUE))) BECAUSE "section 67(b) does not say in whose count a child is counted who has a natural parent and another insured parent and is with both of them, or with neither"
+-- [fork F10] two insured mothers: the first limb names a father and a mother.
+#ASSERT REFUSED `s 67 — the insured parent in whose count, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Batya", `insured` "Dina") `and` EMPTY) `, is` (`Noa, with` (LIST (`natural mother` "Batya" TRUE), (`adoptive mother` "Dina" TRUE))) BECAUSE "section 67(b) does not say in whose count a child is counted whose two insured parents are both its fathers or both its mothers"
+-- [fork F11] three insured parents.
+#ASSERT REFUSED `s 67 — the insured parent in whose count, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi", `insured` "Batya", `insured` "Gadi") `and` EMPTY) `, is` (`Noa, with` (LIST (`natural father` "Avi" FALSE), (`natural mother` "Batya" TRUE), (`step-father` "Gadi" TRUE))) BECAUSE "section 67(b) does not say in whose count a child with more than two insured parents is counted"
+-- [fork F11] a step-father and a supporter, neither a natural parent.
+#ASSERT REFUSED `s 67 — the insured parent in whose count, in` (`the family on` `15 June 2026` `of` (LIST `not insured` "Avi", `insured` "Gadi", `insured` "Ezra") `and` EMPTY) `, is` (`Noa, with` (LIST (`natural father` "Avi" FALSE), (`step-father` "Gadi" TRUE), (`a supporter, support proven,` "Ezra" FALSE))) BECAUSE "section 67(b) does not say in whose count a child is counted whose two insured parents are neither the child's own two parents nor a natural parent and another parent"
+-- A supporter whose support is proven, and no other insured parent: the supporter's count.
+#ASSERT `s 67 — the insured parent in whose count, in` (`the family on` `15 June 2026` `of` (LIST `not insured` "Avi", `insured` "Ezra") `and` EMPTY) `, is` (`Noa, with` (LIST (`natural father` "Avi" FALSE), (`a supporter, support proven,` "Ezra" TRUE))) EQUALS JUST "Ezra"
+
+-- [text, line 843] s 69A reaches an insured man with children by more than one woman.
+#ASSERT REFUSED `s 67 — the insured parent in whose count, in` (`the family on` `15 June 2026` `of` (LIST `insured, with children by more than one woman,` "Avi", `insured` "Batya") `and` EMPTY) `, is` (`Noa, with` `Avi and Batya, with both`) BECAUSE "section 69A, for an insured man with children by more than one woman, displaces sections 67 and 68 and is not encoded in this model"
+-- [text, line 851] s 71: the father has died, the mother is not insured.
+#ASSERT REFUSED `s 67 — the insured parent in whose count, in` (`the family on` `15 June 2026` `of` (LIST `formerly insured` "Avi", `a housewife` "Batya") `and` EMPTY) `, is` (`Noa, with` `Avi and Batya, with both`) BECAUSE "section 71, on the allowance paid by virtue of a parent who died or ceased to be insured, is not encoded in this model"
+-- s 71's proviso: the mother is insured and entitled, so the child is in her count.
+#ASSERT `s 67 — the insured parent in whose count, in` (`the family on` `15 June 2026` `of` (LIST `formerly insured` "Avi", `insured` "Batya") `and` EMPTY) `, is` (`Noa, with` `Avi and Batya, with both`) EQUALS JUST "Batya"
+-- ... and when the mother is insured but not entitled (s 66), s 71 decides: declined.
+#ASSERT REFUSED `s 67 — the insured parent in whose count, in` (`the family on` `15 June 2026` `of` (LIST `formerly insured` "Avi", `insured, with income chargeable to additional tax,` "Batya") `and` EMPTY) `, is` (`Noa, with` `Avi and Batya, with both`) BECAUSE "section 71, on the allowance paid by virtue of a parent who died or ceased to be insured, is not encoded in this model"
+
+-- [text, line 817] s 67(a) holds for the family of six.
+#ASSERT `s 67(a) — no child is counted with more than one insured parent, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi", `insured` "Batya") `and` `the six children`)
+
+§§ `Section 68 — which provision fixes the allowance`
+
+-- [text, lines 821-825] (b) needs BOTH a birth before 1 June 2003 and a fourth or later place.
+#ASSERT `s 68 — the provision that fixes the allowance for the child at place` 4 `:` (`a child` "Noa" (YMD 2003 5 31) EMPTY) EQUALS `section 68(b)(2), a fourth child born before 1 June 2003`
+#ASSERT `s 68 — the provision that fixes the allowance for the child at place` 4 `:` (`a child` "Noa" (YMD 2003 6 1) EMPTY) EQUALS `section 68(a), at the basic amount in paragraph (2)(b) of section 1`
+#ASSERT `s 68 — the provision that fixes the allowance for the child at place` 5 `:` (`a child` "Noa" (YMD 2003 5 31) EMPTY) EQUALS `section 68(b)(3), a fifth or later child born before 1 June 2003`
+#ASSERT `s 68 — the provision that fixes the allowance for the child at place` 5 `:` (`a child` "Noa" (YMD 2003 6 1) EMPTY) EQUALS `section 68(a), at the basic amount in paragraph (2)(a) of section 1`
+#ASSERT `s 68 — the provision that fixes the allowance for the child at place` 3 `:` (`a child` "Noa" (YMD 2003 5 31) EMPTY) EQUALS `section 68(a), at the basic amount in paragraph (2)(b) of section 1`
+#ASSERT `s 68 — the provision that fixes the allowance for the child at place` 1 `:` (`a child` "Noa" (YMD 2003 5 31) EMPTY) EQUALS `section 68(a), at the basic amount in paragraph (2)(a) of section 1`
+
+§§ `Section 68 — six children, 2024 to 2026, against the Institute's per-child amounts`
+
+-- [nii-rates-2026] first 173, second to fourth 219, fifth and later 173. Total 173+219+219+219+173+173 = 1176.
+-- The six are counted with Avi (first limb: with both); Batya's count is empty.
+#ASSERT `the allowances for` "Avi" `in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi", `insured` "Batya") `and` `the six children`)) EQUALS LIST 173, 219, 219, 219, 173, 173
+#ASSERT `the children counted with` "Avi" `in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi", `insured` "Batya") `and` `the six children`)) EQUALS LIST "Ella", "Gil", "Hila", "Ido", "Yael", "Kfir"
+#ASSERT `the provisions for` "Avi" `in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi", `insured` "Batya") `and` `the six children`)) EQUALS LIST `section 68(a), at the basic amount in paragraph (2)(a) of section 1`, `section 68(a), at the basic amount in paragraph (2)(b) of section 1`, `section 68(a), at the basic amount in paragraph (2)(b) of section 1`, `section 68(a), at the basic amount in paragraph (2)(b) of section 1`, `section 68(a), at the basic amount in paragraph (2)(a) of section 1`, `section 68(a), at the basic amount in paragraph (2)(a) of section 1`
+#ASSERT `the supplements for` "Avi" `in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi", `insured` "Batya") `and` `the six children`)) EQUALS LIST 0, 0, 0, 0, 0, 0
+#ASSERT `the answer for` "Batya" `in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi", `insured` "Batya") `and` `the six children`)) EQUALS `a monthly child allowance` EMPTY
+#ASSERT `the family total in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi", `insured` "Batya") `and` `the six children`)) EQUALS 1176
+
+-- [nii-rates-2025] 169 / 214 / 214 / 214 / 169 / 169; total 1149. [nii-rates-2024] the same.
+#ASSERT `the allowances for` "Avi" `in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` (YMD 2025 4 20) `of` (LIST `insured` "Avi", `insured` "Batya") `and` `the six children`)) EQUALS LIST 169, 214, 214, 214, 169, 169
+#ASSERT `the family total in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` (YMD 2025 4 20) `of` (LIST `insured` "Avi", `insured` "Batya") `and` `the six children`)) EQUALS 1149
+#ASSERT `the allowances for` "Avi" `in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` (YMD 2024 8 6) `of` (LIST `insured` "Avi", `insured` "Batya") `and` `the six children`)) EQUALS LIST 169, 214, 214, 214, 169, 169
+
+-- [nii-basic] From 1 January 2027 no published figure: declined.
+#ASSERT REFUSED `the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` (YMD 2027 1 1) `of` (LIST `insured` "Avi", `insured` "Batya") `and` `the six children`) BECAUSE "the basic amounts for the child allowance from 1 January 2027 had not been published when this model's sources were fetched"
+
+-- [nii-basic, text] 1 May 2015, the first day: 150 for the first child, 188 for the second; total 338.
+#ASSERT `the allowances for` "Avi" `in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` (YMD 2015 5 1) `of` (LIST `insured` "Avi", `insured` "Batya") `and` `the eldest two`)) EQUALS LIST 150, 188
+
+§§ `Section 68(c) — the supplement`
+
+-- [text, line 826] 70% of the (2)(c) amount, for the third and the fourth child, where the
+-- parent is paid Income Support or a maintenance payment and is entitled for three or more.
+-- 2026: 70% × 162 = 113.4. Four children: 173 + 219 + 219 + 219 + 113.4 + 113.4 = 1056.8.
+#ASSERT `the supplements for` "Avi" `in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured, paid Income Support,` "Avi", `insured` "Batya") `and` `the eldest four`)) EQUALS LIST 0, 0, 113.4, 113.4
+#ASSERT `the family total in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured, paid Income Support,` "Avi", `insured` "Batya") `and` `the eldest four`)) EQUALS 1056.8
+-- A maintenance payment instead: the same.
+#ASSERT `the family total in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured, paid a maintenance payment,` "Avi", `insured` "Batya") `and` `the eldest four`)) EQUALS 1056.8
+-- Three children: the third only. 173 + 219 + 219 + 113.4 = 724.4.
+#ASSERT `the supplements for` "Avi" `in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured, paid Income Support,` "Avi", `insured` "Batya") `and` `the eldest three`)) EQUALS LIST 0, 0, 113.4
+#ASSERT `the family total in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured, paid Income Support,` "Avi", `insured` "Batya") `and` `the eldest three`)) EQUALS 724.4
+-- Two children: fewer than three, no supplement. 173 + 219 = 392.
+#ASSERT `the family total in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured, paid Income Support,` "Avi", `insured` "Batya") `and` `the eldest two`)) EQUALS 392
+-- [fork F14] The parent paid Income Support must be the parent in whose count the children are:
+-- Batya is paid it, the four are in Avi's count, so no supplement. 173 + 219 × 3 = 830.
+#ASSERT `the family total in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi", `insured, paid Income Support,` "Batya") `and` `the eldest four`)) EQUALS 830
+
+-- [nii-rates-2026] supplement 113; [nii-rates-2024], [nii-rates-2025] 111 (70% × 158 = 110.6);
+-- [nii-rates-2020] 99 (70% × 142 = 99.4); [nii-rates-2018] 98 (70% × 140 = 98, exact).
+#ASSERT (`s 68(c) — the supplement, before rounding, at` (`the basic amounts for the child allowance the Institute published for` `15 June 2026`)) `is within one shekel of` 113
+#ASSERT (`s 68(c) — the supplement, before rounding, at` (`the basic amounts for the child allowance the Institute published for` (YMD 2025 4 20))) `is within one shekel of` 111
+#ASSERT (`s 68(c) — the supplement, before rounding, at` (`the basic amounts for the child allowance the Institute published for` (YMD 2024 8 6))) `is within one shekel of` 111
+#ASSERT (`s 68(c) — the supplement, before rounding, at` (`the basic amounts for the child allowance the Institute published for` (YMD 2020 8 21))) `is within one shekel of` 99
+#ASSERT `s 68(c) — the supplement, before rounding, at` (`the basic amounts for the child allowance the Institute published for` (YMD 2018 10 3)) EQUALS 98
+
+§§ `Section 68(b) — children born before 1 June 2003, against the Institute's 2018 and 2020 pages`
+
+-- 2018 (day 3 October 2018): five children under 18, the youngest two twins born 10 February
+-- 2003. [text] (2)(a) = 150, (2)(b) = 189 in 2018 [nii-basic]: first 150, second 189, third
+-- 189, fourth 150 × 2.24 = 336, fifth 150 × 2.36 = 354; total 1218.
+-- [nii-rates-2018] children born until 31 May 2003: 150 / 189 / 189 / 336 / 354. Exact.
+`the five of 2018` MEANS
+    LIST (`a child` "Dan"   (YMD 2000 11 1) `Avi and Batya, with both`),
+         (`a child` "Eden"  (YMD 2001 9 1)  `Avi and Batya, with both`),
+         (`a child` "Gefen" (YMD 2002 6 1)  `Avi and Batya, with both`),
+         (`a child` "Hadar" (YMD 2003 2 10) `Avi and Batya, with both`),
+         (`a child` "Itai"  (YMD 2003 2 10) `Avi and Batya, with both`)
+
+#ASSERT `the allowances for` "Avi" `in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` (YMD 2018 10 3) `of` (LIST `insured` "Avi", `insured` "Batya") `and` `the five of 2018`)) EQUALS LIST 150, 189, 189, 336, 354
+#ASSERT `the provisions for` "Avi" `in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` (YMD 2018 10 3) `of` (LIST `insured` "Avi", `insured` "Batya") `and` `the five of 2018`)) EQUALS LIST `section 68(a), at the basic amount in paragraph (2)(a) of section 1`, `section 68(a), at the basic amount in paragraph (2)(b) of section 1`, `section 68(a), at the basic amount in paragraph (2)(b) of section 1`, `section 68(b)(2), a fourth child born before 1 June 2003`, `section 68(b)(3), a fifth or later child born before 1 June 2003`
+#ASSERT `the family total in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` (YMD 2018 10 3) `of` (LIST `insured` "Avi", `insured` "Batya") `and` `the five of 2018`)) EQUALS 1218
+
+-- The same five, but the twins born either side of midnight, 31 May and 1 June 2003: the
+-- fourth is under (b)(2), the fifth is NOT born before 1 June 2003 and takes (a) at (2)(a).
+-- [text] 150, 189, 189, 336, 150; total 1014.
+`the five of 2018, twins either side of 1 June 2003` MEANS
+    LIST (`a child` "Dan"   (YMD 2000 11 1) `Avi and Batya, with both`),
+         (`a child` "Eden"  (YMD 2001 9 1)  `Avi and Batya, with both`),
+         (`a child` "Gefen" (YMD 2002 6 1)  `Avi and Batya, with both`),
+         (`a child` "Hadar" (YMD 2003 5 31) `Avi and Batya, with both`),
+         (`a child` "Itai"  (YMD 2003 6 1)  `Avi and Batya, with both`)
+
+#ASSERT `the allowances for` "Avi" `in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` (YMD 2018 10 3) `of` (LIST `insured` "Avi", `insured` "Batya") `and` `the five of 2018, twins either side of 1 June 2003`)) EQUALS LIST 150, 189, 189, 336, 150
+
+-- 2020 (day 21 August 2020): quintuplets born 1 March 2003. [nii-basic] (2)(a) = 152, (2)(b)
+-- = 192, (2)(c) = 142. [text] 152, 192, 192, 152 × 2.24 = 340.48, 152 × 2.36 = 358.72.
+-- With Income Support: supplements 0, 0, 99.4, 99.4, 0.
+-- [nii-rates-2020] 152 / 192 / 192 / 340 / 359: the last two agree to within one shekel.
+`the quintuplets` MEANS
+    LIST (`a child` "Q1" (YMD 2003 3 1) `Avi and Batya, with both`),
+         (`a child` "Q2" (YMD 2003 3 1) `Avi and Batya, with both`),
+         (`a child` "Q3" (YMD 2003 3 1) `Avi and Batya, with both`),
+         (`a child` "Q4" (YMD 2003 3 1) `Avi and Batya, with both`),
+         (`a child` "Q5" (YMD 2003 3 1) `Avi and Batya, with both`)
+
+#ASSERT `the allowances for` "Avi" `in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` (YMD 2020 8 21) `of` (LIST `insured, paid Income Support,` "Avi", `insured` "Batya") `and` `the quintuplets`)) EQUALS LIST 152, 192, 192, 340.48, 358.72
+#ASSERT `the supplements for` "Avi" `in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` (YMD 2020 8 21) `of` (LIST `insured, paid Income Support,` "Avi", `insured` "Batya") `and` `the quintuplets`)) EQUALS LIST 0, 0, 99.4, 99.4, 0
+#ASSERT (`s 68 — the monthly allowance, before rounding, under` `section 68(b)(2), a fourth child born before 1 June 2003` `, at` (`the basic amounts for the child allowance the Institute published for` (YMD 2020 8 21))) `is within one shekel of` 340
+#ASSERT (`s 68 — the monthly allowance, before rounding, under` `section 68(b)(3), a fifth or later child born before 1 June 2003` `, at` (`the basic amounts for the child allowance the Institute published for` (YMD 2020 8 21))) `is within one shekel of` 359
+-- On 1 March 2021 the quintuplets reach 18: no child is left in the count.
+#ASSERT `the answer for` "Avi" `in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` (YMD 2021 3 1) `of` (LIST `insured` "Avi", `insured` "Batya") `and` `the quintuplets`)) EQUALS `a monthly child allowance` EMPTY
+
+§§ `Sections 66 and 67 together — an excluded father keeps the count`
+
+-- [fork F6] Avi has income chargeable to additional tax; the children are with both parents.
+-- They are in Avi's count (s 67(b): "the insured father"); Avi has no allowance (s 66); Batya's
+-- count is empty. The family's total is 0.
+#ASSERT `the answer for` "Avi" `in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured, with income chargeable to additional tax,` "Avi", `insured` "Batya") `and` `the eldest two`)) EQUALS `no child allowance, being an insured parent with income chargeable to additional tax`
+#ASSERT `the answer for` "Batya" `in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured, with income chargeable to additional tax,` "Avi", `insured` "Batya") `and` `the eldest two`)) EQUALS `a monthly child allowance` EMPTY
+#ASSERT `the family total in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured, with income chargeable to additional tax,` "Avi", `insured` "Batya") `and` `the eldest two`)) EQUALS 0
+-- The children with Batya only: in her count, and she is paid. 173 + 219 = 392.
+#ASSERT `the family total in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured, with income chargeable to additional tax,` "Avi", `insured` "Batya") `and` (LIST (`a child` "Ella" (YMD 2009 1 10) (LIST (`natural father` "Avi" FALSE), (`natural mother` "Batya" TRUE))), (`a child` "Gil" (YMD 2011 3 5) (LIST (`natural father` "Avi" FALSE), (`natural mother` "Batya" TRUE)))))) EQUALS 392
+-- A person who is not insured: the other answer s 66 names.
+#ASSERT `the answer for` "Avi" `in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `not insured` "Avi", `insured` "Batya") `and` `the eldest two`)) EQUALS `no child allowance, not being an insured parent`
+#ASSERT `the children counted with` "Batya" `in` (`the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `not insured` "Avi", `insured` "Batya") `and` `the eldest two`)) EQUALS LIST "Ella", "Gil"
+
+§§ `Facts that cannot describe a case`
+
+#ASSERT `the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi", `insured` "Avi") `and` `the eldest two`) EQUALS LEFT `two persons have the same name`
+#ASSERT `the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi") `and` `the eldest two`) EQUALS LEFT `a child's record names a parent who is not among the persons`
+#ASSERT `the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi", `insured` "Batya") `and` (LIST (`a child` "Ella" (YMD 2009 1 10) `Avi and Batya, with both`), (`a child` "Ella" (YMD 2011 3 5) `Avi and Batya, with both`))) EQUALS LEFT `two children have the same name`
+#ASSERT `the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi", `insured` "Batya") `and` (LIST (`a child` "Noa" (YMD 2026 6 16) `Avi and Batya, with both`))) EQUALS LEFT `a child is born after the day`
+#ASSERT `the child allowance of each person, at the basic amounts the Institute published for the day, in` (`the family on` `15 June 2026` `of` (LIST `insured` "Avi", `insured` "Batya") `and` (LIST (`a child abroad` "Noa" (YMD 2016 5 5) `Avi and Batya, with both` (YMD 2026 7 1) NOTHING FALSE))) EQUALS LEFT `an absence from Israel begins after the day, or ends before it begins`

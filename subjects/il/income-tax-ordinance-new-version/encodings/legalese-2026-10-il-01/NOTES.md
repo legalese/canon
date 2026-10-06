@@ -245,3 +245,152 @@ Observed on 2026-10-06 by reading the sibling directories; nothing here was chan
 - The L4 skills (`encoding-a-subject`, `writing-l4-rules` with `drafting-patterns.md`, `gotchas.md` and the `source-patterns/` pages 01, 03, 04 (4.7–4.8), 09 (9.4–9.5, 9.9) and 11), and the commons layout (`canon-deposit.md`) and the HVAC row's `encoding.json` as the worked example.
 - The sibling directories `legalese-2026-10-il-02` and `-il-03`, read-only, for section 7 only.
 - Not read: anything from the Axiom Foundation or any RuleSpec encoding, under any of the paths the brief forbids. Web searches were limited to the Tax Authority's own figures on gov.il.
+
+## Comparison with Axiom's RuleSpec (2026-10-06)
+
+Comparison author `lad-il-01`, one session, no sub-agents, 2026-10-06.
+The lead released the semi-cleanroom rule for this row only, after the encoding above had been deposited and independently tested; no Axiom file was opened before then.
+Nothing above this section was changed, no other file was edited, and none of the repairs proposed below has been applied.
+
+### What was read
+
+The local clone `/Volumes/transcend/src/Axiom/rulespec-il/` at commit `95c6f32c87c75e318631cbd77c14b840bc536c15` (2026-10-03, "Merge pull request #8"), read-only, not pulled.
+
+- In full: `il/statutes/income-tax-ordinance/section-33a.yaml`, `section-34.yaml`, `section-36.yaml`, `section-36a.yaml` and their four `.test.yaml` companions. The sha256 of all eight matches the `applied_files` hashes in their manifests.
+- In full: `.axiom/encoding-manifests/il/statutes/income-tax-ordinance/section-33a.json`, `section-34.json`, `section-36.json`, `section-36a.json`.
+- `docs/ENCODING-GAPS.md`: the entry `credit-conditions-are-inputs-not-derived` (lines 516–520) in full; from the entry `no-executable-oracle` (heading at line 687), its first three lines and the one bullet that names ss 34, 36 and 36A.
+- `data/coverage/tax-benefit-source-map.json`: the top-level keys; for the Income Tax Ordinance entry, its scalar fields, its `expressions`, `corpus_expression_dates["income-tax-ordinance"]`, and membership tests on its `encoded_sections` list (the list itself was not printed).
+- `known-missing-money-atoms.yaml` and `known-validation-gaps.yaml`: searched for the four sections in Latin and Hebrew forms; no entries.
+- `LICENSE` and `LICENSE-CODE` (headers) and `NOTICE` (in full).
+- No imported file was needed: the only `import` atoms in the four modules are s 36's, and they point at s 36's own rules.
+
+**Read outside this row, reported so the other rows can judge.**
+The search of `ENCODING-GAPS.md` printed two single lines (399 and 408) of an entry about s 66 (row IL-02).
+The `no-executable-oracle` bullet, printed for its clause on ss 34, 36 and 36A, also states figures for ss 121, 121B and 66(c) (rows IL-03 and IL-02); they are not reproduced here.
+The membership test on `encoded_sections` also showed that Axiom encodes s 120B (row IL-03); that module was not opened.
+Rows IL-02 and IL-03 should treat themselves as exposed to those lines.
+Nothing under `national-insurance-law-1995/` or `composed/`, no other section's module, and no `l4-ide/specs/research/AXIOM-*` was read.
+
+### Licence
+
+`NOTICE`: "Encodings, companion test cases, parameter values, and provenance metadata in this repository are licensed under the Creative Commons Attribution 4.0 International license (CC BY 4.0)"; tooling is under Apache 2.0 (`LICENSE-CODE`).
+The YAML compared here is therefore CC BY 4.0.
+Quotations below are short and attributed: Axiom Foundation RuleSpec corpus (CC BY 4.0), https://github.com/TheAxiomFoundation.
+The manifests record that each of the four modules was machine-generated on 2026-09-06 (`"model": "gpt-5.6-terra"`, `"tool": "axiom-encode encode --apply"`).
+
+### Axiom's encoding, briefly
+
+One RuleSpec module per section.
+s 33A: two parameters, `tax_credit_point_base_amount` = 504 (`unit: ILS`, `period: Year`) and `pension_point_monthly_divisor` = 12, and two `deferred_outputs`, the indexed credit-point amount and the pension-point monthly amount, declared and not computed.
+s 34: `if individual_is_israeli_resident_in_tax_year: israeli_resident_tax_credit_point_count else: 0`, the count being 2.
+s 36: the same input and 1/4, held as a numerator 1 over a denominator 4.
+s 36A: `if individual_is_woman: woman_tax_credit_point_count else: 0`, the count being `1 / 2`.
+Every version is `effective_from: '0001-01-01'`.
+Each source atom carries a Hebrew excerpt and a corpus citation path, not a line number.
+The companion tests are two per section for ss 34, 36 and 36A, one on each side of the condition, and none for s 33A (its file is `[]`).
+Axiom's encoding was not executed: its answers below are read off its formulas.
+
+### Where the two agree
+
+Every number: 504 (line 1563), 12 (line 1564), 2 (line 1570), 1/4 (line 1594), 1/2 (line 1597).
+Every fork that both had to take was taken the same way:
+
+- F1, s 36A has no residence condition (line 1597). Axiom's gap entry: "§36א states no residence requirement and the encoding does not add one" (`ENCODING-GAPS.md` lines 519–520).
+- F2, s 36 has no earning or travel condition (line 1594). Axiom conditions s 36 on residence alone.
+- F3, s 36's "יחיד תושב ישראל" is residence in the tax year. Axiom's s 36 reads an input named `individual_is_israeli_resident_in_tax_year`, the s 34 name, though its excerpt is "יחיד תושב ישראל".
+- F4, residence is one Boolean per tax year, never apportioned.
+- F8, the points are computed from the facts, with no claim or proof.
+- F9, "אשה" is an input.
+- Residence under s 1 (lines 143–163) is an input in both; neither encodes the test.
+
+Two readers taking the same reading is not evidence that the reading is right; Q1 and Q2 stay open.
+Axiom's text is a Wikisource revision with `expression_date` 2026-06-08 (coverage map); its excerpts of these four sections match lines 1563–1597 of our bundle word for word.
+Its s 34 summary reorders the sentence, and its s 33A summary stops at "בסעיף 120א." and leaves out the set-off limb; no difference in the source text itself was found.
+
+### Divergence table
+
+Classes: ours wrong, theirs wrong, genuine ambiguity, scope difference (one covers what the other does not), representational difference (same answer, different shape).
+Where the text does not decide, the row says so and names no winner.
+
+| id | provision | ours | theirs | source lines | class | proposed repair to ours |
+| --- | --- | --- | --- | --- | --- | --- |
+| X01 | s 48, reached from ss 34 and 36: a non-resident individual who is an Area resident and not an Israeli citizen | ss 34 and 36 refuse: `section 48 and the order made under it are not encoded in this model` | no Area input; the caller enters `individual_is_israeli_resident_in_tax_year: false` and gets 0 and 0 | 1807 (the power); 1808 (Wikisource note, not law: the 5755-1995 order was published and applies ss 34, 36 and 37 "כאילו היו תושבי ישראל") | scope difference. The bundle's operative text gives only a power and does not decide the case; if the order is in force as the note says, Axiom's 0 is wrong. | none |
+| X02 | s 48A, reached from ss 34, 36 and 36A: a foreign worker whom a section would credit | refuses: `section 48A and the regulations made under it are not encoded in this model` | no foreign-worker input: 2, 1/4 and, for a woman, 1/2 | 1811 (power to disapply wholly or partly, "אף אם רואים אותו כתושב"); 1812 (note: Regulations 5775-2014 published) | scope difference. The bundle does not say what the Regulations do, so it does not decide whether Axiom's full points are right. | none |
+| X03 | s 33A "נקודת זיכוי", limb (3), "המקוזז כנגד המס לאותה שנה" | `max 0 (tax − amount)` (F5) | not encoded; the module summary leaves the words out | 1563 | scope difference | none |
+| X04 | s 33A, a number of points as an amount in NIS | points × the year's value, the value an input with no default | `tax_credit_point_amount` is a deferred output, not computed | 1563 | scope difference | none |
+| X05 | s 33A "נקודת קיצבה", limbs (1)–(3) | limb (3), the division by twelve, computed from an input that stands for limbs (1)–(2) | the divisor 12 as a parameter; `pension_point_monthly_amount` deferred | 1564 | scope difference | none |
+| X06 | s 33A "נקודת קיצבה", its English name | "allowance point"; no period stated | "pension point", and "monthly" | 1564 ("ומחולק בשנים עשר", divided by twelve; the word "month" does not appear); 1559 ("קיצבאות ילדים", child allowances, in the Chapter's heading) | representational. "Monthly" is a gloss the text does not state; no answer depends on it. Our row IL-03 also says "pension point" (§7 above). | none; choose one English name at IL-07 |
+| X07 | s 33A, the indexation cross-reference | records that "כאמור בסעיף 120א" lands on a deleted definition and that s 120B(a) indexes credit-point amounts (F6) | its deferral reason cites "the indexation mechanics referenced in section 120A" | 1563; 4329 ("מדד" – "(נמחקה)"); 4338 | representational. The letter of s 33A says 120A and the working indexation is s 120B; neither encoding computes it, so no answer depends on it. | none |
+| X08 | the aggregates | `the credit points under sections 34 and 36` (the aggregate s 134A(2) names) and `the credit points under sections 34, 36 and 36A` | none; each section stands alone | 4864 | scope difference | none |
+| X09 | the year's credit-point value | the Tax Authority's published figures (2,904 for 2025; 242 a month for 2024–2026), labelled as not law | none in these four modules | not statute; see `ito-credit-points-published-figures.l4` | scope difference | none |
+| X10 | who is the taxpayer | `Person` is an individual or a body of persons; a body of persons gets 0 | no such distinction; the inputs are named `individual_is_…` and the entity is `Person` | 108, 124 (s 1 "אדם", "חבר בני אדם"); 1570, 1594 ("יחיד") | representational; the same answer once a caller enters FALSE for a company | none |
+| X11 | the residence fact | one field, read by ss 34 and 36 | one input per module: `section-34#input.individual_is_israeli_resident_in_tax_year` and `section-36#input.…` are separate keys in its tests, so the two could be fed different values; how Axiom's composer binds them was not read | 1570, 1594 | representational | none |
+| X12 | the type of a number of points | `NUMBER`, written 1/4 and 1/2 as the text writes them | `dtype: Count`, holding 0.25 and 0.5 | 1594, 1597 | representational | none |
+
+Two further rows are not divergences: the encodings agree, and on the text both are wrong or both overreach.
+
+| id | provision | ours | theirs | source lines | class | proposed repair to ours |
+| --- | --- | --- | --- | --- | --- | --- |
+| S1 | s 3A(f): an Israeli citizen who is an Area resident, or who operates in the Area, and is not an Israeli resident under s 1 (independent finding S09) | 0 under s 34 and 0 under s 36, with no refusal; the comment on `an Israeli resident in the tax year` tells the caller to enter the s 1 status | 0 and 0: no Area input, and its gap entry ties residence to the s 1 definition; s 3A is not among the coverage map's `encoded_sections` | 471 ("יחולו על אזרח ישראלי שהוא תושב אזור או פועל באזור, הוראות פקודה זו כאילו היה תושב ישראל"); 455–458 ("אזרח ישראלי" includes (2) every Israeli resident and (3) a person entitled under the Law of Return who is an Area resident); 1807 (s 48 takes "אזור", "תושב אזור" and "אזרח ישראלי" from s 3A) | ours wrong and theirs wrong: on the words, s 34 gives 2 and s 36 gives 1/4 | R1 |
+| S2 | the tax year | no rule takes a date; §1 above says the encoding answers any year since 5764 | every version `effective_from: '0001-01-01'`; the coverage map says `temporal_coverage: current_expression_only` | 1561, 1569, 1593, 1596 (the amendment lists; the bundle carries no earlier text) | both answer years whose text the bundle does not carry, before the last listed amendment and before 1961; for current years both are right | R2 |
+
+Counts: 12 divergences, of which 0 ours wrong, 0 theirs wrong, 0 genuine ambiguity, 7 scope differences (X01–X05, X08, X09) and 5 representational differences (X06, X07, X10–X12); and 2 shared defects (S1, ours and theirs wrong; S2, both overreach).
+
+### Axiom's test cases through our encoding
+
+Run in a scratch copy as `axiom-cases.l4`, which imports our nouns and ss 34/36/36A modules unmodified; the file is not deposited.
+Axiom supplies one Boolean per case and our `Individual` takes four, so the fact Axiom does not supply (sex for ss 34 and 36, residence for s 36A) was run both ways, two assertions per case.
+The two facts Axiom has no concept of, Area resident not a citizen and foreign worker, were FALSE.
+Axiom's period (tax year 2024 or 2025) has no counterpart: our rules take no year.
+
+| Axiom case | section | Axiom input | Axiom expects | ours | result |
+| --- | --- | --- | ---: | --- | --- |
+| `israeli_resident_receives_two_tax_credit_points` (2025) | 34 | resident: true | 2 | 2, for a man and for a woman | match |
+| `nonresident_does_not_receive_resident_tax_credit_points` (2025) | 34 | resident: false | 0 | 0, both | match |
+| `israeli_resident_receives_travel_tax_credit_points` (2024) | 36 | resident: true | 0.25 | 1/4, both | match |
+| `nonresident_does_not_receive_travel_tax_credit_points` (2024) | 36 | resident: false | 0 | 0, both | match |
+| `woman_receives_half_credit_point` (2025) | 36A | woman: true | 0.5 | 1/2, resident and non-resident | match |
+| `non_woman_does_not_receive_woman_credit_point` (2025) | 36A | woman: false | 0 | 0, both | match |
+| none | 33A | `[]` | — | — | no case |
+
+`L4=/Users/mengwong/.local/bin/l4 ./check.sh` on the scratch copy, 2026-10-06 about 22:15 +08, binary sha256 `64bbcb157dbef2ef1020a6a75589313bba0a2aeeb807c921c5e65e62e9eca118`: `axiom-cases.l4` 0 errors, 12 satisfied, 0 failed, 0 refused; the other modules as before (58 and 78 satisfied).
+Negative control: with one expectation changed from 0.25 to 0.3 the same harness printed 1 error, 11 satisfied, 1 failed.
+6 of 6 cases match, 0 diverge, 0 could not be run.
+The cases test only the two sides of each section's one condition; none touches a refusal, a body of persons, s 48, s 48A, s 3A(f) or an amount in NIS, so their passing says nothing about X01–X12, S1 or S2.
+
+### What Axiom does that we do not
+
+- A dated version per number (`versions: - effective_from: …`), so an amendment can be added as a new version; ours has no date mechanism (S2).
+- A declared list of outputs it does not compute, each with a reason (`deferred_outputs`); ours takes the missing figures as inputs instead.
+- Units and periods as metadata (`unit: ILS`, `period: Year`).
+- Signed generation provenance per module: model, run, prompt hash, HMAC signature.
+- A stated outside comparison: its `no-executable-oracle` entry says the OECD TaxBEN Israel description agrees on "the 2.25 basic credit points, which this encoding reaches as §34's two plus §36's quarter" and on "§36א's further half point for a woman". That agrees with our answer table; TaxBEN itself was not read.
+
+### What we do that Axiom does not
+
+- Reach ss 48 and 48A and refuse with a named reason (X01, X02).
+- Compute s 33A's set-off, the amount in NIS and the allowance-point division (X03–X05).
+- Distinguish a body of persons from an individual (X10).
+- Provide the s 134A(2) aggregate and the slice total (X08).
+- Carry the Tax Authority's published figures with provenance (X09).
+- Record the stale s 120A reference (F6), a register of ten forks, and a coverage table of every provision met; carry 58 own and 78 independent assertions against Axiom's six cases.
+- Cite the source by line number in every `@ref`; Axiom cites by excerpt.
+
+### Proposed repairs to our encoding (not applied)
+
+- **R1 (S1, s 3A(f)).** The repair the independent pass proposed for S09, widened to the whole of line 471, which covers an Israeli citizen who is an Area resident "או פועל באזור" (or who operates in the Area); S09 framed only the first limb.
+  Either say in the comment on `an Israeli resident in the tax year` and in the `@export`'s `@desc` that such a person is entered as resident by force of s 3A(f), with "Israeli citizen" in the s 3A(a) sense (lines 455–459); or add a field for it and make ss 34 and 36 apply.
+  Add a test for each limb.
+  That "operates in the Area" reaches the personal credits is this author's reading of line 471; neither encoding tests it.
+- **R2 (S2, the tax year).** Already proposed by the independent pass: say in §1 that the encoding answers every year, before 5764 too, or take the year and refuse before each section's last listed amendment.
+  Axiom's `'0001-01-01'` is the same gap and no reason to keep ours.
+- Nothing else. On every divergence the text either does not decide or our encoding is the more careful of the two.
+
+### Bottom line
+
+On what the four sections themselves say, the two encodings give the same answers: every number agrees, every fork both had to take was taken the same way, and all six of Axiom's cases pass through ours.
+They differ in reach, not in reading.
+Axiom stops at each section's own sentence and answers with full confidence for Area residents and foreign workers, where the answer turns on instruments the bundle does not hold; ours reaches those instruments and refuses, and also computes the three limbs of s 33A that Axiom defers.
+Neither handles s 3A(f), and neither refuses a tax year whose text the bundle does not carry.
+The comparison found nothing wrong in ours that the independent pass had not already found, and widens the S09 repair by one limb.
+Axiom's six two-sided cases and empty s 33A test file are thin evidence either way, so the agreement here is two readers taking the same reading, not a check of that reading against the law.

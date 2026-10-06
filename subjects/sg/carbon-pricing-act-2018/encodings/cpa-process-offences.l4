@@ -1,0 +1,380 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `cpa-types`
+IMPORT `cpa-schedules`
+IMPORT `cpa-registration-reporting`
+
+-- Carbon Pricing Act 2018 — GOAL 5: CAN THE ASSESSMENT BE MADE, REVISED,
+-- OBJECTED TO OR APPEALED, AND BY WHEN? GOAL 6: WHAT RECORDS AND REGISTER
+-- UPDATES ARE OWED? GOAL 7: IS AN OFFENCE COMMITTED, AND WHAT IS THE MOST IT
+-- CAN COST?
+--
+-- Part 5 Division 2 (ss 21-25), Part 6 (ss 34-39), Part 7 (ss 40-44),
+-- Part 8 (ss 45-62), Part 9 (ss 63-79), and the provisions with nothing to
+-- compute, listed at the end.
+--
+-- Source: ../source/CPA2018.txt.
+
+§ `Goals 5 to 7 — process, records, offences`
+
+§§ `Goal 5a — assessments (ss 21-25)`
+
+-- s 21(2): the Agency may assess to the best of its judgment where "(a) any
+-- verified emissions report ... has not been submitted ...; or (b) any such
+-- verified emissions report submitted is incomplete or inaccurate such that, or
+-- for any other reason, the Agency is unable to approve the same before
+-- 15 August of the year immediately following the emissions year".
+@ref s 21(2)
+GIVEN d                               IS A DATE
+      `emissions year`                IS A NUMBER
+      `the verified report submitted` IS A BOOLEAN
+      `approved on`                   IS A MAYBE DATE
+GIVETH A BOOLEAN
+DECIDE `the Agency may make a best-judgment assessment on` d `for` `emissions year` `, report submitted:` `the verified report submitted` `, approved on` `approved on` IF
+    IF   `the law is encoded for the year` (`emissions year`)
+    THEN "(a)" ... NOT `the verified report submitted`
+     OR  "(b)" ... (`not approved by 15 August` AND d AT LEAST `15 August`)
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+    WHERE
+        `15 August` MEANS YMD (`emissions year` PLUS 1) 8 15
+        `not approved by 15 August` MEANS
+            CONSIDER `approved on`
+            WHEN NOTHING THEN TRUE
+            WHEN JUST a  THEN a GREATER THAN `15 August`
+
+-- s 22(1): an advance assessment where the person "will cease, or ... has
+-- ceased or is likely to cease, to have operational control", for a year not
+-- yet assessed.
+@ref s 22(1)
+GIVEN `control ceasing or ceased`   IS A BOOLEAN
+      `the year already assessed`   IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Agency may make an advance assessment, control ceasing:` `control ceasing or ceased` `, already assessed:` `the year already assessed` IF
+        `control ceasing or ceased`
+    AND NOT `the year already assessed`
+
+-- s 23(1): revision where "(a) the Agency is of the opinion that the
+-- assessment is no longer accurate ...; or (b) the registered person ... raises
+-- any objection ... and ... the Agency agrees". (2): a revision under (1)(a)
+-- "must be made within 4 years after the date of the service of the notice of
+-- assessment". (3): an objection "within 30 days after the date of the service
+-- ..." stating precisely the grounds; (4) the Agency may extend that. (1A): no
+-- objection to an allowance.
+@ref s 23(2)
+GIVEN d      IS A DATE
+      served IS A DATE
+GIVETH A BOOLEAN
+DECIDE `the Agency may still revise of its own motion on` d `an assessment served on` served IF
+    IF   `the law is encoded for the year` (DATE_YEAR served)
+    THEN d AT MOST `add years` served 4
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+
+@ref s 23(1A), (3), (4)
+GIVEN `objected on`              IS A DATE
+      served                     IS A DATE
+      `extended to`              IS A MAYBE DATE
+      `about the allowance`      IS A BOOLEAN
+      `grounds stated precisely` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `an objection on` `objected on` `to an assessment served on` served `is valid, extended to` `extended to` `, about the allowance:` `about the allowance` `, grounds precise:` `grounds stated precisely` IF
+    IF   `the law is encoded for the year` (DATE_YEAR served)
+    THEN NOT "(1A)" ... `about the allowance`
+     AND "(3)(b)" ... `grounds stated precisely`
+     AND "(3)(a), (4)" ... `objected on` AT MOST `the deadline`
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+    WHERE
+        `the deadline` MEANS
+            CONSIDER `extended to`
+            WHEN NOTHING THEN served PLUS 30
+            WHEN JUST e  THEN IF e GREATER THAN served PLUS 30 THEN e ELSE served PLUS 30
+
+-- s 25: "no assessment, charge or demand for any tax is to be quashed or
+-- affected by reason of any mistake in — (a) the name ...; or (b) the amount of
+-- tax assessed", if the Act is "in substance and effect complied with".
+@ref s 25
+GIVEN `the Act complied with in substance and effect` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a mistake in the name or the amount leaves the assessment standing, complied with:` `the Act complied with in substance and effect` IF
+    `the Act complied with in substance and effect`
+
+§§ `Goal 5b — appeals (ss 34-39)`
+
+-- s 34(1): an appeal to the Minister lies against a decision "(a) refusing to
+-- deregister a business facility as a taxable facility ...; (b) refusing to
+-- approve a verified emissions report or a monitoring plan ...; (c) refusing to
+-- refund any tax under section 19(1) or credit any fixed-price carbon credit
+-- ... under section 19(2); or (d) refusing to revise any assessment ... pursuant
+-- to section 23". (2): "within 30 days after the date of service of the
+-- Agency's decision".
+@ref s 34(1), (2)
+GIVEN decision        IS AN `Agency decision`
+      `decision date` IS A DATE
+      `appealed on`   IS A DATE
+GIVETH A BOOLEAN
+DECIDE `an appeal to the Minister lies against` decision `served on` `decision date` `, lodged on` `appealed on` IF
+    IF   `the law is encoded for the year` (DATE_YEAR `decision date`)
+    THEN NOT decision EQUALS `some other decision`
+     AND `appealed on` AT MOST `decision date` PLUS 30
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+
+-- s 35: an appeal "does not suspend the effect of the decision appealed
+-- against unless otherwise provided ... or allowed by the Minister".
+@ref s 35
+GIVEN `the Minister allows suspension` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the decision is suspended pending appeal, the Minister allowing:` `the Minister allows suspension` IF
+    `the Minister allows suspension`
+
+-- s 37(1): appeal to the High Court "upon any question of law or of mixed law
+-- and fact"; (2): not where the change in tax is less than 250 tCO2e × R (see
+-- `the change of … is large enough for a High Court appeal`, cpa-tax-payment.l4).
+-- s 36(3): otherwise final.
+@ref s 37(1)
+GIVEN `a question of law or of mixed law and fact` IS A BOOLEAN
+      `the change is large enough, or not about tax` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `an appeal to the High Court lies, law:` `a question of law or of mixed law and fact` `, change large enough:` `the change is large enough, or not about tax` IF
+        `a question of law or of mixed law and fact`
+    AND `the change is large enough, or not about tax`
+
+-- s 38(1): an Appeal Panel "must comprise at least 3 individuals, at least one
+-- of whom has particular technical or other specialised knowledge".
+@ref s 38(1)
+GIVEN members       IS A NUMBER
+      `specialists` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `an Appeal Panel of` members `members with` `specialists` `specialists is properly composed` IF
+    members AT LEAST 3 AND `specialists` AT LEAST 1
+
+§§ `Goal 6 — records and the registers (ss 40-44), service and time (ss 67, 75)`
+
+-- s 44(2)(c): notice of a change in prescribed particulars "lodged within
+-- 14 days after the change, or any longer period as the Agency may allow".
+@ref s 44(2)(c)
+GIVEN `changed on`  IS A DATE
+GIVETH A DATE
+`the last day to notify a change made on` `changed on` MEANS
+    IF   `the law is encoded for the year` (DATE_YEAR `changed on`)
+    THEN `changed on` PLUS 14
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+
+DECLARE `Method of service` IS ONE OF
+    `personally, or left at the address`
+    `by fax, with notice of successful transmission`
+    `by email`
+    `by prepaid registered post`
+    `through an electronic transactions service`
+
+-- s 67(5): service takes effect "(a) [by fax] on the day of transmission; (b)
+-- [by email] at the time that the email becomes capable of being retrieved
+-- ...; (c) [by registered post] 2 days after the day the document was posted
+-- (even if it is returned undelivered); and (d) [by electronic transactions
+-- service] at the time when the electronic record ... enters the person's
+-- account". s 67(6): email only with prior written consent.
+@ref s 67(5), (6)
+GIVEN m         IS A `Method of service`
+      `sent on` IS A DATE
+      `consented to email` IS A BOOLEAN
+GIVETH A MAYBE DATE
+`the day service takes effect, sent` m `on` `sent on` `, email consented:` `consented to email` MEANS
+    IF   `the law is encoded for the year` (DATE_YEAR `sent on`)
+    THEN CONSIDER m
+         WHEN `by prepaid registered post` THEN JUST (`sent on` PLUS 2)
+         WHEN `by email`                   THEN IF `consented to email` THEN JUST `sent on` ELSE NOTHING
+         OTHERWISE JUST `sent on`
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+
+-- s 75(3)-(4): an extension may be granted after the time has expired "only if
+-- the application ... was made to the Agency before the expiry"; then "time is
+-- treated as extended so long as the Agency has not made its decision".
+@ref s 75(3), (4)
+GIVEN `applied on`      IS A DATE
+      `time expires on` IS A DATE
+GIVETH A BOOLEAN
+DECIDE `an extension may still be granted after expiry, applied on` `applied on` `, time expiring` `time expires on` IF
+    IF   `the law is encoded for the year` (DATE_YEAR `time expires on`)
+    THEN `applied on` AT MOST `time expires on`
+    ELSE REFUSE "no source is encoded for this year: the Act before the 2022 amendments (in force 1 January 2024) is not encoded"
+
+§§ `Goal 7a — the maximum penalties`
+
+GIVEN f IS A NUMBER, m IS A NUMBER, d IS A NUMBER
+GIVETH A `CPA penalty`
+`penalty of` f m d MEANS `CPA penalty` WITH `fine` IS f, `imprisonment in months` IS m, `continuing, per day` IS d
+
+-- Every offence's ceiling. Where the fine is a multiple of tax, the tax figure
+-- is an input: for s 54(3) the tax the person "would have been liable [for]
+-- had the business facility been registered as a taxable facility"; for s 56
+-- the tax undercharged; for s 59 the tax in the demand note.
+@ref ss 47(2), 48(3), 49(4), 51(2), 52-62, 70(3), 76(4)
+GIVEN o          IS A `CPA offence`
+      repeat     IS A BOOLEAN
+      `tax figure` IS A NUMBER
+GIVETH A `CPA penalty`
+`the maximum penalty for` o `, a second or subsequent offence:` repeat `, tax figure` `tax figure` MEANS
+    CONSIDER o
+    --                                                                                                           fine                       months  per day
+    WHEN `s 47(2) — refusing or misstating name, address or particulars`                       THEN `penalty of` 10000                       12      0
+    WHEN `s 48(3) — failing to comply with a requirement on search`                            THEN `penalty of` 10000                       12      100
+    WHEN `s 49(4) — failing to comply with a notice to provide information`                    THEN `penalty of` 10000                       12      100
+    WHEN `s 51(2) — failing to carry out a test or inspection`                                 THEN `penalty of` 2000                        0       0
+    WHEN `s 52 — obstructing the Agency or an authorised officer`                              THEN `penalty of` 10000                       12      0
+    WHEN `s 53 — false entries or false information`                                           THEN `penalty of` 5000                        6       0
+    WHEN `s 54(1) — failing to apply to be a registered person`                                THEN `penalty of` 5000                        0       0
+    WHEN `s 54(2) — failing to apply to register a reportable facility`                        THEN `penalty of` 5000                        0       0
+    WHEN `s 54(3) — failing to apply to register a taxable facility`                           THEN `penalty of` (`tax figure` TIMES 10% PLUS 10000) 0 50
+    WHEN `s 54(4) — false statement in a registration application`                             THEN `penalty of` 5000                        6       0
+    WHEN `s 54(5) — failing to give 45 days' notice of ceasing control`                        THEN `penalty of` 10000                       0       0
+    WHEN `s 55(1) — failing to submit an unverified emissions report`                          THEN `penalty of` 1000                        0       50
+    WHEN `s 55(2) — submitting an inaccurate unverified emissions report`                      THEN `penalty of` (IF repeat THEN 20000 ELSE 10000) 0 0
+    WHEN `s 56(1) — failing to submit a verified emissions report`                             THEN `penalty of` 1000                        0       50
+    WHEN `s 57(1) — failing to submit a monitoring plan`                                       THEN `penalty of` 1000                        0       0
+    WHEN `s 57(2) — submitting an inaccurate monitoring plan`                                  THEN `penalty of` 50000                       0       0
+    WHEN `s 58 — failing to comply with a direction under s 13(2), 14 or 15(2), or with s 15(1)` THEN `penalty of` 5000                      0       0
+    WHEN `s 60 — offences by authorised and unauthorised persons`                              THEN `penalty of` 10000                       36      0
+    WHEN `s 61(1) — failing to comply with the Minister's requirement`                         THEN `penalty of` 10000                       0       0
+    WHEN `s 61(2) — failing to attend before an Appeal Panel`                                  THEN `penalty of` 10000                       0       0
+    WHEN `s 62(1) — failing to keep records`                                                   THEN (IF repeat THEN `penalty of` 10000 36 0 ELSE `penalty of` 5000 0 0)
+    WHEN `s 62(2) — failing to notify a change in particulars`                                 THEN `penalty of` 5000                        0       0
+    WHEN `s 70(3) — failing to comply with a court's remedial order`                           THEN `penalty of` 0                           0       1000
+    WHEN `s 76(4) — contravening the regulations`                                              THEN `penalty of` 50000                       24      0
+
+-- s 56(2)-(5): the fine for an inaccurate verified emissions report, or
+-- incorrect information affecting liability to tax: (2) "a fine that is equal
+-- to the tax undercharged"; (3) without reasonable excuse or through
+-- negligence, "double the tax undercharged" and "a further fine ... not
+-- exceeding $5,000 or ... imprisonment ... not exceeding 3 years"; (4) wilfully
+-- with intent to evade, triple, and $10,000 or 3 years; (5) by fraud, art or
+-- contrivance and wilfully, quadruple, and $50,000 or 5 years. (6): not for an
+-- inaccuracy notified under s 15(1). (7): approval by the Agency is no defence.
+@ref s 56(2)-(6)
+GIVEN c                     IS A `Culpability`
+      undercharged          IS A NUMBER
+      `notified under s 15(1)` IS A BOOLEAN
+GIVETH A `CPA penalty`
+`the penalty for an inaccurate verified report, culpability` c `, tax undercharged` undercharged `, notified:` `notified under s 15(1)` MEANS
+    IF `notified under s 15(1)`
+    THEN `penalty of` 0 0 0
+    ELSE CONSIDER c
+         WHEN `none shown`                                                   THEN `penalty of` undercharged                          0  0
+         WHEN `without reasonable excuse or through negligence`              THEN `penalty of` (2 TIMES undercharged PLUS 5000)      36 0
+         WHEN `wilfully with intent to evade`                                THEN `penalty of` (3 TIMES undercharged PLUS 10000)     36 0
+         WHEN `by fraud, art or contrivance, wilfully with intent to evade` THEN `penalty of` (4 TIMES undercharged PLUS 50000)     60 0
+
+-- s 59: failing to pay a demand note — "a fine that is triple the amount of tax
+-- specified in the demand note as being outstanding".
+@ref s 59
+GIVEN outstanding IS A NUMBER
+GIVETH A NUMBER
+`the fine for not paying a demand note for` outstanding MEANS
+    3 TIMES outstanding
+
+-- ss 55(3), 57(3): the inaccuracy offences do not reach an inaccuracy notified
+-- under s 15(1).
+@ref ss 55(3), 57(3)
+GIVEN `notified under s 15(1)` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `an inaccuracy offence under s 55(2) or 57(2) can be committed, notified:` `notified under s 15(1)` IF
+    NOT `notified under s 15(1)`
+
+§§ `Goal 7b — composition, officers, the Government (ss 5(3), 68-71)`
+
+-- s 71(1): a prescribed compoundable offence may be compounded for "a sum not
+-- exceeding the lower of ... (a) one half of the amount of the maximum fine ...;
+-- (b) $5,000."
+@ref s 71(1)
+GIVEN `the maximum fine` IS A NUMBER
+GIVETH A NUMBER
+`the composition limit for a maximum fine of` `the maximum fine` MEANS
+    IF `the maximum fine` DIVIDED BY 2 LESS THAN 5000 THEN `the maximum fine` DIVIDED BY 2 ELSE 5000
+
+DECLARE `Officer facts` HAS
+    `an officer, partner, committee member or manager able to influence the conduct` IS A BOOLEAN
+    `consented, connived or conspired`                               IS A BOOLEAN
+    `knowingly concerned in or party to it`                          IS A BOOLEAN
+    `knew or ought to have known, and did not take all reasonable steps` IS A BOOLEAN
+
+-- ss 68(2), 69(2): an officer (or partner, or manager in a position to
+-- influence the conduct) who "(i) consented or connived, or conspired ...;
+-- (ii) is ... knowingly concerned in, or is party to, the commission ...; or
+-- (iii) knew or ought reasonably to have known ... and failed to take all
+-- reasonable steps" is guilty of the same offence; (5) whether or not the body
+-- is convicted.
+@ref ss 68(2), 69(2)
+GIVEN f                       IS AN `Officer facts`
+      `the body committed it` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the officer is guilty of the same offence:` f `, the body having committed it:` `the body committed it` IF
+        `the body committed it`
+    AND f's `an officer, partner, committee member or manager able to influence the conduct`
+    AND (    "(i)"   ... f's `consented, connived or conspired`
+         ..  "(ii)"  ... f's `knowingly concerned in or party to it`
+         OR  "(iii)" ... f's `knew or ought to have known, and did not take all reasonable steps`)
+
+-- s 70(2): while a remedial order runs, the person "is not liable under this Act
+-- in respect of the continuation of the contravention during the time specified
+-- in the order".
+@ref s 70(2)
+GIVEN d                             IS A DATE
+      `the order's time runs until` IS A DATE
+GIVETH A BOOLEAN
+DECIDE `the continuing contravention on` d `is covered by a remedial order running until` `the order's time runs until` IF
+    d AT MOST `the order's time runs until`
+
+-- s 5(2)-(3): the Act binds the Government, but "Nothing in this Act renders
+-- the Government liable to prosecution".
+@ref s 5(3)
+GIVEN `the accused is the Government` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `may be prosecuted under the Act, the accused being the Government:` `the accused is the Government` IF
+    NOT `the accused is the Government`
+
+-- s 65(1): records of the Agency "are presumed to be correct until the
+-- contrary is proved"; (4) a certificate of the amount due is sufficient
+-- evidence.
+@ref s 65(1), (4)
+GIVEN `the contrary is proved` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Agency's record is taken as correct, the contrary proved:` `the contrary is proved` IF
+    NOT `the contrary is proved`
+
+§§ `Carried as text: nothing to compute`
+
+GIVETH A LIST OF STRING
+`provisions carried as text` MEANS
+    LIST "Long title and s 1 — short title"
+       , "s 2 — definitions applied by the caller (e.g. 'public authority', 'electronic record'); the ones that decide something are encoded where used"
+       , "s 3(2), (4), (5) — 'business activity' and single undertakings: a finding the caller makes"
+       , "s 6 — administration; authorised officers"
+       , "s 8(1)(b)-(d), (2), (3) — content of applications; the Agency must register a complete application"
+       , "s 10(1)-(3) — content of deregistration applications; deregistration does not affect accrued liabilities"
+       , "s 11(2B)-(2D) — reporting periods on a transfer: the caller chooses the period"
+       , "s 12(2) — the non-reckonable part of a report need not be verified (applied by the auditor)"
+       , "s 13(1), (3)-(6) — monitoring plans: content, revision, effective date, transfer to Y"
+       , "s 14 — the Agency's directions on inaccurate reports and plans (failure is the s 58 offence)"
+       , "s 15(2)-(3) — the Agency's directions after a notified error"
+       , "s 16(4) — the tax accrues as a liability of the registered person with control at the end of the last reporting period"
+       , "s 18 — relief or remission by the Agency or the Minister: a discretion, its result an input to s 19"
+       , "s 20(2)-(3) — the Limitation Act 1959 treatment of penalties"
+       , "s 20A — interpretation; s 20E(1)-(4), (6) — the Minister's award and methodology; s 20F — regulations; s 20G — assignment to a public body"
+       , "ss 21(1), (3)-(5), 22(2)-(3) — what an assessment sets out and what the Agency may have regard to"
+       , "s 23(5)-(7) — powers on an objection; notices of refusal and of revised assessment"
+       , "s 26(2) — FPCCs cannot be dealt with except as the Act permits; s 27 — crediting and transfers between the person's own accounts"
+       , "s 29(2), (4) — cancellation for fraud; notice first; s 30 — no refund except under s 33"
+       , "s 31 — opening FPCC accounts; s 32(2) — the effect of suspension; s 33A — eligible ICCs (prescribed criteria); s 33D — the ICC Registry"
+       , "s 34(3)-(5), s 36 — the content of an appeal, the Minister's powers, disposal; s 37(3)-(5) — procedure in the High Court; s 38(2)-(4), s 39 — the Appeal Panel"
+       , "s 40 — records (the period and content are prescribed; failure is the s 62(1) offence)"
+       , "ss 41-43 — the Agency's registers and their correction"
+       , "s 44(1), (2)(a)-(b), (d), (3)-(4) — content and verification of notices of change"
+       , "ss 45-50 — powers of entry, search and information (the offences are encoded)"
+       , "s 63 — notices given by authorised officers; s 64 — inaccuracies in documents"
+       , "s 65(2)-(3) — public documents and certified copies"
+       , "s 66, Fourth Schedule — disclosure of information"
+       , "s 67(1)-(4), (7)-(8) — ways of serving documents"
+       , "s 68(1), (3)-(6), s 69(1), (3)-(6) — state of mind of a body; defences; definitions"
+       , "s 70(1) — the court's power to order a remedy"
+       , "s 72 — moneys into the Consolidated Fund; s 73 — amendment of Schedules; s 74 — exemptions (an input to s 5)"
+       , "s 75(1)-(2), (5) — extensions of time"
+       , "s 76(1)-(3), s 77, Fifth Schedule — regulations and incorporation by reference"
+       , "s 78 — advisory guidelines (no legislative effect)"
+       , "s 79(3) — the first reporting period for corporations saved under s 79 is 2019"

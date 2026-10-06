@@ -223,3 +223,162 @@ That identification is by counting entries and was not checked against the Laws.
 - **The independent test pass** (skill step 8) was not run: the brief for this row is one session with no sub-agents. Every expected value was worked by hand from the text before it was asserted, but no second reader has derived them.
 - **HG1**, a human who knows Israeli income tax reading the modules against the Hebrew, has not been sought.
 - **Semi-cleanroom** (ruled 2026-10-06): nothing from the Axiom Foundation, any RuleSpec repository, or the paths the brief lists was read, searched or fetched in this session.
+
+## Comparison with Axiom's RuleSpec (2026-10-06)
+
+Written by `lad-il-03` (one session, no sub-agents) after this encoding and its independent test pass were deposited, under the semi-cleanroom ruling of 2026-10-06, which held Axiom's encoding back until then.
+Nothing above this heading was changed, and no `.l4` file was edited: a divergence here is a finding, not a fix.
+The modules compared are the deposited ones (sha256 `5cfa2088…` `ito-120b-indexation.l4`, `48e158a9…` `ito-121-individual-rates.l4`, `da3bc13f…` `ito-121b-additional-tax.l4`, `f399a74c…` `ito-il03-nouns.l4`).
+
+### What was read
+
+Axiom's side is the local clone `/Volumes/transcend/src/Axiom/rulespec-il` at commit `95c6f32c87c75e318631cbd77c14b840bc536c15`, read only, not pulled.
+
+- In full: `il/statutes/income-tax-ordinance/section-120b.yaml`, `section-121.yaml`, `section-121b.yaml` and their three `.test.yaml` companions. None of the three imports a file outside itself; every import in `section-121b.yaml` is to its own rules.
+- `NOTICE`, and the opening lines of `LICENSE` and `LICENSE-CODE`.
+- `.axiom/encoding-manifests/il/statutes/income-tax-ordinance/section-120b.json`, `section-121.json`, `section-121b.json`: run `44dee41d` (gpt-5.6-terra), `f9f8d0e4` (gpt-6-astra) and `17f7e7e7` (gpt-6-astra), all generated 2026-09-06.
+- `docs/ENCODING-GAPS.md`, the entries on these sections: lines 104-106, 192-250, 276-313, 383-392 and 431-461.
+- `data/coverage/tax-benefit-source-map.json`: the five values that name ss 120B, 121, 121A or 121B. `known-missing-money-atoms.yaml` and `known-validation-gaps.yaml` have no entry for these sections.
+
+**Read outside that list, and said here so a reviewer can weigh it.**
+A grep of `README.md` for licence terms also matched the word "yaml" and printed about twenty lines of its module table, one line per module, including modules for ITO ss 33A, 34, 36, 36A and 66 and for the National Insurance Law.
+A line-matching grep of `docs/ENCODING-GAPS.md` for these section numbers printed single lines from entries on other sections, among them Axiom's s 33A credit-point figure and a National Insurance Law provision that cites s 121B.
+Reading lines 107-113 and 687-703 of that file (the second because it mentions s 121) showed a process note on two National Insurance Law modules and figures from Axiom's credit-point and s 66 encodings.
+The listing of that file's entry headings showed the titles of entries on other sections.
+None of it bears on this row and none of it is repeated here; it touches rows IL-01 and IL-02, and whoever compares those rows should know this reader saw it.
+In the clone `git rev-parse HEAD` and `git status --short` were run to confirm the commit; the second can refresh git's index cache but changes no tracked file.
+
+### Licence
+
+`NOTICE` puts the encodings, companion test cases, parameter values and provenance metadata under **CC BY 4.0** (`LICENSE`) and tooling under Apache 2.0 (`LICENSE-CODE`), so the YAML files compared here are CC BY 4.0.
+Attribution as `NOTICE` suggests it: "Axiom Foundation RuleSpec corpus (CC BY 4.0), https://github.com/TheAxiomFoundation".
+They are quoted below only in short snippets that identify a point; nothing of theirs is copied into this encoding.
+
+### Method
+
+Both encodings read the same consolidation: Axiom's corpus holds it as at 2026-06-08 (`ENCODING-GAPS.md:220-221`), ours was retrieved 2026-10-06.
+Every `excerpt` in the three modules occurs verbatim in our source, at L4344, L4350-L4359, L4456-L4457, L4462 and L4464-L4465 (checked by script after reducing the wiki templates and subsection labels); the module summaries match too once the consolidation's notes are dropped, except `section-120b.yaml:8`, which paraphrases L4344-L4345.
+Axiom's cases were put through our modules in a scratch copy with the same `l4` binary and `JL4_LIBRARY_PATH` unset; counts were read from the diagnostics, because `l4 run` exited 0 on a run in which three assertions failed (a fixture error of the comparer's, since corrected).
+To compute Axiom's answers outside its own cases, its formulas (`section-121.yaml:179-186`, `253-273`; `section-121b.yaml:136-289`) were restated in scratch L4, and the restatement reproduces all six of Axiom's expected values it was checked against.
+The Axiom engine was not run.
+
+### How each encoding is built
+
+| | this encoding | Axiom |
+| --- | --- | --- |
+| s 120B | s 1 rate of rise and adjusted amount, (a), (b), (d) as a named refusal, (e)(1), (e)(2), a dispatcher by tax year; index readings and amounts supplied | one judgment, `annual_amounts_indexation_suspended`, equal to the caller's boolean `tax_year_is_in_indexation_freeze_period` (`section-120b.yaml:10-27`) |
+| s 121 | the scale over a list of items, each flagged personal exertion, s 2(1)/(2), on the s 121 scale, books; age from date of birth | five supplied inputs: `taxable_income`, `taxable_income_from_personal_exertion`, the two no-books amounts, and a boolean `individual_has_reached_age_sixty` |
+| s 121B | (a), (a1), and the (e) base computed from items and real-estate sales; the (a) amount is a required argument | (a) and (a1) over three supplied figures: the completed (e) base, its s 2(1)/(2) part, and its other personal-exertion part; the amount is fixed inside |
+| result | `EITHER` a named problem or a number, or a named refusal | a figure per output, with band indices and excesses as intermediate outputs |
+
+Where the text is silent or a figure is outside the sources, this encoding refuses by name or takes an input with no default; Axiom takes an input, or falls back on the printed figure, an undated version (`0001-01-01`, which `ENCODING-GAPS.md:193-197` says answers any earlier year with the current text), or a clamp to 0.
+
+Tax years each one answers:
+
+| | 2024 and earlier | 2025 | 2026 | 2027 | 2028 on |
+| --- | --- | --- | --- | --- | --- |
+| s 120B, ours | declined | (e)(1): the supplied 1 January 2024 figure after rounding | same | same | (e)(2) in 2028, (a) after; the figure in force declined for want of the rounding Order |
+| s 120B, Axiom | no version | the caller's boolean | same | same | same; no amount computed |
+| s 121, ours | declined | declined | printed figures | printed figures | declined |
+| s 121, Axiom | no version | no version | printed figures | printed figures | printed figures, unadjusted (no end date) |
+| s 121B, ours | declined | declined | (a) and (a1) at the supplied amount; residential threshold 5,385,285 | same; a residential sale declined | same |
+| s 121B, Axiom | 640,000; (a) and (a1) | same | same | same | same |
+
+### Divergences
+
+Classes: ours wrong, theirs wrong, genuine ambiguity (the text supports both), scope difference, representational difference (same answer, different shape).
+Line numbers `L…` are lines of the source file; file references without a directory are to this encoding or to Axiom's `il/statutes/income-tax-ordinance/`.
+
+| id | provision | ours | Axiom | source | class | repair to ours |
+| --- | --- | --- | --- | --- | --- | --- |
+| X01 | s 121B(a), the amount | an input with no default; the printed 640,000 is read by no rule (`ito-121b-additional-tax.l4:39`, `:213-216`) | `additional_tax_threshold` is 640000 from `0001-01-01`, every year (`section-121b.yaml:33-50`) | L4335 makes the s 121B amount an income ceiling; L4338 adjusts income ceilings every 1 January; L4344 fixes 2025-2027 at the 1 January 2024 figure after rounding; the note at L4456 marks 640,000 as the 2017 nominal figure | **theirs wrong**, and conceded (`ENCODING-GAPS.md:276-286`) | none |
+| X02 | s 121B(a1), years before 2025 | declined (every year before 2026) | applied in every year; its four companion cases are all dated 2024, and one asserts an (a1) charge of 3,200 (`section-121b.test.yaml:1-16`) | L4455 lists the 5785 amendment; the deposited text does not say from when (a1) applies | **scope difference** on the deposited text. Axiom's gap file cites the commencement of the amending Law (amendment 276, Sefer HaChukim 3342, s 3: 1 January 2025) and concedes the defect (`ENCODING-GAPS.md:289-308`); not verified here | none |
+| X03 | s 121B, tax year 2025 | declined (assumption A1; section 8 Q4) | answered, at 640,000 | L4455 (the 5785 tag); the note at L4462 "נקוב לשנת 2025" | **genuine ambiguity** on the deposited text; the commencement Axiom cites (X02) would resolve it toward answering 2025 | none; see follow-up 1 |
+| X04 | s 121, tax years 2028 on | declined (`ito-121-individual-rates.l4:62-74`) | every version runs from `2026-01-01` with no end, so the 2026 figures answer 2028 on (`section-121.yaml:29` and the other nine `effective_from`) | L4345 adjusts the amounts on 1 January 2028; L4335 makes the s 121 amounts income ceilings | **theirs wrong** from 2028. Axiom records that the indexation, (e)(2) included, is not encoded (`ENCODING-GAPS.md:383-391`, `:240-249`), but not that its s 121 answers 2028 | none |
+| X05 | s 120B | the mechanism, over supplied readings and amounts | (e)(1) only; (a)-(d) and (e)(2) not encoded (`ENCODING-GAPS.md:383-391`) | L4338-L4345 | **scope difference** | none |
+| X06 | s 120B(e)(1), which years | computed: 2025 to 2027 inclusive (`ito-120b-indexation.l4:131-133`; F13) | the years appear in the excerpt and in `effective_from: '2025-01-01'`, not in the formula; by the formula, a caller who supplies `true` for 2028 gets "holds" | L4344 | **representational**: the year test is left to the caller | none |
+| X07 | s 121(b)(1), the age of 60 | from date of birth, 60th birthday on or before 31 December of the tax year (`ito-121-individual-rates.l4:203-204`; F2) | a boolean input (`section-121.yaml:180`) | L4354 names no date | **representational**: Axiom leaves F2 to the caller; the text does not decide it | none |
+| X08 | s 121, the income on the scale | the items flagged `charged at the rates in section 121` (`ito-121-individual-rates.l4:192-194`) | `taxable_income` as supplied; nothing excludes income another section charges at its own rate | L4350 "המס על הכנסתו החייבת של יחיד"; the special-rate sections are outside the slice | **scope difference** at the interface: wages 84,120 with a dividend of 1,000,000 left in Axiom's `taxable_income` gives 412,589.60 there and 8,412 here | none |
+| X09 | s 121, negative income | `LEFT an amount of income is negative` (`ito-121-individual-rates.l4:228-231`) | clamped to 0 (`section-121.yaml:253-254`) | silent | **representational** | none |
+| X10 | s 121(a)(1) and (b)(1)(d), the two tops of the 31% band | declined if they differ (F8; `ito-121-individual-rates.l4:176-180`) | (a)(1)'s top bounds the general band, (b)(1)(d)'s bounds the credit-back, unchecked (`section-121.yaml:254`, `:261`) | L4351, L4358 | **representational**: the same answer with the printed figures | none |
+| X11 | s 121, band edges | the tops only; each band is the slice above one top up to the next | the tops plus "first shekel" figures (301,201; 84,121; 120,721; 228,001), each band `min(x, top) - first + 1` | L4351-L4358 | **representational**: the same continuous arithmetic (F16) | none |
+| X12 | s 121B(e), the income base | computed: s 88 and Real Estate Taxation Law s 47 inflationary amounts out, betterment in, the residential limb with its threshold and exemption (`ito-121b-additional-tax.l4:54-147`) | deferred: the caller supplies `taxable_income_for_section_121b` complete (`section-121b.yaml:13-31`); the 5,385,285 parameter is dated `0001-01-01` and read by no rule | L4462 | **scope difference** | none |
+| X13 | s 121B(b), (c), (d) | (b) as its one answer, (c) inert, (d) an input convention | in the module summary only (`ENCODING-GAPS.md:456-458`) | L4458-L4460 | **scope difference**; no answer differs | none |
+| X14 | s 120B(e)(2), its wording | F5: the 1 January 2024 amounts before rounding, adjusted by the 2027 rise only | not encoded; the summary drops "as they were on 1 January 2024 before rounding" (`section-120b.yaml:8`), and the gap file calls (e)(2) "the 2028 catch-up" (`ENCODING-GAPS.md:388`) | L4345 | **representational**: no value is computed on Axiom's side; "catch-up" leans toward the cumulative reading F5 rejects, but it is a label | none |
+
+Totals: **0 ours wrong, 2 theirs wrong, 1 genuine ambiguity, 5 scope differences, 6 representational** (14).
+
+Where both encodings answer, they agree:
+the s 121 figures and rates for 2026-2027 (L4351-L4358); declining s 121 for 2025; F1, eligible income at the bottom of the scale (`section-121.yaml:253-273`, described at `ENCODING-GAPS.md:438-442`, without the alternatives); F3, (b)(2) reaching the over-60 individual's other income (`section-121.yaml:180-183`); R0.9 of the independent pass, (a1) measured on capital-source income alone against the (a) amount; the s 121B rates, 3% and 2% (L4456-L4457); the residential figure 5,385,285 (L4462), which Axiom holds but does not use; the capital-source definition (L4463-L4465), with counted betterment falling in it as the residual (F15); nothing due at exactly the amount (F14); and the exemption condition read as part of the residential limb (the first half of F9; Axiom's deferral note, `section-121b.yaml:28-31`).
+Two encoders reaching F1 separately is evidence for it, not proof: neither text nor Axiom says why the eligible income sits at the bottom.
+
+### Axiom's cases through this encoding
+
+Scratch file `axiom-cases.l4`, run 2026-10-06.
+Axiom's band indices have no counterpart here; the tax and the reduced-rate base were compared instead.
+
+| Axiom case | year | facts | Axiom expects | this encoding | result |
+| --- | --- | --- | --- | --- | --- |
+| `indexation_is_suspended_during_freeze_period` | 2025 | the freeze, as a supplied boolean | holds | `s 120B(e)(1) — no adjustment in tax year` 2025 is TRUE | match |
+| `indexation_is_not_suspended_after_freeze_period` | 2028 | as above | not holds | FALSE for 2028 | match |
+| `personal_exertion_income_uses_reduced_schedule` | 2026 | 600,000, of which 300,000 personal exertion; other income without books 100,000; under 60 | base 300,000; tax 167,030.40 | 300,000; `RIGHT 167030.4` | match |
+| `unacceptable_books_exclude_personal_exertion_income` | 2026 | as above, but 100,000 of the personal-exertion income without books | 200,000; 170,110.40 | 200,000; `RIGHT 170110.4` | match |
+| `age_sixty_income_above_reduced_schedule_ceiling` | 2026 | as above, aged 60 (born 1960 here) | 400,000; 167,030.40 | 400,000; `RIGHT 167030.4` | match |
+| `non_personal_income_below_age_sixty_uses_general_schedule` | 2026 | 600,000 of other income | 0; 202,718.40 | 0; `RIGHT 202718.4` | match |
+| `auto_zero_general_income_band` | 2026 | everything 0 | band index 0 | no counterpart; the tax is `RIGHT 0` | not comparable |
+| `both_additional_taxes_apply_after_distinct_capital_income_exclusions` | 2024 | base 1,000,000; s 2(1)/(2) 100,000; other personal exertion 100,000 | capital 800,000; (a) 10,800; (a1) 3,200; total 14,000 | refused: before 2026 | **diverge** |
+| `neither_tax_applies_at_exact_threshold` | 2024 | 640,000, all capital | 0 | refused | **diverge** |
+| `excluded_capital_categories_remain_subject_to_general_additional_tax` | 2024 | 1,000,000: s 2(1)/(2) 800,000, other personal exertion 200,000 | capital 0; 10,800 | refused | **diverge** |
+| `neither_tax_applies_below_threshold` | 2024 | 600,000; capital 400,000 | 0 | refused | **diverge** |
+
+**Matched 6, diverged 4, not comparable 1.**
+The four divergences are all the year: moved to 2026 with Axiom's 640,000 supplied as the amount, the totals, the capital-source income and, where not zero, the (a) and (a1) parts all match (12 assertions); Axiom's "excess" outputs follow from those.
+On the text, the first and third of those 2024 expectations are wrong by X01 alone, since the amount in 2024 was 640,000 as adjusted under s 120B, not 640,000; the second and fourth come to 0 either way.
+With the 721,560 the editorial note gives, the first and third come to 9,922 and 8,353.20 in 2026 here.
+
+### The independent pass's disagreements, on Axiom's side
+
+| item (`INDEPENDENT-FINDINGS.md`) | this encoding | Axiom |
+| --- | --- | --- |
+| D03-D05, 60 during the tax year | 10,635.20 for 100,000 of rent (F2 (i)) | the caller decides: its boolean gives 10,635.20 if true, 31,000 if false |
+| F01, wages 60,000 and rent 60,000, under 60 | 24,600 | 24,600: the same reading |
+| F02 (the independent author's own error) | 12,300 | 12,300 |
+| F03 (the same), wages -1,000 | `LEFT` | 0 |
+| S13, 2025, dividend 900,000 | declined | 13,000, at 640,000 with (a1); the independent author expected 8,922 at 721,560 |
+| S25, 2025, residential sale | declined | the base is the caller's; given 800,000 with 600,000 of s 2 income, 4,800; expected 2,353.20 |
+| O1, the 2025 residential threshold reachable only by a direct call | as reported | no counterpart: the threshold is undated and read by no rule |
+| O2, a rounded 2024 figure in the before-rounding field gives a plausible 2028 amount | as reported | no counterpart, since (e)(2) is not encoded; Axiom's silent failures of the same kind are X01 and X04, plausible figures with no diagnostic; its gap file concedes the first and records the second only as missing indexation |
+
+On S13 and S25 Axiom supports the independent author's reading of the year (if its cited commencement holds) and not the author's figure.
+
+### What Axiom has that this encoding does not, and the reverse
+
+Axiom read the amending Laws, which this session could not fetch (section 7), and reports three things from them; none is verified here:
+
+- amendment 288 (Sefer HaChukim 3511, 13 Nisan 5786), s 5 replaced four figures of s 121, (a)(1), (a)(2), (b)(1)(c) and (b)(1)(d), and left 84,120, 120,720 and the rates alone (`ENCODING-GAPS.md:226-229`);
+- its s 6 commences it on 1 January 2026 for income derived or accrued from that day (`:200-203`), which agrees with the 2026 boundary of assumption A1;
+- its s 7 treats the new figures, for adjustment under s 120B(e), as the amounts adjusted to 1 January 2024 (`:241-244`), which bears directly on fork F7 and on question 3 of section 8.
+
+It also names the 5785 amendment of s 121B as amendment 276, Sefer HaChukim 3342 of 26 December 2024 (`:291-293`), and the 5786 one as Sefer HaChukim 3511, a 2026 Economic Efficiency Law by the file name it gives (`:204`); section 7 above placed them, by list position, at 5785 p. 150 and 5786 pp. 415-416, and booklet and page have not been reconciled.
+Axiom carries a source excerpt on every parameter and intermediate outputs (band indices, the excess over the amount).
+
+This encoding has, and Axiom does not: the s 120B mechanism and the s 1 arithmetic (with F4-F6 recorded); the s 121B(e) base computed from items and sales; the s 121B amount as a required input rather than a stale constant; a named refusal for every year or figure the text does not fix (s 121 from 2028, s 121B before 2026, a residential sale from 2027, the rounding Order); age from date of birth; special-rate items kept off the scale; rejection of invalid input; the check on the two tops of the 31% band; and a fork register.
+
+### Follow-ups
+
+No divergence is classed ours wrong, so no repair is proposed.
+Three follow-ups depend on reading the amending Laws, which neither this comparison nor Axiom's citations can stand in for:
+
+1. If amendment 276, s 3, commences s 121B(a1) on 1 January 2025 as Axiom reports, s 121B can answer 2025 with the amount supplied: the boundary at `ito-121b-additional-tax.l4:217` (and the refusal at `:80-81` and `:91`) would move to 2025, which also removes observation O1. Check first whether that amendment changed anything else in s 121B for 2025.
+2. If amendment 288, s 7, reads as Axiom quotes it, F7 is answered by reading (iii), which here comes to (ii): the 2028 base for the moved ceilings is the 5786 figures. No answer here changes while the rounding Order is declined; the fork register and question 3 would record the answer.
+3. Amendment 288, s 6, if confirmed, gives assumption A1's 2026 boundary for s 121 a basis in the Law rather than in the editorial tables.
+
+### Bottom line
+
+Where both encodings answer, they compute the same numbers: every comparable Axiom case matches, and its four s 121B cases match once moved into a year this encoding answers.
+They part on time and on what is an input.
+Axiom applies the 2017 figure of 640,000 as the s 121B amount in every year and, by its dating, the 2026 s 121 figures from 2028 on; the text says otherwise (L4335, L4338, L4344-L4345), and Axiom's own gap file records the first gap and the missing indexation behind the second.
+This encoding declines those years and takes the amount as an input, which is more conservative and, for s 121B in 2025, possibly too conservative.
+Axiom encodes s 120B as a pass-through and takes the s 121B(e) base and the age test from the caller; this encoding computes all three, and so carries the forks (F2, F4-F7, F9-F10) that Axiom leaves with its callers.
+No divergence found this encoding wrong on the Hebrew.
+The most useful thing Axiom offers this row is not its YAML but what it read in the amending Laws, and that should be verified at source before anything here changes.

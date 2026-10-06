@@ -1,0 +1,86 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `cpa-types`
+IMPORT `cpa-schedules`
+IMPORT `cpa-registration-reporting`
+IMPORT `cpa-tax-payment`
+IMPORT `cpa-process-offences`
+
+-- Carbon Pricing Act 2018 — THE TOP-LEVEL GOAL.
+--
+--   "For this business facility and this emissions year, what does the Act
+--    require of the person in operational control, and what does it owe?"
+--
+-- One answer that runs through the Act in order: does the Act apply (s 5,
+-- s 74); what are the reckonable emissions (s 2, First and Second Schedules);
+-- must the person register (ss 7-8); what must it report (ss 11-13); what tax
+-- is charged (ss 16, 20C, Third Schedule); how many credits pay it and by when
+-- (s 17, Third Schedule Part 2); and what is owed for paying late (s 17(4)).
+-- Each part is a rule in the goal modules, which can also be asked on its own.
+
+§ `The top-level goal`
+
+DECLARE `Facility year` HAS
+    `emissions year`                         IS A NUMBER
+    `site`                                   IS A `Site facts`
+    `exempted by order under s 74`           IS A BOOLEAN
+    `emissions`                              IS A LIST OF `GHG emission`
+    `status at the start of the year`        IS A `Registration status`
+    `control will cease before the application is due` IS A BOOLEAN
+    `controlled for part of the year`        IS A BOOLEAN
+    `monitoring plan approved`               IS A BOOLEAN
+    `allowance awarded for the year, in tCO2e` IS A MAYBE NUMBER
+    `the award's minimum tax per tonne`      IS A MAYBE NUMBER
+    `assessment`                             IS A `Kind of assessment`
+    `notice of assessment served on`         IS A MAYBE DATE
+    `tax paid by the last day`               IS A NUMBER
+    `as at`                                  IS A DATE
+
+DECLARE `Carbon pricing position` HAS
+    `the Act applies`                        IS A BOOLEAN
+    `reckonable tCO2e`                       IS A NUMBER
+    `applications required`                  IS AN `Applications required`
+    `reporting duties`                       IS A `Reporting duties`
+    `carbon tax charged`                     IS A NUMBER
+    `fixed-price carbon credits to surrender` IS A NUMBER
+    `last day to pay`                        IS A MAYBE DATE
+    `late payment penalty`                   IS A NUMBER
+
+@ref ss 2, 5, 7, 8, 11-13, 16, 17, 20C, 74; First to Third Schedules
+GIVEN f IS A `Facility year`
+GIVETH A `Carbon pricing position`
+`the carbon pricing position for` f MEANS
+    IF NOT `the law is encoded for the year` (f's `emissions year`)
+    THEN REFUSE "no source is encoded for this emissions year"
+    ELSE `Carbon pricing position` WITH
+        `the Act applies`                         IS `applies`
+        `reckonable tCO2e`                        IS `tCO2e`
+        `applications required`                   IS `applications`
+        `reporting duties`                        IS `duties`
+        `carbon tax charged`                      IS `tax`
+        `fixed-price carbon credits to surrender` IS (IF `tax` GREATER THAN 0 THEN `the fixed-price carbon credits to surrender for tax of` `tax` `, bought in` (f's `emissions year` PLUS 1) `, revised:` FALSE ELSE 0)
+        `last day to pay`                         IS `due`
+        `late payment penalty`                    IS `late`
+    WHERE
+        `applies` MEANS `the Act applies to the facility:` (f's `site`) `, exempted:` (f's `exempted by order under s 74`)
+        `tCO2e` MEANS IF `applies` THEN `the reckonable tCO2e of` (f's `emissions`) ELSE 0
+        `status` MEANS f's `status at the start of the year`
+        `applications` MEANS `the applications required for the year` (f's `emissions year`) `, reckonable tCO2e` `tCO2e` `, status` `status` `, control ceasing:` (f's `control will cease before the application is due`)
+        `duties` MEANS `the reporting duties, controlled:` (`applies` AND f's `controlled for part of the year`) `, status` `status` `, plan approved:` (f's `monitoring plan approved`)
+        `year facts` MEANS `Emissions year facts` WITH
+            `emissions year`                                     IS f's `emissions year`
+            `a taxable facility of the registered person in that year` IS `applies` AND `status`'s `registered as a taxable facility of the person`
+            `reckonable tCO2e in the verified and approved reports` IS `tCO2e`
+            `allowance awarded for the year, in tCO2e`           IS f's `allowance awarded for the year, in tCO2e`
+            `the award's minimum tax per tonne`                  IS f's `the award's minimum tax per tonne`
+            `the last emissions year Division 1A applies to`     IS NOTHING
+        `tax` MEANS `the carbon tax charged for` `year facts`
+        `due` MEANS
+            CONSIDER f's `notice of assessment served on`
+            WHEN NOTHING THEN NOTHING
+            WHEN JUST s  THEN JUST (`the last day to pay the tax for` (f's `emissions year`) `, assessed by` (f's `assessment`) `, served on` s)
+        `unpaid` MEANS IF `tax` GREATER THAN f's `tax paid by the last day` THEN `tax` MINUS f's `tax paid by the last day` ELSE 0
+        `late` MEANS
+            CONSIDER `due`
+            WHEN NOTHING THEN 0
+            WHEN JUST d  THEN (`the late payment penalty on` `unpaid` `unpaid after` d `, as at` (f's `as at`))'s `total`
