@@ -8,8 +8,8 @@ pass, no human gate.
 1 December 2025 — so it carries the S 694/2025 uplift to the compensation
 figures, in force 1 November 2025.
 
-**Checks:** `l4 run wica-cases.l4` — 32 assertions satisfied, 0 errors,
-0 warnings.
+**Checks:** `l4 run wica-cases.l4` and `l4 run wica-liability-cases.l4` —
+102 assertions satisfied, 0 errors, 0 warnings.
 
 ## Scope
 
@@ -84,3 +84,81 @@ rebuttal as its own fact so that the burden is visible.
   encoded.
 - Part 3A applies a parallel scheme to platform workers and is not encoded.
 - No case law was searched.
+
+
+---
+
+# Added with the table recovery and sections 8 to 16, 24 and 34B
+
+## The deposit defect was not a one-off, and the second instance changes the law
+
+The first pass recorded that Tables A and B could not be read from
+`WICA2019.txt`. Both are now **recovered from the PDF with pypdf** and encoded;
+the deposited extract shifts the factors one row against the ages at every page
+break, so row 32 of Table A appeared blank and every later row on that page
+carried its neighbour's figure.
+
+Then the **same defect turned up again**, in the s 34B substitution table that
+decides which provisions apply to a **platform worker**:
+
+| | deposited `WICA2019.txt` | the PDF |
+|---|---|---|
+| s 7 | *(no entry)* | **34D** |
+| s 8 | 34D | **34F** |
+| s 10 | 34F | **34G** |
+| s 11 | 34G | **34H** |
+
+Anyone reading the deposited text would conclude that s 8 (the deeming rules) is
+replaced by s 34D for platform workers. It is not: s 34D replaces **s 7**, the
+liability section, and s 8 is replaced by s 34F. The mapping encoded here is
+from the PDF, and every row is asserted.
+
+So this is a **systemic extraction defect**, not a one-off: any table in this
+deposit that crosses a page break should be treated as unreliable until checked
+against the PDF. That is now a method note, not a single finding.
+
+## Five observations on the sections added
+
+**1. The public bus is excluded, however the employer arranged it.** s 8(1)
+deems a commuting accident to be in the course of employment only if the
+transport is operated by or for the employer **and** "is **not** operated in the
+ordinary course of a public transport service". An employer who buys season
+tickets rather than running a shuttle leaves its staff outside the deeming rule.
+
+**2. Disobedience does not defeat a claim; being off the employer's business
+does.** s 8(3) preserves the claim even where the employee broke the law, the
+regulations or the employer's own orders, provided the act "was done for the
+purposes of and in connection with the employer's trade or business". That last
+limb, not the disobedience, is what decides it.
+
+**3. s 10(1)(c) is much narrower than it reads.** The open-ended limb for
+unscheduled diseases requires the disease to be "directly attributable to an
+exposure to a **chemical or biological agent**". A disease caused by noise,
+vibration, radiation or repetitive strain is outside it, however clearly the
+work caused it, unless the Second Schedule happens to list it.
+
+**4. The principal owes nothing until the Commissioner says so.** Under s 13 the
+Commissioner **may direct** a principal to fulfil the employer's obligations.
+Every condition can be satisfied and no liability arises until that direction is
+made. Compare s 65 of the Motor Vehicles (Third-Party Risks and Compensation)
+Act 1960, where the principal and contractor are jointly and severally liable
+**by operation of law**, with no official decision in the way. Two Acts, the
+same commercial situation, opposite defaults.
+
+**5. Medical treatment has two ceilings and the temporal one bites hardest.**
+First Schedule paragraph 5 pays the **lower** of the cost incurred "within a
+period of one year after the date of the accident" and $53,000 ($45,000 before
+1 November 2025). An employee who spends $2,000 inside the year and $40,000
+after it recovers **$2,000** — nowhere near the money cap. Asserted directly.
+
+## What would still need doing
+
+- Part 4, the claims procedure, with its own time limits.
+- The AME computation in the First Schedule, six sub-paragraphs with several
+  Commissioner discretions.
+- The Second Schedule of occupational diseases and their limitation periods, and
+  the Fourth Schedule of loss-of-earning-capacity percentages. **Both are tables
+  that cross page breaks** and must be recovered from the PDF, not read from the
+  deposited text.
+- ss 34D to 34N individually.
+- No case law was searched, and no human gate has been sought.
