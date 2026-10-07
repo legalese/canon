@@ -18,8 +18,9 @@
 # Env:    L4   the l4 binary      (default: `l4` on PATH)
 #
 # Exit status: 0 only when no module has an error other than its expected failed
-# assertions, no assertion refused, and each module fails exactly as often as
-# expected_failed says.
+# assertions, and each module fails exactly as often as expected_failed says and refuses
+# exactly as often as expected_refused says (0 for every module but the ones it names;
+# version 0.3.0).
 set -u
 DIR="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 L4="${L4:-l4}"
@@ -30,7 +31,16 @@ expected_failed() {
   case "$1" in
     # tests-red.l4) echo 3 ;;
     nii-il04-tests-expected-red.l4) echo 15 ;;   # NOTES.md section 0: printed totals vs items (10), the Institute's composites (4), the 2025 text (1)
-    tests-independent.l4) echo 6 ;;              # the independent tester's: T7 (fork F6, line 787) and five F3 expectations the repair of 2026-10-07 overturned (lines 756, 924, 929-931); not edited
+    tests-independent.l4) echo 19 ;;             # the independent tester's, not edited: T7 (fork F6, line 787), five F3 expectations the repair of 2026-10-07 overturned (lines 756, 924, 929-931), and from 0.3.0 thirteen F4 items' expectations at the printed totals (NOTES.md, Version 0.3.0)
+    *) echo 0 ;;
+  esac
+}
+
+# Version 0.3.0: a module that is MEANT to refuse some assertions (the independent tests,
+# written before fork F4 was ruled, and never edited) is listed with its exact count.
+expected_refused() {
+  case "$1" in
+    tests-independent.l4) echo 9 ;;              # the independent tester's: nine single-branch or seven-branch contributions above the threshold, declined at the printed totals (NOTES.md, Version 0.3.0)
     *) echo 0 ;;
   esac
 }
@@ -52,10 +62,12 @@ for f in "$DIR"/*.l4; do
   bad=$(printf '%s\n' "$msgs" | grep -cE 'assertion failed|assertion could not be evaluated')
   ref=$(printf '%s\n' "$msgs" | grep -cE 'assertion refused')
   exp=$(expected_failed "$m")
-  printf '%-40s %7d %9d %7d %8d %9d\n' "$m" "$err" "$ok" "$bad" "$ref" "$exp"
-  [ $((err - bad)) -eq 0 ] && [ "$ref" -eq 0 ] && [ "$bad" -eq "$exp" ] || status=1
+  expref=$(expected_refused "$m")
+  if [ "$expref" -eq 0 ]; then shown="$exp"; else shown="$exp/$expref"; fi
+  printf '%-40s %7d %9d %7d %8d %9s\n' "$m" "$err" "$ok" "$bad" "$ref" "$shown"
+  [ $((err - bad)) -eq 0 ] && [ "$ref" -eq "$expref" ] && [ "$bad" -eq "$exp" ] || status=1
   total_err=$((total_err + err)) total_ok=$((total_ok + ok)) total_bad=$((total_bad + bad)) total_ref=$((total_ref + ref)) n=$((n + 1))
 done
 printf '%-40s %7d %9d %7d %8d\n' "TOTAL ($n modules)" "$total_err" "$total_ok" "$total_bad" "$total_ref"
-echo "(a failed assertion is also an error; any other error, or any refused assertion, makes the run red)"
+echo "(a failed assertion is also an error; any other error, or a refused assertion a module is not expected to have, makes the run red; \"expected\" is failed/refused where a module may refuse)"
 exit $status
