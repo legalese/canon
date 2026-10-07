@@ -9,7 +9,7 @@ Legislation Division of the Attorney-General's Chambers of Singapore ("AGC").
   grant in [SSO's Terms of Use](https://sso.agc.gov.sg/Terms-of-Use) cl.13,
   subject to the conditions reproduced below. AGC may modify or revoke that
   permission at any time without notice (cl.14).
-- **Retrieved**: PDF created 2026-10-05 ("Current version as at 05 Oct 2026"), supplied by the user as an upload on 2026-10-05, from https://sso.agc.gov.sg/Act/MA1970 (`source/MA1970.pdf`; see `source/PROVENANCE.md`).
+- **Retrieved**: PDF created 2026-10-05 ("Current version as at 05 Oct 2026"), supplied by the user as an upload on 2026-10-05, from https://sso.agc.gov.sg/Act/MA1970 (text in `source/MA1970.txt`; the PDF is not in the repository). A second upload on 2026-10-07 ("Current version as at 07 Oct 2026") has identical text; see `source/PROVENANCE.md`.
 - **Excluded from the grant**: graphics and images on SSO, which may not be
   reproduced without AGC's prior written permission (cl.6).
 
