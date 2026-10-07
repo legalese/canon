@@ -1,8 +1,86 @@
 # NOTES — il/national-insurance-law-consolidated-version-5755-1995, encoding row `legalese-2026-10-il-04`
 
 National Insurance Law [Consolidated Version], 5755-1995: **s 334** (interpretation for Chapter 15, insurance contributions), **s 337** (the rate of insurance contributions), **Schedule J** (לוח י׳, the rates), and the **s 1** definitions they use, encoded in L4 by one agent in one session (run `IL-04-20261006`, 2026-10-06), from the brief in `BRIEF.md`.
-Status: **draft**. Version **0.3.1** (2026-10-07): the independent tests re-pointed to the items' reading; see "Version 0.3.1" below. Version 0.3.0: the Schedule J switch, fork F4 ruled.
+Status: **draft**. Version **0.4.0** (2026-10-07): fork F6 ruled, a fall in the index or the average wage declined by default; see "Version 0.4.0" below. Version 0.3.1: the independent tests re-pointed to the items' reading. Version 0.3.0: the Schedule J switch, fork F4 ruled.
 No domain expert has read it against the source; HG1 has not been sought.
+
+## Version 0.4.0 (2026-10-07): fork F6, a fall in the index or the average wage, as a switch
+
+Backlog row IL-12, encoder `enc-il-12`, one session, no sub-agents, on Meng's ruling of 2026-10-07 (TRIDENT) as the lead relayed it.
+Nothing below was deleted; the F6 row of the fork register (section 4) is marked **(0.4.0)** in place.
+The section "Comparison with Axiom's RuleSpec" at the end, `tests-independent.l4`, `DECIDED-ANSWERS.md` and `INDEPENDENT-FINDINGS.md` are untouched.
+
+### The fork and its three readings
+
+s 334(a)(1) (source line 3606) updates the reduced collection threshold "לפי שיעור עליית המדד", by the rate of rise of the index; s 334(a)(2) (line 3607) "לפי שיעור עליית השכר הממוצע", by the rate of rise of the average wage.
+Neither says what follows when the later reading is below the earlier one.
+The three readings are kept by name, as the constructors of `A reading of section 334(a) where the index or the average wage falls` (`nii-il04-nouns.l4`):
+
+| reading | name in the encoding | who holds it |
+| --- | --- | --- |
+| (i) the fall is applied: the rate of rise is negative, and the threshold goes down by it | `the fall is applied` | this row, versions 0.1.0 to 0.3.1 (fork register F6, "taken") |
+| (ii) no update on a fall: the threshold stays where it was | `the threshold stays where it was` | the Axiom Foundation's encoding, as BACKLOG row IL-12 records it; this row did not read Axiom's material (the semi-cleanroom ruling of 2026-10-06) |
+| (iii) declined: the text provides for a rise and says nothing of a fall | `a fall is declined` | the independent tester, fid-il-04: T7, `tests-independent.l4` line 787, "My decided answer: REFUSE (genuine ambiguity)"; its `DECIDED-ANSWERS.md` adds that "rise" makes (ii) at least as strong as (i) |
+
+**The default is (iii), declined.** The ruling's reason: this project's rule is to decline where the text does not decide, and on a fall s 334(a) does not decide.
+The refusal reads "section 334(a) updates the threshold by the rate of rise of the index or of the average wage, and says nothing of a fall".
+
+**The default is not waiting on evidence.** On 2026-10-07 Meng declined to look up the Institute's past practice on a falling index as evidence for a reading: "whatever they did last time is no guarantee of how they'll do next time".
+
+A rise, or no change, is answered the same under all three readings: the reading is consulted only where the later reading is below the earlier.
+
+### What changed
+
+1. **The type**, in `nii-il04-nouns.l4`: `A reading of section 334(a) where the index or the average wage falls`, one of `the fall is applied`, `the threshold stays where it was`, `a fall is declined`.
+2. **The switch** is one named rule in `nii-s334-interpretation.l4`, `section 334(a) — the reading this row takes where the index or the average wage falls`, now `a fall is declined`; another reading is a one-line change there.
+3. **The refusal** is a rule of its own there, `section 334(a) updates the threshold by the rate of rise of the index or of the average wage, and says nothing of a fall`.
+4. **Reading forms.** `the sum … updated by the rate of rise from … to …`, `s 334(a)(1) — the threshold on 1 January of …` and `s 334(a)(2) — the threshold on 1 January of …` each have a form that takes the reading as an argument (`…, reading a fall as` r); the three old names now follow the switch. The year checks of (1) and (2) come before the reading, so a year outside a paragraph is refused for the year under every reading.
+5. **What it does not touch.** `s 334(a) — the reduced collection threshold for a month in` answers 2026 with the published 7,703 and declines 2027 on by name, and computes no update, so no s 337 or Schedule J answer moves. No other rule module changed. The capstone (row IL-07) vendors `nii-s334-interpretation.l4` and `nii-il04-nouns.l4`; see its version 0.2.2.
+
+### Assertions changed or added
+
+`nii-il04-tests.l4`, one assertion changed (line number at 0.3.1):
+
+| line | assertion | 0.3.1 | 0.4.0 |
+| ---: | --- | --- | --- |
+| 368 | s 334(a)(1), 2027, from 8,000, index 100 to 99 | 7920 (the fall applied, the only reading) | re-pointed to reading (i) by name, `, reading a fall as` `the fall is applied`, 7920 unchanged; at the default the same case is declined (added below) |
+
+Added (21, its "Section 334(a)" section, each value worked by hand from s 334(a)(1)-(2) before the run):
+
+- the switch's value, `a fall is declined`;
+- the index falling 100 to 99 from 8,000 in 2027: (ii) 8,000; (iii) declined; the default declined;
+- the average wage falling 10,000 to 9,900 from 8,000 in 2029, rate of rise −100 / 10,000 = −0.01: (i) 7,920; (ii) 8,000; (iii) declined; the default declined;
+- a year outside the paragraph refused for the year under a named reading: (1) in 2029 at (ii), (2) in 2028 at (i);
+- a rise under each reading: index 100 to 105, 8,000 to 8,400 in 2028; average wage 10,000 to 10,500, 8,000 to 8,400 in 2029 (six);
+- no change under each reading and by default: index 100 to 100 in 2027 (four), average wage 10,000 to 10,000 in 2029 by default (one); 8,000 stays 8,000.
+
+`nii-il04-tests.l4`: **181 satisfied**, 0 failed, 0 refused (0.3.1: 160).
+`tests-independent.l4` (not edited): **641 satisfied, 5 failed, 0 refused** (0.3.1: 640, 6, 0). The one change, compared line by line: T7, line 787, failed at 0.3.1 and is satisfied at 0.4.0. The five that stand are the pre-repair F3 expectations (lines 756, 924, 929-931), unchanged. `check.sh` now expects 5 failures from it.
+`nii-il04-tests-expected-red.l4`: 26 satisfied, 15 failed, unchanged.
+
+### What `check.sh` prints at 0.4.0
+
+```
+module                                    errors satisfied  failed  refused  expected
+nii-il04-nouns.l4                              0         0       0        0         0
+nii-il04-published-figures.l4                  0         0       0        0         0
+nii-il04-tests-expected-red.l4                15        26      15        0        15
+nii-il04-tests.l4                              0       181       0        0         0
+nii-s1-definitions.l4                          0         0       0        0         0
+nii-s334-interpretation.l4                     0         0       0        0         0
+nii-s337-rates.l4                              0         0       0        0         0
+nii-schedule-j-tables.l4                       0         0       0        0         0
+nii-schedule-j.l4                              0         0       0        0         0
+tests-independent.l4                           5       641       5        0         5
+TOTAL (10 modules)                            20       848      20        0
+```
+
+Exit 0. Full run 2026-10-07 09:46:06Z to 09:46:24Z.
+The `l4` binary changed since 0.3.1: `~/.cabal/bin/l4` is now a symbolic link into the cabal store, `jl4-0.1-d8a7263f/bin/l4`, sha256 `4476e7580ea3c5c0d06c1d029ba801b6627070fcce8c7c40fae47d5521559fac`, the same before and after the run (0.3.1 ran on `3a1843a0…`, not a store build).
+The 0.3.1 baselines were re-run on the new binary before any edit (`nii-il04-tests.l4` 160/0/0, `tests-independent.l4` 640/6/0, `nii-il04-tests-expected-red.l4` 26/15/0), so every difference above is the edit's, not the binary's.
+`tools/srcquote.py` left `nii-s334-interpretation.l4` unchanged, and `tools/hebcheck.py` passes on the three changed modules.
+
+Row IL-05 was re-run, as asked: it re-declares IL-04's types rather than importing them (cross-directory IMPORT does not resolve), so no IL-04 change reaches it; its `check.sh` exits 0 with 18 errors, 305 satisfied, 18 failed, 2 refused, as at its 0.3.0.
 
 ## Version 0.3.1 (2026-10-07): the independent tests re-pointed to the items' reading
 
@@ -432,7 +510,7 @@ The rules that take only a year assume the temporary provision was not extended 
 | F3 | Schedule J temporary version, column D (4718) | **(revised 2026-10-07)** The consolidation prints column D's upper heading in the temporary table as "above 60% of the average wage" and the lower as "not above the reduced collection threshold"; in 2026 they do not meet (7,703 against 8,139.6 or 8,261.4). | (i) as printed: no figure for the part between; (ii) the upper heading is stale, and the upper part begins at the threshold; (iii) the lower part runs up to 60% of the average wage | **(ii), on the enacted Laws.** Amendment 252 s 7(a)(3) replaced only the lower sub-columns, so the upper sub-column is the principal Law's, and the 2025 budget-year Law s 19(6) changed "60% of the average wage" to "the reduced collection threshold" everywhere in Schedule J from 1 January 2026 (s 21). Line 4718's upper heading is a stale copy. The Institute applies the employee's 7% "on the part of the wage above the reduced collection threshold", and row IL-05 read the texts the same way. *Before the repair:* (i), declined, with every 2026 wage above 7,703 refused. |
 | F4 **(0.3.0: ruled by Meng on 2026-10-07: the printed totals by default, the items kept as the alternative; "Version 0.3.0" above. The choice recorded in this row, (i), is now the alternative.)** | totals rows (4730, 4748) | Ten printed totals differ from the sums of the items above them (section 0). Which governs? | (i) the items: s 335 imposes contributions branch by branch, s 337(a) applies "the rates under section 335", and s 28(a) credits contributions to the branches' accounts "in the ratio of the rates in Schedule J" (line 449); (ii) the totals: the Institute charges composites equal to them (14.6, 7.00) | **(i) for computing; the totals are data and are compared, red, in their own module.** Consequence: an employee in 2026 is charged 14.49% above the threshold here where the Institute charges 14.6%, and the deduction on the upper part sums to 4.67% where the Institute deducts 7%. The two items of evidence point in opposite directions; this is open question 1. **(added 2026-10-07)** Two enacted precedents: the 2025 budget-year Law s 20(1) changed a row so that it met its printed total (0.17 to 0.16), and the Economic Efficiency Law 5783-2023 s 24 moved item 4 and the totals together by 0.10. Both treat a total as tracking its items; neither says which is right where they already differ, and the gaps (0.11, 2.33, 0.31) predate both. Choice unchanged. |
 | F5 | s 1 "the average wage" (222-226), s 2(b) (236) | Which figure is "the average wage" in Schedule J's column D heading, in "self-employed person" (2), and in s 334(a)(2)? | (i) the s 1 figure (13,566 for 2026); (ii) the figure as calculated under s 2, which s 2(b) applies "for benefits and contributions" (13,769) | **not decided**: every rule takes the average wage as an argument. The tests supply 13,566 (the s 1 figure, which the editors' note at line 226 also gives). The column D gap (F3) exists under either. The Institute publishes both, each "for contributions". **(added 2026-10-07)** After the F3 repair Schedule J no longer reads the average wage at all; the fork remains for "self-employed person" (2) and s 334(a)(2). Row IL-05 (its fork F1) found that every Institute figure for Chapter 15 it checked (3,442; 143; 171; the 2025 table's 3,134, 627 and 1,880) fits the s 2 figure and not the s 1 figure, which is evidence for (ii) in contributions; the s 1 definition of "self-employed person" serves benefits as well, so the rules still take the figure as an argument. |
-| F6 | s 334(a)(1)-(2) (3606-3607) | If the index or the average wage falls, does the threshold fall? | (i) yes, the rate of rise is negative and is applied; (ii) no, "עליית" (rise) counts only rises | **(i)**: the update is a rate computed from two readings; a test shows a 1% fall lowering 8,000 to 7,920. |
+| F6 **(0.4.0: ruled by Meng on 2026-10-07 (TRIDENT): a fall is declined by default, all three readings kept by name; "Version 0.4.0" above. The choice recorded in this row, (i), is now an alternative.)** | s 334(a)(1)-(2) (3606-3607) | If the index or the average wage falls, does the threshold fall? | (i) yes, the rate of rise is negative and is applied; (ii) no, "עליית" (rise) counts only rises; **(0.4.0)** (iii) neither is decided: the text provides for a rise and says nothing of a fall, so the case is declined | **(i)**: the update is a rate computed from two readings; a test shows a 1% fall lowering 8,000 to 7,920. **(0.4.0)** Now **(iii)** by default; (i) and (ii) are answered when a caller names them. |
 | F7 | s 334(a) | Is the updated threshold rounded? | (i) no; (ii) to the shekel, as the Institute publishes it | **(i)**: the section says nothing about rounding. The published 2026 figure is a whole number; the encoding uses it as published for 2026 and computes unrounded for any later year a caller supplies readings for. |
 | F8 | s 337(a)(2) (3627) | "annual income divided into the periods set for advances": equal shares? and does the threshold scale for a period longer than a month? | (i) equal shares, threshold per monthly period, other periods declined; (ii) the threshold scaled by the period's length | **(i)**: s 336 makes the payment period a month unless the Minister sets otherwise, and the Institute applies the threshold to monthly income; the text does not say how it scales. |
 | F9 | s 337(c) (3629) | "in the same way and proportionally": by what? | (i) the deduction multiplied by the ratio of new rate to old; (ii) the deduction moved by the same absolute change | **(i)**: "proportionally" is a ratio. Which column C figure pairs with which column D figure is left to the caller's arguments; the natural pairing is the employee's figure on the same part of the wage. A change from a rate of 0 is declined. |
