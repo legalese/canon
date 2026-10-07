@@ -17,8 +17,8 @@ The command, from this directory:
 L4=/Users/mengwong/.local/bin/l4 ./check.sh
 ```
 
-It prints `TOTAL (11 modules) 0 334 0 0` and exits 0 (section 6 has the whole table).
-A whole-directory run takes about 90 seconds of wall time, one `l4` process at a time.
+It prints `TOTAL (11 modules) 0 366 0 0` and exits 0 (section 6 has the whole table).
+A whole-directory run takes 90 seconds to under 3 minutes of wall time, one `l4` process at a time (2 min 42 s on the last run, with the machine shared).
 
 The modules import each other as a chain, as the brief requires: `law36-vn28-nouns` (imports `prelude` and `daydate`) → `law36-art34-vehicles` → `law36-art56-62-licences` → `law36-art88-89-transitional` → `law36-art9-81-87-alcohol` → `law36-art39-40-registration` → `law36-vn28-decisions` → `law36-vn28-fixtures`.
 The three tests and findings modules import only `law36-vn28-fixtures`, the last library module.
@@ -45,12 +45,14 @@ What Articles 1-23 changed:
 Article 9(2) forbids driving with any alcohol in the blood or breath, so the Law's level is zero and Decision 2 now answers (findings R1, R13);
 Article 9(10) forbids converting other automobiles into passenger automobiles, which narrows finding R9;
 Article 2(2) and 2(9) confirm the split of motor vehicles, special-use machines and their drivers that Article 34 and 56 draw (finding R8);
-Article 2(12) defines a road traffic accident as a collision (finding R15, reading only).
+Article 2(12) defines a road traffic accident as a collision (finding R15).
+A third pass, at the lead's request, also encoded Article 9(7) (handing a vehicle to a person not qualified to drive it), 9(8) (putting an unroadworthy vehicle in traffic) with the Article 35(1) conditions it rests on, and Article 2(8) and 2(12) (the participants in road traffic; the road traffic accident).
 
 ### 1.2 What is encoded
 
-- **Article 2(2), (7), (9)**: the definitions the rest rests on (road vehicles, conversion, the driver), quoted where they are used.
-- **Article 9(1)-(3), (10)**: the prohibitions on driving without the licence required, with alcohol, and with drugs or stimulants; and on converting automobiles into passenger automobiles.
+- **Article 2(2), (7), (8), (9), (12)**: the definitions the rest rests on (the groups of road vehicle, conversion, the participants in road traffic, the driver, the road traffic accident).
+- **Article 9(1)-(3), (7), (8), (10)**: the prohibitions on driving without the licence required, with alcohol, and with drugs or stimulants; on handing a vehicle to a person not qualified to drive it; on putting in traffic a vehicle whose technical safety is not assured; and on converting automobiles into passenger automobiles.
+- **Article 35(1)**: the two conditions on a motor vehicle or special-use machine in road traffic (registration and plate; technical safety), which 9(8) rests on.
 - **Article 34** (the kinds of road vehicle), (1)(a)-(g), (2), (3): a classification of a vehicle described by its measurements and features.
 - **Articles 56(1), (2), (4), (5)**, **57(1)-(5), (6)(a), (7)**, **58(3)**, **59(1)**, **62(5)**: who may drive what, with which licence, when a licence is in force and may be driven under, and the ages.
 - **Articles 88(1), (3)** and **89(1)-(3)**: from when the Law governs, what a licence of a former class still entitles its holder to drive, and what it may be exchanged for.
@@ -82,7 +84,7 @@ VN-10's input fields, and the function here that decides each:
 | `the driver's blood or breath alcohol exceeded the normal level in the Ministry of Health guidance` | Art 9(2), 87(5) | `Decision 2 — the test … exceeds the permitted level, on …`: TRUE for any alcohol, save blood alcohol found endogenous (fork F8) |
 | `the driver had used drugs or banned stimulants` | Art 9(3), 83(2)(a) | `Decision 2 — the test … found a prohibited narcotic or stimulant, on …` |
 | `the driver who caused it deliberately fled` | Art 9(26) | a prohibited act ("Bỏ trốn sau khi gây tai nạn giao thông đường bộ để trốn tránh trách nhiệm"); not encoded, Decree 67 decides its own limb |
-| `the owner had handed possession and use of the vehicle to another` | Art 9(7) | handing a vehicle to a person not qualified to drive it is a prohibited act; not encoded, and Decree 67's exclusions do not turn on it |
+| `the owner had handed possession and use of the vehicle to another` | Art 9(7) | `Article 9(7) — handing … to … is prohibited for want of age or licence, on …`: the owner's own prohibited act; Decree 67's exclusions do not turn on it |
 | vehicle: `a driving licence is required to drive it` | Art 56(1), (2), (4) | `Article 56 — a driving licence is required to drive …`: FALSE for a moped, a tractor and a rudimentary vehicle |
 | vehicle: `beyond its service life under the law` | Art 40 | `Article 40 — the vehicle … is past its service life on …` |
 | vehicle: `remaining service life under the law of less than 1 year` | Art 40(1) | `Article 40 — less than a year of service life is left to … on …` |
@@ -92,12 +94,12 @@ VN-10's input fields, and the function here that decides each:
 
 ### 1.4 What is not encoded
 
-Chapter I except Articles 2(2), (7), (9) and 9(1)-(3), (10); Chapter II (the rules of the road, Articles 10-33); Chapter V (patrol and control), Chapter VI (traffic command), Chapter VII (accidents) except Articles 81(3) and 83(2)(a), Chapter VIII (State management) except Article 87(5): out of scope by the brief.
-In Chapter III: Articles 35-38, 39(1)-(5), (7)-(8), and 41-55 save 43(2)(c).
+Chapter I except Articles 2(2), (7)-(9), (12) and 9(1)-(3), (7), (8), (10); Chapter II (the rules of the road, Articles 10-33); Chapter V (patrol and control), Chapter VI (traffic command), Chapter VII (accidents) except Articles 81(3) and 83(2)(a), Chapter VIII (State management) except Article 87(5): out of scope by the brief.
+In Chapter III: Articles 35(2)-(6), 36-38, 39(1)-(5), (7)-(8), and 41-55 save 43(2)(c).
 In Chapter IV: Articles 56(1)(a)-(d), (2)(a)-(đ), (3); 57(6)(b)-(d), (8), (9); 58(1)-(2), (4)-(6); 59(2); 60-61; 62(1)-(4), (6)-(7); 63-64.
 Each with its reason in section 2.
 
-**Declined by a named `REFUSE`:** a day before 1 January 2025 (the Road Traffic Law 23/2008/QH12, not in the sources); a foreign or international licence; an army or police driver on duty; a vehicle that answers no limb of Article 34, or two; a trailer described alone; a licence whose class and date of issue disagree, or whose printed expiry contradicts Article 57(5); a vehicle no class entitles, when its age is asked; a service life the Government's rules fix and the caller did not supply; a conversion Article 40(2) does not provide for.
+**Declined by a named `REFUSE`:** a day before 1 January 2025 (the Road Traffic Law 23/2008/QH12, not in the sources); the conditions on a rudimentary vehicle under 9(8) (the Government's, 35(5)); a foreign or international licence; an army or police driver on duty; a vehicle that answers no limb of Article 34, or two; a trailer described alone; a licence whose class and date of issue disagree, or whose printed expiry contradicts Article 57(5); a vehicle no class entitles, when its age is asked; a service life the Government's rules fix and the caller did not supply; a conversion Article 40(2) does not provide for.
 
 **No figure in this encoding comes from anywhere but the text.**
 The Law's alcohol level is zero (Article 9(2)); the figure 0 in the encoding is that.
@@ -107,7 +109,7 @@ The Law states no service life in years (Article 40(4) leaves it to the Governme
 
 Every provision in scope, and every provision reached, with its heading as the Law writes it.
 Dispositions: `encoded`, `inert` (quoted or read, decides no case), `out-of-scope`, `reached-and-refused`.
-Totals: **72 rows: 36 encoded (4 of them in part), 14 inert, 18 out-of-scope, 4 reached-and-refused, 0 deferred**.
+Totals: **77 rows: 41 encoded (4 of them in part), 14 inert, 18 out-of-scope, 4 reached-and-refused, 0 deferred**.
 The src column gives lines of `law36-2024-qh15.txt` (issue 979+980); "977+978:" marks lines of `law36-2024-qh15-977-978.txt`.
 
 | provision | heading as written | English gloss | src | disposition | where in the L4 |
@@ -117,16 +119,20 @@ The src column gives lines of `law36-2024-qh15.txt` (issue 979+980); "977+978:" 
 | Điều 2(2) | Giải thích từ ngữ | road vehicles: motor vehicles, rudimentary vehicles, special-use machines, similar vehicles | 977+978: 34-36 | encoded: the kinds of Article 34 sit under it | quoted in `law36-art34-vehicles.l4` |
 | Điều 2(7) | (same) | conversion of a vehicle | 977+978: 48-50 | encoded: the meaning of the input `before conversion` | `law36-art39-40-registration.l4` |
 | Điều 2(9) | (same) | the driver: of a motor vehicle ("người lái xe"), of a rudimentary vehicle, of a special-use machine | 977+978: 54-56 | encoded: Article 56(1)'s driver is the motor-vehicle driver; 56(2) names the operator of a special-use machine apart | quoted in `law36-art56-62-licences.l4` |
-| Điều 2(12) | (same) | road traffic accident | 977+978: 63-66 | inert: read for finding R15 | — |
-| Điều 2(1), (3)-(6), (8), (10)-(11), (13)-(14) | (same) | the other definitions | 977+978: 31-62, 67-75 | out-of-scope: terms of the rules of the road, traffic command and child seats; no decision here uses them | — |
+| Điều 2(8) | (same) | the participants in road traffic: drivers, persons carried, persons with animals, pedestrians | 977+978: 51-53 | encoded | `A person in road traffic`; `Article 2(9) — the role of` |
+| Điều 2(12) | (same) | road traffic accident | 977+978: 63-66 | encoded (finding R15) | `Article 2(12) — a road traffic accident` |
+| Điều 2(3) | (same) | a road vehicle participating in road traffic | 977+978: 37-38 | inert: a vehicle on the road, a fact every decision here takes as given | — |
+| Điều 2(1), (4)-(6), (10)-(11), (13)-(14) | (same) | the other definitions | 977+978: 31-33, 39-47, 57-62, 67-75 | out-of-scope: terms of the rules of the road, traffic command and child seats; no decision here uses them | — |
 | Điều 3-6, 8 | Nguyên tắc bảo đảm trật tự, an toàn giao thông đường bộ; Chính sách của Nhà nước …; Tuyên truyền …; Giáo dục …; Hợp tác quốc tế … | principles, State policy, publicity, education, international cooperation | 977+978: 76-183, 207-232 | out-of-scope: they direct the State and decide no case | — |
 | Điều 7 | Cơ sở dữ liệu về trật tự, an toàn giao thông đường bộ | the road-safety databases, among them one of motor owners' insurance (7(1)(đ)) | 977+978: 184-206 | inert: the points and records this row takes as inputs are kept there; noted in COMPARABLES.md | — |
 | Điều 9(1) | Các hành vi bị nghiêm cấm | driving without the licence, or the certificates, the law requires | 977+978: 234-237 | encoded: Article 56 says which; Decision 1 is the test | `Decision 1 — …` |
 | Điều 9(2) | (same) | driving with any alcohol in the blood or breath | 977+978: 238-239 | encoded | `Article 9(2) — the test …`, `the permitted level of alcohol under the Law` |
 | Điều 9(3) | (same) | driving with a narcotic or prohibited stimulant in the body | 977+978: 240-241 | encoded | `the test … found a narcotic or stimulant the law prohibits, on …` |
-| Điều 9(7), (26) | (same) | handing a vehicle to a person not qualified; fleeing after an accident | 977+978: 251-252, 312-317 | inert: read for VN-10's inputs (section 1.3); Decree 67 decides its own limbs | — |
+| Điều 9(7) | (same) | handing a motor vehicle or special-use machine to a person not qualified to drive it | 977+978: 251-252 | encoded (age and licence; health not modelled, fork F31) | `Article 9(7) — handing … to … is prohibited for want of age or licence, on …` |
+| Điều 9(8) | (same) | putting in traffic a vehicle whose technical safety is not assured, or another vehicle short of its conditions | 977+978: 253-255 | encoded (fork F30; a rudimentary vehicle declined) | `Article 9(8) — putting the vehicle … in road traffic is prohibited, on …` |
+| Điều 9(26) | (same) | fleeing after an accident, and the rest of that point | 977+978: 312-317 | inert: read for VN-10's inputs (section 1.3); Decree 67 decides its own limb | — |
 | Điều 9(10) | (same) | converting other automobiles into passenger automobiles | 977+978: 258-259 | encoded | `Article 9(10) — prohibits the conversion of` |
-| Điều 9(4)-(6), (8)-(9), (11)-(25), (27)-(28) | (same) | the other prohibited acts | 977+978: 244-250, 253-257, 260-311, 318-323 | out-of-scope: conduct on the road, plates, devices, loads, enforcement; none decides age, licence, alcohol, registration or service life | — |
+| Điều 9(4)-(6), (9), (11)-(25), (27)-(28) | (same) | the other prohibited acts | 977+978: 244-250, 256-257, 260-311, 318-323 | out-of-scope: conduct on the road, plates, devices, loads, enforcement; none decides age, licence, alcohol, registration or service life | — |
 | Chương II, Điều 10-33 | QUY TẮC GIAO THÔNG ĐƯỜNG BỘ | rules of the road | 977+978: 324-657; 18-246 | out-of-scope: the brief excludes the rules of the road; read for any age of riders or drivers (Articles 31 and 33 give ages only of passengers) | — |
 | Chương III | PHƯƠNG TIỆN THAM GIA GIAO THÔNG ĐƯỜNG BỘ | vehicles | 248-249 | inert: a chapter heading | `law36-art34-vehicles.l4` |
 | Điều 34(1)(a)-(g) | Phân loại phương tiện giao thông đường bộ | motor vehicles: automobile, trailer, semi-trailer, four-wheeled motorised passenger and goods vehicles, motorcycle, moped | 252-284 | encoded | `Article 34(1)(a) — an automobile` … `Article 34(1)(g) — a moped`; `Article 34 — the kind of` |
@@ -134,7 +140,8 @@ The src column gives lines of `law36-2024-qh15.txt` (issue 979+980); "977+978:" 
 | Điều 34(2) | (same) | rudimentary vehicles, among them the motor-assisted bicycle | 286-294 | encoded | `Article 34(2)(b) — a motor-assisted bicycle`, `Article 34(2) — another rudimentary vehicle` |
 | Điều 34(3) | (same) | special-use machines, among them tractors | 295-302 | encoded (the kind is an input) | `Article 34(3) — a special-use machine` |
 | Điều 34(4), (6) | (same) | intelligent vehicles; the Minister's detailed rules | 303-305, 308-310 | out-of-scope: no decision here, and nothing in Decree 67, turns on automation; the Minister's rules are not in the sources | comment |
-| Điều 35 | Điều kiện phương tiện tham gia giao thông đường bộ | conditions on vehicles in traffic | 311-330 | out-of-scope: registration, inspection and journey-recorder requirements; Decree 67 turns on none of them | — |
+| Điều 35(1) | Điều kiện phương tiện tham gia giao thông đường bộ | registration and plate; technical safety and environmental protection | 311-318 | encoded | `Article 35(1) — the vehicle … meets the conditions Article 35(1) sets, on …` |
+| Điều 35(2)-(6) | (same) | journey recorders, intelligent vehicles, foreign plates, the Government's and provinces' rules | 319-330 | out-of-scope: Decree 67 turns on none of them; 35(5) is cited where 9(8) declines a rudimentary vehicle | — |
 | Điều 36(3)(b) | Biển số xe | the owner keeps the plate number for 5 years | 363-368 | inert: read for finding R12 | NOTES R12 |
 | Điều 36 (rest), 37, 38 | Biển số xe; Đấu giá biển số xe; Quyền và nghĩa vụ của người trúng đấu giá biển số xe | plates; plate auctions | 331-436 | out-of-scope: kinds of plate and the auction; only the auctioned plate's effect on revocation (39(6)(a)) matters here, and it is encoded there | — |
 | Điều 39(1)-(4) | Cấp, thu hồi chứng nhận đăng ký xe và biển số xe cơ giới, xe máy chuyên dùng tham gia giao thông đường bộ | issue, change of owner, exchange, reissue | 439-462 | out-of-scope: conditions on the registration authority's acts; none decides whether a registration is revoked or a vehicle insurable | — |
@@ -220,6 +227,8 @@ Places looked at where no fork was found are named at the end.
 | F26 | Art 56(5), 61(1) | Is a learner held to an age? | (i) the class age of 59; (ii) none | **(i)**: 61(1) admits to the test only a person of the 59 age; a learner short of it could not be driving towards one. |
 | F27 | Art 57(3)-(4) | Do 57(3) and (4) apply to former-class licences? | — | yes: they speak of the driver of such a vehicle, whatever licence is held. |
 | F28 | Art 9(2), 87(5) | 9(2) forbids driving with "nồng độ cồn" in the blood or breath. Does that reach alcohol the Ministry of Health's method finds endogenous? | (i) no: 87(5) has the Ministry tell endogenous alcohol apart, which would serve no purpose if it too were forbidden; (ii) yes, literally | **(i)**, for blood, the one medium 87(5) names. |
+| F30 | Art 9(8), 35(1) | Does 9(8) reach a motor vehicle in traffic without its registration and plate (35(1)(a))? | (i) no: 9(8)'s first limb speaks of motor vehicles and special-use machines whose technical safety and environmental protection are not assured; its second limb is for "phương tiện khác" (other vehicles); (ii) yes, as a vehicle short of the conditions to take part in traffic | **(i)**: the second limb names other vehicles. Article 35(1)(a) still fails, and `Article 35(1) — …` says so. |
+| F31 | Art 9(7), 56(1), 59(2) | 9(7) forbids handing a vehicle to a person "không đủ điều kiện" (not meeting the conditions) to drive it. Which conditions? | — | age and licence, as Decision 1 tests them; health is not modelled, so the function's name says "for want of age or licence", and a FALSE does not clear an owner who hands the vehicle to a driver unfit to drive. |
 | F29 | Art 9(2), 87(5) | A positive blood reading with no finding either way on endogenous alcohol. | (i) it is alcohol 9(2) forbids; (ii) it is undecided | **(i)**: 9(2) is stated without exception; the endogenous case is an exception shown by the Ministry's method, and here none was shown. |
 
 Places looked at with no fork found: the seat bands of 57(1)(d), (g)-(i) ("đến 08", "trên 08 … đến 16", "trên 16 … đến 29", "trên 29") meet with no gap and no overlap; the mass bands of 57(1)(d)-(e) (3,500 and 7,500 kg) likewise; the 750 kg trailer threshold ("đến 750 kg" and "trên 750 kg"); the motorcycle bands of 57(1)(a)-(b) (125 cm3, 11 kW) and 89(2)(a)-(b) (50 to under 175 cm3, 175 cm3 and up; 4 to under 14 kW, 14 kW and up); the payload bands of 89(2)(e)-(h) ("dưới 3.500 kg", "từ 3.500 kg trở lên"); the ages of 59(1)(b)-(đ), each class named once (checked by the generating script); Article 9(1)-(3), whose limbs (motor vehicle, special-use machine; blood or breath; narcotic or other prohibited stimulant) are each named once.
@@ -325,7 +334,14 @@ Evidence: `law36-vn28-findings.l4`, R14 (may drive; a licence is required for th
 Article 2(12) defines "Tai nạn giao thông đường bộ" as "va chạm" (a collision) involving people or vehicles in road traffic, unintended, causing harm to life, health or property (977+978 src 63-66).
 Decree 67 insures liability for harm in an accident; VN-10's deposit (its modules, NOTES.md and GLOSSARY.md) quotes no definition of the accident, and neither "tai nạn giao thông" nor "va chạm" occurs in it (checked by grep, 2026-10-07).
 If the decree's accident is read through this definition, harm without a collision (a passenger thrown in a bus that brakes hard, a fire from a parked car) is not a road traffic accident.
-Evidence: reading only.
+Evidence: `law36-vn28-findings.l4`, R15 (a collision is an accident; the same harm without a collision, or with intent, is not).
+
+**R16. The Law calls anyone carried a "người được chở"; Decree 67 covers only a "hành khách".**
+Article 2(8) names among road traffic participants "người được chở trên phương tiện" (persons carried; 977+978 src 51-52), and Articles 31 and 33 call a person riding behind on a bicycle, motorcycle or moped "người được chở" (src 182, 186, 209, 218, 235).
+The Law uses "hành khách" (passenger) only of passengers in transport (Article 9(15), 977+978 src 277; the taxi and coach rules, src 642-674).
+Decree 67 Article 7(1)(b) covers the "passengers on that vehicle", and its Article 3(5)(a) takes the driver, persons on the vehicle and passengers out of the third parties (VN-10 finding R1, fork F25).
+Read with this Law's vocabulary, a pillion rider is a person carried, not a passenger: covered by neither limb of Decree 67.
+Evidence: reading only; it supports VN-10's R1, which found the same gap from the decree alone.
 
 **Reading only.**
 Decree 67 Annex I's class for two-wheeled motorcycles "under 50 cc" (VN-10 src 2052) has, under this Law, almost no members: a two-wheeler under 50 cm3 is a moped unless designed for more than 50 km/h (34(1)(g)); and its class for electric mopeds (VN-10 src 2058) uses a term this Law does not, its mopeds being electric only up to 4 kW and 50 km/h.
@@ -419,20 +435,20 @@ law36-art56-62-licences.l4                     0         0       0        0     
 law36-art88-89-transitional.l4                 0         0       0        0         0
 law36-art9-81-87-alcohol.l4                    0         0       0        0         0
 law36-vn28-decisions.l4                        0         0       0        0         0
-law36-vn28-findings.l4                         0        46       0        0         0
+law36-vn28-findings.l4                         0        49       0        0         0
 law36-vn28-fixtures.l4                         0         0       0        0         0
 law36-vn28-nouns.l4                            0         0       0        0         0
-law36-vn28-tests-alcohol-registration.l4       0        49       0        0         0
-law36-vn28-tests-drivers.l4                    0       239       0        0         0
-TOTAL (11 modules)                             0       334       0        0
+law36-vn28-tests-alcohol-registration.l4       0        61       0        0         0
+law36-vn28-tests-drivers.l4                    0       256       0        0         0
+TOTAL (11 modules)                             0       366       0        0
 (a failed assertion is also an error; any other error, or any refused assertion, makes the run red)
 ```
 
 `check.sh` exit 0.
 No failure or refusal is expected and none occurs.
-The library modules carry no assertions; the 334 are in the two tests modules and the findings module, one per `#ASSERT` directive (239 + 49 + 46).
-17 of them (9 + 3 + 5) are `#ASSERT REFUSED … BECAUSE "…"`: each asserts a named refusal, and `check.sh` counts it as satisfied when the expected refusal comes.
-The first pass, before Articles 1-23 were in the sources, printed `TOTAL (11 modules) 0 323 0 0`; the second pass changed the alcohol assertions from refusals to answers and added the Article 9(10) and R9 assertions.
+The library modules carry no assertions; the 366 are in the two tests modules and the findings module, one per `#ASSERT` directive (256 + 61 + 49).
+19 of them (9 + 5 + 5) are `#ASSERT REFUSED … BECAUSE "…"`: each asserts a named refusal, and `check.sh` counts it as satisfied when the expected refusal comes.
+The first pass, before Articles 1-23 were in the sources, printed `TOTAL (11 modules) 0 323 0 0`; the second pass changed the alcohol assertions from refusals to answers and added the Article 9(10) and R9 assertions (`0 334 0 0`); the third added Articles 2(2), (8)-(9), (12), 9(7), 9(8) and 35(1).
 
 ## 7. The `vnsrc check` line
 
@@ -443,7 +459,7 @@ python3 -I tools/vnsrc.py check ../../source/raw/law36-2024-qh15.txt *.l4 $(ls *
 ```
 
 ```
-vnsrc check: 515 src: lines, 463 Vietnamese runs, 0 problems
+vnsrc check: 562 src: lines, 501 Vietnamese runs, 0 problems
 ```
 
 ## 8. Open questions for a domain expert
@@ -459,3 +475,4 @@ vnsrc check: 515 src: lines, 463 Vietnamese runs, 0 problems
 9. R12: does Decree 67 Article 11 end the insurance when only the registration certificate is revoked (an auctioned plate)?
 10. F2 / F5: is the age condition when driving the issuing age of the class, and does the maximum of 59(1)(e) end on the 57th (55th) birthday or the day before the 58th (56th)?
 11. R15: is the accident of Decree 67 the road traffic accident of Article 2(12), a collision, so that harm without a collision is outside the compulsory insurance?
+12. R16: is a person riding behind on a private motorcycle ("người được chở" in this Law) a passenger for Decree 67 Article 7(1)(b)?

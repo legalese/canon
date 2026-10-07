@@ -11,17 +11,17 @@ If the scratch directory is gone, edit the .l4 files in DEPOSIT directly and quo
 
 ## Done (all deliverables)
 
-- Source holds Articles 24-89 only (gazette 979+980); Articles 1-23 incl. 2 and 9 are in 977+978, not deposited. Lead told (2026-10-07).
+- First pass: the sources then held Articles 24-89 only (gazette 979+980); the lead added 977+978 (Articles 1-23) on 2026-10-07.
 - Eleven .l4 modules (chain of eight library modules, two tests modules, one findings module).
 - First pass: NOTES.md (27 forks, 14 findings, 59 coverage rows), GLOSSARY.md, COMPARABLES.md, encoding.json, SOURCE-LICENSE.md.
 
 ## Last check.sh TOTAL
 
-`TOTAL (11 modules) 0 323 0 0`, exit 0 (about 90 s wall).
+`TOTAL (11 modules) 0 366 0 0`, exit 0 (2 min 42 s wall, third pass).
 
 ## Last vnsrc check
 
-`vnsrc check: 489 src: lines, 402 Vietnamese runs, 0 problems`
+`vnsrc check: 562 src: lines, 501 Vietnamese runs, 0 problems`
 
 ## Second pass (2026-10-07, after the lead added gazette 977+978)
 
@@ -42,16 +42,13 @@ Read Articles 1-9 in full. Article 9(2) forbids driving with any alcohol in bloo
 - check.sh: `TOTAL (11 modules) 0 334 0 0`, exit 0.
 - vnsrc over all .l4 and .md except BRIEF.md: `vnsrc check: 515 src: lines, 463 Vietnamese runs, 0 problems`.
 
-## Third pass (lead's message of 2026-10-07: encode 9(1)-(3), (7), (8) at least; Article 2 definitions used)
+## Third pass: complete
 
-Plan:
-- nouns: `An event on the road` (Art 2(12)); `A person in road traffic` (Art 2(8)-(9)); two Art 35(1) facts on `A registered vehicle`.
-- art34 module: Art 2(2) group of a vehicle, 2(8)-(9) role, 2(12) accident.
-- registration module: Art 35(1) conditions and Art 9(8).
-- decisions module: Art 9(7) (handing a vehicle to a person not qualified).
-- tests and findings (R15 demonstrable; R16 reading only: "người được chở" against "hành khách").
-- docs, check.sh, vnsrc.
+At the lead's request: Article 9(7), 9(8) with Article 35(1), Article 2(8) and 2(12) encoded; finding R15 now demonstrated; R16 added (reading only).
+- NOTES.md: 31 forks, 16 findings, 77 coverage rows (41 encoded, 14 inert, 18 out-of-scope, 4 reached-and-refused, 0 deferred).
+- check.sh: `TOTAL (11 modules) 0 366 0 0`, exit 0.
+- vnsrc over all .l4 and .md except BRIEF.md: `vnsrc check: 562 src: lines, 501 Vietnamese runs, 0 problems`.
 
 ## Remaining
 
-- The third pass above; then report the real TOTAL to the lead.
+- Nothing for this session; the lead commits. HG1 and an independent test pass are not done.
