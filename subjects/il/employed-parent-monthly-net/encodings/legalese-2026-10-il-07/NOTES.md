@@ -681,6 +681,42 @@ TOTAL (16 modules)                            20       470      20        2
 `check.sh` exit 0. `il07-tests-expected-red.l4`: R2 and R3 fail, as before.
 **The independent tests** (not edited): 258 satisfied, 18 failed, 2 refused, assertion by assertion the same as at 0.2.0 after the ruling (11.13): the capstone's answers did not change, only where they are computed.
 
+### 11.15 Version 0.2.2: row IL-04's fork F6 as a switch (backlog row IL-12, 2026-10-07)
+
+Encoder `enc-il-12`, one session, no sub-agents.
+Backlog row IL-12 made row IL-04's fork F6 a switch (its v0.4.0, its NOTES.md "Version 0.4.0"), on Meng's ruling of 2026-10-07 (TRIDENT): where the index (s 334(a)(1)) or the average wage (s 334(a)(2)) falls, the case is declined by default, and the other two readings (the fall applied; the threshold staying where it was) are kept by name.
+
+**What changed here: only the vendored copies.** `vendor.sh --record` took IL-04's two changed modules, `nii-il04-nouns.l4` (the new reading type) and `nii-s334-interpretation.l4` (the switch, its refusal and the reading forms); the other 48 lines of `VENDORED.sha256` are unchanged. The two carry `+uncommitted` after the commit hash until the lead commits row IL-04, after which `vendor.sh --record` should be run again. No capstone module changed.
+
+**No answer moved, as expected.** The capstone reads s 334(a) only through `s 334(a) — the reduced collection threshold for a month in` (`il07-adapter-il04.l4`), which gives 2026 the published 7,703 and declines 2027 on by name; it never calls the s 334(a)(1) or (a)(2) update, the only rules the switch reaches. Checked by running, not only by reading: the four modules with assertions were run on the same binary before and after `vendor.sh --record`, and every assertion's outcome is the same, line by line (`il07-tests.l4` 114 satisfied; `il07-tests-il08.l4` 98; `il07-tests-expected-red.l4` 2 failed; `tests-independent.l4` 258 satisfied, 18 failed, 2 refused). No expected value changed.
+
+**What `check.sh` prints at 0.2.2.** Run from 2026-10-07T09:50:53Z to 09:51:25Z as `L4=/Users/mengwong/.local/bin/l4 ./check.sh`. **The binary changed** since 0.2.1: `~/.cabal/bin/l4` is now a symbolic link into the cabal store, `jl4-0.1-d8a7263f/bin/l4`, 232,974,288 bytes, sha256 `4476e7580ea3c5c0d06c1d029ba801b6627070fcce8c7c40fae47d5521559fac`; the same before and after the run. The 0.2.1 counts were reproduced on it before the re-vendoring (above), so the binary moved no answer either.
+
+```
+vendor.sh: 50 vendored modules match their sources and VENDORED.sha256
+module                                    errors satisfied  failed  refused  expected
+il07-adapter-il01.l4                           0         0       0        0         0
+il07-adapter-il02.l4                           0         0       0        0         0
+il07-adapter-il03.l4                           0         0       0        0         0
+il07-adapter-il04.l4                           0         0       0        0         0
+il07-adapter-il05.l4                           0         0       0        0         0
+il07-adapter-il06.l4                           0         0       0        0         0
+il07-adapter-il08-ito.l4                       0         0       0        0         0
+il07-adapter-il08-nii.l4                       0         0       0        0         0
+il07-nouns.l4                                  0         0       0        0         0
+il07-pipeline.l4                               0         0       0        0         0
+il07-published-figures.l4                      0         0       0        0         0
+il07-refusals.l4                               0         0       0        0         0
+il07-tests-expected-red.l4                     2         0       2        0         2
+il07-tests-il08.l4                             0        98       0        0         0
+il07-tests.l4                                  0       114       0        0         0
+tests-independent.l4                          18       258      18        2      18/2
+TOTAL (16 modules)                            20       470      20        2
+(a failed assertion is also an error; any other error, or a refused assertion a module is not expected to have, makes the run red; "expected" is failed/refused where a module may refuse)
+```
+
+`check.sh` exit 0, the same counts as 0.2.1.
+
 ## Comparison with Axiom's RuleSpec (2026-10-07)
 
 Written by `lad-il-07` (one session, no sub-agents) after this capstone and its independent test pass (`INDEPENDENT-FINDINGS.md`) were deposited, under the semi-cleanroom ruling of 2026-10-06, which held Axiom's encoding back until then.
