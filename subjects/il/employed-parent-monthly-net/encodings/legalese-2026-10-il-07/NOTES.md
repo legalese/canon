@@ -260,3 +260,173 @@ The vendored copies were taken at commons commits recorded per file in `VENDORED
 - **HG1** not sought.
 - **The two fetched PDFs are not deposited**: they sit in the session scratchpad; whether the 5786 Law belongs in the Income Tax Ordinance subject's registers is the lead's call.
 - **Not committed**, and `subjects/README.md` and `NOTICE` not updated: the brief forbids any git change and any edit outside this subject.
+
+## Comparison with Axiom's RuleSpec (2026-10-07)
+
+Written by `lad-il-07` (one session, no sub-agents) after this capstone and its independent test pass (`INDEPENDENT-FINDINGS.md`) were deposited, under the semi-cleanroom ruling of 2026-10-06, which held Axiom's encoding back until then.
+Nothing above this heading was changed and no `.l4` file was edited: a divergence here is a finding, not a fix.
+
+### What was read
+
+Axiom's side is the local clone `/Volumes/transcend/src/Axiom/rulespec-il` at commit `95c6f32c87c75e318631cbd77c14b840bc536c15` (2026-10-03), read only, not pulled; `git rev-parse HEAD`, `git status --short` and `git log --oneline -3` on the pipeline's path were run, and changed no tracked file.
+
+- In full: `il/statutes/composed/worker-with-children-monthly-net-pipeline.yaml` (761 lines) and its `.test.yaml` (881 lines, 15 cases).
+- The modules it imports, to the depth needed for the values it reads: ITO `section-121b.yaml` (whole: the 640,000 parameter and every formula); NII `section-1.yaml` and `section-66.yaml` (whole); ITO `section-34.yaml`, `section-36.yaml`, `section-36a.yaml` (rules and formulas); ITO `section-66.yaml` lines 148-392 (the two ladders' point values); ITO `section-121.yaml`, its rule list and band formulas only, because row IL-03's comparison already ran Axiom's s 121 cases through IL-03 and found all four tax figures equal.
+- `.axiom/encoding-manifests/` for those eight modules, provenance fields only (models `gpt-6-astra` for ITO ss 121, 121B, 66 and NII s 66; `gpt-5.6-terra` for ITO ss 34, 36, 36A and NII s 1; all generated 2026-09-06). The pipeline has no manifest, as Axiom says (`docs/ENCODING-GAPS.md:504-515`).
+- `docs/ENCODING-GAPS.md`: its heading list, then lines 1-8, 192-250, 253-288, 356-392, 395-430, 462-569 and 666-714.
+- `known-missing-money-atoms.yaml` and `known-validation-gaps.yaml` (whole; neither has an entry for the pipeline); `data/coverage/tax-benefit-source-map.json` lines 1-20, 55-80 and 110-145.
+- `NOTICE`, and the opening lines of `LICENSE` and `LICENSE-CODE`.
+
+On our side: everything the brief lists, and the "Comparison with Axiom's RuleSpec" sections of the six rows (IL-03's in full; the divergence table of IL-06's; IL-01's, IL-02's, IL-04's and IL-05's by search for the rows bearing on this capstone).
+
+**Read outside that list, said so that a reviewer can weigh it.**
+`ls` of `il/statutes/` showed the names of modules the pipeline does not import (ITO ss 120B, 33A; NII ss 67, 68, 334, 337, 342, 348, Schedule J, Schedule K); none was opened.
+The heading list of `docs/ENCODING-GAPS.md` showed titles of entries on Schedule J, Schedule K and s 334, among them `schedule-j-rows-do-not-sum-to-printed-totals` (line 598); their bodies were not read, except that a line search of the file for "composed" and "pipeline" printed single lines from outside the ranges above (43, 137, 317, 330, 422, 443, 612, 614), two of them (612, 614) from that Schedule J entry.
+`oracle-coverage-pending.yaml` (not on the brief's list) was read at lines 1-11 and searched: it lists the pipeline's outputs among 151 outputs awaiting classification in oracle mappings, consistent with `ENCODING-GAPS.md:687-690`, which says nothing is machine-compared against an external model.
+
+### Licence
+
+`NOTICE` puts the encodings, companion test cases, parameter values and provenance metadata under **CC BY 4.0** (`LICENSE` opens "Attribution 4.0 International") and tooling under Apache 2.0 (`LICENSE-CODE`), as earlier rows found; so the two pipeline files are CC BY 4.0.
+Attribution as `NOTICE` suggests it: "Axiom Foundation RuleSpec corpus (CC BY 4.0), https://github.com/TheAxiomFoundation".
+They are quoted below only in short snippets that identify a point; nothing of theirs is copied into this encoding.
+
+### Method
+
+Axiom's 15 cases were restated as IL-07 households in the scratch module `axiom-cases.l4` (sha256 `aa884546…43cc`, not deposited), in a scratch copy of this directory whose 36 vendored copies were checked against `VENDORED.sha256` and against their rows' sources (36 of 36 equal), and whose 12 own modules, hashed when copied, still equalled the deposited ones after the run.
+It was run once, 2026-10-07T05:59:45Z-05:59:55Z, `JL4_LIBRARY_PATH` unset: 35 `#EVAL`, 0 errors.
+**The binary was not the build section 0 records.** `~/.local/bin/l4` now resolves to a file rebuilt at 2026-10-07T05:35:45Z, sha256 `6015a4c3…4a6`, not `64bbcb15…e118`; `check.sh` was not re-run on it.
+Every figure it gave equals my hand arithmetic from section 5's figures, worked before the run; its contributions equal what `il07-tests.l4` asserts for the same incomes (420.8811 at 15,000, line 317; 2,144.5781 at the maximum, line 354) and what `INDEPENDENT-FINDINGS.md` reports the capstone giving (654.3811 at 20,000; 67.01604 on June's minimum).
+
+How a case was restated:
+Axiom's period is `period_kind: month` from 2026-01-01 to 2026-12-31 and no fixture names a month, so every case is put in **June 2026**.
+Axiom supplies two ages per child (reached in the tax year; at the month) and birth-year and maturity-year flags; each was turned into a date of birth giving those ages on 1 June 2026 and in tax year 2026.
+Axiom's bound is "separate calculation (חישוב נפרד) assumed elected", and it models no spouse (pipeline lines 137-139), so the earner is married, registered, and requests under ITO s 66(c)(1A), as in H3, H6 and H8: a working mother's husband is at home and insured, a working father's wife is a housewife.
+The health input is 0.
+Axiom's net is "net of income tax and inclusive of child allowance only" (pipeline lines 178-181), that is salary − tax/12 + allowance, so ours is compared on the same sum, which is our net plus the national insurance and the health input.
+The Axiom engine was not run; its expected values are its fixtures' own.
+
+### The two pipelines
+
+| | IL-07 | Axiom's composed pipeline |
+| --- | --- | --- |
+| question | the monthly net income, in a month of 2026, of a household with one employed resident parent | "Composed monthly net income for an employed parent with children" (pipeline line 28) |
+| period | months of 2026; 2025 and 2027 refused by name (section 3) | every rule `effective_from: '2026-01-01'` with no end (lines 125-135); a later month is answered on the caller's figures |
+| household | one earner; a spouse with no income, or none; any number of children; a single parent with children declined (s 40(b)) | one earner; at most two children; separate calculation assumed; no spouse fact (lines 137-146; `ENCODING-GAPS.md:522-534`) |
+| income tax | IL-03 s 121 and s 121B, less IL-01 ss 34, 36, 36A, IL-02 s 66(c) and the s 37 half point, set off to nil, s 121B added after (K3) | the same order: `max(0, income_tax - annual_credit_amount_ils) + total_additional_tax` (line 615) |
+| s 121B(a) amount | 721,560, the Tax Authority's 2026 figure (`il07-published-figures.l4:51-53`) | 640,000, the printed figure, in every year (`section-121b.yaml:33-50`; pipeline lines 120-122) |
+| credit point | 2,904, IL-03's s 120B(e)(1) from IL-01's published 2025 value (K2) | 2,904, a supplied input, taken from OECD TaxBEN 2025 (`ENCODING-GAPS.md:368`) |
+| the month's tax | one twelfth of the year's, declined if the salary varies (K1) | one twelfth, "for presentation" (line 178) |
+| national insurance | IL-05 s 348 with Schedule K, IL-04 Schedule J column D, IL-05 s 342(c) | none (`ENCODING-GAPS.md:666-684`) |
+| health | a caller's figure | none (the National Health Insurance Law is not in Axiom's corpus, same entry) |
+| child allowance | IL-06 ss 65-68 on the first of the month, s 67 across both parents, s 66's exclusion joined to the same year's s 121B (K5), birth and 18th-birthday months declined (K6) | s 66 with s 65(a)'s proviso per child (age at the month, presence in Israel) and s 68(a), every child in the earner's count (lines 616-711); basic amounts supplied, and the printed 150 / 188 reported beside them |
+| refusals | 13 of its own and the rows' | none; what is out of scope is bounded in prose, not refused |
+
+What each takes as an input, beyond the salary and the children: IL-07 takes sex, date of birth, the ITO and NII residences, Chapter 11 insurance, foreign-worker and Area status, the full-adult minimum wage, the Part D age, the "no unencoded credit" flag, the spouse's facts, which spouse is registered (s 64B), the s 66 claim or request, the s 37 entitlement, the (a1) election and the health figure.
+Axiom takes sex, ITO residence, "insured parent", age 60, books of account, the credit-point value, the two basic amounts, and per child two ages, two year flags and presence in Israel.
+
+### Divergences
+
+Classes: ours wrong, theirs wrong, genuine ambiguity (the text supports both), scope difference, representational difference (same answer, different shape).
+`ITO` and `NII` line numbers are lines of the deposited sources, as in `GAPS.md`; "pipeline" is Axiom's YAML.
+
+| id | topic | IL-07 | Axiom | source | class | repair to ours |
+| --- | --- | --- | --- | --- | --- | --- |
+| X1 | the s 121B(a) amount for 2026 | 721,560 | 640,000; its fixtures' additional tax is 3% above it | ITO 4335 makes "הכנסה החייבת במס נוסף, כמשמעותה בסעיף 121ב" an income ceiling; 4338 adjusts income ceilings every 1 January; 4344 fixes 2025-2027 at the 1 January 2024 figure after rounding; the note at 4456 gives 640,000 as "נקוב לשנת 2017" and 721,560 for 2024-2027 | **theirs wrong**, conceded: "a household between the nominal and the indexed threshold is shown as liable here when it would not be in the year" (`ENCODING-GAPS.md:276-288`). Its `no-executable-oracle` entry still calls the same difference "a fact about the statute" (line 710); on 4335, 4338 and 4344 it is not | none |
+| X2 | NII s 66's exclusion between 640,000 and 721,560 | not excluded | excluded: case 5 (720,000 a year) withholds 392 | NII 814 excludes a parent "שיש לו הכנסה החייבת במס נוסף כמשמעותה בסעיף 121ב"; with X1, a parent at 720,000 has none in 2026 | **theirs wrong**, by X1. Case 5 (`high_earner_mother_…`) is the one fixture that asserts the allowance withheld, and Axiom's gap file says "the composed pipeline's high-earner fixture turns on it" (`ENCODING-GAPS.md:269-272`); on the text the exclusion does not reach that household in 2026 | none |
+| X3 | what "net" deducts | income tax, national insurance, health (an input) | income tax only; "It is not take-home pay" (line 181) | NII 3661 (s 342(c)(1), the employer's deduction); the health law is outside both bundles | **scope difference**, stated by both | none |
+| X4 | whose count a child is in (NII s 67) | IL-06's s 67: with an insured husband at home, an earning mother's children are in his count | not applied; every child in the earner's count (lines 172-176; `ENCODING-GAPS.md:536-541`) | NII 818 "יבוא במנין האב המבוטח זולת אם הוא נמצא עם האם בלבד"; 814 attaches s 66's exclusion to the parent | **scope difference**. It shows only where a parent has additional-tax income: case 15's mother at 74,000 gets 392 here (her husband's count) and 0 by Axiom's formula (not asserted). Ours is the literal reading, which IL-06 F6 and section 8 Q6 leave open | none |
+| X5 | a single parent with children | declined, naming s 40(b) | no spouse fact, so a single parent is computed with s 66(c)'s points; s 40 is listed as not encoded and single parents as outside the pilot (`ENCODING-GAPS.md:425-429`) | ITO 2460-2476 (s 66(c), spouses in a separate calculation); 1632-1647 (s 40(b)) | **scope difference**: neither encodes s 40(b); Axiom answers where it says it cannot | none |
+| X6 | the separate calculation | the (a)(1) claim or the (c)(1A) request is an input; without one, declined as s 65 (H11) | assumed elected; Axiom's s 66 module has no (c)(1A) (row IL-02, AX-9) | ITO 2456, 2462, 2448 | **scope difference** | none |
+| X7 | credits no row encodes (ss 35, 45A, 47 and the rest) | an input; FALSE declines the tax | none; the tax is computed as if there were none (coverage map lines 55-56; `ENCODING-GAPS.md:682-683`) | ITO 1714-1805 (ss 45A, 47) | **scope difference**: both leave them; Axiom's tax is too high for an employee who contributes to a pension, with no sign of it | none |
+| X8 | the mother's (a1) election | applied (IL-02; H4) | not applied: birth-year points always in the birth year (`ENCODING-GAPS.md:417-423`) | ITO 2467 | **scope difference** | none |
+| X9 | a month in which a child is born or turns 18 | declined, naming s 72 (K6), except an 18th birthday on the 1st, answered as excluded (independent finding F3, recorded) | answered on the caller's whole-number `child_N_age_at_month_years` (lines 632-635); no date, no s 72 | NII 853-856; 854 "עד 15 בחודש … החל ב־1 באותו חודש … יסתיים ביום האחרון של החודש שבו נפסקה הזכאות" | **scope difference**: neither encodes s 72. The text decides these months; Axiom's answer is right only if the caller has applied s 72(a) in choosing the age and the children (see below) | none new (F3's repair stands) |
+| X10 | months after 2026 | refused | answered on supplied figures | ITO 4344 freezes the s 121 amounts for 2027, 4345 adjusts them from 2028 | **scope difference**; Axiom's s 121 is right for 2027 and wrong from 2028 (row IL-03, X04), and X1 applies throughout | none |
+| X11 | a child's age | dates of birth; IL-02 takes the tax year of birth (ITO 1645, 2471) | two ages and two year flags supplied per child | ITO 2466, 2471 | **representational**. Axiom's inputs can disagree without a diagnostic: a mother's child of 18 without the maturity flag falls to `else: 0` (lines 496-506), 0 points where ITO 2466 gives ½ | none |
+| X12 | the credit-point value | derived through s 120B(e)(1) from the Tax Authority's 2025 figure | supplied, from OECD TaxBEN | ITO 1563, 4344 | **representational**: the same 2,904 | none |
+| X13 | the insured parent | from Chapter 11 insurance, NII residence and s 238 (IL-06) | an input, `taxpayer_is_an_insured_parent` | NII 801-803 | **representational** | none |
+| X14 | a child abroad | every child in Israel (`BRIEF.md`; `il07-adapter-il06.l4:120-121`) | `child_N_is_present_in_israel`, per child | NII 807, 809 | **scope difference**: Axiom covers what this capstone pins (case 10) | none |
+| X15 | a foreign worker (ITO s 48A) | IL-01's refusal (H18) | no input; full points | ITO 1810-1812 | **scope difference** (row IL-01, X02) | none |
+| X16 | number of children | any | at most two | — | **scope difference** | none |
+
+**Totals: 16. Ours wrong 0; theirs wrong 2 (X1, X2, one cause); genuine ambiguity 0; scope difference 11; representational 3.**
+
+Where both answer, they read the text the same way: the 2026 s 121 figures (ITO 4350-4358); 2 points under s 34, ¼ under s 36, ½ under s 36A; every rung of both ladders, including ½ for the mother and nothing for the father in the year of majority (ITO 2466, 2474-2476); the credits set off against the s 121 tax only and never below nil, s 121B added after (K3); one twelfth of the year's tax (K1); s 66's exclusion turning on the s 121B liability of the tax year in which the month falls (K5, IL-06 F5); and a child counted for the allowance while under 18 and in Israel (NII 807).
+K3 and K5 were reached separately by both, which is evidence for those readings, not proof.
+
+### Axiom's 15 cases through IL-07
+
+All in June 2026; IL-07's "Axiom's sum" is salary − one twelfth + allowance.
+Every child's points agree: in each case where Axiom asserts them (all but 14 and 15), its two per-child figures add up to IL-07's children's points.
+
+| # | Axiom case | the household here | Axiom: tax for the year; allowance; net | IL-07: tax for the year; twelfth; allowance; NI | IL-07, Axiom's sum | result |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | `working_mother_two_children_aged_two_and_eight_fifteen_thousand_a_month` | mother, 15,000; children born 2024-03-10, 2018-02-20 | 0; 392; 15,392 | 0; 0; 392; 420.8811 | 15,392 | match |
+| 2 | `working_father_two_children_aged_two_and_eight_fifteen_thousand_a_month` | father, 15,000; the same children | 2,886; 392; 15,151.5 | 2,886; 240.5; 392; 420.8811 | 15,151.5 | match |
+| 3 | `minimum_wage_working_mother_two_children_aged_two_and_eight` | mother, 5,880.02 | 0; 392; 6,272.02 | 0; 0; 392; 67.01604 | 6,272.02 | match (see below) |
+| 4 | `woman_with_no_children_fifteen_thousand_a_month` | single woman, 15,000 | 17,406; 0; 13,549.5 | 17,406; 1,450.5; 0; 420.8811 | 13,549.5 | match |
+| 5 | `high_earner_mother_two_children_sixty_thousand_a_month` | mother, 60,000 | s 121B 2,400; 198,968.4; 0; 43,419.3 | s 121B 0; 196,568.4; 16,380.7; 392; 2,144.5781 | 44,011.3 | **diverge**, by 592 a month: X1 (200) and X2 (392). With 640,000 put into IL-03's s 121B, IL-07 gives Axiom's 2,400; with a husband who is not insured, the children are in her count (2) and the allowance is still 392, so s 67 plays no part |
+| 6 | `working_mother_child_in_its_birth_year_and_child_in_its_maturity_year` | mother, 15,000; born 2026-02-10 and 2008-03-10 | 8,694; 173; 14,448.5 | 8,694; 724.5; 173; 420.8811 | 14,448.5 | match |
+| 7 | `working_father_child_in_its_birth_year_and_child_in_its_maturity_year` | father, 15,000; the same children | 11,598; 173; 14,206.5 | 11,598; 966.5; 173; 420.8811 | 14,206.5 | match |
+| 8 | `working_mother_children_aged_three_and_five_twenty_thousand_a_month` | mother, 20,000; born 2023-02-10, 2021-01-15 | 13,302; 392; 19,283.5 | 13,302; 1,108.5; 392; 654.3811 | 19,283.5 | match |
+| 9 | `working_mother_child_past_its_maturity_year_and_child_aged_eight` | mother, 15,000; born 2007-03-10, 2018-02-20 | 11,598; 173; 14,206.5 | 11,598; 966.5; 173; 420.8811 | 14,206.5 | match |
+| 10 | `working_mother_two_children_the_elder_one_outside_israel` | — | 0; 173; 15,173 | — | — | **could not be run**: IL-07 has no input for a child abroad (X14). Its tax is case 1's |
+| 11 | `working_mother_two_children_aged_seventeen_and_eight` | mother, 15,000; born 2009-02-10, 2018-02-20 | 5,790; 392; 14,909.5 | 5,790; 482.5; 392; 420.8811 | 14,909.5 | match |
+| 12 | `working_mother_child_turning_three_this_year_and_child_aged_eight` | mother, 15,000; born 2023-09-10 (2 in June, 3 in the tax year), 2018-02-20 | 1,434; 392; 15,272.5 | 1,434; 119.5; 392; 420.8811 | 15,272.5 | match |
+| 13 | `working_mother_maturity_year_child_before_its_eighteenth_birthday` | mother, 15,000; born 2026-02-10 and 2008-09-10 (17 in June) | 8,694; 392; 14,667.5 | 8,694; 724.5; 392; 420.8811 | 14,667.5 | match |
+| 14 | `woman_aged_sixty_with_no_children_fifteen_thousand_a_month` | single woman born 1966-01-15, 15,000 | asserts only the taxable income (180,000) and judgments (60 reached; not an insured parent; no additional tax) | 17,406; 1,450.5; 0; 420.8811 | 13,549.5 | match on what Axiom asserts; the age changes nothing for a salary (ITO 4354) |
+| 15 | `mother_above_the_additional_tax_threshold` | mother, 74,000 | asserts only the taxable income (888,000), both children under s 65, and additional-tax income "holds" | s 121B 4,993.2; 280,521.6; 23,376.8; 392 (her husband's count; 0 with a husband who is not insured); 2,144.5781 | 51,015.2 | match on what Axiom asserts; X1 sits underneath (Axiom's formula would charge 7,440) and X4 decides the allowance |
+
+**Matched 13 (11 on every comparable figure, 2 on the few Axiom asserts), diverged 1, could not be run 1.**
+No case is dated outside 2026, so none was a question of the period.
+
+Case 3 calls 5,880.02 the minimum wage; it is below the full adult minimum wage row IL-05 sourced for every month of 2026 (6,247.67 from 1 April 2025, 6,443.85 from 1 April 2026; `nii-il05-published-figures.l4:70-72`), and the test file records no source for it.
+It changes nothing Axiom computes; here s 348(b) (NII 3765) takes the contributions on June's 6,443.85, not on the 5,880.02 paid.
+
+### Our independent findings, on Axiom's side
+
+| finding (`INDEPENDENT-FINDINGS.md`) | Axiom's pipeline |
+| --- | --- |
+| F1, Schedule J column D above the threshold, 7.00 printed against 4.67 summed | not reached: no contributions are deducted. Axiom's own s 337 and Schedule J modules (not read here) take the printed totals, by row IL-04's comparison (its D5), which is the independent tester's and the Institute's reading; Axiom records the mismatch as `unexplained` (`ENCODING-GAPS.md:598`, heading only read) |
+| F2, a child born, or turning 18, after the 1st | answered without s 72 (X9). In H25's shape (18 on 10 June) a caller who enters 18 gets 173 and one who enters 17 gets 392, which is s 72(a)'s answer; in H28's (born 16 September) a caller who lists the newborn gets 392 where s 72(a) gives 173 |
+| F3, an 18th birthday on the 1st | the same answer as IL-07's if the caller enters 18 for the month (0 where the independent tester reads s 72(a) as paying 173); Axiom shares the defect through its input |
+| F4, a non-resident | answers the tax as IL-07 does: s 34 and s 36 turn on `taxpayer_is_israeli_resident`, s 36A does not (`section-34.yaml`, `section-36.yaml`, `section-36a.yaml`); computes no contributions, so never meets s 335(a) (NII 3611) |
+| F5, s 348(b)'s minimum | not reached: no contributions; the coverage map lists s 348(b), (d) and (e) as not encoded (`tax-benefit-source-map.json:124`). Case 3 is the one fixture it would touch |
+| M1, children's names must be unique | no counterpart: Axiom's children are two numbered slots |
+
+### Our gaps (`GAPS.md`), on Axiom's side
+
+Axiom encodes none of them, and where IL-07 declines, Axiom mostly answers on an assumption it states in prose.
+
+| `GAPS.md` | provision | Axiom |
+| --- | --- | --- |
+| 1 | ITO ss 45A, 47 | not encoded (coverage map line 56; `ENCODING-GAPS.md:682`); no input; the tax is computed as if there were none (X7) |
+| 2 | ITO s 40(b) | not encoded; single parents "cannot be computed by this pilot" (`ENCODING-GAPS.md:428`), but nothing refuses one (X5) |
+| 3 | ITO ss 64B, 65 | a separate calculation is assumed (X6) |
+| 4 | the health contribution | not deducted; the Law is not in Axiom's corpus (`ENCODING-GAPS.md:666-680`) |
+| 5 | ITO s 164 and the 5753-1993 Regulations | the same one twelfth, "for presentation" (`ENCODING-GAPS.md:533`); no condition that the salary is the same every month |
+| 6 | NII s 72 | not encoded (X9) |
+| 7 | ITO ss 37-39 | s 66(c)(2)'s half point deferred (`ENCODING-GAPS.md:406-407`); no input |
+| 8 | ITO s 35 and the other status credits | not encoded; silent (X7) |
+| 9 | NII s 335 | not reached (no contributions) |
+| 10 | NII Schedule A1 Part D | not reached; listed as not encoded (coverage map line 125) |
+| 11 | the Minimum Wage Law | not reached; see case 3 |
+| 12 | ITO ss 48, 48A | no input; full points (X15) |
+| 13 | residence and status | inputs in both |
+
+### What Axiom covers that IL-07 does not, and the reverse
+
+**Axiom, not IL-07:** a child abroad (per-child presence, case 10); the printed 150 / 188 allowance reported beside the amount paid; months after 2026 on supplied figures (right for 2027 on s 121, X10); the s 121(b)(1) age of 60 and the (b)(2) books exception as inputs (neither matters for a salary); a verbatim source excerpt on every rule.
+**IL-07, not Axiom:** national insurance deducted and the health contribution taken, so a net nearer take-home pay; s 67 across both parents, which surfaces IL-06 F6 (H7 against H8); the s 121B amount in force in 2026; the credit-point value from the regulator through s 120B(e)(1); any number of children; dates of birth in place of ages the caller works out; the (a1) election; both routes into a separate calculation; named refusals for s 65, s 40(b), the unencoded credits, s 48A, a varying salary, the s 72 months, a spouse with income and every other year; and an independent test pass, which found F1-F4 against this capstone.
+
+One note on Axiom's own records, not a divergence: `ENCODING-GAPS.md:564-566` says a child's age is "one number for the case", but the pipeline at this commit carries two ages per child and reads the one at the month for s 65 (pipeline lines 72-81, 632-635); the gap entry lags the file it describes.
+
+### Bottom line
+
+Where both pipelines answer the same household they compute the same income tax, the same points for every child and the same allowance: in eleven of the twelve cases where Axiom states a tax and an allowance and IL-07 could run the household, and on every figure Axiom asserts for cases 14 and 15, which state neither.
+They also made the same reading at each fork they share (K1, K3, K5).
+The one case that differs, case 5, is Axiom's error and Axiom concedes it: it applies the 2017 figure of 640,000, which ss 120A and 120B (ITO 4335, 4338, 4344) put at 721,560 for 2026.
+That case is also the fixture Axiom's gap file points to for NII s 66's exclusion of a high earner, and on the text the exclusion does not reach it in 2026: the household at 720,000 keeps its 392, whichever parent counts the children.
+The two answer different questions: Axiom's "net" leaves out national insurance and health by design and says so; IL-07 deducts the first and takes the second as an input.
+Beyond that, Axiom answers across facts IL-07 declines (single parents, pension credits, s 65, s 48A, the s 72 months), bounding them in prose rather than refusing them.
+Nothing Axiom's pipeline does shows IL-07 wrong on the Hebrew, and nothing here proposes a repair.
+The open items stay those already recorded: the independent pass's F1-F4, which Axiom's pipeline does not reach except that it shares F3's shape; and section 8's questions, three of which (K1, K3, K5) it answers the same way without settling them.
