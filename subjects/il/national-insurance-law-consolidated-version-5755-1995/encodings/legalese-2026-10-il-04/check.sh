@@ -31,16 +31,16 @@ expected_failed() {
   case "$1" in
     # tests-red.l4) echo 3 ;;
     nii-il04-tests-expected-red.l4) echo 15 ;;   # NOTES.md section 0: printed totals vs items (10), the Institute's composites (4), the 2025 text (1)
-    tests-independent.l4) echo 19 ;;             # the independent tester's, not edited: T7 (fork F6, line 787), five F3 expectations the repair of 2026-10-07 overturned (lines 756, 924, 929-931), and from 0.3.0 thirteen F4 items' expectations at the printed totals (NOTES.md, Version 0.3.0)
+    tests-independent.l4) echo 6 ;;              # the independent tester's: T7 (fork F6, line 787) and five F3 expectations the repair of 2026-10-07 overturned (lines 756, 924, 929-931). Its 22 F4 assertions were re-pointed by the lead to the items' reading by name, values unchanged (NOTES.md, Version 0.3.1)
     *) echo 0 ;;
   esac
 }
 
-# Version 0.3.0: a module that is MEANT to refuse some assertions (the independent tests,
-# written before fork F4 was ruled, and never edited) is listed with its exact count.
+# Version 0.3.0: a module that is MEANT to refuse some assertions is listed with its exact count.
+# Version 0.3.1: none is. The independent tests' nine declined assertions now name the items'
+# reading and pass (NOTES.md, Version 0.3.1).
 expected_refused() {
   case "$1" in
-    tests-independent.l4) echo 9 ;;              # the independent tester's: nine single-branch or seven-branch contributions above the threshold, declined at the printed totals (NOTES.md, Version 0.3.0)
     *) echo 0 ;;
   esac
 }

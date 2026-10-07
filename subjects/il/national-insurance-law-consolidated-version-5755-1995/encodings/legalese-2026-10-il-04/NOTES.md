@@ -1,8 +1,26 @@
 # NOTES — il/national-insurance-law-consolidated-version-5755-1995, encoding row `legalese-2026-10-il-04`
 
 National Insurance Law [Consolidated Version], 5755-1995: **s 334** (interpretation for Chapter 15, insurance contributions), **s 337** (the rate of insurance contributions), **Schedule J** (לוח י׳, the rates), and the **s 1** definitions they use, encoded in L4 by one agent in one session (run `IL-04-20261006`, 2026-10-06), from the brief in `BRIEF.md`.
-Status: **draft**. Version **0.3.0** (2026-10-07): the Schedule J switch, fork F4 ruled; see "Version 0.3.0" below.
+Status: **draft**. Version **0.3.1** (2026-10-07): the independent tests re-pointed to the items' reading; see "Version 0.3.1" below. Version 0.3.0: the Schedule J switch, fork F4 ruled.
 No domain expert has read it against the source; HG1 has not been sought.
+
+## Version 0.3.1 (2026-10-07): the independent tests re-pointed to the items' reading
+
+The lead, on Meng's go-ahead of 2026-10-07, re-pointed 22 assertions in `tests-independent.l4` (fid-il-04's) to fork F4's items' reading by name: `, reading Schedule J as` `the items govern` was added to each, and the s 337(a)(1) entries without a threshold were spelled out as their own body spells them (the threshold s 334(a) gives for the year, no order under Amendment 252 s 7(b)).
+No expected value and no input changed, no line was added above them, and the six other failures were not touched.
+A dated note at the end of the file says the same.
+No rule module changed, so the capstone's vendored copies are unaffected.
+
+Why re-point rather than change the values: the tester decided the items' reading on purpose and before the ruling ("the rows are the law", its section 3).
+Its figures are independent evidence for the reading the ruling preserves, so they now test that branch of the fork instead of failing against the default.
+
+- **The 13 that failed** at 0.3.0 now pass: lines 505, 507-510, 801-803, 846-848, 856, 933.
+- **The 9 that were refused** at 0.3.0 now pass: lines 805-810, 854, 858, 895.
+- **The 6 that stand** are unchanged findings: T7 (line 787, fork F6) and the five pre-repair F3 expectations (lines 756, 924, 929-931).
+
+`tests-independent.l4`: **640 satisfied, 6 failed, 0 refused** (0.3.0: 618, 19, 9; 0.2.0: 640, 6, 0).
+`check.sh` now expects 6 failures and no refusals from it.
+Full run 2026-10-07 07:50:16Z to 07:51:02Z, `l4` sha256 `3a1843a0e51ce1663cd71b4307e061fa425f2f9f23d78afb8ffa9be6fd20278f` (not a store build), the same before and after: 21 errors, 826 satisfied, 21 failed (15 expected-red, 6 independent), 0 refused, exit 0.
 
 ## Version 0.3.0 (2026-10-07): the Schedule J switch
 
@@ -74,7 +92,7 @@ TOTAL (10 modules)                            34       804      34        9
 - **13 that passed now fail**, each an items' figure where the default now reads the printed total: the composites for an employee above the threshold in 2026, 2027 and 2028 and not above it in 2027 and 2028 (lines 505, 507-510); s 337(a)(1) for all nine branches in 2026 at 7,704, 10,000 and 60,000 (lines 801-803), in 2027 at and around the scenario threshold 7,857.06 and at 10,000 (846-848), and in 2028 at 10,000 (856); column D in 2027 at 10,000 (933).
 - **9 that passed are now refused**, each fewer branches than the totals row covers, above the threshold: one branch in 2026 at 10,000 (lines 805-810: senior citizens and survivors, work injury, unemployment, maternity, children, disability), work injury in 2027 and 2028 (854, 858), and the seven branches of a controlling shareholder (895).
 
-None of these is a defect of the tests: each was decided against fork F4's items reading, which version 0.2.0 took and 0.3.0, by ruling, does not. They are left for the tester to reclassify.
+None of these is a defect of the tests: each was decided against fork F4's items reading, which version 0.2.0 took and 0.3.0, by ruling, does not. They are left for the tester to reclassify. **(0.3.1)** Superseded: the lead re-pointed all 22 to the items' reading by name; see "Version 0.3.1".
 
 ## Repair 2026-10-07
 
