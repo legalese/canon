@@ -117,8 +117,11 @@ function build(id) {
       if (r.status === 'na') e = 'NOT (' + applies + ')';
       else if (r.status === 'met') e = applies + ' AND ' + met;
       else {
-        e = applies + ' AND NOT ' + met;
-        if (l.pending) e += (r.status === 'due' ? ' AND ' : ' AND NOT ') + term(l.pending, subject);
+        // Each NOT is bracketed with its operand. On one line an unbracketed NOT
+        // reaches to the end of the line, so `NOT m AND p` means NOT (m AND p),
+        // and L4 now refuses that spelling (l4-ide SET-OPERATORS-SPEC §18.1).
+        e = applies + ' AND (NOT ' + met + ')';
+        if (l.pending) e += ' AND ' + (r.status === 'due' ? term(l.pending, subject) : '(NOT ' + term(l.pending, subject) + ')');
       }
       out.push('-- ' + r.duty.ref + ' ' + r.duty.title + ': ' + r.status);
       out.push('#ASSERT ' + e);
