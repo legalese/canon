@@ -1,0 +1,387 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `cdcsa-types`
+IMPORT `cdcsa-common`
+IMPORT `cdcsa-maternity-adoption`
+
+-- Child Development Co-Savings Act 2001 — GOALS 5 AND 6: FATHERS AND SHARED
+-- PARENTAL LEAVE (paternity: ss 12H-12JA; shared parental leave for an April
+-- 2025 Scheme child: ss 12DA-12DD and the Second Schedule; for an earlier
+-- child, by the mother's election: ss 12E-12G).
+--
+--   "How many weeks of paternity leave, and how much pay; how many units of
+--    shared parental leave does each parent have; how much may the employer
+--    claim back; and what may a self-employed or Government-paid parent get?"
+--
+-- A "week-equivalent" is a period of the weekly index or 6 days, whichever
+-- is lower: one week of work days. Source: ../source/CDCSA2001.txt lines
+-- 2422-3624.
+
+§ `Goals 5-6 — fathers and shared parental leave`
+
+§§ `Paternity leave eligibility (s 12I(1)-(2))`
+
+-- s 12I(1): a natural father: "(a) the mother's confinement ... occurs, or the
+-- estimated delivery date ... is, on or after 1 January 2017, or (in the case
+-- of a stillborn child) on or after 1 November 2021; (b) the child ... (i) is a
+-- citizen ... at ... birth, or (in the case of a stillborn child) would have
+-- been ...; or (ii) ... becomes a citizen ... within the period of 12 months
+-- ...; (c) the child's mother [is or becomes lawfully married to him at
+-- conception, before birth, or within 12 months after birth]; (d) in the case
+-- of a male employee, he has served the employer for a period of at least 3
+-- months preceding the date of the child's birth; and (e) [self-employed:
+-- 3 months continuous]".
+@ref s 12I(1)
+GIVEN b IS A Birth, married IS A BOOLEAN, months IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `a natural father eligible for paternity leave, birth` b `, married in time:` married `, months of service` months IF
+        `the confinement date gate` b
+    AND (b's `a citizen at birth (or would have been, if stillborn)` OR `becomes a citizen within 12 months of birth` b)
+    AND married
+    AND months AT LEAST 3
+
+-- s 12I(2): an adoptive father: "(a) the eligibility date ... is on or after
+-- 1 January 2017; (b) the child is below 12 months of age on the eligibility
+-- date ...; (ba)-(c) [citizenship where the child is a permanent resident or
+-- foreign]; (d) ... served his employer for ... at least 3 months before the
+-- eligibility date ...; (e) [self-employed: 3 months]; and (f) he is not the
+-- natural father of the child".
+@ref s 12I(2)
+GIVEN a IS AN Adoption, months IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `an adoptive father eligible for paternity leave, adoption` a `, months of service` months IF
+        `the eligibility date of` a AT LEAST YMD 2017 1 1
+    AND months AT LEAST 3
+    AND `the adoption conditions` a
+
+§§ `Paternity leave and pay (ss 12H, 12I(3)-(4), 12J)`
+
+-- s 12H(1): paternity leave "(a) ... within 16 weeks commencing on the date
+-- of the child's birth: (i) in the case of the father of an April 2025 Scheme
+-- child — a period of 4 weeks; (ii) in the case of the father of any other
+-- child — a period of 2 weeks; or (b) one or more ... periods [totalling 4
+-- times the weekly index or 24 days, or twice the weekly index or 12 days],
+-- ... within 12 months".
+-- s 12I(3): pay up to "(a) $2,500 for every period equal in duration to the
+-- male employee's weekly index or every 6 days, whichever is the lower ...;
+-- and (b) a total of — (i) $10,000 for the male employee who is the father of
+-- an April 2025 Scheme child; or (ii) $5,000 ... any other child".
+-- s 12J(1)-(2): the employer claims back the pay and its CPF contribution,
+-- within the same limits.
+@ref ss 12H(1)-(2), 12I(3), 12J(1)-(2)
+GIVEN april IS A BOOLEAN, `gross per week` IS A NUMBER
+GIVETH A `Leave payments`
+`paternity leave payments, an April 2025 Scheme child:` april `, gross pay per week` `gross per week` MEANS
+    `Leave payments` WITH
+        `weeks of paid leave`                        IS `weeks`
+        `employer pays at most`                      IS `capped`
+        `Government reimburses the employer at most` IS `capped`
+    WHERE
+        `weeks`  MEANS IF april THEN 4 ELSE 2
+        `capped` MEANS `at most` 2500 `per block and` (`weeks` TIMES 2500) `in all, for` `weeks` `blocks paid at` `gross per week`
+
+-- s 12H(1)(b)(ii): the flexible days: "(A) ... April 2025 Scheme child — 4
+-- times the employee's weekly index or 24 days, whichever is the lower; or (B)
+-- ... any other child — twice the employee's weekly index or 12 days".
+@ref s 12H(1)(b)(ii)
+GIVEN april IS A BOOLEAN, wi IS A NUMBER
+GIVETH A NUMBER
+`the flexible paternity days, an April 2025 Scheme child:` april `, weekly index` wi MEANS
+    IF april THEN `the lower of` 4 `times the weekly index` wi `or` 24
+    ELSE `the lower of` 2 `times the weekly index` wi `or` 12
+
+-- s 12H(4) and 12I(4): a self-employed father: "(i) in the case of the father
+-- of a January 2024 Scheme child — 4 times his weekly index or 24 days ...;
+-- or (ii) ... any other child — twice his weekly index or 12 days"; paid up to
+-- $2,500 a week-equivalent and "a total of — (i) $10,000 for the self-employed
+-- man who is the father of a January 2024 Scheme child; or (ii) $5,000". The
+-- Act says January 2024 here and April 2025 for employees (NOTES, fork F4).
+@ref ss 12H(4), 12I(4)
+GIVEN jan2024 IS A BOOLEAN, `lost income per week` IS A NUMBER
+GIVETH A NUMBER
+`the Government pays a self-employed father at most, a January 2024 Scheme child:` jan2024 `, lost income per week` `lost income per week` MEANS
+    `at most` 2500 `per block and` (`weeks` TIMES 2500) `in all, for` `weeks` `blocks paid at` `lost income per week`
+    WHERE
+        `weeks` MEANS IF jan2024 THEN 4 ELSE 2
+
+§§ `Government-paid paternity benefit (s 12HA, 12I(4A))`
+
+-- s 12I(4A): "(a) ... the mother's confinement ... or the estimated delivery
+-- date ... on or after 1 January 2021; or (ii) the eligibility date ... on or
+-- after 1 January 2021, and the child is below 12 months of age ...; (b) for at
+-- least 90 days in total during the period of 12 months immediately before
+-- ... [employed or self-employed]; (c) [natural father: s 12I(1)(b), (c)];
+-- (d) [adoptive father: s 12I(2)(c), (f)]; (e) [the overseas conditions]".
+@ref s 12I(4A)-(4B)
+GIVEN e IS A `Child event`, married IS A BOOLEAN, w IS A `Work facts`
+GIVETH A BOOLEAN
+DECIDE `eligible for the Government-paid paternity benefit, event` e `, married in time:` married `, work` w IF
+        w's `days employed or self-employed in the 12 months before` AT LEAST 90
+    AND w's `the 90-day overseas conditions are met, if any days were outside Singapore`
+    AND CONSIDER e
+        WHEN `a birth` b THEN
+                (b's `confinement on` AT LEAST YMD 2021 1 1 OR b's `estimated delivery date` AT LEAST YMD 2021 1 1)
+            AND (b's `a citizen at birth (or would have been, if stillborn)` OR `becomes a citizen within 12 months of birth` b)
+            AND married
+        WHEN `an adoption` a THEN
+                `the eligibility date of` a AT LEAST YMD 2021 1 1
+            AND `the adoption conditions` a
+
+-- s 12HA(2)-(3): "(a) an amount equivalent to 14 days of his total income; or
+-- (b) in the case of an eligible father of a January 2024 Scheme child, ... 28
+-- days", "an amount that does not exceed $2,500 for every 7 days". s 12HA(10):
+-- (b) does not apply to a stillborn child (who is not a Scheme child anyway).
+@ref s 12HA(2)-(3), (10)
+GIVEN jan2024 IS A BOOLEAN, `income per day` IS A NUMBER
+GIVETH A NUMBER
+`the Government-paid paternity benefit at most, a January 2024 Scheme child:` jan2024 `, total income per day` `income per day` MEANS
+    `at most` 2500 `per block and` (`blocks` TIMES 2500) `in all, for` `blocks` `blocks paid at` (7 TIMES `income per day`)
+    WHERE
+        `blocks` MEANS IF jan2024 THEN 4 ELSE 2
+
+§§ `Extra paternity leave reimbursed (s 12JA)`
+
+-- s 12JA(1): applies to a natural father where "(i) the confinement occurs
+-- before 1 January 2024 but the estimated delivery date is on or after that
+-- date; (ii) the confinement occurs on a date between 1 January 2024 and
+-- 31 March 2025 (both dates inclusive), and the estimated delivery date is
+-- before 1 April 2025"; or an adoptive father with an eligibility date between
+-- 1 January 2024 and 31 March 2025.
+@ref s 12JA(1)
+GIVEN e IS A `Child event`
+GIVETH A BOOLEAN
+DECIDE `s 12JA applies to the child` e IF
+    CONSIDER e
+    WHEN `a birth` b THEN
+            NOT b's `stillborn`
+        AND (   (b's `confinement on` LESS THAN YMD 2024 1 1 AND b's `estimated delivery date` AT LEAST YMD 2024 1 1)
+             OR (    b's `confinement on` AT LEAST YMD 2024 1 1
+                 AND b's `confinement on` AT MOST YMD 2025 3 31
+                 AND b's `estimated delivery date` LESS THAN YMD 2025 4 1))
+    WHEN `an adoption` a THEN
+            `the eligibility date of` a AT LEAST YMD 2024 1 1
+        AND `the eligibility date of` a AT MOST YMD 2025 3 31
+
+-- s 12JA(2)(d): for each day of extra paternity leave the employer pays "(i)
+-- if the employee's gross rate of pay is $2,500 or less for every period equal
+-- in duration to the employee's weekly index or every 6 days (whichever is the
+-- lower) (called the number of reimbursable days per week), ... his gross rate
+-- of pay ...; (ii) if ... exceeds $2,500 ..., (A) his gross rate of pay ...; or
+-- (B) an amount ... at least ... P/W where P is $2,500 and W is the number of
+-- reimbursable days per week" (the formula is printed as an image).
+@ref s 12JA(2)(d)
+GIVEN `gross per week` IS A NUMBER, wi IS A NUMBER
+GIVETH A NUMBER
+`the least an employer may pay per day of extra paternity leave, gross pay per week` `gross per week` `, weekly index` wi MEANS
+    IF `gross per week` AT MOST 2500 THEN `gross per week` DIVIDED BY `W`
+    ELSE 2500 DIVIDED BY `W`
+    WHERE
+        `W` MEANS `the lower of` 1 `times the weekly index` wi `or` 6
+
+-- s 12JA(4): reimbursement up to "(a) $2,500 for every period equal in
+-- duration to the male employee's weekly index or every 6 days ... of the
+-- extra paternity leave ...; and (b) a total of $5,000"; 12JA(2)(c): at most
+-- 2 weeks.
+@ref s 12JA(2)(c), (3)-(4)
+GIVEN `weeks taken` IS A NUMBER, `paid per week` IS A NUMBER
+GIVETH A NUMBER
+`the Government reimburses extra paternity leave at most, weeks taken` `weeks taken` `, paid per week` `paid per week` MEANS
+    `at most` 2500 `per block and` 5000 `in all, for` (IF `weeks taken` GREATER THAN 2 THEN 2 ELSE `weeks taken`) `blocks paid at` `paid per week`
+
+§§ `Shared parental leave for an April 2025 Scheme child (ss 12DA-12DD; Second Schedule)`
+
+-- Second Schedule para 5: "the maximum number of units, M, is — (a) 6, in
+-- relation to an April 2025 Scheme child — (i) who is born before 1 April
+-- 2025, but the estimated delivery date ... is on or after that date but
+-- before 1 April 2026; (ii) who is born between 1 April 2025 and 31 March 2026
+-- (both dates inclusive), and the estimated delivery date ... is before
+-- 1 April 2026; or (iii) in respect of whom the eligibility date of the
+-- application to adopt the child is between 1 April 2025 and 31 March 2026
+-- ...; or (b) 10, in relation to any other April 2025 Scheme child."
+@ref Second Schedule para 5
+GIVEN e IS A `Child event`
+GIVETH A NUMBER
+`M, the maximum number of units for` e MEANS
+    IF NOT `an April 2025 Scheme child` e THEN REFUSE "not an April 2025 Scheme child: ss 12DA-12DD do not apply"
+    ELSE IF `six` THEN 6 ELSE 10
+    WHERE
+        `six` MEANS
+            CONSIDER e
+            WHEN `a birth` b THEN
+                    (    b's `confinement on` LESS THAN YMD 2025 4 1
+                     AND b's `estimated delivery date` AT LEAST YMD 2025 4 1
+                     AND b's `estimated delivery date` LESS THAN YMD 2026 4 1)
+                OR  (    b's `confinement on` AT LEAST YMD 2025 4 1
+                     AND b's `confinement on` AT MOST YMD 2026 3 31
+                     AND b's `estimated delivery date` LESS THAN YMD 2026 4 1)
+            WHEN `an adoption` a THEN
+                    `the eligibility date of` a AT LEAST YMD 2025 4 1
+                AND `the eligibility date of` a AT MOST YMD 2026 3 31
+
+-- s 12DD(1)(b): each parent's units "calculated in accordance with the
+-- formula M/2 [an image in the PDF] unless that allocation is varied"; Second
+-- Schedule para 6: 3 and 3, or 5 and 5. s 12DD(4), para 7: a sole parent has M.
+@ref s 12DD(1)(b), (3)-(4); Second Schedule paras 6-7
+GIVEN e IS A `Child event`, both IS A BOOLEAN
+GIVETH A NUMBER
+`the default units for a parent of` e `, both parents eligible:` both MEANS
+    IF both THEN `M, the maximum number of units for` e DIVIDED BY 2
+    ELSE `M, the maximum number of units for` e
+
+-- s 12DD(1)(a), (d) and para 8(2), (3), (5): units are whole numbers, and
+-- the two parents' units "must not in the aggregate exceed" M.
+@ref s 12DD(1)(a), (d), (4)(a), (d); Second Schedule para 8(2)-(6)
+GIVEN n1 IS A NUMBER, n2 IS A NUMBER, m IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `a valid allocation of` n1 `and` n2 `units within M =` m IF
+        `whole` n1 AND `whole` n2
+    AND n1 AT LEAST 0 AND n2 AT LEAST 0
+    AND n1 PLUS n2 AT MOST m
+    WHERE
+        `whole` x MEANS FLOOR x EQUALS x
+
+-- Second Schedule para 8(4): "The balance of any partially consumed period of
+-- entitlement that has a fractional value cannot be reallocated"; para 12(3),
+-- 13(3): a fractional balance is forfeited. (Para 8's illustration: 5 units,
+-- 3.5 consumed — one unit may be reallocated, 0.5 cannot.)
+@ref Second Schedule paras 8(4), 12(3), 13(3)
+GIVEN allocated IS A NUMBER, consumed IS A NUMBER
+GIVETH A NUMBER
+`the units that may be reallocated, allocated` allocated `, consumed` consumed MEANS
+    IF allocated GREATER THAN consumed THEN FLOOR (allocated MINUS consumed) ELSE 0
+
+-- Second Schedule paras 1(1), 14-16: an employee need not obtain the
+-- employer's agreement to a variation notified within "a period of 4 weeks
+-- commencing on" the child's birth (or the adoption eligibility date) — the
+-- specified variation period — unless a Director, as para 16(2) allows
+-- ("may ... require"), has required it after a s 16 defaulting event; after that period the employer's agreement is
+-- needed (para 15). Paras 9-10: variations only before the end of 12 months
+-- from the child's birth.
+@ref Second Schedule paras 1(1), 9, 10, 14-16
+GIVEN notified IS A DATE, start IS A DATE, born IS A DATE, `section 16 event` IS A BOOLEAN
+GIVETH A STRING
+`a variation notified on` notified `, specified variation period from` start `, child born` born `, a Director has required the employer's agreement under para 16:` `section 16 event` MEANS
+    BRANCH IF notified AT LEAST `add years` born 1                   THEN "not permitted: after the 12 months from the child's birth"
+           IF notified LESS THAN start PLUS 28 AND NOT `section 16 event` THEN "permitted without the employer's agreement"
+           OTHERWISE                                                 "permitted only with the employer's agreement"
+
+-- s 12DA(2)(a): shared parental leave "(i) one period equal in duration to N
+-- whole weeks, ... within 26 weeks ... of the child's birth; (ii) one or more
+-- ... periods ... equal to N times the employee's weekly index or N times 6
+-- days, whichever is the lower, ... within 12 months".
+-- s 12DB(1), (4)-(5): pay, and the employer's claim back, up to "(a) $2,500
+-- for every period equal in duration to the employee's weekly index or every
+-- 6 days (whichever is the lower) ...; and (b) a total of N times $2,500".
+@ref ss 12DA(2), 12DB(1), (4)-(5)
+GIVEN n IS A NUMBER, `gross per week` IS A NUMBER
+GIVETH A `Leave payments`
+`shared parental leave payments for` n `units, gross pay per week` `gross per week` MEANS
+    `Leave payments` WITH
+        `weeks of paid leave`                        IS n
+        `employer pays at most`                      IS `capped`
+        `Government reimburses the employer at most` IS `capped`
+    WHERE
+        `capped` MEANS `at most` 2500 `per block and` (n TIMES 2500) `in all, for` n `blocks paid at` `gross per week`
+
+-- s 12DA(6), 12DB(2): a self-employed parent, N week-equivalents of lost
+-- income, the same limits.
+@ref ss 12DA(6), 12DB(2)
+GIVEN n IS A NUMBER, `lost income per week` IS A NUMBER
+GIVETH A NUMBER
+`the Government pays a self-employed parent at most for` n `units, lost income per week` `lost income per week` MEANS
+    `at most` 2500 `per block and` (n TIMES 2500) `in all, for` n `blocks paid at` `lost income per week`
+
+-- s 12DC(2), (4)(a): shared parental benefits: "an amount equivalent to a
+-- number of days of the eligible parent's total income, where ... the number
+-- of days is calculated in accordance with the formula N × 7", up to "$2,500"
+-- for every 7 days. s 12DC(5): not if entitled under s 12DA(2) or (6), or "the
+-- claim is submitted by the parent after the date of the child's death".
+@ref s 12DC(2), (4)(a), (5)
+GIVEN n IS A NUMBER, `income per day` IS A NUMBER
+GIVETH A NUMBER
+`the shared parental benefit at most for` n `units, total income per day` `income per day` MEANS
+    `at most` 2500 `per block and` (n TIMES 2500) `in all, for` n `blocks paid at` (7 TIMES `income per day`)
+
+§§ `Shared parental leave by the mother's election (ss 12E-12G)`
+
+-- s 12F(1)(a): for a natural father, "(i) in the case of a child born alive —
+-- (A) the confinement occurs before 1 July 2017 but the estimated delivery
+-- date is on or after that date; or (B) the confinement occurs on a date
+-- between 1 July 2017 and 31 March 2025 (both dates inclusive) and the
+-- estimated delivery date is before 1 April 2025; (ii) in the case of a
+-- stillborn child — (A) the confinement occurs before 1 November 2021 but the
+-- estimated delivery date is on or after that date; or (B) the confinement
+-- occurs on a date between 1 November 2021 and 31 March 2025"; (b) citizen at
+-- birth or within 12 months; (c) married in time. No period of service.
+@ref s 12F(1)
+GIVEN b IS A Birth, married IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a natural father may take elected shared parental leave, birth` b `, married in time:` married IF
+        `the dates fall within s 12F(1)(a)`
+    AND (b's `a citizen at birth (or would have been, if stillborn)` OR `becomes a citizen within 12 months of birth` b)
+    AND married
+    WHERE
+        `the dates fall within s 12F(1)(a)` MEANS
+            IF b's `stillborn`
+            THEN    (b's `confinement on` LESS THAN YMD 2021 11 1 AND b's `estimated delivery date` AT LEAST YMD 2021 11 1)
+                 OR (b's `confinement on` AT LEAST YMD 2021 11 1 AND b's `confinement on` AT MOST YMD 2025 3 31)
+            ELSE    (b's `confinement on` LESS THAN YMD 2017 7 1 AND b's `estimated delivery date` AT LEAST YMD 2017 7 1)
+                 OR (    b's `confinement on` AT LEAST YMD 2017 7 1
+                     AND b's `confinement on` AT MOST YMD 2025 3 31
+                     AND b's `estimated delivery date` LESS THAN YMD 2025 4 1)
+
+-- s 12F(1A): an adoptive father: a joint application with the adoptive
+-- mother; "the eligibility date ... between 1 July 2017 and 31 March 2025 (both
+-- dates inclusive)"; married in time; the citizenship conditions.
+@ref s 12F(1A)
+GIVEN a IS AN Adoption, married IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `an adoptive father may take elected shared parental leave, adoption` a `, married in time:` married IF
+        a's `joint application with spouse`
+    AND `the eligibility date of` a AT LEAST YMD 2017 7 1
+    AND `the eligibility date of` a AT MOST YMD 2025 3 31
+    AND married
+    AND ((NOT `a citizenship condition applies` a) OR a's `an applicant (or the joint applicant spouse) is a citizen on the relevant date`)
+
+-- s 12E(8): "N" is "(a) the integer 1, 2, 3 or 4, as specified by the
+-- appropriate applicant ... in her election"; (b) after her death, the whole
+-- weeks of her unconsumed entitlement, at most 4.
+@ref s 12E(5), (8)
+GIVEN n IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `a valid s 12E election of weeks` n IF
+    n EQUALS 1 OR n EQUALS 2 OR n EQUALS 3 OR n EQUALS 4
+
+-- s 12E(7)-(7A): the mother's entitlement "is reduced by N weeks, taken from
+-- the last N weeks of that entitlement".
+@ref s 12E(7)-(7A)
+GIVEN n IS A NUMBER, weeks IS A NUMBER
+GIVETH A NUMBER
+`the mother's weeks after electing` n `weeks, from` weeks MEANS weeks MINUS n
+
+-- s 12F(2)-(3), 12G(2): "$2,500 for every period equal in duration to the
+-- male employee's weekly index or every 6 days ... and ... a total of N times
+-- $2,500"; the employer claims back the same (s 12G(1)).
+@ref ss 12E(2)-(3), 12F(2)-(3), 12G(1)-(2)
+GIVEN n IS A NUMBER, `gross per week` IS A NUMBER
+GIVETH A `Leave payments`
+`elected shared parental leave payments for` n `weeks, gross pay per week` `gross per week` MEANS
+    IF NOT `a valid s 12E election of weeks` n
+    THEN REFUSE "s 12E(8): N must be 1, 2, 3 or 4"
+    ELSE `shared parental leave payments for` n `units, gross pay per week` `gross per week`
+
+§§ `Provisions carried as text`
+
+@ref ss 12DA(3)-(14), 12DB(6)-(10), 12DC(6)-(10), 12DD(2), 12E(4), (5A), (9)-(15), 12H(1A), (3), (5)-(13), 12HA(4)-(9), 12J(3)-(5), 12JA(5)-(6); Second Schedule paras 2-4, 11-13, 17-18
+GIVETH A LIST OF STRING
+`fathers' and shared provisions carried as text` MEANS
+    LIST "ss 12DA(3), 12H(1A): notice of the prescribed period before taking leave as one block"
+         "ss 12DA(4)-(5), 12H(3): termination forfeits unconsumed leave, unless shared parental leave units are reallocated under Second Schedule para 12"
+         "s 12DA(7)-(9): an adoptive parent's leave starts on or after the eligibility date; entitlement ends the day after the child's death; once per confinement"
+         "ss 12DB(6)-(9), 12DD(2): discretionary reimbursement where a parent lacks 3 months' service and an equivalent arrangement was voluntarily granted"
+         "s 12DC(6)-(7): unpaid leave of 12 months, or loss by contract end or redundancy, does not disqualify"
+         "s 12E(4), (5A), (7B)-(9B): the adoptive father's leave follows the eligibility date; the election's timing and irrevocability; the father's entitlement after the mother's death; forfeiture after 12 months or on leaving"
+         "s 12H(5)-(6): an adoptive father's leave starts on or after the application or pass date; no dismissal notice during the leave"
+         "s 12HA(4)-(6): the Government-paid paternity benefit is not paid to a father entitled to paternity leave, subject to unpaid leave and contract-end exceptions"
+         "ss 12J(3)-(5), 12JA(6): discretionary reimbursement where the father lacks 3 months' service"
+         "Second Schedule paras 2-4, 11-13, 17-18: one arrangement per confinement or adoption; variation after marriage or adoption; reallocation instead of forfeiture or on death; written notice, refusal and effect"

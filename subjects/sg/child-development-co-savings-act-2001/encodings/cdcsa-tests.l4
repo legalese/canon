@@ -1,0 +1,424 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `cdcsa-types`
+IMPORT `cdcsa-common`
+IMPORT `cdcsa-scheme`
+IMPORT `cdcsa-maternity-adoption`
+IMPORT `cdcsa-fathers-shared`
+IMPORT `cdcsa-childcare`
+IMPORT `cdcsa-general-offences`
+IMPORT `cdcsa-goal`
+
+-- Child Development Co-Savings Act 2001 — THE ENCODER'S TESTS.
+--
+-- Every expected value is worked by hand from ../source/CDCSA2001.txt; the
+-- provision is on each group and the arithmetic where it is not obvious.
+
+§ `Tests`
+
+§§ `Helpers`
+
+GIVEN c IS A DATE, edd IS A DATE, still IS A BOOLEAN, citizen IS A BOOLEAN, later IS A MAYBE DATE
+GIVETH A Birth
+`birth` c edd still citizen later MEANS Birth WITH
+    `confinement on` IS c
+    `estimated delivery date` IS edd
+    `stillborn` IS still
+    `a citizen at birth (or would have been, if stillborn)` IS citizen
+    `became a citizen on` IS later
+
+GIVEN c IS A DATE
+GIVETH A Birth
+`a citizen born on` c MEANS `birth` c c FALSE TRUE NOTHING
+
+GIVEN born IS A DATE, applied IS A DATE, cpr IS A BOOLEAN, pr IS A BOOLEAN, pass IS A MAYBE DATE, citizen IS A BOOLEAN
+GIVETH AN Adoption
+`adoption` born applied cpr pr pass citizen MEANS Adoption WITH
+    `child born on` IS born
+    `application made on` IS applied
+    `the child is a citizen or permanent resident when the application is made` IS cpr
+    `the child is a permanent resident (not a citizen) then` IS pr
+    `dependant's pass issued on` IS pass
+    `an applicant (or the joint applicant spouse) is a citizen on the relevant date` IS citizen
+    `the applicant is the natural parent` IS FALSE
+    `joint application with spouse` IS TRUE
+
+GIVEN born IS A DATE, applied IS A DATE
+GIVETH AN Adoption
+`a citizen child adopted` born applied MEANS `adoption` born applied TRUE FALSE NOTHING FALSE
+
+GIVEN d IS A DATE, dead IS A BOOLEAN, adopted IS A BOOLEAN, withdrawn IS A BOOLEAN
+GIVETH AN `Earlier specified event`
+`earlier` d dead adopted withdrawn MEANS `Earlier specified event` WITH
+    `occurred on` IS d
+    `each child is dead or was stillborn` IS dead
+    `each child adopted by another person, not jointly with her` IS adopted
+    `an adoption application since withdrawn or refused` IS withdrawn
+
+GIVEN s IS A `Work status`, months IS A NUMBER, days IS A NUMBER, gross IS A NUMBER, daily IS A NUMBER
+GIVETH A `Work facts`
+`work` s months days gross daily MEANS `Work facts` WITH
+    `status` IS s
+    `months of service or of carrying on before the event` IS months
+    `days employed or self-employed in the 12 months before` IS days
+    `the 90-day overseas conditions are met, if any days were outside Singapore` IS TRUE
+    `weekly index` IS 5.5
+    `gross pay (or lost income) per week of work days` IS gross
+    `total income per day in the prescribed period` IS daily
+
+§§ `Goal 1 — the common measures (s 2; First Schedule)`
+
+-- confinement before 1 April 2025, estimated delivery date on or after it
+#ASSERT `an April 2025 Scheme child` (`a birth` (`birth` (YMD 2025 3 30) (YMD 2025 4 5) FALSE TRUE NOTHING))
+#ASSERT NOT `an April 2025 Scheme child` (`a birth` (`birth` (YMD 2025 3 30) (YMD 2025 3 31) FALSE TRUE NOTHING))
+-- "a child born alive": a stillborn child is not a Scheme child
+#ASSERT NOT `an April 2025 Scheme child` (`a birth` (`birth` (YMD 2025 5 1) (YMD 2025 5 1) TRUE TRUE NOTHING))
+#ASSERT `an April 2025 Scheme child` (`an adoption` (`a citizen child adopted` (YMD 2025 1 1) (YMD 2025 4 1)))
+#ASSERT `a January 2024 Scheme child` (`a birth` (`a citizen born on` (YMD 2024 1 1)))
+#ASSERT NOT `a January 2024 Scheme child` (`a birth` (`a citizen born on` (YMD 2023 12 31)))
+
+-- "eligibility date": a foreign child — the dependant's pass date; none yet — refuses
+#ASSERT `the eligibility date of` (`adoption` (YMD 2025 3 1) (YMD 2025 5 1) FALSE FALSE (JUST (YMD 2025 6 1)) TRUE) EQUALS YMD 2025 6 1
+#ASSERT `the eligibility date of` (`a citizen child adopted` (YMD 2025 3 1) (YMD 2025 5 1)) EQUALS YMD 2025 5 1
+#ASSERT REFUSED `the eligibility date of` (`adoption` (YMD 2025 3 1) (YMD 2025 5 1) FALSE FALSE NOTHING TRUE)
+
+-- s 2(2): a stillbirth is disregarded before 1 November 2021, not after (aa)
+#ASSERT `the specified event number on` (YMD 2021 6 1) `, earlier events` (LIST (`earlier` (YMD 2019 1 1) TRUE FALSE FALSE)) EQUALS 1
+#ASSERT `the specified event number on` (YMD 2022 1 1) `, earlier events` (LIST (`earlier` (YMD 2019 1 1) TRUE FALSE FALSE)) EQUALS 2
+#ASSERT `the specified event number on` (YMD 2022 1 1) `, earlier events` (LIST (`earlier` (YMD 2019 1 1) FALSE TRUE FALSE), (`earlier` (YMD 2020 1 1) FALSE FALSE TRUE), (`earlier` (YMD 2020 6 1) FALSE FALSE FALSE)) EQUALS 2
+#ASSERT `a first or second specified event` 2
+#ASSERT NOT `a first or second specified event` 3
+
+-- s 2(2A): born 29 February — 1 year old on 28 February of a common year
+#ASSERT `the age in years of a person born` (YMD 2020 2 29) `, on` (YMD 2021 2 28) EQUALS 1
+#ASSERT `the age in years of a person born` (YMD 2020 2 29) `, on` (YMD 2021 2 27) EQUALS 0
+#ASSERT `below 12 months of age, born` (YMD 2024 5 10) `, on` (YMD 2025 5 9)
+#ASSERT NOT `below 12 months of age, born` (YMD 2024 5 10) `, on` (YMD 2025 5 10)
+
+-- First Schedule Part 1: 5 days; T/W = 11/2 = 5.5; 7 days capped at 6 (note 3A)
+#ASSERT `the weekly index for` (`the same number of work days every week` 5) EQUALS 5
+#ASSERT `the weekly index for` (`a pattern repeated over a fixed number of weeks` 11 2) EQUALS 5.5
+#ASSERT `the weekly index for` (`the same number of work days every week` 7) EQUALS 6
+-- T/3 = 16/3; 4 x 16/3 = 21.33, rounded down to 21 (note 5)
+#ASSERT `the lower of` 4 `times the weekly index` (`the weekly index for` (`no regular pattern` 16)) `or` 24 EQUALS 21
+#ASSERT `the lower of` 4 `times the weekly index` 5.5 `or` 24 EQUALS 22
+#ASSERT `the lower of` 4 `times the weekly index` 6 `or` 24 EQUALS 24
+#ASSERT `the flexible maternity days for weekly index` 5.5 EQUALS 44
+
+#ASSERT `at most` 10000 `per block and` 20000 `in all, for` 2 `blocks paid at` 12000 EQUALS 20000
+#ASSERT `at most` 10000 `per block and` 20000 `in all, for` 2 `blocks paid at` 6000 EQUALS 12000
+
+§§ `Goal 2 — the co-savings scheme (Part 2)`
+
+#ASSERT `the Government's matching contribution, eligible:` TRUE `, parent contributes` 3000 `, cap remaining` (JUST 2000) EQUALS 2000
+#ASSERT `the Government's matching contribution, eligible:` TRUE `, parent contributes` 1500 `, cap remaining` (JUST 2000) EQUALS 1500
+#ASSERT `the Government's matching contribution, eligible:` FALSE `, parent contributes` 1500 `, cap remaining` NOTHING EQUALS 0
+#ASSERT REFUSED `the Government's matching contribution, eligible:` TRUE `, parent contributes` 1500 `, cap remaining` NOTHING
+
+`no incapacity substitutes` MEANS `Incapacity substitutes` OF FALSE, FALSE
+#ASSERT `the substitute trustee for` `(f) the trustee lacks capacity` `, the member has a legal guardian:` FALSE `, incapacity substitutes` (`Incapacity substitutes` OF TRUE, TRUE) `, a nominee approved by the Minister:` FALSE EQUALS "the donee of the lasting power of attorney"
+#ASSERT `the substitute trustee for` `(f) the trustee lacks capacity` `, the member has a legal guardian:` FALSE `, incapacity substitutes` `no incapacity substitutes` `, a nominee approved by the Minister:` FALSE EQUALS "a person nominated by the Minister"
+-- (da): a legal guardian displaces (e)-(g)
+#ASSERT `the substitute trustee for` `(e) the trustee dead` `, the member has a legal guardian:` TRUE `, incapacity substitutes` `no incapacity substitutes` `, a nominee approved by the Minister:` FALSE EQUALS "the member's legal guardian (s 4(1)(da))"
+#ASSERT `the substitute trustee for` `(e) the trustee dead` `, the member has a legal guardian:` FALSE `, incapacity substitutes` `no incapacity substitutes` `, a nominee approved by the Minister:` FALSE EQUALS "the trustee's personal representative"
+#ASSERT `the substitute trustee for` `(g) the trustee unable or unwilling for another reason` `, the member has a legal guardian:` FALSE `, incapacity substitutes` `no incapacity substitutes` `, a nominee approved by the Minister:` FALSE EQUALS "a person appointed by a Director, until a nominee is approved"
+#ASSERT `the substitute trustee for` `(a) custody, care and control granted to the parent who is not the trustee` `, the member has a legal guardian:` TRUE `, incapacity substitutes` `no incapacity substitutes` `, a nominee approved by the Minister:` FALSE EQUALS "the parent granted custody, care and control"
+
+#ASSERT `the law the Public Trustee disposes of a deceased member's moneys under, a Muslim:` TRUE EQUALS "section 112 of the Administration of Muslim Law Act 1966"
+#ASSERT `the law the Public Trustee disposes of a deceased member's moneys under, a Muslim:` FALSE EQUALS "the Intestate Succession Act 1967"
+-- s 8(1): (d)-(f), (g) for a person in default on a false statement, (h) only if not recovered
+#ASSERT count (`the means of recovery open to the Government, ground` `(a) made in reliance on a false or misleading statement, document or information` `, a person in default:` TRUE `, already recovered under (d)-(g):` FALSE) EQUALS 5
+#ASSERT count (`the means of recovery open to the Government, ground` `(c) utilised for purposes not authorised by the Scheme` `, a person in default:` TRUE `, already recovered under (d)-(g):` TRUE) EQUALS 3
+#ASSERT count (`the means of recovery open to the Government, ground` `none` `, a person in default:` TRUE `, already recovered under (d)-(g):` FALSE) EQUALS 0
+
+§§ `Goal 3 — maternity (ss 9, 9A, 10)`
+
+#ASSERT `eligible under s 9A(1), with months of service` 3 `, for` (`a citizen born on` (YMD 2025 6 1))
+#ASSERT NOT `eligible under s 9A(1), with months of service` 2.9 `, for` (`a citizen born on` (YMD 2025 6 1))
+-- a stillborn child: 1 November 2021
+#ASSERT NOT `eligible under s 9A(1), with months of service` 6 `, for` (`birth` (YMD 2021 10 31) (YMD 2021 10 31) TRUE TRUE NOTHING)
+#ASSERT `eligible under s 9A(1), with months of service` 6 `, for` (`birth` (YMD 2021 11 1) (YMD 2021 11 1) TRUE TRUE NOTHING)
+-- s 9A(1A): citizen within 12 months of birth — 31 May 2026 is, 1 June 2026 is not
+#ASSERT `eligible under s 9A(1A), with months of service` 6 `, for` (`birth` (YMD 2025 6 1) (YMD 2025 6 1) FALSE FALSE (JUST (YMD 2026 5 31)))
+#ASSERT NOT `eligible under s 9A(1A), with months of service` 6 `, for` (`birth` (YMD 2025 6 1) (YMD 2025 6 1) FALSE FALSE (JUST (YMD 2026 6 1)))
+
+-- 1st event, $1,000 a week: 8 weeks at gross $8,000 + 2 blocks of $4,000 = $16,000; $8,000 reimbursed
+#ASSERT `maternity leave payments, specified event` 1 `, weeks given up under s 12E` 0 `, gross pay per week` 1000 EQUALS `Leave payments` OF 16, 16000, 8000
+-- 1st event, $3,000 a week: $24,000 + 2 x $10,000 = $44,000; $20,000 reimbursed
+#ASSERT `maternity leave payments, specified event` 1 `, weeks given up under s 12E` 0 `, gross pay per week` 3000 EQUALS `Leave payments` OF 16, 44000, 20000
+-- 3rd event, $3,000 a week: 4 blocks of $10,000 = $40,000, all reimbursed
+#ASSERT `maternity leave payments, specified event` 3 `, weeks given up under s 12E` 0 `, gross pay per week` 3000 EQUALS `Leave payments` OF 16, 40000, 40000
+#ASSERT `maternity leave payments, specified event` 3 `, weeks given up under s 12E` 0 `, gross pay per week` 2000 EQUALS `Leave payments` OF 16, 32000, 32000
+-- s 12E(7): 4 weeks given up from the last weeks: 12 weeks; $8,000 + 1 block of $4,000
+#ASSERT `maternity leave payments, specified event` 1 `, weeks given up under s 12E` 4 `, gross pay per week` 1000 EQUALS `Leave payments` OF 12, 12000, 4000
+
+#ASSERT `the Government pays a self-employed mother at most, specified event` 2 `, lost income per week` 3000 EQUALS 20000
+#ASSERT `the Government pays a self-employed mother at most, specified event` 3 `, lost income per week` 3000 EQUALS 40000
+
+-- s 9(5A): 56 days at $200 = $11,200 (2 blocks of $5,600, under $10,000); at $500, 2 x $10,000
+#ASSERT `the Government-paid maternity benefit at most, specified event` 1 `, total income per day` 200 EQUALS 11200
+#ASSERT `the Government-paid maternity benefit at most, specified event` 1 `, total income per day` 500 EQUALS 20000
+#ASSERT `the Government-paid maternity benefit at most, specified event` 3 `, total income per day` 500 EQUALS 40000
+#ASSERT `disqualified from the Government-paid maternity benefit, entitled:` TRUE `, on 12 months' unpaid leave:` FALSE `, contract ended or redundant:` FALSE
+#ASSERT NOT `disqualified from the Government-paid maternity benefit, entitled:` TRUE `, on 12 months' unpaid leave:` FALSE `, contract ended or redundant:` TRUE
+
+-- s 9(1A), limb (a), first event: specified period 1 June - 26 July 2025
+#ASSERT `the s 9(1A) outcome under s 76(1)` `(a)` `, specified event` 1 `, the specified period from` (YMD 2025 6 1) `to` (YMD 2025 7 26) `, absence from` (YMD 2025 5 4) `, confinement` (YMD 2025 6 1) `, citizen on` (YMD 2025 6 20) EQUALS `pay for the last 4 weeks of the specified period, and a further 4 weeks or the agreed flexible period`
+#ASSERT `the s 9(1A) outcome under s 76(1)` `(a)` `, specified event` 1 `, the specified period from` (YMD 2025 6 1) `to` (YMD 2025 7 26) `, absence from` (YMD 2025 5 4) `, confinement` (YMD 2025 6 1) `, citizen on` (YMD 2025 7 10) EQUALS `pay from citizenship to the end of the specified period, and a further 4 weeks or the agreed flexible period`
+#ASSERT `the s 9(1A) outcome under s 76(1)` `(a)` `, specified event` 1 `, the specified period from` (YMD 2025 6 1) `to` (YMD 2025 7 26) `, absence from` (YMD 2025 5 4) `, confinement` (YMD 2025 6 1) `, citizen on` (YMD 2025 8 10) EQUALS `a further 4 weeks or the agreed flexible period, from citizenship`
+-- (iva): after 16 weeks from the first day of absence, within 12 months
+#ASSERT `the s 9(1A) outcome under s 76(1)` `(a)` `, specified event` 1 `, the specified period from` (YMD 2025 6 1) `to` (YMD 2025 7 26) `, absence from` (YMD 2025 5 4) `, confinement` (YMD 2025 6 1) `, citizen on` (YMD 2025 12 1) EQUALS `a further 4 weeks or the agreed flexible period, from citizenship`
+#ASSERT `the s 9(1A) outcome under s 76(1)` `(a)` `, specified event` 1 `, the specified period from` (YMD 2025 6 1) `to` (YMD 2025 7 26) `, absence from` (YMD 2025 5 4) `, confinement` (YMD 2025 6 1) `, citizen on` (YMD 2026 7 1) EQUALS `nothing under s 9(1A)`
+-- (ii): a third event, citizen within the specified period
+#ASSERT `the s 9(1A) outcome under s 76(1)` `(a)` `, specified event` 3 `, the specified period from` (YMD 2025 6 1) `to` (YMD 2025 7 26) `, absence from` (YMD 2025 5 4) `, confinement` (YMD 2025 6 1) `, citizen on` (YMD 2025 6 20) EQUALS `pay from citizenship to the end of the specified period, and a further 4 weeks or the agreed flexible period`
+-- (iii): limb (b) counts the first 8 weeks
+#ASSERT `the s 9(1A) outcome under s 76(1)` `(b)` `, specified event` 1 `, the specified period from` (YMD 2025 6 1) `to` (YMD 2025 8 23) `, absence from` (YMD 2025 6 1) `, confinement` (YMD 2025 6 1) `, citizen on` (YMD 2025 7 10) EQUALS `pay for the last 4 weeks of the specified period, and a further 4 weeks or the agreed flexible period`
+#ASSERT `the s 9(1A) outcome under s 76(1)` `(c)` `, specified event` 3 `, the specified period from` (YMD 2025 6 1) `to` (YMD 2025 7 26) `, absence from` (YMD 2025 6 1) `, confinement` (YMD 2025 6 1) `, citizen on` (YMD 2025 6 20) EQUALS `pay from citizenship to the end of the eight-week period and for every s 76(1)(c)(ii) period, and later periods totalling 4 times the weekly index or 24 days`
+#ASSERT count (`the s 9(1B) options, confinement` (YMD 2025 6 1) `, citizen on` (YMD 2025 7 1)) EQUALS 2
+#ASSERT elem "(iii) periods from citizenship totalling 8 times the weekly index or 48 days within 12 months" (`the s 9(1B) options, confinement` (YMD 2025 6 1) `, citizen on` (YMD 2025 9 1))
+
+-- s 10(2A)-(2B): discretionary only for one who lacks 3 months' service
+#ASSERT `the Government may reimburse under s 10(2A), months of service` 2 `, birth` (`a citizen born on` (YMD 2022 1 1)) `, absence in window:` TRUE
+#ASSERT NOT `the Government may reimburse under s 10(2A), months of service` 3 `, birth` (`a citizen born on` (YMD 2022 1 1)) `, absence in window:` TRUE
+#ASSERT NOT `the Government may reimburse under s 10(2A), months of service` 2 `, birth` (`a citizen born on` (YMD 2021 10 31)) `, absence in window:` TRUE
+-- s 10(3)
+#ASSERT `a directed amount is barred from reimbursement, directed on` (JUST (YMD 2017 1 1)) `, withdrawn:` FALSE
+#ASSERT NOT `a directed amount is barred from reimbursement, directed on` (JUST (YMD 2016 12 31)) `, withdrawn:` FALSE
+#ASSERT NOT `a directed amount is barred from reimbursement, directed on` (JUST (YMD 2020 1 1)) `, withdrawn:` TRUE
+
+§§ `Goal 4 — adoption (ss 12A, 12AA-12AD)`
+
+#ASSERT `eligible for adoption leave under s 12AC(1), months of service` 3 `, adoption` (`a citizen child adopted` (YMD 2025 1 10) (YMD 2025 6 1))
+-- the child 13 months old on the eligibility date
+#ASSERT NOT `eligible for adoption leave under s 12AC(1), months of service` 3 `, adoption` (`a citizen child adopted` (YMD 2024 5 1) (YMD 2025 6 1))
+-- a permanent-resident child, neither applicant a citizen (s 12AC(1)(da))
+#ASSERT NOT `eligible for adoption leave under s 12AC(1), months of service` 3 `, adoption` (`adoption` (YMD 2025 1 10) (YMD 2025 6 1) TRUE TRUE NOTHING FALSE)
+-- a foreign child, pass issued 1 July 2025, an applicant a citizen (s 12AC(1)(e))
+#ASSERT `eligible for adoption leave under s 12AC(1), months of service` 3 `, adoption` (`adoption` (YMD 2025 1 10) (YMD 2025 6 1) FALSE FALSE (JUST (YMD 2025 7 1)) TRUE)
+#ASSERT NOT `eligible for the Government-paid adoption benefit under s 12AC(2)` (`a citizen child adopted` (YMD 2020 6 1) (YMD 2020 12 31)) (`work` `an employee` 1 200 1000 100)
+
+-- 1st event, $3,000 a week: 4 weeks at gross $12,000 + 2 blocks of $10,000 = $32,000; $20,000 reimbursed
+#ASSERT `adoption leave payments, specified event` 1 `, weeks given up under s 12E` 0 `, gross pay per week` 3000 EQUALS `Leave payments` OF 12, 32000, 20000
+#ASSERT `adoption leave payments, specified event` 3 `, weeks given up under s 12E` 0 `, gross pay per week` 3000 EQUALS `Leave payments` OF 12, 30000, 30000
+-- 3 blocks of $4,000
+#ASSERT `the Government pays a self-employed adoptive mother at most, specified event` 3 `, lost income per week` 1000 EQUALS 12000
+#ASSERT `the Government-paid adoption benefit at most, specified event` 3 `, total income per day` 500 EQUALS 30000
+#ASSERT `the Government-paid adoption benefit at most, specified event` 1 `, total income per day` 500 EQUALS 20000
+#ASSERT `adoption leave on` (YMD 2026 1 9) `may still be taken, child born` (YMD 2025 1 10) `, still employed:` TRUE
+#ASSERT NOT `adoption leave on` (YMD 2026 1 10) `may still be taken, child born` (YMD 2025 1 10) `, still employed:` TRUE
+
+§§ `Goal 5 — fathers (ss 12H-12JA)`
+
+#ASSERT `a natural father eligible for paternity leave, birth` (`a citizen born on` (YMD 2025 6 1)) `, married in time:` TRUE `, months of service` 3
+#ASSERT NOT `a natural father eligible for paternity leave, birth` (`a citizen born on` (YMD 2025 6 1)) `, married in time:` FALSE `, months of service` 3
+#ASSERT NOT `a natural father eligible for paternity leave, birth` (`a citizen born on` (YMD 2025 6 1)) `, married in time:` TRUE `, months of service` 2
+
+-- April 2025 Scheme child: 4 weeks, $2,500 a week, $10,000; any other child: 2 weeks, $5,000
+#ASSERT `paternity leave payments, an April 2025 Scheme child:` TRUE `, gross pay per week` 3000 EQUALS `Leave payments` OF 4, 10000, 10000
+#ASSERT `paternity leave payments, an April 2025 Scheme child:` TRUE `, gross pay per week` 2000 EQUALS `Leave payments` OF 4, 8000, 8000
+#ASSERT `paternity leave payments, an April 2025 Scheme child:` FALSE `, gross pay per week` 3000 EQUALS `Leave payments` OF 2, 5000, 5000
+#ASSERT `the flexible paternity days, an April 2025 Scheme child:` TRUE `, weekly index` 5 EQUALS 20
+#ASSERT `the flexible paternity days, an April 2025 Scheme child:` FALSE `, weekly index` 6 EQUALS 12
+#ASSERT `the Government pays a self-employed father at most, a January 2024 Scheme child:` TRUE `, lost income per week` 3000 EQUALS 10000
+#ASSERT `the Government pays a self-employed father at most, a January 2024 Scheme child:` FALSE `, lost income per week` 3000 EQUALS 5000
+-- s 12HA: 28 days at $400 = 4 blocks of $2,800, capped at $2,500 = $10,000; at $300, 4 x $2,100
+#ASSERT `the Government-paid paternity benefit at most, a January 2024 Scheme child:` TRUE `, total income per day` 400 EQUALS 10000
+#ASSERT `the Government-paid paternity benefit at most, a January 2024 Scheme child:` TRUE `, total income per day` 300 EQUALS 8400
+#ASSERT `the Government-paid paternity benefit at most, a January 2024 Scheme child:` FALSE `, total income per day` 400 EQUALS 5000
+#ASSERT NOT `eligible for the Government-paid paternity benefit, event` (`a birth` (`a citizen born on` (YMD 2020 12 31))) `, married in time:` TRUE `, work` (`work` `an employee` 1 200 1000 100)
+#ASSERT `eligible for the Government-paid paternity benefit, event` (`a birth` (`a citizen born on` (YMD 2021 1 1))) `, married in time:` TRUE `, work` (`work` `an employee` 1 90 1000 100)
+
+-- s 12JA(1)
+#ASSERT `s 12JA applies to the child` (`a birth` (`a citizen born on` (YMD 2024 6 1)))
+#ASSERT `s 12JA applies to the child` (`a birth` (`birth` (YMD 2023 12 30) (YMD 2024 1 2) FALSE TRUE NOTHING))
+#ASSERT NOT `s 12JA applies to the child` (`a birth` (`birth` (YMD 2025 3 31) (YMD 2025 4 2) FALSE TRUE NOTHING))
+-- s 12JA(2)(d): P/W = 2,500 / 5 = $500 a day; at $2,000 a week, gross $400 a day
+#ASSERT `the least an employer may pay per day of extra paternity leave, gross pay per week` 3000 `, weekly index` 5 EQUALS 500
+#ASSERT `the least an employer may pay per day of extra paternity leave, gross pay per week` 2000 `, weekly index` 5 EQUALS 400
+#ASSERT `the Government reimburses extra paternity leave at most, weeks taken` 3 `, paid per week` 3000 EQUALS 5000
+
+§§ `Goal 6 — shared parental leave (ss 12DA-12DD, 12E-12G; Second Schedule)`
+
+-- para 5: M = 6 for births 1 April 2025 - 31 March 2026 (EDD before 1 April 2026); otherwise 10
+#ASSERT `M, the maximum number of units for` (`a birth` (`a citizen born on` (YMD 2025 6 1))) EQUALS 6
+#ASSERT `M, the maximum number of units for` (`a birth` (`a citizen born on` (YMD 2026 4 1))) EQUALS 10
+#ASSERT `M, the maximum number of units for` (`a birth` (`birth` (YMD 2025 3 30) (YMD 2025 4 2) FALSE TRUE NOTHING)) EQUALS 6
+#ASSERT `M, the maximum number of units for` (`a birth` (`birth` (YMD 2026 3 31) (YMD 2026 4 2) FALSE TRUE NOTHING)) EQUALS 10
+#ASSERT `M, the maximum number of units for` (`an adoption` (`a citizen child adopted` (YMD 2025 9 1) (YMD 2026 3 31))) EQUALS 6
+#ASSERT REFUSED `M, the maximum number of units for` (`a birth` (`a citizen born on` (YMD 2024 6 1)))
+-- para 6-7: M/2 each, or M for a sole parent
+#ASSERT `the default units for a parent of` (`a birth` (`a citizen born on` (YMD 2026 6 1))) `, both parents eligible:` TRUE EQUALS 5
+#ASSERT `the default units for a parent of` (`a birth` (`a citizen born on` (YMD 2026 6 1))) `, both parents eligible:` FALSE EQUALS 10
+#ASSERT `the default units for a parent of` (`a birth` (`a citizen born on` (YMD 2025 6 1))) `, both parents eligible:` TRUE EQUALS 3
+-- para 8's illustration: 4 + 6 does not exceed 10; 3.5 consumed of 5, one unit reallocatable
+#ASSERT `a valid allocation of` 4 `and` 6 `units within M =` 10
+#ASSERT NOT `a valid allocation of` 4.5 `and` 5.5 `units within M =` 10
+#ASSERT NOT `a valid allocation of` 6 `and` 5 `units within M =` 10
+#ASSERT `the units that may be reallocated, allocated` 5 `, consumed` 3.5 EQUALS 1
+#ASSERT `a variation notified on` (YMD 2026 5 20) `, specified variation period from` (YMD 2026 5 1) `, child born` (YMD 2026 5 1) `, a Director has required the employer's agreement under para 16:` FALSE EQUALS "permitted without the employer's agreement"
+#ASSERT `a variation notified on` (YMD 2026 5 29) `, specified variation period from` (YMD 2026 5 1) `, child born` (YMD 2026 5 1) `, a Director has required the employer's agreement under para 16:` FALSE EQUALS "permitted only with the employer's agreement"
+#ASSERT `a variation notified on` (YMD 2026 5 20) `, specified variation period from` (YMD 2026 5 1) `, child born` (YMD 2026 5 1) `, a Director has required the employer's agreement under para 16:` TRUE EQUALS "permitted only with the employer's agreement"
+#ASSERT `a variation notified on` (YMD 2027 5 1) `, specified variation period from` (YMD 2026 5 1) `, child born` (YMD 2026 5 1) `, a Director has required the employer's agreement under para 16:` FALSE EQUALS "not permitted: after the 12 months from the child's birth"
+
+-- 5 units at $3,000 a week: 5 x $2,500 = $12,500; at $2,000, $10,000
+#ASSERT `shared parental leave payments for` 5 `units, gross pay per week` 3000 EQUALS `Leave payments` OF 5, 12500, 12500
+#ASSERT `shared parental leave payments for` 5 `units, gross pay per week` 2000 EQUALS `Leave payments` OF 5, 10000, 10000
+#ASSERT `the Government pays a self-employed parent at most for` 5 `units, lost income per week` 3000 EQUALS 12500
+-- s 12DC: 35 days; at $300 a day 5 x $2,100 = $10,500
+#ASSERT `the shared parental benefit at most for` 5 `units, total income per day` 400 EQUALS 12500
+#ASSERT `the shared parental benefit at most for` 5 `units, total income per day` 300 EQUALS 10500
+
+-- s 12F(1)(a)
+#ASSERT `a natural father may take elected shared parental leave, birth` (`a citizen born on` (YMD 2024 6 1)) `, married in time:` TRUE
+#ASSERT NOT `a natural father may take elected shared parental leave, birth` (`birth` (YMD 2025 3 31) (YMD 2025 4 2) FALSE TRUE NOTHING) `, married in time:` TRUE
+#ASSERT `a natural father may take elected shared parental leave, birth` (`birth` (YMD 2017 6 30) (YMD 2017 7 2) FALSE TRUE NOTHING) `, married in time:` TRUE
+#ASSERT NOT `a natural father may take elected shared parental leave, birth` (`birth` (YMD 2017 6 30) (YMD 2017 6 30) FALSE TRUE NOTHING) `, married in time:` TRUE
+#ASSERT `a natural father may take elected shared parental leave, birth` (`birth` (YMD 2022 1 1) (YMD 2022 1 1) TRUE TRUE NOTHING) `, married in time:` TRUE
+#ASSERT `a valid s 12E election of weeks` 4
+#ASSERT NOT `a valid s 12E election of weeks` 5
+#ASSERT `the mother's weeks after electing` 4 `weeks, from` 16 EQUALS 12
+#ASSERT `elected shared parental leave payments for` 4 `weeks, gross pay per week` 3000 EQUALS `Leave payments` OF 4, 10000, 10000
+#ASSERT REFUSED `elected shared parental leave payments for` 5 `weeks, gross pay per week` 3000
+
+§§ `Goal 7 — childcare and infant care (ss 12B-12D)`
+
+#ASSERT `childcare leave days, months served` 3 `, months served in the relevant period` 12 `, a qualifying child aged` 3 EQUALS 6
+#ASSERT `childcare leave days, months served` 3 `, months served in the relevant period` 6 `, a qualifying child aged` 3 EQUALS 3
+#ASSERT `childcare leave days, months served` 3 `, months served in the relevant period` 4.9 `, a qualifying child aged` 3 EQUALS 2
+#ASSERT `childcare leave days, months served` 2 `, months served in the relevant period` 12 `, a qualifying child aged` 3 EQUALS 0
+#ASSERT `childcare leave days, months served` 12 `, months served in the relevant period` 12 `, a qualifying child aged` 7 EQUALS 0
+#ASSERT `extended childcare leave days, months served` 3 `, a qualifying child aged` 7 EQUALS 2
+#ASSERT `extended childcare leave days, months served` 3 `, a qualifying child aged` 13 EQUALS 0
+#ASSERT `extended childcare leave days, months served` 3 `, a qualifying child aged` 6 EQUALS 0
+-- s 12B(2)(a): 6 combined; 42 per child
+#ASSERT `the days that may be taken this period, childcare` 6 `, extended` 2 `, already taken for the child: childcare` 0 `, extended` 0 EQUALS 6
+#ASSERT `the days that may be taken this period, childcare` 6 `, extended` 0 `, already taken for the child: childcare` 40 `, extended` 0 EQUALS 2
+-- s 12B(10): 3 days at $800, then $500 a day: $2,400 + $1,500
+#ASSERT `the employer pays at most for` 6 `days of childcare leave at gross pay per day` 800 EQUALS 3900
+#ASSERT `the employer pays at most for` 2 `days of childcare leave at gross pay per day` 300 EQUALS 600
+#ASSERT `the employer pays at most for` 2 `days of extended childcare leave at gross pay per day` 800 EQUALS 1000
+-- s 12C: 6 granted, 3 reimbursed at $500; 5 granted, 2; already 2 this year, 1 more; 21 for the child, none
+#ASSERT `the Government reimburses childcare leave at most, days granted` 6 `, paid per day` 800 `, days already reimbursed: this year` 0 `, for the child` 0 EQUALS 1500
+#ASSERT `the Government reimburses childcare leave at most, days granted` 5 `, paid per day` 800 `, days already reimbursed: this year` 0 `, for the child` 0 EQUALS 1000
+#ASSERT `the Government reimburses childcare leave at most, days granted` 6 `, paid per day` 800 `, days already reimbursed: this year` 2 `, for the child` 0 EQUALS 500
+#ASSERT `the Government reimburses childcare leave at most, days granted` 6 `, paid per day` 800 `, days already reimbursed: this year` 0 `, for the child` 21 EQUALS 0
+#ASSERT `the Government reimburses childcare leave at most, days granted` 4 `, paid per day` 300 `, days already reimbursed: this year` 0 `, for the child` 0 EQUALS 300
+#ASSERT `the Government reimburses extended childcare leave at most, days taken` 2 `, paid per day` 800 `, days already reimbursed: this year` 0 `, for the child` 0 EQUALS 1000
+#ASSERT `the Government reimburses extended childcare leave at most, days taken` 2 `, paid per day` 800 `, days already reimbursed: this year` 2 `, for the child` 0 EQUALS 0
+-- s 12B(16)-(19): 3 + 2 = 5, capped at 3 days a year (18B), $500 a day
+#ASSERT `the Government pays a self-employed parent at most for childcare, days ceased for a child below 7` 6 `, for a child 7 to 12` 2 `, income per day` 600 EQUALS 1500
+#ASSERT `the Government pays a self-employed parent at most for childcare, days ceased for a child below 7` 4 `, for a child 7 to 12` 0 `, income per day` 600 EQUALS 500
+#ASSERT `the Government pays a self-employed parent at most for childcare, days ceased for a child below 7` 4 `, for a child 7 to 12` 1 `, income per day` 300 EQUALS 600
+#ASSERT `unpaid infant care leave days, months served` 3 `, a qualifying child aged` 1 `, already taken for the child` 0 EQUALS 12
+#ASSERT `unpaid infant care leave days, months served` 3 `, a qualifying child aged` 1 `, already taken for the child` 18 EQUALS 6
+#ASSERT `unpaid infant care leave days, months served` 3 `, a qualifying child aged` 2 `, already taken for the child` 0 EQUALS 0
+#ASSERT `Employment Act s 87A days left, s 12B days taken` 0 EQUALS 2
+#ASSERT `Employment Act s 87A days left, s 12B days taken` 1 EQUALS 1
+#ASSERT `Employment Act s 87A days left, s 12B days taken` 3 EQUALS 0
+-- s 12B(1B)-(1C): married to another at conception; married each other 1 Jan 2025 after a June 2024 birth
+`excluded father` MEANS `Father's marital facts` OF TRUE, JUST (YMD 2025 1 1)
+#ASSERT NOT `the father's exclusion lets him claim on` (YMD 2024 12 31) `, child born` (YMD 2024 6 1) `, facts` `excluded father`
+#ASSERT `the father's exclusion lets him claim on` (YMD 2025 1 1) `, child born` (YMD 2024 6 1) `, facts` `excluded father`
+#ASSERT `the father's exclusion lets him claim on` (YMD 2024 6 1) `, child born` (YMD 2024 6 1) `, facts` (`Father's marital facts` OF TRUE, JUST (YMD 2024 3 1))
+#ASSERT NOT `the father's exclusion lets him claim on` (YMD 2024 5 31) `, child born` (YMD 2024 6 1) `, facts` (`Father's marital facts` OF TRUE, JUST (YMD 2024 3 1))
+
+§§ `Goal 8 — general rules, recovery and offences`
+
+#ASSERT NOT `a day of Part 3 leave is paid, on unpaid leave at own request:` TRUE
+#ASSERT `the Government pays across all employers and self-employment at most, single employer limit` 20000 `, claims` (LIST 15000, 10000) EQUALS 20000
+#ASSERT `the Government pays across all employers and self-employment at most, single employer limit` 20000 `, claims` (LIST 5000, 10000) EQUALS 15000
+#ASSERT `the order of consumption for` `the natural mother` EQUALS LIST "paid maternity leave (s 9)", "paid shared parental leave (s 12DA)"
+-- s 12N(4): one month after the later date, 31 January 2026 -> 28 February 2026
+#ASSERT `the employer must refund by, recovered on` (YMD 2026 1 31) `, reimbursed on` (YMD 2026 1 15) EQUALS YMD 2026 2 28
+#ASSERT `an adoption defaulting event under s 12N(9)(e), eligibility date` (YMD 2025 1 1) `, adopted on` NOTHING `, citizen by birth:` FALSE `, citizen on` NOTHING `, as at` (YMD 2026 1 1)
+#ASSERT NOT `an adoption defaulting event under s 12N(9)(e), eligibility date` (YMD 2025 1 1) `, adopted on` NOTHING `, citizen by birth:` FALSE `, citizen on` NOTHING `, as at` (YMD 2025 12 31)
+#ASSERT `an adoption defaulting event under s 12N(9)(e), eligibility date` (YMD 2025 1 1) `, adopted on` (JUST (YMD 2025 6 1)) `, citizen by birth:` FALSE `, citizen on` (JUST (YMD 2025 12 1)) `, as at` (YMD 2026 1 1)
+#ASSERT NOT `an adoption defaulting event under s 12N(9)(e), eligibility date` (YMD 2025 1 1) `, adopted on` (JUST (YMD 2025 6 1)) `, citizen by birth:` FALSE `, citizen on` (JUST (YMD 2025 11 30)) `, as at` (YMD 2026 1 1)
+-- s 12O: 57 days > 56; 36 days > 5 x 7; 28 days for a January 2024 Scheme child's father
+#ASSERT `the Government may recover under s 12O, regime` `s 12O(1) a woman's delivery` `, specified event` 1 `, days paid for` 57 `, amount paid` 0 `, the benefit amount` 1000
+#ASSERT NOT `the Government may recover under s 12O, regime` `s 12O(1) a woman's delivery` `, specified event` 1 `, days paid for` 56 `, amount paid` 1000 `, the benefit amount` 1000
+#ASSERT NOT `the Government may recover under s 12O, regime` `s 12O(1) a woman's delivery` `, specified event` 3 `, days paid for` 100 `, amount paid` 1000 `, the benefit amount` 1000
+#ASSERT `the Government may recover under s 12O, regime` (`s 12O(2A) an April 2025 Scheme child, N units` 5) `, specified event` 1 `, days paid for` 36 `, amount paid` 0 `, the benefit amount` 1000
+#ASSERT NOT `the Government may recover under s 12O, regime` (`s 12O(3) a man, s 12HA(2)(b) applying` TRUE) `, specified event` 1 `, days paid for` 28 `, amount paid` 0 `, the benefit amount` 1000
+#ASSERT `the Government may recover under s 12O, regime` (`s 12O(3) a man, s 12HA(2)(b) applying` FALSE) `, specified event` 1 `, days paid for` 15 `, amount paid` 0 `, the benefit amount` 1000
+#ASSERT `a dispute must be referred to the Minister by, arising on` (YMD 2026 1 31) `, later time allowed` NOTHING EQUALS YMD 2026 2 28
+#ASSERT `a dispute must be referred to the Minister by, arising on` (YMD 2026 1 31) `, later time allowed` (JUST (YMD 2026 4 30)) EQUALS YMD 2026 4 30
+
+`leave offence` MEANS `an employer's leave offence under s 12AA(7A)-(9), 12B(12)-(14), 12DA(10)-(11), 12E(10)-(11), 12H(6A)-(8) or 17(1)`
+#ASSERT `the maximum penalty for` `leave offence` `, a repeat offender:` FALSE EQUALS `penalty of` 5000 6
+#ASSERT `the maximum penalty for` `leave offence` `, a repeat offender:` TRUE EQUALS `penalty of` 10000 12
+#ASSERT `the maximum penalty for` `s 16 false or misleading statement` `, a repeat offender:` FALSE EQUALS `penalty of` 20000 12
+#ASSERT `the maximum penalty for` `s 12N(5) failing to refund the Government` `, a repeat offender:` FALSE EQUALS `penalty of` 20000 0
+#ASSERT `the most that may be collected to compound` `leave offence` EQUALS 1000
+#ASSERT `who may compound` `leave offence` EQUALS "the Commissioner for Labour"
+#ASSERT `the most that may be collected to compound` `s 18 holding out as an approved person` EQUALS 5000
+
+§§ `The top-level goal`
+
+GIVEN r IS A `Parent role`, e IS A `Child event`, n IS A NUMBER, w IS A `Work facts`, both IS A BOOLEAN, elected IS A NUMBER
+GIVETH A `Parent case`
+`a parent` r e n w both elected MEANS `Parent case` WITH
+    `role` IS r
+    `event` IS e
+    `specified event number` IS n
+    `work` IS w
+    `lawfully married to the other parent in time` IS TRUE
+    `the other parent is also eligible for shared parental leave` IS both
+    `units allocated under the arrangement` IS NOTHING
+    `weeks elected by the mother under s 12E(5)` IS elected
+
+-- a mother, employee of 12 months on $3,000 a week, first child born 1 May 2026,
+-- the father eligible too: 16 weeks, $44,000, $20,000 back; M = 10, 5 units each,
+-- 5 x $2,500 = $12,500 of shared parental leave
+`mother A` MEANS `the parental position for` (`a parent` `the natural mother` (`a birth` (`a citizen born on` (YMD 2026 5 1))) 1 (`work` `an employee` 12 365 3000 400) TRUE 0)
+#ASSERT `mother A`'s `an April 2025 Scheme child`
+#ASSERT `mother A`'s `own paid leave` EQUALS JUST (`Leave payments` OF 16, 44000, 20000)
+#ASSERT `mother A`'s `shared parental units` EQUALS 5
+#ASSERT `mother A`'s `shared parental leave` EQUALS JUST (`Leave payments` OF 5, 12500, 12500)
+#ASSERT `mother A`'s `Government-paid benefit, at most` EQUALS NOTHING
+#ASSERT `mother A`'s `own claim for lost income, at most` EQUALS NOTHING
+
+-- a self-employed father of a June 2024 child (a January 2024 Scheme child, not
+-- April 2025), the mother electing 2 weeks: $10,000 of lost income (s 12I(4)),
+-- 2 elected weeks at $2,500 = $5,000
+`father B` MEANS `the parental position for` (`a parent` `the natural father` (`a birth` (`a citizen born on` (YMD 2024 6 1))) 1 (`work` `a self-employed person` 6 365 3000 400) TRUE 2)
+#ASSERT NOT `father B`'s `an April 2025 Scheme child`
+#ASSERT `father B`'s `own claim for lost income, at most` EQUALS JUST 10000
+#ASSERT `father B`'s `shared parental units` EQUALS 2
+#ASSERT `father B`'s `shared parental claim from the Government, at most` EQUALS JUST 5000
+#ASSERT `father B`'s `own paid leave` EQUALS NOTHING
+
+-- a mother with one month's service but 120 days' work in the year, second
+-- event, sole eligible parent: no maternity leave; the Government-paid benefit
+-- 56 days at $400 = 2 blocks of $11,200, capped: $20,000; 10 units; shared
+-- parental benefit 70 days, 10 blocks of $2,800 capped at $2,500 = $25,000
+`mother C` MEANS `the parental position for` (`a parent` `the natural mother` (`a birth` (`a citizen born on` (YMD 2026 5 1))) 2 (`work` `an employee` 1 120 3000 400) FALSE 0)
+#ASSERT `mother C`'s `own paid leave` EQUALS NOTHING
+#ASSERT `mother C`'s `Government-paid benefit, at most` EQUALS JUST 20000
+#ASSERT `mother C`'s `shared parental units` EQUALS 10
+#ASSERT `mother C`'s `shared parental claim from the Government, at most` EQUALS JUST 25000
+
+-- a mother of a 2024 child who elected 4 weeks to the father: 12 weeks; $8,000 + $4,000
+`mother D` MEANS `the parental position for` (`a parent` `the natural mother` (`a birth` (`a citizen born on` (YMD 2024 6 1))) 1 (`work` `an employee` 12 365 1000 100) TRUE 4)
+#ASSERT `mother D`'s `own paid leave` EQUALS JUST (`Leave payments` OF 12, 12000, 4000)
+#ASSERT `mother D`'s `shared parental units` EQUALS 0
+
+-- a child who became a citizen after birth: the goal refuses and names s 9(1A)
+#ASSERT REFUSED `the parental position for` (`a parent` `the natural mother` (`a birth` (`birth` (YMD 2026 5 1) (YMD 2026 5 1) FALSE FALSE (JUST (YMD 2026 8 1)))) 1 (`work` `an employee` 12 365 3000 400) TRUE 0)
+
+-- an adoptive father, employee, of a citizen child adopted in 2026: 4 weeks at
+-- $2,500 = $10,000; default units 5
+`father E` MEANS `the parental position for` (`a parent` `the adoptive father` (`an adoption` (`a citizen child adopted` (YMD 2026 2 1) (YMD 2026 6 1))) 1 (`work` `an employee` 12 365 3000 400) TRUE 0)
+#ASSERT `father E`'s `own paid leave` EQUALS JUST (`Leave payments` OF 4, 10000, 10000)
+#ASSERT `father E`'s `shared parental units` EQUALS 5
+
+-- added after the independent pass: a mother who was employed but has no
+-- current employer gets the Government-paid benefit, not leave: 56 days at $400
+`mother F` MEANS `the parental position for` (`a parent` `the natural mother` (`a birth` (`a citizen born on` (YMD 2026 5 1))) 1 (`work` `neither` 12 200 0 400) FALSE 0)
+#ASSERT `mother F`'s `own paid leave` EQUALS NOTHING
+#ASSERT `mother F`'s `Government-paid benefit, at most` EQUALS JUST 20000
+
+-- s 12B(16)-(18A): 2 months carried on — nothing; 20 days already claimed for the child under (16) — 1 more
+#ASSERT `the Government pays a self-employed parent at most for childcare, months carried on` 2 `, days ceased for a child below 7` 6 `, already claimed for that child` 0 `, for a child 7 to 12` 0 `, already claimed for that child` 0 `, income per day` 600 EQUALS 0
+#ASSERT `the Government pays a self-employed parent at most for childcare, months carried on` 12 `, days ceased for a child below 7` 6 `, already claimed for that child` 20 `, for a child 7 to 12` 0 `, already claimed for that child` 0 `, income per day` 600 EQUALS 500
+#ASSERT `the Government pays a self-employed parent at most for childcare, months carried on` 12 `, days ceased for a child below 7` 6 `, already claimed for that child` 0 `, for a child 7 to 12` 2 `, already claimed for that child` 12 `, income per day` 600 EQUALS 1500

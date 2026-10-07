@@ -9,7 +9,7 @@ Legislation Division of the Attorney-General's Chambers of Singapore ("AGC").
   grant in [SSO's Terms of Use](https://sso.agc.gov.sg/Terms-of-Use) cl.13,
   subject to the conditions reproduced below. AGC may modify or revoke that
   permission at any time without notice (cl.14).
-- **Retrieved**: indexed 2026-10-01 from https://sso.agc.gov.sg/Act/CMA1993; the deposited text in `source/` is from a PDF created 2026-10-07 ("Current version as at 07 Oct 2026"), downloaded by the user and supplied on 2026-10-07 (see `source/PROVENANCE.md`; the PDF itself is not deposited).
+- **Retrieved**: PDF created 2026-10-07 ("Current version as at 07 Oct 2026"), downloaded from https://sso.agc.gov.sg/Act/CMA1993 by the user and supplied on 2026-10-07. Its text is `../source/CMA1993.txt`; the PDF is not deposited (see `../source/PROVENANCE.md`).
 - **Excluded from the grant**: graphics and images on SSO, which may not be
   reproduced without AGC's prior written permission (cl.6).
 
@@ -29,7 +29,9 @@ Legislation Division of the Attorney-General's Chambers of Singapore ("AGC").
   work or its producers.
 - **Extraction window** (cl.13(d)(i)): the automated extraction that produced
   this file was carried out between 3 a.m. and 7 a.m. Singapore Time, and was
-  rate-limited to SSO's published crawl-delay.
+  rate-limited to SSO's published crawl-delay. The text in `source/` was not
+  extracted automatically: the user downloaded the PDF by hand, and whether the
+  window applies to that is undetermined.
 
 ## Status of the text (cl.8)
 

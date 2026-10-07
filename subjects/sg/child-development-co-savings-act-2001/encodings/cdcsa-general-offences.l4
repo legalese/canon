@@ -1,0 +1,227 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `cdcsa-types`
+IMPORT `cdcsa-common`
+
+-- Child Development Co-Savings Act 2001 — GOAL 8: GENERAL RULES, RECOVERY,
+-- DISPUTES AND OFFENCES (ss 12L-13, Part 4).
+--
+--   "Is a day paid; how do several employers share the limits; when must an
+--    employer refund what it recovers; when may the Government recover an
+--    over-payment; by when must a dispute go to the Minister; and what is the
+--    most an offence can cost, or be compounded for?"
+--
+-- Source: ../source/CDCSA2001.txt lines 3625-4455.
+
+§ `Goal 8 — general rules, recovery and offences`
+
+§§ `Holidays and unpaid leave (ss 12L, 12M)`
+
+-- s 12L(1): payment for any period under ss 12AA, 12AB, 12DA, 12E or 12H "must
+-- be paid for every day of that period, including holidays"; (2) but no "extra
+-- day's salary for a holiday".
+-- s 12M: no payment under Part 3 for a day of leave "on a day the employee
+-- takes leave of absence without pay granted by the employer at the
+-- employee's request".
+@ref s 12M(1)-(2)
+GIVEN `on unpaid leave at own request` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a day of Part 3 leave is paid, on unpaid leave at own request:` `on unpaid leave at own request` IF
+    NOT `on unpaid leave at own request`
+
+§§ `Several employers, or employment and self-employment (s 12MA)`
+
+-- s 12MA(2): concurrently employed, P "may consume P's entitlement ... during
+-- P's employment with every employer" (the illustration: 16 weeks from each of
+-- two employers). s 12MA(3)-(4): "the single employer reimbursement limits are
+-- to be treated as the limits ... on the aggregate amounts of — (i)
+-- reimbursement that the Government may make to P's employer or all of P's
+-- employers ...; and (ii) payments that the Government may make to P as a
+-- self-employed person" (apportionment between them is for regulations).
+@ref s 12MA(2)-(4)
+GIVEN `single employer limit` IS A NUMBER, claims IS A LIST OF NUMBER
+GIVETH A NUMBER
+`the Government pays across all employers and self-employment at most, single employer limit` `single employer limit` `, claims` claims MEANS
+    IF sum claims GREATER THAN `single employer limit` THEN `single employer limit` ELSE sum claims
+
+§§ `The order leave is consumed (s 12MB)`
+
+-- s 12MB(1): for an April 2025 Scheme child, an employee is "treated as
+-- consuming ... (a) first, ... paid maternity leave under section 9 [or]
+-- paid adoption leave under section 12AA [or] paid paternity leave under
+-- section 12H; (b) second, ... paid shared parental leave under section 12DA".
+@ref s 12MB(1)
+GIVEN r IS A `Parent role`
+GIVETH A LIST OF STRING
+`the order of consumption for` r MEANS
+    LIST (CONSIDER r
+          WHEN `the natural mother`   THEN "paid maternity leave (s 9)"
+          WHEN `the adoptive mother`  THEN "paid adoption leave (s 12AA)"
+          WHEN `the natural father`   THEN "paid paternity leave (s 12H)"
+          WHEN `the adoptive father`  THEN "paid paternity leave (s 12H)")
+         "paid shared parental leave (s 12DA)"
+
+§§ `Recovery by an employer (s 12N)`
+
+-- s 12N(4): an employer who recovers from the employee a payment the
+-- Government reimbursed "must refund to the Government the amount ...
+-- recovered ... within one month after the later of the following dates: (i)
+-- the date the amount is so recovered; (ii) the date the employer receives the
+-- amount reimbursed". s 12N(5): an employer who contravenes (4)(a) is liable to
+-- "a fine not exceeding $20,000".
+@ref s 12N(4)
+GIVEN recovered IS A DATE, reimbursed IS A DATE
+GIVETH A DATE
+`the employer must refund by, recovered on` recovered `, reimbursed on` reimbursed MEANS
+    `add months` (IF recovered GREATER THAN reimbursed THEN recovered ELSE reimbursed) 1
+
+-- s 12N(9) "defaulting event": "(a) an error (however caused); (b) any false or
+-- misleading statement ...; (c) [childcare leave taken in excess or without
+-- entitlement]; (d) [a Government-paid benefit disqualified, or unpaid leave
+-- ending early]; (e) [the child not adopted within 12 months of the
+-- eligibility date, or a foreign-born child not a citizen within 6 months of
+-- the adoption]; (f) [(e) and the Government refusing or recovering]".
+@ref s 12N(9)(e)
+GIVEN eligibility IS A DATE, adopted IS A MAYBE DATE, `citizen by birth` IS A BOOLEAN, `citizen on` IS A MAYBE DATE, `as at` IS A DATE
+GIVETH A BOOLEAN
+DECIDE `an adoption defaulting event under s 12N(9)(e), eligibility date` eligibility `, adopted on` adopted `, citizen by birth:` `citizen by birth` `, citizen on` `citizen on` `, as at` `as at` IF
+    CONSIDER adopted
+    WHEN NOTHING THEN `as at` AT LEAST `add years` eligibility 1
+    WHEN JUST a THEN
+            a AT LEAST `add years` eligibility 1
+        OR  (    NOT `citizen by birth`
+             AND CONSIDER `citizen on`
+                 WHEN JUST c  THEN c AT LEAST `add months` a 6
+                 WHEN NOTHING THEN `as at` AT LEAST `add months` a 6)
+
+§§ `Recovery by the Government (s 12O)`
+
+-- s 12O(1)(b): the Government may recover from a woman, by regulations, where
+-- "(i) the total period of absence ... exceeds — (A) 56 days, if ... first or
+-- second specified event; or (B) 112 days, if ... third or subsequent ...; (ii)
+-- the total amount paid by the Government ... exceeds" the s 9(5A) amount.
+-- (2): adoption, 56 or 84 days, or the s 12A(2) amount. (2A): an April 2025
+-- Scheme child, "(N × 7) days" or the s 12DC(2) amount. (3): a father, "14
+-- days" or "28 days", or the s 12HA(2) amount.
+DECLARE `Recovery regime` IS ONE OF
+    `s 12O(1) a woman's delivery`
+    `s 12O(2) a woman's adoption`
+    `s 12O(2A) an April 2025 Scheme child, N units`  HAS n IS A NUMBER
+    `s 12O(3) a man, s 12HA(2)(b) applying`          HAS `January 2024 Scheme child` IS A BOOLEAN
+
+@ref s 12O(1)-(3), (5)
+GIVEN r IS A `Recovery regime`, event IS A NUMBER, `days paid for` IS A NUMBER, `amount paid` IS A NUMBER, `benefit amount` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the Government may recover under s 12O, regime` r `, specified event` event `, days paid for` `days paid for` `, amount paid` `amount paid` `, the benefit amount` `benefit amount` IF
+        `days paid for` GREATER THAN `day limit`
+    OR  `amount paid` GREATER THAN `benefit amount`
+    WHERE
+        `day limit` MEANS
+            CONSIDER r
+            WHEN `s 12O(1) a woman's delivery` THEN IF `a first or second specified event` event THEN 56 ELSE 112
+            WHEN `s 12O(2) a woman's adoption` THEN IF `a first or second specified event` event THEN 56 ELSE 84
+            WHEN `s 12O(2A) an April 2025 Scheme child, N units` n THEN n TIMES 7
+            WHEN `s 12O(3) a man, s 12HA(2)(b) applying` j THEN IF j THEN 28 ELSE 14
+
+§§ `Disputes (s 14)`
+
+-- s 14(1): a question or dispute on eligibility, payments, withdrawals,
+-- entitlements or reimbursement "must be referred to the Minister for decision
+-- within one month from the date on which the question or dispute arises or
+-- such other later time as the Minister may allow". (2): the decision "is
+-- final".
+@ref s 14(1)-(2)
+GIVEN arose IS A DATE, `later time allowed` IS A MAYBE DATE
+GIVETH A DATE
+`a dispute must be referred to the Minister by, arising on` arose `, later time allowed` `later time allowed` MEANS
+    CONSIDER `later time allowed`
+    WHEN JUST d  THEN d
+    WHEN NOTHING THEN `add months` arose 1
+
+§§ `Offences (ss 12AA, 12B, 12D, 12DA, 12E, 12H, 12N, 16-18, 20)`
+
+DECLARE `CDCSA offence` IS ONE OF
+    `an employer's leave offence under s 12AA(7A)-(9), 12B(12)-(14), 12DA(10)-(11), 12E(10)-(11), 12H(6A)-(8) or 17(1)`
+    `s 12D(7) failing to grant unpaid infant care leave`
+    `s 12N(5) failing to refund the Government`
+    `s 16 false or misleading statement`
+    `s 18 holding out as an approved person`
+    `an offence under regulations (s 3(2)(j), 20(3))`
+
+DECLARE `CDCSA penalty` HAS
+    `fine`                    IS A NUMBER
+    `imprisonment in months`  IS A NUMBER
+
+GIVEN f IS A NUMBER, m IS A NUMBER
+GIVETH A `CDCSA penalty`
+`penalty of` f m MEANS `CDCSA penalty` WITH `fine` IS f, `imprisonment in months` IS m
+
+-- The employer's leave offences: "a fine not exceeding $5,000 or ...
+-- imprisonment for a term not exceeding 6 months or ... both"; a "repeat
+-- offender" (convicted on another occasion before; for s 17 and s 12B, on or
+-- after 1 May 2013) "a fine not exceeding $10,000 or ... imprisonment ... not
+-- exceeding 12 months". s 12D(7): the same, "for a subsequent offence".
+-- s 12N(5): "a fine not exceeding $20,000". s 16(1), 18(1): "$20,000 or ... 12
+-- months". Regulations: up to "$20,000 or ... 12 months" (s 3(2)(j), 20(3)).
+@ref ss 12AA(7A)-(9), (11)-(12); 12B(12)-(14C); 12D(7); 12DA(10)-(14); 12E(10)-(14); 12H(6A)-(11); 12N(5); 16(1); 17(1)-(1AA); 18(1); 20(3)
+GIVEN o IS A `CDCSA offence`, repeat IS A BOOLEAN
+GIVETH A `CDCSA penalty`
+`the maximum penalty for` o `, a repeat offender:` repeat MEANS
+    CONSIDER o
+    WHEN `an employer's leave offence under s 12AA(7A)-(9), 12B(12)-(14), 12DA(10)-(11), 12E(10)-(11), 12H(6A)-(8) or 17(1)` THEN
+        IF repeat THEN `penalty of` 10000 12 ELSE `penalty of` 5000 6
+    WHEN `s 12D(7) failing to grant unpaid infant care leave` THEN
+        IF repeat THEN `penalty of` 10000 12 ELSE `penalty of` 5000 6
+    WHEN `s 12N(5) failing to refund the Government`            THEN `penalty of` 20000 0
+    WHEN `s 16 false or misleading statement`                   THEN `penalty of` 20000 12
+    WHEN `s 18 holding out as an approved person`               THEN `penalty of` 20000 12
+    WHEN `an offence under regulations (s 3(2)(j), 20(3))`      THEN `penalty of` 20000 12
+
+-- s 19(1): "The Minister or any person authorised by the Minister may compound
+-- any offence under section 12N, 16 or 18 or any regulations ... a sum not
+-- exceeding $5,000." (2): "The Commissioner for Labour may compound any offence
+-- under section 12AA, 12B, 12D, 12DA, 12E, 12H or 17 ... a sum not exceeding
+-- $1,000."
+@ref s 19(1)-(2)
+GIVEN o IS A `CDCSA offence`
+GIVETH A NUMBER
+`the most that may be collected to compound` o MEANS
+    CONSIDER o
+    WHEN `an employer's leave offence under s 12AA(7A)-(9), 12B(12)-(14), 12DA(10)-(11), 12E(10)-(11), 12H(6A)-(8) or 17(1)` THEN 1000
+    WHEN `s 12D(7) failing to grant unpaid infant care leave` THEN 1000
+    OTHERWISE 5000
+
+@ref s 19(1)-(2)
+GIVEN o IS A `CDCSA offence`
+GIVETH A STRING
+`who may compound` o MEANS
+    CONSIDER o
+    WHEN `an employer's leave offence under s 12AA(7A)-(9), 12B(12)-(14), 12DA(10)-(11), 12E(10)-(11), 12H(6A)-(8) or 17(1)` THEN "the Commissioner for Labour"
+    WHEN `s 12D(7) failing to grant unpaid infant care leave` THEN "the Commissioner for Labour"
+    OTHERWISE "the Minister or a person the Minister authorises"
+
+-- s 18A: an offence by a body corporate committed with the consent or
+-- connivance of, or attributable to, a director, manager, secretary or similar
+-- officer (or one purporting to act so): that person is guilty too.
+-- s 18(3): every partner, unless "proved to have been ignorant of or attempted
+-- to prevent the commission of the offence".
+@ref ss 18(3), 18A
+GIVEN `consent, connivance or default proved` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `an officer of the body corporate is also guilty, consent, connivance or default:` `consent, connivance or default proved` IF
+    `consent, connivance or default proved`
+
+§§ `Provisions carried as text`
+
+@ref long title; ss 1, 2(3)-(4), 13, 15, 15A, 20, 21, 22
+GIVETH A LIST OF STRING
+`general provisions carried as text` MEANS
+    LIST "Long title: An Act to encourage married persons in Singapore to have more children, to facilitate the provision of cash grants and the making of financial provision for the development of children, to enable financial provision to be made for children of parents who have been granted a divorce, a judicial separation or an annulment of marriage, and for matters connected therewith."
+         "s 1: This Act is the Child Development Co-Savings Act 2001."
+         "s 2(3)-(4): the Minister may amend the First or Second Schedule by order in the Gazette, with saving and transitional provisions"
+         "s 13: Part 3 does not apply to any class of employees, self-employed persons or employers the Minister specifies by Gazette notification"
+         "s 15: every parent of a member must notify the Minister of a change of residence; a report under s 10 of the National Registration Act 1965 suffices"
+         "s 15A: a Director or authorised person may enter premises, require, inspect, copy and take documents, and access or seize computers, to verify statements and claims"
+         "s 20: the Minister may make regulations for claims, payments, determinations, records, apportionment between employers and part-time employees"
+         "s 21: the Minister may exempt a class of persons by order in the Gazette"
+         "s 22: the Minister (or a designated office-holder) may exempt a person on application, on terms, in writing"
