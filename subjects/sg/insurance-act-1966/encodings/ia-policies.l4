@@ -1,0 +1,344 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `ia-types`
+
+-- Insurance Act 1966 — GOALS 6-7: THE POLICY AND THE POLICY OWNER
+-- (First Schedule; ss 3(1), 66, 68, 146-152; nominations and payout, Part 3C
+-- and s 150).
+--
+--   Goal 6: "Is this a Singapore policy, a life policy, a long-term accident
+--   and health policy; is it valid; how much can be recovered; what may the
+--   owner do after 3 years?"
+--   Goal 7: "Is this nomination valid; who receives the death benefits; whom
+--   may the insurer pay without probate, and how much?"
+--
+-- Source: ../source/IA1966.txt, ss 66-68, 131-136, 146-152 and the First
+-- Schedule.
+
+§ `Goals 6-7 — the policy`
+
+§§ `Ordinary residence (First Schedule para 2(4)(a), (e))`
+
+-- "(i) is a citizen of Singapore, unless he or she has resided outside
+-- Singapore continuously for 5 or more years preceding the proposal date ...
+-- and is not currently residing in Singapore; (ii) is a permanent resident,
+-- unless he or she has resided in Singapore for less than a total of 183 days
+-- in the 12 months preceding the proposal date ...; (iii) has a work pass or
+-- permit ..., unless [the same]; or (iv) has a pass or permit ... that has a
+-- duration longer than 90 days and has resided in Singapore continuously for
+-- at least 90 days in the 12 months preceding". (e): part of a day counts.
+@ref First Schedule para 2(4)(a), (e)
+GIVEN r IS A `Residence facts`
+GIVETH A BOOLEAN
+DECIDE `ordinarily resident in Singapore` r IF
+    CONSIDER r's `status`
+    WHEN `a citizen` THEN
+        NOT (r's `years resided continuously outside Singapore before the proposal` AT LEAST 5 AND (NOT r's `currently residing in Singapore`))
+    WHEN `a permanent resident`          THEN r's `days resided in Singapore in the 12 months before the proposal` AT LEAST 183
+    WHEN `a work pass or permit holder`  THEN r's `days resided in Singapore in the 12 months before the proposal` AT LEAST 183
+    WHEN `a holder of another pass longer than 90 days` THEN r's `days continuously resided in Singapore in those 12 months` AT LEAST 90
+    WHEN `none of these` THEN FALSE
+
+§§ `Singapore policy or offshore policy (First Schedule para 2)`
+
+-- para 2(1): issued in the course of the insurer's business in Singapore and
+-- "(a) in relation to a life policy or accident and health policy ... (i)
+-- where the policy owner is an individual, the policy owner or insured is
+-- ordinarily resident in Singapore at the [proposal date]; (ii) where the
+-- policy owner is not an individual — (A) the policy owner's address is or was
+-- an address in Singapore ... or (B) ... covers an insured who is ordinarily
+-- resident ...; (b) in relation to direct general insurance ..., a policy
+-- where the risk arises in Singapore or — (i) where the insured is an
+-- individual, the insured is ordinarily resident ...; or (ii) where the
+-- insured is not an individual, the insured is a person resident in Singapore
+-- or has a permanent establishment in Singapore". (2): not cargo carried from
+-- outside Singapore to outside Singapore. (3): "Offshore policy" is any other
+-- policy issued in the course of business in Singapore. (Treaty reinsurance,
+-- (1)(c)-(d), turns on a 25% share of premiums; see `a Singapore treaty`.)
+@ref First Schedule para 2(1)-(3)
+GIVEN p IS A `Policy case`
+GIVETH A STRING
+`the policy is` p MEANS
+    BRANCH IF NOT p's `issued in the course of business in Singapore` THEN "neither: not issued in the course of business in Singapore"
+           IF `Singapore`                                          THEN "a Singapore policy"
+           OTHERWISE                                                    "an offshore policy"
+    WHERE
+        `resident` MEANS
+            IF p's `the owner (or insured) is an individual`
+            THEN `ordinarily resident in Singapore` (p's `residence of the owner or insured`)
+            ELSE p's `a non-individual: Singapore address, residence or permanent establishment`
+        `Singapore` MEANS
+            CONSIDER p's `kind`
+            WHEN `a general insurance policy` THEN
+                (p's `the risk arises in Singapore` OR `resident`) AND (NOT p's `cargo carried between places outside Singapore`)
+            OTHERWISE `resident`
+
+-- para 2(1)(c)-(d): a treaty reinsurance is a Singapore policy where "more
+-- than 25% of the total risks in terms of gross premiums arise in Singapore".
+@ref First Schedule para 2(1)(c)-(d)
+GIVEN `Singapore premiums` IS A NUMBER, `total premiums` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `a Singapore treaty, Singapore premiums` `Singapore premiums` `, of` `total premiums` IF
+    `Singapore premiums` GREATER THAN `total premiums` TIMES 0.25
+
+§§ `Classes (s 3(1); First Schedule paras 9, 10, 13)`
+
+-- para 9(1): "long-term accident and health policy" — "(a) may ... be in force
+-- for more than 5 years if it is not terminated earlier by the policy owner;
+-- and (b) does not contain any term ... which permits the insurer to terminate
+-- the policy unilaterally, other than ... on the ground of fraud or material
+-- non-disclosure". para 10: any other is short-term.
+-- s 3(1)(a): life business is life policies and long-term accident and health
+-- policies; (b) general business is everything else.
+@ref s 3(1); First Schedule paras 9, 10, 13
+GIVEN p IS A `Policy case`
+GIVETH A `Class of business`
+`the class of business of` p MEANS
+    CONSIDER p's `kind`
+    WHEN `a life policy` THEN `life business`
+    WHEN `an accident and health policy` THEN
+        IF p's `may be in force more than 5 years, insurer cannot end it but for fraud or non-disclosure`
+        THEN `life business` ELSE `general business`
+    WHEN `a general insurance policy` THEN `general business`
+
+§§ `Validity and what may be recovered (ss 146, 147, 151)`
+
+-- s 146(1): a life policy issued by a licensed insurer "is void unless — (a)
+-- the person effecting the insurance has an insurable interest ...; (b) the
+-- life which is insured is that of — (i) the person effecting the insurance;
+-- (ii) his or her spouse ...; (iii) his or her child or ward under the age of
+-- 18 years ...; or (iv) any other person on whom the person effecting the
+-- insurance is ... wholly or partly dependant; or (c) [a trust policy under
+-- (3) or (4)]". (8): (1)(a), (b) do not affect policies issued before 1 January
+-- 1967; (9): (1)(c) not those before 1 March 2009.
+-- s 151(1): any other insurance "on any event wherein the person ... has no
+-- interest" is void; (4): not insurance on ships or goods, or contracts of
+-- indemnity.
+@ref ss 146(1), (3)-(5), (8)-(9); 151(1), (4)
+GIVEN p IS A `Policy case`
+GIVETH A BOOLEAN
+DECIDE `the policy is valid for insurable interest` p IF
+    CONSIDER p's `kind`
+    WHEN `a life policy` THEN
+            p's `issued on` LESS THAN YMD 1967 1 1
+        OR  p's `insurable interest of the person effecting it` GREATER THAN 0
+        OR  NOT p's `life insured` EQUALS `another person`
+        OR  (p's `a trust policy meeting s 146(3) or (4)` AND p's `issued on` AT LEAST YMD 2009 3 1)
+    OTHERWISE
+            p's `insurance on ships or goods, or a contract of indemnity`
+        OR  p's `insurable interest of the person effecting it` GREATER THAN 0
+
+-- s 146(2): "Where subsection (1)(a) applies, the policy moneys payable ...
+-- must not exceed the amount of the insurable interest at the time the
+-- insurance is effected." s 151(3): "no greater sum may be recovered ... than
+-- the amount or value of the interest". FORK F5: the s 146(2) cap applies only
+-- where the policy stands on (1)(a) alone, not where (1)(b) or (c) also saves it.
+@ref ss 146(2), 151(3)-(4)
+GIVEN p IS A `Policy case`
+GIVETH A MAYBE NUMBER
+`the most that may be recovered under` p MEANS
+    IF NOT `the policy is valid for insurable interest` p THEN JUST 0
+    ELSE CONSIDER p's `kind`
+         WHEN `a life policy` THEN
+             IF   p's `life insured` EQUALS `another person` AND (NOT p's `a trust policy meeting s 146(3) or (4)`) AND p's `issued on` AT LEAST YMD 1967 1 1
+             THEN JUST (`the lesser of` (p's `sum insured`) (p's `insurable interest of the person effecting it`))
+             ELSE JUST (p's `sum insured`)
+         OTHERWISE
+             IF   p's `insurance on ships or goods, or a contract of indemnity`
+             THEN JUST (p's `sum insured`)
+             ELSE JUST (`the lesser of` (p's `sum insured`) (p's `insurable interest of the person effecting it`))
+
+GIVEN a IS A NUMBER, b IS A NUMBER
+GIVETH A NUMBER
+`the lesser of` a b MEANS IF a LESS THAN b THEN a ELSE b
+
+-- s 147(1): "a person over the age of 10 years does not, by reason only of his
+-- or her age, lack the capacity to enter into a contract of insurance; but a
+-- person under the age of 16 years does not have the capacity ... except with
+-- the written consent of his or her parent or guardian".
+@ref s 147(1)
+-- For a person of 10 or under the section says nothing, and the general law
+-- of capacity (outside the source) decides: the encoding refuses (fork F8,
+-- revised after the independent pass).
+GIVEN age IS A NUMBER, consent IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `has capacity to insure, aged` age `, with a parent's written consent:` consent IF
+    IF age AT MOST 10
+    THEN REFUSE "s 147 speaks only of persons over 10; capacity at 10 or under is for the general law"
+    ELSE age AT LEAST 16 OR consent
+
+§§ `The owner's rights in a life policy (ss 148, 149)`
+
+-- s 149(1)-(3): "Where a life policy has been in force for 3 years or more" the
+-- owner may surrender it for its surrender value; it "does not lapse and must
+-- not be forfeited by reason of the non-payment of premiums"; and the owner may
+-- "exchange the policy for a paid-up policy". (5): not for an annuity, nor a
+-- policy under which no policy moneys are necessarily payable.
+-- s 148(1): policy and surrender moneys are paid "without any deduction for
+-- sums not due under the policy or under an agreement charging them on the
+-- policy, unless the deduction is made with the consent of the person
+-- entitled".
+@ref ss 148(1)-(3), 149(1)-(5)
+GIVEN p IS A `Policy case`
+GIVETH A LIST OF STRING
+`the owner's statutory rights under` p MEANS
+    IF NOT p's `kind` EQUALS `a life policy` THEN EMPTY
+    ELSE IF p's `years in force` AT LEAST 3 AND (NOT p's `an annuity, or no policy moneys necessarily payable`)
+         THEN LIST "surrender for the surrender value (s 149(1))"
+                   "no lapse or forfeiture for unpaid premiums (s 149(2))"
+                   "exchange for a non-participating paid-up policy (s 149(3))"
+                   "payment without deduction for sums not due under the policy, absent consent (s 148)"
+         ELSE LIST "payment without deduction for sums not due under the policy, absent consent (s 148)"
+
+§§ `Payments through intermediaries (ss 66, 68)`
+
+-- s 66(1)-(2): payment by the insured to the intermediary "is a discharge, as
+-- between the insured and the insurer, of any liability of the insured ... to
+-- the extent of the amount of the payment"; (3): payment by the insurer to the
+-- intermediary "does not discharge any liability of the insurer to the
+-- insured"; (4): agreements to the contrary are void. s 68(2): the same for
+-- payment to a group policy owner.
+@ref ss 66(1)-(4), 68(2)
+GIVEN owed IS A NUMBER, `paid to the intermediary` IS A NUMBER
+GIVETH A NUMBER
+`the insured still owes the insurer, owed` owed `, paid to the intermediary` `paid to the intermediary` MEANS
+    IF owed GREATER THAN `paid to the intermediary` THEN owed MINUS `paid to the intermediary` ELSE 0
+
+@ref s 66(3)
+GIVEN owed IS A NUMBER, `paid to the intermediary` IS A NUMBER
+GIVETH A NUMBER
+`the insurer still owes the insured, owed` owed `, paid to the intermediary` `paid to the intermediary` MEANS owed
+
+§§ `Nominations (ss 131-133)`
+
+-- s 132(2)-(3): a trust nomination by an owner "who has attained the age of
+-- 18 years" of "his or her spouse, his or her children, his or her spouse and
+-- children or any of them", expressing "his or her intention to create a
+-- trust", and providing "for the disposition of all policy moneys".
+-- s 133(2)-(3): a revocable nomination by an owner of 18 of "any person",
+-- providing "for the disposition of all death benefits".
+@ref ss 132(2)-(3), 133(2)-(3)
+GIVEN e IS AN `Estate facts`
+GIVETH A BOOLEAN
+DECIDE `the nomination is valid` e IF
+        e's `owner's age at nomination` AT LEAST 18
+    AND sum (map (GIVEN n YIELD n's `portion`) (e's `nominees`)) EQUALS 1
+    AND CONSIDER e's `nomination`
+        WHEN `no nomination` THEN FALSE
+        WHEN `a trust nomination under s 132` THEN
+                e's `intends to create a trust`
+            AND all (GIVEN n YIELD n's `the owner's spouse or child`) (e's `nominees`)
+        WHEN `a revocable nomination under s 133` THEN TRUE
+
+-- s 133(5): where a nominee dies before the owner — (a) no survivor: the
+-- nomination is revoked; (b) one survivor: that nominee takes the deceased's
+-- portion; (c) several: each survivor adds "A/B × C" (the formula is an
+-- image in the PDF), "where A is that surviving nominee's original portion
+-- ...; B is the aggregate of all the surviving nominees' original portions
+-- ...; and C is the deceased nominee's portion".
+@ref s 133(5)
+GIVEN nominees IS A LIST OF `Nominee`
+GIVETH A LIST OF `Nominee`
+`the nominees after deaths before the owner` nominees MEANS
+    map (GIVEN n YIELD `Nominee` OF (n's `name`), (n's `the owner's spouse or child`), (`A` n DIVIDED BY `B` TIMES `C` PLUS `A` n), TRUE) `survivors`
+    WHERE
+        `survivors` MEANS filter (GIVEN n YIELD n's `alive`) nominees
+        `A` n MEANS n's `portion`
+        `B` MEANS sum (map (GIVEN n YIELD n's `portion`) `survivors`)
+        `C` MEANS sum (map (GIVEN n YIELD n's `portion`) (filter (GIVEN n YIELD NOT n's `alive`) nominees))
+
+-- s 132(4), (6): trust moneys "do not form part of the estate of the policy
+-- owner and are not subject to his or her debts" (save the premiums paid to
+-- defraud creditors, (5)). s 133(7): a revocable nomination is deemed revoked
+-- if the owner deals with the policy, makes a later will disposing of all the
+-- death benefits with the policy's particulars, or a later nomination.
+-- s 133(8)-(9): the death benefits go "(a) if the last nomination is not and
+-- is not deemed to be revoked, ... in accordance with the last nomination;
+-- (b) if [it] is or is deemed to be revoked, and the last will is not revoked,
+-- ... in accordance with the last will; or (c) ... in accordance with the
+-- Intestate Succession Act 1967".
+@ref ss 132(4)-(6), 133(1), (4), (7)-(9)
+GIVEN e IS AN `Estate facts`
+GIVETH A STRING
+`the death benefits go` e MEANS
+    BRANCH IF `standing` AND e's `nomination` EQUALS `a trust nomination under s 132`
+              THEN "to the trustees, in trust for the nominees; outside the owner's estate and debts (s 132(4))"
+           IF `standing` AND e's `nomination` EQUALS `a revocable nomination under s 133`
+              THEN "to the nominees, according to the last nomination (s 133(8)(a), (9)(a))"
+           IF e's `a will disposing of all death benefits, not revoked`
+              THEN "according to the last will (s 133(8)(b))"
+           OTHERWISE "according to the Intestate Succession Act 1967 (s 133(8)(c), (9)(b))"
+    WHERE
+        `standing` MEANS
+                `the nomination is valid` e
+            AND NOT e's `nomination revoked or deemed revoked`
+            AND NOT (e's `nomination` EQUALS `a revocable nomination under s 133` AND e's `dealt with the policy, or a later will or nomination disposes of it`)
+
+-- s 132(7): a trust nomination may be revoked only with the prior written
+-- consent of — where a trustee other than the owner exists — that trustee
+-- (any one), or (no nominee having died) each adult nominee and a parent or
+-- guardian of each minor nominee; otherwise, (no nominee having died) each
+-- adult nominee and a parent or guardian of each minor nominee. (10): a
+-- revocation without them is void.
+@ref s 132(7), (10)
+GIVEN `a trustee other than the owner` IS A BOOLEAN, `the trustee consents` IS A BOOLEAN, `a nominee has died` IS A BOOLEAN, `every adult nominee and minor's guardian consents` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a trust nomination may be revoked, trustee other than owner:` `a trustee other than the owner` `, trustee consents:` `the trustee consents` `, a nominee died:` `a nominee has died` `, nominees consent:` `every adult nominee and minor's guardian consents` IF
+    IF `a trustee other than the owner`
+    THEN `the trustee consents` OR ((NOT `a nominee has died`) AND `every adult nominee and minor's guardian consents`)
+    -- (b) asks for consents only "so long as no nominee has died before the
+    -- revocation"; after a death it names none (the prescribed requirements
+    -- of (c) still apply, and are the caller's). Revised after the
+    -- independent pass.
+    ELSE `a nominee has died` OR `every adult nominee and minor's guardian consents`
+
+§§ `Payment without probate (s 150)`
+
+-- s 150(2), (7)-(10): on the owner's death the insurer may pay, without probate
+-- or letters of administration — with notice of a standing trust nomination,
+-- the trustee (or the nominees); of a standing revocable nomination, the
+-- nominees; of a will disposing of the death benefits, its executor; and
+-- otherwise "any proper claimant", up to "the amount prescribed by the
+-- Authority" in aggregate (an input). (11): several claims under (10) are each
+-- paid "A/B × C" (an image in the PDF), "where A is the amount which would
+-- have been payable in respect of that claim had it been paid in full; B is the
+-- total amount ... of all such claims ...; and C is the amount prescribed".
+@ref s 150(2), (7)-(10), (12)
+GIVEN e IS AN `Estate facts`
+GIVETH A STRING
+`the insurer may pay without probate` e MEANS
+    BRANCH IF NOT e's `the insurer has written notice of the nomination or will`
+              THEN "any proper claimant (executor, widow or widower, parent, child, sibling, nephew or niece), up to the prescribed amount (s 150(10))"
+           IF `standing` AND e's `nomination` EQUALS `a trust nomination under s 132`
+              THEN "the trustee for the nominees, or each nominee (or a minor's parent or guardian), up to that nominee's portion (s 150(7))"
+           IF `standing` AND e's `nomination` EQUALS `a revocable nomination under s 133`
+              THEN "each nominee (or a minor's parent or guardian, or a nominee's personal representative), up to that nominee's portion (s 150(8))"
+           IF e's `a will disposing of all death benefits, not revoked`
+              THEN "an executor of the will, up to the death benefits (s 150(9))"
+           OTHERWISE "any proper claimant, up to the prescribed amount (s 150(10))"
+    WHERE
+        `standing` MEANS
+                `the nomination is valid` e
+            AND NOT e's `nomination revoked or deemed revoked`
+            AND NOT (e's `nomination` EQUALS `a revocable nomination under s 133` AND e's `dealt with the policy, or a later will or nomination disposes of it`)
+
+@ref s 150(11)
+GIVEN `A` IS A NUMBER, `B` IS A NUMBER, `C` IS A NUMBER
+GIVETH A NUMBER
+`a proper claimant's payment, claim in full` `A` `, all claims in full` `B` `, prescribed amount` `C` MEANS
+    IF `B` AT MOST `C` THEN `A` ELSE `A` DIVIDED BY `B` TIMES `C`
+
+§§ `Provisions carried as text`
+
+@ref ss 132(1), (5), (8)-(9), (11)-(15), 133(4), (6), 134-136, 150(1), (3)-(6), (13)-(14), 152
+GIVETH A LIST OF STRING
+`policy provisions carried as text` MEANS
+    LIST "s 132(1): trust nominations do not apply to Dependants' Protection Insurance Scheme policies, CPF investment policies or prescribed policies"
+         "s 132(5): premiums paid to defraud creditors are recoverable by the creditors out of the trust moneys"
+         "s 132(9), (11): varying a trust-nominated policy needs the same consents as revocation; an insurer executing an instruction without them is liable to the nominees"
+         "s 132(12)-(15): trustees of policy moneys (adults only) are appointed by the owner or the Court; the policy vests in them on notice to the insurer"
+         "s 133(6): in a common accident, the younger is deemed to survive the elder"
+         "ss 134, 135: insurers keep a register of nominees; co-operative society nominations"
+         "s 150(1): living benefits under a trust nomination may be paid to the trustee or nominees"
+         "s 150(3)-(6): payments before estate duty clearance, up to a prescribed amount, with notice to the Commissioner of Estate Duties"
+         "s 152: no action lies for a fire that began accidentally, saving landlord and tenant agreements"
