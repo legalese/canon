@@ -1,0 +1,140 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `ito-il08-nouns`
+IMPORT `ito-il08-tax-years`
+
+-- ===========================================================================
+-- Income Tax Ordinance s 64B ("בן זוג רשום", the registered spouse) and s 65 ("חישוב מאוחד", the
+-- consolidated calculation). Row IL-08. Source lines 2439-2448.
+--
+-- GAPS.md item 3 of row IL-07: where no separate calculation under s 66 governs, the couple is
+-- assessed under s 65, which row IL-02 names as an outcome and does not compute; and s 64B fixes who
+-- the registered spouse is, which the capstone takes as an input.
+--
+-- s 64B is a set of powers and an election: the assessing officer MAY determine the registered
+-- spouse, on a test of income two years back; the couple MAY elect the other spouse, on conditions;
+-- the choice stands five years, subject to exceptions. Who is in fact the registered spouse is the
+-- determination or election made, which a notice records: still an input. What is encoded here is
+-- each condition the text puts on the power and on the election, so that a caller can check that a
+-- recorded designation was open to be made.
+--
+-- s 65 says whose income the couple's income is: all of it is the registered spouse's, charged in his
+-- name, together with four kinds of income of his child under 18. It computes no tax. The tax on that
+-- income is s 121 (row IL-03); the credits in the registered spouse's computation are each section's
+-- own (ss 34, 36, 36A in row IL-01; ss 35(b), 37, 38, 39 in this row). s 66 applies "על אף האמור
+-- בסעיף 65" (row IL-02): where it gives a separate calculation, s 65 does not govern that income.
+-- ===========================================================================
+
+§ `Section 64B — the registered spouse`
+
+-- src:2439 | סעיף 64ב – בן זוג רשום [תיקון: תשנ״ב־6, תשנ״ו, תשנ״ו־5, תשס״ה־4, תשע״ד־3]
+-- src:2440 | (א) פקיד השומה רשאי לקבוע, בהודעה לכל שני בני זוג, כי אחד מהם הוא בן זוג רשום לענין חוק זה, באשר הכנסתו החייבת בשנת המס שקדמה בשנתיים לשנת המס הנדונה לראשונה לענין זה היתה למעלה מ־50% מסך כל ההכנסה החייבת של שני בני הזוג.
+
+GIVEN `which`  IS A `Which of the couple`
+      `couple` IS A `A couple, for section 64B`
+GIVETH A NUMBER
+`s 64B — the taxable income two tax years before, of` `which` `in` `couple` MEANS
+    CONSIDER `which`
+    WHEN `the first spouse`  THEN `couple`'s `the first spouse's taxable income two tax years before it`
+    WHEN `the second spouse` THEN `couple`'s `the second spouse's taxable income two tax years before it`
+
+-- "למעלה מ־50%": more than half, strictly.
+@ref ITO s 64B(a), line 2440
+GIVEN `which`  IS A `Which of the couple`
+      `couple` IS A `A couple, for section 64B`
+GIVETH A BOOLEAN
+`s 64B(a) — the assessing officer may determine that` `which` `is the registered spouse of` `couple` MEANS
+    `s 64B — the taxable income two tax years before, of` `which` `in` `couple`
+        GREATER THAN 50% TIMES (   `couple`'s `the first spouse's taxable income two tax years before it`
+                              PLUS `couple`'s `the second spouse's taxable income two tax years before it`)
+
+-- src:2442 | (ג) בני זוג שלא היתה לאף אחד מהם הכנסה חייבת בשנת המס האמורה בסעיף קטן (א), רשאי פקיד השומה לקבוע אחד מהם לבן זוג רשום, ולא יהיה בכך כדי לגרוע מזכותם לפעול לפי סעיף קטן (ב).
+@ref ITO s 64B(c), line 2442
+GIVEN `couple` IS A `A couple, for section 64B`
+GIVETH A BOOLEAN
+`s 64B(c) — neither spouse had taxable income two tax years before, so the assessing officer may determine either, for` `couple` MEANS
+        `couple`'s `the first spouse's taxable income two tax years before it` EQUALS 0
+    AND `couple`'s `the second spouse's taxable income two tax years before it` EQUALS 0
+
+-- Equal incomes: neither is above 50%, and (c) needs both at nil; the text gives the officer no power
+-- to determine either (fork F32). Encoded as written: both rules answer FALSE.
+
+-- src:2441 | (ב) על אף האמור בסעיף קטן (א) רשאים בני זוג ביחד להודיע בכתב לפקיד השומה, לפחות שלושה חדשים לפני תחילתה של שנת מס פלונית, כי הם בוחרים שבן הזוג האחר ייחשב כבן זוג רשום ובלבד שהכנסתו בשנת המס שקדמה לשנת המס שבה ניתנה ההודעה היא לפחות בגובה של 25% מהכנסת בן זוגו; לענין סעיף קטן זה וסעיף קטן (ד)(2), ”הכנסה בשנת המס“ – למעט הכנסה ממקור הכנסה משותף לפי סעיף 66(ד) שלא מתקיימות לגביה הוראות אותו סעיף.
+-- "לפחות שלושה חדשים לפני תחילתה של שנת מס פלונית": on or before 1 October of the year before
+-- (fork F31). The incomes are "income in the tax year" as the subsection defines it (without
+-- common-source income that fails s 66(d)), which the caller supplies.
+@ref ITO s 64B(b), line 2441
+GIVEN e IS AN `An election of the registered spouse, for section 64B(b)`
+GIVETH A BOOLEAN
+`s 64B(b) — the election is one the couple may make:` e MEANS
+        e's `made jointly and in writing by both spouses`
+    AND e's `the day the notice was given` AT MOST YMD (e's `the first tax year it is to govern` MINUS 1) 10 1
+    AND e's `that spouse's income in the tax year before the notice year`
+            AT LEAST 25% TIMES e's `the other spouse's income in the tax year before the notice year`
+
+-- src:2443 | (ד)(1) בכפוף לאמור בסעיף קטן (ב), קביעה או בחירה של בן זוג רשום תעמוד בתקפה לא פחות מחמש שנות מס זולת אם בני הזוג אינם עוד בני זוג, או על פי החלטת המנהל.
+-- src:2444 | (2) על אף הוראות פסקה (1), היתה בשנת מס הכנסתו של בן הזוג הרשום לפי בחירה פחותה מ־25% מהכנסת בן זוגו באותה שנת המס, רשאי פקיד השומה לקבוע בן זוג רשום לאותה שנת מס.
+@ref ITO s 64B(d)(1), line 2443
+GIVEN `the first year`  IS A NUMBER
+      `the year`        IS A NUMBER
+GIVETH A BOOLEAN
+`s 64B(d)(1) — a determination or election first governing tax year` `the first year` `still stands, unless they cease to be spouses or the Director decides, in tax year` `the year` MEANS
+    `the year` AT LEAST `the first year` AND `the year` AT MOST `the first year` PLUS 4
+
+@ref ITO s 64B(d)(2), line 2444
+GIVEN `the elected spouse's income` IS A NUMBER
+      `the other spouse's income`   IS A NUMBER
+GIVETH A BOOLEAN
+`s 64B(d)(2) — the assessing officer may determine the registered spouse for the year, the elected spouse having income` `the elected spouse's income` `against` `the other spouse's income` MEANS
+    `the elected spouse's income` LESS THAN 25% TIMES `the other spouse's income`
+
+-- src:2445 | (ה) המנהל רשאי לקבוע בכללים דרכי קביעה ובחירה של בן זוג רשום.
+-- A power to make rules; no rules are in the source bundle. Nothing to compute.
+
+§ `Section 65 — the consolidated calculation`
+
+-- src:2447 | סעיף 65 – חישוב מאוחד [תיקון: תשל״ח־5, תשמ״ח־3, תשנ״ב־6, תשס״ב־9, תשס״ה־9]
+-- src:2448 | הכנסת בני זוג יראוה לענין פקודה זו כהכנסת בן הזוג הרשום והיא תחוייב על שמו; ולענין הכנסות מחברה שקופה כהגדרתה בסעיף 64א1 והכנסות מריבית, מדמי ניכיון או מהפרשי הצמדה (לענין סעיף זה – ריבית) וכן מהכנסה שהועברה מקרן להשקעות במקרקעין, כהגדרתה בסעיף 64א2, או מרווח הון, יראו את הכנסותיו כאמור של בן הזוג הרשום ככוללות גם הכנסות כאמור של ילדו שטרם מלאו לו בשנת המס 18 שנים, אלא אם כן הנכסים שמהם היתה ההכנסה מריבית, מקרן להשקעות במקרקעין או מרווח הון, התקבלו בירושה, או שמקורם בפיצויים או בכספי ביטוח שהתקבלו בשל פגיעת גוף.
+
+-- A child's item is the registered spouse's where: the child is his (his own child: row IL-02's fork
+-- F5 reads the same words of s 66(a)(3)); had not turned 18 in the tax year (aged 17 or less in the
+-- year: IL-02's F15); and the item is of one of the four kinds; and, for interest, a REIT's income or
+-- capital gain, the asset did not come by inheritance or from compensation or insurance money for
+-- bodily injury. The exception does not name income from a transparent company, so it does not reach
+-- it (fork F33).
+@ref ITO s 65, line 2448
+GIVEN `the item` IS AN `An item of a household's income, for section 65`
+GIVETH A BOOLEAN
+`s 65 — the item is a child's income that counts as the registered spouse's:` `the item` MEANS
+    CONSIDER `the item`'s `whose`
+    WHEN `a child's, of the registered spouse` `the age` THEN
+            `the age` AT MOST 17
+        AND CONSIDER `the item`'s `kind`
+            WHEN `income from a transparent company as defined in section 64A1`            THEN TRUE
+            WHEN `interest, discount or linkage differences`                                THEN NOT `excepted`
+            WHEN `income passed on by a real estate investment trust as defined in section 64A2` THEN NOT `excepted`
+            WHEN `capital gain`                                                             THEN NOT `excepted`
+            WHEN `any other income`                                                         THEN FALSE
+    OTHERWISE FALSE
+    WHERE `excepted` MEANS `the item`'s `from assets received by inheritance, or originating in compensation or insurance money received for bodily injury`
+
+@ref ITO s 65, line 2448
+GIVEN `the item` IS AN `An item of a household's income, for section 65`
+GIVETH A BOOLEAN
+`s 65 — the item is charged in the registered spouse's name:` `the item` MEANS
+    CONSIDER `the item`'s `whose`
+    WHEN `the registered spouse's` THEN TRUE
+    WHEN `the other spouse's`      THEN TRUE
+    OTHERWISE `s 65 — the item is a child's income that counts as the registered spouse's:` `the item`
+
+@export The taxable income charged in the registered spouse's name under Income Tax Ordinance s 65 (the consolidated calculation of spouses), for a tax year from 2024, where no separate calculation under s 66 is made
+@ref ITO s 65, line 2448
+GIVEN `the tax year` IS A NUMBER
+          @desc the tax year, from 2024
+      `the items`    IS A LIST OF `An item of a household's income, for section 65`
+          @desc every item of the spouses' taxable income, and each item of the registered spouse's children's income, with its kind and, for a child, the child's age in the tax year
+GIVETH A NUMBER
+`s 65 — the income charged in the registered spouse's name, in tax year` `the tax year` `, from` `the items` MEANS
+    `for tax year` `the tax year` `, row IL-08 answers`
+        (sum (map (GIVEN i YIELD IF `s 65 — the item is charged in the registered spouse's name:` i THEN i's `taxable amount` ELSE 0) `the items`))

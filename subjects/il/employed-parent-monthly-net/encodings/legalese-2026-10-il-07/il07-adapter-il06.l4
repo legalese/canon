@@ -1,0 +1,209 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `il07-nouns`
+IMPORT `il07-refusals`
+IMPORT `nii-il06-nouns`
+IMPORT `nii-il06-period`
+IMPORT `nii-s1-basic-amount`
+IMPORT `nii-s65-interpretation`
+IMPORT `nii-s66-entitlement`
+IMPORT `nii-s67-count-of-children`
+IMPORT `nii-s68-amount`
+IMPORT `nii-il06-published-figures`
+IMPORT `nii-il06-family-on-a-day`
+
+-- ===========================================================================
+-- IL-07 adapter for row IL-06: National Insurance Law ss 65-68.
+--
+-- Imports this row's nouns and refusals and IL-06's modules, and no other row.
+-- Exposes numbers and booleans. IL-06's `A child` and `A problem with the facts`
+-- share their names with types of rows IL-02 and IL-03 (RECONCILE.md, clashes
+-- N3 and N4); here they are IL-06's.
+--
+-- WHICH DAY. IL-06 answers a family on a day, at the basic amounts in force that
+-- day; s 72 (which months are paid) is not encoded (IL-06 NOTES.md section 2).
+-- The capstone asks on the FIRST day of the month, and declines a month in which
+-- a child of the household is born or turns 18 after that day (NOTES.md fork
+-- K6): in every other month nothing IL-06 reads changes during the month for a
+-- household of the capstone's shape (the basic amounts change on 1 January).
+--
+-- THE FAMILY AS IL-06 SEES IT (input conventions, BRIEF.md "The household"):
+-- * the earner is not a housewife: NII s 238 (source line 2428) defines one as a
+--   married woman "שאינה עובדת ואינה עובדת עצמאית", and the earner is employed;
+-- * nobody is absent from Israel, formerly insured, paid Income Support or a
+--   maintenance payment, or (for s 69A) a man with children by more than one
+--   woman; no child is married or abroad;
+-- * every child is the natural child of the earner and of the spouse if any,
+--   and is with each of them.
+-- A child born after the day is not yet in the family on that day and is left
+-- out of it (row IL-06 would otherwise report a problem with the facts).
+-- ===========================================================================
+
+§ `IL-07 adapter — row IL-06`
+
+§§ `The day`
+
+GIVEN h IS AN `IL-07 household in a month`
+GIVETH A DATE
+`IL-06: the first day of the month, in` h MEANS
+    YMD (h's `the year of the month`) (h's `the month of the year`) 1
+
+GIVEN h IS AN `IL-07 household in a month`
+GIVETH A DATE
+`IL-06: the last day of the month, in` h MEANS
+    YMD (h's `the year of the month`) (h's `the month of the year`) (`Days in month` (h's `the month of the year`) (h's `the year of the month`))
+
+§§ `The household, as IL-06's family on a day`
+
+GIVEN `is a woman` IS A BOOLEAN
+GIVETH A `Father or mother`
+`IL-06: father or mother` `is a woman` MEANS
+    IF `is a woman` THEN `the child's mother` ELSE `the child's father`
+
+GIVEN h IS AN `IL-07 household in a month`
+      `chargeable to additional tax` IS A BOOLEAN
+GIVETH A `A person`
+`IL-06: the earner as a person, in` h `, with income chargeable to additional tax:` `chargeable to additional tax` MEANS
+    `A person` WITH
+        `name`                                                                                       IS e's `the earner's name`
+        `insured under Chapter 11`                                                                   IS e's `the earner is insured under Chapter 11 of the National Insurance Law`
+        `a housewife as defined in section 238`                                                      IS FALSE
+        `resident in Israel`                                                                         IS e's `the earner is resident in Israel, under the National Insurance Law`
+        `absent from Israel beyond a reasonable temporary absence`                                  IS FALSE
+        `formerly insured`                                                                           IS FALSE
+        `income chargeable to additional tax under section 121B of the Income Tax Ordinance`        IS `chargeable to additional tax`
+        `paid, for the month, a benefit under the Income Support Law`                               IS FALSE
+        `paid, for the month, a monthly payment under the Maintenance (Assurance of Payment) Law`   IS FALSE
+        `children by more than one woman`                                                            IS FALSE
+    WHERE
+        e MEANS h's `the earner`
+
+-- The spouse has no income (the pipeline declines otherwise), so no income
+-- chargeable to additional tax.
+GIVEN c IS AN `IL-07 couple`
+GIVETH A `A person`
+`IL-06: the spouse as a person, in` c MEANS
+    `A person` WITH
+        `name`                                                                                       IS s's `the spouse's name`
+        `insured under Chapter 11`                                                                   IS s's `the spouse is insured under Chapter 11 of the National Insurance Law`
+        `a housewife as defined in section 238`                                                      IS s's `the spouse is a housewife as defined in section 238 of the National Insurance Law`
+        `resident in Israel`                                                                         IS s's `the spouse is resident in Israel, under the National Insurance Law`
+        `absent from Israel beyond a reasonable temporary absence`                                  IS FALSE
+        `formerly insured`                                                                           IS FALSE
+        `income chargeable to additional tax under section 121B of the Income Tax Ordinance`        IS FALSE
+        `paid, for the month, a benefit under the Income Support Law`                               IS FALSE
+        `paid, for the month, a monthly payment under the Maintenance (Assurance of Payment) Law`   IS FALSE
+        `children by more than one woman`                                                            IS FALSE
+    WHERE
+        s MEANS c's `the earner's spouse`
+
+GIVEN `the name`   IS A STRING
+      `is a woman` IS A BOOLEAN
+GIVETH A `A parent in a child's record`
+`IL-06: the natural parent` `the name` `, a woman:` `is a woman` `, with whom the child is` MEANS
+    `A parent in a child's record` WITH
+        `name of the person`            IS `the name`
+        `standing`                      IS `the child's natural parent`
+        `father or mother`              IS `IL-06: father or mother` `is a woman`
+        `the child is with this person` IS TRUE
+        `support proven`                IS FALSE
+
+GIVEN h IS AN `IL-07 household in a month`
+      k IS AN `IL-07 child`
+GIVETH A `A child`
+`IL-06: the household's child, in` h `:` k MEANS
+    `A child` WITH
+        `name`                                           IS k's `the child's name`
+        `date of birth`                                  IS k's `the child's date of birth`
+        `married`                                        IS FALSE
+        `absence from Israel`                            IS NOTHING
+        `the Institute regards the child as in Israel`   IS FALSE
+        `parents`                                        IS `the earner's entry` FOLLOWED BY `the spouse's entries`
+    WHERE
+        e MEANS h's `the earner`
+        `the earner's entry` MEANS `IL-06: the natural parent` (e's `the earner's name`) `, a woman:` (e's `the earner is a woman`) `, with whom the child is`
+        `the spouse's entries` MEANS
+            CONSIDER h's `the couple, if the earner has a spouse`
+            WHEN NOTHING THEN EMPTY
+            WHEN JUST c  THEN LIST `IL-06: the natural parent` (c's `the earner's spouse`'s `the spouse's name`) `, a woman:` (c's `the earner's spouse`'s `the spouse is a woman`) `, with whom the child is`
+
+GIVEN h IS AN `IL-07 household in a month`
+      `chargeable to additional tax` IS A BOOLEAN
+GIVETH A `A family on a day`
+`IL-06: the family on the first day of the month, in` h `, the earner's income chargeable to additional tax:` `chargeable to additional tax` MEANS
+    `A family on a day` WITH
+        `the day`      IS `the day`
+        `the persons`  IS `the earner` FOLLOWED BY `the spouse`
+        `the children` IS map (GIVEN k YIELD `IL-06: the household's child, in` h `:` k)
+                              (filter (GIVEN k YIELD k's `the child's date of birth` AT MOST `the day`) (h's `the children of the household`))
+    WHERE
+        `the day`    MEANS `IL-06: the first day of the month, in` h
+        `the earner` MEANS `IL-06: the earner as a person, in` h `, with income chargeable to additional tax:` `chargeable to additional tax`
+        `the spouse` MEANS
+            CONSIDER h's `the couple, if the earner has a spouse`
+            WHEN NOTHING THEN EMPTY
+            WHEN JUST c  THEN LIST `IL-06: the spouse as a person, in` c
+
+§§ `Section 72 is not encoded — a month in which a child is born or turns 18`
+
+-- Born after the first day of the month and on or before its last; or reaching
+-- 18 (IL-06's own anniversary rule, fork F2 there) after the first day and on or
+-- before the last.
+@ref NII s 65 "ילד" proviso (row IL-06, nii-s65-interpretation.l4); s 72 not encoded
+GIVEN h IS AN `IL-07 household in a month`
+GIVETH A BOOLEAN
+`IL-06: a child of the household is born, or turns 18, after the first day of the month and by its last, in` h MEANS
+    any `born or turns 18 in the month` (h's `the children of the household`)
+    WHERE
+        `the first` MEANS `IL-06: the first day of the month, in` h
+        `the last`  MEANS `IL-06: the last day of the month, in` h
+        `within` d  MEANS d GREATER THAN `the first` AND d AT MOST `the last`
+        `born or turns 18 in the month` k MEANS
+                `within` (k's `the child's date of birth`)
+            OR  `within` (`the 18th anniversary of the birth of` (`IL-06: the household's child, in` h `:` k))
+
+§§ `The child allowance`
+
+@ref NII ss 65-68 (row IL-06, nii-il06-family-on-a-day.l4), at the basic amounts the Institute published (nii-il06-published-figures.l4)
+GIVEN h IS AN `IL-07 household in a month`
+      `chargeable to additional tax` IS A BOOLEAN
+GIVETH A NUMBER
+`IL-06: the household's child allowance for the month, in` h `, the earner's income chargeable to additional tax:` `chargeable to additional tax` MEANS
+    CONSIDER `the child allowance of each person, at the basic amounts the Institute published for the day, in` `the family`
+    WHEN LEFT  p           THEN `IL-06 reports that the household's facts cannot describe a family on the day`
+    WHEN RIGHT `the answers` THEN `the family's total, before rounding, of` `the answers`
+    WHERE
+        `the family` MEANS `IL-06: the family on the first day of the month, in` h `, the earner's income chargeable to additional tax:` `chargeable to additional tax`
+
+-- For the tests: how many children IL-06's s 67 counts with the earner, and with
+-- the spouse.
+@ref NII s 67 (row IL-06, nii-s67-count-of-children.l4)
+GIVEN h IS AN `IL-07 household in a month`
+      `chargeable to additional tax` IS A BOOLEAN
+GIVETH A NUMBER
+`IL-06: the number of children in the earner's count, in` h `, the earner's income chargeable to additional tax:` `chargeable to additional tax` MEANS
+    count (`s 67 — the count of children, in` `the family` `, of` (`IL-06: the earner as a person, in` h `, with income chargeable to additional tax:` `chargeable to additional tax`))
+    WHERE
+        `the family` MEANS `IL-06: the family on the first day of the month, in` h `, the earner's income chargeable to additional tax:` `chargeable to additional tax`
+
+@ref NII s 66 (row IL-06, nii-s66-entitlement.l4)
+GIVEN h IS AN `IL-07 household in a month`
+      `chargeable to additional tax` IS A BOOLEAN
+GIVETH A BOOLEAN
+`IL-06: the earner is an insured parent with income chargeable to additional tax, in` h `:` `chargeable to additional tax` MEANS
+    `s 66 — an insured parent with income chargeable to additional tax` (`IL-06: the earner as a person, in` h `, with income chargeable to additional tax:` `chargeable to additional tax`)
+
+§§ `Figures IL-06 sourced from the National Insurance Institute (not law)`
+
+@ref [nii-basic] (row IL-06, nii-il06-published-figures.l4)
+GIVEN `the day` IS A DATE
+GIVETH A NUMBER
+`IL-06: the basic amount under paragraph (2)(a) in force on` `the day` MEANS
+    (`the basic amounts for the child allowance the Institute published for` `the day`)'s `under paragraph (2)(a)`
+
+@ref [nii-basic] (row IL-06, nii-il06-published-figures.l4)
+GIVEN `the day` IS A DATE
+GIVETH A NUMBER
+`IL-06: the basic amount under paragraph (2)(b) in force on` `the day` MEANS
+    (`the basic amounts for the child allowance the Institute published for` `the day`)'s `under paragraph (2)(b)`

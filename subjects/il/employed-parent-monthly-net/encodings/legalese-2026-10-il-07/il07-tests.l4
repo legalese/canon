@@ -1,0 +1,445 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `il07-nouns`
+IMPORT `il07-refusals`
+IMPORT `il07-published-figures`
+IMPORT `il07-adapter-il01`
+IMPORT `il07-adapter-il02`
+IMPORT `il07-adapter-il03`
+IMPORT `il07-adapter-il04`
+IMPORT `il07-adapter-il05`
+IMPORT `il07-adapter-il06`
+IMPORT `il07-pipeline`
+
+-- ===========================================================================
+-- IL-07: worked households.
+--
+-- EVERY EXPECTED VALUE COMES FROM THE SOURCE AND THE ROWS' SOURCED FIGURES,
+-- worked by hand in NOTES.md section 5 (and checked there with exact
+-- fractions), never from running this code. The figures:
+--   credit point 2026 ....... NIS 2,904 a year (ITA 2025 value, IL-01; fixed for
+--                             2026 by ITO s 120B(e)(1), IL-03)
+--   s 121 brackets 2026 ..... 10% to 84,120; 14% to 120,720; 20% to 228,000;
+--                             31% to 301,200; 35% to 560,280; 47% above
+--                             (source lines 4351-4358; enacted by the Economic
+--                             Efficiency Law 5786-2026 s 5, from 1 January 2026)
+--   s 121B(a) 2026 .......... 3% above 721,560 ([booklet-2026] PDF p. 8)
+--   personal points ......... 2 (s 34) + 1/4 (s 36), + 1/2 for a woman (s 36A)
+--   children's points ....... s 66(c)(4) for the woman, (5) for the man
+--   NII threshold 2026 ...... 7,703 (IL-04, IL-05: the Institute)
+--   column D 2026 ........... 1.04% up to it, 4.67% above (IL-04, the items)
+--   Schedule K 2026 ......... maximum 51,910 a month; minimum the minimum wage,
+--                             6,247.67 (Jan-Mar), 6,443.85 (Apr-Dec) (IL-05)
+--   child allowance 2026 .... 173 first and fifth on, 219 second to fourth (IL-06)
+--   health (an INPUT) ....... the caller's figure; here 3.23% up to 7,703 and
+--                             5.17% above, on the salary up to 51,910 - the
+--                             Institute's published employee health rates
+--                             (IL-04 NOTES.md section 7), applied by the test
+--                             author, not by any rule.
+-- A failing assertion is a finding: no expected value here is ever edited to
+-- match what the code computed.
+-- ===========================================================================
+
+§ `IL-07 — worked households`
+
+§§ `Builders`
+
+-- An ordinary resident employee, paid the same salary in every month of 2026.
+-- A woman's age under Schedule A1 Part D: 70 years (840 months) for a woman born
+-- in May 1950 or later (source line 4453, as row IL-05 reads it).
+GIVEN `the earner's given name` IS A STRING
+      `is female`               IS A BOOLEAN
+      `born on`                 IS A DATE
+      `salary`                  IS A NUMBER
+GIVETH AN `IL-07 earner`
+`test: an earner` `the earner's given name` `, female:` `is female` `, born` `born on` `, paid` `salary` MEANS
+    `IL-07 earner` WITH
+        `the earner's name`                                                              IS `the earner's given name`
+        `the earner is a woman`                                                          IS `is female`
+        `the earner's date of birth`                                                     IS `born on`
+        `the earner's monthly salary`                                                    IS `salary`
+        `the earner is paid that salary in every month of the tax year`                  IS TRUE
+        `the earner was an Israeli resident in the tax year, under the Income Tax Ordinance` IS TRUE
+        `the earner is a foreign worker`                                                 IS FALSE
+        `the earner is a resident of the Area who is not an Israeli citizen`             IS FALSE
+        `the earner is insured under Chapter 11 of the National Insurance Law`           IS TRUE
+        `the earner is resident in Israel, under the National Insurance Law`             IS TRUE
+        `the full monthly minimum wage of an employee aged 18 or over applies to the earner` IS TRUE
+        `the earner's age fixed by Part D of Schedule A1 to the National Insurance Law, in months, if a woman` IS
+            IF `is female` THEN JUST 840 ELSE NOTHING
+        `the earner has no credit or deduction under the Income Tax Ordinance beyond those the composed rows encode` IS TRUE
+
+-- A wife who does not work, married to an insured man: a "housewife" under NII
+-- s 238 (source line 2428), so not insured under Chapter 11.
+GIVEN `her name` IS A STRING
+GIVETH AN `IL-07 spouse`
+`test: a housewife named` `her name` MEANS
+    `IL-07 spouse` WITH
+        `the spouse's name`                                                              IS `her name`
+        `the spouse is a woman`                                                          IS TRUE
+        `the spouse's taxable income in the tax year`                                    IS 0
+        `the spouse is insured under Chapter 11 of the National Insurance Law`           IS FALSE
+        `the spouse is a housewife as defined in section 238 of the National Insurance Law` IS TRUE
+        `the spouse is resident in Israel, under the National Insurance Law`             IS TRUE
+
+-- A husband who does not work: insured under Chapter 11; never a "housewife".
+GIVEN `his name` IS A STRING
+GIVETH AN `IL-07 spouse`
+`test: a husband at home named` `his name` MEANS
+    `IL-07 spouse` WITH
+        `the spouse's name`                                                              IS `his name`
+        `the spouse is a woman`                                                          IS FALSE
+        `the spouse's taxable income in the tax year`                                    IS 0
+        `the spouse is insured under Chapter 11 of the National Insurance Law`           IS TRUE
+        `the spouse is a housewife as defined in section 238 of the National Insurance Law` IS FALSE
+        `the spouse is resident in Israel, under the National Insurance Law`             IS TRUE
+
+GIVEN `the other spouse`  IS AN `IL-07 spouse`
+      `registered`        IS A BOOLEAN
+      `claims`            IS A BOOLEAN
+GIVETH AN `IL-07 couple`
+`test: married to` `the other spouse` `, the earner registered:` `registered` `, the earner claims a separate calculation:` `claims` MEANS
+    `IL-07 couple` WITH
+        `the earner's spouse`                                                            IS `the other spouse`
+        `the earner is the registered spouse`                                            IS `registered`
+        `the earner claims a separate calculation of the tax on the earner's income from personal exertion` IS `claims`
+        `the earner would be entitled to a credit point under section 37 of the Income Tax Ordinance` IS FALSE
+
+GIVEN `the child's given name` IS A STRING
+      `born on`                IS A DATE
+GIVETH AN `IL-07 child`
+`test: a child` `the child's given name` `, born` `born on` MEANS
+    `IL-07 child` WITH
+        `the child's name`                                                               IS `the child's given name`
+        `the child's date of birth`                                                      IS `born on`
+        `the child's mother elects to count one birth-year credit point in the following tax year` IS FALSE
+
+GIVEN `the year`    IS A NUMBER
+      `the month`   IS A NUMBER
+      `who earns`   IS AN `IL-07 earner`
+      `the couple`  IS A MAYBE `IL-07 couple`
+      `the kids`    IS A LIST OF `IL-07 child`
+      `health`      IS A NUMBER
+GIVETH AN `IL-07 household in a month`
+`test: in` `the year` `month` `the month` `, a household of` `who earns` `, married:` `the couple` `, with children` `the kids` `, health` `health` MEANS
+    `IL-07 household in a month` WITH
+        `the year of the month`                                                          IS `the year`
+        `the month of the year`                                                          IS `the month`
+        `the earner`                                                                     IS `who earns`
+        `the couple, if the earner has a spouse`                                         IS `the couple`
+        `the children of the household`                                                  IS `the kids`
+        `the health insurance contribution the caller says is deducted for the month`    IS `health`
+
+§§ `The households`
+
+-- H1. A single man, no children, 10,000 a month; March 2026.
+-- health: 7,703 x 3.23% + 2,297 x 5.17% = 248.8069 + 118.7549 = 367.5618
+`H1` MEANS `test: in` 2026 `month` 3 `, a household of` (`test: an earner` "Amir" `, female:` FALSE `, born` (YMD 1985 4 1) `, paid` 10000) `, married:` NOTHING `, with children` EMPTY `, health` 367.5618
+
+-- H2. A single woman, no children, 10,000 a month; March 2026.
+`H2` MEANS `test: in` 2026 `month` 3 `, a household of` (`test: an earner` "Galit" `, female:` TRUE `, born` (YMD 1988 9 15) `, paid` 10000) `, married:` NOTHING `, with children` EMPTY `, health` 367.5618
+
+-- H3. A father, the registered spouse, who claims a separate calculation under
+-- s 66(c)(1A); his wife is a housewife; two children, aged 3 and 7 in 2026;
+-- 15,000 a month; June 2026.
+-- health: 248.8069 + 7,297 x 5.17% (377.2549) = 626.0618
+`H3 children` MEANS LIST `test: a child` "Dana" `, born` (YMD 2023 8 20), `test: a child` "Eli" `, born` (YMD 2019 3 10)
+`H3` MEANS `test: in` 2026 `month` 6 `, a household of` (`test: an earner` "Avi" `, female:` FALSE `, born` (YMD 1985 4 1) `, paid` 15000) `, married:` (JUST (`test: married to` (`test: a housewife named` "Batya") `, the earner registered:` TRUE `, the earner claims a separate calculation:` TRUE)) `, with children` `H3 children` `, health` 626.0618
+
+-- H3b. The same, but the father is the spouse who is NOT registered, and claims
+-- under s 66(a)(1).
+`H3b` MEANS `test: in` 2026 `month` 6 `, a household of` (`test: an earner` "Avi" `, female:` FALSE `, born` (YMD 1985 4 1) `, paid` 15000) `, married:` (JUST (`test: married to` (`test: a housewife named` "Batya") `, the earner registered:` FALSE `, the earner claims a separate calculation:` TRUE)) `, with children` `H3 children` `, health` 626.0618
+
+-- H4. A mother, not the registered spouse, who claims under s 66(a)(1); her
+-- husband is at home; a child born in 2025 for whom she elects under
+-- s 66(c)(4)(a1), and a child aged 5; 12,000 a month; January 2026.
+-- health: 248.8069 + 4,297 x 5.17% (222.1549) = 470.9618
+`H4 children` MEANS LIST (`IL-07 child` WITH `the child's name` IS "Noa", `the child's date of birth` IS YMD 2025 5 15, `the child's mother elects to count one birth-year credit point in the following tax year` IS TRUE), `test: a child` "Omer" `, born` (YMD 2021 9 1)
+`H4` MEANS `test: in` 2026 `month` 1 `, a household of` (`test: an earner` "Michal" `, female:` TRUE `, born` (YMD 1988 9 15) `, paid` 12000) `, married:` (JUST (`test: married to` (`test: a husband at home named` "Yoav") `, the earner registered:` FALSE `, the earner claims a separate calculation:` TRUE)) `, with children` `H4 children` `, health` 470.9618
+
+-- H5. A father, registered, claiming under (1A); his wife a housewife; four
+-- children aged 16, 13, 10 and 6; 12,000 a month; April 2026.
+`H5 children` MEANS LIST `test: a child` "Tal" `, born` (YMD 2010 11 2), `test: a child` "Lior" `, born` (YMD 2013 12 25), `test: a child` "Maya" `, born` (YMD 2016 6 30), `test: a child` "Ido" `, born` (YMD 2020 2 14)
+`H5` MEANS `test: in` 2026 `month` 4 `, a household of` (`test: an earner` "Avi" `, female:` FALSE `, born` (YMD 1985 4 1) `, paid` 12000) `, married:` (JUST (`test: married to` (`test: a housewife named` "Batya") `, the earner registered:` TRUE `, the earner claims a separate calculation:` TRUE)) `, with children` `H5 children` `, health` 470.9618
+
+-- H6. A mother, registered, claiming under (1A); her husband at home; three
+-- children aged 14, 9 and 2; 25,000 a month; July 2026.
+-- health: 248.8069 + 17,297 x 5.17% (894.2549) = 1,143.0618
+`H6 children` MEANS LIST `test: a child` "Roni" `, born` (YMD 2012 1 5), `test: a child` "Shir" `, born` (YMD 2017 10 10), `test: a child` "Uri" `, born` (YMD 2024 3 3)
+`H6` MEANS `test: in` 2026 `month` 7 `, a household of` (`test: an earner` "Michal" `, female:` TRUE `, born` (YMD 1988 9 15) `, paid` 25000) `, married:` (JUST (`test: married to` (`test: a husband at home named` "Yoav") `, the earner registered:` TRUE `, the earner claims a separate calculation:` TRUE)) `, with children` `H6 children` `, health` 1143.0618
+
+-- H7. A father, registered, claiming under (1A); his wife a housewife; two
+-- children aged 8 and 4; 70,000 a month (above the s 121B amount and Schedule
+-- K's maximum); October 2026.
+-- health: 248.8069 + 44,207 x 5.17% (2,285.5019) = 2,534.3088 (on 51,910)
+`H7 children` MEANS LIST `test: a child` "Ayala" `, born` (YMD 2018 4 4), `test: a child` "Boaz" `, born` (YMD 2022 12 12)
+`H7` MEANS `test: in` 2026 `month` 10 `, a household of` (`test: an earner` "Avi" `, female:` FALSE `, born` (YMD 1985 4 1) `, paid` 70000) `, married:` (JUST (`test: married to` (`test: a housewife named` "Batya") `, the earner registered:` TRUE `, the earner claims a separate calculation:` TRUE)) `, with children` `H7 children` `, health` 2534.3088
+
+-- H8. The same children and salary, but the mother earns; her husband is at home.
+`H8` MEANS `test: in` 2026 `month` 10 `, a household of` (`test: an earner` "Michal" `, female:` TRUE `, born` (YMD 1988 9 15) `, paid` 70000) `, married:` (JUST (`test: married to` (`test: a husband at home named` "Yoav") `, the earner registered:` TRUE `, the earner claims a separate calculation:` TRUE)) `, with children` `H7 children` `, health` 2534.3088
+
+-- H9. A single woman paid 5,000 a month, below the minimum wage; February 2026.
+-- health: 5,000 x 3.23% = 161.5
+`H9` MEANS `test: in` 2026 `month` 2 `, a household of` (`test: an earner` "Galit" `, female:` TRUE `, born` (YMD 1988 9 15) `, paid` 5000) `, married:` NOTHING `, with children` EMPTY `, health` 161.5
+
+-- H10. A father paid exactly the reduced collection threshold, 7,703; his wife a
+-- housewife; one child aged 10; May 2026.  health: 7,703 x 3.23% = 248.8069
+`H10` MEANS `test: in` 2026 `month` 5 `, a household of` (`test: an earner` "Avi" `, female:` FALSE `, born` (YMD 1985 4 1) `, paid` 7703) `, married:` (JUST (`test: married to` (`test: a housewife named` "Batya") `, the earner registered:` TRUE `, the earner claims a separate calculation:` TRUE)) `, with children` (LIST `test: a child` "Gil" `, born` (YMD 2016 5 20)) `, health` 248.8069
+
+-- H11. As H3, but the father does not claim a separate calculation.
+`H11` MEANS `test: in` 2026 `month` 6 `, a household of` (`test: an earner` "Avi" `, female:` FALSE `, born` (YMD 1985 4 1) `, paid` 15000) `, married:` (JUST (`test: married to` (`test: a housewife named` "Batya") `, the earner registered:` TRUE `, the earner claims a separate calculation:` FALSE)) `, with children` `H3 children` `, health` 626.0618
+
+-- H12. A single father with two children (aged 11 and 7), 10,000 a month; March 2026.
+`H12` MEANS `test: in` 2026 `month` 3 `, a household of` (`test: an earner` "Amir" `, female:` FALSE `, born` (YMD 1985 4 1) `, paid` 10000) `, married:` NOTHING `, with children` (LIST `test: a child` "Hila" `, born` (YMD 2015 1 1), `test: a child` "Itai" `, born` (YMD 2019 1 1)) `, health` 367.5618
+
+-- H13, H14. H1 in March 2025 and in March 2027.
+`H13` MEANS `test: in` 2025 `month` 3 `, a household of` (`test: an earner` "Amir" `, female:` FALSE `, born` (YMD 1985 4 1) `, paid` 10000) `, married:` NOTHING `, with children` EMPTY `, health` 367.5618
+`H14` MEANS `test: in` 2027 `month` 3 `, a household of` (`test: an earner` "Amir" `, female:` FALSE `, born` (YMD 1985 4 1) `, paid` 10000) `, married:` NOTHING `, with children` EMPTY `, health` 367.5618
+
+-- H3 in June 2025 and June 2027, for the rows' own refusals and answers.
+`H3 in 2025` MEANS `test: in` 2025 `month` 6 `, a household of` (`test: an earner` "Avi" `, female:` FALSE `, born` (YMD 1985 4 1) `, paid` 15000) `, married:` (JUST (`test: married to` (`test: a housewife named` "Batya") `, the earner registered:` TRUE `, the earner claims a separate calculation:` TRUE)) `, with children` `H3 children` `, health` 626.0618
+`H3 in 2027` MEANS `test: in` 2027 `month` 6 `, a household of` (`test: an earner` "Avi" `, female:` FALSE `, born` (YMD 1985 4 1) `, paid` 15000) `, married:` (JUST (`test: married to` (`test: a housewife named` "Batya") `, the earner registered:` TRUE `, the earner claims a separate calculation:` TRUE)) `, with children` `H3 children` `, health` 626.0618
+
+-- H15. H1, but the salary is not the same in every month.
+`H15` MEANS `test: in` 2026 `month` 3 `, a household of` (`IL-07 earner` WITH `the earner's name` IS "Amir", `the earner is a woman` IS FALSE, `the earner's date of birth` IS YMD 1985 4 1, `the earner's monthly salary` IS 10000, `the earner is paid that salary in every month of the tax year` IS FALSE, `the earner was an Israeli resident in the tax year, under the Income Tax Ordinance` IS TRUE, `the earner is a foreign worker` IS FALSE, `the earner is a resident of the Area who is not an Israeli citizen` IS FALSE, `the earner is insured under Chapter 11 of the National Insurance Law` IS TRUE, `the earner is resident in Israel, under the National Insurance Law` IS TRUE, `the full monthly minimum wage of an employee aged 18 or over applies to the earner` IS TRUE, `the earner's age fixed by Part D of Schedule A1 to the National Insurance Law, in months, if a woman` IS NOTHING, `the earner has no credit or deduction under the Income Tax Ordinance beyond those the composed rows encode` IS TRUE) `, married:` NOTHING `, with children` EMPTY `, health` 367.5618
+
+-- H16. As H3, with a third child who turns 18 on 15 June 2026.
+`H16` MEANS `test: in` 2026 `month` 6 `, a household of` (`test: an earner` "Avi" `, female:` FALSE `, born` (YMD 1985 4 1) `, paid` 15000) `, married:` (JUST (`test: married to` (`test: a housewife named` "Batya") `, the earner registered:` TRUE `, the earner claims a separate calculation:` TRUE)) `, with children` (`test: a child` "Keren" `, born` (YMD 2008 6 15) FOLLOWED BY `H3 children`) `, health` 626.0618
+
+-- H17. As H3, but the wife has taxable income of 1,000 in the year.
+`H17` MEANS `test: in` 2026 `month` 6 `, a household of` (`test: an earner` "Avi" `, female:` FALSE `, born` (YMD 1985 4 1) `, paid` 15000) `, married:` (JUST (`test: married to` (`IL-07 spouse` WITH `the spouse's name` IS "Batya", `the spouse is a woman` IS TRUE, `the spouse's taxable income in the tax year` IS 1000, `the spouse is insured under Chapter 11 of the National Insurance Law` IS TRUE, `the spouse is a housewife as defined in section 238 of the National Insurance Law` IS FALSE, `the spouse is resident in Israel, under the National Insurance Law` IS TRUE) `, the earner registered:` TRUE `, the earner claims a separate calculation:` TRUE)) `, with children` `H3 children` `, health` 626.0618
+
+-- H18. H2, but the earner is a resident foreign worker (ITO s 48A).
+`H18` MEANS `test: in` 2026 `month` 3 `, a household of` (`IL-07 earner` WITH `the earner's name` IS "Galit", `the earner is a woman` IS TRUE, `the earner's date of birth` IS YMD 1988 9 15, `the earner's monthly salary` IS 10000, `the earner is paid that salary in every month of the tax year` IS TRUE, `the earner was an Israeli resident in the tax year, under the Income Tax Ordinance` IS TRUE, `the earner is a foreign worker` IS TRUE, `the earner is a resident of the Area who is not an Israeli citizen` IS FALSE, `the earner is insured under Chapter 11 of the National Insurance Law` IS TRUE, `the earner is resident in Israel, under the National Insurance Law` IS TRUE, `the full monthly minimum wage of an employee aged 18 or over applies to the earner` IS TRUE, `the earner's age fixed by Part D of Schedule A1 to the National Insurance Law, in months, if a woman` IS JUST 840, `the earner has no credit or deduction under the Income Tax Ordinance beyond those the composed rows encode` IS TRUE) `, married:` NOTHING `, with children` EMPTY `, health` 367.5618
+
+-- H19. H2, but her Part D age is not given.
+`H19` MEANS `test: in` 2026 `month` 3 `, a household of` (`IL-07 earner` WITH `the earner's name` IS "Galit", `the earner is a woman` IS TRUE, `the earner's date of birth` IS YMD 1988 9 15, `the earner's monthly salary` IS 10000, `the earner is paid that salary in every month of the tax year` IS TRUE, `the earner was an Israeli resident in the tax year, under the Income Tax Ordinance` IS TRUE, `the earner is a foreign worker` IS FALSE, `the earner is a resident of the Area who is not an Israeli citizen` IS FALSE, `the earner is insured under Chapter 11 of the National Insurance Law` IS TRUE, `the earner is resident in Israel, under the National Insurance Law` IS TRUE, `the full monthly minimum wage of an employee aged 18 or over applies to the earner` IS TRUE, `the earner's age fixed by Part D of Schedule A1 to the National Insurance Law, in months, if a woman` IS NOTHING, `the earner has no credit or deduction under the Income Tax Ordinance beyond those the composed rows encode` IS TRUE) `, married:` NOTHING `, with children` EMPTY `, health` 367.5618
+
+-- H20. H1, but the earner has a credit under a provision no row encodes (a
+-- s 45A credit for pension contributions, say).
+`H20` MEANS `test: in` 2026 `month` 3 `, a household of` (`IL-07 earner` WITH `the earner's name` IS "Amir", `the earner is a woman` IS FALSE, `the earner's date of birth` IS YMD 1985 4 1, `the earner's monthly salary` IS 10000, `the earner is paid that salary in every month of the tax year` IS TRUE, `the earner was an Israeli resident in the tax year, under the Income Tax Ordinance` IS TRUE, `the earner is a foreign worker` IS FALSE, `the earner is a resident of the Area who is not an Israeli citizen` IS FALSE, `the earner is insured under Chapter 11 of the National Insurance Law` IS TRUE, `the earner is resident in Israel, under the National Insurance Law` IS TRUE, `the full monthly minimum wage of an employee aged 18 or over applies to the earner` IS TRUE, `the earner's age fixed by Part D of Schedule A1 to the National Insurance Law, in months, if a woman` IS NOTHING, `the earner has no credit or deduction under the Income Tax Ordinance beyond those the composed rows encode` IS FALSE) `, married:` NOTHING `, with children` EMPTY `, health` 367.5618
+
+§§ `The figures the composition reads`
+
+-- The credit-point value: IL-03's s 120B for 2026 from IL-01's published 2025
+-- figure; the same for 2025 (both frozen by s 120B(e)(1)); and twelve times the
+-- booklet's monthly 242 (IL-01). 2024 and 2028 are IL-03's refusals.
+#ASSERT `IL-07: the value of one credit point in tax year` 2026 EQUALS 2904
+#ASSERT `IL-07: the value of one credit point in tax year` 2025 EQUALS `IL-01: the value of one credit point the Israel Tax Authority published for tax year 2025`
+#ASSERT 12 TIMES `IL-01: the monthly credit-point figure in the withholding booklet for tax year` 2026 EQUALS `IL-07: the value of one credit point in tax year` 2026
+#ASSERT REFUSED `IL-07: the value of one credit point in tax year` 2024 BECAUSE "section 120B as it stood before the 5785 amendment is not in the deposited text"
+#ASSERT REFUSED `IL-07: the value of one credit point in tax year` 2028 BECAUSE "the rounding rules made under section 120B(d) are not encoded in this model"
+
+-- The s 121B amount for 2026, and the two s 121 band tops the 5786 Law moved.
+#ASSERT `IL-07: the amount in section 121B(a) the Israel Tax Authority published for tax year` 2026 EQUALS 721560
+#ASSERT REFUSED `IL-07: the amount in section 121B(a) the Israel Tax Authority published for tax year` 2027 BECAUSE "IL-07 holds the s 121B(a) amount for tax year 2026 only"
+#ASSERT `IL-03: the top of the reduced-rate 20% band in tax year` 2026 EQUALS 228000
+#ASSERT `IL-03: the top of the reduced-rate 31% band in tax year` 2026 EQUALS 301200
+
+-- The reduced collection threshold: IL-04 and IL-05 each carry the Institute's
+-- 2026 figure (RECONCILE.md, clash N5); they agree.
+#ASSERT `IL-04: the reduced collection threshold for a month in` 2026 EQUALS 7703
+#ASSERT `IL-04: the reduced collection threshold for a month in` 2026 EQUALS `IL-05: the reduced collection threshold for 2026, as published`
+#ASSERT `IL-05: the Schedule K item 1 maximum for a month of 2026` EQUALS 51910
+
+-- Column D for 2026, summed over the six deduction branches: 1.04 and 4.67.
+#ASSERT `IL-04: column D's combined percentage in the deduction branches, in a month of` 2026 `, on the upper part:` FALSE EQUALS 1.04
+#ASSERT `IL-04: column D's combined percentage in the deduction branches, in a month of` 2026 `, on the upper part:` TRUE EQUALS 4.67
+
+-- The child-allowance basic amounts on 1 January 2026.
+#ASSERT `IL-06: the basic amount under paragraph (2)(a) in force on` (YMD 2026 1 1) EQUALS 173
+#ASSERT `IL-06: the basic amount under paragraph (2)(b) in force on` (YMD 2026 1 1) EQUALS 219
+
+§§ `Each row, through its adapter`
+
+-- IL-01: 2 1/4 points for a resident man, 2 3/4 for a resident woman.
+#ASSERT `IL-01: the credit points under sections 34, 36 and 36A for the earner` (`H1`'s `the earner`) EQUALS 2.25
+#ASSERT `IL-01: the credit points under sections 34, 36 and 36A for the earner` (`H2`'s `the earner`) EQUALS 2.75
+#ASSERT REFUSED `IL-01: the credit points under sections 34, 36 and 36A for the earner` (`H18`'s `the earner`) BECAUSE "section 48A and the regulations made under it are not encoded in this model"
+
+-- IL-02: s 66(c) governs the earner's calculation in H3 (through (1A)) and H3b
+-- (through (a)(1)), not in H11; the points it gives.
+#ASSERT `IL-02: section 66(c) governs the earner's calculation, in` `H3` `married as` (`the couple of` `H3`)
+#ASSERT `IL-02: section 66(c) governs the earner's calculation, in` `H3b` `married as` (`the couple of` `H3b`)
+#ASSERT NOT `IL-02: section 66(c) governs the earner's calculation, in` `H11` `married as` (`the couple of` `H11`)
+#ASSERT (`IL-02: the credit points section 66(c) gives the earner, in` `H3` `married as` (`the couple of` `H3`))'s `IL-02's points for children, by section 66(c)(4) to (6)` EQUALS 4.5
+#ASSERT (`IL-02: the credit points section 66(c) gives the earner, in` `H4` `married as` (`the couple of` `H4`))'s `IL-02's points for children, by section 66(c)(4) to (6)` EQUALS 8
+#ASSERT (`IL-02: the credit points section 66(c) gives the earner, in` `H6` `married as` (`the couple of` `H6`))'s `IL-02's points for children, by section 66(c)(4) to (6)` EQUALS 8.5
+-- s 36A's half point, from IL-01 and from IL-02's (c)(4), agree for a woman and
+-- for a man (the pipeline counts it once, from IL-01; RECONCILE.md N7).
+#ASSERT (`IL-02: the credit points section 66(c) gives the earner, in` `H4` `married as` (`the couple of` `H4`))'s `IL-02's half point under section 36A, by section 66(c)(4)` EQUALS `IL-01: the credit points under section 36A for the earner` (`H4`'s `the earner`)
+#ASSERT (`IL-02: the credit points section 66(c) gives the earner, in` `H3` `married as` (`the couple of` `H3`))'s `IL-02's half point under section 36A, by section 66(c)(4)` EQUALS `IL-01: the credit points under section 36A for the earner` (`H3`'s `the earner`)
+-- Where the earner is not registered, IL-02 places the year's salary in the
+-- separate calculation; where registered, it says s 65 governs (fork K4).
+#ASSERT `IL-02: the taxable income in the separate calculation under section 66(a), in` `H3b` `married as` (`the couple of` `H3b`) EQUALS 180000
+#ASSERT REFUSED `IL-02: the taxable income in the separate calculation under section 66(a), in` `H3` `married as` (`the couple of` `H3`) BECAUSE "IL-02 reports that no separate calculation is made under section 66(a) for this couple"
+
+-- IL-03: s 121 on 120,000 and on 180,000 of salary; s 121B on 840,000.
+#ASSERT `IL-03: the tax under section 121 on the earner's salary, in` `H1` EQUALS 13435.2
+#ASSERT `IL-03: the tax under section 121 on the earner's salary, in` `H3` EQUALS 25392
+#ASSERT `IL-07: the additional tax under section 121B on the earner's salary, in` `H7` EQUALS 3553.2
+#ASSERT `IL-07: the additional tax under section 121B on the earner's salary, in` `H3` EQUALS 0
+
+-- IL-05 and IL-04: the income on which contributions are computed, and the
+-- deduction, on each side of the threshold, the maximum and the minimum.
+#ASSERT `IL-05: the income on which the earner's contributions are computed, in` `H7` EQUALS 51910
+#ASSERT `IL-05: the income on which the earner's contributions are computed, in` `H9` EQUALS 6247.67
+#ASSERT `IL-05: the income on which the earner's contributions are computed, in` `H1` EQUALS 10000
+#ASSERT `IL-07: the national insurance contributions deducted from the salary for the month, in` `H10` EQUALS 80.1112
+#ASSERT `IL-07: the national insurance contributions deducted from the salary for the month, in` (`test: in` 2026 `month` 5 `, a household of` (`test: an earner` "Avi" `, female:` FALSE `, born` (YMD 1985 4 1) `, paid` 7704) `, married:` NOTHING `, with children` EMPTY `, health` 0) EQUALS 80.1579
+#ASSERT `IL-07: the national insurance contributions deducted from the salary for the month, in` `H9` EQUALS 64.975768
+
+-- IL-06: in whose count the children are (s 67(b)), and the s 66 exclusion.
+#ASSERT `IL-06: the number of children in the earner's count, in` `H3` `, the earner's income chargeable to additional tax:` FALSE EQUALS 2
+#ASSERT `IL-06: the number of children in the earner's count, in` `H8` `, the earner's income chargeable to additional tax:` TRUE EQUALS 0
+#ASSERT `IL-06: the number of children in the earner's count, in` `H7` `, the earner's income chargeable to additional tax:` TRUE EQUALS 2
+#ASSERT `IL-06: the earner is an insured parent with income chargeable to additional tax, in` `H7` `:` TRUE
+
+§§ `The households, worked`
+
+-- H1: tax 13,435.2 - 2.25 x 2,904 = 6,901.2; a twelfth 575.1; national
+-- insurance 187.3811; net 10,000 - 575.1 - 187.3811 - 367.5618 = 8,869.9571.
+#ASSERT `IL-07: the income tax for the tax year, in` `H1` EQUALS 6901.2
+#ASSERT `IL-07: one twelfth of the income tax for the tax year, in` `H1` EQUALS 575.1
+#ASSERT `IL-07: the national insurance contributions deducted from the salary for the month, in` `H1` EQUALS 187.3811
+#ASSERT `IL-07: the child allowance for the month, in` `H1` EQUALS 0
+#ASSERT `IL-07: the net income of the household for the month, in` `H1` EQUALS 8869.9571
+
+-- H2: tax 13,435.2 - 2.75 x 2,904 = 5,449.2; net 8,990.9571.
+#ASSERT `IL-07: the income tax for the tax year, in` `H2` EQUALS 5449.2
+#ASSERT `IL-07: the net income of the household for the month, in` `H2` EQUALS 8990.9571
+
+-- H3: s 121 25,392; credits 6,534 + 4.5 x 2,904 = 19,602; tax 5,790; a twelfth
+-- 482.5; national insurance 420.8811; allowance 173 + 219 = 392; net 13,862.5571.
+#ASSERT `IL-07: the income tax for the tax year, in` `H3` EQUALS 5790
+#ASSERT `IL-07: one twelfth of the income tax for the tax year, in` `H3` EQUALS 482.5
+#ASSERT `IL-07: the national insurance contributions deducted from the salary for the month, in` `H3` EQUALS 420.8811
+#ASSERT `IL-07: the child allowance for the month, in` `H3` EQUALS 392
+#ASSERT `IL-07: the net income of the household for the month, in` `H3` EQUALS 13862.5571
+#ASSERT (`IL-07: the household's month, in` `H3`)'s `the net income of the household for the month` EQUALS 13862.5571
+#ASSERT (`IL-07: the household's month, in` `H3`)'s `the income tax worked for the tax year`'s `the credit for children, set against the tax on income from personal exertion` EQUALS 13068
+
+-- H3b: the same tax whichever spouse is registered.
+#ASSERT `IL-07: the income tax for the tax year, in` `H3b` EQUALS 5790
+#ASSERT `IL-07: the net income of the household for the month, in` `H3b` EQUALS 13862.5571
+
+-- H4: s 121 18,192; children's points 5.5 + 2.5 = 8, worth 23,232, capped at
+-- 18,192 (IL-02 F13); with 7,986 the tax is nil; allowance 392 (counted with the
+-- father); net 12,000 - 0 - 280.7811 - 470.9618 + 392 = 11,640.2571.
+#ASSERT (`IL-07: the income tax for the tax year, worked, in` `H4`)'s `the credit for children, set against the tax on income from personal exertion` EQUALS 18192
+#ASSERT `IL-07: the income tax for the tax year, in` `H4` EQUALS 0
+#ASSERT `IL-07: the child allowance for the month, in` `H4` EQUALS 392
+#ASSERT `IL-07: the net income of the household for the month, in` `H4` EQUALS 11640.2571
+
+-- H5: credits 6,534 + 4 x 2,904 = 18,150 against 18,192: tax 42, a twelfth 3.5;
+-- allowance 173 + 3 x 219 = 830; net 12,074.7571.
+#ASSERT `IL-07: the income tax for the tax year, in` `H5` EQUALS 42
+#ASSERT `IL-07: the child allowance for the month, in` `H5` EQUALS 830
+#ASSERT `IL-07: the net income of the household for the month, in` `H5` EQUALS 12074.7571
+
+-- H6: s 121 57,312; credits 7,986 + 8.5 x 2,904 = 32,670; tax 24,642; a twelfth
+-- 2,053.5; national insurance 887.8811; allowance 611; net 21,526.5571.
+#ASSERT `IL-07: the income tax for the tax year, in` `H6` EQUALS 24642
+#ASSERT `IL-07: the national insurance contributions deducted from the salary for the month, in` `H6` EQUALS 887.8811
+#ASSERT `IL-07: the child allowance for the month, in` `H6` EQUALS 611
+#ASSERT `IL-07: the net income of the household for the month, in` `H6` EQUALS 21526.5571
+
+-- H7: s 121 279,830.4; s 121B 3,553.2; credits 6,534 + 3.5 x 2,904 = 16,698; tax
+-- 266,685.6; a twelfth 22,223.8; national insurance on 51,910: 2,144.5781; the
+-- father has income chargeable to additional tax and the children are in his
+-- count: no allowance; net 70,000 - 22,223.8 - 2,144.5781 - 2,534.3088 = 43,097.3131.
+#ASSERT `IL-07: the income tax for the tax year, in` `H7` EQUALS 266685.6
+#ASSERT `IL-07: one twelfth of the income tax for the tax year, in` `H7` EQUALS 22223.8
+#ASSERT `IL-07: the national insurance contributions deducted from the salary for the month, in` `H7` EQUALS 2144.5781
+#ASSERT `IL-07: the earner has income chargeable to additional tax in the tax year of the month, in` `H7`
+#ASSERT `IL-07: the child allowance for the month, in` `H7` EQUALS 0
+#ASSERT `IL-07: the net income of the household for the month, in` `H7` EQUALS 43097.3131
+
+-- H8: credits 7,986 + 4.5 x 2,904 = 21,054; tax 262,329.6; a twelfth 21,860.8;
+-- the children are in the father's count (IL-06 s 67(b) first limb), he has no
+-- such income: allowance 392 (IL-06 fork F6); net 43,852.3131.
+#ASSERT `IL-07: the income tax for the tax year, in` `H8` EQUALS 262329.6
+#ASSERT `IL-07: the child allowance for the month, in` `H8` EQUALS 392
+#ASSERT `IL-07: the net income of the household for the month, in` `H8` EQUALS 43852.3131
+
+-- H9: s 121 6,000 < 7,986: tax nil; national insurance on the minimum wage of the
+-- first quarter, 6,247.67 x 1.04% = 64.975768; net 4,773.524232.
+#ASSERT `IL-07: the income tax for the tax year, in` `H9` EQUALS 0
+#ASSERT `IL-07: the net income of the household for the month, in` `H9` EQUALS 4773.524232
+
+-- H10: s 121 9,576.24; credits 6,534 + 2,904 = 9,438; tax 138.24; a twelfth 11.52;
+-- national insurance 80.1112; allowance 173; net 7,535.5619.
+#ASSERT `IL-07: the income tax for the tax year, in` `H10` EQUALS 138.24
+#ASSERT `IL-07: the net income of the household for the month, in` `H10` EQUALS 7535.5619
+
+§§ `What the capstone declines, and why`
+
+-- H11: no separate calculation, so s 65 (not encoded) governs: the tax and the
+-- net are declined; the deduction and the allowance are not.
+#ASSERT REFUSED `IL-07: the income tax for the tax year, in` `H11` BECAUSE "no separate calculation governs the earner's tax, so the couple is assessed under section 65 of the Income Tax Ordinance, which is not encoded"
+#ASSERT REFUSED `IL-07: the net income of the household for the month, in` `H11` BECAUSE "no separate calculation governs the earner's tax, so the couple is assessed under section 65 of the Income Tax Ordinance, which is not encoded"
+#ASSERT `IL-07: the national insurance contributions deducted from the salary for the month, in` `H11` EQUALS 420.8811
+#ASSERT `IL-07: the child allowance for the month, in` `H11` EQUALS 392
+
+-- H12: a single parent's children's points are s 40(b) (not encoded); the
+-- allowance is the father's: 173 + 219.
+#ASSERT REFUSED `IL-07: the income tax for the tax year, in` `H12` BECAUSE "the credit points for the children of a parent without a spouse are given by section 40(b) of the Income Tax Ordinance, which is not encoded"
+#ASSERT `IL-07: the child allowance for the month, in` `H12` EQUALS 392
+#ASSERT REFUSED `IL-07: the household's month, in` `H12` BECAUSE "the credit points for the children of a parent without a spouse are given by section 40(b) of the Income Tax Ordinance, which is not encoded"
+
+-- H13, H14: months of 2025 and 2027.
+#ASSERT REFUSED `IL-07: the net income of the household for the month, in` `H13` BECAUSE "IL-07 answers months of 2026 only, the one period all six composed rows answer"
+#ASSERT REFUSED `IL-07: the net income of the household for the month, in` `H14` BECAUSE "IL-07 answers months of 2026 only, the one period all six composed rows answer"
+#ASSERT REFUSED `IL-07: the household's month, in` `H14` BECAUSE "IL-07 answers months of 2026 only, the one period all six composed rows answer"
+-- ... and why: in 2025, IL-03's s 121, IL-04's s 334 and IL-05's s 348 decline,
+-- while IL-02 and IL-06 answer.
+#ASSERT REFUSED `IL-03: the tax under section 121 on the earner's salary, in` `H13` BECAUSE "section 121 as it stood before tax year 2026 is not in the deposited text"
+#ASSERT REFUSED `IL-04: the reduced collection threshold for a month in` 2025 BECAUSE "section 334(a) as it stood before 1 January 2026 is not in the deposited text"
+#ASSERT REFUSED `IL-05: the income on which the earner's contributions are computed, in` `H13` BECAUSE "this row answers contribution periods from January 2026 only"
+#ASSERT (`IL-02: the credit points section 66(c) gives the earner, in` `H3 in 2025` `married as` (`the couple of` `H3 in 2025`))'s `IL-02's points for children, by section 66(c)(4) to (6)` EQUALS 5.5
+#ASSERT `IL-06: the household's child allowance for the month, in` `H3 in 2025` `, the earner's income chargeable to additional tax:` FALSE EQUALS 383
+-- ... in 2027, IL-03's s 121 answers, but IL-04, IL-05, IL-06 and this row's
+-- s 121B figure decline.
+#ASSERT `IL-03: the tax under section 121 on the earner's salary, in` `H3 in 2027` EQUALS 25392
+#ASSERT REFUSED `IL-04: the reduced collection threshold for a month in` 2027 BECAUSE "the reduced collection threshold for 2027 or 2028 had not been published when this encoding was made"
+#ASSERT REFUSED `IL-05: the income on which the earner's contributions are computed, in` `H3 in 2027` BECAUSE "the figures Schedule K reads for 2027 and later had not been published when this encoding was made"
+#ASSERT REFUSED `IL-06: the household's child allowance for the month, in` `H3 in 2027` `, the earner's income chargeable to additional tax:` FALSE BECAUSE "the basic amounts for the child allowance from 1 January 2027 had not been published when this model's sources were fetched"
+
+-- H15: the year's tax is not apportioned unless the salary is the same each month.
+#ASSERT REFUSED `IL-07: the income tax for the tax year, in` `H15` BECAUSE "IL-07 apportions the tax for the year to a month only where the salary is the same in every month; withholding under section 164 of the Income Tax Ordinance is not encoded"
+#ASSERT REFUSED `IL-07: the child allowance for the month, in` `H15` BECAUSE "IL-07 apportions the tax for the year to a month only where the salary is the same in every month; withholding under section 164 of the Income Tax Ordinance is not encoded"
+#ASSERT `IL-07: the national insurance contributions deducted from the salary for the month, in` `H15` EQUALS 187.3811
+
+-- H16: a child turns 18 during the month: s 72 (not encoded).
+#ASSERT REFUSED `IL-07: the child allowance for the month, in` `H16` BECAUSE "a child of the household is born, or turns 18, during the month; section 72 of the National Insurance Law decides which months are paid, and is not encoded"
+
+-- H17: a spouse with income.
+#ASSERT REFUSED `IL-07: the national insurance contributions deducted from the salary for the month, in` `H17` BECAUSE "IL-07 composes a household with one earner; a spouse with taxable income is outside it"
+#ASSERT REFUSED `IL-07: the net income of the household for the month, in` `H17` BECAUSE "IL-07 composes a household with one earner; a spouse with taxable income is outside it"
+
+-- H18: a resident foreign worker: IL-01 declines (ITO s 48A), through the pipeline.
+#ASSERT REFUSED `IL-07: the income tax for the tax year, in` `H18` BECAUSE "section 48A and the regulations made under it are not encoded in this model"
+
+-- H19: a woman whose Part D age is not given: the deduction is declined.
+#ASSERT REFUSED `IL-07: the national insurance contributions deducted from the salary for the month, in` `H19` BECAUSE "the earner is a woman, and the age Part D of Schedule A1 fixes for her is not given"
+
+-- H20: a credit no row encodes: the tax and the net are declined, the deduction
+-- is not.
+#ASSERT REFUSED `IL-07: the income tax for the tax year, in` `H20` BECAUSE "the earner has a credit or deduction under a provision of the Income Tax Ordinance no composed row encodes, such as section 35, 45A or 47"
+#ASSERT REFUSED `IL-07: the net income of the household for the month, in` `H20` BECAUSE "the earner has a credit or deduction under a provision of the Income Tax Ordinance no composed row encodes, such as section 35, 45A or 47"
+#ASSERT `IL-07: the national insurance contributions deducted from the salary for the month, in` `H20` EQUALS 187.3811
+
+§§ `Plumbing for the tests`
+
+GIVEN h IS AN `IL-07 household in a month`
+GIVETH AN `IL-07 couple`
+`the couple of` h MEANS
+    CONSIDER h's `the couple, if the earner has a spouse`
+    WHEN JUST c  THEN c
+    WHEN NOTHING THEN `test: the household has no couple`
+
+GIVEN a IS A TYPE
+GIVETH AN a
+`test: the household has no couple` MEANS
+    REFUSE "test: the household has no couple"
