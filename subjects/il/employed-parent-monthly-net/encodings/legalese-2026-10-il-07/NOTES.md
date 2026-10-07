@@ -7,7 +7,12 @@ No domain expert has read it; HG1 has not been sought.
 
 Read with it: `RECONCILE.md` (how the rows' nouns were reconciled, and the changes proposed to the rows) and `GAPS.md` (the provisions no row encodes, in IL-08's work order).
 
+**Version 0.2.0 (2026-10-07)** integrates row IL-08 (backlog row IL-10, encoder `enc-il-10`): section 11.
+Sections 0 to 10 describe version 0.1.0; where 0.2.0 changed what they say, the text is kept and marked "(0.2.0: …)" in place.
+
 ## 0. What `check.sh` prints
+
+(0.2.0: the run below is version 0.1.0's, with 12 modules and 36 vendored; version 0.2.0's, with 16 modules and 50 vendored, is in section 11.1.)
 
 Run from 2026-10-06T22:53:25Z to 23:06:50Z (13 min 25 s wall clock on a busy machine) as `L4=/Users/mengwong/.local/bin/l4 ./check.sh`, `JL4_LIBRARY_PATH` unset.
 The binary is `~/.local/bin/l4` → `~/.cabal/bin/l4`, cabal store `jl4-0.1-0ee0100b`, sha256 `64bbcb157dbef2ef1020a6a75589313bba0a2aeeb807c921c5e65e62e9eca118`, the build all six rows used; it has no `--version`.
@@ -46,6 +51,7 @@ An earlier full run (22:40:08Z-22:52:56Z) printed the same table; a comment in `
 **The question.** For a household in a month of 2026: the income tax for tax year 2026 and one twelfth of it; the national insurance contributions the employer deducts from the salary for the month; the health insurance contribution (an input); the child allowance for the month; and the net, salary less the tax's twelfth, the national insurance and the health contribution, plus the allowance.
 
 **The household** (`BRIEF.md`, "The household"): one employed resident parent, paid the same gross salary by one employer every month of 2026; possibly a spouse with no income; children who are the earner's (and the spouse's) own, unmarried, living with them, in Israel; no Income Support, no maintenance payments, no absences, no other income; and no credit or deduction beyond those the rows encode (an input: FALSE declines the tax).
+(0.2.0: the household may also have a pension, life or survivors' insurance, an immigration, s 37's statuses, s 335's statuses, and, without a spouse, single-parent facts, all in the further facts; section 11.2 has how each figure is now made.)
 
 **How each figure is made.** No rule of law is the capstone's own; every one is a row's, called through that row's adapter.
 
@@ -131,6 +137,7 @@ What the capstone uses of each row, and what it does not.
 
 **The gaps** (provisions no row encodes) are in `GAPS.md`, each with its disposition: a named input, a named refusal, or an input convention of the brief.
 None is left silent.
+(0.2.0: what the capstone uses of row IL-08 is in section 11.3, and the status of every gap in `GAPS.md`'s first section.)
 
 ## 3. The period
 
@@ -155,14 +162,14 @@ None of these has been settled by a court or a regulator to my knowledge.
 | K1 | the year's tax against a month | How does tax for a year become a month's figure? | (i) one twelfth of the year's tax, for a salary the same every month; (ii) the withholding the Income Tax (Deduction from Salary and Wages) Regulations 5753-1993 prescribe; (iii) decline | **(i), and decline otherwise.** The Ordinance charges tax for a year: s 121(a) "המס על הכנסתו החייבת של יחיד בשנת המס" (ITO line 4350); a credit point is an amount "לשנת מס" (s 33A, line 1563). Withholding is s 164 (line 5323), "באופן ובשיעורים שנקבעו", by Regulations not in the source bundle (noted at line 5338), so (ii) is not available. The answer is named "one twelfth of the income tax for the tax year", not "the tax withheld". A salary that varies is declined, because the year's income is then not twelve times the month's. Consistent with it: the Tax Authority's booklet prints the credit point at 242 a month for 2026 (IL-01), which is 2,904 / 12. |
 | K2 | the credit-point value for 2026 | Where does the capstone get it? | (i) IL-03's s 120B for 2026, from the 1 January 2024 amount after rounding, which is IL-01's published 2025 value; (ii) twelve times the booklet's monthly 242 | **(i)**: s 120B(e)(1) (line 4344) fixes the amounts of 2025, 2026 and 2027 at their 1 January 2024 figure after rounding, so the Tax Authority's 2025 value (2,904, [itc135-2025] p. 4, IL-01) is that figure, and IL-03's rule gives 2026 the same. (ii) agrees and is asserted. |
 | K3 | the set-off, and s 121B | Are credit points set off against the s 121B additional tax? In what order are several credits set off? | (i) against the s 121 tax only, never below nil, the additional tax added after; (ii) against the total | **(i), and declined where it matters.** s 33A sets a credit point off "כנגד המס לאותה שנה"; s 121B is a further tax computed separately (IL-03 A6: the s 121 result is the tax before credit points). Where the credits exceed the s 121 tax and there is additional tax, the two readings part, and the capstone declines; no household of the brief's shape reaches it (at the s 121B threshold the s 121 tax is about 224,000). The order of several credits does not matter here: all the earner's income is from personal exertion, so IL-02's cap on the children's credit (the tax on that income, its F13) is the whole s 121 tax, and every order gives max(0, tax − credits). |
-| K4 | the couple's income | Whose income is in the earner's calculation? | — | **The year's salary, in every case answered.** The spouse has no income (a household with two earners is declined: s 66(a)(2) would move income between them). Where the earner is the spouse who is not registered and claims under s 66(a)(1), IL-02 places the salary in the separate calculation (asserted, H3b: 180,000). Where the earner is the registered spouse and requests under s 66(c)(1A), IL-02 says (1A) moves no income and s 65 governs (its A3); under s 65 the couple's income is "כהכנסת בן הזוג הרשום" (line 2448), which, with the spouse at nil, is the earner's salary. Where no separate calculation governs at all, s 66(c)'s points do not apply and the capstone declines, naming s 65. |
+| K4 (0.2.0: revised, section 11.4: a couple with no separate calculation is now assessed under s 65) | the couple's income | Whose income is in the earner's calculation? | — | **The year's salary, in every case answered.** The spouse has no income (a household with two earners is declined: s 66(a)(2) would move income between them). Where the earner is the spouse who is not registered and claims under s 66(a)(1), IL-02 places the salary in the separate calculation (asserted, H3b: 180,000). Where the earner is the registered spouse and requests under s 66(c)(1A), IL-02 says (1A) moves no income and s 65 governs (its A3); under s 65 the couple's income is "כהכנסת בן הזוג הרשום" (line 2448), which, with the spouse at nil, is the earner's salary. Where no separate calculation governs at all, s 66(c)'s points do not apply and the capstone declines, naming s 65. |
 | K5 | IL-06's additional-tax input | Which tax year's "income chargeable to additional tax" excludes a parent from the allowance for a month? (IL-06 F5) | (i) the tax year in which the month falls; (ii) the last assessed year | **(i)**: the capstone has the 2026 liability and no other; the parent is excluded iff IL-03's s 121B tax for 2026 is above nil. |
-| K6 | the day IL-06 is asked about | IL-06 answers a day; s 72 (months paid) is not encoded. | (i) the first day of the month, declining a month in which a child is born or turns 18 after it; (ii) the last day; (iii) any day | **(i)**: for a household of the brief's shape nothing IL-06 reads changes within a month except a birth or an 18th birthday (the basic amounts change on 1 January), so (i) answers every other month exactly and declines, naming s 72, the months where a choice of day would decide the answer. A child born after the day is not yet in the family. |
+| K6 (0.2.0: **superseded** by K15, section 11.4) | the day IL-06 is asked about | IL-06 answers a day; s 72 (months paid) is not encoded. | (i) the first day of the month, declining a month in which a child is born or turns 18 after it; (ii) the last day; (iii) any day | **(i)**: for a household of the brief's shape nothing IL-06 reads changes within a month except a birth or an 18th birthday (the basic amounts change on 1 January), so (i) answers every other month exactly and declines, naming s 72, the months where a choice of day would decide the answer. A child born after the day is not yet in the family. |
 | K7 | s 36A, twice | IL-01 encodes s 36A; IL-02 restates its half point in s 66(c)(4). Count it once or twice? | — | **Once, from IL-01**: s 66(c)(4) gives the half point "לפי סעיף 36א", s 36A's own. IL-01's is preferred because it carries s 48A's reach (red finding R2 shows IL-02's does not). |
 | K8 | the base of the employee's deduction | Is the s 342(c) deduction a percentage of the wage paid, or of the s 348 income? | (i) the s 348 income (maximum and minimum applied); (ii) the wage | **(i)**: s 342(c)(1) "ינכה המעביד משכרו של העובד אחוזים מההכנסה שלפיה משתלמים דמי הביטוח" (NII line 3661), percentages of the income on which contributions are paid. So a salary of 5,000 in February is deducted on 6,247.67 (H9) and one of 70,000 on 51,910 (H7). |
 | K9 | IL-04's average-wage argument | Which average wage does column D read for 2026? | — | **None**: every version IL-04 reads for 2026 starts column D's upper part at the threshold (its F3, repaired), so the argument is not read; the adapter passes a named refusal rather than choose between IL-04's two figures (its open F5). |
 | K10 | the tests' health figure | What health contribution do the tests supply? | — | **Not a fork of the capstone, which takes it as an input.** The tests apply the Institute's published employee health rates, 3.23% up to 7,703 and 5.17% above (IL-04 NOTES.md section 7), to the salary up to 51,910; that the National Health Insurance Law's maximum is Schedule K's is an assumption of the test author, unsourced (GAPS.md item 4). |
-| K11 | the s 37 input | Does the earner in a separate calculation have a s 37 point to halve? | — | An input, as in IL-02; FALSE in every test. s 37 (line 1600) needs a "יחיד מוטב" (past retirement age, blind or disabled) who proves the spouse's maintenance. |
+| K11 (0.2.0: **superseded**: the point is s 37's own answer, row IL-08; section 11.4) | the s 37 input | Does the earner in a separate calculation have a s 37 point to halve? | — | An input, as in IL-02; FALSE in every test. s 37 (line 1600) needs a "יחיד מוטב" (past retirement age, blind or disabled) who proves the spouse's maintenance. |
 
 ## 5. Answer table: the worked households
 
@@ -198,22 +205,24 @@ Health input: 3.23% × min(salary, 7,703) + 5.17% × (min(salary, 51,910) − 7,
 
 | household | declined | because | still answered |
 | --- | --- | --- | --- |
-| H11, as H3 without a separate calculation | the tax, the net | s 65 not encoded | deduction 420.8811; allowance 392 |
-| H12, a single father, children 11 and 7 | the tax, the net, the household's month | s 40(b) not encoded | allowance 392 |
+| H11, as H3 without a separate calculation (0.2.0: answered, tax 18,858, net 12,773.5571; section 11.6) | the tax, the net | s 65 not encoded | deduction 420.8811; allowance 392 |
+| H12, a single father, children 11 and 7 (0.2.0: declined because the single-parent facts are not given; with them, N7, tax 0) | the tax, the net, the household's month | s 40(b) not encoded | allowance 392 |
 | H13, H14, March 2025 and 2027 | everything | the period gate | — |
 | H15, a salary not the same each month | the tax, the allowance | fork K1; s 164 not encoded | deduction 187.3811 |
-| H16, as H3 with a child turning 18 on 15 June 2026 | the allowance | s 72 not encoded | — |
+| H16, as H3 with a child turning 18 on 15 June 2026 (0.2.0: answered under s 72, 611) | the allowance | s 72 not encoded | — |
 | H17, as H3 with a wife who has income | everything | one earner only | — |
 | H18, a resident foreign-worker woman | the tax | IL-01's s 48A refusal | — |
-| H19, a woman whose Part D age is not given | the deduction | Schedule A1 Part D not encoded | — |
-| H20, an earner with a credit no row encodes | the tax, the net | ss 35, 45A, 47 and the rest not encoded | deduction 187.3811 |
+| H19, a woman whose Part D age is not given (0.2.0: answered from her date of birth, 187.3811) | the deduction | Schedule A1 Part D not encoded | — |
+| H20, an earner with a credit no row encodes (0.2.0: still declined, in reworded words: ss 35, 45A, 47 are now computed from the further facts) | the tax, the net | ss 35, 45A, 47 and the rest not encoded | deduction 187.3811 |
 
 ## 6. Findings
 
 Each is an assertion in `il07-tests-expected-red.l4`, expected to fail; `RECONCILE.md` section 3 has them in full with the proposed row changes.
 
 - **R1 (two assertions; IL-04's open fork F4).** The Institute deducts 7% from an employee above the threshold; Schedule J's column D items sum to 4.67%. On H3's 15,000 that is 590.9012 against IL-04's 420.8811, and a net of 13,692.537 against 13,862.5571: 170.0201 a month.
+  (0.2.0, after Meng's ruling: the capstone's default is now the printed totals, so its own figures are the Institute's; R1's two assertions ask the items' reading by name and still fail, as a finding against IL-04. Section 11.13.)
 - **R2 (one assertion; IL-02 against IL-01).** For a resident foreign-worker woman in a separate calculation, IL-01 declines s 36A (s 48A) and IL-02's s 66(c)(4) half point "under s 36A" is 0.5.
+- (0.2.0) **R3 (one assertion; IL-08 against the text).** Row IL-08's s 45A credit for survivors' insurance cut by the 1.5% proviso falls below the s 45A(d)(1) floor (its independent finding D187): 611.1 where the text gives 793.8. Section 11.5.
 
 Observations, no assertion failing: the enacted 5786 Law confirms IL-03's 2026 brackets from 1 January 2026; the Tax Authority's February 2026 booklet prints the superseded brackets; and IL-06's fork F6 makes the allowance turn on which parent earns (H7: none; H8: 392).
 
@@ -244,7 +253,7 @@ Internet Archive availability queries for the 5786 Law and the 5785 freezing Law
 2. K3: are credit points ever set off against the s 121B additional tax?
 3. K5 (IL-06 F5): which tax year's additional-tax liability excludes a parent from the allowance for a given month?
 4. K8: is the employee's deduction under s 342(c) taken on the s 348 income (the minimum wage for a low earner, the maximum for a high one), as the capstone reads it?
-5. R1 (IL-04 F4): the 7% or the 4.67% above the threshold?
+5. R1 (IL-04 F4): the 7% or the 4.67% above the threshold? (**Ruled by Meng, 2026-10-07: the printed totals, 7%, by default; the items kept as a fork. Section 11.13.**)
 6. H7/H8 (IL-06 F6): does the Institute really deny the allowance when the insured father has additional-tax income, and pay it when the earning mother does?
 7. K4: under s 66(c)(1A), is the registered spouse's separate calculation of income from personal exertion a calculation of its own (IL-02 reads that it moves no income)?
 
@@ -253,13 +262,376 @@ Internet Archive availability queries for the 5786 Law and the 5785 freezing Law
 `RECONCILE.md` section 1 has the design and the measurements behind it: cross-directory IMPORT fails; the rows' 36 modules are vendored and hash-pinned; imports are transitive, so adapters make each reference unambiguous rather than hide names; and how each kind of clash behaves.
 `vendor.sh --check` runs first in `check.sh`, and fails if a row has changed since `VENDORED.sha256` was written: a change to a row must be read, re-vendored with `vendor.sh --record`, and the numbers here re-earned.
 The vendored copies were taken at commons commits recorded per file in `VENDORED.sha256`; row IL-04's are its v0.2.0, repaired 2026-10-07.
+(0.2.0: 50 modules, adding row IL-08's 10 and 4, at commits `d1d15a4e` and `8d493718`; the two IL-08 adapters import one half each.)
 
 ## 10. What was not done
 
 - **No independent test pass** (skill step 8): one session without sub-agents, as briefed. It is the first thing to add; a test author given `BRIEF.md`, `GAPS.md` and the two sources could work the households without reading the pipeline.
+  (0.2.0: one was made afterwards, against 0.1.0, by fid-il-07: `tests-independent.l4`, `INDEPENDENT-FINDINGS.md`; section 11.8 re-runs it against 0.2.0.)
 - **HG1** not sought.
 - **The two fetched PDFs are not deposited**: they sit in the session scratchpad; whether the 5786 Law belongs in the Income Tax Ordinance subject's registers is the lead's call.
 - **Not committed**, and `subjects/README.md` and `NOTICE` not updated: the brief forbids any git change and any edit outside this subject.
+
+## 11. Integration of IL-08, 2026-10-07 (v0.2.0)
+
+Backlog row IL-10, encoder `enc-il-10`, one agent, one session, no sub-agents, 2026-10-07.
+Meng ruled on 2026-10-07 to integrate row IL-08 into the capstone as version 0.2.0, rather than repair the earlier rows; this section is that integration.
+Row IL-08 is two encodings, one per Law: `../../../income-tax-ordinance-new-version/encodings/legalese-2026-10-il-08/` (ITO ss 1, 2, 35, 37-40, 45A, 47, 64B, 65) and `../../../national-insurance-law-consolidated-version-5755-1995/encodings/legalese-2026-10-il-08/` (NII s 72, s 335, Schedule A1 Part D).
+Status: **draft**; no domain expert has read version 0.2.0, and no independent test pass has been run against it (the one in `tests-independent.l4` was written against 0.1.0 and is re-run in 11.8).
+The sections above describe version 0.1.0; where 0.2.0 changed what they say, the text is kept and marked in place, and this section has the new state.
+
+### 11.1 What `check.sh` prints
+
+(**Superseded by 11.13** for the counts: this run was made before Meng's ruling on Schedule J, with the items' reading. The binary, the module list and the changes to `check.sh` below still hold; `tests-independent.l4`'s expected counts are now 18 failed and 2 refused.)
+
+Run from 2026-10-07T06:44:29Z to 06:46:01Z (1 min 32 s) as `L4=/Users/mengwong/.local/bin/l4 ./check.sh`, `JL4_LIBRARY_PATH` unset.
+**The binary is not the build the lead's brief named (`jl4-0.1-ff13a0ea`).**
+`~/.local/bin/l4` → `~/.cabal/bin/l4`, which is now a regular file, not a link into the cabal store: 233,037,424 bytes, modified 2026-10-07T05:35:45Z, sha256 `6015a4c3fa181842c597c95948290fe45537963d279ae5b5918a106a0c3b54a6`.
+`jl4-0.1-ff13a0ea/bin/l4` is 231,960,768 bytes and the newest store build, `jl4-0.1-977c878b` (05:33Z), is 232,940,992, so it is neither; it has no `--version`. The lead was told at 06:00Z.
+The sha256 and size of the binary, and of every module of this row, its vendored copies, `vendor.sh`, `check.sh` and `VENDORED.sha256`, were the same before and after the run.
+On this binary, `tests-independent.l4` against version 0.1.0 (rebuilt from commons HEAD in the session scratchpad) gives 192 satisfied, 80 failed, 6 refused, the figures its author recorded, so the change of binary moved nothing that test file measures.
+
+```
+vendor.sh: 50 vendored modules match their sources and VENDORED.sha256
+module                                    errors satisfied  failed  refused  expected
+il07-adapter-il01.l4                           0         0       0        0         0
+il07-adapter-il02.l4                           0         0       0        0         0
+il07-adapter-il03.l4                           0         0       0        0         0
+il07-adapter-il04.l4                           0         0       0        0         0
+il07-adapter-il05.l4                           0         0       0        0         0
+il07-adapter-il06.l4                           0         0       0        0         0
+il07-adapter-il08-ito.l4                       0         0       0        0         0
+il07-adapter-il08-nii.l4                       0         0       0        0         0
+il07-nouns.l4                                  0         0       0        0         0
+il07-pipeline.l4                               0         0       0        0         0
+il07-published-figures.l4                      0         0       0        0         0
+il07-refusals.l4                               0         0       0        0         0
+il07-tests-expected-red.l4                     4         0       4        0         4
+il07-tests-il08.l4                             0        94       0        0         0
+il07-tests.l4                                  0       114       0        0         0
+tests-independent.l4                          95       181      95        2      95/2
+TOTAL (16 modules)                            99       389      99        2
+(a failed assertion is also an error; any other error, or a refused assertion a module is not expected to have, makes the run red; "expected" is failed/refused where a module may refuse)
+```
+
+`check.sh` exit 0.
+Every error is a failed assertion, and each module failed and refused exactly as often as `check.sh` expects.
+`il07-tests-expected-red.l4`: its four assertions, at lines 69 and 70 (R1), 124 (R2) and 170 (R3, new), each fail as predicted; R3's expression evaluates to 611.1 (checked with `#EVAL` in a scratch copy) where the text gives 793.8.
+`il07-tests.l4`: 114 assertions, 114 satisfied, 23 of them `#ASSERT REFUSED … BECAUSE`; eleven expected values changed (11.6) and one assertion was added.
+`il07-tests-il08.l4`: 94 assertions, 94 satisfied, 18 of them `#ASSERT REFUSED … BECAUSE`; every one was satisfied on the first run that evaluated it. Before that the module failed to compile twice, never to evaluate: three helpers lacked a `GIVEN`, and a one-argument helper's name ended in a keyword segment; both were fixed by changing the helper, no expected value changing.
+`tests-independent.l4`: the independent tester's file, not edited: 11.8.
+
+`check.sh` changed in two ways: `expected_failed` is 4 for the expected-red module and 95 for `tests-independent.l4`; and a new `expected_refused` lets one module refuse an exact number of times (2, `tests-independent.l4`), every other module still having to refuse none.
+`vendor.sh` copies 50 modules (36 + IL-08's 10 and 4; RECONCILE.md section 1); its earlier 36 lines of `VENDORED.sha256` are byte for byte unchanged.
+
+### 11.2 What changed in the composition
+
+| figure | version 0.2.0 makes it with | through |
+| --- | --- | --- |
+| which calculation governs | IL-02's s 66(c) for a separate calculation; otherwise IL-08's s 65, in the registered spouse's name | `IL-07: the calculation of the earner's tax, in` |
+| the year's taxable income | 12 × the salary; under s 65, IL-08's income charged in the registered spouse's name (the same salary, one earner) | `IL-08: the income charged in the registered spouse's name under section 65, in` |
+| the s 121 and s 121B tax | IL-03, on that income | `IL-03: the tax under section 121 on a taxable income of`, `IL-03: the additional tax under section 121B on a taxable income of` |
+| s 37's point | IL-08's s 37 on the statuses it reads; IL-02 halves it in a separate calculation (s 66(c)(2)) | `IL-08: the credit point under section 37 for the earner, in`; `IL-02: … , with a point under section 37:` |
+| ss 37-39 under s 65 | IL-08 | `IL-08: the credit points under sections 37, 38 and 39 for the earner, in` |
+| the children's points of a parent without a spouse | IL-08's s 40(b) | `IL-08: the credit points under section 40(b) for the earner, in` |
+| an immigrant's points | IL-08's s 35 | `IL-08: the credit points under section 35 for the earner, in` |
+| the pension credit, in money | IL-08's s 45A, with the year's amounts IL-08 sourced (12 × the booklet's monthly figures) | `IL-08: the credit under section 45A for the earner, in` |
+| the s 47 deduction | IL-08's s 47 (the tax is declined where it is above nil) | `IL-08: the deduction under section 47 for the earner, in` |
+| the branches the earner pays in | IL-08's s 335 | `IL-08: the branches in which contributions are payable for the earner, in` |
+| a woman's age for s 342(c)(2) | IL-08's Part D, from her date of birth | `IL-08: the age in months Part D of Schedule A1 fixes for a woman born on` |
+| which children are paid for in the month | IL-08's s 72, each child's entitlement arising at birth and ceasing on the 18th birthday as IL-06 reckons it | `IL-08: section 72 pays the allowance for month` |
+| the child allowance | IL-06, for those children, on a day it counts every one of them (fork K15) | `IL-06: the child allowance on` |
+
+**Two ways in.** The pipeline's rules whose names end ", with further facts" f take a second argument, `IL-07 further facts of the household` (`il07-nouns.l4`): the earner's pension contributions and insurance; immigration; the statuses s 37 reads; the statuses s 335 reads; and, for a parent without a spouse, the single-parent facts.
+The rules of version 0.1.0 keep their names and their household records unchanged, and are the same rules given `IL-07: no further facts`; so `tests-independent.l4` and every 0.1.0 caller still compile, and are answered as before wherever no provision now encoded changes the answer.
+The `@export` is the 0.2.0 rule `IL-07: the household's month, in` h `, with further facts` f.
+
+**Modules** (line counts at deposit): new, `il07-adapter-il08-ito.l4` (363), `il07-adapter-il08-nii.l4` (110), `il07-tests-il08.l4` (534); changed, `il07-nouns.l4` (366), `il07-refusals.l4` (265), `il07-pipeline.l4` (623), `il07-adapter-il02.l4` (200), `il07-adapter-il03.l4` (129), `il07-adapter-il05.l4` (163), `il07-adapter-il06.l4` (268), `il07-tests.l4` (492), `il07-tests-expected-red.l4` (170), `vendor.sh` (106), `check.sh` (85), `VENDORED.sha256` (50 entries), `.gitignore`; unchanged, the IL-01 and IL-04 adapters and `il07-published-figures.l4`.
+
+**Removed** from the adapters and the pipeline: the 0.1.0 rule declining a month in which a child is born or turns 18 after the 1st (`IL-06: a child of the household is born, or turns 18, …`), which also let an 18th birthday on the 1st through as 0 (independent finding F3); the IL-05 rules that read all nine branches and the earner record's Part D age.
+**Refusals**: of 0.1.0's 13, seven unchanged, two reworded (the period's, which said "all six composed rows", and fork K3's, which now names the s 45A credit), one rewritten (the unencoded credit, whose 0.1.0 words said "no composed row encodes, such as section 35, 45A or 47"), and three removed with the provisions IL-08 encodes: "the credit points for the children of a parent without a spouse are given by section 40(b) of the Income Tax Ordinance, which is not encoded"; "no separate calculation governs the earner's tax, so the couple is assessed under section 65 of the Income Tax Ordinance, which is not encoded"; "a child of the household is born, or turns 18, during the month; section 72 of the National Insurance Law decides which months are paid, and is not encoded".
+Seventeen are new (27 in all), five of them naming a defect of IL-08 (11.5), two answering the independent finding M1 (two children, or the earner and the spouse, of one name: IL-06's "problem with the facts" now says which).
+
+### 11.3 Coverage: what the capstone uses of IL-08
+
+| row half | provision | disposition | where |
+| --- | --- | --- | --- |
+| ITO | s 45A(a)(1), (b), (d), (e) | composed (declined where IL-08's D187 or D183 reach, or its own F1 refusal) | N1-N5 |
+| ITO | s 45A(b1), (f) | not needed (no sums for a child of 18 or more; no self-employed deposits) | — |
+| ITO | s 47(a) definitions | composed (qualifying income, insured income, beneficiary member) | N1, N2 |
+| ITO | s 47(b), (b1) | composed; the tax declined wherever it deducts anything (D190) | N1, N6 |
+| ITO | s 47(d) | not reached (the earner's "no credit or deduction beyond" TRUE says he is in no such class) | — |
+| ITO | s 40(b)(1), (1A), (1A1), (1B), (2), (3) | composed for a parent without a spouse; (1A1) for a child of one parent declined (observation 1) | N7-N11 |
+| ITO | s 37 | composed (the input replaced) | N15-N17 |
+| ITO | ss 38, 39 | composed under s 65; give nothing to this household's shape | N15 |
+| ITO | s 35 | composed; a second immigration declined (D055) | N12, N13 |
+| ITO | s 35(b) | not needed (the spouse has no income, so it gives nothing) | — |
+| ITO | s 65 | composed, in the earner's name; declined in the other spouse's | H11, N14, N18 |
+| ITO | s 64B | vendored, not composed: who is registered stays an input | — |
+| ITO | s 1 "Israeli resident", s 2 | not composed, not vendored: residence stays an input | — |
+| ITO | ss 48, 48A | reached as IL-08's refusals, in IL-01's words | — |
+| NII | s 72(a), (b) | composed | H16, N19-N22 |
+| NII | s 72(c) | not needed (no child of the household dies) | — |
+| NII | s 335 | composed; with no statuses given, a resident insured under Chapter 11 takes every branch (K16) | N25, N26 |
+| NII | Schedule A1 Part D | composed (the age in months; IL-05 computes the day) | H19, N27 |
+
+### 11.4 Forks, new and revised
+
+None has been settled by a court or a regulator to my knowledge.
+
+| # | the question | taken, and why |
+| --- | --- | --- |
+| K4 (revised) | A couple with no separate calculation? | Assessed under ITO s 65 (row IL-08): "הכנסת בני זוג יראוה … כהכנסת בן הזוג הרשום והיא תחוייב על שמו" (line 2448). Answered where the earner is the registered spouse; declined where the other spouse is, because the credits in that calculation are that spouse's and the household holds their facts only for the earner. |
+| K6 | — | **Superseded** by K15. |
+| K11 (revised) | The s 37 point? | s 37's own answer (row IL-08) on the statuses it reads; the couple's field must agree with it; TRUE without the statuses is declined. |
+| K12 | Children's points under s 65? | **None.** s 66(c)(4)-(6) give them "in the separate calculation" ((c) "אלה ההוראות שיחולו לגבי החישוב הנפרד", line 2460), and s 40(b) to a single-parent family; a search of the Ordinance for children's points (lines 1633-1640, 1708, 1884, 2465-2478) found no other provision for a couple; row IL-08's NOTES.md section 6 reads it the same way. So H11's tax is 18,858, not H3's 5,790. |
+| K13 | Does the net deduct the earner's own pension contribution? | **No**: the net is the brief's (salary less tax/12, national insurance and health, plus the allowance), and the contribution is a deposit to the earner's own provident fund under neither Law. A caller who wants take-home pay subtracts it. |
+| K14 | Schedule J column D above the threshold: the items (4.67) or the printed total (7.00)? | **The items, as in 0.1.0; not ruled.** The switch is one named rule (11.9). **Superseded by Meng's ruling of 2026-10-07: the printed totals by default, the items kept as the alternative; section 11.13 has the fork as ruled.** |
+| K15 | s 72 says which children are paid for in a month; IL-06 answers a day. Which day? | The first day of the month or, where a child paid for is born later in it (by the 15th), that birthday, the latest such; IL-06 is given only the children s 72 pays for. If one of them is 18 on that day by IL-06's rule (`s 65 — under 18 on`), no day of the month counts them all, and the month is declined. That happens for an 18th birthday on the 1st (s 72 pays the month; IL-06 counts the child on none of its days) and for an 18th birthday on or before the birthday of another child paid for in the same month. Asking IL-06 about a day of another month was rejected: IL-06's answer is "the child allowance … for the month in which the day falls". |
+| K16 | s 335 where the caller gives no statuses? | An earner resident in Israel and insured under Chapter 11 is taken to be insured under Chapters 5, 6, 8, 9, for unemployment and for long-term care, and to be neither a controlling shareholder nor a widow pensioner: version 0.1.0's convention, now run through s 335, which gives all nine branches. Any other earner is declined. A caller who knows otherwise gives the statuses. |
+| K17 | How is the s 45A credit, in money, set off? | With the credit points, against the s 121 tax, no further than to nil, the s 121B tax added after (K3 extended); declined where the credits exceed the s 121 tax and there is additional tax. Row IL-08's fork F11 leaves the order to the composer; with all income from personal exertion every order gives the same total. |
+
+### 11.5 Row IL-08's known defects, and where the capstone declines
+
+From the two halves' `INDEPENDENT-FINDINGS.md`. A defect that could change the capstone's answer is declined by name, in a refusal that names the finding; none is inherited silently.
+
+| finding | what IL-08 does | where it could change the capstone's answer | what the capstone does | test |
+| --- | --- | --- | --- | --- |
+| D187 (ITO) | Where s 45A's limits cut sums all at 35%, compares the fixed amount with limb (2) before the 1.5% survivors' proviso and never after, so the credit can fall below the s 45A(d)(1)/(e)(1) floor: a wrong number, no diagnostic. | Wherever something is cut, every creditable sum is at 35%, and IL-08's sums credited are below the lesser of those sums and the fixed amount. Under IL-08's own fork F5 that is never right; elsewhere its answer is right (worked: N3, survivors within the cap, 2,851.8). | Declines (`il07-adapter-il08-ito.l4`). | N4 (refused); R3 (expected red: 611.1 against 793.8) |
+| D183 (ITO) | Refuses, with "sums of different kinds", where the limits cut sums that are all life insurance. | Wherever life insurance alone is cut. | Declines in its own words. | N5 |
+| D190, D236 (ITO) | Always deducts under s 47 before crediting under s 45A, an unrecorded choice. | Wherever s 47 deducts anything (never for an employee whose whole salary is insured income). | Declines the tax. | N6 |
+| D055 (ITO) | A second immigration gives 0 points under s 35 unless the caller says the s 35(e) rules reach the immigrant. | Every immigrant for whom it is not the first time. | Declines. | N13 |
+| observation 1 (ITO) | s 40(b)(1A1) moves two points, not one, for a child of one parent. | A mother's election for a child of one parent in its year of birth or the next. | Declines. | N10 |
+| D019 (ITO) | s 1 "foreign resident", second limb, not recorded. | Not reached: the capstone does not compose IL-08's s 1; residence is an input. | — | — |
+| D244 (ITO) | The tester's own error. | — | — | — |
+| N2 (NII) | s 72(c) for a child who died with no payment made. | Not reached: no child of the household dies. | — | — |
+| N4 (NII) | Part D's day, where the day of the month does not exist, is the last day of the shorter month. | The capstone takes only the age in months; IL-05 computes the day the same way (its F19). In the one month the two readings part, IL-05 declines the deduction (the age is reached during the month), so no wrong number reaches the capstone: for a woman born on 29 February 1956, January 2026 gives 187.3811, February is declined, March gives 0 (probe in the session scratchpad); under the other reading February would be answered in full. | Nothing to add. | — |
+| May-2015 floor of s 72 (NII) | Refuses months before May 2015. | Not reached: the capstone answers 2026. | — | — |
+
+### 11.6 Every expected value changed in `il07-tests.l4`
+
+Each new figure was worked by hand, and checked in the calculator, before any run of 0.2.0; the module's first run against 0.2.0, still holding the 0.1.0 values, failed on exactly these eleven and on nothing else, as predicted. Each carries a "CHANGED IN 0.2.0" comment citing the provision.
+
+| line | household, figure | was (0.1.0) | now (0.2.0) | why |
+| ---: | --- | --- | --- | --- |
+| 395 | H11, the tax | REFUSED "no separate calculation governs …, which is not encoded" | 18,858 | ITO s 65 (row IL-08): 25,392 − 2.25 × 2,904; no children's points (K12) |
+| 396 | H11, the net | the same refusal | 12,773.5571 | 15,000 − 1,571.5 − 420.8811 − 626.0618 + 392 |
+| 408 | H12, the tax | REFUSED "… section 40(b) …, which is not encoded" | REFUSED "the earner has no spouse and has children; section 40(b) gives their credit points, and the household does not give the single-parent facts it reads" | ITO s 40(b) (row IL-08) reads facts the 0.1.0 household does not give |
+| 410 | H12, the household's month | the same | the same new words | the same |
+| 418 | H13, the net | REFUSED "… the one period all six composed rows answer" | REFUSED "… the one period all its composed rows answer" | the rows composed are now eight |
+| 419 | H14, the net | the same | the same new words | the same |
+| 420 | H14, the household's month | the same | the same new words | the same |
+| 448 | H16, the allowance | REFUSED "… section 72 … is not encoded" | 611 | NII s 72(a) (row IL-08): the month of the 18th birthday is paid; IL-06 on 1 June counts three: 173 + 219 + 219 |
+| 466 | H19, the deduction | REFUSED "the earner is a woman, and the age Part D of Schedule A1 fixes for her is not given" | 187.3811 | Schedule A1 Part D (row IL-08): 840 months for a woman born in 1988; H2's deduction |
+| 476 | H20, the tax | REFUSED "… no composed row encodes, such as section 35, 45A or 47" | REFUSED "the earner has a credit or deduction under the Income Tax Ordinance that IL-07 does not compute: it computes sections 35, 45A and 47 only from the further facts of its version 0.2.0, and no composed row encodes the others, such as section 39A, 44 or 46" | ss 35, 45A, 47 are now encoded |
+| 477 | H20, the net | the same | the same new words | the same |
+
+Added: line 451, H16's household in July, 392 (the month after the 18th birthday is not paid: 173 + 219).
+No other expected value of 0.1.0 changed; every other assertion of `il07-tests.l4` is satisfied against 0.2.0 as written.
+
+### 11.7 The worked households of `il07-tests-il08.l4`
+
+(Worked at the items' reading of Schedule J, before Meng's ruling. Every deduction above 7,703 and every net that rests on one has since changed to the printed totals; 11.13 lists each with its new value. The taxes, allowances and refusals below stand.)
+
+All for tax year 2026; amounts in NIS; every figure worked by hand from the figures below and the figures of section 5, then checked with exact fractions in a scratch calculator (`calc/expected020.py` in the session scratchpad, which reads no L4); it agreed with every hand figure.
+
+**The figures, besides section 5's.**
+s 45A and s 47, 2026 (row IL-08, twelve times the Tax Authority's monthly figures, [booklet-2026] PDF p. 9; its assumptions A3, A4): the s 45A(d)(1) amount 2,268; the s 47(a)(1) amounts 116,400 (work income only) and 164,400; the average wage 165,228 a year, so a beneficiary member has 16% of it, 26,436.48, deposited.
+s 45A: 25% of life insurance, 35% of pension and survivors' insurance; for one who is not a beneficiary member, the total credited is at most the higher of 2,268 and the lower of the sums and 7% of qualifying income, survivors' insurance within 1.5% of it and life-and-survivors' within 5% (lines 1725-1730); for a beneficiary member with insured income, 7% of the qualifying income that is insured (line 1737).
+s 40(b) (lines 1633-1640): (1) 2 1/2, 4 1/2, 3 1/2, 2 1/2, 2, 1/2 by age; (1A) the same to 5, then 1, nothing at 18; (1B) one more point and the (1A) table for a child of one parent; (2) one more point to the parent entitled under (1) who lives apart.
+s 35 from Amendment 262 (lines 1575-1578): 1/12 a month for months 1-12 of the period, 1/4 for 13-30.
+s 37: one point (line 1600), half of it in a separate calculation (s 66(c)(2), line 2463).
+NII s 72 (line 854): paid from the month of birth if born by the 15th (IL-08's fork N1), else from the next; to the end of the month of the 18th birthday.
+NII s 335 (lines 3611-3619); Schedule J 2026 column D per branch, below/above the threshold (lines 4720-4729, IL-04's temporary version): maternity 0.10/0.87, accident injury 0.03/0.07, unemployment 0.02/0.21, disability 0.29/1.86, long-term care 0.03/0.14, senior citizens and survivors 0.57/1.52; printed totals 1.04/7.00 (line 4730).
+Schedule A1 Part D (lines 4452-4453): 840 months from May 1950; 836 for September 1949 to April 1950.
+
+**The hand arithmetic.**
+
+- **N1**, H1 (single man, 10,000, March) paying 600 a month to a pension fund, the employer 1,250, all insured. Deposits 22,200 < 26,436.48: not a beneficiary member; (d): qualifying income min(120,000, 116,400) = 116,400; limb (2) min(7,200, 8,148) = 7,200 > 2,268; nothing cut: credit 35% × 7,200 = 2,520. s 47(b): limb (1) nil (no other income), limb (2) 5% × max(0, 116,400 − 120,000) = 0: nil. Tax 13,435.2 − 6,534 − 2,520 = 4,381.2; a twelfth 365.1; net 10,000 − 365.1 − 187.3811 − 367.5618 = **9,079.9571**.
+- **N2**, H3 (father, 15,000, June, registered, (1A); children 3 and 7) paying 900, the employer 1,875: deposits 33,300 ≥ 26,436.48, a beneficiary member; (e): 7% × min(180,000, 116,400) = 8,148, plus 5% of nothing uninsured; the 10,800 cut to 8,148, all at 35%: credit 2,851.8. Tax 25,392 − 19,602 − 2,851.8 = 2,938.2; a twelfth 244.85; net 15,000 − 244.85 − 420.8811 − 626.0618 + 392 = **14,100.2071**.
+- **N3**, N1 with 1,000 of survivors' insurance: the sums 8,200; limb (2) min(8,200, 8,148) = 8,148; survivors' 1,000 within 1,746 and 5,820; credit 35% × 8,148 = 2,851.8. Tax 13,435.2 − 6,534 − 2,851.8 = 4,049.4; a twelfth 337.45; net **9,107.6071**.
+- **N4**, N1's earner paying only 5,000 of survivors' insurance: limb (2) after the proviso 1,746 < 2,268, so 2,268 governs: credit 793.8 by the text; IL-08 answers 611.1. Tax and net **declined** (D187); the deduction **187.3811**.
+- **N5**, only 6,000 of life insurance: the 5% proviso (5,820) cuts sums all at 25%: **declined** (D183).
+- **N6**, N1's pension with 6,000 a month insured: s 47(b)(2) min(5% × (116,400 − 72,000), 5% × (120,000 − 72,000)) = **2,220** deducted: the tax **declined** (D190). With 12,000 insured on a 10,000 salary: **declined** (insured income above the salary).
+- **N7**, H12 (single father, 10,000, March; children turning 11 and 7, with him, maintained; a single-parent family, living apart from their living, registered mother): (1) 2 + 2, (2) 1: **5** points. Credits 7.25 × 2,904 = 21,054 > 13,435.2: tax **0**; allowance **392**; net 10,000 − 187.3811 − 367.5618 + 392 = **9,837.0571**.
+- **N8**, a single mother, 20,000, March, the same children, not living apart: (1) **4**. s 121 on 240,000: 34,992 + 12,000 × 31% = 38,712; credits 6.75 × 2,904 = 19,602; tax **19,110**; a twelfth **1,592.5**; deduction 80.1112 + 12,297 × 4.67% = **654.3811**; health 248.8069 + 12,297 × 5.17% = 884.5618; allowance **392**; net **17,260.5571**.
+- **N9**, the single mother with one child turning 3 whose father died in 2023 (a child of one parent): (1) 3 1/2, (1B) 1 + 3 1/2: **8** points. Tax 38,712 − 10.75 × 2,904 = **7,494**; allowance **173**; net 20,000 − 624.5 − 654.3811 − 884.5618 + 173 = **18,009.5571**.
+- **N10**, the single mother of a child of one parent born in 2025, electing under (1A1): **declined** (observation 1).
+- **N11**, N7 without the single-parent facts, and with an entry for one child only: **declined**.
+- **N12**, a single woman, 20,000, March, who first immigrated under the Law of Return on 5 January 2025: months 13-24 of the period, each 1/4: **3** points. Tax 38,712 − 5.75 × 2,904 = **22,014**; net 20,000 − 1,834.5 − 654.3811 − 884.5618 = **16,626.5571**. Immigrated on 1 June 2020 (the 42-month text, ending November 2023): **0** points in 2026.
+- **N13**, N12 not the first time: **declined** (D055).
+- **N14**, H11 through the 0.2.0 rule: s 65 in the earner's name; taxable income **180,000**; tax 25,392 − 6,534 = **18,858**.
+- **N15**, N14 with the wife disabled within s 9(5) and the maintenance proved: s 37's point in full under s 65, ss 38 and 39 nothing: **1** point. Tax 18,858 − 2,904 = **15,954**; net 15,000 − 1,329.5 − 420.8811 − 626.0618 + 392 = **13,015.5571**.
+- **N16**, H3 with the same statuses: **0.5** of a point (s 66(c)(2)). Tax 25,392 − 21,054 = **4,338**; net 15,000 − 361.5 − 420.8811 − 626.0618 + 392 = **13,983.5571**.
+- **N17**, the couple's s 37 field TRUE without the statuses, or with statuses under which s 37 gives nothing: **declined**.
+- **N18**, the father not registered and claiming nothing: s 65 in his wife's name: tax **declined**; allowance **392**.
+- **N19**, H3 with Gal born on 15 September 2026; September: s 72 pays Gal from September (born by the 15th); IL-06 on the 15th counts three: **611**. Tax: points 2.5 + 3.5 + 1 = 7, worth 20,328; with 6,534 they exceed 25,392: **0**. Net 15,000 − 420.8811 − 626.0618 + 611 = **14,564.0571**.
+- **N20**, Gal born on 16 September: September **392** (net **14,345.0571**), October **611**.
+- **N21**, H3 with Keren, 18 on 1 November 2026: October **611**; November **declined** (K15: s 72 pays the month, IL-06 counts her on none of its days; finding F3); December **392** (net 15,000 − 482.5 − 420.8811 − 626.0618 + 392 = **13,862.5571**).
+- **N22**, a child 18 on 10 September and Gal born on 12 September: **declined** (no day counts both); with the 18th birthday on 20 September, IL-06 on the 12th counts four: 173 + 3 × 219 = **830**.
+- **M1**, two children named "Dana": the allowance **declined**, saying so.
+- **N25**, a man, 12,000, June, resident under neither Law, not insured under Chapter 11, insured for work injury only: s 335 gives maternity ((a)) and work injury; s 342(c)(1) deducts maternity: 7,703 × 0.10% + 4,297 × 0.87% = **45.0869**. No points (ss 34, 36 need residence): tax **18,192**, a twelfth 1,516. Health, the caller's, 0. Net 12,000 − 1,516 − 45.0869 = **10,438.9131**. Without the statuses: the deduction **declined** (finding F4).
+- **N26**, H1's earner a controlling shareholder: no unemployment or insolvency (s 335(e), (f)): 7,703 × 1.02% + 2,297 × 4.46% = **181.0168**; net 10,000 − 575.1 − 181.0168 − 367.5618 = **8,876.3214**.
+- **N27**, a single woman born on 10 April 1950, 10,000, March: Part D **836** months, reached on 10 December 2019: deduction **0**; tax H2's 5,449.2; net 10,000 − 454.1 − 367.5618 = **9,178.3382**. A Part D age given as 800 for a woman born in 1988: **declined**.
+- **The switch**: under the printed-total reading H3's deduction is 420.8811 + 7,297 × (7.00% − 4.67%) = **590.9012** (finding R1's figure); under the items' reading **420.8811**; a controlling shareholder under the printed-total reading: **declined**.
+
+### 11.8 The independent tests against version 0.2.0
+
+(Measured before Meng's ruling on Schedule J; **superseded by 11.13**, where 258 pass, 18 fail and 2 refuse. The 15 reworded refusals and the 2 new refusals below are unchanged by the ruling.)
+
+`tests-independent.l4` (fid-il-07's, sha256 `88aae145…`, not edited) has 278 assertions.
+Against 0.1.0: 192 satisfied, 80 failed, 6 refused (INDEPENDENT-FINDINGS.md; reproduced on this binary). Against 0.2.0: **181 satisfied, 95 failed, 2 refused.**
+Compared assertion by assertion (a script over the two runs' diagnostics, in the session scratchpad):
+
+| 0.1.0 → 0.2.0 | count | which (line: household, figure) | why |
+| --- | ---: | --- | --- |
+| satisfied → satisfied | 177 | — | — |
+| failed → failed, the same | 77 | F1's 74 (the deduction above 7,703 and the net, at 4.67% against the tester's 7%); F4's H43 tax (line 670); F5's H45 deduction and net | Unchanged by design: the Schedule J reading is not ruled (K14); the tax of a non-resident is still answered (ss 34 and 36 give no points, s 121 applies); H45 was the tester's own error. |
+| failed → satisfied | 1 | 671: H43, the net (refusal expected) | F4: a non-resident with no statuses is now declined by s 335 (K16), so the net is refused. |
+| failed → refused | 2 | 518, 519: H44n, the allowance and the net | F3: no longer 0; s 72 pays November for the 18th birthday on 1 November, and IL-06 counts the child on no day of it: declined (K15). The tester expected 173. |
+| refused → satisfied | 3 | 480: H25, 528: H27, 537: H28, the allowance | F2: s 72 is composed: 392, 392, 173, as the tester decided. |
+| refused → failed | 3 | 481: H25, 529: H27, 538: H28, the net | Now answered, and each differs from the tester's by F1 alone (100.1201 = 380.9012 − 280.7811): 11,394.7571, 11,515.7571, 11,296.7571 against 11,294.637, 11,415.637, 11,196.637. |
+| satisfied → failed | 15 | 597: H32, 605: H36, 613: H36m (s 40(b)); 620-624: H38, 629-633: H39 (the period); 658: H41, 665: H42 (the unencoded credit) | The words of a refusal 0.2.0 changed: s 40(b) is encoded and reads facts the tester's households do not give; the composed rows are eight; ss 35, 45A and 47 are encoded. Each still refuses; only the BECAUSE differs. |
+
+So of the 80 failures: 77 stand, 1 now passes, 2 are now refused (and now declined by name rather than answered wrongly). Of the 6 refusals: 3 now pass and 3 now fail on F1 alone. 15 assertions that passed now fail on reworded refusals.
+`check.sh` expects exactly 95 failures and 2 refusals from this module.
+
+### 11.9 The Schedule J switch
+
+(**Superseded by 11.13**: Meng ruled on 2026-10-07; the switch now names the printed totals.)
+
+`il07-pipeline.l4`, the rule `IL-07: the reading of Schedule J column D the capstone takes`, headed "THE SCHEDULE J SWITCH"; its two values are the constructors of `IL-07 a reading of Schedule J column D above the reduced collection threshold` in `il07-nouns.l4`.
+It names `the sum of the items of the six deduction branches` (4.67 for 2026), version 0.1.0's behaviour, because Meng has not ruled on 7.00 against 4.67.
+A ruling for the printed total is a one-line change, that rule's body to `the printed total of column D`; the pipeline then adds the printed totals less the items' sums on each part of the income for an earner who pays in all six deduction branches, and declines one who pays in fewer (RECONCILE.md section 5).
+Both readings are tested now. After a ruling for 7.00, R1 would pass and `il07-tests.l4`'s deductions above the threshold would have to be reworked by hand.
+
+### 11.10 Sources: what was read for version 0.2.0, and not
+
+**Read**: this row's `BRIEF.md`, `GAPS.md`, `RECONCILE.md`, `encoding.json`, every module, `vendor.sh`, `check.sh`, `INDEPENDENT-FINDINGS.md` and `tests-independent.l4`, and `NOTES.md` sections 0 to 10 (lines 1-263). The section headed "Comparison with Axiom's RuleSpec", which commons commit `4f6e3ff` added at line 264 while this work was in progress, was **not read**: this section was inserted before it by a script that did not display it. Its heading was seen in a listing of the file's headings; a second such listing, made to check the insertion, also showed its 10 sub-headings (titles only, no body text). That second listing should have stopped at this section, and is recorded here because it did not.
+Row IL-08, both halves: `NOTES.md` in full (neither had a "Comparison with Axiom" section when read), `INDEPENDENT-FINDINGS.md`, `BRIEF.md` not read; every rule, noun and published-figure module the capstone vendors; the ITO half's s 1 and s 2 modules only for their imports. Not read: either half's `DECIDED-ANSWERS.md`, `tests-independent.l4` or test modules.
+Rows IL-01 to IL-06: the vendored modules where the adapters needed them (IL-04's Schedule J tables and totals, IL-05's s 342, IL-06's s 65, its family on a day, its published figures).
+For the Schedule J ruling (11.13): row IL-04's `NOTES.md`, sections 4 (fork F4) and 7 (the Institute's pages), found from a listing of its headings that stopped at its section headed "Comparison with Axiom's RuleSpec" (line 447), which was not read.
+The deposited Ordinance at lines 1880-1888 (s 58) and 2453-2476 (s 66), and searched for children's credit points (fork K12); the deposited Law as the rows quote it, and, for fork K14 after the ruling, at lines 3661 and 4709-4752 (Schedule J's rows and totals).
+**Not read**: anything of the Axiom Foundation or under any path the brief forbids; this row's `DECIDED-ANSWERS.md`. Nothing was fetched.
+
+### 11.11 Open questions added for a domain expert
+
+8. K12: does a couple assessed under s 65, with no separate calculation requested, get any credit points for their children?
+9. K15: for the month of an 18th birthday that falls on the 1st, does the Institute pay the allowance for that child, and at which place among the children?
+10. N25 (K16): for a non-resident employee insured for work injury only, does the employer deduct column D's maternity percentages and nothing else?
+11. K13: should "net income" deduct the employee's own pension contribution?
+12. K17 and IL-08 F11: in what order are the s 45A credit and the credit points set off, and against the s 121B tax?
+
+### 11.12 What was not done
+
+- **No independent test pass of version 0.2.0**: `tests-independent.l4` measures 0.1.0's interface; the paths IL-08 opened are tested only by their author.
+- **s 64B is not composed** (its facts are two years back), nor IL-08's s 1 and s 2; residence and the registered spouse stay inputs.
+- **Not composed**: s 45A(b1) and s 47(b1) for a child of 18 or more, s 45A(f) for a self-employed member's deposits, s 35(b) for an immigrant spouse (nil for a spouse without income).
+- **IL-06 answering a month** for the children s 72 pays for, which would answer the 18th birthday on the 1st: proposed in RECONCILE.md section 3, not done (the rows are read-only).
+- **HG1** not sought; **not committed** (no git change was made). `../../subject.json` was updated to `encoding_version` 0.2.0 and to list row IL-08.
+
+### 11.13 Meng's ruling on Schedule J, 2026-10-07: the printed totals by default
+
+Ruled by Meng on 2026-10-07, relayed by the lead, replacing item 3 of the integration brief: above the reduced collection threshold Schedule J is read at its **printed totals** by default (7.00 for the employee's deduction, and likewise any other printed total the Schedule gives), and the sum of the rows (4.67) is **kept as the alternative of a fork**, not deleted.
+Sections 11.1, 11.4 (K14), 11.7, 11.8 and 11.9 above were written before the ruling; where it changes them they are marked, and this section has the state after it.
+Row IL-04 still computes from the rows and is not this row's to edit; backlog row IL-11 is to add the same switch inside IL-04.
+
+**Fork K14, as ruled.**
+
+| | |
+| --- | --- |
+| the question | NII s 342(c)(1) makes the employer deduct "אחוזים מההכנסה שלפיה משתלמים דמי הביטוח", as Schedule J sets them (line 3661): which figures of Schedule J's column D, "הניכוי משכר העובד לענין סעיף 342(ג) באחוזים" (line 4717), above the reduced collection threshold? |
+| the text | Schedule J is lines 4709-4750: the temporary version for 2025-2026 (label, line 4714), its column headings (4716-4719), its ten items (4720-4729) and its totals row "סך הכל" (4730); the permanent version follows (4734-4748). In the temporary version, column D's items for the six branches s 342(c)(1) names, above the threshold, are 0.87 (maternity), 0.07 (accident injury), 0.21 (unemployment), 1.86 (disability), 0.14 (long-term care), 1.52 (senior citizens and survivors): **4.67**; the totals row prints **7.00**. Below the threshold the items are 0.10, 0.03, 0.02, 0.29, 0.03, 0.57, summing to 1.04, and the totals row prints **1.04**: the two readings agree there. |
+| reading (i), the printed totals | **Taken, by ruling.** Above the threshold the employee is deducted 7.00% (and 1.04% below). The National Insurance Institute deducts 7% from an employee above the threshold: its employees' rates page, `https://www.btl.gov.il/Insurance/Rates/Pages/%d7%9c%d7%a2%d7%95%d7%91%d7%93%d7%99%d7%9d%20%d7%a9%d7%9b%d7%99%d7%a8%d7%99%d7%9d.aspx`, fetched by row IL-04 on 2026-10-06T14:07:32Z, sha256 `63457694f21874d7e1eee490811ec86b60c83aff49f733aae6aadb85b9129aba` (as IL-04 NOTES.md section 7 records it: "employee 1.04 … up to it, 7.6 / 7 / 14.6 above", employer / employee / total). |
+| reading (ii), the items | **Kept as the alternative.** The deduction is the sum, branch by branch, of each item's percentage on each part of the income: 4.67% above. Row IL-04's own fork F4 chose this reading for computing (s 335 imposes contributions branch by branch; s 337(a) applies "the rates under s 335"; s 28(a) credits contributions to the branches "in the ratio of the rates in Schedule J", line 449), and keeps the totals as data, compared in its red module. Versions 0.1.0 and 0.2.0 before the ruling took it from IL-04. |
+| what it changes | 2.33% of the part of the s 348 income above 7,703. At Schedule K's maximum, 51,910 a month, that is 44,207 × 2.33% = **1,030.0231 a month** (3,174.6012 against 2,144.5781). On a salary of 15,000, 170.0201 (finding R1). Nothing below the threshold. |
+| an earner who does not pay in all six branches | The printed total is for the six deduction branches together; the Schedule prints no total for fewer, and the 2.33 gap cannot be placed on a branch (IL-04 NOTES.md section 7: "Which cell, if any, is wrong cannot be told from the table."). Under reading (i) such an earner's deduction is **declined** (a non-resident paying maternity alone; a controlling shareholder, who pays no unemployment or insolvency); under reading (ii) it is computed. |
+| the switch | One named rule, `IL-07: the reading of Schedule J column D the capstone takes` in `il07-pipeline.l4` (headed "THE SCHEDULE J SWITCH"), now `the printed total of column D`; the other reading is a one-line change to `the sum of the items of the six deduction branches`. The national insurance rule and the net rule each have a form that takes the reading as an argument (`…, reading Schedule J column D as` r), and both readings are tested (`il07-tests-il08.l4`, H3's household: 590.9012 and 13,692.537 at the totals; 420.8811 and 13,862.5571 at the items). |
+| other printed totals | The capstone reads only column D (the employee's deduction); columns C and E, whose totals also differ from their items (IL-04's F4), are not composed. Column D's lower total equals its items. So no other figure moves. |
+| the source of the totals | Row IL-04's vendored modules already carry the totals row of each version (`nii-schedule-j-tables.l4`, line 4730 quoted there) and the IL-04 adapter exposes column D's (`IL-04: column D's printed total, in a month of`), so no published-figure input was needed. |
+
+**How the pipeline computes reading (i).** IL-05's s 342(c) on IL-04's per-branch amounts (the items), plus, for an earner who pays in all six deduction branches, the printed totals less the items' sums on each part of the s 348 income: (7.00 − 4.67)% above the threshold and (1.04 − 1.04)% below. Where IL-05 deducts nothing (s 342(c)(2), the age or the pension) nothing is added. This is the composition of IL-04 and IL-05 under the ruled reading, not a rule of the capstone's; IL-11 is to move the reading into IL-04.
+
+**What `check.sh` prints after the ruling.** Run from 2026-10-07T06:57:27Z to 06:58:56Z (1 min 29 s), on the same binary as 11.1 (sha256 `6015a4c3…`, unchanged during the run); no module changed during the run.
+
+```
+vendor.sh: 50 vendored modules match their sources and VENDORED.sha256
+module                                    errors satisfied  failed  refused  expected
+il07-adapter-il01.l4                           0         0       0        0         0
+il07-adapter-il02.l4                           0         0       0        0         0
+il07-adapter-il03.l4                           0         0       0        0         0
+il07-adapter-il04.l4                           0         0       0        0         0
+il07-adapter-il05.l4                           0         0       0        0         0
+il07-adapter-il06.l4                           0         0       0        0         0
+il07-adapter-il08-ito.l4                       0         0       0        0         0
+il07-adapter-il08-nii.l4                       0         0       0        0         0
+il07-nouns.l4                                  0         0       0        0         0
+il07-pipeline.l4                               0         0       0        0         0
+il07-published-figures.l4                      0         0       0        0         0
+il07-refusals.l4                               0         0       0        0         0
+il07-tests-expected-red.l4                     4         0       4        0         4
+il07-tests-il08.l4                             0        98       0        0         0
+il07-tests.l4                                  0       114       0        0         0
+tests-independent.l4                          18       258      18        2      18/2
+TOTAL (16 modules)                            22       470      22        2
+(a failed assertion is also an error; any other error, or a refused assertion a module is not expected to have, makes the run red; "expected" is failed/refused where a module may refuse)
+```
+
+`check.sh` exit 0; every error is a failed assertion, and each module fails and refuses exactly as `check.sh` expects (now 18 failed and 2 refused for `tests-independent.l4`).
+Re-run, nothing having changed, from 07:02:29Z to 07:03:53Z at the lead's request: the same table, exit 0; the binary's sha256 was `6015a4c3fa181842c597c95948290fe45537963d279ae5b5918a106a0c3b54a6` (233,037,424 bytes, modified 05:35:45Z) before and after, and no module changed.
+`il07-tests.l4`: 114 of 114 satisfied, every new value on the first run that evaluated it. `il07-tests-il08.l4`: 98 of 98 (22 of them `#ASSERT REFUSED`), likewise.
+`il07-tests-expected-red.l4`: 4 of 4 fail, as predicted: R1 (lines 78-79) now asks the items' reading by name (below), and fails at 420.8811 and 13,862.5571 against the Institute's 590.9012 and 13,692.537; R2 and R3 as before.
+
+**Every expected value the ruling changed in `il07-tests.l4`** (each marked "CHANGED BY THE SCHEDULE J RULING" with the figure it replaced; worked in a calculator of exact fractions, `calc/expected020b.py` in the session scratchpad, before the run):
+
+| household, figure | was (items) | now (printed totals) | arithmetic |
+| --- | --- | --- | --- |
+| the 7,704 deduction | 80.1579 | 80.1812 | 7,703 × 1.04% + 1 × 7% |
+| H1, deduction; net | 187.3811; 8,869.9571 | 240.9012; 8,816.437 | 80.1112 + 2,297 × 7%; 10,000 − 575.1 − 240.9012 − 367.5618 |
+| H2, net | 8,990.9571 | 8,937.437 | 10,000 − 454.1 − 240.9012 − 367.5618 |
+| H3, deduction; net; the household's month's net | 420.8811; 13,862.5571; 13,862.5571 | 590.9012; 13,692.537; 13,692.537 | 80.1112 + 7,297 × 7%; 15,000 − 482.5 − 590.9012 − 626.0618 + 392 |
+| H3b, net | 13,862.5571 | 13,692.537 | as H3 |
+| H4, net | 11,640.2571 | 11,540.137 | deduction 80.1112 + 4,297 × 7% = 380.9012; 12,000 − 0 − 380.9012 − 470.9618 + 392 |
+| H5, net | 12,074.7571 | 11,974.637 | 12,000 − 3.5 − 380.9012 − 470.9618 + 830 |
+| H6, deduction; net | 887.8811; 21,526.5571 | 1,290.9012; 21,123.537 | 80.1112 + 17,297 × 7%; 25,000 − 2,053.5 − 1,290.9012 − 1,143.0618 + 611 |
+| H7, deduction; net | 2,144.5781; 43,097.3131 | 3,174.6012; 42,067.29 | 80.1112 + 44,207 × 7%; 70,000 − 22,223.8 − 3,174.6012 − 2,534.3088 |
+| H8, net | 43,852.3131 | 42,822.29 | 70,000 − 21,860.8 − 3,174.6012 − 2,534.3088 + 392 |
+| H11, net; deduction | 12,773.5571; 420.8811 | 12,603.537; 590.9012 | 15,000 − 1,571.5 − 590.9012 − 626.0618 + 392 |
+| H15, deduction | 187.3811 | 240.9012 | as H1 |
+| H19, deduction | 187.3811 | 240.9012 | as H1 |
+| H20, deduction | 187.3811 | 240.9012 | as H1 |
+
+Twenty values. Unchanged: H9 (6,247.67, below the threshold) and H10 (exactly 7,703); every tax, allowance and refusal.
+
+**Every expected value the ruling changed in `il07-tests-il08.l4`** (marked the same way):
+
+| household, figure | was | now |
+| --- | --- | --- |
+| N1, deduction; net | 187.3811; 9,079.9571 | 240.9012; 9,026.437 |
+| N2, net; the household's month's net | 14,100.2071; 14,100.2071 | 13,930.187; 13,930.187 |
+| N3, net | 9,107.6071 | 9,054.087 |
+| N4, deduction | 187.3811 | 240.9012 |
+| N7, net | 9,837.0571 | 9,783.537 |
+| N8, deduction; net | 654.3811; 17,260.5571 | 940.9012; 16,974.037 |
+| N9, net | 18,009.5571 | 17,723.037 |
+| N12, net | 16,626.5571 | 16,340.037 |
+| N15, net | 13,015.5571 | 12,845.537 |
+| N16, net | 13,983.5571 | 13,813.537 |
+| N19, net | 14,564.0571 | 14,394.037 |
+| N20, September's net | 14,345.0571 | 14,175.037 |
+| N21, December's net | 13,862.5571 | 13,692.537 |
+| N25, the net | 10,438.9131 | declined (does not pay all six deduction branches) |
+| N26, the net | 8,876.3214 | declined (the same) |
+| the switch | the sum of the items | the printed total of column D |
+
+Nineteen values. Each new net is the old less 2.33% of the salary above 7,703 (53.5201 at 10,000; 170.0201 at 15,000; 286.5201 at 20,000).
+The deductions of N25 (45.0869) and N26 (181.0168) keep their values but now ask the items' reading by name; two assertions were added, that the default deduction of each is declined; and two more, the net at each reading for H3's household.
+
+**`il07-tests-expected-red.l4`, R1.** Under the default, the capstone's deduction and net for R1's household are now the Institute's, so the two assertions asked of the default would pass. The finding stands against row IL-04, which computes from the items, and against the items' reading the capstone keeps; so the two assertions now ask the items' reading by name, with their expected values, the Institute's, unchanged. They are expected to fail until IL-11 puts the switch inside IL-04 (and then, as the capstone's alternative, still). `check.sh` and `encoding.json` keep the count at 4.
+
+**The independent tests after the ruling.** 278 assertions: **258 satisfied, 18 failed, 2 refused** (0.1.0: 192, 80, 6).
+Against 0.1.0, assertion by assertion: 177 satisfied both times; **75 failures now pass** (F1's 74, the tester's 7% above the threshold, every one now agreeing, and H43's net, now declined); **all 6 refusals now pass** (H25, H27 and H28, allowance and net, under s 72 and the printed totals); 3 failures stand (H43's tax, the tester's guess of a refusal; H45's deduction and net, the tester's own error, F5); 2 failures are now refusals (H44n, fork K15); and 15 assertions that passed now fail only on the words of a refusal 0.2.0 reworded (11.8).
+The 74 that F1 counted all pass, as the lead expected.
 
 ## Comparison with Axiom's RuleSpec (2026-10-07)
 

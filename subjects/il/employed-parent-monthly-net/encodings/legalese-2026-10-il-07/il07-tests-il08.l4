@@ -1,0 +1,572 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `il07-nouns`
+IMPORT `il07-refusals`
+IMPORT `il07-published-figures`
+IMPORT `il07-adapter-il01`
+IMPORT `il07-adapter-il02`
+IMPORT `il07-adapter-il03`
+IMPORT `il07-adapter-il04`
+IMPORT `il07-adapter-il05`
+IMPORT `il07-adapter-il06`
+IMPORT `il07-adapter-il08-ito`
+IMPORT `il07-adapter-il08-nii`
+IMPORT `il07-pipeline`
+
+-- ===========================================================================
+-- IL-07 version 0.2.0: worked households for the paths row IL-08 opened.
+--
+-- EVERY EXPECTED VALUE COMES FROM THE SOURCE AND THE ROWS' SOURCED FIGURES,
+-- worked by hand in NOTES.md section 11 (and checked there with exact fractions
+-- in a calculator that reads no L4), never from running this code. The figures
+-- of il07-tests.l4, and:
+--   s 45A/47 amounts 2026 .. 2,268 (s 45A(d)(1)); 116,400 and 164,400 (s 47(a)(1)
+--                            (1), (2)); the average wage 165,228 a year, so a
+--                            beneficiary member has 26,436.48 deposited (s 47(a)(7));
+--                            each twelve times the Tax Authority's monthly figure
+--                            ([booklet-2026] p. 9; row IL-08, its A3, A4)
+--   s 45A rates ............ 25% life insurance; 35% pension and survivors'
+--                            insurance; (d) 7% of qualifying income for work
+--                            income, provisos 1.5% and 5%; (e)(2)(b)(2)(a) 7% of
+--                            insured qualifying income (ITO lines 1715-1738)
+--   s 40(b) tables ......... (1): 2 1/2 in the year of birth, 4 1/2 aged 1-2,
+--                            3 1/2 aged 3, 2 1/2 aged 4-5, 2 aged 6-17, 1/2 at
+--                            18; (1A): the same to 5, then 1; (1B) one more point
+--                            and the (1A) table; (2) one more point (lines 1633-1640)
+--   s 35 ................... from Amendment 262: 1/12 a month for months 1-12 of
+--                            the period, 1/4 for 13-30, 1/6 for 31-42, 1/12 for
+--                            43-54 (lines 1575-1578)
+--   s 37 ................... one point; half of it in a separate calculation,
+--                            s 66(c)(2) (lines 1600, 2463)
+--   NII s 72 ............... paid from the month of birth if born by the 15th, else
+--                            the next; to the month of the 18th birthday (line 854)
+--   NII s 335 .............. the branches by status (lines 3611-3619)
+--   NII Schedule A1 Part D . 70 years (840 months) for a woman born from May 1950;
+--                            69 and 8 months (836) for one born September 1949 to
+--                            April 1950 (lines 4452-4453)
+--   Schedule J 2026, col. D  per branch, below / above the threshold: maternity
+--                            0.10 / 0.87, accident injury 0.03 / 0.07,
+--                            unemployment 0.02 / 0.21, disability 0.29 / 1.86,
+--                            long-term care 0.03 / 0.14, senior citizens and
+--                            survivors 0.57 / 1.52; printed totals 1.04 / 7.00
+--                            (NII lines 4720-4730, row IL-04's temporary version)
+--   SCHEDULE J, BY RULING .. Meng ruled on 2026-10-07 that column D is read at its
+--                            printed totals, 1.04 / 7.00, by default, the items'
+--                            reading kept as a fork (NOTES.md K14). Every
+--                            deduction above 7,703 here is at the printed totals;
+--                            the values first worked at the items' 4.67 are
+--                            marked "CHANGED BY THE SCHEDULE J RULING" with the
+--                            figure they replaced (NOTES.md section 11.13).
+-- A failing assertion is a finding: no expected value here is ever edited to
+-- match what the code computed.
+-- ===========================================================================
+
+§ `IL-07 version 0.2.0 — worked households`
+
+§§ `Builders`
+
+GIVEN `the name` IS A STRING
+      `is female` IS A BOOLEAN
+      `born on`  IS A DATE
+      `salary`   IS A NUMBER
+GIVETH AN `IL-07 earner`
+`v2: an earner` `the name` `, female:` `is female` `, born` `born on` `, paid` `salary` MEANS
+    `IL-07 earner` WITH
+        `the earner's name`                                                              IS `the name`
+        `the earner is a woman`                                                          IS `is female`
+        `the earner's date of birth`                                                     IS `born on`
+        `the earner's monthly salary`                                                    IS `salary`
+        `the earner is paid that salary in every month of the tax year`                  IS TRUE
+        `the earner was an Israeli resident in the tax year, under the Income Tax Ordinance` IS TRUE
+        `the earner is a foreign worker`                                                 IS FALSE
+        `the earner is a resident of the Area who is not an Israeli citizen`             IS FALSE
+        `the earner is insured under Chapter 11 of the National Insurance Law`           IS TRUE
+        `the earner is resident in Israel, under the National Insurance Law`             IS TRUE
+        `the full monthly minimum wage of an employee aged 18 or over applies to the earner` IS TRUE
+        `the earner's age fixed by Part D of Schedule A1 to the National Insurance Law, in months, if a woman` IS NOTHING
+        `the earner has no credit or deduction under the Income Tax Ordinance beyond those the composed rows encode` IS TRUE
+
+GIVEN `her name` IS A STRING
+GIVETH AN `IL-07 spouse`
+`v2: a housewife named` `her name` MEANS
+    `IL-07 spouse` WITH
+        `the spouse's name`                                                              IS `her name`
+        `the spouse is a woman`                                                          IS TRUE
+        `the spouse's taxable income in the tax year`                                    IS 0
+        `the spouse is insured under Chapter 11 of the National Insurance Law`           IS FALSE
+        `the spouse is a housewife as defined in section 238 of the National Insurance Law` IS TRUE
+        `the spouse is resident in Israel, under the National Insurance Law`             IS TRUE
+
+GIVEN `the other spouse`  IS AN `IL-07 spouse`
+      `registered`        IS A BOOLEAN
+      `claims`            IS A BOOLEAN
+      `s 37`              IS A BOOLEAN
+GIVETH AN `IL-07 couple`
+`v2: married to` `the other spouse` `, registered:` `registered` `, claims:` `claims` `, s 37:` `s 37` MEANS
+    `IL-07 couple` WITH
+        `the earner's spouse`                                                            IS `the other spouse`
+        `the earner is the registered spouse`                                            IS `registered`
+        `the earner claims a separate calculation of the tax on the earner's income from personal exertion` IS `claims`
+        `the earner would be entitled to a credit point under section 37 of the Income Tax Ordinance` IS `s 37`
+
+GIVEN `the name` IS A STRING
+      `born on`  IS A DATE
+GIVETH AN `IL-07 child`
+`v2: a child` `the name` `, born` `born on` MEANS
+    `IL-07 child` WITH
+        `the child's name`                                                               IS `the name`
+        `the child's date of birth`                                                      IS `born on`
+        `the child's mother elects to count one birth-year credit point in the following tax year` IS FALSE
+
+GIVEN `the month`  IS A NUMBER
+      `who earns`  IS AN `IL-07 earner`
+      `the couple` IS A MAYBE `IL-07 couple`
+      `the kids`   IS A LIST OF `IL-07 child`
+      `health`     IS A NUMBER
+GIVETH AN `IL-07 household in a month`
+`v2: in month` `the month` `of 2026, a household of` `who earns` `, married:` `the couple` `, with children` `the kids` `, health` `health` MEANS
+    `IL-07 household in a month` WITH
+        `the year of the month`                                                          IS 2026
+        `the month of the year`                                                          IS `the month`
+        `the earner`                                                                     IS `who earns`
+        `the couple, if the earner has a spouse`                                         IS `the couple`
+        `the children of the household`                                                  IS `the kids`
+        `the health insurance contribution the caller says is deducted for the month`    IS `health`
+
+GIVEN `own`       IS A NUMBER
+      `employer`  IS A NUMBER
+      `insured`   IS A NUMBER
+      `survivors` IS A NUMBER
+      `life`      IS A NUMBER
+GIVETH AN `IL-07 the earner's pension contributions and insurance`
+`v2: paying` `own` `a month, the employer` `employer` `, insured` `insured` `, survivors' insurance` `survivors` `, life insurance` `life` MEANS
+    `IL-07 the earner's pension contributions and insurance` WITH
+        `the earner's own contribution to a pension provident fund, each month`          IS `own`
+        `the employer's deposits to a pension provident fund for the earner, each month` IS `employer`
+        `the part of the monthly salary that is insured income`                          IS `insured`
+        `paid in the tax year for survivors' pension insurance`                          IS `survivors`
+        `paid in the tax year for insurance of the earner's or the spouse's life`        IS `life`
+
+GIVEN p IS AN `IL-07 the earner's pension contributions and insurance`
+GIVETH AN `IL-07 further facts of the household`
+`v2: further facts, paying` p MEANS
+    `IL-07 further facts of the household` WITH
+        `the earner's pension contributions and insurance`         IS p
+        `the earner's immigration, if the earner is an immigrant`  IS NOTHING
+        `the statuses section 37 reads, if given`                  IS NOTHING
+        `the earner's insurance statuses for section 335, if given` IS NOTHING
+        `the single-parent family, if given`                       IS NOTHING
+
+`v2: nothing paid` MEANS `v2: paying` 0 `a month, the employer` 0 `, insured` 0 `, survivors' insurance` 0 `, life insurance` 0
+
+GIVEN `single`   IS A BOOLEAN
+      `apart`    IS A BOOLEAN
+      `entries`  IS A LIST OF `IL-07 a child's other parent, for section 40(b)`
+GIVETH AN `IL-07 further facts of the household`
+`v2: a single parent, single-parent family:` `single` `, living apart:` `apart` `, other parents` `entries` MEANS
+    `IL-07 further facts of the household` WITH
+        `the earner's pension contributions and insurance`         IS `v2: nothing paid`
+        `the earner's immigration, if the earner is an immigrant`  IS NOTHING
+        `the statuses section 37 reads, if given`                  IS NOTHING
+        `the earner's insurance statuses for section 335, if given` IS NOTHING
+        `the single-parent family, if given`                       IS JUST (`IL-07 the single-parent family, for section 40(b)` WITH
+            `the earner and the children are a single-parent family` IS `single`
+            `the earner maintained the children in the tax year`     IS TRUE
+            `the earner lives apart from the children's other parent` IS `apart`
+            `the earner's share of the children's maintenance expenses` IS 1
+            `each child's other parent`                              IS `entries`)
+
+GIVEN `the child's name` IS A STRING
+      `died`             IS A BOOLEAN
+      `unregistered`     IS A BOOLEAN
+GIVETH AN `IL-07 a child's other parent, for section 40(b)`
+`v2: the other parent of` `the child's name` `, died:` `died` `, not registered:` `unregistered` MEANS
+    `IL-07 a child's other parent, for section 40(b)` WITH
+        `the name of the child`                                                          IS `the child's name`
+        `the child's other parent died in or before the tax year`                                IS `died`
+        `the child is registered in the population register without the details of one parent` IS `unregistered`
+        `the child's other parent is an Israeli resident in the tax year`                        IS TRUE
+        `the child's other parent has credit points for the child under section 40(b)(1)`        IS FALSE
+
+GIVEN im IS AN `IL-07 the earner's immigration`
+GIVETH AN `IL-07 further facts of the household`
+`v2: an immigrant,` im MEANS
+    `IL-07 further facts of the household` WITH
+        `the earner's pension contributions and insurance`         IS `v2: nothing paid`
+        `the earner's immigration, if the earner is an immigrant`  IS JUST im
+        `the statuses section 37 reads, if given`                  IS NOTHING
+        `the earner's insurance statuses for section 335, if given` IS NOTHING
+        `the single-parent family, if given`                       IS NOTHING
+
+GIVEN `the day` IS A DATE
+      `first`   IS A BOOLEAN
+GIVETH AN `IL-07 the earner's immigration`
+`v2: immigrated under the Law of Return on` `the day` `, the first time:` `first` MEANS
+    `IL-07 the earner's immigration` WITH
+        `the ground of immigration`                                                      IS `IL-07: an immigrant's visa or certificate under the Law of Return`
+        `the earner's Israeli citizenship was cancelled under section 10(d) of the Citizenship Law` IS FALSE
+        `the day the earner became an immigrant`                                         IS `the day`
+        `it was the first time the earner became an immigrant`                           IS `first`
+        `the Minister's rules under section 35(e) reach the earner`                      IS FALSE
+
+GIVEN s IS AN `IL-07 the statuses section 37 reads`
+GIVETH AN `IL-07 further facts of the household`
+`v2: with the statuses section 37 reads,` s MEANS
+    `IL-07 further facts of the household` WITH
+        `the earner's pension contributions and insurance`         IS `v2: nothing paid`
+        `the earner's immigration, if the earner is an immigrant`  IS NOTHING
+        `the statuses section 37 reads, if given`                  IS JUST s
+        `the earner's insurance statuses for section 335, if given` IS NOTHING
+        `the single-parent family, if given`                       IS NOTHING
+
+GIVEN `spouse disabled` IS A BOOLEAN
+GIVETH AN `IL-07 the statuses section 37 reads`
+`v2: maintenance proved, the spouse blind or disabled:` `spouse disabled` MEANS
+    `IL-07 the statuses section 37 reads` WITH
+        `the earner has reached retirement age`                                          IS FALSE
+        `the earner's spouse has reached retirement age`                                          IS FALSE
+        `the earner is blind or disabled within section 9(5)(a) or (a1)`                 IS FALSE
+        `the earner's spouse is blind or disabled within section 9(5)(a) or (a1)`                 IS `spouse disabled`
+        `the earner proved to the assessing officer that the spouse's maintenance was on the earner in the tax year` IS TRUE
+
+GIVEN s IS AN `IL-07 the earner's insurance statuses, for section 335`
+GIVETH AN `IL-07 further facts of the household`
+`v2: with the insurance statuses` s MEANS
+    `IL-07 further facts of the household` WITH
+        `the earner's pension contributions and insurance`         IS `v2: nothing paid`
+        `the earner's immigration, if the earner is an immigrant`  IS NOTHING
+        `the statuses section 37 reads, if given`                  IS NOTHING
+        `the earner's insurance statuses for section 335, if given` IS JUST s
+        `the single-parent family, if given`                       IS NOTHING
+
+GIVEN `work injury only` IS A BOOLEAN
+      `controlling`      IS A BOOLEAN
+GIVETH AN `IL-07 the earner's insurance statuses, for section 335`
+`v2: statuses, insured for work injury only:` `work injury only` `, a controlling shareholder:` `controlling` MEANS
+    `IL-07 the earner's insurance statuses, for section 335` WITH
+        `the earner is insured under Chapter 5, work injury`                             IS TRUE
+        `the earner is insured under Chapter 6, accident injury`                         IS NOT `work injury only`
+        `the earner is insured for unemployment, under paragraph (1) of insured in section 158` IS NOT `work injury only`
+        `the earner is a controlling shareholder in a closely-held company`              IS `controlling`
+        `the earner is an employee insured under Chapter 8, insolvency`                  IS NOT `work injury only`
+        `the earner is insured under Chapter 9, disability`                              IS NOT `work injury only`
+        `the earner is insured for long-term care`                                       IS NOT `work injury only`
+        `the earner is a widow pensioner as defined in section 238`                      IS FALSE
+
+`v2: Avi`    MEANS `v2: an earner` "Avi" `, female:` FALSE `, born` (YMD 1985 4 1) `, paid` 15000
+`v2: Amir`   MEANS `v2: an earner` "Amir" `, female:` FALSE `, born` (YMD 1985 4 1) `, paid` 10000
+`v2: Galit`  MEANS `v2: an earner` "Galit" `, female:` TRUE `, born` (YMD 1988 9 15) `, paid` 20000
+`v2: H3 children` MEANS LIST `v2: a child` "Dana" `, born` (YMD 2023 8 20), `v2: a child` "Eli" `, born` (YMD 2019 3 10)
+
+§§ `The figures row IL-08 reads`
+
+#ASSERT (`IL-08: the amounts of sections 45A and 47 for tax year` 2026)'s `the amount in section 45A(d)(1)` EQUALS 2268
+#ASSERT (`IL-08: the amounts of sections 45A and 47 for tax year` 2026)'s `the amount in paragraph (1) of the definition of qualifying income` EQUALS 116400
+#ASSERT (`IL-08: the amounts of sections 45A and 47 for tax year` 2026)'s `the amount in paragraph (2) of the definition of qualifying income` EQUALS 164400
+#ASSERT (`IL-08: the amounts of sections 45A and 47 for tax year` 2026)'s `the average wage in the economy, in total for the tax year` EQUALS 165228
+-- Part D (lines 4452-4453, and line 4437's first row, "to June 1939: 65").
+#ASSERT `IL-08: the age in months Part D of Schedule A1 fixes for a woman born on` (YMD 1988 9 15) EQUALS 840
+#ASSERT `IL-08: the age in months Part D of Schedule A1 fixes for a woman born on` (YMD 1950 4 10) EQUALS 836
+#ASSERT `IL-08: the age in months Part D of Schedule A1 fixes for a woman born on` (YMD 1939 6 30) EQUALS 780
+
+§§ `Sections 45A and 47: the pension credit`
+
+-- N1. H1 (a single man, 10,000, March) paying 6% (600) to a pension fund, his
+-- employer 12.5% (1,250), all the salary insured. Deposits 22,200 < 26,436.48:
+-- not a beneficiary member, so (d): limb (2) is min(7,200, 7% x 116,400 =
+-- 8,148) = 7,200 > 2,268; nothing cut: credit 35% x 7,200 = 2,520. s 47(b):
+-- nothing uninsured, nil. Tax 13,435.2 - 6,534 - 2,520 = 4,381.2; a twelfth
+-- 365.1; net 10,000 - 365.1 - 187.3811 - 367.5618 = 9,079.9571.
+`N1 payments` MEANS `v2: paying` 600 `a month, the employer` 1250 `, insured` 10000 `, survivors' insurance` 0 `, life insurance` 0
+`N1` MEANS `v2: in month` 3 `of 2026, a household of` `v2: Amir` `, married:` NOTHING `, with children` EMPTY `, health` 367.5618
+#ASSERT NOT `IL-08: the earner is a beneficiary member, in` `N1` `, paying` `N1 payments`
+#ASSERT `IL-07: the deduction under section 47 for the earner, in` `N1` `, with further facts` (`v2: further facts, paying` `N1 payments`) EQUALS 0
+#ASSERT `IL-07: the credit under section 45A for the earner, in` `N1` `, with further facts` (`v2: further facts, paying` `N1 payments`) EQUALS 2520
+#ASSERT `IL-07: the income tax for the tax year, in` `N1` `, with further facts` (`v2: further facts, paying` `N1 payments`) EQUALS 4381.2
+#ASSERT `IL-07: one twelfth of the income tax for the tax year, in` `N1` `, with further facts` (`v2: further facts, paying` `N1 payments`) EQUALS 365.1
+-- CHANGED BY THE SCHEDULE J RULING: national insurance 80.1112 + 2,297 x 7% = 240.9012
+-- (was 187.3811); net 10,000 - 365.1 - 240.9012 - 367.5618 = 9,026.437 (was 9,079.9571).
+#ASSERT `IL-07: the national insurance contributions deducted from the salary for the month, in` `N1` `, with further facts` (`v2: further facts, paying` `N1 payments`) EQUALS 240.9012
+#ASSERT `IL-07: the net income of the household for the month, in` `N1` `, with further facts` (`v2: further facts, paying` `N1 payments`) EQUALS 9026.437
+
+-- N2. H3 (the father, 15,000, June, registered, (1A), two children) paying 6%
+-- (900), the employer 12.5% (1,875): deposits 33,300 >= 26,436.48, a beneficiary
+-- member, so (e): 7% of the insured qualifying income min(180,000, 116,400) =
+-- 8,148, plus 5% of nothing uninsured; the sums 10,800 are cut to 8,148, all at
+-- 35%: credit 2,851.8. Tax 25,392 - 19,602 - 2,851.8 = 2,938.2; a twelfth
+-- 244.85; net 15,000 - 244.85 - 420.8811 - 626.0618 + 392 = 14,100.2071.
+`N2 payments` MEANS `v2: paying` 900 `a month, the employer` 1875 `, insured` 15000 `, survivors' insurance` 0 `, life insurance` 0
+`N2` MEANS `v2: in month` 6 `of 2026, a household of` `v2: Avi` `, married:` (JUST (`v2: married to` (`v2: a housewife named` "Batya") `, registered:` TRUE `, claims:` TRUE `, s 37:` FALSE)) `, with children` `v2: H3 children` `, health` 626.0618
+#ASSERT `IL-08: the earner is a beneficiary member, in` `N2` `, paying` `N2 payments`
+#ASSERT `IL-07: the credit under section 45A for the earner, in` `N2` `, with further facts` (`v2: further facts, paying` `N2 payments`) EQUALS 2851.8
+#ASSERT `IL-07: the income tax for the tax year, in` `N2` `, with further facts` (`v2: further facts, paying` `N2 payments`) EQUALS 2938.2
+#ASSERT `IL-07: one twelfth of the income tax for the tax year, in` `N2` `, with further facts` (`v2: further facts, paying` `N2 payments`) EQUALS 244.85
+-- CHANGED BY THE SCHEDULE J RULING: net 15,000 - 244.85 - 590.9012 - 626.0618 + 392 =
+-- 13,930.187 (was 14,100.2071), here and in the household's month.
+#ASSERT `IL-07: the net income of the household for the month, in` `N2` `, with further facts` (`v2: further facts, paying` `N2 payments`) EQUALS 13930.187
+#ASSERT (`IL-07: the household's month, in` `N2` `, with further facts` (`v2: further facts, paying` `N2 payments`))'s `the net income of the household for the month` EQUALS 13930.187
+#ASSERT (`IL-07: the income tax for the tax year, worked, in` `N2` `, with further facts` (`v2: further facts, paying` `N2 payments`))'s `the credit under section 45A` EQUALS 2851.8
+
+-- N3. N1 with 1,000 of survivors' pension insurance as well: the sums 8,200 at
+-- 35%; limb (2) min(8,200, 8,148) = 8,148; the survivors' 1,000 is within 1.5% of
+-- 116,400 (1,746) and the life-and-survivors' within 5% (5,820); the cut sum is
+-- 8,148 > 2,268: credit 2,851.8 (no defect reached). Tax 13,435.2 - 6,534 -
+-- 2,851.8 = 4,049.4; a twelfth 337.45; net 9,107.6071.
+`N3 payments` MEANS `v2: paying` 600 `a month, the employer` 1250 `, insured` 10000 `, survivors' insurance` 1000 `, life insurance` 0
+#ASSERT `IL-07: the credit under section 45A for the earner, in` `N1` `, with further facts` (`v2: further facts, paying` `N3 payments`) EQUALS 2851.8
+#ASSERT `IL-07: the income tax for the tax year, in` `N1` `, with further facts` (`v2: further facts, paying` `N3 payments`) EQUALS 4049.4
+-- CHANGED BY THE SCHEDULE J RULING: net 10,000 - 337.45 - 240.9012 - 367.5618 = 9,054.087 (was 9,107.6071).
+#ASSERT `IL-07: the net income of the household for the month, in` `N1` `, with further facts` (`v2: further facts, paying` `N3 payments`) EQUALS 9054.087
+
+-- N4. D187: N1's earner paying only 5,000 of survivors' insurance, nothing
+-- insured. Limb (2) is 5,000 > 2,268, but the 1.5% proviso cuts the survivors'
+-- sums to 1,746 < 2,268: by IL-08's fork F5 the floor of 2,268 then governs,
+-- credit 35% x 2,268 = 793.8; IL-08 answers 35% x 1,746 = 611.1
+-- (il07-tests-expected-red.l4, R3). Declined; the deduction is not affected.
+`N4 payments` MEANS `v2: paying` 0 `a month, the employer` 0 `, insured` 0 `, survivors' insurance` 5000 `, life insurance` 0
+#ASSERT REFUSED `IL-07: the income tax for the tax year, in` `N1` `, with further facts` (`v2: further facts, paying` `N4 payments`) BECAUSE "row IL-08's credit under section 45A here falls below the floor of section 45A(d)(1) or (e)(1), its known defect D187; IL-07 declines rather than inherit it"
+#ASSERT REFUSED `IL-07: the net income of the household for the month, in` `N1` `, with further facts` (`v2: further facts, paying` `N4 payments`) BECAUSE "row IL-08's credit under section 45A here falls below the floor of section 45A(d)(1) or (e)(1), its known defect D187; IL-07 declines rather than inherit it"
+-- CHANGED BY THE SCHEDULE J RULING: 240.9012 (was 187.3811).
+#ASSERT `IL-07: the national insurance contributions deducted from the salary for the month, in` `N1` `, with further facts` (`v2: further facts, paying` `N4 payments`) EQUALS 240.9012
+
+-- N5. D183: only 6,000 of life insurance: the 5% proviso (5,820) cuts sums that
+-- are all at 25%. Declined in this row's words.
+`N5 payments` MEANS `v2: paying` 0 `a month, the employer` 0 `, insured` 0 `, survivors' insurance` 0 `, life insurance` 6000
+#ASSERT REFUSED `IL-07: the income tax for the tax year, in` `N1` `, with further facts` (`v2: further facts, paying` `N5 payments`) BECAUSE "row IL-08 does not compute the credit under section 45A where its limits cut sums that are all for life insurance, its known defect D183; IL-07 declines"
+
+-- N6. D190: N1's pension, but only 6,000 of the salary insured (the employer pays
+-- 750). s 47(b)(2): min(5% x (116,400 - 72,000), 5% x (120,000 - 72,000)) =
+-- 2,220, so s 47 would deduct 2,220 of the 7,200 the earner paid. Declined.
+`N6 payments` MEANS `v2: paying` 600 `a month, the employer` 750 `, insured` 6000 `, survivors' insurance` 0 `, life insurance` 0
+#ASSERT `IL-07: the deduction under section 47 for the earner, in` `N1` `, with further facts` (`v2: further facts, paying` `N6 payments`) EQUALS 2220
+#ASSERT REFUSED `IL-07: the income tax for the tax year, in` `N1` `, with further facts` (`v2: further facts, paying` `N6 payments`) BECAUSE "the earner has a deduction under section 47 as well as sums section 45A credits, and which takes a payment first is not settled, row IL-08's known defect D190; IL-07 declines"
+
+-- Insured income above the salary cannot describe a year (s 47(a)(4)).
+`N6b payments` MEANS `v2: paying` 600 `a month, the employer` 1250 `, insured` 12000 `, survivors' insurance` 0 `, life insurance` 0
+#ASSERT REFUSED `IL-07: the income tax for the tax year, in` `N1` `, with further facts` (`v2: further facts, paying` `N6b payments`) BECAUSE "the insured income the household gives is negative or more than the salary"
+
+§§ `Section 40(b): a parent without a spouse`
+
+-- N7. H12: a single father, 10,000, March; children turning 11 and 7, with him
+-- and maintained by him; a single-parent family; living apart from their mother,
+-- who is alive and registered. (1): 2 + 2; (2): 1 more; 5 points. Credits (2.25
+-- + 5) x 2,904 = 21,054 > 13,435.2: tax nil. Allowance 173 + 219 = 392; net
+-- 10,000 - 187.3811 - 367.5618 + 392 = 9,837.0571.
+`N7 children` MEANS LIST `v2: a child` "Hila" `, born` (YMD 2015 1 1), `v2: a child` "Itai" `, born` (YMD 2019 1 1)
+`N7 other parents` MEANS LIST `v2: the other parent of` "Hila" `, died:` FALSE `, not registered:` FALSE, `v2: the other parent of` "Itai" `, died:` FALSE `, not registered:` FALSE
+`N7` MEANS `v2: in month` 3 `of 2026, a household of` `v2: Amir` `, married:` NOTHING `, with children` `N7 children` `, health` 367.5618
+`N7 facts` MEANS `v2: a single parent, single-parent family:` TRUE `, living apart:` TRUE `, other parents` `N7 other parents`
+#ASSERT (`IL-07: the income tax for the tax year, worked, in` `N7` `, with further facts` `N7 facts`)'s `the credit points for children under section 40(b)` EQUALS 5
+#ASSERT `IL-07: the income tax for the tax year, in` `N7` `, with further facts` `N7 facts` EQUALS 0
+#ASSERT `IL-07: the child allowance for the month, in` `N7` `, with further facts` `N7 facts` EQUALS 392
+-- CHANGED BY THE SCHEDULE J RULING: net 10,000 - 240.9012 - 367.5618 + 392 = 9,783.537 (was 9,837.0571).
+#ASSERT `IL-07: the net income of the household for the month, in` `N7` `, with further facts` `N7 facts` EQUALS 9783.537
+
+-- N8. A single mother, 20,000, March, the same children, not living apart from
+-- their father: (1) 2 + 2 = 4. s 121 on 240,000: 34,992 + 12,000 x 31% =
+-- 38,712. Credits (2.75 + 4) x 2,904 = 19,602; tax 19,110; a twelfth 1,592.5.
+-- National insurance 80.1112 + 12,297 x 4.67% = 654.3811; health 248.8069 +
+-- 12,297 x 5.17% = 884.5618; allowance 392. Net 17,260.5571.
+`N8` MEANS `v2: in month` 3 `of 2026, a household of` `v2: Galit` `, married:` NOTHING `, with children` `N7 children` `, health` 884.5618
+`N8 facts` MEANS `v2: a single parent, single-parent family:` TRUE `, living apart:` FALSE `, other parents` `N7 other parents`
+#ASSERT (`IL-07: the income tax for the tax year, worked, in` `N8` `, with further facts` `N8 facts`)'s `the credit points for children under section 40(b)` EQUALS 4
+#ASSERT `IL-07: the income tax for the tax year, in` `N8` `, with further facts` `N8 facts` EQUALS 19110
+#ASSERT `IL-07: one twelfth of the income tax for the tax year, in` `N8` `, with further facts` `N8 facts` EQUALS 1592.5
+-- CHANGED BY THE SCHEDULE J RULING: national insurance 80.1112 + 12,297 x 7% = 940.9012
+-- (was 654.3811); net 20,000 - 1,592.5 - 940.9012 - 884.5618 + 392 = 16,974.037 (was 17,260.5571).
+#ASSERT `IL-07: the national insurance contributions deducted from the salary for the month, in` `N8` `, with further facts` `N8 facts` EQUALS 940.9012
+#ASSERT `IL-07: the child allowance for the month, in` `N8` `, with further facts` `N8 facts` EQUALS 392
+#ASSERT `IL-07: the net income of the household for the month, in` `N8` `, with further facts` `N8 facts` EQUALS 16974.037
+
+-- N9. The single mother with one child, turning 3, whose father died in 2023: a
+-- child of one parent. (1) 3 1/2; (1B) 1 and the (1A) table's 3 1/2; 8 points.
+-- Tax 38,712 - (2.75 + 8) x 2,904 = 7,494; a twelfth 624.5; allowance 173; net
+-- 20,000 - 624.5 - 654.3811 - 884.5618 + 173 = 18,009.5571.
+`N9` MEANS `v2: in month` 3 `of 2026, a household of` `v2: Galit` `, married:` NOTHING `, with children` (LIST `v2: a child` "Ofri" `, born` (YMD 2023 3 1)) `, health` 884.5618
+`N9 facts` MEANS `v2: a single parent, single-parent family:` TRUE `, living apart:` FALSE `, other parents` (LIST `v2: the other parent of` "Ofri" `, died:` TRUE `, not registered:` FALSE)
+#ASSERT (`IL-07: the income tax for the tax year, worked, in` `N9` `, with further facts` `N9 facts`)'s `the credit points for children under section 40(b)` EQUALS 8
+#ASSERT `IL-07: the income tax for the tax year, in` `N9` `, with further facts` `N9 facts` EQUALS 7494
+#ASSERT `IL-07: the child allowance for the month, in` `N9` `, with further facts` `N9 facts` EQUALS 173
+-- CHANGED BY THE SCHEDULE J RULING: net 20,000 - 624.5 - 940.9012 - 884.5618 + 173 = 17,723.037 (was 18,009.5571).
+#ASSERT `IL-07: the net income of the household for the month, in` `N9` `, with further facts` `N9 facts` EQUALS 17723.037
+
+-- N10. The single mother of a child of one parent born in 2025 (aged 1 in 2026),
+-- registered without the father's details, who elects under (1A1): declined
+-- (IL-08 moves two points).
+`N10` MEANS `v2: in month` 3 `of 2026, a household of` `v2: Galit` `, married:` NOTHING `, with children` (LIST (`IL-07 child` WITH `the child's name` IS "Noa", `the child's date of birth` IS YMD 2025 5 1, `the child's mother elects to count one birth-year credit point in the following tax year` IS TRUE)) `, health` 884.5618
+`N10 facts` MEANS `v2: a single parent, single-parent family:` TRUE `, living apart:` FALSE `, other parents` (LIST `v2: the other parent of` "Noa" `, died:` FALSE `, not registered:` TRUE)
+#ASSERT REFUSED `IL-07: the income tax for the tax year, in` `N10` `, with further facts` `N10 facts` BECAUSE "the mother elected under section 40(b)(1A1) for a child of one parent in its year of birth or the next, where row IL-08 moves two points rather than one; IL-07 declines"
+
+-- N11. N7 with no single-parent facts; and with an entry for one child only.
+#ASSERT REFUSED `IL-07: the income tax for the tax year, in` `N7` `, with further facts` (`v2: further facts, paying` `v2: nothing paid`) BECAUSE "the earner has no spouse and has children; section 40(b) gives their credit points, and the household does not give the single-parent facts it reads"
+#ASSERT REFUSED `IL-07: the income tax for the tax year, in` `N7` `, with further facts` (`v2: a single parent, single-parent family:` TRUE `, living apart:` TRUE `, other parents` (LIST `v2: the other parent of` "Hila" `, died:` FALSE `, not registered:` FALSE)) BECAUSE "the single-parent facts give no entry, or more than one, for a child of the household; each child needs exactly one, under its own name"
+
+§§ `Section 35: the new immigrant`
+
+-- N12. A single woman, 20,000, March, who first immigrated under the Law of Return
+-- on 5 January 2025: January 2025 is month 1, so January to December 2026 are
+-- months 13-24, each 1/4: 3 points. Tax 38,712 - (2.75 + 3) x 2,904 = 22,014; a
+-- twelfth 1,834.5; net 20,000 - 1,834.5 - 654.3811 - 884.5618 = 16,626.5571.
+`N12` MEANS `v2: in month` 3 `of 2026, a household of` `v2: Galit` `, married:` NOTHING `, with children` EMPTY `, health` 884.5618
+`N12 facts` MEANS `v2: an immigrant,` (`v2: immigrated under the Law of Return on` (YMD 2025 1 5) `, the first time:` TRUE)
+#ASSERT (`IL-07: the income tax for the tax year, worked, in` `N12` `, with further facts` `N12 facts`)'s `the credit points under section 35` EQUALS 3
+#ASSERT `IL-07: the income tax for the tax year, in` `N12` `, with further facts` `N12 facts` EQUALS 22014
+-- CHANGED BY THE SCHEDULE J RULING: net 20,000 - 1,834.5 - 940.9012 - 884.5618 = 16,340.037 (was 16,626.5571).
+#ASSERT `IL-07: the net income of the household for the month, in` `N12` `, with further facts` `N12 facts` EQUALS 16340.037
+-- Immigrated on 1 June 2020, before Amendment 262: 42 months, ending November
+-- 2023; nothing in 2026.
+#ASSERT (`IL-07: the income tax for the tax year, worked, in` `N12` `, with further facts` (`v2: an immigrant,` (`v2: immigrated under the Law of Return on` (YMD 2020 6 1) `, the first time:` TRUE)))'s `the credit points under section 35` EQUALS 0
+-- N13. D055: the same, but not the first time she became an immigrant.
+#ASSERT REFUSED `IL-07: the income tax for the tax year, in` `N12` `, with further facts` (`v2: an immigrant,` (`v2: immigrated under the Law of Return on` (YMD 2025 1 5) `, the first time:` FALSE)) BECAUSE "the earner has been an immigrant before, and section 35(e) lets the Minister make rules for such a person, which row IL-08 answers as 0 points, its known defect D055; IL-07 declines"
+
+§§ `Sections 37-39 and section 65`
+
+-- N14. H11 (H3 without a separate calculation): s 65, in the earner's name; no
+-- children's points (fork K12). Tax 25,392 - 6,534 = 18,858.
+`N14` MEANS `v2: in month` 6 `of 2026, a household of` `v2: Avi` `, married:` (JUST (`v2: married to` (`v2: a housewife named` "Batya") `, registered:` TRUE `, claims:` FALSE `, s 37:` FALSE)) `, with children` `v2: H3 children` `, health` 626.0618
+#ASSERT (`IL-07: the income tax for the tax year, worked, in` `N14` `, with further facts` (`v2: further facts, paying` `v2: nothing paid`))'s `the calculation` EQUALS `the consolidated calculation under section 65, in the earner's name`
+#ASSERT (`IL-07: the income tax for the tax year, worked, in` `N14` `, with further facts` (`v2: further facts, paying` `v2: nothing paid`))'s `the earner's taxable income in the tax year` EQUALS 180000
+#ASSERT `IL-07: the income tax for the tax year, in` `N14` `, with further facts` (`v2: further facts, paying` `v2: nothing paid`) EQUALS 18858
+
+-- N15. N14 where the wife is disabled within s 9(5) and the father proved he
+-- maintained her: s 37's point, in full under s 65 (ss 38, 39 nothing). Tax
+-- 18,858 - 2,904 = 15,954; a twelfth 1,329.5; net 15,000 - 1,329.5 - 420.8811 -
+-- 626.0618 + 392 = 13,015.5571.
+`N15` MEANS `v2: in month` 6 `of 2026, a household of` `v2: Avi` `, married:` (JUST (`v2: married to` (`v2: a housewife named` "Batya") `, registered:` TRUE `, claims:` FALSE `, s 37:` TRUE)) `, with children` `v2: H3 children` `, health` 626.0618
+`N15 facts` MEANS `v2: with the statuses section 37 reads,` (`v2: maintenance proved, the spouse blind or disabled:` TRUE)
+#ASSERT (`IL-07: the income tax for the tax year, worked, in` `N15` `, with further facts` `N15 facts`)'s `the credit points under sections 37, 38 and 39, in a consolidated calculation` EQUALS 1
+#ASSERT `IL-07: the income tax for the tax year, in` `N15` `, with further facts` `N15 facts` EQUALS 15954
+-- CHANGED BY THE SCHEDULE J RULING: net 15,000 - 1,329.5 - 590.9012 - 626.0618 + 392 = 12,845.537 (was 13,015.5571).
+#ASSERT `IL-07: the net income of the household for the month, in` `N15` `, with further facts` `N15 facts` EQUALS 12845.537
+
+-- N16. H3 (a separate calculation) with the same statuses: half of s 37's point
+-- (s 66(c)(2)). Credits 19,602 + 1,452 = 21,054; tax 4,338; a twelfth 361.5;
+-- net 15,000 - 361.5 - 420.8811 - 626.0618 + 392 = 13,983.5571.
+`N16` MEANS `v2: in month` 6 `of 2026, a household of` `v2: Avi` `, married:` (JUST (`v2: married to` (`v2: a housewife named` "Batya") `, registered:` TRUE `, claims:` TRUE `, s 37:` TRUE)) `, with children` `v2: H3 children` `, health` 626.0618
+#ASSERT (`IL-07: the income tax for the tax year, worked, in` `N16` `, with further facts` `N15 facts`)'s `the half point under section 37, by section 66(c)(2)` EQUALS 0.5
+#ASSERT `IL-07: the income tax for the tax year, in` `N16` `, with further facts` `N15 facts` EQUALS 4338
+-- CHANGED BY THE SCHEDULE J RULING: net 15,000 - 361.5 - 590.9012 - 626.0618 + 392 = 13,813.537 (was 13,983.5571).
+#ASSERT `IL-07: the net income of the household for the month, in` `N16` `, with further facts` `N15 facts` EQUALS 13813.537
+
+-- N17. The couple's record says TRUE for s 37: without the statuses (the 0.1.0
+-- way in), declined; with statuses under which s 37 gives nothing, declined.
+#ASSERT REFUSED `IL-07: the income tax for the tax year, in` `N16` BECAUSE "the household says the earner would be entitled to a credit point under section 37 but does not give the statuses section 37 reads"
+#ASSERT REFUSED `IL-07: the income tax for the tax year, in` `N16` `, with further facts` (`v2: with the statuses section 37 reads,` (`v2: maintenance proved, the spouse blind or disabled:` FALSE)) BECAUSE "the couple's record and section 37, on the statuses the household gives, disagree on whether the earner is entitled to a credit point under section 37"
+
+-- N18. The father is not the registered spouse and claims no separate
+-- calculation: the couple is assessed under s 65 in his wife's name.
+`N18` MEANS `v2: in month` 6 `of 2026, a household of` `v2: Avi` `, married:` (JUST (`v2: married to` (`v2: a housewife named` "Batya") `, registered:` FALSE `, claims:` FALSE `, s 37:` FALSE)) `, with children` `v2: H3 children` `, health` 626.0618
+#ASSERT REFUSED `IL-07: the income tax for the tax year, in` `N18` BECAUSE "the couple's income is charged under section 65 in the name of the registered spouse, who is not the earner; IL-07 holds the facts the credits in that calculation read only for the earner"
+#ASSERT `IL-07: the child allowance for the month, in` `N18` EQUALS 392
+
+§§ `NII section 72: the months of birth and of the 18th birthday`
+
+-- N19. H3 with a third child, Gal, born on 15 September 2026; September. s 72:
+-- born by the 15th, paid from September (fork N1); IL-06 asked on the 15th:
+-- 173 + 219 + 219 = 611. Tax: points 2.5 + 3.5 + 1 = 7 (20,328) with 6,534 exceed
+-- 25,392: nil. Net 15,000 - 420.8811 - 626.0618 + 611 = 14,564.0571.
+`N19` MEANS `v2: in month` 9 `of 2026, a household of` `v2: Avi` `, married:` (JUST (`v2: married to` (`v2: a housewife named` "Batya") `, registered:` TRUE `, claims:` TRUE `, s 37:` FALSE)) `, with children` (`v2: a child` "Gal" `, born` (YMD 2026 9 15) FOLLOWED BY `v2: H3 children`) `, health` 626.0618
+#ASSERT `IL-07: the child allowance for the month, in` `N19` EQUALS 611
+#ASSERT `IL-07: the income tax for the tax year, in` `N19` EQUALS 0
+-- CHANGED BY THE SCHEDULE J RULING: net 15,000 - 590.9012 - 626.0618 + 611 = 14,394.037 (was 14,564.0571).
+#ASSERT `IL-07: the net income of the household for the month, in` `N19` EQUALS 14394.037
+
+-- N20. Gal born on 16 September: not paid until October. September 392 (net
+-- 14,345.0571); October 611.
+`N20 children` MEANS `v2: a child` "Gal" `, born` (YMD 2026 9 16) FOLLOWED BY `v2: H3 children`
+GIVEN m IS A NUMBER
+GIVETH AN `IL-07 household in a month`
+`N20 in` m MEANS `v2: in month` m `of 2026, a household of` `v2: Avi` `, married:` (JUST (`v2: married to` (`v2: a housewife named` "Batya") `, registered:` TRUE `, claims:` TRUE `, s 37:` FALSE)) `, with children` `N20 children` `, health` 626.0618
+#ASSERT `IL-07: the child allowance for the month, in` (`N20 in` 9) EQUALS 392
+-- CHANGED BY THE SCHEDULE J RULING: net 15,000 - 590.9012 - 626.0618 + 392 = 14,175.037 (was 14,345.0571).
+#ASSERT `IL-07: the net income of the household for the month, in` (`N20 in` 9) EQUALS 14175.037
+#ASSERT `IL-07: the child allowance for the month, in` (`N20 in` 10) EQUALS 611
+
+-- N21. H3 with Keren, who turns 18 on 1 November 2026. October: paid, 611.
+-- November: s 72 pays the month of the 18th birthday, but on every day of it
+-- row IL-06 counts her 18: declined (fork K15; independent finding F3, which
+-- v0.1.0 answered as 0). December: not paid, 392 (net 13,862.5571).
+`N21 children` MEANS `v2: a child` "Keren" `, born` (YMD 2008 11 1) FOLLOWED BY `v2: H3 children`
+GIVEN m IS A NUMBER
+GIVETH AN `IL-07 household in a month`
+`N21 in` m MEANS `v2: in month` m `of 2026, a household of` `v2: Avi` `, married:` (JUST (`v2: married to` (`v2: a housewife named` "Batya") `, registered:` TRUE `, claims:` TRUE `, s 37:` FALSE)) `, with children` `N21 children` `, health` 626.0618
+#ASSERT `IL-07: the child allowance for the month, in` (`N21 in` 10) EQUALS 611
+#ASSERT REFUSED `IL-07: the child allowance for the month, in` (`N21 in` 11) BECAUSE "section 72 pays the allowance for this month for children of the household whom row IL-06, which answers a day, counts together on no day of the month"
+#ASSERT `IL-07: the child allowance for the month, in` (`N21 in` 12) EQUALS 392
+-- CHANGED BY THE SCHEDULE J RULING: net 15,000 - 482.5 - 590.9012 - 626.0618 + 392 = 13,692.537 (was 13,862.5571).
+#ASSERT `IL-07: the net income of the household for the month, in` (`N21 in` 12) EQUALS 13692.537
+
+-- N22. A child turning 18 on 10 September and one born on 12 September: s 72
+-- pays both for September, and IL-06 counts them together on no day: declined.
+-- With the 18th birthday on 20 September instead: IL-06 asked on the 12th counts
+-- all four: 173 + 3 x 219 = 830.
+GIVEN d IS A DATE
+GIVETH AN `IL-07 household in a month`
+`N22 with` d MEANS `v2: in month` 9 `of 2026, a household of` `v2: Avi` `, married:` (JUST (`v2: married to` (`v2: a housewife named` "Batya") `, registered:` TRUE `, claims:` TRUE `, s 37:` FALSE)) `, with children` (`v2: a child` "Keren" `, born` d FOLLOWED BY `v2: a child` "Gal" `, born` (YMD 2026 9 12) FOLLOWED BY `v2: H3 children`) `, health` 626.0618
+#ASSERT REFUSED `IL-07: the child allowance for the month, in` (`N22 with` (YMD 2008 9 10)) BECAUSE "section 72 pays the allowance for this month for children of the household whom row IL-06, which answers a day, counts together on no day of the month"
+#ASSERT `IL-07: the child allowance for the month, in` (`N22 with` (YMD 2008 9 20)) EQUALS 830
+
+-- M1 of the independent pass: two children of one name.
+#ASSERT REFUSED `IL-07: the child allowance for the month, in` (`v2: in month` 6 `of 2026, a household of` `v2: Avi` `, married:` (JUST (`v2: married to` (`v2: a housewife named` "Batya") `, registered:` TRUE `, claims:` TRUE `, s 37:` FALSE)) `, with children` (LIST `v2: a child` "Dana" `, born` (YMD 2023 8 20), `v2: a child` "Dana" `, born` (YMD 2019 3 10)) `, health` 626.0618) BECAUSE "two children of the household have the same name; row IL-06 tells children apart by name, so give each child a name of its own"
+
+§§ `NII section 335, Part D, and the Schedule J switch`
+
+-- N25. A man, 12,000, June, resident neither under the Ordinance nor under the
+-- Law, not insured under Chapter 11, insured for work injury only. s 335:
+-- maternity ((a): a worker not resident) and work injury; s 342(c)(1) deducts
+-- maternity only: 7,703 x 0.10% + 4,297 x 0.87% = 45.0869. No credit points
+-- (ss 34, 36 need residence): tax 18,192, a twelfth 1,516. Health is the
+-- caller's; 0 here. Net 12,000 - 1,516 - 45.0869 = 10,438.9131. Without the
+-- statuses (the 0.1.0 way in), the deduction is declined (independent finding F4).
+`N25 earner` MEANS `IL-07 earner` WITH `the earner's name` IS "Ivan", `the earner is a woman` IS FALSE, `the earner's date of birth` IS YMD 1990 1 1, `the earner's monthly salary` IS 12000, `the earner is paid that salary in every month of the tax year` IS TRUE, `the earner was an Israeli resident in the tax year, under the Income Tax Ordinance` IS FALSE, `the earner is a foreign worker` IS FALSE, `the earner is a resident of the Area who is not an Israeli citizen` IS FALSE, `the earner is insured under Chapter 11 of the National Insurance Law` IS FALSE, `the earner is resident in Israel, under the National Insurance Law` IS FALSE, `the full monthly minimum wage of an employee aged 18 or over applies to the earner` IS TRUE, `the earner's age fixed by Part D of Schedule A1 to the National Insurance Law, in months, if a woman` IS NOTHING, `the earner has no credit or deduction under the Income Tax Ordinance beyond those the composed rows encode` IS TRUE
+`N25` MEANS `v2: in month` 6 `of 2026, a household of` `N25 earner` `, married:` NOTHING `, with children` EMPTY `, health` 0
+`N25 facts` MEANS `v2: with the insurance statuses` (`v2: statuses, insured for work injury only:` TRUE `, a controlling shareholder:` FALSE)
+-- CHANGED BY THE SCHEDULE J RULING: at the printed totals, which are for the six
+-- deduction branches together, the deduction of one who pays in maternity alone
+-- cannot be told: declined (the deduction and the net; were 45.0869 and
+-- 10,438.9131). At the items' reading, the alternative of the fork, 45.0869.
+#ASSERT `IL-07: the national insurance contributions deducted from the salary for the month, in` `N25` `, with further facts` `N25 facts` `, reading Schedule J column D as` `the sum of the items of the six deduction branches` EQUALS 45.0869
+#ASSERT REFUSED `IL-07: the national insurance contributions deducted from the salary for the month, in` `N25` `, with further facts` `N25 facts` BECAUSE "the printed total of Schedule J column D is for the six deduction branches together, and the earner does not pay contributions in all six"
+#ASSERT `IL-07: the income tax for the tax year, in` `N25` `, with further facts` `N25 facts` EQUALS 18192
+#ASSERT REFUSED `IL-07: the net income of the household for the month, in` `N25` `, with further facts` `N25 facts` BECAUSE "the printed total of Schedule J column D is for the six deduction branches together, and the earner does not pay contributions in all six"
+#ASSERT REFUSED `IL-07: the national insurance contributions deducted from the salary for the month, in` `N25` BECAUSE "the household does not give the earner's insurance statuses, which section 335 reads, and the earner is not resident in Israel and insured under Chapter 11"
+
+-- N26. H1's earner, a controlling shareholder in a closely-held company:
+-- s 335(e) and (f) leave out unemployment and insolvency, so the deduction drops
+-- unemployment's 0.02 / 0.21: 7,703 x 1.02% + 2,297 x 4.46% = 181.0168; net
+-- 10,000 - 575.1 - 181.0168 - 367.5618 = 8,876.3214.
+`N26 facts` MEANS `v2: with the insurance statuses` (`v2: statuses, insured for work injury only:` FALSE `, a controlling shareholder:` TRUE)
+-- CHANGED BY THE SCHEDULE J RULING: at the printed totals, declined, as N25 (the
+-- deduction and the net; were 181.0168 and 8,876.3214). At the items' reading,
+-- 181.0168.
+#ASSERT `IL-07: the national insurance contributions deducted from the salary for the month, in` `N1` `, with further facts` `N26 facts` `, reading Schedule J column D as` `the sum of the items of the six deduction branches` EQUALS 181.0168
+#ASSERT REFUSED `IL-07: the national insurance contributions deducted from the salary for the month, in` `N1` `, with further facts` `N26 facts` BECAUSE "the printed total of Schedule J column D is for the six deduction branches together, and the earner does not pay contributions in all six"
+#ASSERT REFUSED `IL-07: the net income of the household for the month, in` `N1` `, with further facts` `N26 facts` BECAUSE "the printed total of Schedule J column D is for the six deduction branches together, and the earner does not pay contributions in all six"
+
+-- N27. A single woman born on 10 April 1950, 10,000, March: Part D fixes 69 years
+-- and 8 months (836), reached on 10 December 2019, before the month: no
+-- deduction (s 342(c)(2)). Tax as H2, 5,449.2; net 10,000 - 454.1 - 367.5618 =
+-- 9,178.3382.
+`N27` MEANS `v2: in month` 3 `of 2026, a household of` (`v2: an earner` "Rivka" `, female:` TRUE `, born` (YMD 1950 4 10) `, paid` 10000) `, married:` NOTHING `, with children` EMPTY `, health` 367.5618
+#ASSERT `IL-07: the national insurance contributions deducted from the salary for the month, in` `N27` EQUALS 0
+#ASSERT `IL-07: the net income of the household for the month, in` `N27` EQUALS 9178.3382
+-- A Part D age given that is not the table's is declined.
+#ASSERT REFUSED `IL-07: the national insurance contributions deducted from the salary for the month, in` (`v2: in month` 3 `of 2026, a household of` (`IL-07 earner` WITH `the earner's name` IS "Galit", `the earner is a woman` IS TRUE, `the earner's date of birth` IS YMD 1988 9 15, `the earner's monthly salary` IS 10000, `the earner is paid that salary in every month of the tax year` IS TRUE, `the earner was an Israeli resident in the tax year, under the Income Tax Ordinance` IS TRUE, `the earner is a foreign worker` IS FALSE, `the earner is a resident of the Area who is not an Israeli citizen` IS FALSE, `the earner is insured under Chapter 11 of the National Insurance Law` IS TRUE, `the earner is resident in Israel, under the National Insurance Law` IS TRUE, `the full monthly minimum wage of an employee aged 18 or over applies to the earner` IS TRUE, `the earner's age fixed by Part D of Schedule A1 to the National Insurance Law, in months, if a woman` IS JUST 800, `the earner has no credit or deduction under the Income Tax Ordinance beyond those the composed rows encode` IS TRUE) `, married:` NOTHING `, with children` EMPTY `, health` 367.5618) BECAUSE "the age under Part D of Schedule A1 the household gives for the earner is not the age Part D fixes for her month of birth"
+
+-- The Schedule J switch (fork K14): the printed totals are 7.00 above and 1.04
+-- below. Under the printed-total reading, H3's deduction is 420.8811 + 7,297 x
+-- (7.00% - 4.67%) = 590.9012 (finding R1's figure); for a controlling
+-- shareholder, who does not pay all six, declined.
+-- CHANGED BY THE SCHEDULE J RULING: the capstone takes the printed totals (was
+-- the sum of the items).
+#ASSERT `IL-07: the reading of Schedule J column D the capstone takes` EQUALS `the printed total of column D`
+#ASSERT `IL-04: column D's printed total, in a month of` 2026 `, on the upper part:` TRUE EQUALS 7
+#ASSERT `IL-04: column D's printed total, in a month of` 2026 `, on the upper part:` FALSE EQUALS 1.04
+#ASSERT `IL-07: the national insurance contributions deducted from the salary for the month, in` `N2` `, with further facts` (`v2: further facts, paying` `v2: nothing paid`) `, reading Schedule J column D as` `the printed total of column D` EQUALS 590.9012
+#ASSERT `IL-07: the national insurance contributions deducted from the salary for the month, in` `N2` `, with further facts` (`v2: further facts, paying` `v2: nothing paid`) `, reading Schedule J column D as` `the sum of the items of the six deduction branches` EQUALS 420.8811
+-- And the net at each reading (H3's household): 13,692.537 at the printed totals,
+-- 15,000 - 482.5 - 420.8811 - 626.0618 + 392 = 13,862.5571 at the items.
+#ASSERT `IL-07: the net income of the household for the month, in` `N2` `, with further facts` (`v2: further facts, paying` `v2: nothing paid`) `, reading Schedule J column D as` `the printed total of column D` EQUALS 13692.537
+#ASSERT `IL-07: the net income of the household for the month, in` `N2` `, with further facts` (`v2: further facts, paying` `v2: nothing paid`) `, reading Schedule J column D as` `the sum of the items of the six deduction branches` EQUALS 13862.5571
+#ASSERT REFUSED `IL-07: the national insurance contributions deducted from the salary for the month, in` `N1` `, with further facts` `N26 facts` `, reading Schedule J column D as` `the printed total of column D` BECAUSE "the printed total of Schedule J column D is for the six deduction branches together, and the earner does not pay contributions in all six"
