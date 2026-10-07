@@ -7,7 +7,7 @@ No domain expert has read it; HG1 has not been sought.
 
 Read with it: `RECONCILE.md` (how the rows' nouns were reconciled, and the changes proposed to the rows) and `GAPS.md` (the provisions no row encodes, in IL-08's work order).
 
-**Version 0.2.0 (2026-10-07)** integrates row IL-08 (backlog row IL-10, encoder `enc-il-10`): section 11.
+**Version 0.2.0 (2026-10-07)** integrates row IL-08 (backlog row IL-10, encoder `enc-il-10`): section 11. **Version 0.2.1 (2026-10-07)** follows row IL-04's own Schedule J switch (backlog row IL-11): section 11.14.
 Sections 0 to 10 describe version 0.1.0; where 0.2.0 changed what they say, the text is kept and marked "(0.2.0: …)" in place.
 
 ## 0. What `check.sh` prints
@@ -546,7 +546,7 @@ Row IL-04 still computes from the rows and is not this row's to edit; backlog ro
 | reading (ii), the items | **Kept as the alternative.** The deduction is the sum, branch by branch, of each item's percentage on each part of the income: 4.67% above. Row IL-04's own fork F4 chose this reading for computing (s 335 imposes contributions branch by branch; s 337(a) applies "the rates under s 335"; s 28(a) credits contributions to the branches "in the ratio of the rates in Schedule J", line 449), and keeps the totals as data, compared in its red module. Versions 0.1.0 and 0.2.0 before the ruling took it from IL-04. |
 | what it changes | 2.33% of the part of the s 348 income above 7,703. At Schedule K's maximum, 51,910 a month, that is 44,207 × 2.33% = **1,030.0231 a month** (3,174.6012 against 2,144.5781). On a salary of 15,000, 170.0201 (finding R1). Nothing below the threshold. |
 | an earner who does not pay in all six branches | The printed total is for the six deduction branches together; the Schedule prints no total for fewer, and the 2.33 gap cannot be placed on a branch (IL-04 NOTES.md section 7: "Which cell, if any, is wrong cannot be told from the table."). Under reading (i) such an earner's deduction is **declined** (a non-resident paying maternity alone; a controlling shareholder, who pays no unemployment or insolvency); under reading (ii) it is computed. |
-| the switch | One named rule, `IL-07: the reading of Schedule J column D the capstone takes` in `il07-pipeline.l4` (headed "THE SCHEDULE J SWITCH"), now `the printed total of column D`; the other reading is a one-line change to `the sum of the items of the six deduction branches`. The national insurance rule and the net rule each have a form that takes the reading as an argument (`…, reading Schedule J column D as` r), and both readings are tested (`il07-tests-il08.l4`, H3's household: 590.9012 and 13,692.537 at the totals; 420.8811 and 13,862.5571 at the items). |
+| the switch | (0.2.1: **superseded**, the switch is row IL-04's and the capstone follows it; 11.14, fork K18.) One named rule, `IL-07: the reading of Schedule J column D the capstone takes` in `il07-pipeline.l4` (headed "THE SCHEDULE J SWITCH"), now `the printed total of column D`; the other reading is a one-line change to `the sum of the items of the six deduction branches`. The national insurance rule and the net rule each have a form that takes the reading as an argument (`…, reading Schedule J column D as` r), and both readings are tested (`il07-tests-il08.l4`, H3's household: 590.9012 and 13,692.537 at the totals; 420.8811 and 13,862.5571 at the items). |
 | other printed totals | The capstone reads only column D (the employee's deduction); columns C and E, whose totals also differ from their items (IL-04's F4), are not composed. Column D's lower total equals its items. So no other figure moves. |
 | the source of the totals | Row IL-04's vendored modules already carry the totals row of each version (`nii-schedule-j-tables.l4`, line 4730 quoted there) and the IL-04 adapter exposes column D's (`IL-04: column D's printed total, in a month of`), so no published-figure input was needed. |
 
@@ -627,11 +627,59 @@ Twenty values. Unchanged: H9 (6,247.67, below the threshold) and H10 (exactly 7,
 Nineteen values. Each new net is the old less 2.33% of the salary above 7,703 (53.5201 at 10,000; 170.0201 at 15,000; 286.5201 at 20,000).
 The deductions of N25 (45.0869) and N26 (181.0168) keep their values but now ask the items' reading by name; two assertions were added, that the default deduction of each is declined; and two more, the net at each reading for H3's household.
 
-**`il07-tests-expected-red.l4`, R1.** Under the default, the capstone's deduction and net for R1's household are now the Institute's, so the two assertions asked of the default would pass. The finding stands against row IL-04, which computes from the items, and against the items' reading the capstone keeps; so the two assertions now ask the items' reading by name, with their expected values, the Institute's, unchanged. They are expected to fail until IL-11 puts the switch inside IL-04 (and then, as the capstone's alternative, still). `check.sh` and `encoding.json` keep the count at 4.
+**`il07-tests-expected-red.l4`, R1.** (0.2.1: **superseded**, R1 resolved and its assertions removed; 11.14.) Under the default, the capstone's deduction and net for R1's household are now the Institute's, so the two assertions asked of the default would pass. The finding stands against row IL-04, which computes from the items, and against the items' reading the capstone keeps; so the two assertions now ask the items' reading by name, with their expected values, the Institute's, unchanged. They are expected to fail until IL-11 puts the switch inside IL-04 (and then, as the capstone's alternative, still). `check.sh` and `encoding.json` keep the count at 4.
 
 **The independent tests after the ruling.** 278 assertions: **258 satisfied, 18 failed, 2 refused** (0.1.0: 192, 80, 6).
 Against 0.1.0, assertion by assertion: 177 satisfied both times; **75 failures now pass** (F1's 74, the tester's 7% above the threshold, every one now agreeing, and H43's net, now declined); **all 6 refusals now pass** (H25, H27 and H28, allowance and net, under s 72 and the printed totals); 3 failures stand (H43's tax, the tester's guess of a refusal; H45's deduction and net, the tester's own error, F5); 2 failures are now refusals (H44n, fork K15); and 15 assertions that passed now fail only on the words of a refusal 0.2.0 reworded (11.8).
 The 74 that F1 counted all pass, as the lead expected.
+
+### 11.14 Version 0.2.1: the capstone follows row IL-04's own switch (backlog row IL-11, 2026-10-07)
+
+Encoder `enc-il-11`, one session, no sub-agents.
+Backlog row IL-11 put the Schedule J switch inside row IL-04 (its v0.3.0) and row IL-05 (its v0.3.0), default the printed totals, the items' reading kept by name (their NOTES.md, "Version 0.3.0").
+The capstone now uses IL-04's switch instead of naming the reading itself, and leaves the printed totals' arithmetic to the rows.
+Where 11.13 says the switch is the capstone's rule with the value `the printed total of column D`, that is superseded: the rule is still there, but its value is IL-04's.
+
+**What changed.**
+
+1. **The switch.** `IL-07: the reading of Schedule J column D the capstone takes` (`il07-pipeline.l4`) is now IL-04's `Schedule J — the reading this row takes where its totals row and its items differ`, mapped into the capstone's own reading by the IL-04 adapter (`IL-04: the reading of Schedule J row IL-04 takes`). A ruling the other way is a one-line change in IL-04's `nii-schedule-j.l4`, and the capstone follows it.
+2. **The arithmetic is the rows'.** The national insurance rule no longer adds the printed totals' difference itself. It passes the reading to IL-05's s 342(c) (`IL-05: … , reading` r `, column D at the printed totals being` x), and x is IL-04's `the column D deduction under …` at the printed totals for the deduction branches the earner pays in (`IL-04: column D in a month of …, for the deduction branches among …, reading …`). At the items IL-05 sums the per-branch amounts as before.
+3. **The per-branch amounts are the items' by name.** IL-04's rules without a reading now read the printed totals, which speak only of the six deduction branches together, and decline one branch above the threshold; so the IL-04 adapter asks each branch's own amount at the items, by name.
+4. **Declines are IL-04's.** At the printed totals an earner who pays in fewer than the six deduction branches, above the threshold (N25, a non-resident; N26, a controlling shareholder), is declined by IL-04 in its own words: "the printed total of Schedule J in this column is for every branch that prints a figure in it, together; the items do not add up to it, and these are fewer branches". The capstone's own refusal for it (0.2.0, "the printed total of Schedule J column D is for the six deduction branches together, and the earner does not pay contributions in all six") is removed, and so is the IL-05 adapter rule it read.
+5. **R1 resolved.** Its finding was against IL-04, which computed from the items while the Institute deducts 7%. IL-04 now computes 7% above the threshold by default, so R1's two assertions (which 0.2.0 had pointed at the items by name) are removed from `il07-tests-expected-red.l4`; the module keeps R2 and R3 and expects 2 failures. The Institute's figures for R1's household are asserted at the default in `il07-tests.l4` (H3: 590.9012, 13,692.537) and at both readings in `il07-tests-il08.l4`.
+6. **Vendoring.** `vendor.sh --record` took IL-04's three changed modules (nouns, Schedule J, s 337) and IL-05's two (nouns, s 342); the other 45 lines of `VENDORED.sha256` are unchanged. The five carry `+uncommitted` after the commit hash until the lead commits the rows, after which `vendor.sh --record` should be run again.
+
+**Fork K18 (new).** Whose is the Schedule J switch? **Row IL-04's.** The ruling of 2026-10-07 is about Schedule J, which IL-04 encodes; the capstone takes IL-04's reading and passes it to IL-05, so one ruling is made in one place. K14 records the ruling; K18 records where it lives.
+
+**Expected values changed in 0.2.1.** In `il07-tests-il08.l4`, five BECAUSE texts (N25's deduction and net, N26's deduction and net, and the controlling shareholder at the printed-totals reading), from the capstone's removed refusal to IL-04's words above; no number changed. In `il07-tests-expected-red.l4`, R1's two assertions removed. Nothing in `il07-tests.l4` changed.
+
+**What `check.sh` prints at 0.2.1.** Run from 2026-10-07T07:27:35Z to 07:28:14Z as `L4=/Users/mengwong/.local/bin/l4 ./check.sh`. **The binary changed again** before the run: `~/.cabal/bin/l4` was replaced at 07:25:28Z, now 233,039,712 bytes, sha256 `3a1843a0e51ce1663cd71b4307e061fa425f2f9f23d78afb8ffa9be6fd20278f`, a regular file, not a store build; the same before and after the run. No module changed during it.
+
+```
+vendor.sh: 50 vendored modules match their sources and VENDORED.sha256
+module                                    errors satisfied  failed  refused  expected
+il07-adapter-il01.l4                           0         0       0        0         0
+il07-adapter-il02.l4                           0         0       0        0         0
+il07-adapter-il03.l4                           0         0       0        0         0
+il07-adapter-il04.l4                           0         0       0        0         0
+il07-adapter-il05.l4                           0         0       0        0         0
+il07-adapter-il06.l4                           0         0       0        0         0
+il07-adapter-il08-ito.l4                       0         0       0        0         0
+il07-adapter-il08-nii.l4                       0         0       0        0         0
+il07-nouns.l4                                  0         0       0        0         0
+il07-pipeline.l4                               0         0       0        0         0
+il07-published-figures.l4                      0         0       0        0         0
+il07-refusals.l4                               0         0       0        0         0
+il07-tests-expected-red.l4                     2         0       2        0         2
+il07-tests-il08.l4                             0        98       0        0         0
+il07-tests.l4                                  0       114       0        0         0
+tests-independent.l4                          18       258      18        2      18/2
+TOTAL (16 modules)                            20       470      20        2
+(a failed assertion is also an error; any other error, or a refused assertion a module is not expected to have, makes the run red; "expected" is failed/refused where a module may refuse)
+```
+
+`check.sh` exit 0. `il07-tests-expected-red.l4`: R2 and R3 fail, as before.
+**The independent tests** (not edited): 258 satisfied, 18 failed, 2 refused, assertion by assertion the same as at 0.2.0 after the ruling (11.13): the capstone's answers did not change, only where they are computed.
 
 ## Comparison with Axiom's RuleSpec (2026-10-07)
 

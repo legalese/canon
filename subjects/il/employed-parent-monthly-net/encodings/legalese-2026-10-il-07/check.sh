@@ -36,7 +36,7 @@ L4="${L4:-l4}"
 # encoding.json `expected_red`.
 expected_failed() {
   case "$1" in
-    il07-tests-expected-red.l4) echo 4 ;;   # NOTES.md section 6: R1 (2), R2 (1), R3 (1, added in 0.2.0)
+    il07-tests-expected-red.l4) echo 2 ;;   # NOTES.md sections 6, 11.14: R2 (1), R3 (1, added in 0.2.0); R1 resolved in 0.2.1
     tests-independent.l4) echo 18 ;;         # the independent tester's record against v0.1.0, not edited: 15 reworded refusals, H43's tax, H45's two; NOTES.md 11.8, 11.13
     *) echo 0 ;;
   esac
