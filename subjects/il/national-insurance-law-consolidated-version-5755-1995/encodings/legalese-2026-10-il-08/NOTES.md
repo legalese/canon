@@ -2,10 +2,103 @@
 
 The National Insurance Law half of row IL-08, the extension of the Israel tier: Schedule A1 Part D, s 72 and s 335, and the dispositions of ss 65 and 67A, taken in the order row IL-07's `GAPS.md` needs them.
 One agent, one session, no sub-agents (run `IL-08-20261007`, encoder `enc-il-08`, 2026-10-07).
-Status: **draft**, version 0.3.0 (2026-10-08: fork N4 as a switch, Meng's SHRUG ruling, BACKLOG IL-41; below), after 0.2.0 (2026-10-08: repairs of BACKLOG IL-20, below).
-No domain expert has read it; HG1 has not been sought; no independent test pass has been run (0.2.0: one has since been run, `fid-il-08b`, `INDEPENDENT-FINDINGS.md`; its file now fails 4 and refuses 22, as declared in `check.sh`; 0.3.0: fails 1 and refuses 22).
+Status: **draft**, version 0.4.0 (2026-10-08: SHRUG on the remaining ambiguities, fork N2 a switch, BACKLOG IL-53; below), after 0.3.0 (2026-10-08: fork N4 as a switch, Meng's SHRUG ruling, BACKLOG IL-41; below), after 0.2.0 (2026-10-08: repairs of BACKLOG IL-20, below).
+No domain expert has read it; HG1 has not been sought; no independent test pass has been run (0.2.0: one has since been run, `fid-il-08b`, `INDEPENDENT-FINDINGS.md`; its file now fails 4 and refuses 22, as declared in `check.sh`; 0.3.0: fails 1 and refuses 22; 0.4.0: fails 0 and refuses 22).
 
 The Income Tax Ordinance half, whose `NOTES.md` carries the parts common to both (the binary, the semi-cleanroom record, what was read), is `../../../income-tax-ordinance-new-version/encodings/legalese-2026-10-il-08/`.
+
+## Version 0.4.0 (2026-10-08): SHRUG on the remaining ambiguities (BACKLOG IL-53)
+
+Agent `shrug-il-53` (the session that did IL-20 and IL-41), one session, no sub-agents, on 2026-10-08, from BACKLOG IL-53 and the lead's SHRUG-2 brief.
+Meng ruled SHRUG on 2026-10-08 for every remaining ambiguity: where the text is silent, one named switch per ambiguity, default DECLINE (a refusal by name saying the text does not decide) only where the readings give different answers to the question asked, every other reading kept by name and tested.
+Each item was read where it was recorded (`INDEPENDENT-FINDINGS.md`, this file's fork register and assumptions) and classed: (a) a gating choice, made a switch; (b) already declines, or only one reading is arguable, or the readings never differ here; (c) a modelling choice or input convention the text does not touch; (d) needs a source this row does not have.
+Files changed: `nii-il08-nouns.l4`, `nii-s72-period-of-allowance.l4`, `nii-il08-tests-s72-s335.l4`, `check.sh`, `encoding.json` and this file.
+Not changed: Part D and s 335 and their tests, the independent tester's three files (`tests-independent.l4` is still sha256 `bd929543…14efda2`; no interface it uses changed), and the section "Comparison with Axiom's RuleSpec".
+
+### The items
+
+| id | class | what changed | tests |
+| --- | --- | --- | --- |
+| 08n-N1 (fork N1, s 72(a) "עד 15 בחודש") | (b) only one reading is arguable | Nothing. "עד" alone can be read with or without the day it names, but here the next limb is its complement: "נוצרה הזכאות אחרי 15 בחודש פלוני", after the 15th. Read exclusively, the 15th would fall in neither limb and (a) would say nothing of it; read inclusively, the two limbs divide the month with no gap and no overlap. Only the inclusive reading gives (a) a rule for every day, and the independent tester decided the same before reading the encoding (RD-1, 72-03). | None added; the tests on the 15th and the 16th stand. |
+| 08n-N2 (fork N2, s 72(c), a child who died before any allowance was paid for it) | (a) gating choice | A switch. Readings: `section 72(c) runs only after an allowance was paid for the child` (this row's reading from 0.1.0 to 0.3.0), `section 72(c) runs for any child who dies while entitled`, and the default `section 72(c) is declined where the two readings differ`. They differ only for a child who died with no payment recorded, and only for the three months after the month of the death; there the default declines, by name. Every other month, every death after a payment, and every child (b) excludes are answered the same under all three. | 3 re-pointed by name, values unchanged; 20 added. The tester's line 247 now passes. |
+| 08n-A2 (assumption A2, May 2015 or 1 October 1995) | (b) already declines | Nothing. The two readings differ only for months before May 2015, and the row already declines those by name, saying the limit is its scope and not the Law's commencement (0.2.0). SHRUG's default is the present behaviour; no switch was made to answer them, since that would widen the row past what row IL-06 answers. | None; the tester's 22 SCOPE refusals stand. |
+| 08n-A3 (assumption A3, from when the present s 335 applies) | (d) needs a source | Nothing. It needs the Insolvency and Economic Rehabilitation Law 5778-2018 (the tag תשע״ח־5 on s 335), its s 335 amendment and its commencement, which are not deposited (`../../registers/source-bundle/amending-laws/` holds Amendment 252, the 2025 budget-year Law and the 2023 Economic Efficiency Law). No answer of this row depends on it: s 335 carries no later tag, and the row declines every contribution period before January 2026. | None. |
+| 08n-72B (forks N5, N6, s 72(b) "שבעה ימים", leaving the hospital) | (c) an input convention | Nothing in the rules. s 72(b) is one input, `the child lived at least seven days or left the hospital`, which the caller answers; how seven days are counted (N5) and whether a child born at home and never in a hospital satisfies (b) (N6) are the caller's. Stated as an input convention below. Taking dates instead would change the noun the capstone fills, which this ruling does not ask for. | None. |
+
+**Input convention (08n-72B).** The rules do not count days or read a place of birth for s 72(b): the caller supplies the conclusion, and a caller that cannot decide N5 or N6 for a child should not call these rules for that child.
+
+### Fork N2 as a switch
+
+- **The readings** (`nii-il08-nouns.l4`): `A reading of section 72(c) for a child who died before any allowance was paid for it`, one of the three above.
+- **The switch** (`nii-s72-period-of-allowance.l4`): `section 72(c) — the reading this row takes for a child who died before any allowance was paid for it`, which gives `section 72(c) is declined where the two readings differ`.
+- **The refusal**: "section 72(c) continues the allowance for three months after the death of a child for whom an allowance was paid, and does not say whether it reaches a child for whom none had yet been paid".
+- **Rules at a reading**, each with `, reading s 72(c) as` R added to its name: the core rule (the first and last months placed against the period), the last-month rule, and the export. Each old name keeps its name and type and answers at the switch's reading.
+  The first-month rule is not touched by any reading.
+- **The record** gains one field, `the month of the death, after which fork N2 leaves the months undecided` (a month placed against the period, or NOTHING where the readings agree). The export declines a month after it and up to the third month after it; the last-month rule declines whenever it is set.
+- **With item 08n-PAID** (0.2.0): on the reading that (c) runs for any child who dies while entitled the payment record is not read, so a record that contradicts (a) and (b) no longer matters; on the other two readings it is declined as before.
+
+### Expected values changed or added
+
+All worked from lines 854-856 before the run; none was changed to match what the encoding printed.
+`nii-il08-tests-s72-s335.l4`, by line:
+
+| line | assertion | old | new | why |
+| ---: | --- | --- | --- | --- |
+| 55 | export, March 2026: born 1 January 2026, died 5 February, nothing paid | NOT paid (default) | NOT paid, at `section 72(c) runs only after an allowance was paid for the child` by name | re-pointed: it rests on the old reading |
+| 122 | export, March 2026: 72-57 recorded as not paid | NOT paid (default) | NOT paid, at that reading by name | re-pointed |
+| 123 | last month: 72-57 recorded as not paid | February 2026 (default) | February 2026, at that reading by name | re-pointed |
+| 143 | the switch | — | `section 72(c) is declined where the two readings differ` | the ruling |
+| 149-153 | born 1 January 2026, died 5 February, nothing paid, at the default | — | February paid; March and May REFUSED (fork N2); June not paid; last month REFUSED | (a) pays January and February on both readings; February + 1 to + 3 differ; June is after May |
+| 154 | the same, last month, only after a payment | — | February 2026 | (a) ends payment with the month of the death |
+| 155-158 | the same, any child who dies while entitled | — | March and May paid; June not; last month May 2026 | (c): February + 3 |
+| 161, 162 | 72-57 recorded as not paid, March 2026 | — | default REFUSED (fork N2); any child: paid | (a) from March; the death in February; (c) to May on that reading |
+| 165, 166 | 72-57 recorded as paid, March 2026 | — | any child: paid (the record not read); only after a payment: REFUSED (item 08n-PAID) | (a) made no month payable up to February |
+| 168 | 72-56 recorded as paid, May 2026 | — | paid at both named readings | paid within (a); (c) on both |
+| 171 | lived three days, never left the hospital, nothing paid, March 2026, any child | — | not paid | (b) bars every month on every reading |
+| 176-178 | died 10 March 2015, entitled since 2010, nothing paid | — | May 2015 REFUSED at the default; not paid only after a payment; June 2015 paid for any child | (a) ends with March 2015, before the period; (c) runs to June 2015 |
+
+The module had 54 assertions and has 74: 3 re-pointed, 20 added.
+Answers that changed in the rules: at the default, the export now declines the three months after the death of a child with no payment recorded (from 0.1.0 to 0.3.0 they were unpaid), and the last-month rule declines for such a child.
+No answer the capstone reaches changed: it gives "was paid" as FALSE for children who do not die. Its modules, with this row's three changed modules vendored in a scratch copy, gave the counts they give with the copies it holds (`il07-tests.l4` 130, `il07-tests-il08.l4` 130, `tests-independent.l4` 260 satisfied and 18 failed, `tests-independent-2.l4` 304 satisfied, 7 failed and 14 refused).
+That the switch is what passes the new tests and the tester's line 247: a scratch copy with the switch set to the old reading printed 6 failed in `nii-il08-tests-s72-s335.l4` and 1 failed in the tester's file, exit 1.
+
+### The tester's file
+
+| | satisfied | failed | refused |
+| --- | ---: | ---: | ---: |
+| 0.3.0 | 120 | 1 | 22 |
+| 0.4.0 | 121 | 0 | 22 |
+
+Line 247 (72-57 recorded as not paid; it expected REFUSE whichever way the record goes) passes at the default.
+`check.sh` loses its `expected_failed` arm for the file; `expected_refused` stays 22 (the SCOPE lines).
+
+### `check.sh`, 0.4.0
+
+Run from 2026-10-08T22:18:27Z to 22:18:33Z as `L4=/Users/mengwong/.local/bin/l4 ./check.sh`, `JL4_LIBRARY_PATH` unset, after the last edit to any module or to `check.sh`; binary `~/.local/bin/l4` resolving to the cabal store's `jl4-0.1-6df1397b/bin/l4`, 233,724,416 bytes, sha256 `f0759b2ef2f1d1b2a577c68f059c54f487de9d913553fc9f0d9bf0f7f5dab0d8` before and after the run.
+This is a newer binary than 0.3.0's; the committed 0.3.0 files, run first in a scratch copy on it (22:18:08Z), gave 0.3.0's counts.
+
+```
+module                                    errors satisfied  failed  refused  expected
+nii-il08-nouns.l4                              0         0       0        0         0
+nii-il08-tests-part-d.l4                       0        51       0        0         0
+nii-il08-tests-s72-s335.l4                     0        74       0        0         0
+nii-s335-branches.l4                           0         0       0        0         0
+nii-s72-period-of-allowance.l4                 0         0       0        0         0
+nii-schedule-a1-part-d.l4                      0         0       0        0         0
+tests-independent.l4                           0       121       0       22      0/22
+TOTAL (7 modules)                              0       246       0       22
+(a failed assertion is also an error; any other error, or a refused assertion a module is not expected to have, makes the run red; "expected" is failed/refused where a module may refuse)
+```
+
+`check.sh` exit 0.
+`python3 -I tools/srcquote.py SOURCE` leaves the three changed modules byte-identical, and `python3 -I tools/hebcheck.py SOURCE` passes them (exit 0).
+
+### For the capstone (BACKLOG IL-54)
+
+- Re-vendor `nii-il08-nouns.l4` and `nii-s72-period-of-allowance.l4`; no adapter change is needed.
+- Names added: the type `A reading of section 72(c) for a child who died before any allowance was paid for it` and its three constructors; the switch; the refusal; the rules at a reading (`… , reading s 72(c) as` R) for the core rule, the last-month rule and the export; the record field `the month of the death, after which fork N2 leaves the months undecided`.
+  Nothing renamed or removed; the export's old name, inputs and type are unchanged.
+- The capstone's children do not die, so no reading is reached; a composer that passes a death with "was paid" FALSE now meets the fork N2 refusal for the three months after it.
 
 ## Version 0.3.0 (2026-10-08): SHRUG, fork N4 as a switch (BACKLOG IL-41)
 
@@ -234,12 +327,12 @@ Every assertion was satisfied on the first run that evaluated it; before that, t
 
 | module | lines | holds |
 | --- | ---: | --- |
-| `nii-il08-nouns.l4` | 93 (0.2.0: 99, comments; 0.3.0: 116, the Part D reading) | the nine branches (as rows IL-04 and IL-05 spell them), the person for s 335, the entitlement for s 72; `DECLARE` only |
+| `nii-il08-nouns.l4` | 93 (0.2.0: 99, comments; 0.3.0: 116, the Part D reading; 0.4.0: 133, the s 72(c) reading) | the nine branches (as rows IL-04 and IL-05 spell them), the person for s 335, the entitlement for s 72; `DECLARE` only |
 | `nii-schedule-a1-part-d.l4` | 96 (0.3.0: 136) | Part D: a woman's age by month of birth, in months, and the day she reaches it (0.3.0: at a reading of fork N4, declined by default where the month lacks her day) |
-| `nii-s72-period-of-allowance.l4` | 90 (0.2.0: 218) | s 72(a)-(c): whether the child allowance is paid for a month (0.2.0: the first and last months placed against the period, and "was paid" read against (a) and (b)) |
+| `nii-s72-period-of-allowance.l4` | 90 (0.2.0: 218; 0.4.0: 302, fork N2 a switch) | s 72(a)-(c): whether the child allowance is paid for a month (0.2.0: the first and last months placed against the period, and "was paid" read against (a) and (b)) |
 | `nii-s335-branches.l4` | 131 | s 335(a)-(j): the branches in which a person pays |
 | `nii-il08-tests-part-d.l4` | 74 (0.3.0: 105) | 37 assertions: every band of Part D at both its edges (0.3.0: 51, with the three readings of fork N4) |
-| `nii-il08-tests-s72-s335.l4` | 85 (0.2.0: 160) | 22 assertions (0.2.0: 54) |
+| `nii-il08-tests-s72-s335.l4` | 85 (0.2.0: 160; 0.4.0: 202) | 22 assertions (0.2.0: 54; 0.4.0: 74) |
 
 Not encoded: s 65 (encoded in full by row IL-06), s 67A (no such section), the other Parts of Schedule A1, and the statuses s 335 reads (each another Chapter's answer).
 
@@ -260,7 +353,7 @@ Line numbers are lines of `../../registers/source-bundle/national-insurance-law-
 | s 72(a), first limb | 854 | entitlement arising by the 15th: paid from the 1st of that month; after: from the next | encoded | `s 72(a) — the first month …`; fork N1 | 6 |
 | s 72(a), last limb | 854 | payment ends on the last day of the month entitlement ceased | encoded | `s 72(a), (c) — the last month …` | 6 |
 | s 72(b) | 855 | only for a child who lived seven days or left the hospital | encoded | `s 72 — the allowance is paid for month`; (0.2.0) forks N5, N6, the caller's | 6 |
-| s 72(c) | 856 | three months on after the month a child for whom it was paid died | encoded | `s 72(a), (c) — the last month …`; fork N2; (0.2.0) `s 72(a), (c) — the first and last months … placed against the period …`, which reads "was paid" against (a) and (b) (item 08n-PAID) | 6 |
+| s 72(c) | 856 | three months on after the month a child for whom it was paid died | encoded | `s 72(a), (c) — the last month …`; fork N2; (0.2.0) `s 72(a), (c) — the first and last months … placed against the period …`, which reads "was paid" against (a) and (b) (item 08n-PAID) | 6 (0.4.0) fork N2 a switch, `section 72(c) — the reading this row takes for a child who died before any allowance was paid for it`, declined by default where its readings differ. |
 | s 72, the period answered | 853 | no amendment tag | encoded (a gate from May 2015, row IL-06's period; 0.2.0: applied to every rule that gives a month, item 08n-GATE) | `this row answers months of the child allowance from May 2015 …` (0.2.0: reworded, "… a scope chosen to compose with row IL-06, not the commencement of the Law (s 402: 1 October 1995)") | 6 |
 | s 335 heading | 3610 | last tag תשע״ח־5 | encoded (a gate from January 2026, rows IL-04 and IL-05's period) | `this row answers section 335 for contribution periods from January 2026` | 9 |
 | s 335(a) | 3611 | a worker who is not a resident: maternity | encoded | `s 335(a) — …` | 9 |
@@ -283,11 +376,13 @@ Line numbers are lines of `../../registers/source-bundle/national-insurance-law-
 **A1 — Part D is stated as the deposited text prints it.** No rule takes a date: the table maps a month of birth to an age, its last row is open ("ואילך"), and its tags (תשע״ז־12 on the heading, תש״ף on the Part) predate every period the consuming rows answer.
 
 **A2 — s 72 answers months from May 2015.** s 72 carries no amendment tag, so its text is not dated by any amendment; the row answers the period row IL-06 answers (its A1), with which it composes, and declines an earlier month by name.
+(0.4.0, SHRUG, BACKLOG IL-53) Class (b): the readings differ only for months before May 2015, which the row already declines by name; SHRUG's default is the present behaviour, so no switch was made.
 (0.2.0) Assumed, not ruled: the lead's choice (BACKLOG IL-20, inventory 08n-A2), kept against the reading that s 72's own text answers from the Law's commencement, 1 October 1995 (s 402, lines 4314-4315), which the independent tester took (72-14, 72-30).
 The refusal now says so, and every rule that gives a month applies it (08n-GATE).
 The 22 assertions of the tester's that it refuses ("The tester's file" in "Version 0.2.0") are the ones to re-check if the scope is widened.
 
 **A3 — s 335 answers contribution periods from January 2026.** Its last tag, תשע״ח־5, is by counting the file's list of amending Laws (line 7) the Insolvency and Economic Rehabilitation Law 5778-2018; what that Law changed in s 335, and when it commenced, were not checked. The row answers the period rows IL-04 and IL-05 answer (their A1) and declines an earlier year.
+(0.4.0, SHRUG, BACKLOG IL-53) Class (d): it needs the Insolvency and Economic Rehabilitation Law 5778-2018, which is not deposited; no answer of this row depends on it, the row declining every period before January 2026.
 
 **A4 — the statuses are inputs.** Every fact s 335 reads is another Chapter's answer; every fact s 72 reads (the day entitlement arose or ceased, a death, the seventh day) is the Institute's record.
 (0.2.0) The record that an allowance was paid for the child is now read against (a) and (b), and the months that turn on a payment they did not allow are declined (08n-PAID).
@@ -296,12 +391,12 @@ The 22 assertions of the tester's that it refuses ("The tester's file" in "Versi
 
 | # | where | the question | readings | taken, and why |
 | --- | --- | --- | --- | --- |
-| N1 | s 72(a) | "עד 15 בחודש": by the 15th inclusive, or before it? | inclusive; exclusive | **inclusive**: the next limb says "אחרי 15", after the 15th, so the 15th itself falls in the first. Tests on the 15th and the 16th. |
-| N2 | s 72(a), (c) | A child for whom no allowance had been paid dies: does (c)'s three months apply? | no; yes | **no**: (c) is about "ילד שבעדו שולמה קצבת ילדים"; (a) then ends payment with the month of death. (0.2.0) Inventory 08n-N2, a recorded fork in BACKLOG IL-24's queue, held by Meng; the independent tester expected REFUSE (72-57, line 247, still failing) and now leans to "no" ("ימשיכו" presupposes a payment under way). Its companion, a payment recorded where (a) and (b) made no month payable, is no longer answered either way: the months that turn on it are declined (item 08n-PAID). |
+| N1 | s 72(a) | "עד 15 בחודש": by the 15th inclusive, or before it? | inclusive; exclusive | **inclusive**: the next limb says "אחרי 15", after the 15th, so the 15th itself falls in the first. Tests on the 15th and the 16th. (0.4.0, SHRUG, BACKLOG IL-53) Class (b): only the inclusive reading gives (a) a rule for every day; read exclusively, the 15th would fall in neither limb. No switch; the independent tester decided the same (RD-1). |
+| N2 | s 72(a), (c) | A child for whom no allowance had been paid dies: does (c)'s three months apply? | no; yes | **no**: (c) is about "ילד שבעדו שולמה קצבת ילדים"; (a) then ends payment with the month of death. (0.2.0) Inventory 08n-N2, a recorded fork in BACKLOG IL-24's queue, held by Meng; the independent tester expected REFUSE (72-57, line 247, still failing) and now leans to "no" ("ימשיכו" presupposes a payment under way). Its companion, a payment recorded where (a) and (b) made no month payable, is no longer answered either way: the months that turn on it are declined (item 08n-PAID). **(0.4.0) RULED by Meng on 2026-10-08 (SHRUG, BACKLOG IL-53): a named switch, default DECLINE where the readings differ.** `section 72(c) — the reading this row takes for a child who died before any allowance was paid for it` gives `section 72(c) is declined where the two readings differ`; `section 72(c) runs only after an allowance was paid for the child` ("no", above) and `section 72(c) runs for any child who dies while entitled` ("yes") are kept by name and tested (`nii-il08-tests-s72-s335.l4` lines 143-178). The readings differ only for the three months after the death of a child with no payment recorded. The tester's line 247 now passes. |
 | N3 | s 335(a), (i) | Maternity is imposed by (a) and by (i): one branch or two? | one | **one** (row IL-04's F15): (j) says the subsections do not detract from each other, and Schedule J's two maternity items never both print a figure in one column. |
 | N4 | Schedule A1 Part D | The day a woman "reaches" the age, for a 29-31 day of birth and a shorter month | the last day of the shorter month; the first of the next; (0.3.0) declined | (0.1.0-0.2.0) **the last day** (`add months` clamps), row IL-05's fork F19, so the two rows agree. (0.2.0) This is this row's part of inventory item **DATE**, one fork across rows IL-05 (F19), IL-06 (F2) and IL-08: a day the later month lacks (31 June, 29 February in a common year, 31 November). Readings: (i) clamp to the last day of the shorter month (taken in all three rows); (ii) roll to the 1st of the next month; (iii) refuse, as the independent tester expected (D-46, D-47, D-48, lines 733, 735, 737, still failing). Held by Meng (BACKLOG IL-24, one ruling for the three rows; the lead recommends a named switch with decline as the default); the clamp is kept until then. s 72's side of DATE (72-39, a child born on 29 February turning 18) is an input here, the day entitlement ceased, which row IL-06's s 65 or the capstone supplies, so s 72 inherits IL-06's reading. **(0.3.0) RULED by Meng on 2026-10-08 (SHRUG, BACKLOG IL-41): a named switch, default DECLINE.** `Schedule A1, Part D — the reading this row takes where the day she reaches the age does not exist` gives `Part D: such a day is declined`; `Part D: the last day of the shorter month` (the clamp above) and `Part D: the 1st of the next month` are kept by name and tested (`nii-il08-tests-part-d.l4` lines 85-105). The tester's D-46 to D-48 now pass. |
-| N5 | s 72(b) | "שחי שבעה ימים לפחות": counted how? (the tester's 72-42: six days elapsed, or seven calendar days counting both ends) | seven full days after the day of birth; seven calendar days counting the day of birth | (0.2.0, item 08n-72B) **none in the rules**: (b) is one input, `the child lived at least seven days or left the hospital`, which the caller answers; the tester expected REFUSE. Recorded so the choice is visible; open question 5. |
-| N6 | s 72(b) | "או שיצא מבית החולים": does a child born at home, never in a hospital, satisfy (b) before seven days? (the tester's 72-44) | no, on the literal words; yes, the limb being about a child who was in hospital | (0.2.0, item 08n-72B) **none in the rules**: the same input; the tester expected "no" on the literal words. Open question 6. |
+| N5 | s 72(b) | "שחי שבעה ימים לפחות": counted how? (the tester's 72-42: six days elapsed, or seven calendar days counting both ends) | seven full days after the day of birth; seven calendar days counting the day of birth | (0.2.0, item 08n-72B) **none in the rules**: (b) is one input, `the child lived at least seven days or left the hospital`, which the caller answers; the tester expected REFUSE. Recorded so the choice is visible; open question 5. (0.4.0, SHRUG) Class (c): an input convention; the rules take the conclusion, not the days. |
+| N6 | s 72(b) | "או שיצא מבית החולים": does a child born at home, never in a hospital, satisfy (b) before seven days? (the tester's 72-44) | no, on the literal words; yes, the limb being about a child who was in hospital | (0.2.0, item 08n-72B) **none in the rules**: the same input; the tester expected "no" on the literal words. Open question 6. (0.4.0, SHRUG) Class (c): an input convention, as N5. |
 
 Places read for a fork and none found: Part D's bands (contiguous and disjoint; each tested at both edges); s 335(b)'s cross-reference to s 65(a)(1), which IL-06 encodes as the same two statuses.
 
@@ -379,10 +474,10 @@ No officially published table of Part D was fetched to cross-check the tests; th
 
 ## 9. Open questions for a domain expert
 
-1. N1: does the Institute pay a child born on the 15th for that month?
-2. N2: is the allowance continued three months after the death of a child for whom no payment had yet been made?
+1. N1: does the Institute pay a child born on the 15th for that month? (0.4.0: class (b), one reading arguable on the text; kept for HG1.)
+2. N2: is the allowance continued three months after the death of a child for whom no payment had yet been made? (0.4.0: ruled SHRUG, declined by default; an expert's answer would choose the switch's reading.)
 3. Part A's table for women ends at December 1955 in the consolidation: is a row missing (the 2021-2022 changes to women's retirement age), or does Part A not apply to later births? Not in this row's scope; noted for whoever encodes Part A.
-4. A3: from when does the present text of s 335 apply?
+4. A3: from when does the present text of s 335 apply? (0.4.0: class (d), needs the 2018 Insolvency Law.)
 5. (0.2.0) N5: is a child who died on the seventh calendar day of life, counting the day of birth, one who "lived seven days"?
 6. (0.2.0) N6: does s 72(b) pay a child born at home and never in a hospital who dies within seven days?
 7. (0.2.0) With N2: does (c) run after a payment made for a child for whom (a) and (b) made no month payable (a payment in error, or a record that is wrong)?

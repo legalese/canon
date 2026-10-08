@@ -27,17 +27,17 @@ L4="${L4:-l4}"
 
 # A module that is MEANT to fail (a draft's test cases run against the text as made,
 # say) is listed here with its exact count, and named in encoding.json `expected_red`.
-# Version 0.2.0 (BACKLOG IL-20): the independent tester's module, tests-independent.l4.
-# Its remaining failure, an #ASSERT REFUSED that gets a value:
-#   line 247  72-57 recorded as not paid: fork N2, inventory 08n-N2 (AMBIGUITY, waits on a ruling)
+# Version 0.2.0 (BACKLOG IL-20): the independent tester's module, tests-independent.l4, failed 4.
 # Line 248 (72-57 recorded as paid, inventory 08n-PAID) passes from 0.2.0.
 # Version 0.3.0 (BACKLOG IL-41): lines 733, 735 and 737 (D-46 to D-48, a day the later month lacks;
 # fork N4, inventory DATE) pass: Meng ruled on 2026-10-08 (SHRUG) that such a day is declined by
 # default. They were failing from 0.1.0 to 0.2.0, when the day was clamped. 4 became 1.
+# Version 0.4.0 (BACKLOG IL-53): line 247 (72-57 recorded as not paid; fork N2, inventory 08n-N2)
+# passes: SHRUG makes fork N2 a switch, declined by default where its readings differ. 1 became 0,
+# so the module has no arm here; its refusals are below.
 expected_failed() {
   case "$1" in
     # tests-red.l4) echo 3 ;;
-    tests-independent.l4) echo 1 ;;   # line 247 (08n-N2); 733, 735, 737 (DATE) pass from 0.3.0
     *) echo 0 ;;
   esac
 }
@@ -57,6 +57,8 @@ expected_failed() {
 #                        203, 205. Answered in 0.1.0 because the period was applied only on the
 #                        export; refused from 0.2.0, which applies it to every rule that gives a month
 #                        (inventory 08n-GATE). Class SCOPE (08n-A2), as lines 120 and 171.
+# Version 0.4.0 (BACKLOG IL-53): unchanged. Under SHRUG item 08n-A2 is one that already declines
+# (NOTES.md, Version 0.4.0, class (b)); the 22 stay refused, at the same message.
 expected_refused() {
   case "$1" in
     tests-independent.l4) echo 22 ;;   # lines 120, 122, 167-205: SCOPE (08n-A2; the last twenty surfaced by 08n-GATE)
