@@ -2,10 +2,159 @@
 
 The Income Tax Ordinance half of row IL-08, the extension of the Israel tier: ss 1 ("Israeli resident" for an individual), 2, 35, 37, 38, 39, 40, 45A, 47, 64B, 65 and 121A, taken in the order row IL-07's `GAPS.md` needs them.
 One agent, one session, no sub-agents (run `IL-08-20261007`, encoder `enc-il-08`, 2026-10-07), from the brief in `BRIEF.md`.
-Status: **draft**, version 0.2.0 (2026-10-08): the independent pass's findings repaired or recorded (BACKLOG IL-19; the next section).
-No domain expert has read it; HG1 has not been sought; no independent test pass has been run (version 0.1.0; an independent pass was run on 2026-10-07, `INDEPENDENT-FINDINGS.md`, and version 0.2.0 repairs what it found).
+Status: **draft**, version 0.3.0 (2026-10-08): the independent pass's findings repaired or recorded (BACKLOG IL-19; versions 0.2.0 and 0.3.0, the next two sections).
+No domain expert has read it; HG1 has not been sought; no independent test pass has been run (version 0.1.0; an independent pass was run on 2026-10-07, `INDEPENDENT-FINDINGS.md`, and versions 0.2.0 and 0.3.0 repair what it found).
 
 The National Insurance Law half (Schedule A1 Part D, ss 72 and 335, and the dispositions of NII ss 65 and 67A) is the companion row, `../../../national-insurance-law-consolidated-version-5755-1995/encodings/legalese-2026-10-il-08/`.
+
+## Version 0.3.0 (2026-10-08): the lead's addendum, and rider O1 (BACKLOG IL-19)
+
+The same repair agent and run as version 0.2.0 (the next section), continued after the lead committed 0.2.0 (commons commit `1141ca2`), on three messages from the lead: a standing permission for interface-only edits to the independent tester's file (an addendum to the repair brief), a direction on where new inputs belong, and a rider, observation O1 of the capstone's second independent pass.
+This section describes the row as it now stands, so it repeats what 0.3.0 keeps of 0.2.0 where that is needed to read it; the 0.2.0 section below is kept as it was committed, with its superseded entries marked.
+Each finding was read where it was recorded (`INDEPENDENT-FINDINGS.md`, this file's fork register, `inventory.tsv`) before it was repaired.
+Every new or changed expected value was worked from the deposited text before it was run; the arithmetic is in the comment above each assertion.
+Nothing outside this directory was edited; row IL-07's capstone, which vendors six of the changed modules (the nouns and the s 35, ss 37-39, s 40, s 45A and ss 64B-65 modules), was not touched.
+The "Comparison with Axiom's RuleSpec" section at the foot of this file is unchanged.
+
+**How the new inputs were added.**
+The independent tests (`tests-independent.l4`) build every input record of this row with `WITH`, and l4 rejects a `WITH` that leaves a field out ("you have not supplied these inputs", probed on a two-field record), so a new field in an existing record breaks that file.
+The lead was told before the work began, and gave a standing permission the same morning: an interface-only edit to the tester's file, in place, no line inserted, no expected value or input meaning changed, with a dated note at its end.
+The lead's direction was then: where the tester's `DECIDED-ANSWERS.md` states the fact a new input needs, put the input in the existing interface and set it on the tester's line to the value the tester stated, so that the tester's assertion tests the repair; where the tester's facts are silent, a new record taken by a new entry point, the old entry point keeping its signature with its assumption stated as an input convention; and no entry point may assume a fact the text needs without its being the caller's stated input or a refusal.
+So:
+- D109: the tester stated the election (D107 "chose s 38", D108 "chose s 39"), so the record's boolean became a three-way field, and the tester's builder at line 286 maps its own boolean onto it.
+- D292, D293: the tester stated that A and B are spouses and that no s 66 calculation governs (D280), so its s 65 assertion at line 860 now calls the form that takes those facts; the old form is kept for the capstone, with an input convention.
+- D271, D273: the tester's facts for the old entry point's assertions are silent on the exceptions and on a later election (D269, D270), so they are a new record taken by a new rule, and the old rule states its input convention.
+- D019: the tester's other s 1 cases (D005-D018) are silent on the later tax years, so those facts are a new record taken by a new entry point, and the old one states its input convention; D019's own assertion (line 92) stays on the old form and stays failing, as the lead accepted, declared in `check.sh`.
+The lead's note at the end of `tests-independent.l4` lists the two lines and cites the tester's facts.
+
+### What each item became (as it now stands; 0.3.0 changed D109, D292, the stated input conventions, and O1)
+
+| item | finding | what changed | where |
+| --- | --- | --- | --- |
+| 08i-D187 | the s 45A(d)(1) floor is lost after limb (2)'s provisos, a cliff (2,268 of survivors' insurance gave 793.80, 2,269 gave 525) | In every arm of the one-rate rule the sums credited are the sums paid up to the higher of the fixed amount and limb (2) as its provisos limit it (fork F5(i), now applied after the provisos). In the (e)(2)(b)(2) arm, where the provisos turn on the part a survivors' sum belongs to, the answer is given where the fixed amount is at least what limb (2) could give under any attribution, and declined otherwise (fork F1). | `ito-s45a-insurance-and-pension-credit.l4`: `s 45A(d)-(e) — the sums credited, where every creditable sum is at 35%, for` |
+| 08i-D183 | life insurance alone above the 5% proviso declined as "sums of different kinds" | A 25%-only rule, `s 45A(d)-(e) — the sums credited, where every creditable sum is at 25%, for`, reached when the 35% class is nil; it applies the 5% proviso of (d)(2)(b)(2) and part (a)'s of (e)(2)(b)(2), and the floor as for D187. Under (e)(2)(b)(2) part (b) has no cap on life insurance, so a life-insurance sum above part (a)'s cap is declined unless the floor governs under any attribution, in new words (`section 45A(e)(2)(b)(2) does not say to which of its two parts a life-insurance sum belongs`; fork F1). | the same module |
+| 08i-D055 | a second immigration answered 0 where the caller said the s 35(e) rules did not apply | Declined whenever it is not the first time, whatever the caller says of the rules: (e) opens "notwithstanding (c)" and (e)(1)'s rules for one formerly an immigrant were made (line 1588) and are not held. | `ito-s35-new-immigrant.l4`; the field's comment in `ito-il08-nouns.l4` |
+| 08i-OB1 | the s 40(b)(1A1) election moved two points for a child of one parent (6 and 10 became 4 and 12) | The one point moves once per child, in (1); (1B)'s (1A)-table points are no longer adjusted (5 and 11). Which pool the point leaves changes no total, only which tax it is set against: fork F13, extended, assumed not ruled. | `ito-s40-children-credit-points.l4`: `s 40(b)(1B) — the paragraph (1A) points for a child of one parent, for` |
+| 08i-D109 | an election under s 39 never made silently meant "chose s 38" | The record's boolean `elects the credits of section 39 rather than those of section 38` is replaced by a three-way field, `the election under section 39 between sections 38 and 39`, of type `The election under section 39 between sections 38 and 39` (`elected the credits of section 38`, `elected the credits of section 39`, `made no election`). The three rules that read it (`the credit points under section 39 for`, `… under section 38 after the election under section 39, for`, `… under sections 37, 38 and 39 for`) decline where both sections apply and no election was made, and do not read it where only one applies. The tester's line 286 maps its own boolean onto the field (D107, D108). | `ito-il08-nouns.l4`; `ito-s37-s38-s39-spouse-credits.l4`; `tests-independent.l4` line 286 |
+| 08i-D271, 08i-D273 | s 64B(d)(1)'s exceptions took no input; one election displacing another was not represented | A designation record (`A designation of the registered spouse, for section 64B(d)(1)`: who made it, the first year it governs, whether the couple have since ceased to be spouses, whether the Director has decided, whether a later election governs the year) and a rule, `s 64B(d)(1) — the designation still binds in tax year` y `:` d. A later election displaces an officer's determination ("subject to (b)"); whether it displaces an earlier election is declined (fork F36). The two-year version 0.1.0 rule is kept, with the input convention that its caller states none of the three facts holds. | `ito-il08-nouns.l4`; `ito-s64b-s65-registered-spouse.l4` |
+| 08i-D292 (with D293) | s 65 could not see spouses living apart, nor decline where s 66 governs | A couple record (`A couple in a tax year, for section 65`: tax year; married, living together and running a joint household; a separate calculation under s 66 governs some of the income) and an entry point, `s 65 — the income charged in the registered spouse's name, for the couple` c `, from` items, which declines a couple who are not spouses within s 1 and one for whom s 66 governs. The tester's line 860 (D280) calls it with the facts it stated. The version 0.1.0 entry point is kept for the capstone, with the input convention that its caller states both facts (spouses; no s 66). | the same two modules; `tests-independent.l4` line 860 |
+| 08i-D019 (rider) | the second limb of "foreign resident" was not represented and had no coverage row | A record of one tax year's facts for the limb (`A tax year of the individual, for the second limb of "foreign resident"`), a rule that says of a pair of tax years whether the facts given meet the limb, fail it or do not settle it, and an entry point, `s 1 — an Israeli resident in the tax year, the second limb of "foreign resident" considered:` y `, the neighbouring tax years being` years, which declines a resident whom the limb reaches or may reach (fork F34). Coverage rows added. The version 0.1.0 rule is kept: it has no later-year facts and answers on the definition of "Israeli resident" alone, so the independent tests' D019 (line 92) still fails there and is declared in `check.sh`. Making it pass on that record would also decline the tests' D011 (line 85), whose facts it cannot tell apart. | `ito-il08-nouns.l4`; `ito-s1-israeli-resident.l4`; section 2 |
+| 08i-D035 (rider) | gambling winnings could be filed under s 2(10) with no refusal | A source `gambling, a lottery or a prize-bearing activity, under section 2A` on the s 2 enumeration; the s 2 rules decline it (`section 2A (winnings from gambling, lotteries and prize-bearing activity) is not encoded in this model`). Coverage row added. | `ito-il08-nouns.l4`; `ito-s2-sources-of-income.l4` |
+| 08i-A3 (rider) | no coverage rows for "tax year" or "foreign resident" | Rows added (section 2). | this file |
+| O1 (rider, from the capstone's second independent pass, `INDEPENDENT-FINDINGS-2.txt` observation O1) | a non-resident father bearing all of his children's maintenance, their mother abroad, had 1 point under s 40(b)(2) | Checked against line 1640. Our error: the second limb needs the maintenance "מחולקת ביניהם", divided between them, and a share of 1 (or 0) is not divided; now nothing. Text unclear, now declined where it matters: whether the second limb credits a parent who is not an Israeli resident (fork F18, version 0.1.0 "no condition"); and whether it credits a parent where the other parent is not entitled under (1) either (new fork F37). | `ito-s40-children-credit-points.l4`: `s 40(b)(2) — the credit points, for` |
+| CHK-08i (rider) | `check.sh` had no `expected_refused`, so the tester's counts made it exit 1 | `expected_refused` added, as row IL-04's has it; the tester's five remaining failures and seven refusals are declared, each line named with its inventory id. | `check.sh` |
+| 08i-D190, D236 | the order of the s 47 deduction and the s 45A credit is an unrecorded fork | Recorded as fork F35 with its three readings; the deduction is still taken first, as in version 0.1.0. It waits on Meng's ruling (BACKLOG IL-24); `ito-s47-deduction.l4` is unchanged and takes no input for it until then. | section 4 |
+
+### Expected values changed or added
+
+Against version 0.1.0: one expected value changed, and 58 assertions were added to this row's own tests (200 to 258).
+Against version 0.2.0 (253): the eight assertions of 0.2.0's D109 test section called entry points 0.3.0 removed (`…, given the election`) and were replaced by nine through the record's field, and four O1 assertions were added.
+In the s 37-39 tests the record's s 39 field was rewritten from the boolean to the three-way election, with no expected value changed: `made no election` where only one of ss 38 and 39 applies, or neither, and in the one 0.1.0 assertion where both apply (1.75), `elected the credits of section 38`, which its comment ("not electing s 39: s 38's 1.75") meant.
+The independent tests' expected values were not edited: lines 286 and 860 were adapted to the new interfaces (the lead's note at the file's end), and three of the tester's assertions that failed or refused now pass (D187 line 667, 793.80; D183 line 659, 1,250; D055 line 201, a refusal).
+
+| module | case | old | new | why |
+| --- | --- | ---: | ---: | --- |
+| `ito-il08-tests-s35.l4` | an immigrant under the Law of Return, not the first time, the s 35(e) rules said not to apply | 0 | REFUSED | D055: (e) opens "notwithstanding (c)" and its (e)(1) rules are not held |
+| `ito-il08-tests-s35.l4` | on none of the (d) grounds, not the first time | — | 0 | not an immigrant: (c) and (e) are not reached |
+| `ito-il08-tests-s45a-s47.l4` | P (not a beneficiary member, 100,000 insured work income), 5,000 of survivors' insurance only | — | 793.8 | D187: limb (2) 1,500 after the proviso; the floor 2,268 governs |
+| same | P, survivors' insurance 2,268 / 2,269 | — | 793.8 / 793.8 | the cliff of version 0.1.0 (793.8 / 525) is gone |
+| same | P, 500 of pension and 3,000 of survivors' insurance | — | 793.8 | 2,000 after the proviso, below the floor (version 0.1.0: 700) |
+| same | P, 1,000 and 3,000 | — | 875 | 2,500 after the proviso, above the floor |
+| same | no work income, 100,000 other income, 5,000 of survivors' insurance | — | 793.8 | (d)(2)(b)(1): 1,500 after the proviso; the floor governs |
+| same | a beneficiary member, 60,000 insured work income and 80,000 other, 4,000 of survivors' insurance | — | 793.8 | under any attribution at most 900 + 1,200 = 2,100 < 2,268 (version 0.1.0: declined) |
+| same | the same with 100,000 other income | — | REFUSED | at most 900 + 1,500 = 2,400 > 2,268: turns on the part (fork F1) |
+| same | P, 6,000 / 5,000 / 5,001 of life insurance only | — | 1,250 / 1,250 / 1,250 | D183: the 5% proviso, 5,000, at 25% (version 0.1.0: declined, —, declined) |
+| same | no work income, 100,000 other income, 6,000 of life insurance | — | 1,250 | (d)(2)(b)(1): the total limit 5,000 at 25% (version 0.1.0: declined) |
+| same | a beneficiary member, 20,000 insured work income, 2,500 of life insurance | — | 567 | limb (1) governs: 25% of 2,268 (version 0.1.0: declined) |
+| same | E15, 7,000 of life insurance only | — | REFUSED | part (a)'s cap 5,820; part (b) has none; turns on the part (fork F1) |
+| `ito-il08-tests-s37-s40.l4` | SP6, a widowed mother of a child born 2025, electing under (1A1): 2025 | — | 1.5 + 3.5 = 5 (6 without the election) | OB1: one point moves (version 0.1.0: 4) |
+| same | SP6 in 2026 | — | 5.5 + 5.5 = 11 (10 without) | OB1 (version 0.1.0: 12) |
+| same | D, entitled under ss 38 and 39, no election made (the three rules that read it) | — | REFUSED | D109 |
+| same | D electing s 38: s 38 after the election / s 39 | — | 1.75 / 0 | D109 |
+| same | D electing s 39: s 39 / s 38 after the election | — | 1.5 / 0 | D109 |
+| same | only s 38 applies / only s 39 applies, no election made | — | 1.75 / 1.5 | nothing to choose |
+| same | O1: a father not resident, living apart, bearing all the maintenance of a child who lives with its mother abroad, she without (1) points: all his s 40(b) points | — | 0 | (2) needs the maintenance divided (version 0.1.0: 1) |
+| same | SP3's father (resident) bearing all of it: points against the tax generally | — | 0 | the same (version 0.1.0: 1) |
+| same | a father not resident bearing 30%, the mother resident with (1) points | — | REFUSED | fork F18 (version 0.1.0: 0.3) |
+| same | a resident father bearing 30%, the mother abroad without (1) points | — | REFUSED | fork F37 (version 0.1.0: 0.3) |
+| `ito-il08-tests-s64b-s65.l4` | a determination first governing 2023, nothing since: 2026 / 2028 | — | TRUE / FALSE | the five-year term |
+| same | the same, the couple divorced in 2025 / the Director decided / a later election for 2026 | — | FALSE / FALSE / FALSE | D271, D272 |
+| same | an election first governing 2024, a fresh election for 2026 | — | REFUSED | D273, fork F36 |
+| same | the same election, nothing since: 2026 | — | TRUE | |
+| same | s 65 for spouses, no s 66: his 180,000 and her 50,000 | — | 230,000 | as before |
+| same | married but living apart / s 66 governs / 2023 | — | REFUSED / REFUSED / REFUSED | D292, D293; A1 |
+| `ito-il08-tests-s1-s2.l4` | lottery winnings filed under s 2A: within s 2's charge / in the income within it / work income | — | REFUSED / REFUSED / FALSE | D035 |
+| same | H (100 days in Israel in 2026, centre of life found in Israel), the record alone | — | TRUE | the definition of "Israeli resident" alone |
+| same | H with D019's facts (2025-2026 outside 183 days, centre of life not in Israel 2027-2028) / with the pair 2026-2027 met | — | REFUSED / REFUSED | D019, fork F34 |
+| same | H with 2026's facts only | — | REFUSED | the facts do not settle the limb |
+| same | H, not outside 183 days in 2025 or 2027 / 300 days in Israel, not outside 183 days in 2026 | — | TRUE / TRUE | both pairs fail limb (a) |
+| same | the finding outside Israel, the limb met / no finding and no presumption | — | FALSE / REFUSED | the limb only agrees; fork F26 |
+
+### Names for row IL-07's capstone (job IL-22)
+
+**One field of a record the capstone builds was replaced** (0.3.0), so its adapter will not compile against version 0.3.0 until it is changed: in `An individual in a tax year, for sections 37 to 39`, `elects the credits of section 39 rather than those of section 38` (a boolean) became `the election under section 39 between sections 38 and 39` (type `The election under section 39 between sections 38 and 39`).
+In `il07-adapter-il08-ito.l4` (line 253 at the capstone's present commit), `IS FALSE` should become `IS` `` `made no election` ``: the household's spouse helps in no business, so s 39 never applies, and no election is read.
+Checked in a scratch copy: with that one line changed every capstone module compiles.
+No other field or constructor of an existing record changed, and every other version 0.1.0 rule name still exists with its signature; the 0.2.0-only entry points `…, given the election` were removed (the capstone never called them).
+
+**Calls that should move to the new entry points:**
+- s 65: `IL-08: the income charged in the registered spouse's name under section 65, in` h `married as` c calls `s 65 — the income charged in the registered spouse's name, in tax year` y `, from` items, whose input convention is that its caller states the two are spouses within s 1 and no s 66 calculation governs. It should call `s 65 — the income charged in the registered spouse's name, for the couple` with a `A couple in a tax year, for section 65` built from the household: `married, living together and running a joint household` TRUE, as the same adapter already reads the couple for ss 37-39 (`has a spouse` TRUE, s 1's "spouse"; the capstone's `BRIEF.md` line 32 does not say more), and `a separate calculation under section 66 governs some of the couple's income` FALSE, the capstone choosing s 65 only where no separate calculation governs.
+- ss 37-39, s 35, s 40(b), s 45A and s 47: no new entry point; the same names now answer as repaired.
+- s 1, s 2 and s 64B: not composed by the capstone.
+
+**New names** (none needed by the capstone today): the types and entry points named in the table of items above; the refusals `section 45A(e)(2)(b)(2) does not say to which of its two parts a life-insurance sum belongs`, `one who was formerly an immigrant is credited, notwithstanding section 35(c), under rules made under section 35(e)(1), which are not encoded in this model`, `section 39 gives the credits of one of sections 38 and 39, at the individual's choice, and no choice has been made`, the two of s 40(b)(2) (forks F18, F37), the two of s 65, the one of s 64B(d)(1), the two of s 1's second limb and the one of s 2A.
+New constructor on an enumeration that already existed: `gambling, a lottery or a prize-bearing activity, under section 2A` on `A source of income under section 2` (the capstone does not use that type).
+`@export` moved to the forms that take the new inputs: s 65 to `s 65 — the income charged in the registered spouse's name, for the couple` c `, from` items; s 1 to `s 1 — an Israeli resident in the tax year, the second limb of "foreign resident" considered:` y `, the neighbouring tax years being` years; s 64B(d)(1)'s new rule is exported; ss 37-39 stay on `the credit points under sections 37, 38 and 39 for` i `at a credit-point value of` v.
+The capstone's own declines of D187, D183, OB1 and D055 can go; what IL-08 now answers for its cases (`il07-tests-il08.l4`), from a scratch copy of the capstone with this version's modules put in place of its vendored ones:
+
+| case | IL-08 version 0.1.0 | IL-08 versions 0.2.0 and 0.3.0 |
+| --- | --- | --- |
+| N4 (N1's earner paying 5,000 of survivors' insurance only, insured 0) | the s 45A credit 611.10 | 793.80; through the capstone's pipeline as it stands the tax for the year is 6,107.40 (13,435.20 − 6,534 − 793.80) and the month's net 8,882.587; its D187 decline no longer fires, so N4's two `#ASSERT REFUSED` (lines 328, 329) now fail, and R3 of `il07-tests-expected-red.l4` now passes |
+| N5 (6,000 of life insurance only) | declined, "sums of different kinds" | 1,455 (25% of 5,820, the 5% proviso of 116,400); the capstone still declines it by its own rule until IL-22 drops it |
+| N10 (a single mother of a child of one parent born 2025, electing, in 2026) | 5.5 against the tax generally, 6.5 against the tax on income from personal exertion | 5.5 and 5.5, 11 in all |
+| N13 (an immigrant not for the first time) | 0 points | declined by IL-08 itself, in the s 35 words above; so N13 stays a refusal, in IL-08's words rather than the capstone's |
+
+The scratch copy (run 2026-10-08T07:23:40Z to 07:24:04Z, the binary below; the capstone's modules as committed but for the six vendored IL-08 modules replaced and the one adapter line above changed; its `vendor.sh` not run): `il07-tests.l4` 114 satisfied, `tests-independent.l4` 258 satisfied, 18 failed, 2 refused, and `tests-independent-2.l4` 296 satisfied, 9 failed, 20 refused, each as its `check.sh` declares; `il07-tests-il08.l4` 96 satisfied and 2 failed (N4, lines 328 and 329); `il07-tests-expected-red.l4` 1 failed (R2) where 2 are declared, R3 now passing.
+The s 40(b)(2) repair (O1) changes no capstone assertion.
+N4's tax and net above were printed in an earlier scratch run (07:09Z, before the D109 field change, which cannot reach them); N4's credit and the figures for N5, N10 and N13 were asserted there through the adapter's own builders (four values and one refusal, all satisfied; the probe module is kept in the repair session's scratchpad, `rep-il-19/zz-probe-il19.l4`).
+
+### `check.sh` after version 0.3.0
+
+Run from 2026-10-08T07:28:58Z to 07:29:18Z as `L4=/Users/mengwong/.local/bin/l4 ./check.sh`, `JL4_LIBRARY_PATH` unset.
+The binary is `~/.local/bin/l4` → `~/.cabal/bin/l4` → cabal store `jl4-0.1-d4290e25`, 233,567,184 bytes, sha256 `f4f2bd2558f02f828f0deced5f74313a33670f08cc3275ff95b83f2cde71e448`, the same before and after the run, and the build `red-checks.txt` of 2026-10-08 records.
+No module changed during the run (sha256 of every module taken before and after).
+Before any edit the same binary gave version 0.1.0's counts: every module as in section 0, and `tests-independent.l4` 7 errors, 190 satisfied, 7 failed, 8 refused, exit 1 (inventory CHK-08i).
+
+```
+module                                    errors satisfied  failed  refused  expected
+ito-il08-nouns.l4                              0         0       0        0         0
+ito-il08-published-figures.l4                  0         0       0        0         0
+ito-il08-tax-years.l4                          0         0       0        0         0
+ito-il08-tests-s1-s2.l4                        0        30       0        0         0
+ito-il08-tests-s35.l4                          0        32       0        0         0
+ito-il08-tests-s37-s40.l4                      0        73       0        0         0
+ito-il08-tests-s45a-s47.l4                     0        79       0        0         0
+ito-il08-tests-s47-deduction.l4                0        12       0        0         0
+ito-il08-tests-s64b-s65.l4                     0        32       0        0         0
+ito-s1-israeli-resident.l4                     0         0       0        0         0
+ito-s2-sources-of-income.l4                    0         0       0        0         0
+ito-s35-new-immigrant.l4                       0         0       0        0         0
+ito-s37-s38-s39-spouse-credits.l4              0         0       0        0         0
+ito-s40-children-credit-points.l4              0         0       0        0         0
+ito-s45a-insurance-and-pension-credit.l4       0         0       0        0         0
+ito-s47-deduction.l4                           0         0       0        0         0
+ito-s47a-definitions.l4                        0         0       0        0         0
+ito-s64b-s65-registered-spouse.l4              0         0       0        0         0
+tests-independent.l4                           5       193       5        7       5/7
+TOTAL (19 modules)                             5       451       5        7
+(a failed assertion is also an error; any other error, or a refused assertion a module is not expected to have, makes the run red; "expected" is failed/refused where a module may refuse)
+```
+
+`check.sh` exit 0.
+This row's own tests: 258 assertions, all satisfied (200 in version 0.1.0); 41 of them are `#ASSERT REFUSED … BECAUSE "…"` (23).
+Every new assertion was satisfied on the first run that evaluated it; one test helper was renamed before that because its first word clashed with its parameter's name, and no expected value changed.
+`tests-independent.l4`: 193 satisfied, 5 failed, 7 refused, all declared in `check.sh` with their lines: failed D019 (line 92, 08i-D019, fork F34), D190 (676) and D236 (767, 768) (08i-D190, fork F35, waiting on the ruling), D244 (779, 08i-T1, the tester's own error); refused the seven values for years before 2024 (lines 153, 177, 180, 183, 190, 193, 195; 08i-T2).
+`python3 -I tools/srcquote.py SOURCE` over every `ito-*.l4` module regenerated every `-- src:N |` line with no change; `python3 -I tools/hebcheck.py SOURCE *.l4` exit 0 (it found one quotation missing the source's quotation marks around "עולה", corrected before this run).
 
 ## Version 0.2.0 (2026-10-08): repairs (BACKLOG IL-19)
 
@@ -15,7 +164,7 @@ Every new or changed expected value below was worked from the deposited text bef
 Nothing outside this directory was edited; row IL-07's capstone, which vendors six of the changed modules (the nouns and the s 35, ss 37-39, s 40, s 45A and ss 64B-65 modules), was not touched.
 The "Comparison with Axiom's RuleSpec" section at the foot of this file is unchanged.
 
-**One constraint shaped every repair.**
+**One constraint shaped every repair.** (0.3.0: for D109 and s 65 the lead's addendum of the same day changed this; the section above.)
 The independent tests (`tests-independent.l4`) build every input record of this row with `WITH`, and l4 rejects a `WITH` that leaves a field out ("you have not supplied these inputs", probed on a two-field record).
 So no field was added to, removed from or renamed in any record that existed in version 0.1.0.
 Each new input is a new record or a new enumeration, taken by a new entry point; each version 0.1.0 entry point keeps its name, its signature and its answers, and says where it is defined which assumption it makes.
@@ -29,9 +178,9 @@ The lead was told of this before the work began.
 | 08i-D183 | life insurance alone above the 5% proviso declined as "sums of different kinds" | A 25%-only rule, `s 45A(d)-(e) — the sums credited, where every creditable sum is at 25%, for`, reached when the 35% class is nil; it applies the 5% proviso of (d)(2)(b)(2) and part (a)'s of (e)(2)(b)(2), and the floor as for D187. Under (e)(2)(b)(2) part (b) has no cap on life insurance, so a life-insurance sum above part (a)'s cap is declined unless the floor governs under any attribution, in new words (`section 45A(e)(2)(b)(2) does not say to which of its two parts a life-insurance sum belongs`; fork F1). | the same module |
 | 08i-D055 | a second immigration answered 0 where the caller said the s 35(e) rules did not apply | Declined whenever it is not the first time, whatever the caller says of the rules: (e) opens "notwithstanding (c)" and (e)(1)'s rules for one formerly an immigrant were made (line 1588) and are not held. | `ito-s35-new-immigrant.l4`; the field's comment in `ito-il08-nouns.l4` |
 | 08i-OB1 | the s 40(b)(1A1) election moved two points for a child of one parent (6 and 10 became 4 and 12) | The one point moves once per child, in (1); (1B)'s (1A)-table points are no longer adjusted (5 and 11). Which pool the point leaves changes no total, only which tax it is set against: fork F13, extended, assumed not ruled. | `ito-s40-children-credit-points.l4`: `s 40(b)(1B) — the paragraph (1A) points for a child of one parent, for` |
-| 08i-D109 | an election under s 39 never made silently meant "chose s 38" | A three-way input, `The election under section 39 between sections 38 and 39` (`elected the credits of section 38`, `elected the credits of section 39`, `made no election`), taken by three new entry points, `..., given the election` e `, for` i `at a credit-point value of` v, which decline where both sections apply and no election was made. The record's boolean is kept as an election made (TRUE s 39, FALSE s 38); the version 0.1.0 entry points read it so. | `ito-il08-nouns.l4`; `ito-s37-s38-s39-spouse-credits.l4` |
+| 08i-D109 | an election under s 39 never made silently meant "chose s 38" | A three-way input, `The election under section 39 between sections 38 and 39` (`elected the credits of section 38`, `elected the credits of section 39`, `made no election`), taken by three new entry points, `..., given the election` e `, for` i `at a credit-point value of` v, which decline where both sections apply and no election was made. The record's boolean is kept as an election made (TRUE s 39, FALSE s 38); the version 0.1.0 entry points read it so. | `ito-il08-nouns.l4`; `ito-s37-s38-s39-spouse-credits.l4` (0.3.0: superseded; the election is now a field of the record, and the `…, given the election` entry points are gone: the section above.) |
 | 08i-D271, 08i-D273 | s 64B(d)(1)'s exceptions took no input; one election displacing another was not represented | A designation record (`A designation of the registered spouse, for section 64B(d)(1)`: who made it, the first year it governs, whether the couple have since ceased to be spouses, whether the Director has decided, whether a later election governs the year) and a rule, `s 64B(d)(1) — the designation still binds in tax year` y `:` d. A later election displaces an officer's determination ("subject to (b)"); whether it displaces an earlier election is declined (fork F36). The two-year version 0.1.0 rule is kept and says it answers the five-year term only. | `ito-il08-nouns.l4`; `ito-s64b-s65-registered-spouse.l4` |
-| 08i-D292 (with D293) | s 65 could not see spouses living apart, nor decline where s 66 governs | A couple record (`A couple in a tax year, for section 65`: tax year; married, living together and running a joint household; a separate calculation under s 66 governs some of the income) and an entry point, `s 65 — the income charged in the registered spouse's name, for the couple` c `, from` items, which declines a couple who are not spouses within s 1 and one for whom s 66 governs. The version 0.1.0 entry point is kept, as that rule with both facts given as the capstone gives them (spouses; no s 66). | the same two modules |
+| 08i-D292 (with D293) | s 65 could not see spouses living apart, nor decline where s 66 governs | A couple record (`A couple in a tax year, for section 65`: tax year; married, living together and running a joint household; a separate calculation under s 66 governs some of the income) and an entry point, `s 65 — the income charged in the registered spouse's name, for the couple` c `, from` items, which declines a couple who are not spouses within s 1 and one for whom s 66 governs. The version 0.1.0 entry point is kept, as that rule with both facts given as the capstone gives them (spouses; no s 66). | the same two modules (0.3.0: the tester's D280, line 860, now calls the couple form; the old form states its input convention.) |
 | 08i-D019 (rider) | the second limb of "foreign resident" was not represented and had no coverage row | A record of one tax year's facts for the limb (`A tax year of the individual, for the second limb of "foreign resident"`), a rule that says of a pair of tax years whether the facts given meet the limb, fail it or do not settle it, and an entry point, `s 1 — an Israeli resident in the tax year, the second limb of "foreign resident" considered:` y `, the neighbouring tax years being` years, which declines a resident whom the limb reaches or may reach (fork F34). Coverage rows added. The version 0.1.0 rule is kept: it has no later-year facts and answers on the definition of "Israeli resident" alone, so the independent tests' D019 (line 92) still fails there and is declared in `check.sh`. Making it pass on that record would also decline the tests' D011 (line 85), whose facts it cannot tell apart. | `ito-il08-nouns.l4`; `ito-s1-israeli-resident.l4`; section 2 |
 | 08i-D035 (rider) | gambling winnings could be filed under s 2(10) with no refusal | A source `gambling, a lottery or a prize-bearing activity, under section 2A` on the s 2 enumeration; the s 2 rules decline it (`section 2A (winnings from gambling, lotteries and prize-bearing activity) is not encoded in this model`). Coverage row added. | `ito-il08-nouns.l4`; `ito-s2-sources-of-income.l4` |
 | 08i-A3 (rider) | no coverage rows for "tax year" or "foreign resident" | Rows added (section 2). | this file |
@@ -60,7 +209,7 @@ The independent tests were not edited: three of their assertions that failed or 
 | same | E15, 7,000 of life insurance only | — | REFUSED | part (a)'s cap 5,820; part (b) has none; turns on the part (fork F1) |
 | `ito-il08-tests-s37-s40.l4` | SP6, a widowed mother of a child born 2025, electing under (1A1): 2025 | — | 1.5 + 3.5 = 5 (6 without the election) | OB1: one point moves (version 0.1.0: 4) |
 | same | SP6 in 2026 | — | 5.5 + 5.5 = 11 (10 without) | OB1 (version 0.1.0: 12) |
-| same | D, entitled under ss 38 and 39, no election made (three entry points) | — | REFUSED | D109 |
+| same | D, entitled under ss 38 and 39, no election made (three entry points) | — | REFUSED | D109 (0.3.0: these four rows' eight assertions were replaced, the entry points they called being gone; the section above) |
 | same | D, electing s 38 / s 39 | — | 1.75 / 1.5 | D109 |
 | same | D through version 0.1.0's entry point, its boolean saying s 39 | — | 1.5 | the boolean read as an election made |
 | same | only s 38 applies / only s 39 applies, no election made | — | 1.75 / 1.5 | nothing to choose |
@@ -79,6 +228,8 @@ The independent tests were not edited: three of their assertions that failed or 
 
 ### Names for row IL-07's capstone (job IL-22)
 
+(Superseded by 0.3.0's list in the section above: from 0.3.0 one field of a record the capstone builds changed, and the `…, given the election` entry points no longer exist. The answers in the table below are unchanged in 0.3.0.)
+
 No field or constructor of an existing record was added, removed or renamed, and every version 0.1.0 rule name still exists with its signature, so the capstone's adapters compile against version 0.2.0 unchanged (checked in a scratch copy).
 New: the types and entry points named in the table above; the refusals `section 45A(e)(2)(b)(2) does not say to which of its two parts a life-insurance sum belongs`, `one who was formerly an immigrant is credited, notwithstanding section 35(c), under rules made under section 35(e)(1), which are not encoded in this model`, `section 39 gives the credits of one of sections 38 and 39, at the individual's choice, and no choice has been made`, the two of s 65, the one of s 64B(d)(1), the two of s 1's second limb and the one of s 2A.
 New constructor on an enumeration that already existed: `gambling, a lottery or a prize-bearing activity, under section 2A` on `A source of income under section 2` (the capstone does not use that type).
@@ -96,6 +247,8 @@ The scratch copy (2026-10-08T07:09:59Z to 07:12:25Z, the binary below; the capst
 N4's tax and net above were printed there; N4's credit and the figures for N5, N10 and N13 were asserted there through the adapter's own builders (four values and one refusal, all satisfied; the probe module is kept in the repair session's scratchpad, `rep-il-19/zz-probe-il19.l4`).
 
 ### `check.sh` after the repairs
+
+(Version 0.2.0's run; 0.3.0's is in the section above.)
 
 Run from 2026-10-08T07:13:05Z to 07:13:48Z as `L4=/Users/mengwong/.local/bin/l4 ./check.sh`, `JL4_LIBRARY_PATH` unset.
 The binary is `~/.local/bin/l4` → `~/.cabal/bin/l4` → cabal store `jl4-0.1-d4290e25`, 233,567,184 bytes, sha256 `f4f2bd2558f02f828f0deced5f74313a33670f08cc3275ff95b83f2cde71e448`, the same before and after the run, and the build `red-checks.txt` of 2026-10-08 records.
@@ -135,7 +288,7 @@ Every new assertion was satisfied on the first run that evaluated it; one test h
 
 ## 0. What `check.sh` prints
 
-(Version 0.1.0. Version 0.2.0's run is in the section above.)
+(Version 0.1.0. The runs of versions 0.2.0 and 0.3.0 are in the sections above.)
 
 Run from 2026-10-07T00:21:52Z to 00:22:26Z as `L4=/Users/mengwong/.local/bin/l4 ./check.sh`, `JL4_LIBRARY_PATH` unset.
 The binary is `~/.local/bin/l4` → `~/.cabal/bin/l4` → cabal store `jl4-0.1-ff13a0ea`, sha256 `f65015688970231681a024ceb9ff3a58abba1f5280837cc955c2bba56dbfa8bc`.
@@ -184,7 +337,7 @@ The `ext:` quotations were checked by a script (kept in the session scratchpad) 
 
 ## 1. What is encoded, and what is not
 
-**Encoded**, each in its own module (line counts of version 0.1.0; version 0.2.0 adds to most of them, the section above):
+**Encoded**, each in its own module (line counts of version 0.1.0; versions 0.2.0 and 0.3.0 add to most of them, the sections above):
 
 | module | lines | holds |
 | --- | ---: | --- |
@@ -236,13 +389,13 @@ Line numbers are lines of `../../registers/source-bundle/income-tax-ordinance-ne
 | s 40(b)(1A) | 1634-1637 | the father of a child in a single-parent family; the proviso moving the points to the mother | encoded | `s 40(b)(1A) — …`; forks F14, F15 | 2 |
 | s 40(b)(1A1) | 1638 | the mother's election | encoded (0.2.0: one point moves once, in (1), OB1) | `s 40(b)(1A1) — …`; fork F13 | 2 |
 | s 40(b)(1B) | 1639 | a child of one parent: one more point, and the (1A) table | encoded | `s 40(b)(1B) — …`; forks F16, F17 | 2 |
-| s 40(b)(2) | 1640 | parents living apart | encoded | `s 40(b)(2) — …`; forks F16, F18 | 2 |
+| s 40(b)(2) | 1640 | parents living apart | encoded (0.3.0, O1: the second limb only where the maintenance is divided; declined for a non-resident parent, F18, and where the other parent is not entitled under (1) either, F37) | `s 40(b)(2) — …`; forks F16, F18, F37 | 2 |
 | s 40(b)(3) | 1641-1645 | "child of one parent", year of birth, year of majority | encoded ("פעוט" deleted: inert) | `s 40(b)(3) — …` | 2 |
 | s 40(c) | 1646 | (expired) | inert | comment | — |
 | s 37 | 1600 | a beneficiary individual who maintained the spouse: one point | encoded | `ito-s37-s38-s39-spouse-credits.l4`; fork F20 | 7 |
 | s 38(a) | 1603 | a registered spouse whose income includes a working spouse's | encoded | `s 38(a) — …`; fork F21 | 7 |
 | s 38(b) | 1604 | spouse's income up to five times the points: left out | encoded | `s 38(b) — …`; fork F22 | 7 |
-| s 39 | 1607 | a spouse who helped in the business; the election | encoded (0.2.0: the election a three-way input; declined where both ss 38 and 39 apply and none was made, D109) | `s 39 — …`; `…, given the election`; fork F23 | 7 |
+| s 39 | 1607 | a spouse who helped in the business; the election | encoded (0.2.0: the election a three-way input, declined where both ss 38 and 39 apply and none was made, D109; 0.3.0: a field of the record) | `s 39 — …`; fork F23 | 7 |
 | s 35(a)(1), old text | 1574 | 1/4 a month for 18 months (immigrated before 2022) | encoded | `s 35(a), before Amendment 262 — …` | 8 |
 | s 35(a)(1), (1A), (2), (3) | 1575-1578 | 1/12, 1/4, 1/6, 1/12 a month over 54 months | encoded | `s 35(a), from Amendment 262 — …` | 8 |
 | Amendment 262 s 2 | (ext) | the 54-month text for one who first became an immigrant from 1 January 2022 | encoded | `s 35 — the text that governs` | 8 |
@@ -365,7 +518,7 @@ None has been settled by a court or the Tax Authority to my knowledge; no case l
 | F15 | s 40(b)(1A) | "ואינו זכאי לנקודות זיכוי לפי פסקה (1)": per child, or under (1) at all? | per child; at all | **per child**: the mother's limb says "בשל אותו ילד", and "בשל כל ילד כאמור" follows. A single father of other children still has (1A) points for a child not with him. |
 | F16 | s 40(b)(1B), (2) | "נקודת זיכוי אחת נוספת": once, or per child? | once; per child | **once**: the singular, attached to the parent, not to "כל ילד". |
 | F17 | s 40(b)(1B) | Its second limb sets the (1A) points "כנגד הכנסתו של ההורה": against all his income, or against income from personal exertion? | personal exertion; all | **personal exertion**: they are "the points under that paragraph", which (1A) sets against that tax; the words name whose income, displacing (1A)'s allocation to the father. |
-| F18 | s 40(b)(2) | Must the parent who shares the maintenance be resident? | no condition; resident | **no condition**: (2) has none, unlike (1) and (1A). |
+| F18 | s 40(b)(2) | Must the parent who shares the maintenance be resident? | no condition; resident | **no condition**: (2) has none, unlike (1) and (1A). (0.3.0, O1) **Declined** where it matters, a parent who is not an Israeli resident whom the second limb would credit: (2) has no residence words, but the words of (1) and (1A) and the Chapter do not settle that it needs none; the reading "no condition" is kept as the alternative, not the default. |
 | F19 | s 40(a); ss 38, 39 | Is anyone "entitled to allowance points under s 40(a)" today? s 40(a) points at s 109 of the 1968 consolidation, which the present Law's table maps to s 68 and Schedule D (NII lines 5405, 4518), and Schedule D is repealed. | an input either way | **An input** (`entitled to allowance points under section 40(a)`): it chooses 1 1/2 or 1 3/4 points in ss 38 and 39. Open question 3. |
 | F20 | s 37 | When must the retirement age have been reached: by the end of the tax year, at its start, for all of it? | — | **an input**, `has reached retirement age`, read as reached in or before the tax year; the Retirement Age Law is not in the bundle. |
 | F21 | s 38(a), s 39 | "ולענין יחיד מוטב כהגדרתו בסעיף 37 תובא בחשבון גם נקודת זיכוי": must the s 37 maintenance be proved too? | the status alone; all of s 37 | **the status alone**: the words point at the definition ("כהגדרתו"), and where the spouse works the maintenance could rarely be proved. |
@@ -384,6 +537,7 @@ None has been settled by a court or the Tax Authority to my knowledge; no case l
 | F34 (0.2.0) | s 1 "תושב חוץ", second limb (lines 167-169) | An individual outside Israel 183 days or more in a tax year and the next, whose centre of life was not in Israel in the two tax years after, is a foreign resident. For which tax year does it deem him one (the first of the pair, or both), and does it prevail over a centre of life in Israel in that year? | (i) the centre of life prevails; (ii) the deeming prevails; (iii) the text does not say | **(iii): declined by name** in `s 1 — an Israeli resident in the tax year, the second limb of "foreign resident" considered:`, where the limb is met for a pair of tax years including the one asked about, or the facts given do not settle it, and the first definition makes him resident. The version 0.1.0 rule, which has no later-year facts, answers on the definition of "Israeli resident" alone, which is reading (i) for any individual the limb reaches; its description says so. Recorded from the independent pass's D019 (inventory 08i-D019), which expects a refusal. |
 | F35 (0.2.0) | s 47(b), (b1) and s 45A; s 47(c) (line 1787) | One payment may be deducted under s 47 or credited under s 45A, not both (s 47(c)). Which takes it first? | (i) the deduction first, as far as s 47 allows; (ii) the credit first; (iii) the taxpayer's choice | **(i), version 0.1.0's behaviour, kept until Meng rules (BACKLOG IL-24, inventory 08i-D190).** s 47(c), "סכום שנוכה לפי סעיף קטן (ב) או (ב1) לא יובא בחשבון לצורך סעיף 45א", assumes the deduction is fixed before s 45A applies; the independent tester reached the same view on reflection but kept a refusal as the expected answer (D190, D236), since the text does not say the individual must take the largest deduction. s 45A takes the deducted sum as an input; `the deduction under section 47 for` does not, and will take one only after the ruling. The lead's recommendation is a named switch defaulting to decline. Who holds which: (i) this row; (ii) or (iii), declined, the independent tester's expected answers. |
 | F36 (0.2.0) | s 64B(d)(1) "בכפוף לאמור בסעיף קטן (ב)" | A designation stands five years "subject to (b)". Does a later election under (b) displace an earlier election within its five years, as it displaces an officer's determination? | yes: every designation is subject to (b); no: (b) overrides (a)'s determination ("על אף האמור בסעיף קטן (א)") and nothing says it overrides an earlier election | **declined** (inventory 08i-D273); a later election displaces a determination (the independent pass's D272). |
+| F37 (0.3.0) | s 40(b)(2), second limb (line 1640) | "ההורה שאינו זכאי לנקודת זיכוי על פי פסקה (1)" is set against the first limb's "ההורה הזכאי". Where neither parent is entitled under (1), does the second limb credit the parent who shares the maintenance? | yes: its only condition is the divided maintenance; no: it is the first limb's counterpart and presupposes a parent entitled under (1) | **declined** where it matters: the second limb would credit the parent, and the other parent has (1) points for none of the children (the field on each child's record, fork F14). Raised by the capstone's second independent pass, observation O1. |
 
 ## 5. Answer tables
 
@@ -499,6 +653,7 @@ The Israeli fetch proxy was not used.
 9. F34 (0.2.0): where the second limb of "foreign resident" reaches an individual whose centre of life is in Israel, for which tax year is he a foreign resident, and which prevails?
 10. F35 (0.2.0): does the s 47 deduction take a pension payment before the s 45A credit, or may the taxpayer choose? (Meng's ruling, BACKLOG IL-24.)
 11. F36 (0.2.0): may a later election under s 64B(b) displace an earlier election within its five years?
+12. F18 and F37 (0.3.0): does s 40(b)(2)'s point for a share of the maintenance go to a parent who is not an Israeli resident, and to one whose children's other parent is not entitled under (1) either?
 
 ## 10. What was not done
 

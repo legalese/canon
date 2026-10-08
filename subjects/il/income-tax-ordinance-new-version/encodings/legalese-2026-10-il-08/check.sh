@@ -37,7 +37,8 @@ expected_failed() {
     #   line 676 D190, lines 767-768 D236 (08i-D190, AMBIGUITY, fork F35, waits on BACKLOG IL-24):
     #                 REFUSED expected; the deduction is taken first, as in version 0.1.0
     #   line 779 D244 (08i-T1, TESTER-WRONG): the tester's facts contradict each other
-    # D187 (line 667) and D055 (line 201) passed from version 0.2.0.
+    # D187 (line 667) and D055 (line 201) passed from version 0.2.0. Lines 286 and 860 were adapted in
+    # place to version 0.3.0's interfaces (the lead's note at the end of the file); their assertions pass.
     tests-independent.l4) echo 5 ;;
     *) echo 0 ;;
   esac
