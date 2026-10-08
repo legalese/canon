@@ -83,6 +83,8 @@ This subject has three raw renderings (two gazette issues of Decree 67, and Decr
 
 ## Imports: a chain, from the start (required)
 
+> **Superseded 2026-10-08.** The chain below was a workaround for an `l4` defect (smucclaw/l4-ide#1008: a module was re-checked once per import path). legalese/l4-ide#573 and #575 fixed it, so the imports were rewritten: each library module now imports every module before it, and the tests and findings modules import all of them. Nothing else changed; `check.sh` totals are the same. The text below is the brief as given.
+
 `l4` checks and evaluates a module once per import path, so when every module imports every earlier one the cost doubles per module (measured: one test module took 173 s and 6.8 GB that way; the same files as a chain took 15 s and 0.4 GB, with the same assertions satisfied).
 So write the imports as a **chain**: the nouns module imports `prelude` and `daydate` (and nothing else of ours); each later library module imports **only the module before it**; every test or findings module imports **only the last library module**. Names stay visible down the chain. Do not import `prelude` or `daydate` anywhere except the nouns module.
 Run `check.sh` early, with one `l4` process at a time; a whole-directory run should take minutes, not tens of minutes. If it does not, fix the import shape first.
