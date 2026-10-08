@@ -1,12 +1,154 @@
 # IL-01: Income Tax Ordinance ss 33A, 34, 36, 36A (credit points) — notes
 
 Row `legalese-2026-10-il-01`, run `IL-01-20261006`, encoder `enc-il-01` (one session, no sub-agents).
-Status: **draft, version 0.2.0** (repairs of 2026-10-08, BACKLOG IL-14).
+Status: **draft, version 0.3.0** (SHRUG on the remaining ambiguities, 2026-10-08, BACKLOG IL-46; repairs of the same day, BACKLOG IL-14, in 0.2.0).
 No domain expert has read it against the source; HG1 not sought.
 An independent test pass was run on 2026-10-06 (commons `6343ef6`) and a comparison with Axiom's RuleSpec the same day (`30afa7e`); the repairs below answer findings from both.
 
 Read this file first.
 The brief is `BRIEF.md`; the self-check is `check.sh`; `render_source.py` renders source lines and checks every Hebrew quotation in the modules against the deposited text.
+
+## Version 0.3.0 (2026-10-08): SHRUG on the remaining ambiguities (BACKLOG IL-46)
+
+Agent `shrug-il-46` (the session that made 0.2.0 as `rep-il-14`), one session, no sub-agents, under the lead's SHRUG-2 brief.
+**RULED by Meng on 2026-10-08 (SHRUG), applied to every remaining ambiguity:** where the text is silent, one named switch per ambiguity, by default a refusal by name saying the text does not decide, declining only where the readings give different answers to the question asked, every other reading kept by name and tested.
+Item ids are those of `l4-pipeline/findings/il-2026-10-08/inventory.tsv`.
+Text elsewhere in this file that 0.3.0 changed is marked "(0.3.0)" in place.
+
+### The five items
+
+| id | fork | class | what changed | tests added |
+| --- | --- | --- | --- | --- |
+| 01-F1 | F1, s 36A and residence | (a) gating choice | A switch, `section 36A — the reading this row takes on residence`, default `declined where residence decides section 36A`; readings `section 36A has no residence condition` (0.2.0's) and `section 36A gives its half point only to an Israeli resident`, with a new rule `section 36A, read with a residence condition, applies in the tax year of`. The default declines only for a woman who does not count as an Israeli resident. Shared with row IL-02 (s 66(c)(4)), whose agent does its side; the refusal is worded so that IL-02 can copy it. | 10, 4 of them refusals (tests lines 562-590) |
+| 01-F2 | F2, s 36 and income from personal exertion | (a) gating choice | A switch, `section 36 — the reading this row takes on income from personal exertion`, default `declined where income from personal exertion decides section 36`; readings `section 36 for every resident individual` (0.2.0's) and `section 36 only for an individual with income from personal exertion`; a new input on `Taxpayer in a tax year`. The default declines only for an individual without such income whom s 36 would otherwise give anything. | 13, 4 refusals (lines 591-624) |
+| 01-F4 | F4, residence for part of a tax year | (a) gating choice | A switch, `sections 34 and 36 — the reading this row takes for part of a tax year`, default `declined for residence in part of a tax year` (the tester's reading (ii)); readings `one residence status for the whole tax year` (0.2.0's, (i)) and `apportioned by the months of residence, as section 41 apportions` ((iii), s 41(1), line 1691); a new input on `Taxpayer in a tax year`. The default declines wherever a year of residence would give anything. | 13, 5 refusals (lines 625-660) |
+| 01-F5 | F5, s 33A's set-off | (b) only one reading arguable for the question asked | None in the rules; a comment in `ito-s33a-credit-point.l4` and the fork register say why: a set-off cannot take the tax below nothing, s 91(e)(2)(b) presupposes an unused "יתרת נקודות הזיכוי", and whether a balance is paid out is not a question this row answers; the order of credits does not arise in a rule that sets one amount against one tax. | 0 |
+| 01-F9 | F9, "אשה" | (c) input convention | None in the rules; a comment on the `a woman` field and the fork register state the convention: the caller determines who is a woman. | 0 |
+
+Three further assertions pin the three defaults (tests lines 558-560).
+
+### Choices made here (assumed, not ruled)
+
+- **Where the switches sit.** They are in the year-aware points rules, the aggregates and the `@export`, over `Taxpayer in a tax year`, each of which has a form `…, under the readings` r and keeps its old name at the row's defaults.
+  The year-free rules over a Person, which the independent tests call, and the BOOLEAN `section N applies in the tax year of` rules keep 0.2.0's readings (F1 A, F2 A, F4 (i)), and each `@desc` now says so and names the twin that declines.
+  So `tests-independent.l4` is unchanged and still 78 of 78; the tester decided S04 and S07 on reading A, and could not express S16.
+  The alternative, putting the switches into the year-free rules as well, would turn the tester's S01, S02, S04 and S07 answers into refusals to be declared.
+- **New inputs on `Taxpayer in a tax year`, not on `Individual`.** As in 0.2.0, so that no existing `Individual WITH …` changes: `the taxpayer had income from personal exertion in the tax year` (BOOLEAN, fork F2) and `the taxpayer's Israeli residence over the tax year` (fork F4), of the new type `Israeli residence over the tax year`: `the residence entered held for the whole tax year`, or `an Israeli resident for only part of the tax year` with `the months of the tax year in which the taxpayer was an Israeli resident`.
+- **The test fixtures.** The helper `the case of` p `, with no section 3A(f) fact, in tax year` y, and every named fixture of 0.2.0, now also enter no income from personal exertion and the residence entered holding for the whole year.
+  Under the new defaults 25 of 0.2.0's assertions declined; each rested on F1 or F2 as 0.2.0 read them, and each is re-pointed by name to `the readings versions 0.1.0 and 0.2.0 took` with its value unchanged (table below).
+- **F4 reaches ss 34 and 36 only.** Under F1's reading B, s 36A reads the yearly residence status, not months.
+- **Apportioning (iii)** counts the months of s 1 residence the caller gives (a whole number from 1 to 11 is meant; it is not checked), and gives 1/12 of what a year of residence would give for each, with ss 48 and 48A and the year limits applied as for a year of residence.
+
+### For the capstone (BACKLOG IL-54)
+
+Nothing was renamed or removed; the year-free rules the capstone's adapter calls today answer as before.
+New, for the adapter to follow:
+
+- two fields on `Taxpayer in a tax year`: `the taxpayer had income from personal exertion in the tax year` and `the taxpayer's Israeli residence over the tax year`, and the type `Israeli residence over the tax year`;
+- the reading types `A reading of section 36A on residence`, `A reading of section 36 on income from personal exertion`, `A reading of sections 34 and 36 for part of a tax year`, and the record `The readings of forks F1, F2 and F4`;
+- the switches `section 36A — the reading this row takes on residence`, `section 36 — the reading this row takes on income from personal exertion`, `sections 34 and 36 — the reading this row takes for part of a tax year`, `the readings this row takes`, and `the readings versions 0.1.0 and 0.2.0 took`;
+- the `…, under the readings` r form of every year-aware points rule, aggregate and amount;
+- three refusals: "section 36A does not say whether a woman who is not an Israeli resident gets its half point", "section 36 does not say whether an individual without income from personal exertion gets its quarter point", and "sections 34 and 36 do not say what an individual who was an Israeli resident for only part of the tax year gets".
+
+At the defaults, the year-aware rules and the `@export` now decline: s 36A for a woman who is not an Israeli resident, s 36 for an individual without income from personal exertion, and ss 34 and 36 for a part-year resident.
+
+### Assertions re-pointed by name (values unchanged)
+
+| line | rule (year-aware) | case | now | value | why |
+| ---: | --- | --- | --- | --- | --- |
+| 347 | s 36 | an Israeli citizen resident in the Area, a man, 2026 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 1/4 | F2: s 36 for a (deemed) resident entered without income from personal exertion; the default now declines |
+| 349 | ss 34+36+36A | an Israeli citizen resident in the Area, a man, 2026 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 9/4 | F2: s 36 for a (deemed) resident entered without income from personal exertion; the default now declines |
+| 350 | ss 34+36+36A | an Israeli citizen resident in the Area, a woman, 2026 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 11/4 | F2: s 36 for a (deemed) resident entered without income from personal exertion; the default now declines |
+| 354 | s 36 | an Israeli citizen operating in the Area, a man, 2026 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 1/4 | F2: s 36 for a (deemed) resident entered without income from personal exertion; the default now declines |
+| 355 | ss 34+36 | an Israeli citizen operating in the Area, a man, 2026 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 9/4 | F2: s 36 for a (deemed) resident entered without income from personal exertion; the default now declines |
+| 365 | s 36A | an Israeli citizen resident in the Area, a woman, 2016 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 1/2 | F1: s 36A for a woman who does not count as resident (or, in 2016, whose s 3A(f) residence cannot be read); the default now declines |
+| 383 | ss 34+36+36A | a resident man, 2026 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 9/4 | F2: s 36 for a (deemed) resident entered without income from personal exertion; the default now declines |
+| 384 | ss 34+36+36A | a resident man, 2024 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 9/4 | F2: s 36 for a (deemed) resident entered without income from personal exertion; the default now declines |
+| 385 | ss 34+36+36A | a resident woman, 2026 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 11/4 | F2: s 36 for a (deemed) resident entered without income from personal exertion; the default now declines |
+| 386 | ss 34+36+36A | a non-resident woman, 2026 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 1/2 | F1: s 36A for a woman who does not count as resident (or, in 2016, whose s 3A(f) residence cannot be read); the default now declines |
+| 394 | s 36 | a resident woman, 1990 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 1/4 | F2: s 36 for a (deemed) resident entered without income from personal exertion; the default now declines |
+| 395 | ss 34+36 | a resident woman, 1990 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 9/4 | F2: s 36 for a (deemed) resident entered without income from personal exertion; the default now declines |
+| 397 | ss 34+36+36A | a resident woman, 1990 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | refused: this encoding does not hold the text of section 36A for a tax year before 1997 | F2: s 36 for a (deemed) resident entered without income from personal exertion; the default now declines (the default now refuses first in s 36's words) |
+| 415 | s 36 | a resident man, 1978 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 1/4 | F2: s 36 for a (deemed) resident entered without income from personal exertion; the default now declines |
+| 437 | s 36 | a resident man who is a foreign worker, 2001 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 1/4 | F2: s 36 for a (deemed) resident entered without income from personal exertion; the default now declines |
+| 438 | ss 34+36+36A | a resident woman who is a foreign worker, 2001 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 11/4 | F2: s 36 for a (deemed) resident entered without income from personal exertion; the default now declines |
+| 439 | s 36A | a non-resident woman who is a foreign worker, 2001 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 1/2 | F1: s 36A for a woman who does not count as resident (or, in 2016, whose s 3A(f) residence cannot be read); the default now declines |
+| 449 | s 36A | a non-resident woman who is a foreign worker, 2013 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | refused: section 48A and the regulations made under it are not encoded in this model | F1: s 36A for a woman who does not count as resident (or, in 2016, whose s 3A(f) residence cannot be read); the default now declines (the default now refuses in F1's words, before s 48A) |
+| 450 | s 36A | a non-resident woman who is a foreign worker, 2026 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | refused: section 48A and the regulations made under it are not encoded in this model | F1: s 36A for a woman who does not count as resident (or, in 2016, whose s 3A(f) residence cannot be read); the default now declines (the default now refuses in F1's words, before s 48A) |
+| 458 | s 36A | a woman resident in the Area, not an Israeli citizen and not an Israeli resident, 2026 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 1/2 | F1: s 36A for a woman who does not count as resident (or, in 2016, whose s 3A(f) residence cannot be read); the default now declines |
+| 483 | @export amount | a resident woman, 2025 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 7986 | F2: s 36 for a (deemed) resident entered without income from personal exertion; the default now declines |
+| 484 | @export amount | a resident man, 2025 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 6534 | F2: s 36 for a (deemed) resident entered without income from personal exertion; the default now declines |
+| 488 | @export amount | an Israeli citizen resident in the Area, a man, 2025 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 6534 | F2: s 36 for a (deemed) resident entered without income from personal exertion; the default now declines |
+| 489 | @export amount | an Israeli citizen resident in the Area, a woman, 2025 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 7986 | F2: s 36 for a (deemed) resident entered without income from personal exertion; the default now declines |
+| 490 | @export amount | an Israeli citizen operating in the Area, a man, 2025 | the same rule at `the readings versions 0.1.0 and 0.2.0 took` | 6534 | F2: s 36 for a (deemed) resident entered without income from personal exertion; the default now declines |
+
+### Assertions added
+
+Every expected value was worked out from the source, in the comment beside it, before the rules were run; all 39 were satisfied on the first run.
+
+| line | rule (year-aware) | case | reading | old | new |
+| ---: | --- | --- | --- | --- | --- |
+| 558 | the row's default reading of the fork | — | — | — | declined where residence decides section 36A |
+| 559 | the row's default reading of the fork | — | — | — | declined where income from personal exertion decides section 36 |
+| 560 | the row's default reading of the fork | — | — | — | declined for residence in part of a tax year |
+| 569 | s 36A | a non-resident woman, 2026 | default | — | refused: section 36A does not say whether a woman who is not an Israeli resident gets its half point |
+| 570 | s 36A | a non-resident woman, 2026 | F1: section 36A has no residence condition | — | 1/2 |
+| 571 | s 36A | a non-resident woman, 2026 | F1: section 36A gives its half point only to an Israeli resident | — | 0 |
+| 574 | s 36A | a woman resident in the Area, not an Israeli citizen and not an Israeli resident, 2026 | default | — | refused: section 36A does not say whether a woman who is not an Israeli resident gets its half point |
+| 579 | s 36A | a resident woman, with income from personal exertion, 2026 | default | — | 1/2 |
+| 580 | s 36A | an Israeli citizen resident in the Area, a woman, 2026 | default | — | 1/2 |
+| 581 | s 36A | a non-resident man, 2026 | default | — | 0 |
+| 586 | s 36A | a resident woman who is a foreign worker, 2026 | F1: section 36A gives its half point only to an Israeli resident | — | refused: section 48A and the regulations made under it are not encoded in this model |
+| 587 | s 36A | a non-resident woman who is a foreign worker, 2026 | F1: section 36A gives its half point only to an Israeli resident | — | 0 |
+| 589 | s 36A | a non-resident woman, 1996 | F1: section 36A gives its half point only to an Israeli resident | — | refused: this encoding does not hold the text of section 36A for a tax year before 1997 |
+| 599 | s 36 | a resident man, 2026 | default | — | refused: section 36 does not say whether an individual without income from personal exertion gets its quarter point |
+| 600 | s 36 | a resident man, 2026 | F2: section 36 for every resident individual | — | 1/4 |
+| 601 | s 36 | a resident man, 2026 | F2: section 36 only for an individual with income from personal exertion | — | 0 |
+| 603 | s 34 | a resident man, 2026 | default | — | 2 |
+| 605 | s 36 | a resident man, with income from personal exertion, 2026 | default | — | 1/4 |
+| 607 | s 36 | a non-resident man, 2026 | default | — | 0 |
+| 609 | s 36 | a resident man, 1970 | F2: section 36 only for an individual with income from personal exertion | — | refused: this encoding does not hold the text of section 36 for a tax year before 1978 |
+| 613 | s 36 | a resident man who is a foreign worker, with income from personal exertion, 2026 | default | — | refused: section 48A and the regulations made under it are not encoded in this model |
+| 614 | s 36 | a resident man who is a foreign worker, 2026 | F2: section 36 only for an individual with income from personal exertion | — | 0 |
+| 620 | ss 34+36+36A | a resident woman, with income from personal exertion, 2026 | default | — | 11/4 |
+| 621 | ss 34+36 | a resident woman, with income from personal exertion, 2026 | default | — | 9/4 |
+| 622 | @export amount | a resident woman, with income from personal exertion, 2025 | default | — | 7986 |
+| 623 | ss 34+36 | a resident woman, 2026 | default | — | refused: section 36 does not say whether an individual without income from personal exertion gets its quarter point |
+| 635 | s 34 | a resident man, resident 7 months of 2026, with income from personal exertion | default | — | refused: sections 34 and 36 do not say what an individual who was an Israeli resident for only part of the tax year gets |
+| 636 | s 36 | a resident man, resident 7 months of 2026, with income from personal exertion | default | — | refused: sections 34 and 36 do not say what an individual who was an Israeli resident for only part of the tax year gets |
+| 637 | s 34 | a resident man, resident 7 months of 2026, with income from personal exertion | F4: one residence status for the whole tax year | — | 2 |
+| 638 | s 36 | a resident man, resident 7 months of 2026, with income from personal exertion | F4: one residence status for the whole tax year | — | 1/4 |
+| 639 | s 34 | a resident man, resident 7 months of 2026, with income from personal exertion | F4: apportioned by the months of residence, as section 41 apportions | — | 7/6 |
+| 640 | s 36 | a resident man, resident 7 months of 2026, with income from personal exertion | F4: apportioned by the months of residence, as section 41 apportions | — | 7/48 |
+| 644 | s 34 | a non-resident man, resident 5 months of 2026, with income from personal exertion | F4: one residence status for the whole tax year | — | 0 |
+| 645 | s 34 | a non-resident man, resident 5 months of 2026, with income from personal exertion | F4: apportioned by the months of residence, as section 41 apportions | — | 5/6 |
+| 646 | s 34 | a non-resident man, resident 5 months of 2026, with income from personal exertion | default | — | refused: sections 34 and 36 do not say what an individual who was an Israeli resident for only part of the tax year gets |
+| 651 | ss 34+36+36A | a resident woman, resident 7 months of 2026, with income from personal exertion | F4: apportioned by the months of residence, as section 41 apportions | — | 87/48 |
+| 656 | s 34 | a company, resident 7 months of 2026, with income from personal exertion | default | — | 0 |
+| 657 | s 34 | a resident man, resident 7 months of 1970, with income from personal exertion | default | — | refused: this encoding does not hold the text of section 34 for a tax year before 1976 |
+| 660 | s 34 | a resident man who is a foreign worker, resident 7 months of 2026, with income from personal exertion | F4: apportioned by the months of residence, as section 41 apportions | — | refused: section 48A and the regulations made under it are not encoded in this model |
+
+**The harness can fail on them.** On a scratch copy outside this directory, three edits (F1's default set to "no residence condition", apportioning by 11 for 12, and F2's earning reading giving the quarter point regardless) made `ito-credit-points-tests.l4` print 8 failed and 1 refused.
+
+### The check, 0.3.0
+
+Run on 2026-10-08 from 22:22:36Z to 22:22:39Z as `L4=/Users/mengwong/.local/bin/l4 ./check.sh`, the binary `/Volumes/transcend/caches/cabal/store/ghc-9.10.3-fe9c/jl4-0.1-6df1397b/bin/l4`, sha256 `f0759b2ef2f1d1b2a577c68f059c54f487de9d913553fc9f0d9bf0f7f5dab0d8`, the same before and after.
+Before any edit the 0.2.0 baseline on this binary printed 125 and 78 satisfied, as recorded for 0.2.0.
+
+```
+module                                    errors satisfied  failed  refused  expected
+ito-credit-points-nouns.l4                     0         0       0        0         0
+ito-credit-points-published-figures.l4         0         0       0        0         0
+ito-credit-points-tests.l4                     0       164       0        0         0
+ito-s33a-credit-point.l4                       0         0       0        0         0
+ito-s34-s36-s36a-credits.l4                    0         0       0        0         0
+tests-independent.l4                           0        78       0        0         0
+TOTAL (6 modules)                              0       242       0        0
+(a failed assertion is also an error; any other error, or any refused assertion, makes the run red)
+```
+
+Exit 0; nothing is expected to fail or refuse, so `check.sh` declares nothing and was not edited.
+`python3 -I render_source.py --check *.l4`: 0 quotations missing (the row has no `tools/hebcheck.py` or `tools/srcquote.py`).
 
 ## Version 0.2.0 (2026-10-08): repairs (BACKLOG IL-14)
 
@@ -335,6 +477,11 @@ For A: s 34 says "יחיד שהיה תושב ישראל בשנת המס" and s 3
 For B: the shared context of the Chapter's personal credits; Tax Authority practice, which I have not sourced.
 **Taken: A**, because the operative words impose no residence condition and the two textual signals point the same way.
 Effect: a non-resident woman gets 0.5 points under this row (tests at `§§ Section 36A — illustrations`). Open question Q1.
+(0.3.0) **RULED by Meng 2026-10-08 (SHRUG).**
+Both readings are kept by name: `section 36A has no residence condition`, and `section 36A gives its half point only to an Israeli resident`, residence being met as for ss 34 and 36, by s 1 or s 3A(f).
+By default the year-aware rules decline where the two differ, which is only for a woman who does not count as an Israeli resident: "section 36A does not say whether a woman who is not an Israeli resident gets its half point".
+Reading A stays in the year-free rules over a Person and in `section 36A applies in the tax year of`, each of which says so in its `@desc`.
+The fork is shared with row IL-02 (s 66(c)(4)), whose agent handles its side.
 
 **F2 — does s 36 require earning, or travel to a place of earning?**
 Text: heading "זיכוי בעד נסיעה למקום ההשתכרות" (line 1593); body "בחישוב המס של יחיד תושב ישראל תובא בחשבון 1⁄4 נקודת זיכוי כזיכוי נסיעה." (line 1594).
@@ -343,6 +490,10 @@ Reading B: only an individual with income from personal exertion (who travels to
 For B: the heading; and s 38(a) (line 1603), which in a joint computation gives "1⁄4 נקודת זיכוי לפי סעיף 36" for the other spouse only once it is proved that spouse's income is from personal exertion — suggesting the legislature linked the s 36 quarter point to earning.
 For A: the body has no such condition; s 38(a)'s condition belongs to s 38's own joint-computation regime and is stated there, not in s 36; and, weakly, s 134A(2) (line 4864) measures the income of people with no income from work, business or profession against "סכום נקודות הזיכוי שעל פי סעיפים 34 ו־36" — weak because a yardstick need not be anyone's entitlement.
 **Taken: A.** Open question Q2.
+(0.3.0) **RULED by Meng 2026-10-08 (SHRUG).**
+Both readings are kept by name, `section 36 for every resident individual` and `section 36 only for an individual with income from personal exertion`, on a new input, `the taxpayer had income from personal exertion in the tax year` (s 1 "הכנסה מיגיעה אישית", line 170).
+By default the year-aware rules decline where the two differ, which is only for an individual without such income whom s 36 would otherwise give anything: "section 36 does not say whether an individual without income from personal exertion gets its quarter point".
+Reading A stays in the year-free rules and in `section 36 applies in the tax year of`, which say so.
 
 **F3 — the residence limb of s 36 has no "in the tax year".**
 s 34: "שהיה תושב ישראל בשנת המס"; s 36: "יחיד תושב ישראל".
@@ -353,6 +504,11 @@ Reading B: residence at some other moment (when the tax is computed).
 **F4 — part-year residence.**
 "שהיה תושב ישראל בשנת המס" could mean resident for the tax year as a whole (s 1 decides one status per year) or resident at any time during it; and the sections say nothing about apportioning the points for part of a year (contrast s 41, line 1691, which apportions ss 34 and 36 by months for a spouse married part of the year).
 **Taken:** residence is one status per tax year, supplied by the caller, and the points are never apportioned by this row. If the Tax Authority apportions for a person who becomes or ceases to be resident during the year, it does so under some provision this row has not met. Open question Q3.
+(0.3.0) **RULED by Meng 2026-10-08 (SHRUG).**
+The readings, by name: (i) `one residence status for the whole tax year`, taken until 0.2.0; (iii) `apportioned by the months of residence, as section 41 apportions`, 1/12 of a year of residence's points for each month, as s 41(1) does for a spouse (line 1691); and (ii), the independent tester's, as the default, `declined for residence in part of a tax year`.
+The default refuses "sections 34 and 36 do not say what an individual who was an Israeli resident for only part of the tax year gets" wherever (i) and (iii) differ, that is, wherever a year of residence would give anything.
+A new input, `the taxpayer's Israeli residence over the tax year`, says whether the residence entered held for the whole year or for how many months.
+F4 is applied to ss 34 and 36 only: s 36A has no residence limb under F1's reading A, and under F1's reading B it reads the yearly status (this agent's choice, assumed, not ruled).
 
 **F5 — what "המקוזז כנגד המס לאותה שנה" does when the credit exceeds the tax.**
 Reading A: the credit reduces that year's tax to no less than zero; the excess is not refunded and not carried to another year.
@@ -360,6 +516,11 @@ Reading B: the excess is refunded (a negative tax).
 For A: "set off against" extinguishes a debt up to its amount; "לאותה שנה" ties it to that year; s 91(e)(1) and (e)(2)(b) (lines 3381, 3384) speak of "יתרת נקודות הזיכוי", a balance of credit points left unused in a year, which exists only if the set-off is capped by the tax; and the Tax Authority describes a credit point as "סכום המופחת מהמס", an amount deducted from the tax ([itc135-2025] p. 4).
 **Taken: A**, `max 0 (tax − amount)`.
 Not decided here: the order in which several credits are set off against one year's tax, which matters as soon as any other credit is in play.
+(0.3.0) Under Meng's ruling SHRUG of 2026-10-08 this is **not a switch** (class (b)).
+For the question the rule answers, the tax after the set-off, only reading A is arguable on the words: a set-off cannot take a tax below nothing, and s 91(e)(2)(b) presupposes an unused "יתרת נקודות הזיכוי" (line 3384).
+Reading B, a negative tax, is not a reading of "מקוזז כנגד המס"; whether an unused balance is paid out is a separate question that no rule of this row answers.
+The order of several credits does not arise in this row, whose rule sets one amount against one tax.
+It can matter elsewhere, where a credit is refunded, carried, or confined to the tax on part of the income (s 40(b)(1A) sets its points "כנגד המס החל על הכנסתו מיגיעה אישית", line 1634); that is outside this row.
 
 **F6 — the cross-reference in s 33A points at s 120A.**
 s 33A: "צמוד למדד כאמור בסעיף 120א" (line 1563).
@@ -379,6 +540,8 @@ ss 34, 36 and 36A say the points "יובאו בחשבון" / "תובא בחשב�
 **F9 — "אשה" is not defined.**
 Neither s 1 nor Chapter Three defines "woman".
 **Taken:** an input fact, `a woman`. A dispute about who counts is outside what the text settles. Open question Q4.
+(0.3.0) Under Meng's ruling SHRUG of 2026-10-08 this is **not a switch** (class (c)): an input convention.
+No rule reads "אשה" two ways; how the caller determines the fact (the population register or otherwise) is outside the text, and the encoding takes the caller's answer.
 
 **F10 — what to answer where ss 48 and 48A reach.**
 For a non-resident Area resident who is not an Israeli citizen, and for a foreign worker whom ss 34, 36 or 36A would otherwise credit, the answer depends on an instrument not in the bundle.
@@ -506,9 +669,9 @@ It is the first thing to add.
 
 ## 6. Open questions for a domain expert
 
-- **Q1 (F1).** Does the Tax Authority give the s 36A half point to a woman who is not an Israeli resident? If it does not, on what text?
-- **Q2 (F2).** Is the s 36 quarter point given to a resident with no income from personal exertion (a pensioner on passive income, say)?
-- **Q3 (F4).** Are ss 34 and 36 apportioned for an individual who becomes, or ceases to be, an Israeli resident during a tax year? Under which provision?
+- **Q1 (F1).** Does the Tax Authority give the s 36A half point to a woman who is not an Israeli resident? If it does not, on what text? (0.3.0: declined by default, fork F1.)
+- **Q2 (F2).** Is the s 36 quarter point given to a resident with no income from personal exertion (a pensioner on passive income, say)? (0.3.0: declined by default, fork F2.)
+- **Q3 (F4).** Are ss 34 and 36 apportioned for an individual who becomes, or ceases to be, an Israeli resident during a tax year? Under which provision? (0.3.0: declined by default, fork F4.)
 - **Q4 (F9).** Is "אשה" in s 36A read from the population register, or otherwise?
 - **Q5 (F5).** Confirm that an excess of credit-point amount over the tax lapses, outside the s 91 spreading regime.
 - **Q6.** The 1995 order under s 48 and the 2014 Regulations under s 48A: are they in force in the form the Wikisource notes describe? Row IL-08 should fetch and encode them. (0.2.0) Now BACKLOG IL-28, deferred by Meng on 2026-10-08.
