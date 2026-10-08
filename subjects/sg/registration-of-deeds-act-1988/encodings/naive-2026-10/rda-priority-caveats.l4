@@ -1,0 +1,178 @@
+IMPORT prelude
+
+-- Registration of Deeds Act 1988 (Singapore) -- caveats, priority, tacking: ss 8, 14, 15 and 16.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage
+-- table, no independent test pass, no human gate. See NOTES.md.
+
+§ `Registration of Deeds Act 1988 -- caveats and priority`
+
+§§ `8 -- caveats`
+
+-- s 8(1): a caveat may be (a) GIVEN by the proprietor for an estate or interest in favour of a named person, or
+-- (b) LODGED by a person CLAIMING an estate or interest.
+-- s 8(4): the Registrar "must not register" a caveat that (a) does not disclose any estate or interest in land, or
+-- (b) does not state the Government survey lot number (or, for part of a lot, identify the part in a plan).
+-- s 8(5): if after provisional registration the Registrar finds non-compliance, the Registrar MAY cancel.
+-- s 8(6): "Despite subsections (4) and (5), the Registrar must not be concerned to consider whether or not a
+-- caveator's claim is justified."
+-- s 8(7): a person lodging a caveat as a claimant must serve notice by registered post on the proprietor and all
+-- persons with prior claims on the register, "and the Registrar must not be concerned to inquire whether or not the
+-- notice has been effected."
+-- s 8(9): a registered caveat is "unless withdrawn by the caveator or cancelled by an order of court, in force for a
+-- period of 5 years."
+--
+-- So the claimant's only protection against a groundless caveat is a court order; the Registrar does not test the
+-- claim and does not check that the proprietor was told.
+DECLARE CaveatFacts HAS
+    `it discloses an estate or interest in land` IS A BOOLEAN
+    `it states the Government survey lot number` IS A BOOLEAN
+    `it affects only part of a lot` IS A BOOLEAN
+    `it clearly identifies that part in an annexed plan` IS A BOOLEAN
+    `the claim is in fact justified` IS A BOOLEAN
+    `notice was served by registered post on the proprietor and prior claimants` IS A BOOLEAN
+    `years since registration` IS A NUMBER
+    `withdrawn by the caveator` IS A BOOLEAN
+    `cancelled by order of court` IS A BOOLEAN
+
+GIVEN `the caveat` IS A CaveatFacts
+GIVETH A BOOLEAN
+DECIDE `the caveat identifies the land adequately` IF
+        `the caveat`'s `it states the Government survey lot number`
+    AND (    NOT `the caveat`'s `it affects only part of a lot`
+         OR  `the caveat`'s `it clearly identifies that part in an annexed plan`)
+
+GIVEN `the caveat` IS A CaveatFacts
+GIVETH A BOOLEAN
+DECIDE `the Registrar must refuse to register the caveat` IF
+        NOT `the caveat`'s `it discloses an estate or interest in land`
+    OR  NOT `the caveat identifies the land adequately` `the caveat`
+
+-- The Registrar tests neither the merits nor the service of notice.
+GIVEN `the caveat` IS A CaveatFacts
+GIVETH A BOOLEAN
+DECIDE `the Registrar may refuse the caveat because the claim is unjustified` IF
+    FALSE
+
+GIVEN `the caveat` IS A CaveatFacts
+GIVETH A BOOLEAN
+DECIDE `the Registrar may refuse the caveat because notice was not served` IF
+    FALSE
+
+GIVEN `the caveat` IS A CaveatFacts
+GIVETH A BOOLEAN
+DECIDE `the caveat is in force` IF
+        `the caveat`'s `years since registration` LESS THAN 5
+    AND NOT `the caveat`'s `withdrawn by the caveator`
+    AND NOT `the caveat`'s `cancelled by order of court`
+
+-- s 8(8): a later assurance in favour of the caveatee (given caveat) or the caveator (lodged caveat), conveying the
+-- SAME estate or interest as protected by and so described in the subsisting caveat, presented and accepted while the
+-- caveat is in force, when registered "has priority as though it had been registered on the date the caveat was
+-- registered and that date is deemed to be the date of registration of the assurance for all purposes".
+DECLARE LaterAssurance HAS
+    `in favour of the person the caveat names or the person who lodged it` IS A BOOLEAN
+    `conveys the same estate or interest as the caveat describes` IS A BOOLEAN
+    `presented and accepted while the caveat was in force` IS A BOOLEAN
+
+GIVEN `the later assurance` IS A LaterAssurance
+GIVETH A BOOLEAN
+DECIDE `the later assurance takes the caveat's date` IF
+        `the later assurance`'s `in favour of the person the caveat names or the person who lodged it`
+    AND `the later assurance`'s `conveys the same estate or interest as the caveat describes`
+    AND `the later assurance`'s `presented and accepted while the caveat was in force`
+
+-- The five years are measured from registration of the caveat, not from the date of the assurance.
+-- An assurance presented the day after the caveat lapses gets no back-dating.
+
+§§ `14 -- priority by registration date`
+
+-- s 14(1): "all instruments registered under any repealed enactment, or entitled to be registered under this Act,
+-- have priority according to the date of their registration and not according to the date of the instruments or of
+-- their execution."
+-- s 14(2): instruments registered on an identical date keep their priorities between themselves (the Act does not
+-- change the existing order).
+-- s 14(3): priorities "have full effect in all courts EXCEPT in cases of ACTUAL FRAUD, to which the person by or on
+-- whose behalf the registration is made is a PARTY, ... and no such person loses any such priority merely in
+-- consequence of the person having been affected with ACTUAL OR CONSTRUCTIVE NOTICE except in cases of actual fraud
+-- to which the person is a party."
+-- s 14(4): a person claiming without valuable consideration under another gets no further priority or protection than
+-- the one they claim under; and "any disposition of land or charge on land which, if unregistered, would be
+-- fraudulent and void is, despite registration, fraudulent and void in like manner."
+DECLARE Instrument HAS
+    `date of registration` IS A NUMBER
+    `date of execution` IS A NUMBER
+    `registered at the same moment as a competing instrument` IS A BOOLEAN
+    `the person registering is a party to actual fraud` IS A BOOLEAN
+    `the person registering had actual or constructive notice of the earlier interest` IS A BOOLEAN
+    `claims without valuable consideration` IS A BOOLEAN
+    `would be fraudulent and void if unregistered` IS A BOOLEAN
+
+-- Who ranks first: the earlier REGISTRATION date, whatever the execution dates.
+GIVEN `a` IS AN Instrument, `b` IS AN Instrument
+GIVETH A BOOLEAN
+DECIDE `the first ranks ahead of the second by registration date` IF
+    `a`'s `date of registration` LESS THAN `b`'s `date of registration`
+
+-- Equal dates: the Act leaves the existing priority between them untouched.
+GIVEN `a` IS AN Instrument, `b` IS AN Instrument
+GIVETH A BOOLEAN
+DECIDE `the Act determines priority between the two` IF
+    NOT (`a`'s `date of registration` EQUALS `b`'s `date of registration`)
+
+-- Priority is kept despite notice; it is lost only for actual fraud to which the registrant is a party.
+GIVEN `the instrument` IS AN Instrument
+GIVETH A BOOLEAN
+DECIDE `the instrument keeps the priority its registration gives` IF
+        NOT `the instrument`'s `the person registering is a party to actual fraud`
+    AND NOT `the instrument`'s `would be fraudulent and void if unregistered`
+
+GIVEN `the instrument` IS AN Instrument
+GIVETH A BOOLEAN
+DECIDE `notice of the earlier interest costs the instrument its priority` IF
+        `the instrument`'s `the person registering had actual or constructive notice of the earlier interest`
+    AND `the instrument`'s `the person registering is a party to actual fraud`
+
+-- A volunteer takes no better position than the person they claim under.
+GIVEN `the volunteer` IS AN Instrument, `the priority of the person claimed under is complete` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the volunteer enjoys full priority` IF
+        `the instrument keeps the priority its registration gives` `the volunteer`
+    AND (    NOT `the volunteer`'s `claims without valuable consideration`
+         OR  `the priority of the person claimed under is complete`)
+
+§§ `15 -- tacking further advances`
+
+-- s 15(1): "Despite any other provision of this Act, a prior mortgagee of land has the right to make further advances
+-- giving further credit or accommodation to rank in priority to subsequent mortgages -- (a) if the prior mortgage
+-- AUTHORISES the making of further advances, or the giving of credit in instalments or on a current, revolving or
+-- continuing account or other accommodation; or (b) where the prior mortgage does not expressly authorise ..., if the
+-- SUBSEQUENT MORTGAGEE AGREES".
+-- s 15(2): "Except as provided in this section, the right to tack does not apply to mortgages."
+--
+-- A "prior mortgage" includes a prior charge or assignment protected only by a caveat accepted for registration
+-- (s 2(1)). The test is authorisation in the prior mortgage, or the subsequent mortgagee's consent. Notice that
+-- further advances are being made, with no objection, is neither.
+DECLARE Advance HAS
+    `the advance is made by a prior mortgagee` IS A BOOLEAN
+    `the prior mortgage authorises further advances or revolving credit` IS A BOOLEAN
+    `the subsequent mortgagee agreed` IS A BOOLEAN
+    `the subsequent mortgagee merely knew and did not object` IS A BOOLEAN
+
+GIVEN `the advance` IS AN Advance
+GIVETH A BOOLEAN
+DECIDE `the further advance ranks ahead of the subsequent mortgage` IF
+        `the advance`'s `the advance is made by a prior mortgagee`
+    AND (    `the advance`'s `the prior mortgage authorises further advances or revolving credit`
+         OR  `the advance`'s `the subsequent mortgagee agreed`)
+
+§§ `16 -- the purchaser's relief matches the seller's`
+
+-- s 16: a person claiming under a duly registered assurance "has and is entitled to all the same grounds of relief" as
+-- against anyone claiming through a later assurance which "has acquired priority by earlier registration", as the
+-- person through whom they claim might have had.
+GIVEN `the grantor could have obtained relief` IS A BOOLEAN, `the claimant claims under a duly registered assurance` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the claimant has the grantor's grounds of relief` IF
+        `the grantor could have obtained relief`
+    AND `the claimant claims under a duly registered assurance`
