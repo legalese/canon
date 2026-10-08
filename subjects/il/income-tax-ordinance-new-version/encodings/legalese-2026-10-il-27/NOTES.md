@@ -1,4 +1,4 @@
-# NOTES — row IL-27 (version 0.1.0)
+# NOTES — row IL-27 (version 0.1.1)
 
 Income Tax Ordinance ss 39A, 39B, 40A to 40F, 41, 44, 45, 46 to 46C, 47A; s 35(e) with the rules of 5738-1977; s 47(d) with the Regulations of 5740-1980; the Retirement Age Law 5764-2004.
 Run `IL-27-20261008`, agent `enc-il-27`, 2026-10-08 to 2026-10-09, one session, no sub-agents.
@@ -318,3 +318,30 @@ There are no expected failures and no expected refusals: this row declares none.
 The row's own fourteen test modules hold 463 assertions, all satisfied, 78 of them `#ASSERT REFUSED … BECAUSE "…"` (a refusal by name, with the exact string asserted).
 Per module: retirement age 54 (3 refused), s 35(e) 40 (5), s 39A 28 (3), s 39B 37 (8), s 40A 17 (4), s 40B 26 (8), s 40C 72 (10), ss 40D and 40E 29 (5), s 41 16 (6), ss 44 and 45 36 (8), s 46 29 (5), ss 46A and 46B 23 (4), s 47A 26 (4), s 47(d) 30 (5).
 No expected value was changed after a run. Every one was worked by hand before the run, and no assertion failed once its module compiled; several test modules first needed syntax repairs (an argument order that did not match the mixfix name, a date written without the parentheses l4 needs, a copy of a record built with `WITH`, which l4 does not support), none of which touched an expected value.
+
+## 15. Version 0.1.1 (2026-10-09): the independent pass, and the over-declines repaired
+
+The independent test author (fid-il-27) wrote `DECIDED-ANSWERS.md` from the Hebrew alone, then `tests-independent.l4` (237 cases), and `INDEPENDENT-FINDINGS.md`.
+Its three OURS-WRONG findings were one defect: a default that declined where the readings agree, against the SHRUG rule that a default declines only where they differ.
+Repaired, each default now computes the answer under every reading (or every choice) and declines only if they differ:
+
+- E20, s 39B: the default for tax years 2026 and 2027 compares paragraphs (1) and (2) with the temporary provision from 30 days; 200 days (and 110 days) give 4 under both and are answered; 109 and 100 days still differ and decline; 20 to 29 days still decline (the temporary provision is silent).
+- F39, s 40C(e): for each of the first and second degrees every choice of "the one" is tried; the same points under all choices is the answer (two identical first degrees give 1 in 2026), different points decline as before.
+- F52, s 40E: one who meets both and states no election has the points if the two elections give the same (1 and 1: 1; 0 and 0 in 2027: 0); different points (1/2 against 1) still decline.
+
+I searched the rest of the defaults for a refusal fired without comparing readings and found one more, repaired the same way:
+
+- s 46A, fork F8: the default declined whenever the total passed the ceiling. Both cuts give the same credit base and deduction when only one of the two is present (a credit of 130,000 alone: 100,000 and 0; a deduction of 120,000 alone: 0 and 100,000); these are now answered, and the mixed case (60,000 and 50,000) still declines.
+
+Checked and already comparing: F1, F3 (a woman with nil points answers), F4, F5, F6, F7, F9a, F11, F12, F14, F15, F16.
+Not comparing by design: F2's temporary provision for 20 to 29 days; F9 (the two readings give 0 and a refusal); F10 (the rule gives no day).
+New assertions: 4 in the s 39B tests, 4 in s 40C, 2 in ss 40D/40E, 4 in ss 46A/46B (14); every expected value was worked by hand first.
+`check.sh`: `tests-independent.l4` now has 226 satisfied, 3 failed, 8 refused; its declared refusals dropped from 11 to 8 (the three repaired cases now pass), commented in `check.sh`; exit 0. l4 sha256 before and after `f0759b2ef2f1d1b2a577c68f059c54f487de9d913553fc9f0d9bf0f7f5dab0d8`.
+
+The tester's other findings, as they stand:
+
+- I07 TESTER-WRONG: 25,000 donated and 10,000 carried in against a 30,000 ceiling is 10,500, whichever is taken first (F16); the declared failure stands.
+- Declared failures H07 (SCOPE: the ceiling of the regulations of 5756-1996 is a caller input) and J11 (AMBIGUITY: 16% of 165,228 is 26,436.48, while the note prints 26,436) stand.
+- Ambiguities: E12 (s 39B reading T, 29 days: the encoding's refusal is the better answer); F23 (s 40B born 15 June 2010 at the default declines, F4); G07 (s 41 registered spouse: a refusal where the tester expected 0, same substance); J11 above.
+- Scope, not encoded by this row: s 39 (the helping spouse) and s 40(b) (single-parent child points) have no module here (rows IL-08 and the capstone take them); s 35(b), the returning-resident definition and the "first time only" rule of s 35(c); s 41(2)'s s 66 points (an input); the couple/single ceilings and relatives of ss 44 and 45 (inputs); s 46's recognition of institutions and the company rate (inputs); s 47A(c), (d); the Retirement Age Law's compulsory and early ages (ss 4, 5, 7, 8, 10, 12, Part C); tax years before 2024 (A17, A18, F47, F48, refused by A1).
+- Thinly covered by the independent pass: ss 40A (4 cases, none for a woman), 40E, 45, 46A/46B, rules 2 and 3; not at all: ss 39 and 40(b).
