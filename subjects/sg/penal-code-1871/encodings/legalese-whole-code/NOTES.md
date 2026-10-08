@@ -5,7 +5,7 @@ It was made to measure how compatible a whole-Code encoding would be with that c
 It sits beside two other rows of the same Code: `legalese` (twelve modules, hand-built, with a bench of reported charges) and `legalese-aswathy` (the whole Code, 45 modules, eight verification passes).
 Rows are equal; none is primary.
 
-**Status: draft, not reviewed by a lawyer.** Revised once, on 30 September 2026 (filed here on 8 October): defects found on review were fixed, each checked against the Code's text. See "Revised 2026-09-30" below.
+**Status: draft, not reviewed by a lawyer.** Revised once, on 30 September 2026 (filed here on 8 October): defects found by comparing the encoding with the ladder diagrams in Alex Woon's *Essential Criminal Law* were fixed, each checked against the Code's text. See "Revised 2026-09-30" below.
 
 ## Where things are
 
@@ -87,7 +87,7 @@ The last three had been written to a session scratchpad; the copies in `generato
 ## Revised 2026-09-30
 
 Eight modules changed (`pc-body-a-hurt`, `pc-body-a-life`, `pc-body-a-tests`, `pc-exceptions-private-defence`, `pc-exceptions-tests`, `pc-property-cheating`, `pc-property-tests`, `pc-property-trust`), with their generators and the body-a, exceptions and property notes.
-Each change was found on review and checked against the Code's text, and each has tests; forks F-20, E-17 and P-22 to P-24 record the reasoning.
+Each change was found by that comparison and checked against the Code's text, and each has tests; forks F-20, E-17 and P-22 to P-24 record the reasoning.
 
 - **s 300 Exception 7.** The abnormality of mind and its listed cause are leaves of their own, required before limbs (a)(i), (a)(ii) and (b). An intoxicated accused with no abnormality of mind no longer comes within the Exception on (a)(ii) alone.
 - **s 300 Exception 2 reads Chapter 4A.** `Homicide Facts` carries a `Private Defence Facts`, and the flat "exceeds the power" leaf is replaced by `the right of private defence was exceeded`, so the Exception and the private-defence rules can no longer disagree.

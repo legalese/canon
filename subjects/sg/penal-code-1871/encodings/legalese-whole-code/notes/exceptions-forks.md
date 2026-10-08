@@ -138,9 +138,10 @@ s 98(1) and the extent sections are the Code's own "does not extend to", which i
 A defender who strikes after the belief of danger has ended (s 101(2)), or after a thief's property is recovered (s 104(2)(c)), is here exceeding a right that arose, so Exception 2 can reach him.
 The other reading: once the right has ceased there is no right to exercise, so Exception 2 cannot apply and the killing is murder.
 The Code says only that the right "continues as long as" / "continues till"; it does not say which.
+Woon, *Essential Criminal Law* paras 10.9-10.9.1, files these cases as exceeding, in the third stage of its private-defence flowchart (as we read that stage, whose drawing is ambiguous).
 (2) s 98(2) on the ARISE side, as one leaf.
 The leaf cannot tell recourse available at the outset from recourse that became available during the struggle (s 98 illus (b): the police arrive midway).
-The other reading files the second as exceeding; here both are "no right".
+Woon's flowchart files the second as exceeding too; here both are "no right".
 Splitting the leaf in two would let the encoding take that reading; it would add a field to every `Private Defence Facts` record, and is not done.
 
 **Polarity (E-1).** `the right of private defence was exceeded` puts NOT over the two `extends to the act` ladders, never over a leaf.
