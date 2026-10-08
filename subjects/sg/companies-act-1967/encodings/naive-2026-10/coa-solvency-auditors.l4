@@ -1,0 +1,309 @@
+IMPORT prelude
+IMPORT `coa-definitions`
+
+-- Companies Act 1967 (Singapore) -- section 7A (the solvency statement) and
+-- section 10 (who may be a company's auditor).
+--
+-- These are the two operative provisions that sit inside the definitional core:
+-- s 7A is the gate to three of the Act's capital operations, and s 10 is the gate to
+-- every audit the Act requires.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules
+-- skill. No pipeline, no coverage table, no independent test pass, no human gate.
+
+§ `Companies Act 1967 -- ss 7A and 10`
+
+§§ `7A(1) -- what the directors must be of the opinion`
+
+-- s 7A(1): "'solvency statement', in relation to a proposed redemption of preference
+-- shares by a company out of its capital under section 70, a proposed giving of
+-- financial assistance by a company under section 76(9A) or (9B) or a proposed
+-- reduction by a company of its share capital under section 78B or 78C, means a
+-- statement by the directors of the company that they have formed the opinion --
+--   (a) that, as regards the company's situation at the date of the statement, there is
+--       NO GROUND on which the company could then be found to be UNABLE TO PAY ITS DEBTS;
+--   (b) where --
+--       (i) it is intended to commence winding up of the company within the period of
+--           12 months immediately after the date of the statement, that the company will
+--           be able to pay its debts IN FULL within the period of 12 months after the
+--           date of commencement of the winding up; or
+--       (ii) it is not intended so to commence winding up, that the company will be able
+--            to pay its debts AS THEY FALL DUE during the period of 12 months
+--            immediately after the date of the statement; and
+--   (c) that the value of the company's assets is NOT LESS THAN the value of its
+--       liabilities (including contingent liabilities) AND WILL NOT, after the proposed
+--       redemption, giving of financial assistance or reduction (as the case may be),
+--       become less than the value of its liabilities (including contingent liabilities)".
+--
+-- Limb (b) is a fork on intention. Intending to wind up within a year moves the test
+-- from "pay debts as they fall due for 12 months" to "pay debts in full within 12
+-- months of the winding up commencing".
+DECLARE ProposedOperation IS ONE OF
+    `redemption of preference shares out of capital under section 70`
+    `financial assistance under section 76(9A) or (9B)`
+    `reduction of share capital under section 78B or 78C`
+    `something else`
+
+DECLARE SolvencyOpinion HAS
+    `the operation it is for` IS A ProposedOperation
+    `no ground on which the company could then be found to be unable to pay its debts` IS A BOOLEAN
+    `it is intended to commence winding up within 12 months after the date of the statement` IS A BOOLEAN
+    `the company will be able to pay its debts in full within 12 months after the commencement of the winding up` IS A BOOLEAN
+    `the company will be able to pay its debts as they fall due during the 12 months after the date of the statement` IS A BOOLEAN
+    `the value of the assets is now not less than the value of the liabilities including contingent liabilities` IS A BOOLEAN
+    `the value of the assets will not, after the proposed operation, become less than the value of the liabilities including contingent liabilities` IS A BOOLEAN
+
+GIVEN `the opinion` IS A SolvencyOpinion
+GIVETH A BOOLEAN
+DECIDE `the operation is one a solvency statement is defined for` IF
+    CONSIDER `the opinion`'s `the operation it is for`
+    WHEN `something else` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the opinion` IS A SolvencyOpinion
+GIVETH A BOOLEAN
+DECIDE `limb (b) of the opinion is held` IF
+    IF   `the opinion`'s `it is intended to commence winding up within 12 months after the date of the statement`
+    THEN `the opinion`'s `the company will be able to pay its debts in full within 12 months after the commencement of the winding up`
+    ELSE `the opinion`'s `the company will be able to pay its debts as they fall due during the 12 months after the date of the statement`
+
+GIVEN `the opinion` IS A SolvencyOpinion
+GIVETH A BOOLEAN
+DECIDE `the directors hold all three opinions section 7A(1) requires` IF
+        `the opinion`'s `no ground on which the company could then be found to be unable to pay its debts`
+    AND `limb (b) of the opinion is held` `the opinion`
+    AND `the opinion`'s `the value of the assets is now not less than the value of the liabilities including contingent liabilities`
+    AND `the opinion`'s `the value of the assets will not, after the proposed operation, become less than the value of the liabilities including contingent liabilities`
+
+§§ `7A(2) -- the form of the statement`
+
+-- s 7A(2): "The solvency statement --
+--   (a) if the company is exempt from audit requirements under section 205B or 205C,
+--       must be in the form of a written declaration signed by EVERY director; or
+--   (b) if the company is not such a company, must be in the form of a written
+--       declaration signed by every director OR must be ACCOMPANIED BY A REPORT FROM ITS
+--       AUDITOR that the auditor has inquired into the affairs of the company and is of
+--       the opinion that the statement is not unreasonable given all the circumstances."
+--
+-- THE ASYMMETRY. A small company that is exempt from audit has one way to give a
+-- solvency statement: every director signs. A company that is not exempt has two: every
+-- director signs, or an auditor's report accompanies it. So the company with the least
+-- machinery is held to the stricter formality. The words of (b) also leave open whether,
+-- on the auditor's-report route, the statement must still be a signed declaration by
+-- anyone; the encoding reads the route as a substitute for unanimity, which is the
+-- only reading under which it is an alternative.
+DECLARE StatementForm HAS
+    `the company is exempt from audit requirements under section 205B or 205C` IS A BOOLEAN
+    `the number of directors` IS A NUMBER
+    `the number of directors who signed the written declaration` IS A NUMBER
+    `an auditor's report accompanies it saying the auditor has inquired into the company's affairs and thinks the statement not unreasonable` IS A BOOLEAN
+
+GIVEN `the form` IS A StatementForm
+GIVETH A BOOLEAN
+DECIDE `every director signed` IF
+    `the form`'s `the number of directors who signed the written declaration` AT LEAST `the form`'s `the number of directors`
+
+GIVEN `the form` IS A StatementForm
+GIVETH A BOOLEAN
+DECIDE `the statement is in a form section 7A(2) allows` IF
+    IF   `the form`'s `the company is exempt from audit requirements under section 205B or 205C`
+    THEN `every director signed` `the form`
+    ELSE     `every director signed` `the form`
+         OR  `the form`'s `an auditor's report accompanies it saying the auditor has inquired into the company's affairs and thinks the statement not unreasonable`
+
+§§ `7A(3), (4), (5) -- how the directors must go about forming the opinion`
+
+-- s 7A(3): "the directors of the company MUST TAKE INTO ACCOUNT ALL LIABILITIES of the
+-- company (including contingent liabilities)."
+-- s 7A(4): in determining whether assets are or will become less than liabilities the
+-- directors --
+--   (a) MUST HAVE REGARD TO (i) the most recent financial statements of the company that
+--       comply with section 201(2) and (5), and (ii) all other circumstances that the
+--       directors KNOW OR OUGHT TO KNOW affect, or may affect, the value of the assets and
+--       liabilities; and
+--   (b) MAY RELY ON valuations of assets or estimates of liabilities that are reasonable
+--       in the circumstances.
+-- s 7A(5): in valuing a contingent liability the directors MAY take into account (a) the
+-- likelihood of the contingency occurring, and (b) any claim the company is entitled to
+-- make and can reasonably expect to be met to reduce or extinguish it.
+--
+-- These are conduct requirements for forming the opinion. They are recorded as a record
+-- of what the directors did, because the offence in s 7A(6) turns on whether they had
+-- reasonable grounds, and these are what the grounds are made of.
+DECLARE HowTheOpinionWasFormed HAS
+    `took into account all liabilities including contingent liabilities` IS A BOOLEAN
+    `had regard to the most recent financial statements complying with section 201(2) and (5)` IS A BOOLEAN
+    `had regard to all other circumstances the directors know or ought to know affect the value of assets and liabilities` IS A BOOLEAN
+    `relied on valuations or estimates that were reasonable in the circumstances` IS A BOOLEAN
+
+GIVEN `how` IS A HowTheOpinionWasFormed
+GIVETH A BOOLEAN
+DECIDE `the directors went about forming the opinion as section 7A(3) and (4)(a) require` IF
+        `how`'s `took into account all liabilities including contingent liabilities`
+    AND `how`'s `had regard to the most recent financial statements complying with section 201(2) and (5)`
+    AND `how`'s `had regard to all other circumstances the directors know or ought to know affect the value of assets and liabilities`
+
+§§ `7A(6) -- the offence`
+
+-- s 7A(6): "A director of a company who makes a solvency statement WITHOUT HAVING
+-- REASONABLE GROUNDS for the opinions expressed in it shall be guilty of an offence and
+-- shall be liable on conviction to a fine not exceeding $100,000 or to imprisonment for a
+-- term not exceeding 3 years or to both."
+--
+-- The offence is made by each director who makes the statement. It is not confined to
+-- a statement that turns out to be wrong, and it is not made out merely by the company
+-- later failing; the question is the reasonableness of the grounds when it was made.
+-- The statutory duty to take all liabilities into account, and to have regard to what
+-- the directors know or ought to know, gives the content of the grounds.
+`the maximum fine under section 7A(6), in dollars` MEANS 100000
+`the maximum imprisonment under section 7A(6), in months` MEANS 36
+
+DECLARE DirectorsStatement HAS
+    `this director made the solvency statement` IS A BOOLEAN
+    `this director had reasonable grounds for the opinions expressed in it` IS A BOOLEAN
+    `the company later became insolvent` IS A BOOLEAN
+
+GIVEN `the director` IS A DirectorsStatement
+GIVETH A BOOLEAN
+DECIDE `the director commits the offence in section 7A(6)` IF
+        `the director`'s `this director made the solvency statement`
+    AND NOT `the director`'s `this director had reasonable grounds for the opinions expressed in it`
+
+-- Later insolvency is not an element, which is the point of the cases that use it.
+GIVETH A BOOLEAN
+DECIDE `a later insolvency is an element of the offence` IF
+    FALSE
+
+§§ `10 -- who may be a company's auditor`
+
+-- s 10(1): "No person OTHER THAN AN ACCOUNTING ENTITY may -- (a) KNOWINGLY consent to be
+-- appointed as auditor for a company; or (b) KNOWINGLY act as an auditor for a company."
+-- s 10(2): "Without limiting subsection (1)(b), a person acts as an auditor for a company
+-- if the person PREPARES ANY REPORT required by this Act to be prepared by an auditor of
+-- the company."
+-- s 4(1): "'accounting entity' means a public accountant, an accounting corporation, an
+-- accounting firm or an accounting limited liability partnership".
+--
+-- Both prohibitions carry "knowingly". s 10 itself states no penalty; the Act's general
+-- penalty provisions were not read.
+DECLARE Auditor IS ONE OF
+    `a public accountant`
+    `an accounting corporation`
+    `an accounting firm`
+    `an accounting limited liability partnership`
+    `not an accounting entity`
+
+GIVEN `the person` IS AN Auditor
+GIVETH A BOOLEAN
+DECIDE `the person is an accounting entity` IF
+    CONSIDER `the person`
+    WHEN `not an accounting entity` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the person` IS AN Auditor,
+      `consents or acts knowingly` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the person contravenes section 10(1)` IF
+        NOT `the person is an accounting entity` `the person`
+    AND `consents or acts knowingly`
+
+-- s 10(2): preparing an auditor's report is acting as an auditor.
+GIVEN `the person prepared a report the Act requires an auditor to prepare` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the person acted as an auditor` IF
+    `the person prepared a report the Act requires an auditor to prepare`
+
+§§ `10(3), (4) -- the entity's prior consent`
+
+-- s 10(3): "No company or person may appoint an accounting entity as an auditor of a
+-- company WITHOUT OBTAINING THE ACCOUNTING ENTITY'S PRIOR CONSENT."
+-- s 10(4): for the purposes of (3), the consent --
+--   (a) of a public accountant must be in writing signed by the public accountant;
+--   (b) of an accounting firm, or an accounting limited liability partnership, must be in
+--       writing signed by at least ONE PARTNER of the firm or limited liability
+--       partnership; and
+--   (c) of an accounting corporation must be in writing signed by at least ONE DIRECTOR of
+--       the corporation.
+DECLARE Consent HAS
+    `who is being appointed` IS AN Auditor
+    `it is in writing` IS A BOOLEAN
+    `it was signed by the public accountant` IS A BOOLEAN
+    `the number of partners who signed` IS A NUMBER
+    `the number of directors who signed` IS A NUMBER
+    `it was obtained before the appointment` IS A BOOLEAN
+
+GIVEN `the consent` IS A Consent
+GIVETH A BOOLEAN
+DECIDE `the consent is signed as section 10(4) requires` IF
+    CONSIDER `the consent`'s `who is being appointed`
+    WHEN `a public accountant` THEN `the consent`'s `it was signed by the public accountant`
+    WHEN `an accounting firm` THEN `the consent`'s `the number of partners who signed` AT LEAST 1
+    WHEN `an accounting limited liability partnership` THEN `the consent`'s `the number of partners who signed` AT LEAST 1
+    WHEN `an accounting corporation` THEN `the consent`'s `the number of directors who signed` AT LEAST 1
+    OTHERWISE FALSE
+
+GIVEN `the consent` IS A Consent
+GIVETH A BOOLEAN
+DECIDE `the appointment complies with section 10(3) and (4)` IF
+        `the consent`'s `it is in writing`
+    AND `the consent is signed as section 10(4) requires` `the consent`
+    AND `the consent`'s `it was obtained before the appointment`
+
+§§ `10(5), (6) -- who is appointed when a firm or a corporation is appointed in its own name`
+
+-- s 10(5): "Where an accounting firm is appointed as auditor of the company in the name of
+-- the accounting firm, the appointment takes effect and operates as if the PARTNERS OF
+-- THE FIRM AT THE TIME OF THE APPOINTMENT, who are public accountants AT THAT TIME, are
+-- appointed as auditors of the company."
+-- s 10(6): "Where an accounting corporation is appointed as auditor of the company in the
+-- name of the corporation, the appointment takes effect and operates as if --
+--   (a) the directors of the corporation who are practising as public accountants in the
+--       corporation (WHETHER DIRECTORS AT THE TIME the accounting corporation was
+--       appointed as auditor OR LATER); and
+--   (b) the employees of the corporation who are practising as public accountants in the
+--       corporation (WHETHER EMPLOYED AT THE TIME ... OR LATER),
+-- are appointed as auditors of the company."
+--
+-- THE TWO RULES DIFFER, AND NEITHER SAYS WHY.
+--   * A firm's appointment is fixed at the moment of appointment: only partners then in
+--     the firm and then public accountants are the auditors. A partner admitted later is
+--     not an auditor of the company, and a partner who qualifies as a public accountant
+--     later is not either.
+--   * A corporation's appointment runs forward: directors and employees who join later are
+--     auditors too.
+--
+-- AND THERE IS A GAP. s 10(4)(b) treats an accounting limited liability partnership like a
+-- firm for the form of consent, and s 4(1) makes it an accounting entity, but neither
+-- s 10(5) nor s 10(6) mentions it. If an accounting limited liability partnership is
+-- appointed in its own name, no provision says which individuals are appointed.
+DECLARE Practitioner IS ONE OF
+    `a partner of the accounting firm`
+    `a director of the accounting corporation`
+    `an employee of the accounting corporation`
+    `a partner of the accounting limited liability partnership`
+    `someone else`
+
+DECLARE PractitionerFacts HAS
+    `role` IS A Practitioner
+    `is practising as a public accountant in the entity now` IS A BOOLEAN
+    `held that role at the time of the appointment` IS A BOOLEAN
+    `was a public accountant at the time of the appointment` IS A BOOLEAN
+
+GIVEN `the practitioner` IS A PractitionerFacts, `the entity appointed in its own name` IS AN Auditor
+GIVETH A BOOLEAN
+DECIDE `the practitioner is appointed as an auditor through the entity` IF
+    CONSIDER `the entity appointed in its own name`
+    WHEN `an accounting firm`
+        THEN     (`the practitioner`'s `role` EQUALS `a partner of the accounting firm`)
+             AND `the practitioner`'s `held that role at the time of the appointment`
+             AND `the practitioner`'s `was a public accountant at the time of the appointment`
+    WHEN `an accounting corporation`
+        THEN     (    `the practitioner`'s `role` EQUALS `a director of the accounting corporation`
+                  OR  `the practitioner`'s `role` EQUALS `an employee of the accounting corporation`)
+             AND `the practitioner`'s `is practising as a public accountant in the entity now`
+    OTHERWISE FALSE
+
+-- The gap, stated as a function so it can be asserted.
+GIVETH A BOOLEAN
+DECIDE `section 10 says who is appointed when an accounting limited liability partnership is appointed in its own name` IF
+    FALSE

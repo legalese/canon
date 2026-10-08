@@ -1,0 +1,311 @@
+IMPORT prelude
+IMPORT `coa-definitions`
+IMPORT `coa-groups`
+
+-- Companies Act 1967, sections 5, 5A, 5B and 6 -- worked cases.
+--
+-- Every assertion is a claim about the ENCODING on stated facts, not about the law.
+
+§ `Fixtures -- holdings`
+
+GIVEN `held by` IS A HolderKind,
+      `percentage` IS A NUMBER,
+      `fiduciary` IS A BOOLEAN,
+      `by debenture provisions` IS A BOOLEAN,
+      `by lender security` IS A BOOLEAN
+GIVETH A Holding
+DECIDE `a holding` `held by` `percentage` `fiduciary` `by debenture provisions` `by lender security` IS
+    Holding WITH
+        `held by` IS `held by`
+        `voting power, as a percentage of all the voting power in the child` IS `percentage`
+        `held or exercisable only in a fiduciary capacity by the parent or by the subsidiary concerned` IS `fiduciary`
+        `held by virtue of the provisions of debentures of the child or of a trust deed securing them` IS `by debenture provisions`
+        `held by way of security only, for a transaction in the ordinary course of a lending business of the parent or the subsidiary` IS `by lender security`
+
+`60% held by the parent` MEANS `a holding` `the parent itself` 60 FALSE FALSE FALSE
+`50% held by the parent` MEANS `a holding` `the parent itself` 50 FALSE FALSE FALSE
+`50.01% held by the parent` MEANS `a holding` `the parent itself` 50.01 FALSE FALSE FALSE
+`30% held by the parent` MEANS `a holding` `the parent itself` 30 FALSE FALSE FALSE
+`25% held by a nominee of the parent` MEANS `a holding` `a nominee of the parent` 25 FALSE FALSE FALSE
+`25% held by a subsidiary of the parent` MEANS `a holding` `a subsidiary of the parent` 25 FALSE FALSE FALSE
+`25% held by a nominee of a subsidiary of the parent` MEANS `a holding` `a nominee of a subsidiary of the parent` 25 FALSE FALSE FALSE
+`25% held by a subsidiary that holds only as a fiduciary` MEANS `a holding` `a subsidiary of the parent` 25 TRUE FALSE FALSE
+`60% held by the parent only as a fiduciary` MEANS `a holding` `the parent itself` 60 TRUE FALSE FALSE
+`60% held by virtue of debentures or a trust deed securing them` MEANS `a holding` `the parent itself` 60 FALSE TRUE FALSE
+`60% held by a lender as security in the ordinary course` MEANS `a holding` `the parent itself` 60 FALSE FALSE TRUE
+`60% held by someone else` MEANS `a holding` `someone else` 60 FALSE FALSE FALSE
+
+§ `Fixtures -- control links`
+
+GIVEN `the parent` IS A STRING,
+      `the child` IS A STRING,
+      `the parent is a corporation` IS A BOOLEAN,
+      `the child is a corporation` IS A BOOLEAN,
+      `can appoint or remove` IS A BOOLEAN,
+      `cannot be appointed without it` IS A BOOLEAN,
+      `follows necessarily` IS A BOOLEAN,
+      `the holdings` IS A LIST OF Holding
+GIVETH A Control
+DECIDE `a link` `the parent` `the child` `the parent is a corporation` `the child is a corporation` `can appoint or remove` `cannot be appointed without it` `follows necessarily` `the holdings` IS
+    Control WITH
+        `the parent` IS `the parent`
+        `the child` IS `the child`
+        `the parent is a corporation within section 4(1)` IS `the parent is a corporation`
+        `the child is a corporation within section 4(1)` IS `the child is a corporation`
+        `the parent can appoint or remove all or a majority of the directors by a power exercisable without anyone else's consent` IS `can appoint or remove`
+        `a majority of the directors cannot be appointed without the parent exercising such a power in their favour` IS `cannot be appointed without it`
+        `the appointment of a majority of the directors follows necessarily from their being directors or officers of the parent` IS `follows necessarily`
+        `the holdings in the child` IS `the holdings`
+
+-- A share link: parent and child both corporations, voting power only.
+GIVEN `the parent` IS A STRING, `the child` IS A STRING, `the holdings` IS A LIST OF Holding
+GIVETH A Control
+DECIDE `a share link` `the parent` `the child` `the holdings` IS
+    `a link` `the parent` `the child` TRUE TRUE FALSE FALSE FALSE `the holdings`
+
+`P controls C by 60%` MEANS `a share link` "P" "C" (LIST `60% held by the parent`)
+`P holds exactly 50% of C` MEANS `a share link` "P" "C" (LIST `50% held by the parent`)
+`P holds 50.01% of C` MEANS `a share link` "P" "C" (LIST `50.01% held by the parent`)
+`P holds 30% itself and 25% through a nominee` MEANS `a share link` "P" "C" (LIST `30% held by the parent`, `25% held by a nominee of the parent`)
+`P holds 30% itself and 25% through a subsidiary` MEANS `a share link` "P" "C" (LIST `30% held by the parent`, `25% held by a subsidiary of the parent`)
+`P holds 30% itself and 25% through a subsidiary's nominee` MEANS `a share link` "P" "C" (LIST `30% held by the parent`, `25% held by a nominee of a subsidiary of the parent`)
+`P holds 30% itself and a subsidiary holds 25% only as a fiduciary` MEANS `a share link` "P" "C" (LIST `30% held by the parent`, `25% held by a subsidiary that holds only as a fiduciary`)
+`P holds 60% only as a fiduciary` MEANS `a share link` "P" "C" (LIST `60% held by the parent only as a fiduciary`)
+`P holds 60% by virtue of debentures` MEANS `a share link` "P" "C" (LIST `60% held by virtue of debentures or a trust deed securing them`)
+`P holds 60% as a lender's security` MEANS `a share link` "P" "C" (LIST `60% held by a lender as security in the ordinary course`)
+`someone else holds 60% of C` MEANS `a share link` "P" "C" (LIST `60% held by someone else`)
+`P appoints the board` MEANS `a link` "P" "C" TRUE TRUE TRUE FALSE FALSE EMPTY
+`P's consent is needed for any director` MEANS `a link` "P" "C" TRUE TRUE FALSE TRUE FALSE EMPTY
+`P's officers become C's directors automatically` MEANS `a link` "P" "C" TRUE TRUE FALSE FALSE TRUE EMPTY
+`P has no control of any kind` MEANS `a link` "P" "C" TRUE TRUE FALSE FALSE FALSE EMPTY
+`P is a limited liability partnership with 100%` MEANS `a link` "P" "C" FALSE TRUE FALSE FALSE FALSE (LIST (`a holding` `the parent itself` 100 FALSE FALSE FALSE))
+`C is a cooperative society, P has 100%` MEANS `a link` "P" "C" TRUE FALSE FALSE FALSE FALSE (LIST (`a holding` `the parent itself` 100 FALSE FALSE FALSE))
+
+§ `Sections 5(1)(a), 5(2), 5(3) -- direct control`
+
+#ASSERT `the child is a direct subsidiary of the parent` `P controls C by 60%`
+
+-- "More than half": exactly 50% is not enough, 50.01% is.
+#ASSERT NOT `the parent controls more than half of the voting power` `P holds exactly 50% of C`
+#ASSERT NOT `the child is a direct subsidiary of the parent` `P holds exactly 50% of C`
+#ASSERT `the child is a direct subsidiary of the parent` `P holds 50.01% of C`
+
+-- s 5(3)(b): shares held by a nominee of the parent, or by a subsidiary or its
+-- nominee, count as the parent's.
+#ASSERT `the voting power that counts` (LIST `30% held by the parent`, `25% held by a nominee of the parent`) EQUALS 55
+#ASSERT `the child is a direct subsidiary of the parent` `P holds 30% itself and 25% through a nominee`
+#ASSERT `the child is a direct subsidiary of the parent` `P holds 30% itself and 25% through a subsidiary`
+#ASSERT `the child is a direct subsidiary of the parent` `P holds 30% itself and 25% through a subsidiary's nominee`
+
+-- ... but not where the subsidiary is concerned only in a fiduciary capacity.
+#ASSERT `the voting power that counts` (LIST `30% held by the parent`, `25% held by a subsidiary that holds only as a fiduciary`) EQUALS 30
+#ASSERT NOT `the child is a direct subsidiary of the parent` `P holds 30% itself and a subsidiary holds 25% only as a fiduciary`
+
+-- s 5(3)(a), (c), (d): fiduciary, debenture-trust and lender-security holdings do not count.
+#ASSERT NOT `the child is a direct subsidiary of the parent` `P holds 60% only as a fiduciary`
+#ASSERT NOT `the child is a direct subsidiary of the parent` `P holds 60% by virtue of debentures`
+#ASSERT NOT `the child is a direct subsidiary of the parent` `P holds 60% as a lender's security`
+#ASSERT NOT `the child is a direct subsidiary of the parent` `someone else holds 60% of C`
+
+-- s 5(2): control of the board by the three routes, and the case with no control.
+#ASSERT `the child is a direct subsidiary of the parent` `P appoints the board`
+#ASSERT `the child is a direct subsidiary of the parent` `P's consent is needed for any director`
+#ASSERT `the child is a direct subsidiary of the parent` `P's officers become C's directors automatically`
+#ASSERT NOT `the child is a direct subsidiary of the parent` `P has no control of any kind`
+
+-- Both parties must be "corporations". A limited liability partnership with 100%, and a
+-- cooperative society wholly owned by a company, are outside s 5 altogether.
+#ASSERT NOT `the child is a direct subsidiary of the parent` `P is a limited liability partnership with 100%`
+#ASSERT NOT `the child is a direct subsidiary of the parent` `C is a cooperative society, P has 100%`
+
+§ `Fixtures -- groups`
+
+-- A three-level chain: P holds 60% of S, S holds 60% of C.
+`P to S, S to C` MEANS Group WITH
+    `the links` IS LIST (`a share link` "P" "S" (LIST `60% held by the parent`)), (`a share link` "S" "C" (LIST `60% held by the parent`))
+
+-- A four-level chain: P to S2 to S1 to C.
+`P to S2 to S1 to C` MEANS Group WITH
+    `the links` IS LIST (`a share link` "P" "S2" (LIST `60% held by the parent`)), (`a share link` "S2" "S1" (LIST `60% held by the parent`)), (`a share link` "S1" "C" (LIST `60% held by the parent`))
+
+-- A 50:50 joint venture. Neither parent controls J.
+`A and B each hold 50% of J` MEANS Group WITH
+    `the links` IS LIST (`a share link` "A" "J" (LIST `50% held by the parent`)), (`a share link` "B" "J" (LIST `50% held by the parent`))
+
+-- A joint venture where A also appoints the board.
+`A appoints the board of J, B holds 50%` MEANS Group WITH
+    `the links` IS LIST (`a link` "A" "J" TRUE TRUE TRUE FALSE FALSE EMPTY), (`a share link` "B" "J" (LIST `50% held by the parent`))
+
+-- Both parents control the board of J.
+`A and B both appoint boards of J` MEANS Group WITH
+    `the links` IS LIST (`a link` "A" "J" TRUE TRUE TRUE FALSE FALSE EMPTY), (`a link` "B" "J" TRUE TRUE TRUE FALSE FALSE EMPTY)
+
+-- A cycle: X holds 60% of Y and Y holds 60% of X.
+`X and Y each hold 60% of the other` MEANS Group WITH
+    `the links` IS LIST (`a share link` "X" "Y" (LIST `60% held by the parent`)), (`a share link` "Y" "X" (LIST `60% held by the parent`))
+
+-- A family: P holds A and B, A holds A1; Z is unconnected.
+`P with A and B, A with A1, and Z alone` MEANS Group WITH
+    `the links` IS LIST (`a share link` "P" "A" (LIST `60% held by the parent`)), (`a share link` "P" "B" (LIST `60% held by the parent`)), (`a share link` "A" "A1" (LIST `60% held by the parent`)), (`a share link` "Z" "Z2" (LIST `60% held by the parent`))
+
+`no links at all` MEANS Group WITH `the links` IS EMPTY
+
+§ `Section 5(1)(b) -- a subsidiary of a subsidiary is a subsidiary`
+
+#ASSERT `the number of links` (`P to S, S to C`'s `the links`) EQUALS 2
+#ASSERT `the target is a subsidiary of the parent` `P to S, S to C` "P" "S"
+#ASSERT `the target is a subsidiary of the parent` `P to S, S to C` "S" "C"
+
+-- C is a subsidiary of P only because of s 5(1)(b); P holds no shares in C directly.
+#ASSERT `the target is a subsidiary of the parent` `P to S, S to C` "P" "C"
+#ASSERT NOT `the target is a subsidiary of the parent` `P to S, S to C` "C" "P"
+#ASSERT NOT `the target is a subsidiary of the parent` `P to S, S to C` "S" "P"
+
+-- Three removes.
+#ASSERT `the target is a subsidiary of the parent` `P to S2 to S1 to C` "P" "C"
+#ASSERT `the target is a subsidiary of the parent` `P to S2 to S1 to C` "S2" "C"
+
+-- s 5(4): holding company is the converse and is equally transitive.
+#ASSERT `the candidate is a holding company of the company` `P to S, S to C` "P" "C"
+#ASSERT `the candidate is a holding company of the company` `P to S, S to C` "S" "C"
+#ASSERT NOT `the candidate is a holding company of the company` `P to S, S to C` "C" "P"
+
+-- A 50:50 joint venture has no holding company at all.
+#ASSERT NOT `the target is a subsidiary of the parent` `A and B each hold 50% of J` "A" "J"
+#ASSERT NOT `the target is a subsidiary of the parent` `A and B each hold 50% of J` "B" "J"
+#ASSERT NOT `the candidate is a holding company of the company` `A and B each hold 50% of J` "A" "J"
+
+-- Add board control and one parent is the holding company of J and the other is not.
+#ASSERT `the candidate is a holding company of the company` `A appoints the board of J, B holds 50%` "A" "J"
+#ASSERT NOT `the candidate is a holding company of the company` `A appoints the board of J, B holds 50%` "B" "J"
+
+-- Both parents can control the board, so J has two holding companies.
+#ASSERT `the candidate is a holding company of the company` `A and B both appoint boards of J` "A" "J"
+#ASSERT `the candidate is a holding company of the company` `A and B both appoint boards of J` "B" "J"
+
+-- A cyclic group terminates and answers.
+#ASSERT `the target is a subsidiary of the parent` `X and Y each hold 60% of the other` "X" "Y"
+#ASSERT `the target is a subsidiary of the parent` `X and Y each hold 60% of the other` "Y" "X"
+
+#ASSERT NOT `the target is a subsidiary of the parent` `no links at all` "P" "C"
+
+-- s 5(5): the Depository, by reason only of shares held as a bare trustee.
+#ASSERT NOT `the Depository is regarded as a holding company of the corporation` TRUE
+#ASSERT `the Depository is regarded as a holding company of the corporation` FALSE
+
+§ `Section 5A -- ultimate holding company`
+
+#ASSERT `the candidate is the ultimate holding company of the company` `P to S, S to C` "P" "C"
+#ASSERT `the candidate is the ultimate holding company of the company` `P to S, S to C` "P" "S"
+
+-- S is a holding company of C but is itself a subsidiary of P, so it is not the ultimate one.
+#ASSERT `the candidate is a holding company of the company` `P to S, S to C` "S" "C"
+#ASSERT NOT `the candidate is the ultimate holding company of the company` `P to S, S to C` "S" "C"
+
+-- P is a subsidiary of no corporation in the group.
+#ASSERT NOT `some link makes the named corporation a direct subsidiary` "P" (`P to S, S to C`'s `the links`)
+#ASSERT `some link makes the named corporation a direct subsidiary` "S" (`P to S, S to C`'s `the links`)
+#ASSERT `some link makes the named corporation a direct subsidiary` "C" (`P to S, S to C`'s `the links`)
+
+-- J has two ultimate holding companies where both parents control its board and
+-- neither has a parent.
+#ASSERT `the candidate is the ultimate holding company of the company` `A and B both appoint boards of J` "A" "J"
+#ASSERT `the candidate is the ultimate holding company of the company` `A and B both appoint boards of J` "B" "J"
+
+-- A cycle has no ultimate holding company, since each is a subsidiary of the other.
+#ASSERT NOT `the candidate is the ultimate holding company of the company` `X and Y each hold 60% of the other` "X" "Y"
+#ASSERT NOT `the candidate is the ultimate holding company of the company` `X and Y each hold 60% of the other` "Y" "X"
+
+§ `Fixtures -- members of a wholly owned subsidiary`
+
+GIVEN `who` IS AN Occupant, `its members` IS A LIST OF Occupant
+GIVETH A Member
+DECIDE `a member` `who` `its members` IS
+    Member WITH
+        `who it is` IS `who`
+        `the members of the subsidiary concerned` IS `its members`
+
+`the parent as a member` MEANS `a member` `the other corporation itself` EMPTY
+`a nominee of the parent as a member` MEANS `a member` `a nominee of the other corporation` EMPTY
+`an outsider as a member` MEANS `a member` `any other person` EMPTY
+
+-- A subsidiary of the parent whose own members are the parent and a nominee.
+`a subsidiary owned by the parent and its nominee` MEANS `a member` `a subsidiary of the other corporation` (LIST `the other corporation itself`, `a nominee of the other corporation`)
+-- A subsidiary of the parent that has an outsider among its members.
+`a subsidiary with an outsider among its members` MEANS `a member` `a subsidiary of the other corporation` (LIST `the other corporation itself`, `any other person`)
+-- A subsidiary of the parent whose member is another subsidiary: the three-tier case.
+`a subsidiary owned by another subsidiary` MEANS `a member` `a subsidiary of the other corporation` (LIST `a subsidiary of the other corporation`)
+`a nominee for a subsidiary owned by the parent` MEANS `a member` `a nominee of a subsidiary of the other corporation` (LIST `the other corporation itself`)
+`a nominee for a subsidiary owned by another subsidiary` MEANS `a member` `a nominee of a subsidiary of the other corporation` (LIST `a subsidiary of the other corporation`)
+
+§ `Section 5B -- wholly owned subsidiary`
+
+#ASSERT `every member is one that section 5B allows` (LIST `the parent as a member`)
+#ASSERT `every member is one that section 5B allows` (LIST `the parent as a member`, `a nominee of the parent as a member`)
+#ASSERT `every member is one that section 5B allows` (LIST `a subsidiary owned by the parent and its nominee`)
+#ASSERT `every member is one that section 5B allows` (LIST `a nominee for a subsidiary owned by the parent`)
+#ASSERT `every member is one that section 5B allows` EMPTY
+
+#ASSERT NOT `every member is one that section 5B allows` (LIST `the parent as a member`, `an outsider as a member`)
+#ASSERT NOT `every member is one that section 5B allows` (LIST `a subsidiary with an outsider among its members`)
+
+-- THE THREE-TIER CASE. Limb (c) admits a subsidiary only if its members are the parent
+-- or the parent's nominee. A subsidiary whose member is another subsidiary is not admitted.
+#ASSERT NOT `every member is one that section 5B allows` (LIST `a subsidiary owned by another subsidiary`)
+#ASSERT NOT `every member is one that section 5B allows` (LIST `a nominee for a subsidiary owned by another subsidiary`)
+
+-- C's only member is S, which is a subsidiary of P.
+#ASSERT `the child is a wholly owned subsidiary of the parent` `P to S, S to C` "S" "C" (LIST `the parent as a member`)
+#ASSERT `the child is a wholly owned subsidiary of the parent` `P to S, S to C` "P" "S" (LIST `the parent as a member`)
+
+-- P's only member in C is S, a subsidiary of P whose own members are P. That is two tiers.
+#ASSERT `the child is a wholly owned subsidiary of the parent` `P to S, S to C` "P" "C" (LIST `a subsidiary owned by the parent and its nominee`)
+
+-- In the four-level chain P to S2 to S1 to C, every share belongs to the group, and C
+-- is nonetheless not a wholly owned subsidiary of P, because S1's member is S2.
+#ASSERT `the target is a subsidiary of the parent` `P to S2 to S1 to C` "P" "C"
+#ASSERT NOT `the child is a wholly owned subsidiary of the parent` `P to S2 to S1 to C` "P" "C" (LIST `a subsidiary owned by another subsidiary`)
+#ASSERT `the child is a wholly owned subsidiary of the parent` `P to S2 to S1 to C` "S1" "C" (LIST `the parent as a member`)
+
+-- It must first be a subsidiary at all.
+#ASSERT NOT `the child is a wholly owned subsidiary of the parent` `no links at all` "P" "C" (LIST `the parent as a member`)
+
+§ `Section 6 -- related corporations`
+
+-- (a) and (b): the holding company and its subsidiary, either way round.
+#ASSERT `the first and the second are related corporations` `P with A and B, A with A1, and Z alone` "P" "A"
+#ASSERT `the first and the second are related corporations` `P with A and B, A with A1, and Z alone` "A" "P"
+
+-- Not only the direct subsidiary: the holding company is related to every subsidiary below.
+#ASSERT `the first and the second are related corporations` `P with A and B, A with A1, and Z alone` "P" "A1"
+#ASSERT `the first and the second are related corporations` `P with A and B, A with A1, and Z alone` "A1" "P"
+
+-- (c): two subsidiaries of the same holding company.
+#ASSERT `the first and the second are related corporations` `P with A and B, A with A1, and Z alone` "A" "B"
+#ASSERT `the first and the second are related corporations` `P with A and B, A with A1, and Z alone` "B" "A"
+
+-- Because "holding company" is transitive, an uncle and a nephew, and cousins at
+-- different depths, are related too.
+#ASSERT `the first and the second are related corporations` `P with A and B, A with A1, and Z alone` "A1" "B"
+#ASSERT `the first and the second are related corporations` `P with A and B, A with A1, and Z alone` "B" "A1"
+
+-- An unconnected corporation is related to nobody.
+#ASSERT NOT `the first and the second are related corporations` `P with A and B, A with A1, and Z alone` "A" "Z"
+#ASSERT NOT `the first and the second are related corporations` `P with A and B, A with A1, and Z alone` "P" "Z"
+#ASSERT NOT `the first and the second are related corporations` `P with A and B, A with A1, and Z alone` "A1" "Z"
+
+-- Z's own subsidiary is related to Z and to nobody in the other family.
+#ASSERT `the first and the second are related corporations` `P with A and B, A with A1, and Z alone` "Z" "Z2"
+#ASSERT NOT `the first and the second are related corporations` `P with A and B, A with A1, and Z alone` "Z2" "A"
+
+-- The two parents of a 50:50 joint venture are not related to each other by s 6, because
+-- neither holds the joint venture and so they share no holding company.
+#ASSERT NOT `the first and the second are related corporations` `A and B each hold 50% of J` "A" "B"
+#ASSERT NOT `the first and the second are related corporations` `A and B each hold 50% of J` "A" "J"
+
+-- But where both control the board of J they are both its holding companies, and still
+-- not related to each other: s 6(c) relates two SUBSIDIARIES of a common holding
+-- company, and neither A nor B is a subsidiary of anyone.
+#ASSERT NOT `the first and the second are related corporations` `A and B both appoint boards of J` "A" "B"
+#ASSERT `the first and the second are related corporations` `A and B both appoint boards of J` "A" "J"
+#ASSERT `the first and the second are related corporations` `A and B both appoint boards of J` "B" "J"

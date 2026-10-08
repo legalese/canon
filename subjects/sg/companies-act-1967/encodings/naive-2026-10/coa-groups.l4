@@ -1,0 +1,335 @@
+IMPORT prelude
+IMPORT `coa-definitions`
+
+-- Companies Act 1967 (Singapore) -- sections 5, 5A, 5B and 6: subsidiary, holding
+-- company, ultimate holding company, wholly owned subsidiary, and related
+-- corporation.
+--
+-- These four sections are what 154 other Acts mean when they say "subsidiary",
+-- "holding company" or "related corporation" without defining it.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules
+-- skill. No pipeline, no coverage table, no independent test pass, no human gate.
+--
+-- THE MODEL. A group is a list of direct control links, each saying whether one named
+-- corporation controls another by one of the two routes in s 5(1)(a). The links are
+-- taken as COMPLETE: a relationship not in the list does not exist. s 5(1)(b) makes
+-- "subsidiary" transitive, which the encoding follows through the list; the
+-- recursion is bounded by the number of links so a cyclic group cannot loop.
+
+§ `Companies Act 1967 -- ss 5, 5A, 5B and 6`
+
+§§ `5(1)(a), 5(2) -- control of the board`
+
+-- s 5(2): "the composition of a corporation's board of directors is deemed to be
+-- controlled by another corporation if that other corporation BY THE EXERCISE OF SOME
+-- POWER EXERCISABLE BY IT WITHOUT THE CONSENT OR CONCURRENCE OF ANY OTHER PERSON can
+-- appoint or remove ALL OR A MAJORITY of the directors, and for the purposes of this
+-- provision that other corporation is DEEMED TO HAVE POWER TO MAKE SUCH AN
+-- APPOINTMENT if --
+--   (a) a person cannot be appointed as a director without the exercise in his or her
+--       favour by that other corporation of such a power; or
+--   (b) a person's appointment as a director follows necessarily from his or her
+--       being a director or other officer of that other corporation."
+--
+-- The deeming is of the power to MAKE AN APPOINTMENT, not of the power to remove, and
+-- it is expressed person by person ("a person cannot be appointed ..."), while the
+-- control test is "all or a majority". The encoding reads limbs (a) and (b) as
+-- applying to a majority of the directors, which is the only reading under which
+-- they bear on the control test; a single director appointed by the parent under (a)
+-- would not by itself make a parent of the corporation. That is a reading.
+DECLARE HolderKind IS ONE OF
+    `the parent itself`
+    `a nominee of the parent`
+    `a subsidiary of the parent`
+    `a nominee of a subsidiary of the parent`
+    `someone else`
+
+-- s 5(1)(a)(ii): "controls more than half of the voting power". s 5(3) says which
+-- shares and which power count, and the five rules are carried on each holding.
+DECLARE Holding HAS
+    `held by` IS A HolderKind
+    `voting power, as a percentage of all the voting power in the child` IS A NUMBER
+    `held or exercisable only in a fiduciary capacity by the parent or by the subsidiary concerned` IS A BOOLEAN
+    `held by virtue of the provisions of debentures of the child or of a trust deed securing them` IS A BOOLEAN
+    `held by way of security only, for a transaction in the ordinary course of a lending business of the parent or the subsidiary` IS A BOOLEAN
+
+DECLARE Control HAS
+    `the parent` IS A STRING
+    `the child` IS A STRING
+    `the parent is a corporation within section 4(1)` IS A BOOLEAN
+    `the child is a corporation within section 4(1)` IS A BOOLEAN
+    `the parent can appoint or remove all or a majority of the directors by a power exercisable without anyone else's consent` IS A BOOLEAN
+    `a majority of the directors cannot be appointed without the parent exercising such a power in their favour` IS A BOOLEAN
+    `the appointment of a majority of the directors follows necessarily from their being directors or officers of the parent` IS A BOOLEAN
+    `the holdings in the child` IS A LIST OF Holding
+
+DECLARE Group HAS
+    `the links` IS A LIST OF Control
+
+§§ `5(3) -- which shares and which power are counted`
+
+-- s 5(3): "In determining whether one corporation is a subsidiary of another
+-- corporation --
+--   (a) any shares held or power exercisable by that other corporation in a FIDUCIARY
+--       CAPACITY is to be treated as NOT held or exercisable by it;
+--   (b) subject to paragraphs (c) and (d), any shares held or power exercisable --
+--       (i) by any person as a NOMINEE for that other corporation (except where that
+--           other corporation is concerned only in a fiduciary capacity); or
+--       (ii) by, or by a nominee for, a SUBSIDIARY of that other corporation, not
+--            being a subsidiary which is concerned only in a fiduciary capacity,
+--       is to be treated as held or exercisable by that other corporation;
+--   (c) any shares held or power exercisable by any person BY VIRTUE OF THE PROVISIONS
+--       OF ANY DEBENTURES of the firstmentioned corporation or of a TRUST DEED for
+--       securing any issue of such debentures is to be DISREGARDED; and
+--   (d) any shares held or power exercisable by, or by a nominee for, that other
+--       corporation or its subsidiary (not being held or exercisable as mentioned in
+--       paragraph (c)) is to be treated as NOT held or exercisable by that other
+--       corporation if the ordinary business of that other corporation or its
+--       subsidiary includes the LENDING OF MONEY and the shares are held ... by way
+--       of security only for the purposes of a transaction entered into in the
+--       ordinary course of that business."
+--
+-- THE CIRCULARITY. Limb (b)(ii) counts shares held by "a subsidiary of that other
+-- corporation". Whether a corporation is a subsidiary of the parent is the very
+-- question s 5(1) is answering, so determining whether C is a subsidiary of P can
+-- depend on whether S is a subsidiary of P, which can depend on C. The Act gives no
+-- order of determination. The encoding avoids the loop by taking the status of the
+-- holder as a supplied fact (the holder kind), and records the circularity in NOTES.md.
+GIVEN `the holding` IS A Holding
+GIVETH A BOOLEAN
+DECIDE `the holding counts towards the parent's voting power` IF
+        NOT (`the holding`'s `held by` EQUALS `someone else`)
+    AND NOT `the holding`'s `held or exercisable only in a fiduciary capacity by the parent or by the subsidiary concerned`
+    AND NOT `the holding`'s `held by virtue of the provisions of debentures of the child or of a trust deed securing them`
+    AND NOT `the holding`'s `held by way of security only, for a transaction in the ordinary course of a lending business of the parent or the subsidiary`
+
+GIVEN `the holdings` IS A LIST OF Holding
+GIVETH A NUMBER
+DECIDE `the voting power that counts` IS
+    CONSIDER `the holdings`
+    WHEN EMPTY THEN 0
+    WHEN `h` FOLLOWED BY `rest`
+        THEN (IF `the holding counts towards the parent's voting power` `h`
+              THEN `h`'s `voting power, as a percentage of all the voting power in the child`
+              ELSE 0)
+             PLUS `the voting power that counts` `rest`
+
+§§ `5(1)(a) -- direct control`
+
+GIVEN `the link` IS A Control
+GIVETH A BOOLEAN
+DECIDE `the parent controls the composition of the board` IF
+        `the link`'s `the parent can appoint or remove all or a majority of the directors by a power exercisable without anyone else's consent`
+    OR  `the link`'s `a majority of the directors cannot be appointed without the parent exercising such a power in their favour`
+    OR  `the link`'s `the appointment of a majority of the directors follows necessarily from their being directors or officers of the parent`
+
+-- s 5(1)(a)(ii): MORE than half. At exactly 50% neither of two joint-venture parents
+-- controls the voting power, and unless one of them controls the board neither is a
+-- holding company.
+GIVEN `the link` IS A Control
+GIVETH A BOOLEAN
+DECIDE `the parent controls more than half of the voting power` IF
+    `the voting power that counts` (`the link`'s `the holdings in the child`) GREATER THAN 50
+
+-- Both bodies have to be "corporations" for the purposes of the Act. A company wholly
+-- owned by a cooperative society, a registered trade union or a limited liability
+-- partnership is therefore not its subsidiary, because those are outside the
+-- definition of "corporation" in s 4(1).
+GIVEN `the link` IS A Control
+GIVETH A BOOLEAN
+DECIDE `the child is a direct subsidiary of the parent` IF
+        `the link`'s `the parent is a corporation within section 4(1)`
+    AND `the link`'s `the child is a corporation within section 4(1)`
+    AND (    `the parent controls the composition of the board` `the link`
+         OR  `the parent controls more than half of the voting power` `the link`)
+
+§§ `5(1)(b) -- a subsidiary of a subsidiary is a subsidiary`
+
+GIVEN `the links` IS A LIST OF Control
+GIVETH A NUMBER
+DECIDE `the number of links` IS
+    CONSIDER `the links`
+    WHEN EMPTY THEN 0
+    WHEN `l` FOLLOWED BY `rest` THEN 1 PLUS `the number of links` `rest`
+
+-- Is there, among the links still to be looked at, one from `the parent` that is a
+-- direct subsidiary relationship, and whose child is the target or a subsidiary of
+-- the target? `the group` carries the whole list so each step can start again from
+-- the top, and the list being walked comes last in the parameters.
+GIVEN `the parent` IS A STRING,
+      `the target` IS A STRING,
+      `fuel` IS A NUMBER,
+      `the group` IS A Group,
+      `the remaining links` IS A LIST OF Control
+GIVETH A BOOLEAN
+DECIDE `a chain of control leads from the parent to the target` IS
+    CONSIDER `the remaining links`
+    WHEN EMPTY THEN FALSE
+    WHEN `l` FOLLOWED BY `rest`
+        THEN     (    `l`'s `the parent` EQUALS `the parent`
+                  AND `the child is a direct subsidiary of the parent` `l`
+                  AND (    `l`'s `the child` EQUALS `the target`
+                       OR  (    `fuel` GREATER THAN 0
+                            AND `a chain of control leads from the parent to the target` (`l`'s `the child`) `the target` (`fuel` MINUS 1) `the group` (`the group`'s `the links`))))
+             OR  `a chain of control leads from the parent to the target` `the parent` `the target` `fuel` `the group` `rest`
+
+GIVEN `the group` IS A Group, `the parent` IS A STRING, `the target` IS A STRING
+GIVETH A BOOLEAN
+DECIDE `the target is a subsidiary of the parent` IF
+    `a chain of control leads from the parent to the target` `the parent` `the target` (`the number of links` (`the group`'s `the links`)) `the group` (`the group`'s `the links`)
+
+-- s 5(4): "A reference in this Act to the holding company of a company or other
+-- corporation is a reference to a corporation of which that last mentioned company or
+-- corporation is a subsidiary." So holding company is the converse of subsidiary and
+-- is just as transitive: every corporation up the chain is a holding company.
+GIVEN `the group` IS A Group, `the candidate` IS A STRING, `the company` IS A STRING
+GIVETH A BOOLEAN
+DECIDE `the candidate is a holding company of the company` IF
+    `the target is a subsidiary of the parent` `the group` `the candidate` `the company`
+
+-- s 5(5): "the Depository is not to be regarded as a holding company of a corporation by
+-- reason only of the shares it holds in that corporation as a bare trustee."
+GIVEN `its only connection with the corporation is shares it holds as a bare trustee` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Depository is regarded as a holding company of the corporation` IF
+    NOT `its only connection with the corporation is shares it holds as a bare trustee`
+
+§§ `5A -- ultimate holding company`
+
+-- s 5A: "a corporation is the ultimate holding company of another corporation if --
+--   (a) the other corporation is a subsidiary of the firstmentioned corporation; and
+--   (b) the firstmentioned corporation is NOT ITSELF A SUBSIDIARY of any corporation."
+--
+-- Limb (b) quantifies over "any corporation", so the group has to be complete. A
+-- corporation is a subsidiary of some corporation exactly when it is the child of a
+-- direct subsidiary relationship somewhere in the list (the last link of any chain is
+-- a direct one).
+GIVEN `the name` IS A STRING, `the remaining links` IS A LIST OF Control
+GIVETH A BOOLEAN
+DECIDE `some link makes the named corporation a direct subsidiary` IS
+    CONSIDER `the remaining links`
+    WHEN EMPTY THEN FALSE
+    WHEN `l` FOLLOWED BY `rest`
+        THEN     (`l`'s `the child` EQUALS `the name` AND `the child is a direct subsidiary of the parent` `l`)
+             OR  `some link makes the named corporation a direct subsidiary` `the name` `rest`
+
+GIVEN `the group` IS A Group, `the candidate` IS A STRING, `the company` IS A STRING
+GIVETH A BOOLEAN
+DECIDE `the candidate is the ultimate holding company of the company` IF
+        `the target is a subsidiary of the parent` `the group` `the candidate` `the company`
+    AND NOT `some link makes the named corporation a direct subsidiary` `the candidate` (`the group`'s `the links`)
+
+§§ `5B -- wholly owned subsidiary`
+
+-- s 5B: "a corporation is a wholly owned subsidiary of another corporation if NONE OF
+-- THE MEMBERS of the firstmentioned corporation is a person other than --
+--   (a) that other corporation;
+--   (b) a nominee of that other corporation;
+--   (c) a subsidiary of that other corporation BEING A SUBSIDIARY NONE OF THE MEMBERS
+--       OF WHICH IS A PERSON OTHER THAN THAT OTHER CORPORATION OR A NOMINEE OF THAT
+--       OTHER CORPORATION; or
+--   (d) a nominee of such subsidiary."
+--
+-- THIS SECTION IS NOT TRANSITIVE, AND THAT MATTERS. Limb (c) admits a subsidiary as a
+-- member only if ITS OWN members are the parent or the parent's nominees. It admits no
+-- subsidiary whose members are themselves intermediate subsidiaries. So in a chain
+--     P --100%--> S2 --100%--> S1 --100%--> C
+-- the corporation C has a single member, S1. S1 is a subsidiary of P, but S1's only
+-- member is S2, "a person other than" P or P's nominee. So S1 fails limb (c) and C is
+-- NOT a wholly owned subsidiary of P, although every share in the chain is held by
+-- the one group. C is a wholly owned subsidiary of S1, and S1 of S2, and S2 of P, but
+-- s 5B contains no equivalent of s 5(1)(b) to carry the status upwards.
+--
+-- The evident intention was almost certainly otherwise. The encoding follows the words
+-- and asserts the three-tier chain as the case where they part from the intention.
+DECLARE Occupant IS ONE OF
+    `the other corporation itself`
+    `a nominee of the other corporation`
+    `a subsidiary of the other corporation`
+    `a nominee of a subsidiary of the other corporation`
+    `any other person`
+
+GIVEN `who` IS AN Occupant
+GIVETH A BOOLEAN
+DECIDE `the occupant is the other corporation or its nominee` IF
+    CONSIDER `who`
+    WHEN `the other corporation itself` THEN TRUE
+    WHEN `a nominee of the other corporation` THEN TRUE
+    OTHERWISE FALSE
+
+DECLARE Member HAS
+    `who it is` IS AN Occupant
+    `the members of the subsidiary concerned` IS A LIST OF Occupant
+
+GIVEN `the occupants` IS A LIST OF Occupant
+GIVETH A BOOLEAN
+DECIDE `every occupant is the other corporation or its nominee` IS
+    CONSIDER `the occupants`
+    WHEN EMPTY THEN TRUE
+    WHEN `o` FOLLOWED BY `rest`
+        THEN     `the occupant is the other corporation or its nominee` `o`
+             AND `every occupant is the other corporation or its nominee` `rest`
+
+GIVEN `the member` IS A Member
+GIVETH A BOOLEAN
+DECIDE `this member is one that section 5B allows` IF
+    CONSIDER `the member`'s `who it is`
+    WHEN `the other corporation itself` THEN TRUE
+    WHEN `a nominee of the other corporation` THEN TRUE
+    WHEN `a subsidiary of the other corporation`
+        THEN `every occupant is the other corporation or its nominee` (`the member`'s `the members of the subsidiary concerned`)
+    WHEN `a nominee of a subsidiary of the other corporation`
+        THEN `every occupant is the other corporation or its nominee` (`the member`'s `the members of the subsidiary concerned`)
+    OTHERWISE FALSE
+
+GIVEN `the members` IS A LIST OF Member
+GIVETH A BOOLEAN
+DECIDE `every member is one that section 5B allows` IS
+    CONSIDER `the members`
+    WHEN EMPTY THEN TRUE
+    WHEN `m` FOLLOWED BY `rest`
+        THEN     `this member is one that section 5B allows` `m`
+             AND `every member is one that section 5B allows` `rest`
+
+-- The Act says "a subsidiary of that other corporation", so the corporation must
+-- first be a subsidiary at all (it cannot be wholly owned without being one).
+GIVEN `the group` IS A Group,
+      `the parent` IS A STRING,
+      `the child` IS A STRING,
+      `the members of the child` IS A LIST OF Member
+GIVETH A BOOLEAN
+DECIDE `the child is a wholly owned subsidiary of the parent` IF
+        `every member is one that section 5B allows` `the members of the child`
+    AND `the target is a subsidiary of the parent` `the group` `the parent` `the child`
+
+§§ `6 -- related corporations`
+
+-- s 6: "Where a corporation --
+--   (a) is the holding company of another corporation;
+--   (b) is a subsidiary of another corporation; or
+--   (c) is a subsidiary of the holding company of another corporation,
+-- that firstmentioned corporation and that other corporation are for the purposes of
+-- this Act deemed to be related to each other."
+--
+-- Limb (c) makes two subsidiaries of a common holding company related, and
+-- "holding company" is transitive by s 5(4). So any two corporations that share a
+-- holding company anywhere above them are related: cousins at different depths of one
+-- group are related to each other as much as sisters. The holding company has to be a
+-- corporation that appears as a parent in the group, and the loop walks the parents.
+GIVEN `the group` IS A Group, `the first` IS A STRING, `the second` IS A STRING, `the remaining links` IS A LIST OF Control
+GIVETH A BOOLEAN
+DECIDE `they share a holding company in the links` IS
+    CONSIDER `the remaining links`
+    WHEN EMPTY THEN FALSE
+    WHEN `l` FOLLOWED BY `rest`
+        THEN     (    `the candidate is a holding company of the company` `the group` (`l`'s `the parent`) `the first`
+                  AND `the candidate is a holding company of the company` `the group` (`l`'s `the parent`) `the second`)
+             OR  `they share a holding company in the links` `the group` `the first` `the second` `rest`
+
+GIVEN `the group` IS A Group, `the first` IS A STRING, `the second` IS A STRING
+GIVETH A BOOLEAN
+DECIDE `the first and the second are related corporations` IF
+        `the candidate is a holding company of the company` `the group` `the first` `the second`
+    OR  `the candidate is a holding company of the company` `the group` `the second` `the first`
+    OR  `they share a holding company in the links` `the group` `the first` `the second` (`the group`'s `the links`)
