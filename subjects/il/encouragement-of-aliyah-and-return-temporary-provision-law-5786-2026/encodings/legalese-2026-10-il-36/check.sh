@@ -29,6 +29,10 @@ L4="${L4:-l4}"
 expected_failed() {
   case "$1" in
     # tests-red.l4) echo 3 ;;
+    # tests-independent.l4 (fid-il-36, run IL-56-36-20261008) is picked up by the *.l4 glob below.
+    # It expects 0 failed and 0 refused assertions.  Its #ASSERT REFUSED lines (cases C01-C07, A13,
+    # F13, G12, G13, G14 of DECIDED-ANSWERS.md; class AMBIGUITY, forks F5, F4, F7, F9, F8) are
+    # satisfied expectations of a refusal, not refused assertions, so no count is declared for them.
     *) echo 0 ;;
   esac
 }
