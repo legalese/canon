@@ -1,0 +1,878 @@
+-- Residential Tenancies Act 1987 (WA), 07-a0-00, Part IV Division 1 (Rent and security bonds):
+-- ss 27, 27AA, 28, 29 (so far as the bond turns on rent: (1)(b), (2), (3)), 30, 31A, 31B, 31 and 32.
+-- Source: sources/rta-1987.07-a0-00.mrdoc_49316.txt lines 620-749.
+-- Reference register REF-04, -14, -42, -44, -45, -49 (encoded here); the regulations they read are in
+-- regulations-1989.l4, the day a notice is given in part-6-boundary.l4 (s 85), the end of a term and
+-- the currency of a fixed term in part-5-termination.l4 (ss 60, 70A, 76C), and s 30 as in force before
+-- 29 July 2024 with ss 99-100 in part-7-transitional-2024.l4.
+-- The brief for this run (ENCODING-NOTES.md) asks how ss 30, 31A and 31B work across consecutive
+-- agreements; the forks it raises are FK-01 to FK-04, FK-06, FK-13, FK-15 to FK-20, FK-23 to FK-25.
+-- LQA step 4A, 4 October 2026. Not yet through 6H.
+
+IMPORT `part-1-definitions`
+IMPORT `regulations-1989`
+IMPORT `part-6-boundary`
+IMPORT `part-5-termination`
+IMPORT `wa-interpretation-act-extra`
+
+§ `Section 27 -- Restriction on consideration for tenancy agreement`
+
+DECLARE `Kind of amount` IS ONE OF
+    `rent`
+    `a security bond`
+    `consideration for an option to enter into a residential tenancy agreement`
+    `an amount another provision of the Act authorises the lessor to require or receive`
+    `a payment of a prescribed class`
+    `any other amount`
+
+-- What became of an option fee (s 27(2)(a)(i), (ii)).
+DECLARE `What became of an option fee` IS ONE OF
+    `the option was exercised and the fee refunded in cash or applied towards the rent`
+    `the option was exercised and the fee neither refunded in cash nor applied towards the rent`
+    `the option was refused and the fee refunded in cash or by electronic means` HAS
+        `the decision to refuse was made on` IS A NUMBER
+        `refunded on`                        IS A NUMBER
+    `the option was refused and the fee refunded in another way`
+    `the option was refused and the fee not refunded`
+
+DECLARE `Amount required or received` HAS
+    `kind`                                       IS A `Kind of amount`
+    `amount`                                     IS A NUMBER
+    `weekly rent under the agreement`            IS A NUMBER
+    `the premises are south of the 26th parallel` IS A BOOLEAN
+    `what became of the option fee`              IS A `What became of an option fee`
+
+-- s 27(2)(a): an option fee not exceeding the prescribed amount (r 10AD) if it is refunded in cash or
+-- applied towards the rent when the option is exercised, or refunded in cash, electronically or in
+-- another prescribed way within 7 days of the decision to refuse it. No other way is prescribed (REF-26).
+-- The 7 days run from the day after the decision; if the last is an excluded day, the next day that is not
+-- (Interpretation Act s 61(1)(b), (e)).
+@ref Residential Tenancies Act 1987 (WA) s 27(2)(a); Residential Tenancies Regulations 1989 (WA) r 10AD; Interpretation Act 1984 (WA) s 61(1)(b), (e)
+GIVEN x        IS AN `Amount required or received`
+      holidays IS A LIST OF NUMBER
+GIVETH A BOOLEAN
+DECIDE `s 27(2)(a) -- the option fee is excepted` x `, given the holidays` holidays IF
+        x's `kind` EQUALS `consideration for an option to enter into a residential tenancy agreement`
+    AND "not exceeding a prescribed amount"
+    ... x's `amount` AT MOST `r 10AD -- the amount prescribed for s 27(2)(a), at weekly rent` (x's `weekly rent under the agreement`) `south of the 26th parallel:` (x's `the premises are south of the 26th parallel`)
+    AND (CONSIDER x's `what became of the option fee`
+         WHEN `the option was exercised and the fee refunded in cash or applied towards the rent` THEN TRUE
+         WHEN `the option was refused and the fee refunded in cash or by electronic means` d r THEN
+             r AT MOST `the last day for a thing to be done within` 7 `days after day` d `, given the holidays` holidays
+         OTHERWISE FALSE)
+
+-- s 27(1), (2): "A person must not require or receive from a tenant any monetary amount for or in
+-- relation to a residential tenancy agreement other than rent and a security bond", subject to (2).
+-- s 27(2)(b): whether another provision authorises an amount is a fact (REF-27); (2)(d): no class of
+-- payment is prescribed (REF-28).
+@ref Residential Tenancies Act 1987 (WA) s 27(1), (2)(a), (b), (d)
+GIVEN x        IS AN `Amount required or received`
+      holidays IS A LIST OF NUMBER
+GIVETH A BOOLEAN
+DECIDE `s 27 -- requiring or receiving the amount is permitted` x `, given the holidays` holidays IF
+        "other than rent and a security bond" ... x's `kind` EQUALS `rent`
+    ..  x's `kind` EQUALS `a security bond`
+    ..  "(2)(a)" ... `s 27(2)(a) -- the option fee is excepted` x `, given the holidays` holidays
+    OR  "(2)(b)" ... x's `kind` EQUALS `an amount another provision of the Act authorises the lessor to require or receive`
+
+@ref Residential Tenancies Act 1987 (WA) s 27(1), Penalty
+`s 27(1) -- the maximum fine` MEANS 5000
+
+§ `Section 27AA -- Residential tenancy must be offered for rent at fixed amount`
+
+DECLARE `Advertisement or offer of a tenancy` HAS
+    `states a fixed amount of rent`                                         IS A BOOLEAN
+    `states that the rent is calculated by reference to the tenant's income` IS A BOOLEAN
+    `is a sign at or near the premises that states no amount of rent`       IS A BOOLEAN
+    `solicits or invites an offer of rent higher than the amount advertised` IS A BOOLEAN
+
+@ref Residential Tenancies Act 1987 (WA) s 27AA(1), (2)
+GIVEN x IS AN `Advertisement or offer of a tenancy`
+GIVETH A BOOLEAN
+DECIDE `s 27AA(1) -- advertising or offering the tenancy is an offence` x IF
+        NOT (   "(a)" ... x's `states a fixed amount of rent`
+             OR "(b)" ... x's `states that the rent is calculated by reference to the tenant's income`)
+    AND "(2) does not commit an offence ... a sign ... that does not state an amount of rent"
+    ... NOT x's `is a sign at or near the premises that states no amount of rent`
+
+@ref Residential Tenancies Act 1987 (WA) s 27AA(3)
+GIVEN x IS AN `Advertisement or offer of a tenancy`
+GIVETH A BOOLEAN
+DECIDE `s 27AA(3) -- soliciting a higher offer is an offence` x IF
+    x's `solicits or invites an offer of rent higher than the amount advertised`
+
+@ref Residential Tenancies Act 1987 (WA) s 27AA(1), (3), Penalty
+`s 27AA -- the maximum fine` MEANS 10000
+
+§ `Section 28 -- Rent in advance`
+
+DECLARE `Requirement to pay rent` HAS
+    `required on`                                         IS A NUMBER
+    `amount`                                              IS A NUMBER
+    `the first payment`                                   IS A BOOLEAN
+    `the period paid for by the previous payment has elapsed` IS A BOOLEAN
+
+-- s 28(1): not "before or during the first 2 weeks of the tenancy ... an amount exceeding 2 weeks' rent".
+-- The first 2 weeks begin on the day the tenancy commences (Interpretation Act s 61(1)(a)).
+@ref Residential Tenancies Act 1987 (WA) s 28(1); Interpretation Act 1984 (WA) s 61(1)(a)
+GIVEN q IS A `Requirement to pay rent`, a IS A `Residential tenancy agreement`
+GIVETH A BOOLEAN
+DECIDE `s 28(1) -- the requirement` q `under` a `is an offence` IF
+        "before or during the first 2 weeks of the tenancy"
+    ... q's `required on` AT MOST (a's `tenancy commenced on` PLUS 13)
+    AND "an amount exceeding 2 weeks' rent" ... q's `amount` GREATER THAN (2 TIMES a's `weekly rent`)
+
+-- s 28(2): no payment of rent other than the first may be required (a) until the period paid for by any
+-- previous payment has elapsed and (b) unless it does not exceed 2 weeks' rent.
+@ref Residential Tenancies Act 1987 (WA) s 28(2)
+GIVEN q IS A `Requirement to pay rent`, w IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `s 28(2) -- the requirement` q `at weekly rent` w `is an offence` IF
+        NOT q's `the first payment`
+    AND (   "(a)" ... NOT q's `the period paid for by the previous payment has elapsed`
+         OR "(b)" ... q's `amount` GREATER THAN (2 TIMES w))
+
+@ref Residential Tenancies Act 1987 (WA) s 28(1), (2), Penalty
+`s 28 -- the maximum fine` MEANS 5000
+
+§ `Section 29 -- Security bonds, so far as the bond turns on rent`
+
+-- s 29(1)(b): the bond must not exceed in the aggregate (i) 4 weeks' rent under the agreement and (ii) if
+-- the tenant is permitted to keep a pet, the amount prescribed by r 10A ($350).
+@ref Residential Tenancies Act 1987 (WA) s 29(1)(b); Residential Tenancies Regulations 1989 (WA) r 10A
+GIVEN w IS A NUMBER, `pet permitted` IS A BOOLEAN
+GIVETH A NUMBER
+`s 29(1)(b) -- the most a security bond may be, at weekly rent` w `, a pet permitted:` `pet permitted` MEANS
+    (4 TIMES w) PLUS (IF `pet permitted` THEN `r 10A -- the amount prescribed for s 29(1)(b)(ii)` ELSE 0)
+
+-- s 29(2): "(1)(b) does not apply ... where the weekly rate of rent payable under the agreement exceeds a
+-- prescribed amount" (r 11: $1 200).
+@ref Residential Tenancies Act 1987 (WA) s 29(2); Residential Tenancies Regulations 1989 (WA) r 11
+GIVEN w IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `s 29(2) -- s 29(1)(b) applies at weekly rent` w IF
+    NOT (w GREATER THAN `r 11 -- the amount prescribed for s 29(2)`)
+
+@ref Residential Tenancies Act 1987 (WA) s 29(1)(b), (2)
+GIVEN b IS A NUMBER, w IS A NUMBER, `pet permitted` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `s 29(1)(b) -- requiring or receiving a bond of` b `is an offence, at weekly rent` w `, a pet permitted:` `pet permitted` IF
+        `s 29(2) -- s 29(1)(b) applies at weekly rent` w
+    AND b GREATER THAN `s 29(1)(b) -- the most a security bond may be, at weekly rent` w `, a pet permitted:` `pet permitted`
+
+-- s 29(3): where, "during the period of 6 months after the day on which the tenancy ... commenced", the
+-- rent decreases or is decreased, "the amount paid in excess of the lower or ... lowest rate of rent
+-- payable ... during that period, together with the amount (if any) allowed by subsection (1)(b)(ii),
+-- shall be deemed to have been paid as a security bond".
+@ref Residential Tenancies Act 1987 (WA) s 29(3); Interpretation Act 1984 (WA) ss 61(1)(b), 62
+GIVEN d IS A NUMBER, a IS A `Residential tenancy agreement`
+GIVETH A BOOLEAN
+DECIDE `s 29(3) -- a decrease on day` d `falls in the 6 months after the tenancy under` a `commenced` IF
+        d GREATER THAN a's `tenancy commenced on`
+    AND d AT MOST `the last day of the period of` 6 `months after day` (a's `tenancy commenced on`)
+
+-- FK-24, reading taken (A): "the amount (if any) allowed by subsection (1)(b)(ii)" is the pet amount
+-- actually paid under that subparagraph; the deemed bond is the rent paid in excess of the lowest rate
+-- plus that amount.
+@ref Residential Tenancies Act 1987 (WA) s 29(3); fork FK-24 reading A
+GIVEN `rent paid in excess of the lowest rate` IS A NUMBER, `pet amount paid` IS A NUMBER
+GIVETH A NUMBER
+`s 29(3) -- the amount deemed paid as a security bond, given the excess` `rent paid in excess of the lowest rate` `and the pet amount paid` `pet amount paid` MEANS
+    `rent paid in excess of the lowest rate` PLUS `pet amount paid`
+
+-- FK-24, reading rejected (B): where a pet is permitted, the prescribed amount is added whether or not
+-- it was paid.
+@ref Residential Tenancies Act 1987 (WA) s 29(3); Residential Tenancies Regulations 1989 (WA) r 10A; fork FK-24 reading B
+GIVEN `rent paid in excess of the lowest rate` IS A NUMBER, `pet permitted` IS A BOOLEAN
+GIVETH A NUMBER
+`FK-24 reading B -- s 29(3) -- the amount deemed paid as a security bond, given the excess` `rent paid in excess of the lowest rate` `, a pet permitted:` `pet permitted` MEANS
+    `rent paid in excess of the lowest rate` PLUS (IF `pet permitted` THEN `r 10A -- the amount prescribed for s 29(1)(b)(ii)` ELSE 0)
+
+§ `The rent history: what the rent is, and when it was last varied`
+
+-- The latest variation of agreement nm, among vs, that took effect on or before day d. No provision.
+GIVEN nm IS A STRING
+      vs IS A LIST OF `Rent variation`
+      d  IS A NUMBER
+GIVETH A MAYBE `Rent variation`
+`the latest variation of` nm `among` vs `on or before day` d MEANS
+    CONSIDER vs
+    WHEN EMPTY THEN NOTHING
+    WHEN v FOLLOWED BY rest THEN
+        IF (v's `agreement` EQUALS nm) AND (v's `took effect on` AT MOST d)
+        THEN CONSIDER `the latest variation of` nm `among` rest `on or before day` d
+             WHEN NOTHING THEN JUST v
+             WHEN JUST w THEN
+                 IF v's `took effect on` GREATER THAN w's `took effect on` THEN JUST v ELSE JUST w
+        ELSE `the latest variation of` nm `among` rest `on or before day` d
+
+-- The weekly rent payable under agreement a on day d: the rent it set, as varied by the latest increase
+-- or change under ss 30, 31A (s 30(3)) that took effect under it on or before d.
+@ref Residential Tenancies Act 1987 (WA) ss 30(3), 31A(1)
+GIVEN a IS A `Residential tenancy agreement`, d IS A NUMBER, h IS A `Rent history`
+GIVETH A NUMBER
+`the weekly rent payable under` a `on day` d `, given` h MEANS
+    CONSIDER `the latest variation of` (a's `name`) `among` (h's `variations`) `on or before day` d
+    WHEN NOTHING THEN a's `weekly rent`
+    WHEN JUST v THEN v's `weekly rent from then`
+
+-- The latest day, among the variations vs that `counts` accepts and that took effect before day e, given
+-- by `dayof` (the day it took effect, or the day its notice was given). No provision; the provisions
+-- choose `counts` and `dayof`.
+GIVEN dayof  IS A FUNCTION FROM `Rent variation` TO NUMBER
+      vs     IS A LIST OF `Rent variation`
+      counts IS A FUNCTION FROM `Rent variation` TO BOOLEAN
+      e      IS A NUMBER
+GIVETH A MAYBE NUMBER
+`the latest` dayof `of the variations in` vs `that` counts `, taking effect before day` e MEANS
+    CONSIDER vs
+    WHEN EMPTY THEN NOTHING
+    WHEN v FOLLOWED BY rest THEN
+        IF (counts v) AND (v's `took effect on` LESS THAN e)
+        THEN CONSIDER `the latest` dayof `of the variations in` rest `that` counts `, taking effect before day` e
+             WHEN NOTHING THEN JUST (dayof v)
+             WHEN JUST m THEN JUST (`the later of day` (dayof v) `and day` m)
+        ELSE `the latest` dayof `of the variations in` rest `that` counts `, taking effect before day` e
+
+-- The two days a variation may be dated by (FK-02). No provision.
+GIVEN v IS A `Rent variation`
+GIVETH A NUMBER
+`the day it took effect` v MEANS v's `took effect on`
+
+GIVEN v IS A `Rent variation`
+GIVETH A NUMBER
+`the day its notice was given` v MEANS v's `notice given on`
+
+§ `Section 31B -- When residential tenancy agreement is continuation of existing residential tenancy agreement`
+
+-- s 31B(3): "the existing agreement and the continuing agreement are between the same parties if (a) the
+-- lessor is the same under both agreements; and (b) the tenant, or at least 1 co-tenant, is the same
+-- under both agreements". FK-13, reading taken (A): the lessor under the existing agreement is the lessor
+-- under it at its end, who by s 3 includes a successor or assignee of the lessor who granted it.
+@ref Residential Tenancies Act 1987 (WA) s 31B(3); s 3 "lessor"; fork FK-13 reading A
+GIVEN c IS A `Residential tenancy agreement`, e IS A `Residential tenancy agreement`
+GIVETH A BOOLEAN
+DECIDE `s 31B(3) -- the continuing agreement` c `and the existing agreement` e `are between the same parties` IF
+        "(a) the lessor is the same under both agreements" ... c's `lessor` EQUALS e's `lessor`
+    AND "(b) the tenant, or at least 1 co-tenant, is the same" ... `some member of` (c's `tenants`) `is among` (e's `tenants`)
+
+-- FK-13, reading rejected (B): the lessor under the existing agreement is the lessor who granted it.
+@ref Residential Tenancies Act 1987 (WA) s 31B(3); fork FK-13 reading B
+GIVEN c IS A `Residential tenancy agreement`, e IS A `Residential tenancy agreement`
+GIVETH A BOOLEAN
+DECIDE `FK-13 reading B -- s 31B(3) -- the continuing agreement` c `and the existing agreement` e `are between the same parties` IF
+        c's `lessor` EQUALS e's `granted by`
+    AND `some member of` (c's `tenants`) `is among` (e's `tenants`)
+
+-- s 31B(2)(c) "the end of the term of the existing agreement". FK-16, reading taken (A): the term of a
+-- fixed-term agreement ends on the last day of its fixed term (the expiry day, or the possession day under
+-- s 70A(5), or an earlier termination), whether or not the agreement then continues under s 76C; if it
+-- does continue, its term also ends when it terminates. FK-17, reading taken (A): the term of a periodic
+-- agreement ends on the day it terminates under s 60.
+@ref Residential Tenancies Act 1987 (WA) ss 31B(2)(c), 70A(2), (5), 76C, 60(1); forks FK-16 and FK-17 reading A
+GIVEN e        IS A `Residential tenancy agreement`
+      d        IS A NUMBER
+      holidays IS A LIST OF NUMBER
+GIVETH A BOOLEAN
+DECIDE `s 31B(2)(c) -- the term of` e `ended on day` d `, given the holidays` holidays IF
+    CONSIDER e's `kind`
+    WHEN `a tenancy for a fixed term` THEN
+            `the day` (`the last day of the fixed term of` e `, given the holidays` holidays) `is` d
+        OR  `the day` (e's `terminated on`) `is` d
+    WHEN `a periodic tenancy` THEN `the day` (e's `terminated on`) `is` d
+
+-- FK-16, reading rejected (B): by s 70A(2) the term of a fixed-term agreement "does not end on the expiry
+-- day" without a notice under s 70A; it ends only when the agreement terminates under s 60.
+@ref Residential Tenancies Act 1987 (WA) ss 31B(2)(c), 70A(2), 60(1); fork FK-16 reading B
+GIVEN e IS A `Residential tenancy agreement`, d IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `FK-16 reading B -- s 31B(2)(c) -- the term of` e `ended on day` d IF
+    `the day` (e's `terminated on`) `is` d
+
+-- FK-17, reading rejected (B): "term" means a fixed term, so a periodic tenancy (or the periodic tenancy
+-- s 76C continues) has no "end of the term"; only the end of a fixed term counts.
+@ref Residential Tenancies Act 1987 (WA) s 31B(2)(c); fork FK-17 reading B
+GIVEN e        IS A `Residential tenancy agreement`
+      d        IS A NUMBER
+      holidays IS A LIST OF NUMBER
+GIVETH A BOOLEAN
+DECIDE `FK-17 reading B -- s 31B(2)(c) -- the term of` e `ended on day` d `, given the holidays` holidays IF
+    CONSIDER e's `kind`
+    WHEN `a tenancy for a fixed term` THEN `the day` (`the last day of the fixed term of` e `, given the holidays` holidays) `is` d
+    WHEN `a periodic tenancy` THEN FALSE
+
+-- s 31B(2): the continuing agreement "is taken to be a continuation of" the existing agreement if it
+-- (a) is between the same parties, (b) is for the same residential premises (s 3A) and (c) "starts
+-- immediately after the end of the term of the existing agreement": its tenancy commences the day after.
+@ref Residential Tenancies Act 1987 (WA) s 31B(2)(a)-(c), (3); s 3A
+GIVEN c        IS A `Residential tenancy agreement`
+      e        IS A `Residential tenancy agreement`
+      holidays IS A LIST OF NUMBER
+GIVETH A BOOLEAN
+DECIDE `s 31B(2) -- the agreement` c `is taken to be a continuation of` e `, given the holidays` holidays IF
+        NOT (c's `name` EQUALS e's `name`)
+    AND "(a) is between the same parties" ... `s 31B(3) -- the continuing agreement` c `and the existing agreement` e `are between the same parties`
+    AND "(b) is for the same residential premises" ... `s 3A -- the premises of` c EQUALS `s 3A -- the premises of` e
+    AND "(c) starts immediately after the end of the term" ... `s 31B(2)(c) -- the term of` e `ended on day` (c's `tenancy commenced on` MINUS 1) `, given the holidays` holidays
+
+-- The same test under the rejected readings of FK-16, FK-17 and FK-13, one at a time.
+DECLARE `Reading of s 31B` IS ONE OF
+    `the readings taken`
+    `FK-13 reading B`
+    `FK-16 reading B`
+    `FK-17 reading B`
+
+@ref Residential Tenancies Act 1987 (WA) s 31B(2), (3); forks FK-13, FK-16, FK-17
+GIVEN k        IS A `Reading of s 31B`
+      c        IS A `Residential tenancy agreement`
+      e        IS A `Residential tenancy agreement`
+      holidays IS A LIST OF NUMBER
+GIVETH A BOOLEAN
+DECIDE `on` k `, s 31B(2) -- the agreement` c `is taken to be a continuation of` e `, given the holidays` holidays IF
+    CONSIDER k
+    WHEN `the readings taken` THEN `s 31B(2) -- the agreement` c `is taken to be a continuation of` e `, given the holidays` holidays
+    WHEN `FK-13 reading B` THEN
+            NOT (c's `name` EQUALS e's `name`)
+        AND `FK-13 reading B -- s 31B(3) -- the continuing agreement` c `and the existing agreement` e `are between the same parties`
+        AND `s 3A -- the premises of` c EQUALS `s 3A -- the premises of` e
+        AND `s 31B(2)(c) -- the term of` e `ended on day` (c's `tenancy commenced on` MINUS 1) `, given the holidays` holidays
+    WHEN `FK-16 reading B` THEN
+            NOT (c's `name` EQUALS e's `name`)
+        AND `s 31B(3) -- the continuing agreement` c `and the existing agreement` e `are between the same parties`
+        AND `s 3A -- the premises of` c EQUALS `s 3A -- the premises of` e
+        AND `FK-16 reading B -- s 31B(2)(c) -- the term of` e `ended on day` (c's `tenancy commenced on` MINUS 1)
+    WHEN `FK-17 reading B` THEN
+            NOT (c's `name` EQUALS e's `name`)
+        AND `s 31B(3) -- the continuing agreement` c `and the existing agreement` e `are between the same parties`
+        AND `s 3A -- the premises of` c EQUALS `s 3A -- the premises of` e
+        AND `FK-17 reading B -- s 31B(2)(c) -- the term of` e `ended on day` (c's `tenancy commenced on` MINUS 1) `, given the holidays` holidays
+
+-- The existing agreement, among those in the history, of which c is taken to be a continuation, if any.
+@ref Residential Tenancies Act 1987 (WA) s 31B(2)
+GIVEN k        IS A `Reading of s 31B`
+      c        IS A `Residential tenancy agreement`
+      as       IS A LIST OF `Residential tenancy agreement`
+      holidays IS A LIST OF NUMBER
+GIVETH A MAYBE `Residential tenancy agreement`
+`on` k `, the agreement that` c `continues, among` as `, given the holidays` holidays MEANS
+    CONSIDER as
+    WHEN EMPTY THEN NOTHING
+    WHEN e FOLLOWED BY rest THEN
+        IF `on` k `, s 31B(2) -- the agreement` c `is taken to be a continuation of` e `, given the holidays` holidays
+        THEN JUST e
+        ELSE `on` k `, the agreement that` c `continues, among` rest `, given the holidays` holidays
+
+-- s 31B(1)-(2): the agreements whose increases under s 30 (and changes under s 31A) count for c: c itself,
+-- the agreement it continues, and so back. A continuation of a continuation is a continuation (the
+-- existing agreement's rent "was last increased" when its own existing agreement's rent was). The chain
+-- is cut after as many steps as there are agreements, so a cycle in the facts cannot loop.
+@ref Residential Tenancies Act 1987 (WA) s 31B(1), (2)
+GIVEN k        IS A `Reading of s 31B`
+      c        IS A `Residential tenancy agreement`
+      as       IS A LIST OF `Residential tenancy agreement`
+      holidays IS A LIST OF NUMBER
+      fuel     IS A NUMBER
+GIVETH A LIST OF STRING
+`on` k `, the names of` c `and the agreements it continues, among` as `, given the holidays` holidays `, at most` fuel MEANS
+    IF fuel AT MOST 0
+    THEN LIST (c's `name`)
+    ELSE CONSIDER `on` k `, the agreement that` c `continues, among` as `, given the holidays` holidays
+         WHEN NOTHING THEN LIST (c's `name`)
+         WHEN JUST e THEN (c's `name`) FOLLOWED BY (`on` k `, the names of` e `and the agreements it continues, among` as `, given the holidays` holidays `, at most` (fuel MINUS 1))
+
+-- How many agreements a history holds (the bound on the chain of continuations). No provision.
+GIVEN as IS A LIST OF `Residential tenancy agreement`
+GIVETH A NUMBER
+`the number of agreements in` as MEANS
+    CONSIDER as
+    WHEN EMPTY THEN 0
+    WHEN x FOLLOWED BY rest THEN 1 PLUS `the number of agreements in` rest
+
+@ref Residential Tenancies Act 1987 (WA) s 31B(1), (2)
+GIVEN k        IS A `Reading of s 31B`
+      c        IS A `Residential tenancy agreement`
+      h        IS A `Rent history`
+      holidays IS A LIST OF NUMBER
+GIVETH A LIST OF STRING
+`on` k `, s 31B -- the agreements whose rent history counts for` c `in` h `, given the holidays` holidays MEANS
+    `on` k `, the names of` c `and the agreements it continues, among` (h's `agreements`) `, given the holidays` holidays `, at most` (`the number of agreements in` (h's `agreements`))
+
+@ref Residential Tenancies Act 1987 (WA) s 31B(1), (2)
+GIVEN c        IS A `Residential tenancy agreement`
+      h        IS A `Rent history`
+      holidays IS A LIST OF NUMBER
+GIVETH A LIST OF STRING
+`s 31B -- the agreements whose rent history counts for` c `in` h `, given the holidays` holidays MEANS
+    `on` `the readings taken` `, s 31B -- the agreements whose rent history counts for` c `in` h `, given the holidays` holidays
+
+§ `Section 30 -- Variation of rent (except where calculated by reference to tenant's income)`
+
+-- s 30(1) does not apply where the rent is calculated by reference to the tenant's income, where r 5B
+-- disapplies it (s 6), or where a court order under s 84 does (REF-86).
+@ref Residential Tenancies Act 1987 (WA) ss 30(1), 6, 84; Residential Tenancies Regulations 1989 (WA) r 5B
+GIVEN a IS A `Residential tenancy agreement`
+GIVETH A BOOLEAN
+DECIDE `s 30(1) -- the subsection applies to` a IF
+        "except where rent ... is calculated by reference to the tenant's income"
+    ... a's `rent basis` EQUALS `a fixed amount`
+    AND NOT `r 5B -- section 30(1) does not apply to` a
+    AND NOT a's `status`'s `a court order under s 84 disapplies s 30(1) or s 31A to the agreement`
+
+-- s 30(1): "by written notice to the tenant, in the approved form, specifying the amount of the
+-- increased rent and the day as from which the increased rent becomes payable". Given by the lessor or a
+-- property manager as its agent (s 86B, REF-87). The approved form is one approved under s 88C (REF-01).
+-- FK-26, reading taken (A): a notice in the form the Minister approved before 29 July 2024 is not
+-- invalidated if its deviations from the approved form are immaterial and not misleading (Interpretation
+-- Act s 74).
+@ref Residential Tenancies Act 1987 (WA) s 30(1); s 3 "approved form"; s 88C(2); Interpretation Act 1984 (WA) s 74; fork FK-26 reading A
+GIVEN n IS A `Notice of increase of rent`
+GIVETH A BOOLEAN
+DECIDE `s 30(1) -- the notice is in the approved form` n IF
+        (n's `form` EQUALS `the approved form (s 88C)`)
+    OR  (    (n's `form` EQUALS `a form approved by the Minister`)
+         AND `s 74 -- the form used is not invalidated, its deviations being immaterial and not misleading:` (n's `any departure from the required form is immaterial and not misleading`))
+
+-- FK-26, reading rejected (B): only a form approved under s 88C will do.
+@ref Residential Tenancies Act 1987 (WA) s 30(1); s 88C(2); fork FK-26 reading B
+GIVEN n IS A `Notice of increase of rent`
+GIVETH A BOOLEAN
+DECIDE `FK-26 reading B -- s 30(1) -- the notice is in the approved form` n IF
+    n's `form` EQUALS `the approved form (s 88C)`
+
+@ref Residential Tenancies Act 1987 (WA) s 30(1); s 86B
+GIVEN n IS A `Notice of increase of rent`
+GIVETH A BOOLEAN
+DECIDE `s 30(1) -- the notice has the form the subsection requires` n IF
+        "by the lessor" ... n's `given by the lessor`
+    AND "written notice" ... n's `in writing`
+    AND "in the approved form" ... `s 30(1) -- the notice is in the approved form` n
+    AND "specifying the amount of the increased rent" ... n's `specifies the increased rent or the change`
+    AND "and the day as from which the increased rent becomes payable" ... n's `specifies the day`
+
+-- s 30(1)(a): the day "not less than 60 days after the day on which the notice is given" (s 85; FK-06 A).
+@ref Residential Tenancies Act 1987 (WA) s 30(1)(a); s 85; Interpretation Act 1984 (WA) s 61(1)(f); fork FK-06 reading A
+GIVEN n IS A `Notice of increase of rent`
+GIVETH A BOOLEAN
+DECIDE `s 30(1)(a) -- the day is not less than 60 days after the notice is given` n IF
+    CONSIDER `s 85 -- the day the notice is given` (n's `given`)
+    WHEN NOTHING THEN FALSE
+    WHEN JUST g THEN n's `takes effect on` AT LEAST `the first day not less than` 60 `days after day` g
+
+@ref Residential Tenancies Act 1987 (WA) s 30(1)(a); fork FK-06 reading B
+GIVEN n IS A `Notice of increase of rent`
+GIVETH A BOOLEAN
+DECIDE `FK-06 reading B -- s 30(1)(a) -- the day is not less than 60 days after the notice is given` n IF
+    CONSIDER `s 85 -- the day the notice is given` (n's `given`)
+    WHEN NOTHING THEN FALSE
+    WHEN JUST g THEN n's `takes effect on` AT LEAST `FK-06 reading B -- the first day not less than` 60 `days after day` g
+
+-- FK-04, reading taken (A): "if the rent has been increased under this section" includes an increase
+-- under s 30 as in force before 29 July 2024 (Interpretation Act s 16(2): a reference to a provision is
+-- to it as amended from time to time).
+@ref Residential Tenancies Act 1987 (WA) s 30(1)(b) "under this section"; Interpretation Act 1984 (WA) s 16(2); fork FK-04 reading A
+GIVEN names IS A LIST OF STRING
+GIVETH A FUNCTION FROM `Rent variation` TO BOOLEAN
+`an increase under section 30 of one of` names MEANS
+    GIVEN v YIELD
+            (v's `agreement` `is among` names)
+        AND (`s 16(2) -- a reference to section 30 reaches` (v's `under`))
+
+-- FK-04, reading rejected (B): only increases under s 30 as in force from 29 July 2024 count.
+@ref Residential Tenancies Act 1987 (WA) s 30(1)(b); fork FK-04 reading B
+GIVEN names IS A LIST OF STRING
+GIVETH A FUNCTION FROM `Rent variation` TO BOOLEAN
+`FK-04 reading B -- an increase under section 30 of one of` names MEANS
+    GIVEN v YIELD
+            (v's `agreement` `is among` names)
+        AND (v's `under` EQUALS `section 30`)
+
+-- The readings of s 30(1)(b) the encoding can be asked to apply. Each rejected reading changes one thing.
+DECLARE `Reading of s 30(1)(b)` IS ONE OF
+    `the readings taken (s 30(1)(b))`
+    `FK-02 reading B`
+    `FK-04 reading B`
+    `FK-15 reading B`
+    `FK-18 reading B`
+    `FK-19 reading B`
+    `under s 31B FK-13 reading B`
+    `under s 31B FK-16 reading B`
+    `under s 31B FK-17 reading B`
+
+-- The reading of s 31B that a reading of s 30(1)(b) carries with it. No provision.
+GIVEN k IS A `Reading of s 30(1)(b)`
+GIVETH A `Reading of s 31B`
+`the reading of s 31B within` k MEANS
+    CONSIDER k
+    WHEN `under s 31B FK-13 reading B` THEN `FK-13 reading B`
+    WHEN `under s 31B FK-16 reading B` THEN `FK-16 reading B`
+    WHEN `under s 31B FK-17 reading B` THEN `FK-17 reading B`
+    OTHERWISE `the readings taken`
+
+-- s 30(1)(b): the day from which the 12 months run: "the day on which the tenancy commenced, or, if the
+-- rent has been increased under this section, the day on which it was last so increased". Readings taken:
+-- FK-02 A, the day the last increase took effect; FK-04 A, either version of s 30; FK-18 A, the
+-- commencement of the tenancy under the agreement itself, even where s 31B makes it a continuation; FK-19
+-- A, an agreement continued under s 76C keeps the day its tenancy first commenced. The increases that
+-- count are those under the agreement and every agreement it continues (s 31B(1)(a)); a rent fixed by an
+-- agreement itself is not an increase under s 30 (FK-01 A).
+@ref Residential Tenancies Act 1987 (WA) s 30(1)(b); s 31B(1)(a), (2); forks FK-01, FK-02, FK-04, FK-18, FK-19 (reading A)
+GIVEN k        IS A `Reading of s 30(1)(b)`
+      e        IS A NUMBER
+      a        IS A `Residential tenancy agreement`
+      h        IS A `Rent history`
+      holidays IS A LIST OF NUMBER
+GIVETH A NUMBER
+`on` k `, s 30(1)(b) -- the day the 12 months run from, for an increase on day` e `under` a `, given` h `and the holidays` holidays MEANS
+    CONSIDER `the latest` dayof `of the variations in` (h's `variations`) `that` counts `, taking effect before day` e
+    WHEN JUST l THEN l
+    WHEN NOTHING THEN
+        IF k EQUALS `FK-18 reading B`
+        THEN `the first commencement among` chain
+        ELSE IF k EQUALS `FK-19 reading B`
+             THEN CONSIDER `s 76C(2) -- the first day of the periodic tenancy continuing` a `, given the holidays` holidays
+                  WHEN JUST p THEN IF e GREATER THAN p THEN p ELSE a's `tenancy commenced on`
+                  WHEN NOTHING THEN a's `tenancy commenced on`
+             ELSE a's `tenancy commenced on`
+    WHERE
+        chain  MEANS `on` (`the reading of s 31B within` k) `, s 31B -- the agreements whose rent history counts for` a `in` h `, given the holidays` holidays
+        counts MEANS IF k EQUALS `FK-04 reading B`
+                     THEN `FK-04 reading B -- an increase under section 30 of one of` chain
+                     ELSE `an increase under section 30 of one of` chain
+        dayof  MEANS IF k EQUALS `FK-02 reading B` THEN `the day its notice was given` ELSE `the day it took effect`
+        `the first commencement among` names MEANS `the earliest commencement among` (h's `agreements`) `named in` names `, no later than` (a's `tenancy commenced on`)
+
+-- The earliest day a tenancy commenced among the named agreements (FK-18 reading B). No provision.
+GIVEN as    IS A LIST OF `Residential tenancy agreement`
+      names IS A LIST OF STRING
+      d     IS A NUMBER
+GIVETH A NUMBER
+`the earliest commencement among` as `named in` names `, no later than` d MEANS
+    CONSIDER as
+    WHEN EMPTY THEN d
+    WHEN x FOLLOWED BY rest THEN
+        IF (x's `name` `is among` names) AND (x's `tenancy commenced on` LESS THAN d)
+        THEN `the earliest commencement among` rest `named in` names `, no later than` (x's `tenancy commenced on`)
+        ELSE `the earliest commencement among` rest `named in` names `, no later than` d
+
+-- s 30(1)(b): the day must be "not less than 12 months after" that day. Interpretation Act ss 61(1)(b), 62:
+-- the 12 months after day r end on the numerically corresponding day a year on. FK-15, reading taken (A):
+-- that last day of the 12 months is itself not less than 12 months after r.
+@ref Residential Tenancies Act 1987 (WA) s 30(1)(b); Interpretation Act 1984 (WA) ss 61(1)(b), 62; forks FK-01 to FK-04, FK-13, FK-15 to FK-19
+GIVEN k        IS A `Reading of s 30(1)(b)`
+      n        IS A `Notice of increase of rent`
+      a        IS A `Residential tenancy agreement`
+      h        IS A `Rent history`
+      holidays IS A LIST OF NUMBER
+GIVETH A BOOLEAN
+DECIDE `on` k `, s 30(1)(b) -- the day of` n `under` a `is not less than 12 months after the day the 12 months run from, given` h `and the holidays` holidays IF
+    IF k EQUALS `FK-15 reading B`
+    THEN e GREATER THAN `the last day of the period of` 12 `months after day` r
+    ELSE e AT LEAST `the last day of the period of` 12 `months after day` r
+    WHERE
+        e MEANS n's `takes effect on`
+        r MEANS `on` k `, s 30(1)(b) -- the day the 12 months run from, for an increase on day` e `under` a `, given` h `and the holidays` holidays
+
+-- s 30(2)(a): the right "is not exercisable in relation to a residential tenancy agreement that creates a
+-- tenancy for a fixed term during the currency of that term unless the amount of the increase, or the
+-- method of calculating the amount of the increase, is set out in the agreement" (r 5CA modifies the
+-- condition for fixed terms entered into before 1 July 2013). FK-03, reading taken (A): the bar applies to
+-- an increase that would take effect during the term (the 2011 EM: rent "may only be increased during the
+-- term" if so set out).
+@ref Residential Tenancies Act 1987 (WA) s 30(2)(a); Residential Tenancies Regulations 1989 (WA) r 5CA; fork FK-03 reading A
+GIVEN n        IS A `Notice of increase of rent`
+      a        IS A `Residential tenancy agreement`
+      holidays IS A LIST OF NUMBER
+GIVETH A BOOLEAN
+DECIDE `s 30(2)(a) -- the right to increase is exercisable for` n `under` a `, given the holidays` holidays IF
+        NOT `is day` (n's `takes effect on`) `during the currency of the fixed term of` a `, given the holidays` holidays
+    OR  `s 30(2)(a), as modified by r 5CA where it applies -- the agreement allows an increase during the term` a
+
+-- FK-03, reading rejected (B): the bar applies to a notice given during the term.
+@ref Residential Tenancies Act 1987 (WA) s 30(2)(a); fork FK-03 reading B
+GIVEN n        IS A `Notice of increase of rent`
+      a        IS A `Residential tenancy agreement`
+      holidays IS A LIST OF NUMBER
+GIVETH A BOOLEAN
+DECIDE `FK-03 reading B -- s 30(2)(a) -- the right to increase is exercisable for` n `under` a `, given the holidays` holidays IF
+        (CONSIDER `s 85 -- the day the notice is given` (n's `given`)
+         WHEN NOTHING THEN TRUE
+         WHEN JUST g THEN NOT (   `is day` g `during the currency of the fixed term of` a `, given the holidays` holidays
+                               OR `is day` (n's `takes effect on`) `during the currency of the fixed term of` a `, given the holidays` holidays))
+    OR  `s 30(2)(a), as modified by r 5CA where it applies -- the agreement allows an increase during the term` a
+
+-- s 30(2)(b): the right "may be excluded or limited by agreement between the lessor and the tenant".
+@ref Residential Tenancies Act 1987 (WA) s 30(2)(b)
+GIVEN n IS A `Notice of increase of rent`, a IS A `Residential tenancy agreement`
+GIVETH A BOOLEAN
+DECIDE `s 30(2)(b) -- the right is not excluded and the increase is within any agreed limit, for` n `under` a IF
+        NOT a's `rent increases excluded by agreement`
+    AND n's `within any limit agreed under s 30(2)(b)`
+
+-- s 30(1)-(3): the notice "varies the residential tenancy agreement to the effect that the increased
+-- rent specified in the notice is payable under the agreement as from the day specified" if it has been
+-- given in accordance with the section and not withdrawn. Otherwise "the rent shall not increase or be
+-- increased" (s 30(1), closing words).
+@ref Residential Tenancies Act 1987 (WA) s 30(1), (2), (3)
+GIVEN k        IS A `Reading of s 30(1)(b)`
+      n        IS A `Notice of increase of rent`
+      a        IS A `Residential tenancy agreement`
+      h        IS A `Rent history`
+      holidays IS A LIST OF NUMBER
+GIVETH A BOOLEAN
+DECIDE `on` k `, s 30 -- the notice` n `increases the rent under` a `from the day it specifies, given` h `and the holidays` holidays IF
+        `s 30(1) -- the subsection applies to` a
+    AND `s 30(1) -- the notice has the form the subsection requires` n
+    AND "(a)" ... `s 30(1)(a) -- the day is not less than 60 days after the notice is given` n
+    AND "(b)" ... `on` k `, s 30(1)(b) -- the day of` n `under` a `is not less than 12 months after the day the 12 months run from, given` h `and the holidays` holidays
+    AND "(2)(a)" ... `s 30(2)(a) -- the right to increase is exercisable for` n `under` a `, given the holidays` holidays
+    AND "(2)(b)" ... `s 30(2)(b) -- the right is not excluded and the increase is within any agreed limit, for` n `under` a
+    AND "(3) ... not been withdrawn by the lessor" ... NOT n's `withdrawn`
+
+@ref Residential Tenancies Act 1987 (WA) s 30(1), (2), (3)
+GIVEN n        IS A `Notice of increase of rent`
+      a        IS A `Residential tenancy agreement`
+      h        IS A `Rent history`
+      holidays IS A LIST OF NUMBER
+GIVETH A BOOLEAN
+DECIDE `s 30 -- the notice` n `increases the rent under` a `from the day it specifies, given` h `and the holidays` holidays IF
+    `on` `the readings taken (s 30(1)(b))` `, s 30 -- the notice` n `increases the rent under` a `from the day it specifies, given` h `and the holidays` holidays
+
+-- The first day from which an increase under s 30 may take effect under agreement a, for a notice given
+-- on day g, on the readings taken: the later of the first day not less than 60 days after g and the last
+-- day of the 12 months (s 30(1)(a), (b)). It does not test s 30(2). No provision beyond s 30(1).
+@ref Residential Tenancies Act 1987 (WA) s 30(1)(a), (b)
+GIVEN g        IS A NUMBER
+      a        IS A `Residential tenancy agreement`
+      h        IS A `Rent history`
+      holidays IS A LIST OF NUMBER
+GIVETH A NUMBER
+`s 30(1) -- the earliest day an increase noticed on day` g `under` a `may take effect, given` h `and the holidays` holidays MEANS
+    `the later of day` (`the first day not less than` 60 `days after day` g) `and day` twelve
+    WHERE
+        -- every recorded increase counts: the 12 months are worked out as for an increase on a day after all of them
+        twelve MEANS `the last day of the period of` 12 `months after day` (`on` `the readings taken (s 30(1)(b))` `, s 30(1)(b) -- the day the 12 months run from, for an increase on day` (g PLUS 100000) `under` a `, given` h `and the holidays` holidays)
+
+-- FK-01: is a rent fixed by a continuing agreement an increase? Reading taken (A): no. Section 30 governs
+-- increases of the rent payable under an agreement, and s 31B treats the continuing agreement as a
+-- continuation only "for the purposes of working out ... when the rent ... was last increased under
+-- section 30"; the rent an agreement fixes when it is made is not an increase under s 30, so the closing
+-- words of s 30(1) do not reach it.
+@ref Residential Tenancies Act 1987 (WA) s 30(1) closing words; s 31B(1); fork FK-01 reading A
+GIVEN c        IS A `Residential tenancy agreement`
+      h        IS A `Rent history`
+      holidays IS A LIST OF NUMBER
+GIVETH A BOOLEAN
+DECIDE `s 30(1) -- the rent fixed by` c `is an increase otherwise than under the section, given` h `and the holidays` holidays IF
+    FALSE
+
+-- FK-01, reading rejected (B): where c is a continuation of e (s 31B), a rent fixed by c above the rent
+-- payable under e when e's term ended is an increase of the rent payable under the continued agreement
+-- made otherwise than by notice under s 30, which "shall not increase or be increased".
+@ref Residential Tenancies Act 1987 (WA) s 30(1) closing words; s 31B(2); fork FK-01 reading B
+GIVEN c        IS A `Residential tenancy agreement`
+      h        IS A `Rent history`
+      holidays IS A LIST OF NUMBER
+GIVETH A BOOLEAN
+DECIDE `FK-01 reading B -- s 30(1) -- the rent fixed by` c `is an increase otherwise than under the section, given` h `and the holidays` holidays IF
+    CONSIDER `on` `the readings taken` `, the agreement that` c `continues, among` (h's `agreements`) `, given the holidays` holidays
+    WHEN NOTHING THEN FALSE
+    WHEN JUST e THEN
+        c's `weekly rent` GREATER THAN `the weekly rent payable under` e `on day` (c's `tenancy commenced on` MINUS 1) `, given` h
+
+§ `Section 31A -- Variation of rent where calculated by reference to tenant's income`
+
+@ref Residential Tenancies Act 1987 (WA) s 31A(1); s 84
+GIVEN a IS A `Residential tenancy agreement`
+GIVETH A BOOLEAN
+DECIDE `s 31A(1) -- the section applies to` a IF
+        a's `rent basis` EQUALS `calculated by reference to the tenant's income`
+    AND NOT a's `status`'s `a court order under s 84 disapplies s 30(1) or s 31A to the agreement`
+
+-- s 31A(1): "otherwise the rent must not increase or be increased". FK-20, reading taken (A): a rise in
+-- the rent that comes from applying the unchanged method to a higher income is the method operating, not
+-- an increase "otherwise".
+@ref Residential Tenancies Act 1987 (WA) s 31A(1); fork FK-20 reading A
+GIVEN a IS A `Residential tenancy agreement`
+GIVETH A BOOLEAN
+DECIDE `s 31A(1) -- a rise in rent from applying the unchanged method to a higher income is permitted under` a IF
+    `s 31A(1) -- the section applies to` a
+
+-- FK-20, reading rejected (B): the words alone: no increase at all except by a change of method.
+@ref Residential Tenancies Act 1987 (WA) s 31A(1); fork FK-20 reading B
+GIVEN a IS A `Residential tenancy agreement`
+GIVETH A BOOLEAN
+DECIDE `FK-20 reading B -- s 31A(1) -- a rise in rent from applying the unchanged method to a higher income is permitted under` a IF
+    FALSE
+
+@ref Residential Tenancies Act 1987 (WA) s 31A(2); Interpretation Act 1984 (WA) s 16(2)
+GIVEN names IS A LIST OF STRING
+GIVETH A FUNCTION FROM `Rent variation` TO BOOLEAN
+`a change under section 31A of one of` names MEANS
+    GIVEN v YIELD
+            (v's `agreement` `is among` names)
+        AND (`s 16(2) -- a reference to section 31A reaches` (v's `under`))
+
+-- s 31A(2): "by notice in writing to the tenant, in the approved form, specifying (a) the change to the
+-- method; and (b) the day as from which the change will take effect, being a day (i) not less than 60
+-- days after the day on which the notice is given; and (ii) not less than 12 months after the day on
+-- which the tenancy commenced, or, if the means of calculating rent has been changed under this section,
+-- the day on which it was last so changed". s 31B(1)(b) carries changes across continuing agreements.
+@ref Residential Tenancies Act 1987 (WA) s 31A(1), (2); s 31B(1)(b); forks FK-02, FK-04, FK-06, FK-15, FK-18 (reading A)
+GIVEN n        IS A `Notice of increase of rent`
+      a        IS A `Residential tenancy agreement`
+      h        IS A `Rent history`
+      holidays IS A LIST OF NUMBER
+GIVETH A BOOLEAN
+DECIDE `s 31A -- the notice` n `changes the method under` a `from the day it specifies, given` h `and the holidays` holidays IF
+        `s 31A(1) -- the section applies to` a
+    AND "by the lessor" ... n's `given by the lessor`
+    AND "notice in writing" ... n's `in writing`
+    AND "in the approved form" ... `s 30(1) -- the notice is in the approved form` n
+    AND "(a) the change to the method; and (b) the day" ... n's `specifies the increased rent or the change` AND n's `specifies the day`
+    AND "(b)(i)" ... (CONSIDER `s 85 -- the day the notice is given` (n's `given`)
+                      WHEN NOTHING THEN FALSE
+                      WHEN JUST g THEN n's `takes effect on` AT LEAST `the first day not less than` 60 `days after day` g)
+    AND "(b)(ii)" ... n's `takes effect on` AT LEAST `the last day of the period of` 12 `months after day` r
+    AND NOT n's `withdrawn`
+    WHERE
+        chain MEANS `s 31B -- the agreements whose rent history counts for` a `in` h `, given the holidays` holidays
+        r     MEANS CONSIDER `the latest` `the day it took effect` `of the variations in` (h's `variations`) `that` (`a change under section 31A of one of` chain) `, taking effect before day` (n's `takes effect on`)
+                    WHEN JUST l THEN l
+                    WHEN NOTHING THEN a's `tenancy commenced on`
+
+§ `Section 31 -- Increase in security bond`
+
+DECLARE `Notice of increase of security bond` HAS
+    `in writing`                    IS A BOOLEAN
+    `states the additional amount`  IS A BOOLEAN
+    `additional amount`             IS A NUMBER
+    `states the day it is payable`  IS A BOOLEAN
+    `payable on`                    IS A NUMBER
+    `given`                         IS A `Giving of a notice`
+    `withdrawn`                     IS A BOOLEAN
+
+-- s 31(1A), (1B), (2), (3), as modified by r 5CB: the lessor may increase the bond by written notice
+-- stating the additional amount and the day it is payable, if a relevant event has occurred; the day
+-- cannot be (1B)(a) earlier than 60 days after the notice is given (the 60th day after it is not earlier:
+-- Interpretation Act s 61(1)(b)), nor (1B)(b), where the event is a notice of increase of rent, before the
+-- rent increase takes effect; and (2) the bond may not exceed 4 weeks' rent under the agreement at the
+-- time the additional amount would be payable, plus any amount provided for by s 29(1)(b)(ii).
+-- `bond now`: the bond already held; `weekly rent then`: the weekly rent payable on the day the
+-- additional amount is payable.
+@ref Residential Tenancies Act 1987 (WA) s 31(1), (1A), (1B), (2), (3); Residential Tenancies Regulations 1989 (WA) rr 5CB, 10A
+GIVEN b               IS A `Notice of increase of security bond`
+      ev              IS AN `Event that may support a bond increase`
+      `bond now`      IS A NUMBER
+      `weekly rent then` IS A NUMBER
+      `pet permitted` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `s 31 -- the notice` b `on the event` ev `increases a bond of` `bond now` `, the weekly rent then being` `weekly rent then` `, a pet permitted:` `pet permitted` IF
+        "(1A) [r 5CB] If a relevant event occurs" ... `r 5CB -- s 31(1AA) -- is a relevant event` ev
+    AND "by giving the tenant a written notice" ... b's `in writing`
+    AND "(a) the amount ... (the additional amount)" ... b's `states the additional amount`
+    AND "(b) the day on which the additional amount is payable" ... b's `states the day it is payable`
+    AND "(1B)(a)" ... (CONSIDER `s 85 -- the day the notice is given` (b's `given`)
+                       WHEN NOTHING THEN FALSE
+                       WHEN JUST g THEN b's `payable on` AT LEAST `the last day of the period of` 60 `days after day` g)
+    AND "(1B)(b) [r 5CB]" ... (CONSIDER `r 5CB -- s 31(1B)(b) -- the day the rent increase takes effect, if the event is a rent notice` ev
+                               WHEN NOTHING THEN TRUE
+                               WHEN JUST t THEN b's `payable on` AT LEAST t)
+    AND "(2)" ... (`bond now` PLUS b's `additional amount`) AT MOST ((4 TIMES `weekly rent then`) PLUS (IF `pet permitted` THEN `r 10A -- the amount prescribed for s 29(1)(b)(ii)` ELSE 0))
+    AND "(3) ... not been withdrawn" ... NOT b's `withdrawn`
+
+-- s 31(1C): "Despite section 29(1)(b), a person may receive, but may not require, the payment of the
+-- additional amount before the day on which the additional amount is payable."
+@ref Residential Tenancies Act 1987 (WA) s 31(1C)
+GIVEN b IS A `Notice of increase of security bond`, d IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `s 31(1C) -- payment of the additional amount under` b `may be required on day` d IF
+    d AT LEAST b's `payable on`
+
+-- FK-25: s 31(1A) and r 5CB(1AA)(a) speak of a "notice of increase of rent under section 30 or 31A".
+-- Reading taken (A): any notice of a change of method under s 31A is such a notice, whether or not the
+-- change increases the rent. Reading rejected (B): only a s 31A notice whose change increases the rent.
+@ref Residential Tenancies Act 1987 (WA) s 31(1A); Residential Tenancies Regulations 1989 (WA) r 5CB; fork FK-25 reading A
+GIVEN n IS A `Notice of increase of rent`, `the change increases the rent` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `s 31(1A) -- the notice` n `is a notice of increase of rent under s 30 or 31A, it increasing the rent:` `the change increases the rent` IF
+        n's `under` EQUALS `section 30`
+    OR  n's `under` EQUALS `section 31A`
+
+@ref Residential Tenancies Act 1987 (WA) s 31(1A); fork FK-25 reading B
+GIVEN n IS A `Notice of increase of rent`, `the change increases the rent` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `FK-25 reading B -- s 31(1A) -- the notice` n `is a notice of increase of rent under s 30 or 31A, it increasing the rent:` `the change increases the rent` IF
+        n's `under` EQUALS `section 30`
+    OR  (n's `under` EQUALS `section 31A` AND `the change increases the rent`)
+
+§ `Section 32 -- Limitation of excessive rents in certain circumstances`
+
+DECLARE `Trigger for an application under s 32` IS ONE OF
+    `the tenant received notice of an increase in the rent payable` HAS
+        `received on` IS A NUMBER
+    `the tenant received notice of a change in the method of calculating rent that increases the rent` HAS
+        `received on` IS A NUMBER
+    `a significant reduction in chattels or facilities, without the tenant's default` HAS
+        `on` IS A NUMBER
+    `no notice and no reduction`
+
+-- s 32(2): the application "must be made not more than 30 days, or any greater period as the court thinks
+-- fit ..., after" the trigger (Interpretation Act s 61(1)(b), (e)). Whether the court allows a greater
+-- period is a fact.
+@ref Residential Tenancies Act 1987 (WA) s 32(1), (2); Interpretation Act 1984 (WA) s 61(1)(b), (e)
+GIVEN d        IS A NUMBER
+      t        IS A `Trigger for an application under s 32`
+      `the court allows a greater period` IS A BOOLEAN
+      holidays IS A LIST OF NUMBER
+GIVETH A BOOLEAN
+DECIDE `s 32(2) -- an application on day` d `after` t `is in time, a greater period allowed:` `the court allows a greater period` `, given the holidays` holidays IF
+    CONSIDER t
+    WHEN `the tenant received notice of an increase in the rent payable` r THEN
+        d AT LEAST r AND (`the court allows a greater period` OR d AT MOST `the last day for a thing to be done within` 30 `days after day` r `, given the holidays` holidays)
+    WHEN `the tenant received notice of a change in the method of calculating rent that increases the rent` r THEN
+        d AT LEAST r AND (`the court allows a greater period` OR d AT MOST `the last day for a thing to be done within` 30 `days after day` r `, given the holidays` holidays)
+    WHEN `a significant reduction in chattels or facilities, without the tenant's default` r THEN
+        d AT LEAST r AND (`the court allows a greater period` OR d AT MOST `the last day for a thing to be done within` 30 `days after day` r `, given the holidays` holidays)
+    WHEN `no notice and no reduction` THEN FALSE
+
+-- s 32(5): the order "has effect until the expiration of the tenancy of the person who applied for the
+-- order or of such period not exceeding 6 months as is fixed by the court commencing on the day on which
+-- the order is made, whichever is the earlier". FK-23, reading taken (A): the tenancy of the person who
+-- applied is the tenancy under the agreement in respect of which the order was made; it expires when that
+-- agreement terminates, even if the applicant stays on under a further agreement.
+@ref Residential Tenancies Act 1987 (WA) s 32(5); Interpretation Act 1984 (WA) ss 61(1)(a), 62; fork FK-23 reading A
+GIVEN `made on`                  IS A NUMBER
+      `period fixed ends on`     IS A NUMBER
+      a                          IS A `Residential tenancy agreement`
+      d                          IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `s 32(5) -- an order made on day` `made on` `for a period ending on day` `period fixed ends on` `in respect of` a `is in force on day` d IF
+        d AT LEAST `made on`
+    AND "such period not exceeding 6 months as is fixed by the court commencing on the day on which the order is made"
+    ... d AT MOST `the earlier of day` `period fixed ends on` `and day` (`the last day of the period of` 6 `months beginning on day` `made on`)
+    AND "the expiration of the tenancy of the person who applied" ... `s 3 -- day` d `falls in the tenancy period of` a
+
+-- FK-23, reading rejected (B): the applicant's tenancy continues while the applicant stays on under a
+-- continuing agreement, so the order outlives the agreement in respect of which it was made.
+@ref Residential Tenancies Act 1987 (WA) s 32(5); fork FK-23 reading B
+GIVEN `made on`                  IS A NUMBER
+      `period fixed ends on`     IS A NUMBER
+      `the applicant still occupies under this or a continuing agreement` IS A BOOLEAN
+      d                          IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `FK-23 reading B -- s 32(5) -- an order made on day` `made on` `for a period ending on day` `period fixed ends on` `, the applicant still occupying:` `the applicant still occupies under this or a continuing agreement` `, is in force on day` d IF
+        d AT LEAST `made on`
+    AND d AT MOST `the earlier of day` `period fixed ends on` `and day` (`the last day of the period of` 6 `months beginning on day` `made on`)
+    AND `the applicant still occupies under this or a continuing agreement`
+
+-- s 32(7): "A person shall not demand or receive any rent in respect of premises of an amount that exceeds
+-- the amount fixed by an order under this section in respect of the premises."
+@ref Residential Tenancies Act 1987 (WA) s 32(7)
+GIVEN `weekly rent demanded` IS A NUMBER, `weekly rent fixed by the order` IS A NUMBER, `the order is in force` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `s 32(7) -- demanding or receiving weekly rent of` `weekly rent demanded` `is an offence, the order fixing` `weekly rent fixed by the order` `and being in force:` `the order is in force` IF
+        `the order is in force`
+    AND `weekly rent demanded` GREATER THAN `weekly rent fixed by the order`
+
+@ref Residential Tenancies Act 1987 (WA) s 32(7), Penalty
+`s 32(7) -- the maximum fine` MEANS 5000
