@@ -38,6 +38,7 @@ expected_failed() {
   case "$1" in
     il07-tests-expected-red.l4) echo 2 ;;   # NOTES.md sections 6, 11.14: R2 (1), R3 (1, added in 0.2.0); R1 resolved in 0.2.1
     tests-independent.l4) echo 18 ;;         # the independent tester's record against v0.1.0, not edited: 15 reworded refusals, H43's tax, H45's two; NOTES.md 11.8, 11.13
+    tests-independent-2.l4) echo 9 ;;        # the second independent tester (IL-13, fid-il-13), run against v0.2.2 at 79f0a29, not edited: F1 (H33, the 5786 temporary Aliyah exemption; capstone wrong) 2, F5 (tester's own error) 7; INDEPENDENT-FINDINGS-2.txt
     *) echo 0 ;;
   esac
 }
@@ -48,6 +49,7 @@ expected_failed() {
 expected_refused() {
   case "$1" in
     tests-independent.l4) echo 2 ;;          # H44n's allowance and net: NII s 72 and fork K15
+    tests-independent-2.l4) echo 20 ;;       # IL-13: declined by name: F2 (fewer than six deduction branches at the printed totals) 9, F3 (part-time Schedule K minimum) 6, F4 (18th birthday on the 1st) 3, F6 (health read through the declined month) 2
     *) echo 0 ;;
   esac
 }
