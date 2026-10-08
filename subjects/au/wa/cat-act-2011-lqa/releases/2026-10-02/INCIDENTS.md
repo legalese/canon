@@ -1153,25 +1153,3 @@ Every finding was made against the pinned print and re-checked on 2 October 2026
 
 **Challenge (2026-10-02).** The duty the memorandum describes is imposed by s. 5(1); read with it, s. 8 is the means. No outcome differs.
  Answered by: Cat Act 2011 s. 5(1) [cat-act-2011-text].
-
-### D-55 -- A cat sterilised by someone who is not a veterinarian is "sterilised", so registration cannot be refused although the owner is in breach of s. 18(1)
-
-- **Provision:** s. 3(1) "sterilised"; s. 9(2)(d); s. 18(1); Cat Regulations 2012 r. 11(k), Sch. 1 Form 1
-- **Category:** D (also E, X)
-- **Status:** OPEN, medium; headline 3: "A cat desexed by someone who isn't a vet must still be registered"
-- **Found by:** EXT -- finding A-02 of the earlier encoding of this Act (subjects/au/wa/cat-act-2011/encodings/legalese-michael), restored to this register at the human's request on 2026-10-05. This run did not find it; its nearest finding, D-22, covers only veterinarians registered outside WA.
-- **Print:** 00-l0-01, currency start 25 Sep 2025; checked against the current print 2026-10-05
-
-**What.** Section 18(1) requires the owner to ensure that a cat of 6 months or more is sterilised "by a veterinarian". "Sterilised" is defined by result alone: "made permanently infertile by a surgical procedure" (s. 3(1)). Registration must be refused "if, and only if" a listed ground applies (s. 9(2)), and ground (d) is that "the cat is not sterilised" -- the defined term, not the s. 18(1) formula. The application asks only the cat's sterilisation status (r. 11(k); Form 1: "Is the cat sterilised?"). A cat desexed by a breeder or anyone else who is not a veterinarian therefore leaves its owner in breach of s. 18(1), yet the council must register it.
-
-**Evidence.**
-
-- scenario "Smudge is desexed by Bree, a breeder who is not a vet; Ana applies; the council must register her" (console)
-- text: Cat Act 2011 (00-l0-01), s. 3(1): "sterilised means made permanently infertile by a surgical procedure"
-- text: Cat Act 2011 (00-l0-01), s. 18(1): "must ensure that the cat is sterilised by a veterinarian, unless the cat is exempt from sterilisation"
-- text: Cat Act 2011 (00-l0-01), s. 9(2): "if, and only if, the local government is satisfied that one or more of the following apply"
-- text: Cat Regulations 2012, Sch. 1 Form 1: "Is the cat sterilised?"
-
-**Challenge (2026-10-05).** Not answered by the 0H or 3H sets. r. 18 says how a sterilised cat is identified (a s. 21 certificate or the ear tattoo), but only for s. 19; s. 9(2)(d) turns on the defined term. s. 9(5)-(6) let a council ask for documents, but cannot add a ground to the closed list in s. 9(2).
-
-**Repair.** Make s. 9(2)(d) read "the cat is not sterilised by a veterinarian", matching s. 18(1); or require the application to be accompanied by a certificate of sterilisation given under s. 21 (r. 11).

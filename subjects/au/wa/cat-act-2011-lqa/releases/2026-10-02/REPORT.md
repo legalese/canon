@@ -9,75 +9,13 @@ Veterinary Practice Act 2021 (00-f0-01), on whose definitions two findings turn.
 that Part 2 depends on (rr. 4-19, Sch. 1 Forms 1-2, Sch. 3). Parts 3-7 and the Cat (Uniform Local
 Provisions) Regulations 2013 are outside this run.
 
-**Status.** Steps 0H-13A complete: released at 12H on 2 October 2026; the files as released are kept in `releases/2026-10-02/`. On 4 October 2026 the findings were re-triaged under the revised step 9A (headline findings and drafting notes). The findings themselves are unchanged, but this version of the report has not been released.
+**Status.** Steps 0H-11A complete. **Not released**: release (12H) needs a named person's signature
+for one recipient, and none has been given. Run by Claude (agent) for Legalese, 1-2 October 2026.
 
-**Result.** 55 findings: **33 OPEN** and **22 verified sound**. Of the 33 open findings, **10 are headline findings** (two of them carry a second finding with the same cause) and **21 are drafting notes**. One headline, D-55, was not found by this run: it is finding A-02 of the earlier encoding of this Act, restored to the register at the human's request on 5 October 2026 and counted as EXT. Every finding is evidenced: 104 `#ASSERT`s in `lqa-evidence.l4` (all satisfied), 40 console scenarios, one generated year (seed 1, 365 days), and quotations checked against the pinned texts. None is opinion.
-
----
-
-## Headline findings
-
-The 10 findings below are the ones where a real person (an owner, a council, a buyer) gets a wrong, unfair or uncertain result in a situation that could plausibly happen. They are ranked by consequence. The other 21 open findings are drafting notes: wording, form, and questions of reading that change little in practice. They, and the technical analysis of every finding, follow under "All open findings, in technical detail".
-
-### 1. When a cat changes hands, the old owner stays responsible and the new owner cannot register it
-
-Jo sells or gives away her registered cat to Sam. The Act still treats Jo as the owner, so Jo keeps every owner's duty for a cat she no longer has, for life if the registration was a lifetime one. Sam, who has the cat, cannot even apply to register it, because only the owner may apply.
-
-*Finding D-01. s. 4(1)(a), with ss. 5, 6, 8(1), 12(4), 24, 25.*
-
-### 2. A cat microchipped or desexed by a vet outside WA does not count
-
-A family moves to Perth from Melbourne with a cat their Victorian vet microchipped and desexed. Only a vet who practises in WA counts under the Act, so the cat is legally not microchipped and was never "sterilised by a veterinarian". The owners are in breach from the day they arrive: the cure for the chip is a second chip, and for the desexing there is none.
-
-*Finding D-05, with D-22 (same cause). s. 3(1) "microchipped", "microchip implanter"; Cat Regulations 2012 rr. 7, 8; Veterinary Practice Act 2021 ss. 3, 22(1)(c).*
-
-### 3. A cat desexed by someone who isn't a vet must still be registered
-
-Smudge is desexed by a breeder who is not a vet. Her owner is now in breach of the Act, which requires desexing by a veterinarian. But when the owner applies to register her, the council must say yes: the registration check asks only whether the cat is desexed, not who did it, so the check meant to enforce the rule never catches the breach.
-
-*Finding D-55. s. 3(1) "sterilised"; s. 9(2)(d); s. 18(1); Cat Regulations 2012 r. 11(k), Sch. 1 Form 1.*
-
-### 4. An owner who moves to another council area is in breach on moving day
-
-A cat must be registered with the council for the district where it is kept, and there is no period of grace for a move. On the day the owner moves, the cat is registered with the wrong council. The regulations let the owner tell both councils, but nothing says what that notice achieves.
-
-*Finding L-09. s. 5(1); Cat Regulations 2012 r. 13; s. 10(a)(iii).*
-
-### 5. A council can leave an application undecided, with no reasons and no review, while the owner stays in breach
-
-If an applicant misses the deadline for extra information, the council may "refuse to consider" the application. That is not a refusal, so no notice, reasons or right of review follow. The owner is left with an unregistered cat, in breach of the duty to register it, and nowhere to go.
-
-*Finding P-15. s. 9(6); s. 13(2); s. 68.*
-
-### 6. If the council never sends the refusal notice, the owner loses the right to challenge it
-
-Only a person who has been given the written notice of a refusal or cancellation may object or go to the State Administrative Tribunal. A council that refuses or cancels a registration and never sends the notice therefore takes away the owner's review. Nothing in the Act puts that right.
-
-*Finding E-18. s. 13(1); ss. 69(1), 71(1).*
-
-### 7. A cat that happens to be at the vet or a boarding cattery must be refused registration
-
-The regulations exempt cats in the custody of a vet or an approved facility, which includes an ordinary boarding cattery. The Act makes councils refuse to register a cat in an exempt class. So an owner whose cat is at the vet or boarding on the day the application or renewal is decided must be refused.
-
-*Finding D-10. s. 9(2)(b); s. 5(2)(c); Cat Regulations 2012 r. 9(2)(d), (e); s. 3(1) "cat management facility" (c).*
-
-### 8. Anyone may hand over an unchipped, undesexed cat to a vet clinic or a council-approved private facility
-
-Giving away or selling a cat that is not microchipped and desexed is an offence, except to the bodies "set out in regulation 9". Since that regulation was rewritten it covers vet premises and any facility a council approves, so the exception now reaches far beyond rescue organisations. Nothing suggests anyone meant to widen it.
-
-*Finding R-29. Cat Regulations 2012 r. 19, r. 9(2)(d), (e); s. 23(3).*
-
-### 9. A fake desexing certificate is not caught by the offence meant to stop it
-
-It is an offence to pass off an entire cat as desexed in a prescribed way, and the prescribed ways are a real vet's certificate and the ear tattoo. A forged certificate is not a certificate a vet gave under the Act, so only a false tattoo is caught. A fake certificate shown to a buyer or a council is the likelier trick.
-
-*Finding R-24. s. 19; Cat Regulations 2012 r. 18(1); s. 21.*
-
-### 10. Registrations do not last as long as owners pay for
-
-Every registration ends on a 31 October. A "3-year" registration can therefore last two years and a day, and a one-year registration granted in late October lasts six days, for the same fee as one granted in June that lasts five months. Owners pay for time they do not get.
-
-*Finding U-38, with T-46 (same cause). Cat Regulations 2012 r. 12(2)(a)(ii).*
+**Result.** 54 findings: **32 OPEN** (1 high, 2 medium-high, 5 medium, 9 low-medium, 12 low, and 3
+Form findings at low) and **22 verified sound**. Every finding is evidenced: 104 `#ASSERT`s in
+`lqa-evidence.l4` (all satisfied), 39 console scenarios, one generated year (seed 1, 365 days), and
+quotations checked against the pinned texts. None is opinion.
 
 ---
 
@@ -97,10 +35,7 @@ casual one would not, and CMP keeps deliberate cross-reading from being credited
 | CMP | 8 | 4 | 4 |
 | RD | 7 | 6 | 1 |
 | TST | 2 | 1 | 1 |
-| EXT | 1 | 1 | 0 |
-| CHK, SIM | 0 | 0 | 0 |
-
-The one EXT finding is D-55: the earlier encoding of this Act found it (its A-02), and it was restored to this register at the human's request on 5 October 2026. This run's nearest finding, D-22, covers only veterinarians registered outside WA.
+| CHK, SIM, EXT | 0 | 0 | 0 |
 
 No finding is CHK: `l4 verify` does not exist in the installed `l4` (its commands are run, check,
 format, ast, batch, trace, state-graph), `l4 check` is clean, and the console checker reported
@@ -109,9 +44,7 @@ L-33, T-46, W-21, U-34, T-39, R-36), which is stronger evidence than a scenario.
 
 ---
 
-## All open findings, in technical detail
-
-Every open finding, the headline findings included, by severity. Findings reported together above are listed separately here.
+## Open findings, by severity
 
 | ID | Finding | Provision | Severity | Found by |
 |---|---|---|---|---|
@@ -123,7 +56,6 @@ Every open finding, the headline findings included, by severity. Findings report
 | P-15 | A refusal to consider an application carries no notice, reasons or review, and leaves the owner in breach | s. 9(6); ss. 13(2), 68 | medium | ENC |
 | E-18 | If no s. 13 notice is given, the owner loses the objection and review rights | s. 13; ss. 69(1), 71(1) | medium | ENC |
 | R-20 | Section 15 has no addressee until a database company has agreed to keep the cat's records | s. 15; s. 3(1) | medium | ENC |
-| D-55 | A cat sterilised by someone who is not a veterinarian is "sterilised", so registration cannot be refused although the owner is in breach of s. 18(1) | s. 3(1); ss. 9(2)(d), 18(1); r. 11(k), Form 1 | medium | EXT |
 | U-06 | "The person" in s. 5(2)(a): has a parent, or a business owner, kept the cat? (FORK-03) | s. 5(2)(a) | low-medium | ENC |
 | U-27 | On a reclaim from a pound, who is the "seller"? (FORK-14) | s. 3(1) "transfer" (b); ss. 22-24 | low-medium | ENC |
 | R-24 | Section 19 does not reach a false certificate of sterilisation | s. 19; r. 18(1) | low-medium | ENC |
