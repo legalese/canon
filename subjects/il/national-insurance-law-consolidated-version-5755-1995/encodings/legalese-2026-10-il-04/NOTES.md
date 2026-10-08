@@ -1,8 +1,107 @@
 # NOTES — il/national-insurance-law-consolidated-version-5755-1995, encoding row `legalese-2026-10-il-04`
 
 National Insurance Law [Consolidated Version], 5755-1995: **s 334** (interpretation for Chapter 15, insurance contributions), **s 337** (the rate of insurance contributions), **Schedule J** (לוח י׳, the rates), and the **s 1** definitions they use, encoded in L4 by one agent in one session (run `IL-04-20261006`, 2026-10-06), from the brief in `BRIEF.md`.
-Status: **draft**. Version **0.5.0** (2026-10-08): fork F21 ruled (TAKEAWAY), column D at the printed totals for the two branch sets whose rate the Institute publishes, every other set of fewer branches declined (BACKLOG IL-37); see "Version 0.5.0" below. Version 0.4.1: wording and records only, no answer changed (BACKLOG IL-21). Version 0.4.0: fork F6 ruled, a fall in the index or the average wage declined by default. Version 0.3.1: the independent tests re-pointed to the items' reading. Version 0.3.0: the Schedule J switch, fork F4 ruled.
+Status: **draft**. Version **0.6.0** (2026-10-08): a third set joins fork F21 (DESSERT), a woman between her retirement age and 67 without an old-age pension (BACKLOG IL-45); see "Version 0.6.0" below. Version 0.5.0: fork F21 ruled (TAKEAWAY), column D at the printed totals for the two branch sets whose rate the Institute publishes, every other set of fewer branches declined (BACKLOG IL-37). Version 0.4.1: wording and records only, no answer changed (BACKLOG IL-21). Version 0.4.0: fork F6 ruled, a fall in the index or the average wage declined by default. Version 0.3.1: the independent tests re-pointed to the items' reading. Version 0.3.0: the Schedule J switch, fork F4 ruled.
 No domain expert has read it against the source; HG1 has not been sought.
+
+## Version 0.6.0 (2026-10-08): fork F21's third published set (BACKLOG IL-45)
+
+Backlog row IL-45, run `IL-45-20261008`, agent `dessert-il-45`, one session, no sub-agents, on Meng's ruling of 2026-10-08 (DESSERT) as the lead relayed it: add to fork F21's sets whose rate the National Insurance Institute publishes a woman between her retirement age and 67 who has no old-age pension (open question 8 of version 0.5.0).
+The version is minor, not a patch, because an answer changes: her deduction above the threshold, declined at 0.5.0, is now a figure.
+Nothing below was deleted; entries this version changes are marked **(0.6.0)** in place.
+The section "Comparison with Axiom's RuleSpec", `tests-independent.l4`, `DECIDED-ANSWERS.md` and `INDEPENDENT-FINDINGS.md` are untouched.
+
+### Which branches she does not pay, from the Law
+
+Established from the deposited source before she was added (the ruling's own wording, accident injury and disability, was checked, not assumed):
+
+- **Her retirement age.** s 1 "גיל הפרישה" (line 130), paragraph (2) for a woman (line 132): the age Part A of Schedule A1 fixes by her month of birth, or for one born from 1956 the Retirement Age Law's (not in the bundle). Which age it is does not matter here: the set holds at any age from it to 67.
+- **Accident injury: not paid.** Chapter 6's "מבוטח" is a resident aged 18 "וטרם הגיע לגיל פרישה" (s 150, line 1405), so s 335(d) (line 3614) does not reach her.
+- **Disability: not paid.** Chapter 9's "מבוטח" is likewise a resident aged 18 who has not reached retirement age (s 195, line 1929), so s 335(g) (line 3617) does not reach her.
+- **Unemployment: paid.** s 158's paragraph (1) (line 1444) insures a resident employee to the age Part B of Schedule A1 fixes by month of birth, and Part B, "the maximum age for unemployment insurance", fixes 67 for anyone born from May 1942, women and men alike (line 4412); so before 67 s 335(e) (line 3615) reaches her.
+- **Maternity, senior citizens and survivors, long-term care: paid.** s 240(a) (line 2439) insures under Chapter 11 a resident aged 18 with no upper age (it excludes only one first resident after a set age); s 335(i) (line 3619) charges such a person senior citizens and survivors and maternity, and s 223's "מבוטח" (paragraph (1), line 2175) is one insured under Chapter 11, so s 335(h) (line 3618) charges long-term care.
+- **Insolvency** (an employee, s 181, line 1830, no age limit), **children** and **work injury** print no column D figure and do not enter column D.
+
+So her column D branches not paid are **accident injury and disability**, as the ruling said.
+The same two citations, s 240(a) and s 223, also support the 67-to-70 set's "still pays maternity, senior citizens and survivors and long-term care" (version 0.5.0), which had cited s 335(h) and (i) only; marked **(0.6.0)** in `nii-schedule-j.l4`.
+
+### The arithmetic against the page
+
+The page is the Institute's employees' rates page as fetched by fid-il-13 on 2026-10-08T06:29:00Z (sha256 `74fc3652d8912f23004b6e2d1d3d7fc39e0fbe928c0b71948ff89e8b71827cf1`, as in version 0.5.0; read again from the same copy).
+Its form 102 table prints, for a woman between retirement age and "retirement age for a man" who does not receive an old-age pension: total 8.12% / 17.36%, employee 3.95% / 10.24%, employer 4.17% / 7.12% (up to the threshold / above it, with health insurance); the employee's health insurance is 3.23% / 5.17%.
+
+- **Column D** (2026, lines 4724, 4727, 4730): 1.04 − 0.03 − 0.29 = **0.72** and 7.00 − 0.07 − 1.86 = **5.07**; the page's 3.95 − 3.23 = 0.72 and 10.24 − 5.17 = 5.07. Exact.
+- **Column C** (an employee, 2026): 5.55 − 0.04 − 0.62 = 4.89 and 14.60 − 0.13 − 2.28 = 12.19; the page's National Insurance totals, 8.12 − 3.23 = 4.89 and 17.36 − 5.17 = 12.19. **Also exact**, unlike the other two sets (14.23 against 14.17; 11.86 against 11.82).
+  Column C nonetheless keeps the decline for fewer branches, for her as for the others (assumed, not ruled): TAKEAWAY and DESSERT are rulings on the employee's deduction, and reading the totals in column C for her alone would extend F21 to a column the rulings did not name. Open question 9.
+
+### What changed
+
+- `nii-schedule-j.l4`: her set, `accident injury` and `disability`, is the third entry of `the column D branches not paid, for each set whose employee's rate the National Insurance Institute publishes`; the comment above the switch records her branches, their sections and the arithmetic, and the column C finding. The other two sets and every other partial set are unchanged; nothing else in the module changed.
+- `nii-il04-tests.l4`: two assertions of version 0.5.0 that encoded "her set is not published" change, by the ruling (below), on the same lines; 16 are added.
+
+### Assertions changed or added
+
+Two expected values change, by the ruling, not by a run; both are on their 0.5.0 lines, so no cited line moved:
+
+| line | assertion | 0.5.0 | 0.6.0 | why |
+| ---: | --- | --- | --- | --- |
+| 621 | the Institute publishes the rate for her set | NOT (FALSE) | TRUE | DESSERT |
+| 651 | combined column D, upper, 2026, her branches, default | REFUSED, the fewer-branches words | 5.07 | 7.00 − 0.07 − 1.86 |
+
+The two comment lines above 651, and one above 621 (line 602), were reworded in place to say so.
+
+Added, section "Version 0.6.0" (16, all satisfied on the first run; each value worked by hand before it):
+
+| line | case | expected | why |
+| ---: | --- | --- | --- |
+| 699 | combined column D, lower, default | the page's 3.95 − 3.23 (0.72) | 1.04 − 0.03 − 0.29 |
+| 700 | combined column D, upper, default | the page's 10.24 − 5.17 (5.07) | 7.00 − 0.07 − 1.86 |
+| 701 | the same, reading (i) | REFUSED, the fewer-branches words | |
+| 706 | deduction, 7,800 (near the threshold), default | 60.3795 | 7,703 × 0.72% + 97 × 5.07% = 55.4616 + 4.9179 |
+| 707 | the same, reading (ii) | 60.3795 | |
+| 708 | the same, reading (i) | REFUSED, the fewer-branches words | |
+| 709 | the same, at the items | 58.1194 | 55.4616 + 97 × 2.74% (2.6578) |
+| 711 | deduction, 7,703, reading (i) | 55.4616 | nothing above the threshold |
+| 714 | deduction, 20,000 (well above), default | 678.9195 | 55.4616 + 12,297 × 5.07% (623.4579) |
+| 715 | the same, reading (ii) | 678.9195 | |
+| 716 | the same, reading (i) | REFUSED, the fewer-branches words | |
+| 717 | the same, at the items | 392.3994 | 55.4616 + 12,297 × 2.74% (336.9378) |
+| 720 | deduction, 2027, threshold 8,000, 10,000, default | 123.8 | 8,000 × (0.40 − 0.01 − 0.11)% + 2,000 × 5.07% = 22.4 + 101.4 |
+| 729 | column C, an employee, above, her branches, default | REFUSED, the fewer-branches words | column C keeps reading (i) |
+| 730 | the same, at the items | 12.08 | 14.49 − 0.13 − 2.28 |
+| 731 | column C, an employee, not above, her branches | 4.89 | the items reach the total: 5.55 − 0.04 − 0.62 |
+
+`tests-independent.l4` (not edited) and `nii-il04-tests-expected-red.l4` print what they printed at 0.5.0, assertion by assertion (compared line by line on the same binary): 641 satisfied, 5 failed; 26 satisfied, 15 failed. No tester line passes or changes.
+
+### What `check.sh` prints at 0.6.0
+
+```
+module                                    errors satisfied  failed  refused  expected
+nii-il04-nouns.l4                              0         0       0        0         0
+nii-il04-published-figures.l4                  0         0       0        0         0
+nii-il04-tests-expected-red.l4                15        26      15        0        15
+nii-il04-tests.l4                              0       235       0        0         0
+nii-s1-definitions.l4                          0         0       0        0         0
+nii-s334-interpretation.l4                     0         0       0        0         0
+nii-s337-rates.l4                              0         0       0        0         0
+nii-schedule-j-tables.l4                       0         0       0        0         0
+nii-schedule-j.l4                              0         0       0        0         0
+tests-independent.l4                           5       641       5        0         5
+TOTAL (10 modules)                            20       902      20        0
+```
+
+Exit 0. Run 2026-10-08T16:36:44Z to 16:37:11Z, `L4=~/.local/bin/l4`, `JL4_LIBRARY_PATH` unset; no module changed during the run.
+The binary resolves to the cabal store, `jl4-0.1-d4290e25/bin/l4`, sha256 `f4f2bd2558f02f828f0deced5f74313a33670f08cc3275ff95b83f2cde71e448`, the same before and after, and the binary of 0.5.0; before any edit it printed 0.5.0's counts (219; 641/5; 26/15).
+`check.sh` needed no change: no module's declared count moved.
+`tools/srcquote.py` leaves the two changed `.l4` modules byte-identical, and `tools/hebcheck.py` passes on them.
+
+**Row IL-05** was re-run (2026-10-08T16:37:12Z to 16:37:29Z, the same binary before and after): 9 errors, 369 satisfied, 9 failed, 2 refused, exit 0, its version 0.5.0's recorded counts.
+It needs nothing: it does not import row IL-04 (cross-directory IMPORT does not resolve; it re-declares IL-04's types), and at the printed totals it takes column D for the deduction branches as an argument from its caller, so IL-04's figure for her set reaches its s 342(c) unchanged; its one partial-set computation, fork F23, is the controlling shareholder's set, not hers.
+
+### For the capstone (BACKLOG IL-44)
+
+`nii-schedule-j.l4` is vendored and changed, so its pin must be re-recorded; no name, type or entry point changed.
+A capstone earner whose s 335 statuses leave out accident injury and disability (insured neither under Chapter 6 nor under Chapter 9, but for unemployment) now has a column D figure from IL-04 where 0.5.0 declined.
 
 ## Version 0.5.0 (2026-10-08): fork F21, a printed total for fewer branches than it is for (BACKLOG IL-37)
 
@@ -732,7 +831,7 @@ The rules that take only a year assume the temporary provision was not extended 
 | F18 | Amendment 252 s 7(a)(3) | **(added 2026-10-07)** The temporary lower sub-columns Amendment 252 inserts carry their own headings, "not above 60% of the average wage"; the 2025 budget-year Law s 20 amended that section's figures but not those headings, and s 19(6) amends "Schedule J, everywhere". Read literally for 2026 the lower part would run to 60% of the average wage while the upper part starts at the threshold: an overlap. | (i) the threshold: s 19(6) reaches Schedule J as read under the temporary provision; (ii) literal: the lower part runs to 60% of the average wage | **(i)**, the only workable reading, and the one the consolidation (line 4718) and the Institute follow. Not settled by any text read. |
 | F19 | item 4, employee, not above the split, 2026 (4723) | **(added 2026-10-07)** Two temporary provisions reach the same cell in 2026: the Economic Efficiency Law 5783-2023 s 24 reads 0.47 into the principal sub-column, and Amendment 252 s 7(a)(3) replaces that sub-column with its own (0.60). | (i) Amendment 252's sub-column, 0.60; (ii) 0.47 | **(i)**: s 7(a)(3) replaces the whole sub-column, and is the later Law; the consolidation prints 0.60, and the Institute's 2026 composite (5.55) includes it. |
 | F20 | Amendment 252 s 7(b) | **(added 2026-10-07)** The extension is "one year at a time": does an order for 2028 presuppose one for 2027? | — | **not checked**: the order is an input per year. |
-| F21 **(0.5.0: ruled by Meng on 2026-10-08 (TAKEAWAY), reading (iii) by default in column D; "Version 0.5.0" above)** | totals rows (4730, 4748) with s 335 (3611-3619) | At the printed totals, a person pays fewer of the branches that print a figure in a cell whose items do not reach the total (2026: column D's upper part; column C above the threshold for an employee). What is that person's rate? | (i) declined: the schedule prints no figure for fewer branches; (ii) the printed total less the printed items of the branches not paid; (iii) (ii) only for the branch sets whose employee's rate the National Insurance Institute publishes (a controlling shareholder: 1.02 / 6.79; aged 67 to 70 without an old-age pension: 0.70 / 4.86), every other set declined | **(iii) in column D, by the ruling**; column C keeps (i), the formula not reaching the Institute's totals there (assumed, not ruled). Versions 0.3.0 to 0.4.1 took (i) everywhere. |
+| F21 **(0.5.0: ruled by Meng on 2026-10-08 (TAKEAWAY), reading (iii) by default in column D; "Version 0.5.0" above)** **(0.6.0: a third published set, by DESSERT: a woman between her retirement age and 67 without an old-age pension, 0.72 / 5.07; "Version 0.6.0" above)** | totals rows (4730, 4748) with s 335 (3611-3619) | At the printed totals, a person pays fewer of the branches that print a figure in a cell whose items do not reach the total (2026: column D's upper part; column C above the threshold for an employee). What is that person's rate? | (i) declined: the schedule prints no figure for fewer branches; (ii) the printed total less the printed items of the branches not paid; (iii) (ii) only for the branch sets whose employee's rate the National Insurance Institute publishes (a controlling shareholder: 1.02 / 6.79; aged 67 to 70 without an old-age pension: 0.70 / 4.86), every other set declined | **(iii) in column D, by the ruling**; column C keeps (i), the formula not reaching the Institute's totals there (assumed, not ruled). Versions 0.3.0 to 0.4.1 took (i) everywhere. |
 
 **Where I looked for others and found none:** s 334(a)'s two carrier definitions; s 337(b)'s conditions (each a fact the order records); Schedule J's column E (data only).
 
@@ -815,7 +914,8 @@ So the consumer price index is an input, and the commencement of Amendment 252's
 5. A3: from which month did the 2.06 work-injury rate apply: January 2024 (the editors' note) or February 2025 (the Institute's composite)? **(2026-10-07: the Economic Efficiency Law 5783-2023 s 24 says 1 January 2024; why the Institute dates the 14.6% composite from 1 February 2025 is still open.)**
 7. **(added 2026-10-07)** Was an order under Amendment 252 s 7(b) made extending the temporary provision to 2027 (A8)?
 6. F8: are the self-employed's advance periods ever other than months, and if so how does the Institute apply the threshold to them?
-8. **(added 0.5.0)** F21: the Institute's employees' page also prints a rate for a woman between her retirement age and the men's, without an old-age pension (3.95% / 10.24% with health insurance, so 0.72% / 5.07%), which is the printed total less accident injury and disability exactly. Should that set join the two the ruling names? At the default it is declined.
+8. **(added 0.5.0)** F21: the Institute's employees' page also prints a rate for a woman between her retirement age and the men's, without an old-age pension (3.95% / 10.24% with health insurance, so 0.72% / 5.07%), which is the printed total less accident injury and disability exactly. Should that set join the two the ruling names? At the default it is declined. **(0.6.0: answered: yes, by Meng's ruling of 2026-10-08 (DESSERT); her set is the third, "Version 0.6.0".)**
+9. **(added 0.6.0)** F21: for her set the formula reaches the Institute's National Insurance totals in column C too (4.89 / 12.19, exactly), where for the other two it does not; column C still declines fewer branches for all three. Should column C read F21 for the sets whose column C total the formula reaches?
 
 ## 9. What was not done
 
