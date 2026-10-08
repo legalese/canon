@@ -39,7 +39,7 @@ This row gave every woman in a separate calculation the half point that s 66(c)(
 Of the two options in the inventory (drop the half point and leave s 36A to IL-01, or add the fact and decline in IL-01's words) the lead chose the second.
 
 - New field on `A spouse`: `a foreign worker within the meaning of section 48A` (BOOLEAN), named apart from IL-01's `a foreign worker` so the two cannot collide (section 9).
-- New rule `s 66(c)(4) — the half point under section 36A, for`: a woman who is a foreign worker is declined with "section 48A and the regulations made under it are not encoded in this model", IL-01's words (`ito-s34-s36-s36a-credits.l4:103`, read at commons HEAD `3f7d673` and in the working tree on 2026-10-08, not edited); any other woman ½; a man 0, a foreign worker or not, as in IL-01, where s 36A does not reach a man and so s 48A cannot change the answer.
+- New rule `s 66(c)(4) — the half point under section 36A, for`: a woman who is a foreign worker is declined with "section 48A and the regulations made under it are not encoded in this model", IL-01's words (`ito-s34-s36-s36a-credits.l4:103` at commons HEAD `3f7d673`, and `:115-116` in IL-01's v0.2.0 working tree of 2026-10-08, where rep-il-14 confirmed the string is unchanged and is applied from tax year 2002, so in every year this row answers; not edited); any other woman ½; a man 0, a foreign worker or not, as in IL-01, where s 36A does not reach a man and so s 48A cannot change the answer.
 - The decline is a rule named `row IL-02, section 66(c)(4): section 48A and the regulations made under it are not encoded in this model`, prefixed as row IL-08 prefixes its own, so it cannot collide with IL-01's rule of the same words where both rows are imported.
 - `s 66(c) — the credit points it gives the` takes its first field from the new rule. For a foreign-worker woman that field refuses and the other two answer, because L4 evaluates a field of a record only when it is read; asked as a whole, the record refuses.
 - `s 66(c) — in a separate calculation, the … has the entitlement under` `section 36A` declines alike.
@@ -124,7 +124,7 @@ Added, all in `ito66-tests.l4` (none existed before, so "old" is none; "refused"
 
 ### What `check.sh` prints, version 0.2.0
 
-Run from 2026-10-08T07:02:05Z to 07:02:25Z as `./check.sh`, after every repair including 02-N3 (the same counts as a run at 06:59:43Z before the rename), with `l4` on PATH: `/Users/mengwong/.local/bin/l4` -> `~/.cabal/bin/l4` -> the cabal-store build `jl4-0.1-d4290e25`, sha256 `f4f2bd2558f02f828f0deced5f74313a33670f08cc3275ff95b83f2cde71e448`, the same before and after the run.
+Run from 2026-10-08T07:13:30Z to 07:13:50Z as `./check.sh`, after every repair including 02-N3 and a comment-only update of IL-01's line citation (the same counts as runs at 06:59:43Z, before the rename, and 07:02:05Z), with `l4` on PATH: `/Users/mengwong/.local/bin/l4` -> `~/.cabal/bin/l4` -> the cabal-store build `jl4-0.1-d4290e25`, sha256 `f4f2bd2558f02f828f0deced5f74313a33670f08cc3275ff95b83f2cde71e448`, the same before and after the run.
 `JL4_LIBRARY_PATH` unset.
 Before any edit, the same binary reproduced 0.1.0's figures: 2 errors, 266 satisfied, 2 failed (both in `tests-independent.l4`), 0 refused.
 
