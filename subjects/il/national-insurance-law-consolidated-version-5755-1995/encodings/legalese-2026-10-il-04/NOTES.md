@@ -1,8 +1,85 @@
 # NOTES — il/national-insurance-law-consolidated-version-5755-1995, encoding row `legalese-2026-10-il-04`
 
 National Insurance Law [Consolidated Version], 5755-1995: **s 334** (interpretation for Chapter 15, insurance contributions), **s 337** (the rate of insurance contributions), **Schedule J** (לוח י׳, the rates), and the **s 1** definitions they use, encoded in L4 by one agent in one session (run `IL-04-20261006`, 2026-10-06), from the brief in `BRIEF.md`.
-Status: **draft**. Version **0.4.0** (2026-10-07): fork F6 ruled, a fall in the index or the average wage declined by default; see "Version 0.4.0" below. Version 0.3.1: the independent tests re-pointed to the items' reading. Version 0.3.0: the Schedule J switch, fork F4 ruled.
+Status: **draft**. Version **0.4.1** (2026-10-08): wording and records only, no answer changed (BACKLOG IL-21); see "Version 0.4.1" below. Version 0.4.0: fork F6 ruled, a fall in the index or the average wage declined by default. Version 0.3.1: the independent tests re-pointed to the items' reading. Version 0.3.0: the Schedule J switch, fork F4 ruled.
 No domain expert has read it against the source; HG1 has not been sought.
+
+## Version 0.4.1 (2026-10-08): repairs (BACKLOG IL-21)
+
+Backlog row IL-21 (job D0 in `l4-pipeline/findings/il-2026-10-08/jobs.txt`), repair agent `rep-il-21`, one session, no sub-agents, on Meng's request of 2026-10-08 to fix the unrepaired findings, as the lead relayed it.
+No encoding error was open in this row: both items are wording and records, and **no answer changed**.
+Nothing below was deleted; entries this version touches are marked **(0.4.1)** in place.
+The section "Comparison with Axiom's RuleSpec", `DECIDED-ANSWERS.md` and `INDEPENDENT-FINDINGS.md` are untouched; `tests-independent.l4` was edited only as the lead authorised (04-TF3 below).
+
+| item | class | file | what changed |
+| --- | --- | --- | --- |
+| 04-N14 | WORDING | `nii-schedule-j.l4` | a `@desc` on the average-wage argument of the four column D rules, saying it is not read for 2026 on |
+| 04-TF3 | TESTER-WRONG | `tests-independent.l4`, `check.sh`, `encoding.json` | a dated note by the lead at the end of the tester's file; the five values unchanged and still failing, as declared |
+
+### 04-N14: the average-wage argument of column D
+
+Recorded at IL-07 `RECONCILE.md` line 61 (N14) and IL-07 `NOTES.md` line 170 (K9).
+Four rules in `nii-schedule-j.l4` take `the average wage`: `where column D's upper part begins in …`, `the column D deduction under … , at the items`, its form `…, reading Schedule J as` r, and the form that follows the switch.
+Since the F3 repair of 2026-10-07 none of them reads it for a version selected for a contribution month, but the signatures kept it, and only the comment above them said so.
+Each now says so on the argument, in a `@desc` on the same line as its `GIVEN` entry (lines 382, 407, 591 and 614): "the average wage (s 1); not read from 2026: each version selected for 2026 on begins column D's upper part at the threshold (fork F3, repaired), so any figure gives the same answer; only the 2025 text kept as data reads it".
+Because the `@desc` shares the line, no line number in the module moved.
+Checked against the code before writing it: the four versions the year rule can select (lines 62, 71, 80, 89) set `column D upper part begins above 60% of the average wage` to FALSE (lines 67, 76, 85, 94); only `Schedule J, the temporary version as enacted for 2025 (data; 2025 is not answered)` sets it TRUE (line 125); and `where column D's upper part begins in` reads the average wage only when the flag is TRUE (line 385).
+A probe in a scratch copy, outside the row, gave 7,703 for 2026 with the average wage at 13,566 and at 99,999.
+The inventory's other option, a 2026-on entry point without the argument, was not taken: it would add a name for the capstone to follow, and the job is wording only.
+Fork F5 (which average wage) is unchanged; its entries in section 4 and in `encoding.json` are marked (0.4.1).
+
+### 04-TF3: the tester's five F3 expectations
+
+Recorded at "Repair 2026-10-07" below (the `tests-independent.l4` bullet), `check.sh` line 34 and `encoding.json` `expected_red`.
+Five assertions of the independent tester encode the pre-repair F3: line 756 (the 2026 version's flag asserted TRUE), line 924 (the upper part begins at 8,139.6) and lines 929-931 (refusals at 7,703.01, 8,000 and 10,000).
+The enacted 2025 Budget-year Law s 19(6) replaces "60% of the average wage" with "the reduced collection threshold as defined in s 334(a)" everywhere in Schedule J, and s 21 commences that chapter on 1 January 2026; both were re-read in the deposited PDF (`../../registers/source-bundle/amending-laws/25_lsr_6133485.pdf`, Sefer HaChukim 3384, pp. 395-396) before the note was written.
+As the lead authorised, no expected value and no input of theirs changed.
+A second dated note, "NOTE BY THE LEAD, 2026-10-08", follows the note of 2026-10-07 at the end of the file (lines 948-969), and nothing was inserted above it, so every cited line number still holds.
+It says what the enacted Laws say instead; gives the 2026 answers at both readings of fork F4 (below); records that the capstone's independent tester, fid-il-07, deciding from the sources before opening any encoding, reached the 7,703 boundary separately (IL-07 `DECIDED-ANSWERS.md` line 69, `INDEPENDENT-FINDINGS.md` line 41); and says the five are kept failing as the record of what the consolidation says.
+It also notes that T7 (line 787), the sixth failure the 2026-10-07 note names, passes from 0.4.0.
+`check.sh` still expects 5 failures from the file; its comment now names each line (756, 924, 929, 930, 931), the inventory id 04-TF3 and the class TESTER-WRONG.
+
+### Expected values changed or added
+
+None: no assertion's expected value changed, and none was added.
+
+The figures the note quotes were worked by hand from column D's 2026 figures for the tester's branches (1.04 up to the threshold, 7,703 × 1.04% = 80.1112; above it the items 4.67 and the printed total 7.00), then printed by the same scratch probe, which agreed in all six:
+
+| wage | part above 7,703 | on the items | at the printed totals (the default) |
+| ---: | ---: | ---: | ---: |
+| 7,703.01 | 0.01 | 80.1112 + 0.000467 = 80.111667 | 80.1112 + 0.0007 = 80.1119 |
+| 8,000 | 297 | 80.1112 + 13.8699 = 93.9811 | 80.1112 + 20.79 = 100.9012 |
+| 10,000 | 2,297 | 80.1112 + 107.2699 = 187.3811 | 80.1112 + 160.79 = 240.9012 |
+
+The items' three are the figures "Repair 2026-10-07" already gave; 187.3811 and 240.9012 are this row's own assertions at `nii-il04-tests.l4` lines 504-505.
+
+### What `check.sh` prints at 0.4.1
+
+```
+module                                    errors satisfied  failed  refused  expected
+nii-il04-nouns.l4                              0         0       0        0         0
+nii-il04-published-figures.l4                  0         0       0        0         0
+nii-il04-tests-expected-red.l4                15        26      15        0        15
+nii-il04-tests.l4                              0       181       0        0         0
+nii-s1-definitions.l4                          0         0       0        0         0
+nii-s334-interpretation.l4                     0         0       0        0         0
+nii-s337-rates.l4                              0         0       0        0         0
+nii-schedule-j-tables.l4                       0         0       0        0         0
+nii-schedule-j.l4                              0         0       0        0         0
+tests-independent.l4                           5       641       5        0         5
+TOTAL (10 modules)                            20       848      20        0
+```
+
+Exit 0. Run 2026-10-08T06:50:28Z to 06:51:27Z, `L4=~/.local/bin/l4`, `JL4_LIBRARY_PATH` unset.
+The binary resolves to the cabal store, `jl4-0.1-d4290e25/bin/l4`, sha256 `f4f2bd2558f02f828f0deced5f74313a33670f08cc3275ff95b83f2cde71e448`, the same before and after the run (0.4.0 ran on `4476e758…`).
+The 0.4.0 baseline was re-run on this binary before any edit and printed the same table, line for line, so the counts did not move; the failing lines of `tests-independent.l4` were 756, 924, 929, 930 and 931 both times.
+`tools/srcquote.py` changes nothing in copies of the two changed `.l4` modules, and `tools/hebcheck.py` passes on `nii-schedule-j.l4`, `tests-independent.l4`, `check.sh` and `encoding.json`.
+On this file it flags the same five runs as at 0.4.0, all in the comparison section, which quote the enacted Laws ("Repair 2026-10-07" says why); none is in text added at 0.4.1.
+
+### For the capstone (job H, BACKLOG IL-22)
+
+`nii-schedule-j.l4` is vendored and its bytes changed (four `@desc`s, no line added), so its pin in `VENDORED.sha256` must be re-recorded.
+No name, type, field, entry point or answer changed, so nothing else follows.
 
 ## Version 0.4.0 (2026-10-07): fork F6, a fall in the index or the average wage, as a switch
 
@@ -238,7 +315,7 @@ TOTAL (10 modules)                            21       809      21        0
 
 - `nii-il04-tests.l4`: 143 of 143 (120 before, 23 added).
 - `nii-il04-tests-expected-red.l4`: 15 of 41 fail, the 14 of section 0 and the 2025 text (line 137).
-- `tests-independent.l4` (the independent tester's; not edited): 646 assertions, 640 satisfied, 6 failed. One is T7 (line 787, fork F6), failing before the repair. **Five encode the pre-repair F3** and now fail: line 756 (the 2026 version's flag asserted TRUE), line 924 (upper part begins at 8,139.6), and lines 929-931 (refusals at 7,703.01, 8,000 and 10,000, for which the enacted Laws give, on the items, 80.111667, 93.9811 and 187.3811; this row's tests now assert 187.3811). They stay failing and are left for the tester to reclassify. `check.sh`'s `expected_failed` table now lists `tests-independent.l4` with 6 (the encoder's change to `check.sh`, made so that the run's exit status reflects the expected count; the tester's file is unchanged).
+- `tests-independent.l4` (the independent tester's; not edited): 646 assertions, 640 satisfied, 6 failed. One is T7 (line 787, fork F6), failing before the repair. **Five encode the pre-repair F3** and now fail: line 756 (the 2026 version's flag asserted TRUE), line 924 (upper part begins at 8,139.6), and lines 929-931 (refusals at 7,703.01, 8,000 and 10,000, for which the enacted Laws give, on the items, 80.111667, 93.9811 and 187.3811; this row's tests now assert 187.3811). They stay failing and are left for the tester to reclassify. **(0.4.1)** Classed TESTER-WRONG (inventory 04-TF3) and annotated by the lead in a dated note at the end of the file, values unchanged and still failing ("Version 0.4.1" above). `check.sh`'s `expected_failed` table now lists `tests-independent.l4` with 6 (the encoder's change to `check.sh`, made so that the run's exit status reflects the expected count; the tester's file is unchanged).
 
 **Mechanical checks after the repair.** `tools/srcquote.py` over the nine `nii-*.l4` modules changes nothing; `tools/schedule_j.py` still reproduces `nii-schedule-j-tables.l4` byte for byte (the 2025 row is hand-written in `nii-schedule-j.l4`, not generated, because it is not in the consolidation); `tools/hebcheck.py` passes on every `.l4` module (`tests-independent.l4` included), `BRIEF.md`, `SOURCE-LICENSE.md`, `encoding.json`, and this file up to the comparison section. It flags five Hebrew runs inside the comparison section (lines 493-536 at the time of writing), which quote the enacted Laws, not the consolidation the tool checks against; that section is the comparison author's and is not edited here. (Section 0's sentence that the check passes on "this file" was true when written, before the comparison section was appended.)
 
@@ -509,7 +586,7 @@ The rules that take only a year assume the temporary provision was not extended 
 | F2 | items 4 and totals (4723, 4741, 4730, 4748) | The 2024-2027 notes: which table do they modify in which year? | (i) each table's own notes apply while that table is in force (temporary in 2026, permanent in 2027); (ii) the notes apply to both tables in all of 2024-2027 | **(i)**, and it makes no difference: both tables note the same 2.06 above the threshold; only the permanent table notes 0.47 below it, and the permanent table governs only 2027 of those years. The temporary table's 0.60 below the threshold carries no note and stands. |
 | F3 | Schedule J temporary version, column D (4718) | **(revised 2026-10-07)** The consolidation prints column D's upper heading in the temporary table as "above 60% of the average wage" and the lower as "not above the reduced collection threshold"; in 2026 they do not meet (7,703 against 8,139.6 or 8,261.4). | (i) as printed: no figure for the part between; (ii) the upper heading is stale, and the upper part begins at the threshold; (iii) the lower part runs up to 60% of the average wage | **(ii), on the enacted Laws.** Amendment 252 s 7(a)(3) replaced only the lower sub-columns, so the upper sub-column is the principal Law's, and the 2025 budget-year Law s 19(6) changed "60% of the average wage" to "the reduced collection threshold" everywhere in Schedule J from 1 January 2026 (s 21). Line 4718's upper heading is a stale copy. The Institute applies the employee's 7% "on the part of the wage above the reduced collection threshold", and row IL-05 read the texts the same way. *Before the repair:* (i), declined, with every 2026 wage above 7,703 refused. |
 | F4 **(0.3.0: ruled by Meng on 2026-10-07: the printed totals by default, the items kept as the alternative; "Version 0.3.0" above. The choice recorded in this row, (i), is now the alternative.)** | totals rows (4730, 4748) | Ten printed totals differ from the sums of the items above them (section 0). Which governs? | (i) the items: s 335 imposes contributions branch by branch, s 337(a) applies "the rates under section 335", and s 28(a) credits contributions to the branches' accounts "in the ratio of the rates in Schedule J" (line 449); (ii) the totals: the Institute charges composites equal to them (14.6, 7.00) | **(i) for computing; the totals are data and are compared, red, in their own module.** Consequence: an employee in 2026 is charged 14.49% above the threshold here where the Institute charges 14.6%, and the deduction on the upper part sums to 4.67% where the Institute deducts 7%. The two items of evidence point in opposite directions; this is open question 1. **(added 2026-10-07)** Two enacted precedents: the 2025 budget-year Law s 20(1) changed a row so that it met its printed total (0.17 to 0.16), and the Economic Efficiency Law 5783-2023 s 24 moved item 4 and the totals together by 0.10. Both treat a total as tracking its items; neither says which is right where they already differ, and the gaps (0.11, 2.33, 0.31) predate both. Choice unchanged. |
-| F5 | s 1 "the average wage" (222-226), s 2(b) (236) | Which figure is "the average wage" in Schedule J's column D heading, in "self-employed person" (2), and in s 334(a)(2)? | (i) the s 1 figure (13,566 for 2026); (ii) the figure as calculated under s 2, which s 2(b) applies "for benefits and contributions" (13,769) | **not decided**: every rule takes the average wage as an argument. The tests supply 13,566 (the s 1 figure, which the editors' note at line 226 also gives). The column D gap (F3) exists under either. The Institute publishes both, each "for contributions". **(added 2026-10-07)** After the F3 repair Schedule J no longer reads the average wage at all; the fork remains for "self-employed person" (2) and s 334(a)(2). Row IL-05 (its fork F1) found that every Institute figure for Chapter 15 it checked (3,442; 143; 171; the 2025 table's 3,134, 627 and 1,880) fits the s 2 figure and not the s 1 figure, which is evidence for (ii) in contributions; the s 1 definition of "self-employed person" serves benefits as well, so the rules still take the figure as an argument. |
+| F5 | s 1 "the average wage" (222-226), s 2(b) (236) | Which figure is "the average wage" in Schedule J's column D heading, in "self-employed person" (2), and in s 334(a)(2)? | (i) the s 1 figure (13,566 for 2026); (ii) the figure as calculated under s 2, which s 2(b) applies "for benefits and contributions" (13,769) | **not decided**: every rule takes the average wage as an argument. The tests supply 13,566 (the s 1 figure, which the editors' note at line 226 also gives). The column D gap (F3) exists under either. The Institute publishes both, each "for contributions". **(added 2026-10-07)** After the F3 repair Schedule J no longer reads the average wage at all; the fork remains for "self-employed person" (2) and s 334(a)(2). Row IL-05 (its fork F1) found that every Institute figure for Chapter 15 it checked (3,442; 143; 171; the 2025 table's 3,134, 627 and 1,880) fits the s 2 figure and not the s 1 figure, which is evidence for (ii) in contributions; the s 1 definition of "self-employed person" serves benefits as well, so the rules still take the figure as an argument. **(0.4.1)** "At all" is for every version selected for a contribution month; the 2025 text kept as data still reads it. The four column D rules that take it now say so on the argument, in a `@desc` (inventory 04-N14; "Version 0.4.1" above). |
 | F6 **(0.4.0: ruled by Meng on 2026-10-07 (TRIDENT): a fall is declined by default, all three readings kept by name; "Version 0.4.0" above. The choice recorded in this row, (i), is now an alternative.)** | s 334(a)(1)-(2) (3606-3607) | If the index or the average wage falls, does the threshold fall? | (i) yes, the rate of rise is negative and is applied; (ii) no, "עליית" (rise) counts only rises; **(0.4.0)** (iii) neither is decided: the text provides for a rise and says nothing of a fall, so the case is declined | **(i)**: the update is a rate computed from two readings; a test shows a 1% fall lowering 8,000 to 7,920. **(0.4.0)** Now **(iii)** by default; (i) and (ii) are answered when a caller names them. |
 | F7 | s 334(a) | Is the updated threshold rounded? | (i) no; (ii) to the shekel, as the Institute publishes it | **(i)**: the section says nothing about rounding. The published 2026 figure is a whole number; the encoding uses it as published for 2026 and computes unrounded for any later year a caller supplies readings for. |
 | F8 | s 337(a)(2) (3627) | "annual income divided into the periods set for advances": equal shares? and does the threshold scale for a period longer than a month? | (i) equal shares, threshold per monthly period, other periods declined; (ii) the threshold scaled by the period's length | **(i)**: s 336 makes the payment period a month unless the Minister sets otherwise, and the Institute applies the threshold to monthly income; the text does not say how it scales. |

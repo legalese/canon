@@ -31,7 +31,7 @@ expected_failed() {
   case "$1" in
     # tests-red.l4) echo 3 ;;
     nii-il04-tests-expected-red.l4) echo 15 ;;   # NOTES.md section 0: printed totals vs items (10), the Institute's composites (4), the 2025 text (1)
-    tests-independent.l4) echo 5 ;;              # the independent tester's: five F3 expectations the repair of 2026-10-07 overturned (lines 756, 924, 929-931). Its 22 F4 assertions were re-pointed by the lead to the items' reading by name, values unchanged (NOTES.md, Version 0.3.1). Version 0.4.0: T7 (fork F6, line 787) now passes, a fall being declined by default; 6 became 5
+    tests-independent.l4) echo 5 ;;              # the independent tester's: five F3 expectations the repair of 2026-10-07 overturned (lines 756, 924, 929-931). Its 22 F4 assertions were re-pointed by the lead to the items' reading by name, values unchanged (NOTES.md, Version 0.3.1). Version 0.4.0: T7 (fork F6, line 787) now passes, a fall being declined by default; 6 became 5. Version 0.4.1: the five are lines 756, 924, 929, 930 and 931, all inventory 04-TF3, class TESTER-WRONG (the stale column D heading of source line 4718, overturned by the 2025 Budget-year Law s 19(6) and s 21); annotated in a second dated note by the lead at the end of the file, values unchanged, still 5
     *) echo 0 ;;
   esac
 }
