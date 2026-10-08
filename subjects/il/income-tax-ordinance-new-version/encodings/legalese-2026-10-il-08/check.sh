@@ -18,8 +18,9 @@
 # Env:    L4   the l4 binary      (default: `l4` on PATH)
 #
 # Exit status: 0 only when no module has an error other than its expected failed
-# assertions, no assertion refused, and each module fails exactly as often as
-# expected_failed says.
+# assertions, and each module fails exactly as often as expected_failed says and refuses
+# exactly as often as expected_refused says (0 for every module but the ones it names;
+# version 0.2.0, as row IL-04's check.sh does from its version 0.3.0).
 set -u
 DIR="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 L4="${L4:-l4}"
@@ -29,6 +30,27 @@ L4="${L4:-l4}"
 expected_failed() {
   case "$1" in
     # tests-red.l4) echo 3 ;;
+    # Version 0.2.0 (2026-10-08, BACKLOG IL-19, inventory CHK-08i): the independent tester's module.
+    # Five assertions remain failed, each an item of findings/il-2026-10-08/inventory.tsv:
+    #   line 92  D019  (08i-D019, AMBIGUITY, fork F34): REFUSED expected of the record alone, which
+    #                 carries no later tax year; the form that takes them declines (ito-s1-israeli-resident.l4)
+    #   line 676 D190, lines 767-768 D236 (08i-D190, AMBIGUITY, fork F35, waits on BACKLOG IL-24):
+    #                 REFUSED expected; the deduction is taken first, as in version 0.1.0
+    #   line 779 D244 (08i-T1, TESTER-WRONG): the tester's facts contradict each other
+    # D187 (line 667) and D055 (line 201) passed from version 0.2.0.
+    tests-independent.l4) echo 5 ;;
+    *) echo 0 ;;
+  esac
+}
+
+# Version 0.2.0: a module that is MEANT to refuse some assertions is listed with its exact count.
+expected_refused() {
+  case "$1" in
+    # The independent tester's module: seven values for tax years before 2024, which every rule of
+    # this row declines (NOTES.md assumption A1; inventory 08i-T2, TESTER-WRONG (scope)): lines 153
+    # (D040), 177 (D047), 180 (D048), 183 (D049), 190 (D052), 193 and 195 (D053). D183 (line 659)
+    # was answered from version 0.2.0.
+    tests-independent.l4) echo 7 ;;
     *) echo 0 ;;
   esac
 }
@@ -50,10 +72,12 @@ for f in "$DIR"/*.l4; do
   bad=$(printf '%s\n' "$msgs" | grep -cE 'assertion failed|assertion could not be evaluated')
   ref=$(printf '%s\n' "$msgs" | grep -cE 'assertion refused')
   exp=$(expected_failed "$m")
-  printf '%-40s %7d %9d %7d %8d %9d\n' "$m" "$err" "$ok" "$bad" "$ref" "$exp"
-  [ $((err - bad)) -eq 0 ] && [ "$ref" -eq 0 ] && [ "$bad" -eq "$exp" ] || status=1
+  expref=$(expected_refused "$m")
+  if [ "$expref" -eq 0 ]; then shown="$exp"; else shown="$exp/$expref"; fi
+  printf '%-40s %7d %9d %7d %8d %9s\n' "$m" "$err" "$ok" "$bad" "$ref" "$shown"
+  [ $((err - bad)) -eq 0 ] && [ "$ref" -eq "$expref" ] && [ "$bad" -eq "$exp" ] || status=1
   total_err=$((total_err + err)) total_ok=$((total_ok + ok)) total_bad=$((total_bad + bad)) total_ref=$((total_ref + ref)) n=$((n + 1))
 done
 printf '%-40s %7d %9d %7d %8d\n' "TOTAL ($n modules)" "$total_err" "$total_ok" "$total_bad" "$total_ref"
-echo "(a failed assertion is also an error; any other error, or any refused assertion, makes the run red)"
+echo "(a failed assertion is also an error; any other error, or a refused assertion a module is not expected to have, makes the run red; \"expected\" is failed/refused where a module may refuse)"
 exit $status
