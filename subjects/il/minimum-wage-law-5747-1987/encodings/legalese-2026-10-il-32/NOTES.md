@@ -6,7 +6,7 @@ The text is the unofficial Wikisource consolidation deposited at `../../register
 
 ## 1. What is encoded and what is not
 
-Encoded, from the Hebrew text: the three minimum wages of s 1 (monthly as 47.5 percent of the average wage, daily as a 25th or a 21 2/3rd, hourly as a 186th), the right of s 2(a) by pay basis, the part-time proportion of s 2(b), the reduction for absence of s 2(c), the pay components that count in s 3, the non-reduction rule of s 5, and the two amounts printed in s 21.
+Encoded, from the Hebrew text: the three minimum wages of s 1 (monthly as 47.5 percent of the average wage, daily as a 25th or a 21 2/3rd, hourly as a 186th), the right of s 2(a) by pay basis, the part-time proportion of s 2(b), the reduction for absence of s 2(c), the pay components that count in s 3, the non-reduction rule of s 5, and the two amounts printed in s 21 (reached by the dated lookup since v0.1.1).
 Taken as published inputs, in their own clearly marked module (`mw-il32-published-figures.l4`): the shekel amounts since 1 April 2025 (6,247.67 and 6,443.85) and the average wage of 13,566, all reused from row IL-05 with its provenance; nothing was fetched by this row.
 Refused by name: the rate for an employee under 18 (s 16 regulations), for an employee in a class covered by s 17 regulations, any daily or hourly part-time proportion, any date before 1 April 2025 and any date from 1 April 2027.
 
@@ -54,7 +54,7 @@ Source lines are in the deposited file.
 | s 18A (164) | jurisdiction | out-of-scope | labour court |
 | s 19 (167) | merged text | inert | editorial |
 | s 20 (170) | commencement 1 April 1987 | inert | the encoding answers dates from 2025 |
-| s 21 (173-177) | transitional amounts | encoded | `mw-s1-definitions.l4` |
+| s 21 (173-177) | transitional amounts | encoded; the dated lookup `the full monthly minimum wage ... on` DAY reaches them (v0.1.1): 525 from 1 April 1987, 551 from 1 October 1987 to 31 March 1988 (F6, assumed; s 21(a)(2) does not detract from s 4) | `mw-s1-definitions.l4`, `mw-il32-published-figures.l4` |
 
 No row is left deferred.
 
@@ -74,6 +74,8 @@ Forks marked "assumed, not ruled" are choices of this row, to be reverted alone 
 | F7 | Rounding of the daily and hourly figures | the Law prints none | no rounding: the encoding returns the exact quotient; the Institute prints rounded cents |
 | F8 | May a pay for a day that is below the minimum be met by a pay for a month? | not asked | no comparison across periods; the caller supplies the figure of the same period |
 | F9 | "שמלאו לו 18 שנים" (line 28): at 18 or from the day after? | 18 completed years or more | assumed, not ruled: age 18 is an adult |
+| F11 | Does the s 5 floor apply in the dated lookup? | yes where two adjacent figures are held (525 to 551; 6,247.67 to 6,443.85) | applied (v0.1.1; changes nothing on these figures) |
+| F12 | A position of 0% (independent finding 3) | a position or not | the text does not say; refused; not a gating choice |
 | F10 | What does a fraction of a position do to a daily or an hourly minimum wage? | the same fraction; none (an hourly wage is already per hour) | decline by name (only the monthly basis is answered) |
 
 ## 4. Answer table
@@ -83,7 +85,10 @@ Monthly figure for an employee aged 18 or over, full position (the monthly basis
 
 | Day | Monthly | Six-day daily (a 25th) | Five-day daily (3/65 of the month) | Hourly (a 186th) |
 |---|---|---|---|---|
-| before 1 April 2025 | declined, no source | | | |
+| before 1 April 1987 | declined (the Law had not commenced; the refusal text is the generic no-source one) | | | |
+| 1 April 1987 to 30 September 1987 | 525 (s 21(a)(1)) | | | |
+| 1 October 1987 to 31 March 1988 | 551 (s 21(a)(2); F6) | | | |
+| 1 April 1988 to 31 March 2025 | declined, no source (including 1 April 2023, the editorial note) | | | |
 | 1 April 2025 to 31 March 2026 | 6,247.67 | 249.9068 | 288.354 | 33.58962... |
 | 1 April 2026 to 31 March 2027 | 6,443.85 | 257.754 | 297.4084... | 34.64435... |
 | 1 April 2027 and after | declined, not yet published | | | |
@@ -120,6 +125,15 @@ No assertion fails and none is expected to.
 The Law's editorial note prints 5,571.75 from April 2023; 5,571.75 / 0.475 = 11,730, an average wage this row holds no source for, so it is arithmetic only and not a used figure.
 6,247.67 / 0.475 is 13,152.99, again an implied average wage, not held.
 The average wage the Law names is that of s 1 of the National Insurance Law [Consolidated Version] 5728-1968, which is not deposited; the match of 13,566 with the 1995 Law's average wage is an empirical match (it reproduces the published figure to the agora), not a reading of the 1968 text.
+
+## 6a. Version 0.1.1 (independent pass, finding 1)
+
+The dated lookup refused every date before 1 April 2025, so s 21 was claimed encoded but unreachable by date.
+It now answers 525 and 551 as above and applies s 5 between adjacent held figures.
+check.sh: 8 modules, 0 errors, 141 satisfied (75 in the row's tests, 66 in tests-independent), 0 failed, 2 refused (tests-independent cases 6 and 45, declared), exit 0; l4 sha256 `f0759b2e…` before and after.
+The tester's cases 1, 3, 4 now pass.
+Independent finding 8 (open): the tester recalls official hourly rates matching a 182nd, the deposited text says a 186th.
+The deposited consolidation may be stale on this, and every hourly answer and F1 reading B rests on the deposited 186.
 
 ## 7. Open questions and what needs a source
 

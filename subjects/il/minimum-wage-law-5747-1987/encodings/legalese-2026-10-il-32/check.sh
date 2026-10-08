@@ -37,6 +37,9 @@ expected_failed() {
 expected_refused() {
   case "$1" in
     # No assertion is meant to refuse: refusals are asserted with #ASSERT REFUSED, which satisfies.
+    # tests-independent.l4 (fid-il-32): 5 refused before v0.1.1 (cases 1, 3, 4, 6, 45). v0.1.1's dated lookup reaches
+    # s 21 (cases 1, 3, 4 now pass), so 2 remain: case 6 (1 April 2023, the Law's editorial note, declined) and case 45 (a 0% position).
+    tests-independent.l4) echo 2 ;;
     *) echo 0 ;;
   esac
 }
