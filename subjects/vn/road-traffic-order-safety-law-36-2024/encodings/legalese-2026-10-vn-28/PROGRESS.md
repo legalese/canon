@@ -12,7 +12,7 @@ If the scratch directory is gone, edit the .l4 files in DEPOSIT directly and quo
 ## Done (all deliverables)
 
 - First pass: the sources then held Articles 24-89 only (gazette 979+980); the lead added 977+978 (Articles 1-23) on 2026-10-07.
-- Eleven .l4 modules (chain of eight library modules, two tests modules, one findings module).
+- Eleven .l4 modules (eight library modules, two tests modules, one findings module).
 - First pass: NOTES.md (27 forks, 14 findings, 59 coverage rows), GLOSSARY.md, COMPARABLES.md, encoding.json, SOURCE-LICENSE.md.
 
 ## Last check.sh TOTAL
