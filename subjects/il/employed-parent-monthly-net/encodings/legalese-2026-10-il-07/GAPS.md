@@ -3,6 +3,12 @@
 Each entry is a provision the household needs that none of the six composed rows encodes: the exact provision, why the pipeline needs it, what the capstone does instead (a named input, a named refusal, or an input convention stated in `BRIEF.md`), and how much of the capstone's ground it costs.
 Line numbers are lines of the two deposited sources: `ITO` is `../../../income-tax-ordinance-new-version/registers/source-bundle/income-tax-ordinance-new-version.he.wiki.txt`, `NII` is `../../../national-insurance-law-consolidated-version-5755-1995/registers/source-bundle/national-insurance-law-consolidated-version-5755-1995.he.wiki.txt`.
 
+## Status after SHRUG on the remaining ambiguities (version 0.5.0, 2026-10-08)
+
+Meng's ruling of 2026-10-08 (SHRUG, extended to every remaining ambiguity), carried out in the rows by backlog rows IL-46 to IL-53 and followed into the capstone by IL-54 (`NOTES.md` section 14), moves no gap: no provision the household needs became encoded, and none that was encoded stopped being.
+What it adds are declines where the text does not decide, which are forks, not gaps ("Not a gap but a fork", below): rows IL-02's F18 (the registered spouse's request under s 66(c)(1A)), IL-01's F1 and IL-02's F20 (s 36A for a woman who is not an Israeli resident) and IL-06's F6 (the count of a parent s 66 excludes) at their rows' switches; rows IL-02's F13 and IL-08's F16 (item 2: the further point of s 40(b)(1B) and (2)) where they change the tax (fork K23).
+Item 2 (ITO s 40(b)) is otherwise as the 0.3.0 table says; a single parent whose tax the further point's reading changes is now declined, in row IL-08's words (N32).
+
 ## Status after the rulings followed through (version 0.4.0, 2026-10-08)
 
 Meng's rulings of 2026-10-08 (SHRUG, TAKEAWAY, DESSERT), carried out in the rows by backlog rows IL-37 to IL-42 and IL-45 and followed into the capstone by IL-44 (`NOTES.md` section 13), change three items; the others stand as the 0.3.0 table below says.
@@ -88,3 +94,6 @@ Ordered by what each costs the capstone: first the gaps that decline, or leave a
 Some places where the capstone declines are forks, where the text does not decide, rather than missing provisions; they are in `NOTES.md` section 4: whether credit points are set off against the s 121B additional tax (K3), and which tax year's additional-tax liability excludes a parent from the allowance (K5, IL-06's open fork F5).
 
 (0.2.0) One fork was ruled rather than declined: Schedule J column D above the reduced collection threshold, the printed totals (7.00, line 4730; the Institute deducts 7%) or the sum of the six deduction branches' items (4.67, lines 4720-4729; row IL-04's fork F4). Meng ruled on 2026-10-07 for the printed totals by default, the items kept as the alternative (`NOTES.md` section 11.13, fork K14). It is a fork, not a gap: both readings are in the deposited Schedule (lines 4709-4750). Under the printed totals an earner who does not pay in all six deduction branches is declined. (0.2.1) The switch now lives in row IL-04 (v0.3.0, backlog row IL-11), with IL-05 (v0.3.0) following it for s 342(c), and the capstone follows IL-04's; such an earner is declined by IL-04 (`NOTES.md` section 11.14, fork K18).
+
+(0.5.0) Meng's SHRUG ruling of 2026-10-08 made five of the composed rows' forks that reach a capstone household into switches, declined by default where their readings part (`NOTES.md` section 14.4): row IL-02's F18 (may the registered spouse request a separate calculation under s 66(c)(1A)?), F13 (is the children's credit capped at the tax on income from personal exertion?) and F20 with row IL-01's F1 (does s 36A require residence?), row IL-08's F16 (is the further point of s 40(b)(1B) and (2) given once or for each child?) and row IL-06's F6 (does a child stay in the count of a parent s 66 excludes?).
+The capstone passes each on, declines F13 and F16 only where they change the tax (fork K23), and lets a caller name a reading.
