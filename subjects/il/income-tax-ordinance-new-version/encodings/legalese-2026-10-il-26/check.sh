@@ -29,6 +29,19 @@ L4="${L4:-l4}"
 expected_failed() {
   case "$1" in
     # tests-red.l4) echo 3 ;;
+    # The independent tester's module, tests-independent.l4, is expected to fail nothing.
+    *) echo 0 ;;
+  esac
+}
+
+# A module that is MEANT to refuse some plain assertions is listed here with its exact count
+# (added by fid-il-26, BACKLOG IL-56, as the IL-02 and IL-08 check.sh do). tests-independent.l4 refuses 7:
+#   lines 155-158  ids A25, A26, A27, A28  class SCOPE      (tax years 2025 and 2023: "section 121 as it stood before tax year 2026 is not in the deposited text")
+#   lines 178, 179 ids C01, C02            class AMBIGUITY  (the Director's table not held: the tester computes items (1)-(5), the encoding refuses by name)
+#   line 235       id  F02                 class AMBIGUITY  (reg 3(b), a part payment of 5,000 of 10,000: 287.50 or 288; the tester flagged it too and the encoding refuses)
+expected_refused() {
+  case "$1" in
+    tests-independent.l4) echo 7 ;;
     *) echo 0 ;;
   esac
 }
@@ -50,8 +63,10 @@ for f in "$DIR"/*.l4; do
   bad=$(printf '%s\n' "$msgs" | grep -cE 'assertion failed|assertion could not be evaluated')
   ref=$(printf '%s\n' "$msgs" | grep -cE 'assertion refused')
   exp=$(expected_failed "$m")
-  printf '%-40s %7d %9d %7d %8d %9d\n' "$m" "$err" "$ok" "$bad" "$ref" "$exp"
-  [ $((err - bad)) -eq 0 ] && [ "$ref" -eq 0 ] && [ "$bad" -eq "$exp" ] || status=1
+  expref=$(expected_refused "$m")
+  if [ "$expref" -eq 0 ]; then shown="$exp"; else shown="$exp/$expref"; fi
+  printf '%-40s %7d %9d %7d %8d %9s\n' "$m" "$err" "$ok" "$bad" "$ref" "$shown"
+  [ $((err - bad)) -eq 0 ] && [ "$ref" -eq "$expref" ] && [ "$bad" -eq "$exp" ] || status=1
   total_err=$((total_err + err)) total_ok=$((total_ok + ok)) total_bad=$((total_bad + bad)) total_ref=$((total_ref + ref)) n=$((n + 1))
 done
 printf '%-40s %7d %9d %7d %8d\n' "TOTAL ($n modules)" "$total_err" "$total_ok" "$total_bad" "$total_ref"
