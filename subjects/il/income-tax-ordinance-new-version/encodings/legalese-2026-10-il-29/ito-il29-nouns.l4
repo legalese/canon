@@ -1,0 +1,344 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+
+-- ===========================================================================
+-- Income Tax Ordinance [New Version] ss 1 (residence, "tax year"), 2(2)(b), 2A and 14(b), with the
+-- Regulations of 5766-2006 (individuals deemed Israeli residents), 5747-1987 (value of use of a
+-- vehicle), 5776-2015 (the temporary provision on hybrid, plug-in and electric vehicles) and
+-- 5762-2002 (value of use of a mobile telephone).  Row IL-29.  NOUNS ONLY: DECLARE and nothing else.
+--
+-- Sources (all deposited, all unofficial Wikisource consolidations; the Hebrew is authoritative):
+--   ITO = the Ordinance, RES = Regulations 5766-2006, VEH = Regulations 5747-1987,
+--   VTP = Regulations 5776-2015, TEL = Regulations 5762-2002.
+--
+-- The membership test for this module: could a witness of ordinary competence testify to the fact,
+-- or does a register record it, or is it a named reading of the text (Meng's ruling SHRUG of
+-- 2026-10-08)?  Nothing here is a rule.
+-- ===========================================================================
+
+§ `Tax years and presence in Israel`
+
+-- src:ITO:202 | ”שנת מס“ – תקופה של שנים עשר חדשים רצופים, שתחילתה ב־1 בינואר, ואם נקבעה תקופת שומה מיוחדת – תקופת השומה שנקבעה כאמור;
+-- A tax year is a period of twelve consecutive months beginning on 1 January, or a special assessment
+-- period where one was set. The period is recorded by its first and last day; the number is the
+-- calendar year in which it begins, which names it.
+DECLARE `A tax year` HAS
+    `the calendar year in which it begins`  IS A NUMBER
+    `first day`                             IS A DATE
+    `last day`                              IS A DATE
+
+-- A stay in Israel, from the day of arrival to the day of departure, both days included: part of a
+-- day counts as a day for the presumptions of s 1 "Israeli resident" (a)(2). Stays of one individual
+-- must not share a day (one stay ending on a day and the next beginning on it is one stay).
+DECLARE `A stay in Israel` HAS
+    `arrived` IS A DATE
+    `left`    IS A DATE
+
+-- How the days in Israel of the tax year and of the two before it are given: counted by the caller
+-- (part of a day being a day), or derived from the stays.
+DECLARE `Days in Israel` IS ONE OF
+    `counted by the caller` HAS
+        `in the tax year`              IS A NUMBER
+        `in the tax year before it`    IS A NUMBER
+        `in the tax year before that`  IS A NUMBER
+    `counted from the stays` HAS
+        `the stays` IS A LIST OF `A stay in Israel`
+
+§ `Section 1 "Israeli resident" (a): an individual`
+
+-- src:ITO:145 | (1) לשם קביעת מקום מרכז חייו של יחיד, יובאו בחשבון מכלול קשריו המשפחתיים, הכלכליים והחברתיים, ובהם בין השאר:
+DECLARE `Where the centre of life is` IS ONE OF
+    `in Israel`
+    `outside Israel`
+
+DECLARE `Where a tie lies` IS ONE OF
+    `lies in Israel`
+    `lies outside Israel`
+    `lies in neither or both, or is not established`
+
+-- The five ties the text names (and says the list is not closed: "בין השאר"), src:ITO:146-150.
+DECLARE `The ties of an individual` HAS
+    `his permanent home`                                  IS A `Where a tie lies`
+    `where he and his family members live`                IS A `Where a tie lies`
+    `his usual or permanent occupation or employment`     IS A `Where a tie lies`
+    `his active and material economic interests`          IS A `Where a tie lies`
+    `his activity in organisations, unions or institutions` IS A `Where a tie lies`
+
+-- Regulations 5766-2006 reg 2: individuals deemed Israeli residents, src:ITO:156-162 and src:RES:20-23.
+DECLARE `An employer named in paragraph (4) of the definition` IS ONE OF
+    `the State of Israel`
+    `a local authority in Israel`
+    `the Jewish Agency in Eretz Israel`
+    `the Keren Kayemet LeIsrael or the Keren Hayesod - United Israel Appeal`
+    `a government company`
+    `a statutory state authority or a corporation set up by law`
+    `an employer not named in paragraph (4)`
+
+DECLARE `Employment facts for regulation 2` HAS
+    `the employer`                                                              IS AN `An employer named in paragraph (4) of the definition`
+    `the individual works for that employer in the tax year`                    IS A BOOLEAN
+    `the employment relationship began while he was an Israeli resident`         IS A BOOLEAN
+    `the day he began to work for that employer outside Israel`                  IS A MAYBE DATE
+    `he proved to the assessing officer that he is not to be deemed a resident`  IS A BOOLEAN
+
+-- Regulations 5766-2006 reg 3: individuals deemed foreign residents, src:RES:26-34.
+DECLARE `A class in regulation 3` IS ONE OF
+    `a diplomatic representative or consular official of a foreign state in regular service and official capacity, or a spouse or child living with one`
+    `a soldier of a foreign army or in the service of the United Nations`
+    `one who came to Israel to serve in the Israel Defense Forces, until the end of his military service` HAS
+        `the day his military service ended` IS A MAYBE DATE
+        `he asked not to be regarded as an Israeli resident` IS A BOOLEAN
+    `a student studying at least half of a programme` HAS
+        `he asked not to be regarded as an Israeli resident` IS A BOOLEAN
+    `a teacher, lecturer or researcher serving a higher-education or other teaching institution`
+    `a member of the clergy filling a religious post in an institution in Israel at its invitation`
+    `a hospital patient` HAS
+        `he came to Israel for hospitalisation, or fell ill while in Israel` IS A BOOLEAN
+        `the days of hospitalisation in the tax year`                       IS A NUMBER
+        `the days of hospitalisation in the tax year before it`             IS A NUMBER
+        `the days of hospitalisation in the tax year before that`           IS A NUMBER
+    `a foreign journalist or a foreign athlete as described in section 75A`
+    `none of these classes`
+
+DECLARE `Facts for regulation 3` HAS
+    `a new immigrant within section 35(d)`                                     IS A BOOLEAN
+    `a foreign resident in each of the five preceding tax years, oldest first`  IS A LIST OF BOOLEAN
+    `the class`                                                                 IS A `A class in regulation 3`
+    `the day he arrived in Israel`                                              IS A MAYBE DATE
+
+-- Section 14(b): the adjustment year of a first-time resident or veteran returning resident.
+-- src:ITO:1141 | (ב)(1) על אף האמור בפסקה (א) להגדרה ”תושב ישראל“ או ”תושב“, לא יראו יחיד שהיה לתושב ישראל לראשונה או לתושב חוזר ותיק, כתושב ישראל, במשך שנה אחת מהמועד שבו עלה או שב לישראל, לפי העניין (בסעיף קטן זה – שנת ההסתגלות), ובלבד שהיחיד הודיע, בתוך 90 ימים מיום הגעתו לישראל כאמור, בטופס שקבע המנהל, על בחירתו בהחלת הוראות סעיף קטן זה.
+DECLARE `Facts for the adjustment year of section 14(b)` HAS
+    `a first-time resident or a veteran returning resident`   IS A BOOLEAN
+    `the day he arrived in Israel`                            IS A DATE
+    `the day he gave notice of the election`                  IS A MAYBE DATE
+
+DECLARE `An individual in a tax year, for the definition of Israeli resident` HAS
+    `the tax year`                      IS A `A tax year`
+    `the tax year before it`            IS A `A tax year`
+    `the tax year before that`          IS A `A tax year`
+    `the days in Israel`                IS A `Days in Israel`
+    `the centre of life, as found`      IS A MAYBE `Where the centre of life is`
+    `the ties`                          IS A MAYBE `The ties of an individual`
+    `the presumption has been rebutted, by the individual or by the assessing officer` IS A BOOLEAN
+    `employment facts for regulation 2`  IS A MAYBE `Employment facts for regulation 2`
+    `facts for regulation 3`             IS A MAYBE `Facts for regulation 3`
+    `facts for section 14(b)`            IS A MAYBE `Facts for the adjustment year of section 14(b)`
+
+§ `Section 1 "Israeli resident" (b): a body of persons`
+
+-- src:ITO:164 | (ב) לגבי חבר בני אדם – חבר בני אדם שהתקיים בו אחד מאלה:
+DECLARE `How long a connection with Israel lasted in the tax year` IS ONE OF
+    `throughout the tax year`
+    `for part of the tax year`
+    `not at all in the tax year`
+
+DECLARE `A body of persons in a tax year` HAS
+    `the tax year`                                                                 IS A `A tax year`
+    `it was incorporated in Israel`                                                 IS A BOOLEAN
+    `the control and management of its business were exercised in Israel`          IS A `How long a connection with Israel lasted in the tax year`
+    -- the exception in paragraph (2) of (b):
+    `the control and management in Israel were exercised by an individual who became a first-time resident or a veteran returning resident, or by someone on his behalf` IS A BOOLEAN
+    `the day that individual became an Israeli resident`                            IS A MAYBE DATE
+    `that individual elected the adjustment year of section 14(b)`                   IS A BOOLEAN
+    `the day that individual arrived in Israel`                                      IS A MAYBE DATE
+    `it would not have been an Israeli resident had the control and management not been exercised in Israel by such an individual or on his behalf` IS A BOOLEAN
+    `the body of persons asked otherwise`                                            IS A BOOLEAN
+
+§ `Section 1 "foreign resident": the second limb`
+
+-- src:ITO:167-169.  What is known of one tax year for the limb.
+DECLARE `The absence of an individual in a tax year` HAS
+    `the tax year`                                         IS A `A tax year`
+    `days wholly outside Israel`                           IS A NUMBER
+    `days partly in and partly outside Israel`             IS A NUMBER
+    `the centre of life, as found`                         IS A MAYBE `Where the centre of life is`
+
+§ `Section 14(a): a veteran returning resident`
+
+-- src:ITO:1140 | ”תושב חוזר ותיק“ – יחיד ששב והיה לתושב ישראל לאחר שהיה תושב חוץ במשך עשר שנים רצופות לפחות [note: (לגבי מי שהיה לתושב ישראל בשנות המס 2007–2009, יקראו כאילו נאמר ”חמש שנים רצופות“ במקום ”עשר שנים רצופות“)].
+DECLARE `A return to Israel` HAS
+    `the tax year in which he became an Israeli resident again`           IS A NUMBER
+    `the consecutive tax years he had been a foreign resident before`      IS A NUMBER
+
+§ `The readings of the forks (Meng's ruling SHRUG, 2026-10-08)`
+
+-- Every ambiguity in this row is one switch.  The first reading of each is the default: it DECLINES,
+-- and the other readings are kept by name.  A default declines only where the readings give different
+-- answers to the question asked; where they agree it answers.
+
+DECLARE `A reading of ties that all lie one way` IS ONE OF
+    `declined where only the ties would decide`
+    `ties that all lie one way find the centre of life there`
+
+DECLARE `A reading of a rebutted presumption` IS ONE OF
+    `declined where a rebutted presumption is the only fact`
+    `a rebutted presumption finds the centre of life outside Israel`
+
+DECLARE `A reading of how a window of time is matched with a tax year` IS ONE OF
+    `declined where the readings differ`
+    `the whole tax year lies in the window`
+    `some day of the tax year lies in the window`
+    `the last day of the tax year lies in the window`
+    `the tax year is among the first tax years counted from the tax year of the start`
+
+DECLARE `A reading of the five preceding tax years` IS ONE OF
+    `declined where the readings differ`
+    `he was a foreign resident in every one of the five tax years`
+    `he was a foreign resident in at least one of the five tax years`
+
+DECLARE `A reading of the 90 days` IS ONE OF
+    `declined where the readings differ`
+    `the day of arrival is not counted, so the 90th day after it is in time`
+    `the day of arrival is the first day, so the 90th day counting it is in time`
+
+DECLARE `A reading of a foreign journalist or athlete` IS ONE OF
+    `declined where the readings differ`
+    `described by what he came to Israel to do, whether or not he is a foreign resident`
+    `section 75A makes him a foreign resident, so one who is an Israeli resident is not one`
+
+DECLARE `A reading of the tax years the second limb deems` IS ONE OF
+    `declined where the readings differ`
+    `the first tax year of the pair only`
+    `both tax years of the pair`
+
+DECLARE `A reading of a day partly outside Israel` IS ONE OF
+    `declined where the readings differ`
+    `a day partly outside Israel is a day outside Israel`
+    `a day partly outside Israel is not a day outside Israel`
+
+DECLARE `A reading of a person who is both an Israeli resident and a foreign resident` IS ONE OF
+    `declined where the readings differ`
+    `the foreign resident status prevails`
+    `the Israeli resident status prevails`
+
+DECLARE `A reading of a connection that lasted part of a tax year` IS ONE OF
+    `declined where the readings differ`
+    `a connection for any part of the tax year is the connection`
+    `only a connection throughout the tax year is the connection`
+
+DECLARE `A reading of a midpoint in rounding to ten shekels` IS ONE OF
+    `declined where the midpoint decides`
+    `a midpoint rounds up`
+    `a midpoint rounds down`
+
+DECLARE `A reading of a deduction that exceeds the value` IS ONE OF
+    `declined where the readings differ`
+    `the value is then nil`
+    `the value is then negative`
+
+DECLARE `A reading of the schedule that the temporary provision reduces` IS ONE OF
+    `declined where the readings differ`
+    `the reduction is taken from the monthly value under regulation 2(a)`
+    `no reduction applies to a vehicle registered before 1 January 2010`
+
+DECLARE `A reading of the base of the use depreciation` IS ONE OF
+    `declined where the readings differ`
+    `one per cent of the sum of the customs value, customs, purchase tax and VAT`
+    `one per cent of the customs value alone`
+
+DECLARE `A reading of a part of a month` IS ONE OF
+    `declined where the readings differ`
+    `a part of a month counts as a month`
+    `a part of a month is prorated by days`
+    `a part of a month does not count`
+
+DECLARE `A reading of a part of a month of use depreciation` IS ONE OF
+    `declined where the readings differ`
+    `a part of a month counts as a month of depreciation`
+    `a part of a month does not count`
+
+DECLARE `The readings of the forks of row IL-29` HAS
+    `ties`                    IS A `A reading of ties that all lie one way`
+    `rebuttal`                IS A `A reading of a rebutted presumption`
+    `windows`                 IS A `A reading of how a window of time is matched with a tax year`
+    `five years`              IS A `A reading of the five preceding tax years`
+    `ninety days`             IS A `A reading of the 90 days`
+    `journalist or athlete`   IS A `A reading of a foreign journalist or athlete`
+    `years deemed`            IS A `A reading of the tax years the second limb deems`
+    `partial day`             IS A `A reading of a day partly outside Israel`
+    `both statuses`           IS A `A reading of a person who is both an Israeli resident and a foreign resident`
+    `part-year connection`    IS A `A reading of a connection that lasted part of a tax year`
+    `midpoint`                IS A `A reading of a midpoint in rounding to ten shekels`
+    `excess deduction`        IS A `A reading of a deduction that exceeds the value`
+    `old schedule`            IS A `A reading of the schedule that the temporary provision reduces`
+    `depreciation base`       IS A `A reading of the base of the use depreciation`
+    `part month`              IS A `A reading of a part of a month`
+    `part month of depreciation` IS A `A reading of a part of a month of use depreciation`
+
+§ `Section 2(2)(b): the value of use of a vehicle or a mobile telephone`
+
+DECLARE `The class of a vehicle` IS ONE OF
+    `a private or light commercial vehicle of class M1 or N1`
+    `a motorcycle of class L3`
+    `another vehicle, not of class M1, N1 or L3`
+
+DECLARE `The drive of a vehicle` IS ONE OF
+    `an ordinary vehicle`
+    `a hybrid vehicle`
+    `a plug-in hybrid vehicle`
+    `an electric vehicle`
+
+-- src:VEH:28-30 and src:VEH:32: the consumer price of the vehicle, either the importer's price list or,
+-- for a personal import with no parallel commercial import, the customs value with duties and tax and
+-- a use depreciation.
+DECLARE `The consumer price of a vehicle` IS ONE OF
+    `by the importer's price list` HAS
+        `the price on the list, with the standard package, the mandatory accessories and the listed additions, with VAT, without promotion prices and discounts` IS A NUMBER
+    `by personal import with no parallel commercial import` HAS
+        `the value fixed for customs`                                    IS A NUMBER
+        `the customs duty payable, or that would be but for exemptions`  IS A NUMBER
+        `the purchase tax payable, or that would be but for exemptions`  IS A NUMBER
+        `the VAT payable, or that would be but for exemptions`           IS A NUMBER
+        `whole months from first registration abroad to import`          IS A NUMBER
+        `a part of a month remained`                                     IS A BOOLEAN
+
+DECLARE `A vehicle put at an employee's disposal` HAS
+    `a vehicle within the Vehicle Expenses Deduction Regulations of 5755-1995`  IS A BOOLEAN
+    `the class`                              IS A `The class of a vehicle`
+    `the drive`                              IS A `The drive of a vehicle`
+    `first registered on`                    IS A DATE
+    -- the original price: the consumer price of the first vehicle of the model on the later of the day it
+    -- was first registered and 1 January of the year of registration (src:VEH:17)
+    `the original price`                     IS A `The consumer price of a vehicle`
+    -- the average price (src:VEH:16): the total of the consumer prices on the importer's list valid on
+    -- each day of the year of first registration, and the divisor ("365 or the number of days...")
+    `the total of the daily consumer prices in the year of first registration` IS A NUMBER
+    `the number of days they are averaged over`                               IS A NUMBER
+    `the index known on 1 January of the tax year`                            IS A NUMBER
+    `the index known on 1 January of the year of first registration`          IS A NUMBER
+    `the average exchange rate of the import currency in the year of first registration` IS A NUMBER
+    `the exchange rate known on 1 January of the year of first registration`  IS A NUMBER
+
+-- Facts about the rate of use value (src:VEH:37-48): published or statistical, not in the text.
+DECLARE `The facts that fix the rate of use value` HAS
+    `the weighted price in 2010 of models of class M1 or N1 first registered from 1 January to 30 September 2010` IS A NUMBER
+    `the consumer price index of November 2008`  IS A NUMBER
+    `the consumer price index of November 2009`  IS A NUMBER
+
+DECLARE `The use of a vehicle in a tax year` HAS
+    `whole months it was at the employee's disposal` IS A NUMBER
+    `days of a further part of a month`              IS A NUMBER
+    `days in that month`                             IS A NUMBER
+
+DECLARE `A mobile telephone put at an employee's disposal` HAS
+    `a telephone from which calls can be made to the place of work only` IS A BOOLEAN
+    `the monthly expense`                                                IS A NUMBER
+    `the part of the monthly expense the employee paid`                  IS A NUMBER
+
+§ `Section 2A: winnings from gambling, lotteries and prize-bearing activity`
+
+DECLARE `Winnings under section 2A` HAS
+    `the winner is an Israeli resident`                                         IS A BOOLEAN
+    `produced or accrued in Israel`                                             IS A BOOLEAN
+    `income from another source under the Ordinance`                            IS A BOOLEAN
+    `a prize given in a personal setting`                                       IS A BOOLEAN
+    `a lottery or prize determined by the Minister of Finance with the approval of the Finance Committee` IS A BOOLEAN
+    `amount`                                                                    IS A NUMBER
+
+§ `Status in the tax year, for the charge of section 2`
+
+DECLARE `An item of income, for the charge of section 2` HAS
+    `produced or accrued in Israel` IS A BOOLEAN
+    `amount`                        IS A NUMBER
