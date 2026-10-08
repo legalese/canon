@@ -18,17 +18,42 @@
 # Env:    L4   the l4 binary      (default: `l4` on PATH)
 #
 # Exit status: 0 only when no module has an error other than its expected failed
-# assertions, no assertion refused, and each module fails exactly as often as
-# expected_failed says.
+# assertions, and each module fails exactly as often as expected_failed says and refuses
+# exactly as often as expected_refused says (0 for every module but the ones it names;
+# version 0.2.0, repair CHK-03).
 set -u
 DIR="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 L4="${L4:-l4}"
 
 # A module that is MEANT to fail (a draft's test cases run against the text as made,
 # say) is listed here with its exact count, and named in encoding.json `expected_red`.
+# Version 0.2.0 (CHK-03): the independent tester's file is listed. Its six failures, by line
+# of tests-independent.l4, with the inventory id (findings/il-2026-10-08/inventory.tsv) and
+# class of each:
+#   267, 268, 269  D03-D05  03-F2  AMBIGUITY (fork F2, the age-60 date; the tester would refuse)
+#   284            F01      03-F1  AMBIGUITY (fork F1, mixed income on the scale; the tester would refuse)
+#   285            F02      03-T1  TESTER-WRONG (every placement gives 12,300; INDEPENDENT-FINDINGS.md:57-59)
+#   286            F03      03-T1  TESTER-WRONG (LEFT is the refusal meant; INDEPENDENT-FINDINGS.md:61-62)
+# The two AMBIGUITY items wait on rulings (BACKLOG IL-24); 03-T1 is the tester's own error,
+# left failing, its expected values unchanged.
 expected_failed() {
   case "$1" in
     # tests-red.l4) echo 3 ;;
+    tests-independent.l4) echo 6 ;;   # lines 267-269 (03-F2), 284 (03-F1), 285-286 (03-T1); see above
+    *) echo 0 ;;
+  esac
+}
+
+# Version 0.2.0 (CHK-03): a module that is MEANT to refuse some assertions is listed with its
+# exact count. The independent tester's two, by line of tests-independent.l4:
+#   371  S13  03-S13  AMBIGUITY (factual): s 121B in tax year 2025, declined here (assumption A1)
+#   384  S25  03-S13  AMBIGUITY (factual): the same, with a residential sale
+# Both wait on the deposit of amendment 276 (Sefer HaChukim 3342; BACKLOG IL-31). The repair of
+# 03-O1 (version 0.2.0) made the s 121B(e) helpers decline 2025 too, so S25 is refused by the
+# section's own refusal as before and no count moves.
+expected_refused() {
+  case "$1" in
+    tests-independent.l4) echo 2 ;;   # lines 371, 384 (03-S13); see above
     *) echo 0 ;;
   esac
 }
@@ -50,10 +75,12 @@ for f in "$DIR"/*.l4; do
   bad=$(printf '%s\n' "$msgs" | grep -cE 'assertion failed|assertion could not be evaluated')
   ref=$(printf '%s\n' "$msgs" | grep -cE 'assertion refused')
   exp=$(expected_failed "$m")
-  printf '%-40s %7d %9d %7d %8d %9d\n' "$m" "$err" "$ok" "$bad" "$ref" "$exp"
-  [ $((err - bad)) -eq 0 ] && [ "$ref" -eq 0 ] && [ "$bad" -eq "$exp" ] || status=1
+  expref=$(expected_refused "$m")
+  if [ "$expref" -eq 0 ]; then shown="$exp"; else shown="$exp/$expref"; fi
+  printf '%-40s %7d %9d %7d %8d %9s\n' "$m" "$err" "$ok" "$bad" "$ref" "$shown"
+  [ $((err - bad)) -eq 0 ] && [ "$ref" -eq "$expref" ] && [ "$bad" -eq "$exp" ] || status=1
   total_err=$((total_err + err)) total_ok=$((total_ok + ok)) total_bad=$((total_bad + bad)) total_ref=$((total_ref + ref)) n=$((n + 1))
 done
 printf '%-40s %7d %9d %7d %8d\n' "TOTAL ($n modules)" "$total_err" "$total_ok" "$total_bad" "$total_ref"
-echo "(a failed assertion is also an error; any other error, or any refused assertion, makes the run red)"
+echo "(a failed assertion is also an error; any other error, or a refused assertion a module is not expected to have, makes the run red; \"expected\" is failed/refused where a module may refuse)"
 exit $status

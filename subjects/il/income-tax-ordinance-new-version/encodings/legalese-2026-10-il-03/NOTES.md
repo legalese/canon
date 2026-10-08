@@ -1,10 +1,209 @@
 # NOTES — il/income-tax-ordinance-new-version, encoding row `legalese-2026-10-il-03`
 
 Income Tax Ordinance [New Version], **s 120B** (indexation), **s 121** (the individual's rate of tax) and **s 121B** (additional tax on high incomes), encoded in L4 by one agent in one session (run `IL-03-20261006`, 2026-10-06), from the brief in `BRIEF.md`.
-Status: **draft**.
+Status: **draft**. Version **0.2.0** (2026-10-08): repairs of the independent pass's two observations (O1, O2) and seven riders (BACKLOG IL-16); one helper's answer for 2025 is now declined, a silent 2028 answer is now declined by name, and four names were renamed; see "Version 0.2.0" below.
 No domain expert has read it against the source; HG1 has not been sought.
 
+## Version 0.2.0 (2026-10-08): repairs (BACKLOG IL-16)
+
+Backlog row IL-16 (job C in `l4-pipeline/findings/il-2026-10-08/jobs.txt`), repair agent `rep-il-16`, one session, no sub-agents, on Meng's request of 2026-10-08 to fix the unrepaired findings, as the lead relayed it.
+Item ids are those of `l4-pipeline/findings/il-2026-10-08/inventory.tsv`.
+Nothing below was deleted; entries this version touches are marked **(0.2.0)** in place.
+The section "Comparison with Axiom's RuleSpec", `DECIDED-ANSWERS.md` and `INDEPENDENT-FINDINGS.md` are untouched.
+Line numbers that those three cite in the `.l4` files are lines of version 0.1.0 (the comparison names each module's sha256); this version moves some of them.
+
+| item | class | files | what changed |
+| --- | --- | --- | --- |
+| 03-O1 | OURS-WRONG | `ito-121b-additional-tax.l4`, `ito-il03-tests.l4` | the two s 121B(e) helpers decline 2025 (and earlier) with the section's own refusal, as its rule does; one expected value changed, six added |
+| 03-O2 | OURS-WRONG (silent) | `ito-il03-nouns.l4`, `ito-120b-indexation.l4`, `ito-il03-tests.l4`; `tests-independent.l4` line 310 (as the lead authorised) | `amount on 1 January 2024, before rounding` is a MAYBE NUMBER; 2028 with NOTHING is declined by name; five assertions added, three inputs wrapped in `JUST` |
+| 03-F7 | WORDING | `NOTES.md`, `encoding.json` | fork F7 answered from s 7 of the enacted 5786 Law; assumption A3 cites its ss 5-6; no answer changed |
+| 03-721 | NOT-ENCODED (data) | new `ito-il03-published-figures.l4`, `ito-il03-tests.l4`, `NOTES.md`, `encoding.json` | the Tax Authority's 721,560 for 2026, carried as a published figure, not law; six assertions added |
+| 03-W1 | WORDING | `NOTES.md`, `encoding.json` | "the independent test pass was not run" marked stale |
+| CHK-03 | WORDING | `check.sh`, `encoding.json` | `expected_refused` added; the tester's 6 failed and 2 refused declared line by line; `check.sh` exits 0 |
+| 03-T1 | TESTER-WRONG | `check.sh`, `NOTES.md`, the lead's note at the end of `tests-independent.l4` | annotated: F02 and F03 (`tests-independent.l4` lines 285, 286) stay failing, values unchanged |
+| 01-W5 (IL-03 half) | WORDING | `ito-il03-nouns.l4`, `ito-120b-indexation.l4`, `ito-il03-tests.l4`; `tests-independent.l4` lines 315, 317, 351, 352 (as the lead authorised) | "pension point" renamed "allowance point" in three names (the lead's choice, assumed, not ruled); no answer moved |
+| 03-N4 (IL-03 half) | WORDING | `ito-il03-nouns.l4`, `ito-121-individual-rates.l4`, `ito-121b-additional-tax.l4`; `tests-independent.l4` lines 167, 172 (as the lead authorised) | `A problem with the facts` renamed `A problem with the facts, for sections 121 and 121B`; no answer moved |
+
+### 03-O1: the 2025 residential threshold, answered by a helper and refused by the rule
+
+Recorded at `INDEPENDENT-FINDINGS.md` line 81 (observation O1); class OURS-WRONG.
+In 0.1.0 `the text fixes the residential-apartment sale value for tax year` was TRUE for 2025 and 2026, and `the residential-apartment sale value in section 121B(e) for tax year` answered 5,385,285 for 2025, while `the additional tax under section 121B for` declines every year before 2026 at its first arm.
+So the note on line 4462, "(נקוב לשנת 2025; בשנת 2026, 5,385,285 ש״ח)", was read as answering 2025 by the helpers and as not answering it by the rule.
+The note says what the figure is in 2025; it does not say that s 121B as amended in 5785 reaches tax year 2025, and the deposited text does not say from when that amendment applies (assumption A1, question 4; amendment 276, Sefer HaChukim 3342, is not deposited, BACKLOG IL-31).
+The inventory's other option, letting the rule answer 2025, waits on that deposit (03-S13) and was not taken.
+Both helpers now decline 2025 and earlier with the section's own refusal, "section 121B for tax years before 2026 is not encoded in this model" (`ito-121b-additional-tax.l4` lines 77-80 and 99-104).
+The predicate answers TRUE for 2026 and FALSE from 2027; the threshold answers 5,385,285 for 2026 and declines from 2027 under RE Law s 9(c2), as before.
+The section's rule reaches neither helper before 2026, so none of its answers moves, and the tester's S25 (`tests-independent.l4` line 384) is refused as before.
+
+### 03-O2: a rounded 2024 figure silently accepted for 2028
+
+Recorded at `INDEPENDENT-FINDINGS.md` line 86 (observation O2) and at line 350 of this file as it stood at 0.1.0; class OURS-WRONG (silent).
+For 1 January 2028, s 120B(e)(2) adjusts "הסכומים כפי שהיו ביום כ׳ בטבת התשפ״ד (1 בינואר 2024) טרם עיגולם" (line 4345), the amounts as they were on 1 January 2024 before rounding.
+The Tax Authority publishes the rounded figures. In 0.1.0 the record `An amount on 1 January of a tax year` required a NUMBER before rounding, so a caller who held only the rounded figure had to put something there, and the rounded figure gave a plausible 2028 amount with exit 0.
+As the inventory proposed, the field `amount on 1 January 2024, before rounding` is now a `MAYBE NUMBER` (`ito-il03-nouns.l4` line 153).
+`s 120B — the amount for the tax year` reads it only for 2028, and on `NOTHING` declines by name: "section 120B(e)(2) adjusts the 1 January 2024 amount before rounding, and that amount was not supplied" (`ito-120b-indexation.l4`, a new refusal above the dispatcher; the 2028 arm is now a `WHERE` binding, `the 2028 adjustment`).
+`s 120B — the amount in force in the tax year` reaches the same refusal first, because it must have the amount before it asks for the rounding Order.
+The frozen years 2025-2027 read only the figure after rounding, and 2029 on reads the previous year's base, so they answer as before with `NOTHING` in the field.
+The capstone's adapter (`il07-adapter-il03.l4` line 114) passes a polymorphic named refusal into this field; that still typechecks against a `MAYBE NUMBER` and is never forced for 2025-2027, so it needs no change, though job IL-22 may prefer to pass `NOTHING`.
+The tester's file built the record with `IS before`, a NUMBER, which no longer typechecks (probed on a scratch copy: 1 error, no assertion run); the lead authorised changing that one line, 310, to `IS JUST before` (see "The tester's file" below).
+
+### 01-W5 (IL-03's half): "allowance point", not "pension point"
+
+Recorded at row IL-01's `NOTES.md` line 237 (as it stood before IL-01's own repairs of 2026-10-08), the capstone's `RECONCILE.md` line 56 (N13), and IL-01's comparison X06; class WORDING.
+"נקודת קיצבה" (s 33A, line 1564) is now "allowance point" here, as row IL-01 renders it where s 33A defines it, and as row IL-08 (s 40) and IL-01's independent tester render it.
+**The choice is the lead's, 2026-10-08, assumed, not ruled** (the inventory left it to the owner); the lead is telling `rep-il-14`, and IL-01 is not edited here.
+Renamed, with no answer moved:
+
+- the constructor `the amount of a pension point` → `the amount of an allowance point`;
+- the record `A pension-point amount in a tax year` → `An allowance-point amount in a tax year`;
+- the rule `s 120B(b) — the pension-point amount from the month of an agreed cost-of-living increment` → `s 120B(b) — the allowance-point amount from the month of an agreed cost-of-living increment`;
+- and the section heading, comments and test fixture names that said "pension-point".
+
+The tester's file uses the second and third names on lines 315, 317, 351 and 352, adapted as the lead authorised; its own fixture `a pension point of 1,000` keeps its name.
+The comparison section below, which quotes the old names, is untouched.
+
+### 03-N4 (IL-03's half): `A problem with the facts`, qualified
+
+Recorded at the capstone's `RECONCILE.md` line 47 (N4); class WORDING.
+Rows IL-03 and IL-06 both declared a type `A problem with the facts`, so no module could import both rows and name either.
+IL-03's is now `A problem with the facts, for sections 121 and 121B`, after the sections whose rules return it (the style of RECONCILE's N3); its three constructors are unchanged.
+It is named in `ito-il03-nouns.l4` (the declaration), in `ito-121-individual-rates.l4` lines 227 and 237, and in two signatures of `ito-121b-additional-tax.l4`, renames only.
+The lead authorised the edit to `ito-121-individual-rates.l4`, which jobs.txt had listed as untouched; it is vendored by the capstone.
+The tester's file names the type on lines 167 and 172, adapted as the lead authorised.
+
+### 03-F7: fork F7, read against the enacted 5786 Law; assumption A3 re-based
+
+Recorded at lines 131 (F7), 217 (question 3) and 373-374 (comparison, follow-up 2) of this file as it stood at 0.1.0, and at the capstone's `RECONCILE.md` lines 79-81; class WORDING.
+The Economic Efficiency Law (Legislative Amendments for Achieving the Budget Targets for Budget Year 2026), 5786-2026, Sefer HaChukim 3511 of 31 March 2026, is deposited at `../../registers/source-bundle/amending-laws/25_lsr_12235101.pdf` (commons a862cb5; sha256 `72244dba…4734155`, re-checked 2026-10-08).
+Its chapter C, "ריווח מדרגות מס הכנסה", is on PDF p. 4 (printed Sefer HaChukim p. 416), read with `pdftotext` on 2026-10-08:
+
+- **s 5** (amendment no. 288 of the Ordinance) amends s 121: in (a)(1) the figure becomes "301,200"; (a)(2) is replaced, "על כל שקל חדש מ־301,201 שקלים חדשים עד 560,280 שקלים חדשים - 35%"; in (b)(1)(c) the top becomes 228,000; (b)(1)(d) is replaced, "מ־228,001 … עד 301,200 … 31%". It leaves (b)(1)(a) (84,120), (b)(1)(b) (120,720) and every rate alone.
+- **s 6**: "תחילתו של פרק זה ביום י"ב בטבת התשפ"ו (1 בינואר 2026) והוא יחול על הכנסה שהופקה או נצמחה ביום האמור או לאחריו" (in force on 1 January 2026, for income produced or accrued on or after that day). Chapter C is not marked a temporary provision (chapter D, on the same page, is), and s 6 gives no end date.
+- **s 7**, headed "הוראת מעבר" (transitional provision): "לעניין תיאום הסכומים הנקובים בפרק זה לפי סעיף 120ב(ה) לפקודת מס הכנסה (בפרק זה - הסכומים), יראו אותם כאילו היו הסכומים המתואמים ליום כ' בטבת התשפ"ד (1 בינואר 2024)" (for the adjustment under s 120B(e) of the amounts stated in this chapter, they are regarded as if they were the amounts adjusted to 1 January 2024).
+
+**F7's answer: reading (iii), which comes to (ii).**
+For each amount s 5 states (301,200 in (a)(1) and (b)(1)(d), 560,280 in (a)(2), 228,000 in (b)(1)(c), and the band starts 301,201 and 228,001), the base that s 120B(e)(2) adjusts on 1 January 2028 is the figure s 5 states, not the figure the paragraph carried on 1 January 2024.
+**Before or after rounding**, which the inventory asks: s 7 does not say in words.
+It regards the stated figure as "the adjusted amount" on 1 January 2024, which is what s 120B(a) produces and what the rounding rules of (d) then round (line 4341: "כללים לעיגול סכומים שתואמו לפי סעיף זה"), so it stands where (e)(2) reads the amount "before rounding".
+Read the other way, with "adjusted" meaning the adjusted amount as rounded, s 7 still supplies one figure and only one for each stated amount, so (e)(2) has no other figure to restart from.
+Either way the 2028 base of each stated amount is the figure s 5 prints; and for 2026 and 2027 the figure in force is that same figure, by s 5 and s 6 directly.
+For 84,120 and 120,720, which s 5 does not restate, (e)(2) restarts from their own 1 January 2024 amounts before rounding, which no deposited source gives (an input, as before).
+**No answer in this row changes.**
+s 121 from 2028 is still declined, now because the 2027 index readings and the rounding Order are not in this row, not because F7 was open; the refusal's words, "the section 121 ceilings from tax year 2028 are not determined by the deposited text", stay true.
+The header of `ito-121-individual-rates.l4` (lines 22-23: the 1 January 2024 figures "which for the amended ceilings the deposited text does not give") and its `@ref` on line 62 are now out of date in that clause; this job may only rename in that module (03-N4, renames only, as the lead authorised), so they are recorded here and left for its next edit.
+Fork F5 (2027's rise only) is unchanged: s 7 says what is adjusted, not by which index.
+**A3**: for the four figures s 5 states, the basis is now the enacted Law, s 5 with s 6's commencement, and it agrees with the text exactly (the capstone found the same, `RECONCILE.md` line 79).
+For 84,120 and 120,720 the basis is unchanged: the note at line 4350, the editorial tables at lines 4429-4447 (which show both figures unchanged from 2024-2025 to 2026-2027), and s 120B(e)(1).
+
+### 03-721: the Tax Authority's 2026 figure for s 121B(a), carried as a published figure
+
+Recorded at the capstone's `RECONCILE.md` line 82; class NOT-ENCODED (data).
+New module `ito-il03-published-figures.l4`, labelled "NOT ENCODED LAW", modelled on IL-01's `ito-credit-points-published-figures.l4`.
+It carries one figure, `the amount in section 121B(a) published by the Israel Tax Authority for tax year` 2026 = 721,560, and declines every other year by name ("no s 121B(a) amount published by the Israel Tax Authority for this tax year has been sourced in this encoding").
+Source: the Tax Authority's 2026 monthly withholding booklet, recorded by link and hash in `../../registers/source-bundle/amending-laws/SOURCES.json` ("pointers_only") and not deposited.
+Re-checked on 2026-10-08: a local copy of the Internet Archive capture (the capstone encoder's fetch) has the recorded sha256 `282bb886…6e86285`, and PDF p. 8 reads "יחיד אשר הכנסתו החייבת בשנת המס עלתה על ₪ 721,560 ( ₪ 60,130לחודש)" in `pdftotext -layout` with bidi controls removed (the extractor moves punctuation about).
+The page is printed as page 8; the capstone's `il07-published-figures.l4` calls it "PDF p. 8 (printed page 7)", which is off by one (observation for job IL-22; the capstone is not edited here).
+The same page prints the 2026 residential threshold as 5,385,285, the text's own figure; it is not carried, because the rule reads the text.
+The s 121B rule still takes the amount as a required argument: the published figure is offered to callers and used by the tests, not read by any rule.
+2025 and 2027 are not carried, though s 120B(e)(1) would give them the same figure: that is law applied to a published figure, and a test shows it (2027 through `s 120B — the amount in force in the tax year`) rather than the figures module asserting it.
+Section 5's answer table now names the figure for 2026.
+
+### 03-W1: "the independent test pass was not run"
+
+Recorded at line 223 of this file as it stood at 0.1.0 (section 9); class WORDING.
+Marked **(0.2.0)** in place: the pass was run after the line was written (commons a7f987f).
+`encoding.json` `not_reviewed.note` said the same and is updated.
+
+### CHK-03 and 03-T1: the tester's counts declared
+
+Recorded at `check.sh` lines 29-34 and in `red-checks.txt` (CHK-03), and at `INDEPENDENT-FINDINGS.md` lines 57-62 (03-T1).
+`check.sh` exited 1 at 0.1.0 because it did not list the tester's module and had no `expected_refused`.
+It now has `expected_refused`, as IL-04's does, and lists `tests-independent.l4` with 6 failed and 2 refused, with a comment naming each line, its inventory id and class: lines 267-269 (D03-D05, 03-F2, AMBIGUITY), 284 (F01, 03-F1, AMBIGUITY), 285-286 (F02, F03, 03-T1, TESTER-WRONG), and refused 371 and 384 (S13, S25, 03-S13, AMBIGUITY, waiting on the deposit of amendment 276).
+03-T1 is annotated there, here and in the lead's note at the end of the tester's file: by the tester's own account (`INDEPENDENT-FINDINGS.md` lines 57-62) F02's every placement gives 12,300 and F03's `LEFT` is the refusal meant; the encoding's answers stand and the two stay failing, their expected values unchanged.
+`encoding.json` gains `expected_red`.
+
+### The tester's file: seven lines adapted, one note appended
+
+As the lead authorised on 2026-10-08, under the precedent of IL-04 v0.3.1, seven lines of `tests-independent.l4` were changed in place to follow the renamed interface, and nothing else: no expected value, no input, no fixture's own name.
+
+| line | before | after | item |
+| --- | --- | --- | --- |
+| 167, 172 | `GIVETH AN EITHER` `A problem with the facts` `NUMBER` | the type `A problem with the facts, for sections 121 and 121B` | 03-N4 |
+| 310 | `IS before` | `IS JUST before` | 03-O2 |
+| 315, 317 | `A pension-point amount in a tax year` | `An allowance-point amount in a tax year` | 01-W5 |
+| 351, 352 | `s 120B(b) — the pension-point amount from the month of an agreed cost-of-living increment` | `s 120B(b) — the allowance-point amount from …` | 01-W5 |
+
+A dated "NOTE BY THE LEAD, 2026-10-08" is appended after the file's last line (lines 395-415, after a blank line) and lists each line and why; nothing was inserted above it, so every line the findings and `check.sh` cite still holds.
+The first 393 lines differ from 0.1.0's only on those seven lines (checked by `diff`), and the file's counts are unchanged: 118 satisfied, 6 failed, 2 refused, on the same eight lines.
+
+### Expected values changed or added (`ito-il03-tests.l4`)
+
+Every value below was worked from the text, or from the published figure, before the assertion was run.
+
+| assertion | 0.1.0 | 0.2.0 | why |
+| --- | --- | --- | --- |
+| `the residential-apartment sale value in section 121B(e) for tax year` 2025 | 5,385,285 | declined: "section 121B for tax years before 2026 is not encoded in this model" | 03-O1: s 121B is not answered for 2025 |
+| the same, 2024 | — | declined, same refusal | 03-O1 (added) |
+| the same, 2027 | — | declined: "… from 2027 moves under section 9(c2) of the Real Estate Taxation Law …" | line 4462 (added) |
+| `the text fixes the residential-apartment sale value for tax year` 2025 / 2026 / 2027 | — | declined (before 2026) / TRUE / FALSE | 03-O1 (added) |
+| `the betterment on` a residential sale for 5,385,286 `counts for section 121B in tax year` 2025 | — | declined (before 2026) | 03-O1 (added) |
+| `s 120B — the amount for the tax year`, 2028, `NOTHING` before rounding (rounded 1,000; previous base 1,050; index 100 to 102) | — | declined: "section 120B(e)(2) adjusts the 1 January 2024 amount before rounding, and that amount was not supplied" | 03-O2 (added) |
+| `s 120B — the amount in force in the tax year`, the same, 2028 | — | declined, same refusal | 03-O2 (added) |
+| `s 120B — the amount for the tax year`, the same, 2026 | — | `fixed by section 120B(e)(1) at` 1,000 | (e)(1) reads only the rounded figure (added) |
+| `s 120B — the amount in force in the tax year`, the same, 2026 | — | 1,000 | the same (added) |
+| `s 120B — the amount for the tax year`, the same, 2029 | — | `adjusted, before rounding, to` 1,071 (1,050 × (1 + (102 − 100)/100)) | (a) reads the previous base (added) |
+| `the amount in section 121B(a) published by the Israel Tax Authority for tax year` 2026 | — | 721,560 | booklet p. 8 (added) |
+| the same, 2025 and 2027 | — | declined: "no s 121B(a) amount published by the Israel Tax Authority for this tax year has been sourced in this encoding" | only 2026 is sourced (added) |
+| the published 2026 figure equals the editorial note's figure used above | — | TRUE (721,560 = 721,560) | (added) |
+| `the additional tax under section 121B for`, 2026, a dividend of 1,000,000, at the published figure | — | `RIGHT` 13,922: (a) 3% × (1,000,000 − 721,560 = 278,440) = 8,353.2; (a1) 2% × 278,440 = 5,568.8 | (added) |
+| `the amount in section 121B(a) in force, under section 120B, from` 2027, the published 2026 figure as the 1 January 2024 figure after rounding | — | 721,560 | (e)(1) (added) |
+
+Inputs changed, values not: the before-rounding figures of three fixtures (`the hypothetical amount, in tax year`, 1,000.4; `the s 121B(a) amount, in tax year`, 721,563.7; and the new `… after rounding as published for 2026 …`, 721,563.7) are wrapped in `JUST`.
+No other expected value changed; the 86 assertions of 0.1.0 are all still there, one with the new value above, and 17 were added (103).
+
+### What `check.sh` prints at 0.2.0
+
+Run on 2026-10-08 from 07:03:55Z to 07:04:11Z with `L4=/Users/mengwong/.local/bin/l4`, `JL4_LIBRARY_PATH` unset; the binary is `~/.local/bin/l4` → the cabal store, `/Volumes/transcend/caches/cabal/store/ghc-9.10.3-fe9c/jl4-0.1-d4290e25/bin/l4`, sha256 `f4f2bd2558f02f828f0deced5f74313a33670f08cc3275ff95b83f2cde71e448`, the same before and after the run.
+The 0.1.0 baseline was re-run on the same binary before any edit and printed 0.1.0's table with `tests-independent.l4` at 6 errors, 118 satisfied, 6 failed, 2 refused, exit 1.
+
+```
+module                                    errors satisfied  failed  refused  expected
+ito-120b-indexation.l4                         0         0       0        0         0
+ito-121-individual-rates.l4                    0         0       0        0         0
+ito-121b-additional-tax.l4                     0         0       0        0         0
+ito-il03-nouns.l4                              0         0       0        0         0
+ito-il03-published-figures.l4                  0         0       0        0         0
+ito-il03-tests.l4                              0       103       0        0         0
+tests-independent.l4                           6       118       6        2       6/2
+TOTAL (7 modules)                              6       221       6        2
+(a failed assertion is also an error; any other error, or a refused assertion a module is not expected to have, makes the run red; "expected" is failed/refused where a module may refuse)
+```
+
+`check.sh` exit 0.
+The six errors are exactly the six declared failures of the tester's file; its two refusals are declared.
+`tools/srcquote.py` regenerates every `src:N` line of every module unchanged, and `tools/hebcheck.py` passes on every changed module, `check.sh` and `encoding.json` against the source.
+Against the source alone it flags, in `ito-il03-published-figures.l4` and this file, only Hebrew quoted from the booklet and the 5786 Law; against a file of the source with the cleaned `pdftotext` of the Law's p. 4 and the booklet's pp. 1 and 8 appended, it passes.
+
+### For job IL-22 (the capstone), names this version adds or renames
+
+| kind | 0.1.0 | 0.2.0 | in vendored module | capstone users found |
+| --- | --- | --- | --- | --- |
+| type | `A problem with the facts` | `A problem with the facts, for sections 121 and 121B` | `ito-il03-nouns.l4`, used in `ito-121-individual-rates.l4`, `ito-121b-additional-tax.l4` | none by name: `il07-adapter-il03.l4` matches `LEFT p`; its comment on line 15 names the old type |
+| field type | `amount on 1 January 2024, before rounding` IS A NUMBER | IS A MAYBE NUMBER | `ito-il03-nouns.l4` | `il07-adapter-il03.l4` line 114 passes a named refusal, which still typechecks |
+| constructor | `the amount of a pension point` | `the amount of an allowance point` | `ito-il03-nouns.l4` | none |
+| type | `A pension-point amount in a tax year` | `An allowance-point amount in a tax year` | `ito-il03-nouns.l4` | none |
+| rule | `s 120B(b) — the pension-point amount from the month of an agreed cost-of-living increment` | `s 120B(b) — the allowance-point amount from the month of an agreed cost-of-living increment` | `ito-120b-indexation.l4` | none |
+| refusal (new) | — | `section 120B(e)(2) adjusts the 1 January 2024 amount before rounding, and that amount was not supplied` | `ito-120b-indexation.l4` | — |
+| behaviour | the two s 121B(e) helpers answer 2025 | they decline 2025 | `ito-121b-additional-tax.l4` | none call them |
+| module (new, not vendored) | — | `ito-il03-published-figures.l4`: `the amount in section 121B(a) published by the Israel Tax Authority for tax year`, and its refusal | — | the capstone's own `il07-published-figures.l4` carries the same figure |
+
+The four vendored modules that changed are `ito-il03-nouns.l4`, `ito-120b-indexation.l4`, `ito-121-individual-rates.l4` (renames only) and `ito-121b-additional-tax.l4`; the capstone's `vendor.sh --check` fails on them until IL-22 re-records.
+"Users found" is from `grep` over the capstone's own `.l4` files on 2026-10-08.
+Observation for IL-22: `il07-published-figures.l4` says the booklet's figure is on "PDF p. 8 (printed page 7)"; the page is printed 8.
+
 ## 0. What `check.sh` prints
+
+**(0.2.0)** This is 0.1.0's run; the table at 0.2.0 is in "Version 0.2.0" above.
 
 Run on 2026-10-06 with `/Users/mengwong/.local/bin/l4`, `JL4_LIBRARY_PATH` unset.
 That path is a symlink to `~/.cabal/bin/l4`, a local cabal build in store entry `jl4-0.1-0ee0100b`, modified 2026-10-06 21:20 (local), sha256 `64bbcb157dbef2ef1020a6a75589313bba0a2aeeb807c921c5e65e62e9eca118`.
@@ -42,6 +241,7 @@ Each of these that feeds a provision in scope enters as an **input**, with its c
 **No figure in this encoding comes from anywhere but the text.**
 The consumer price index and every amount the Israel Tax Authority publishes are inputs with no default (section 7 says why nothing was fetched).
 Figures that appear only in the consolidation's editorial notes are not encoded; the tests supply one of them (721,560) as a labelled scenario value.
+**(0.2.0)** 721,560 is now also carried for 2026 as the Tax Authority's published figure, labelled as not law, in `ito-il03-published-figures.l4` (repair 03-721); the s 121B rule still takes the amount as an argument.
 
 ## 2. Coverage table
 
@@ -51,7 +251,7 @@ Totals: **25 encoded, 4 inert, 1 out-of-scope, 0 deferred** (30 rows).
 | provision | line | gist | disposition | where |
 | --- | --- | --- | --- | --- |
 | s 120B(a) | 4338 | adjust on 1 January by the rise in the index over the previous tax year | encoded | `s 120B(a) — adjust`, `s 120B — the amount for the tax year` |
-| s 120B(b) | 4339 | pension-point amounts adjusted mid-year when a cost-of-living increment is agreed | encoded | `s 120B(b) — the pension-point amount from the month of …` |
+| s 120B(b) | 4339 | pension-point amounts adjusted mid-year when a cost-of-living increment is agreed | encoded | `s 120B(b) — the pension-point amount from the month of …` **(0.2.0: renamed `s 120B(b) — the allowance-point amount from the month of …`, 01-W5)** |
 | s 120B(c) | 4340 | (repealed) | inert | comment |
 | s 120B(d) | 4341-4342 | the Minister's rounding power; the 5746-1986 Order is noted as made | encoded (as a named refusal: the Order is not in the sources) | `the rounding rules made under section 120B(d) are not encoded in this model` |
 | s 120B(e) chapeau | 4343 | notwithstanding (a) and (b) | encoded | arm order in the dispatcher and in (b) |
@@ -91,6 +291,7 @@ Its pre-repeal text could matter only to tax years in the early 1990s or before,
 **A1. The tax years answered.**
 s 121: tax years **2026 and 2027** only.
 s 121B: tax years **from 2026**, with the s 121B(a) amount supplied; a residential-apartment sale is answered only for 2026 (the text fixes that threshold for 2025 and 2026, and from 2027 it moves under a Law not encoded).
+**(0.2.0)** The two s 121B(e) helpers now decline 2025 as well, so no name in the row answers s 121B for 2025 (repair 03-O1).
 s 120B: adjustments **from 1 January 2025**.
 Everything earlier is declined by a named `REFUSE`, and so is s 121 from 2028.
 Why: the source is a consolidation "as amended at retrieval", and the three sections' amendment lists end in 5785 (ss 120B, 121B) and 5786 (s 121).
@@ -105,10 +306,12 @@ Taking the year as a field of the case keeps it on the return where it belongs, 
 **A3. The figures printed in s 121 are the figures for 2026 and 2027.**
 Basis: the consolidation's note at line 4350 ("(הסכומים מתואמים לשנים 2026–2027)"), the matching editorial table at lines 4441-4447, and s 120B(e)(1), under which no indexation intervenes in 2025-2027.
 The consolidation's editors write adjusted figures into the text; the official base figures in the amending Laws could not be compared (section 7).
+**(0.2.0)** Four of the six figures now rest on the enacted Law: s 5 of the 5786 Economic Efficiency Law states 301,200 ((a)(1) and (b)(1)(d)), 560,280 ((a)(2)) and 228,000 ((b)(1)(c)), and its s 6 commences them on 1 January 2026; 84,120 and 120,720, which s 5 does not restate, still rest on the basis above (repair 03-F7, in "Version 0.2.0").
 
 **A4. Figures found only in editorial notes are not encoded.**
 In particular the s 121B(a) amount for 2024-2027 (721,560) and for 2023 (698,280), and the s 121B(e) note that the residential threshold is 5,385,285 "in 2026" (that one is used only to say the printed figure holds for 2026, alongside the text's own figure).
 The text of s 121B(a) prints 640,000 "nominal for 2017", the base s 120B indexes from; the figure in force is an input.
+**(0.2.0)** 721,560 is still not encoded as law, but is carried for 2026 as the Tax Authority's published figure (repair 03-721).
 
 **A5. Classifications outside the slice are inputs.**
 Whether an item is from personal exertion; whether it is s 2(1)/(2) income; whether another section charges it at its own rate; whether books were required and acceptable books not kept; the s 88 inflationary amount; the betterment, its s 47 inflationary amount, the sale value and any exemption of a real-estate sale; which spouse's income an item is (s 66); and any s 8(c) spreading.
@@ -128,7 +331,7 @@ s 121B is computed separately and is not added to it here.
 | F4 | s 120B(a), line 4338; s 1, line 180 | If the index falls, is the amount reduced? | (i) yes, the s 1 arithmetic gives a negative rate and it is applied; (ii) no, "עליית" (rise) means only rises count | **(i)**: the definition is a formula and yields a negative number on its own terms. The editorial tables show amounts falling from 2020 to 2021 (e.g. 75,960 to 75,480, lines 4382 and 4394), which fits (i); they are aids, not authority. |
 | F5 | s 120B(e)(2), line 4345 | "the index in the previous tax year … shall be the index of tax year 2027": only 2027's rise, or the rise since 2024? | (i) 2027's rise only, so 2024-2026 inflation is not recovered; (ii) cumulative | **(i)**: it names one tax year's index, and (a)'s mechanism measures over one tax year. |
 | F6 | s 120B(a) | Does the year-on-year chain carry rounded or unrounded figures? | (i) unrounded, rounding only the figure in force; (ii) rounded | **(i)**: (e)(2) restarts "before rounding", which is natural only if the chain runs unrounded. It changes no answer this row gives, because every rounded figure is either supplied or declined. |
-| F7 | s 120B(e)(2) with s 121 as amended in 5786 | What is the 2028 base for the ceilings the 5786 amendment moved ((a)(1), (b)(1)(c), (b)(1)(d))? | (i) their 1 January 2024 figures, which would undo the 5786 change; (ii) the figures as amended; (iii) whatever the amending Law provides | **not answered**: s 121 from 2028 is declined by name. The amending Law could not be read (section 7). |
+| F7 | s 120B(e)(2) with s 121 as amended in 5786 | What is the 2028 base for the ceilings the 5786 amendment moved ((a)(1), (b)(1)(c), (b)(1)(d))? | (i) their 1 January 2024 figures, which would undo the 5786 change; (ii) the figures as amended; (iii) whatever the amending Law provides | **not answered**: s 121 from 2028 is declined by name. The amending Law could not be read (section 7). **(0.2.0) Answered: (iii), which comes to (ii).** Section 7 of the 5786 Law, now deposited, regards the amounts its chapter states as the amounts adjusted to 1 January 2024 for s 120B(e), so their 2028 base is the stated figure; see "Version 0.2.0", 03-F7. No answer here changes: s 121 from 2028 is still declined, for want of the 2027 index and the rounding Order. |
 | F8 | s 121(a)(1), (b)(1)(d) | The text prints the top of the 31% band twice (301,200). If the two ever differ, which governs? | — | **declined**: a supplied set of ceilings in which they differ is refused; the printed figures agree, and a test says so. |
 | F9 | s 121B(e), line 4462 | Does "and the sale is not exempt" govern only the residential limb? Is the s 47 inflationary amount excluded from a sale whose betterment does not count? | (i) the exemption condition is part of the residential limb only, and a sale that does not count contributes nothing; (ii) the exemption condition applies to all betterment; the inflationary amount is excluded from income generally | **(i)**: the condition sits inside the clause opened by "ואולם לגבי מכירת זכות במקרקעין בדירת מגורים"; subtracting an uncounted sale's inflationary amount from other income would tax less than the income. |
 | F10 | s 121B(e), line 4462 | Which year's residential threshold applies to a sale? | (i) the tax year in which the betterment is counted; (ii) the date of the sale under the Real Estate Taxation Law's own calendar | **(i)**, the case's tax year; the two coincide for a sale in that year. |
@@ -147,16 +350,16 @@ Figures from the text (lines 4351-4358, 4456, 4462) unless marked.
 
 | provision | 2025 | 2026 | 2027 | 2028 on |
 | --- | --- | --- | --- | --- |
-| s 121(a)(1) top of the 31% band | declined | 301,200 | 301,200 | declined (F7) |
+| s 121(a)(1) top of the 31% band | declined | 301,200 | 301,200 | declined (F7; **(0.2.0)** F7 answered, still declined for want of the 2027 index and the rounding Order) |
 | s 121(a)(2) top of the 35% band | declined | 560,280 | 560,280 | declined |
 | s 121(b)(1)(a) top of the 10% band | declined | 84,120 | 84,120 | declined |
 | s 121(b)(1)(b) top of the 14% band | declined | 120,720 | 120,720 | declined |
 | s 121(b)(1)(c) top of the 20% band | declined | 228,000 | 228,000 | declined |
 | s 121(b)(1)(d) top of the reduced 31% band | declined | 301,200 | 301,200 | declined |
 | rates, s 121 | — | 31 / 35 / 47; reduced 10 / 14 / 20 / 31 | same | — |
-| s 121B(a) amount | declined | input: the 1 Jan 2024 figure after rounding (s 120B(e)(1)); editorial note says 721,560 | same | input: adjusted under s 120B(e)(2) and rounded |
+| s 121B(a) amount | declined | input: the 1 Jan 2024 figure after rounding (s 120B(e)(1)); editorial note says 721,560; **(0.2.0)** published by the Tax Authority as 721,560 (booklet 2026, PDF p. 8), carried as a figure, not law, in `ito-il03-published-figures.l4` | input (same; no published figure carried) | input: adjusted under s 120B(e)(2) and rounded |
 | s 121B rates | — | 3% (a); 2% (a1) | same | same |
-| s 121B(e) residential threshold | 5,385,285 | 5,385,285 | declined (RE Law s 9(c2)) | declined |
+| s 121B(e) residential threshold | 5,385,285 (helper only); **(0.2.0)** declined, as s 121B is for 2025 (03-O1) | 5,385,285 | declined (RE Law s 9(c2)) | declined |
 | s 120B amounts | fixed at 1 Jan 2024, after rounding | same | same | 1 Jan 2024 before rounding × (1 + 2027 rate), then rounded (declined) |
 
 Worked figures the tests assert (tax year 2026; the same for 2027):
@@ -204,6 +407,13 @@ Nothing was kept from those responses.
 The amending Laws were identified only by their position and title in the file's own list of amending Laws (line 5): tag 5785-2 is the Economic Efficiency Law for the 2025 budget year ("freezing of tax updates and surtax", Sefer HaChukim 5785 p. 150); tag 5786-6 falls in the Economic Efficiency Law for the 2026 budget year (5786 pp. 415-416).
 That identification is by counting entries and was not checked against the Laws.
 
+**(0.2.0)** The 5786 Law has since been deposited, from an Internet Archive capture of the Knesset's PDF (commons a862cb5, `../../registers/source-bundle/amending-laws/25_lsr_12235101.pdf`, sha256 `72244dba…4734155`, re-checked on 2026-10-08).
+Its chapter C ("ריווח מדרגות מס הכנסה", widening of the income-tax brackets), ss 5-7, is on PDF p. 4, which is printed as Sefer HaChukim p. 416; that agrees with the 5786 pp. 415-416 placed above by list position.
+`SOURCES.json` says "PDF p. 4, Sefer HaChukim p. 415"; the page's own number is 416 (checked 2026-10-08 with `pdftotext`: PDF pp. 2-5 are printed 414-417).
+It is read for fork F7 and assumption A3 in "Version 0.2.0".
+The 2026 Tax Authority booklet is recorded beside it by link and hash only (`SOURCES.json`, "pointers_only"), and is carried for one figure in `ito-il03-published-figures.l4`.
+The 5785 Law (amendment 276, Sefer HaChukim 3342) is still not deposited.
+
 **Observations about the source**, for whoever maintains it:
 
 - Line 4462 repeats a phrase: "המדד שפורסם ביום המדד שפורסם ביום ז׳ בשבט התשפ״ז". Whether the error is the consolidation's or the Law's could not be checked.
@@ -214,13 +424,15 @@ That identification is by counting entries and was not checked against the Laws.
 
 1. F1: in practice, does the Tax Authority place personal-exertion income at the bottom of the s 121 scale for an individual under 60 with other income? Is there a provision or ruling outside this slice that says so?
 2. F2: for the year in which an individual turns 60, are the reduced rates applied to the whole year's income?
-3. F7: does the 5786 amendment of s 121 say how its new ceilings are treated on 1 January 2028 under s 120B(e)(2), or is the bracket change a temporary provision for 2026-2027?
+3. F7: does the 5786 amendment of s 121 say how its new ceilings are treated on 1 January 2028 under s 120B(e)(2), or is the bracket change a temporary provision for 2026-2027? **(0.2.0) Answered by the enacted Law**: its s 7 regards them as the amounts adjusted to 1 January 2024 for s 120B(e), and its s 6 commences them on 1 January 2026 with no end date (see "Version 0.2.0", 03-F7).
 4. Does the 5785 amendment say from which tax year s 121B(a1) applies? (If from 2025, this row could answer s 121B for 2025.)
 5. Is the duplicated phrase at line 4462 in the Law as published?
 
 ## 9. What was not done
 
 - **The independent test pass** (skill step 8) was not run: the brief for this row is one session with no sub-agents. Every expected value was worked by hand from the text before it was asserted, but no second reader has derived them.
+  **(0.2.0) Stale since 2026-10-06 (repair 03-W1).** The lead ran the pass after this was written, in a separate session (`fid-il-03`): commons a7f987f added `DECIDED-ANSWERS.md` (91 scenarios, decided before any `.l4` file was opened), `tests-independent.l4` (126 assertions) and `INDEPENDENT-FINDINGS.md`.
+  Its counts, 118 satisfied, 6 failed and 2 refused, are declared in `check.sh` from 0.2.0 (CHK-03), and its two observations O1 and O2 are repaired in 0.2.0.
 - **HG1**, a human who knows Israeli income tax reading the modules against the Hebrew, has not been sought.
 - **Semi-cleanroom** (ruled 2026-10-06): nothing from the Axiom Foundation, any RuleSpec repository, or the paths the brief lists was read, searched or fetched in this session.
 
