@@ -2,10 +2,91 @@
 
 The National Insurance Law half of row IL-08, the extension of the Israel tier: Schedule A1 Part D, s 72 and s 335, and the dispositions of ss 65 and 67A, taken in the order row IL-07's `GAPS.md` needs them.
 One agent, one session, no sub-agents (run `IL-08-20261007`, encoder `enc-il-08`, 2026-10-07).
-Status: **draft**, version 0.2.0 (2026-10-08: repairs of BACKLOG IL-20, below).
-No domain expert has read it; HG1 has not been sought; no independent test pass has been run (0.2.0: one has since been run, `fid-il-08b`, `INDEPENDENT-FINDINGS.md`; its file now fails 4 and refuses 22, as declared in `check.sh`).
+Status: **draft**, version 0.3.0 (2026-10-08: fork N4 as a switch, Meng's SHRUG ruling, BACKLOG IL-41; below), after 0.2.0 (2026-10-08: repairs of BACKLOG IL-20, below).
+No domain expert has read it; HG1 has not been sought; no independent test pass has been run (0.2.0: one has since been run, `fid-il-08b`, `INDEPENDENT-FINDINGS.md`; its file now fails 4 and refuses 22, as declared in `check.sh`; 0.3.0: fails 1 and refuses 22).
 
 The Income Tax Ordinance half, whose `NOTES.md` carries the parts common to both (the binary, the semi-cleanroom record, what was read), is `../../../income-tax-ordinance-new-version/encodings/legalese-2026-10-il-08/`.
+
+## Version 0.3.0 (2026-10-08): SHRUG, fork N4 as a switch (BACKLOG IL-41)
+
+Agent `shrug-il-41` (the session that did IL-20), one session, no sub-agents, on 2026-10-08, from BACKLOG IL-41.
+Meng ruled SHRUG on 2026-10-08 for the four forks that gated code (BACKLOG IL-24): one named switch per fork, default DECLINE (a refusal by name saying the text does not decide), every other reading kept by name and tested.
+Here that is fork N4, this row's part of inventory item DATE: the day a woman reaches the Part D age when the month she reaches it in lacks her day of birth.
+Files changed: `nii-il08-nouns.l4`, `nii-schedule-a1-part-d.l4`, `nii-il08-tests-part-d.l4`, `check.sh`, `encoding.json` and this file.
+Not changed: the s 72 and s 335 modules and their tests, the independent tester's three files (`tests-independent.l4` is still sha256 `bd929543…14efda2`), and the section "Comparison with Axiom's RuleSpec".
+
+### What changed
+
+- **The reading** (`nii-il08-nouns.l4`): `A reading of Part D of Schedule A1 where the day she reaches the age does not exist`, one of `Part D: the last day of the shorter month` (the clamp of 0.1.0 to 0.2.0, as row IL-05's F19), `Part D: the 1st of the next month`, `Part D: such a day is declined`.
+  The constructors say "Part D" so that they cannot collide with rows IL-05's and IL-06's readings of the same fork in a module that imports two of them (the "multiple definitions" error of section 7).
+- **The switch** (`nii-schedule-a1-part-d.l4`): `Schedule A1, Part D — the reading this row takes where the day she reaches the age does not exist`, which gives `Part D: such a day is declined`.
+- **The refusal**: "Part D of Schedule A1 fixes an age in years and months, and does not say which day a woman reaches it where the month she reaches it in lacks her day of birth".
+- **The rule at a reading**: `Schedule A1, Part D — the day she reaches the age it fixes for her, for a woman born on` D `, reading a day the month lacks as` R.
+  Where the later month has her day of the month, all three readings give that day; otherwise the clamp gives the last day of the shorter month, the roll the 1st of the next month, and the default declines.
+  The day is missing exactly when `add months`, which clamps, returns a different day of the month from hers.
+- **The old rule by its old name**, `Schedule A1, Part D — the day she reaches the age it fixes for her, for a woman born on` D, keeps its name and type and now answers at the switch's reading, so it declines such a day.
+  It carries no `@export`, and no other row calls it: row IL-05 computes its own day for s 342(c)(2) (its F19, BACKLOG IL-39), and the capstone reads only the age in months.
+- **s 72 takes no reading.** Its rules compute no day: the days they read (the day entitlement arose or ceased, a death) are inputs, so a 29 February 18th birthday (the tester's 72-39) reaches s 72 already decided by whoever supplies it (row IL-06's s 65, fork F2, BACKLOG IL-40, or the capstone).
+
+### Tests
+
+The three tests of the day that existed (`nii-il08-tests-part-d.l4` lines 70, 72, 74) land on days that exist (15 November 2013, 31 May 2018, 30 June 2020), so none rested on the clamp; they stay at the default reading, values unchanged.
+No other test of this row computes such a day, so no test was re-pointed.
+14 assertions were added (lines 85-105), each worked from the printed rows before the run:
+
+| line | born | months (row) | reaches the age in | default | clamp | roll | declined by name |
+| ---: | --- | --- | --- | --- | --- | --- | --- |
+| 85-88 | 31 October 1945 | 812 (line 4446, 67 and 8 months) | June 2013, 30 days | REFUSED | 30 June 2013 | 1 July 2013 | REFUSED |
+| 91-93 | 29 February 1944 | 804 (line 4444, 67) | February 2011, a common year | REFUSED | 28 February 2011 | 1 March 2011 | — |
+| 96-98 | 31 July 1945 | 808 (line 4445, 67 and 4 months) | November 2012, 30 days | REFUSED | 30 November 2012 | 1 December 2012 | — |
+| 101-103 | 15 March 1946 | 812 | November 2013, the day exists | — | 15 November 2013 | 15 November 2013 | 15 November 2013 |
+| 105 | 30 October 1945 | 812 | June 2013, which has a 30th | 30 June 2013 | — | — | — |
+
+The module had 37 assertions and has 51; no expected value changed.
+The tester's D-46, D-47 and D-48 (`tests-independent.l4` lines 733, 735, 737, `#ASSERT REFUSED`) now pass: they were the three DATE failures declared from 0.2.0.
+Its D-40 to D-45 (lines 721-731) land on days that exist and are satisfied as before.
+That the switch is what passes them: a scratch copy with the switch set to the clamp, and one roll value altered, printed 4 failed in `nii-il08-tests-part-d.l4` (the three default refusals and the altered value) and 4 failed in the tester's file, exit 1.
+
+### The tester's file
+
+| | satisfied | failed | refused |
+| --- | ---: | ---: | ---: |
+| 0.2.0 | 117 | 4 | 22 |
+| 0.3.0 | 120 | 1 | 22 |
+
+Failed: line 247 (08n-N2) only.
+Refused: the 22 SCOPE lines of 0.2.0, unchanged.
+
+### `check.sh`, 0.3.0
+
+`expected_failed` for `tests-independent.l4` goes from 4 to 1; `expected_refused` stays 22.
+Run from 2026-10-08T15:58:05Z to 15:58:15Z as `L4=/Users/mengwong/.local/bin/l4 ./check.sh`, `JL4_LIBRARY_PATH` unset, after the last edit to any module or to `check.sh`; binary `~/.local/bin/l4` resolving to the cabal store's `jl4-0.1-d4290e25/bin/l4`, sha256 `f4f2bd2558f02f828f0deced5f74313a33670f08cc3275ff95b83f2cde71e448` before and after the run.
+The 0.2.0 baseline was re-run on the same binary first (15:51:30Z), with 0.2.0's counts and exit 0.
+
+```
+module                                    errors satisfied  failed  refused  expected
+nii-il08-nouns.l4                              0         0       0        0         0
+nii-il08-tests-part-d.l4                       0        51       0        0         0
+nii-il08-tests-s72-s335.l4                     0        54       0        0         0
+nii-s335-branches.l4                           0         0       0        0         0
+nii-s72-period-of-allowance.l4                 0         0       0        0         0
+nii-schedule-a1-part-d.l4                      0         0       0        0         0
+tests-independent.l4                           1       120       1       22      1/22
+TOTAL (7 modules)                              1       225       1       22
+(a failed assertion is also an error; any other error, or a refused assertion a module is not expected to have, makes the run red; "expected" is failed/refused where a module may refuse)
+```
+
+`check.sh` exit 0.
+`python3 -I tools/srcquote.py SOURCE` leaves the three changed modules byte-identical, and `python3 -I tools/hebcheck.py SOURCE` passes them (exit 0).
+
+### For the capstone (BACKLOG IL-44)
+
+- Re-vendor `nii-il08-nouns.l4` and `nii-schedule-a1-part-d.l4`; nothing else of this row changed.
+- No answer the capstone reaches changes: it reads only the Part D age in months, which no reading touches.
+  Its modules, with these two vendored in a scratch copy, gave the same counts as with the copies it holds (`il07-tests.l4` 130, `il07-tests-il08.l4` 116, `tests-independent.l4` 260 satisfied and 18 failed, `tests-independent-2.l4` 298 satisfied, 7 failed and 20 refused).
+- Names added: the type `A reading of Part D of Schedule A1 where the day she reaches the age does not exist` and its three constructors; the switch `Schedule A1, Part D — the reading this row takes where the day she reaches the age does not exist`; the refusal `Part D of Schedule A1 fixes an age in years and months, and does not say which day a woman reaches it where the month she reaches it in lacks her day of birth`; the rule `Schedule A1, Part D — the day she reaches the age it fixes for her, for a woman born on` D `, reading a day the month lacks as` R.
+  Nothing renamed or removed.
+- The capstone's own DATE cases (an 18th birthday on 29 February, a woman's day under s 342(c)(2)) come from rows IL-06 and IL-05, not from this row.
 
 ## Version 0.2.0 (2026-10-08): repairs (BACKLOG IL-20)
 
@@ -153,11 +234,11 @@ Every assertion was satisfied on the first run that evaluated it; before that, t
 
 | module | lines | holds |
 | --- | ---: | --- |
-| `nii-il08-nouns.l4` | 93 (0.2.0: 99, comments) | the nine branches (as rows IL-04 and IL-05 spell them), the person for s 335, the entitlement for s 72; `DECLARE` only |
-| `nii-schedule-a1-part-d.l4` | 96 | Part D: a woman's age by month of birth, in months, and the day she reaches it |
+| `nii-il08-nouns.l4` | 93 (0.2.0: 99, comments; 0.3.0: 116, the Part D reading) | the nine branches (as rows IL-04 and IL-05 spell them), the person for s 335, the entitlement for s 72; `DECLARE` only |
+| `nii-schedule-a1-part-d.l4` | 96 (0.3.0: 136) | Part D: a woman's age by month of birth, in months, and the day she reaches it (0.3.0: at a reading of fork N4, declined by default where the month lacks her day) |
 | `nii-s72-period-of-allowance.l4` | 90 (0.2.0: 218) | s 72(a)-(c): whether the child allowance is paid for a month (0.2.0: the first and last months placed against the period, and "was paid" read against (a) and (b)) |
 | `nii-s335-branches.l4` | 131 | s 335(a)-(j): the branches in which a person pays |
-| `nii-il08-tests-part-d.l4` | 74 | 37 assertions: every band of Part D at both its edges |
+| `nii-il08-tests-part-d.l4` | 74 (0.3.0: 105) | 37 assertions: every band of Part D at both its edges (0.3.0: 51, with the three readings of fork N4) |
 | `nii-il08-tests-s72-s335.l4` | 85 (0.2.0: 160) | 22 assertions (0.2.0: 54) |
 
 Not encoded: s 65 (encoded in full by row IL-06), s 67A (no such section), the other Parts of Schedule A1, and the statuses s 335 reads (each another Chapter's answer).
@@ -218,7 +299,7 @@ The 22 assertions of the tester's that it refuses ("The tester's file" in "Versi
 | N1 | s 72(a) | "עד 15 בחודש": by the 15th inclusive, or before it? | inclusive; exclusive | **inclusive**: the next limb says "אחרי 15", after the 15th, so the 15th itself falls in the first. Tests on the 15th and the 16th. |
 | N2 | s 72(a), (c) | A child for whom no allowance had been paid dies: does (c)'s three months apply? | no; yes | **no**: (c) is about "ילד שבעדו שולמה קצבת ילדים"; (a) then ends payment with the month of death. (0.2.0) Inventory 08n-N2, a recorded fork in BACKLOG IL-24's queue, held by Meng; the independent tester expected REFUSE (72-57, line 247, still failing) and now leans to "no" ("ימשיכו" presupposes a payment under way). Its companion, a payment recorded where (a) and (b) made no month payable, is no longer answered either way: the months that turn on it are declined (item 08n-PAID). |
 | N3 | s 335(a), (i) | Maternity is imposed by (a) and by (i): one branch or two? | one | **one** (row IL-04's F15): (j) says the subsections do not detract from each other, and Schedule J's two maternity items never both print a figure in one column. |
-| N4 | Schedule A1 Part D | The day a woman "reaches" the age, for a 29-31 day of birth and a shorter month | the last day of the shorter month; the first of the next | **the last day** (`add months` clamps), row IL-05's fork F19, so the two rows agree. (0.2.0) This is this row's part of inventory item **DATE**, one fork across rows IL-05 (F19), IL-06 (F2) and IL-08: a day the later month lacks (31 June, 29 February in a common year, 31 November). Readings: (i) clamp to the last day of the shorter month (taken in all three rows); (ii) roll to the 1st of the next month; (iii) refuse, as the independent tester expected (D-46, D-47, D-48, lines 733, 735, 737, still failing). Held by Meng (BACKLOG IL-24, one ruling for the three rows; the lead recommends a named switch with decline as the default); the clamp is kept until then. s 72's side of DATE (72-39, a child born on 29 February turning 18) is an input here, the day entitlement ceased, which row IL-06's s 65 or the capstone supplies, so s 72 inherits IL-06's reading. |
+| N4 | Schedule A1 Part D | The day a woman "reaches" the age, for a 29-31 day of birth and a shorter month | the last day of the shorter month; the first of the next; (0.3.0) declined | (0.1.0-0.2.0) **the last day** (`add months` clamps), row IL-05's fork F19, so the two rows agree. (0.2.0) This is this row's part of inventory item **DATE**, one fork across rows IL-05 (F19), IL-06 (F2) and IL-08: a day the later month lacks (31 June, 29 February in a common year, 31 November). Readings: (i) clamp to the last day of the shorter month (taken in all three rows); (ii) roll to the 1st of the next month; (iii) refuse, as the independent tester expected (D-46, D-47, D-48, lines 733, 735, 737, still failing). Held by Meng (BACKLOG IL-24, one ruling for the three rows; the lead recommends a named switch with decline as the default); the clamp is kept until then. s 72's side of DATE (72-39, a child born on 29 February turning 18) is an input here, the day entitlement ceased, which row IL-06's s 65 or the capstone supplies, so s 72 inherits IL-06's reading. **(0.3.0) RULED by Meng on 2026-10-08 (SHRUG, BACKLOG IL-41): a named switch, default DECLINE.** `Schedule A1, Part D — the reading this row takes where the day she reaches the age does not exist` gives `Part D: such a day is declined`; `Part D: the last day of the shorter month` (the clamp above) and `Part D: the 1st of the next month` are kept by name and tested (`nii-il08-tests-part-d.l4` lines 85-105). The tester's D-46 to D-48 now pass. |
 | N5 | s 72(b) | "שחי שבעה ימים לפחות": counted how? (the tester's 72-42: six days elapsed, or seven calendar days counting both ends) | seven full days after the day of birth; seven calendar days counting the day of birth | (0.2.0, item 08n-72B) **none in the rules**: (b) is one input, `the child lived at least seven days or left the hospital`, which the caller answers; the tester expected REFUSE. Recorded so the choice is visible; open question 5. |
 | N6 | s 72(b) | "או שיצא מבית החולים": does a child born at home, never in a hospital, satisfy (b) before seven days? (the tester's 72-44) | no, on the literal words; yes, the limb being about a child who was in hospital | (0.2.0, item 08n-72B) **none in the rules**: the same input; the tester expected "no" on the literal words. Open question 6. |
 
@@ -275,6 +356,7 @@ Places read for a fork and none found: Part D's bands (contiguous and disjoint; 
 - **GAPS 10, Part D.** The input "the earner's age fixed by Part D … in months, if a woman" becomes `Schedule A1, Part D — the age in months fixed for a woman born on` her date of birth, the unit row IL-05's `The insured person, for the age limb of section 342(c)(2)` takes. H19 can be answered: a woman born in 1980 has 840.
   (0.2.0, item 08n-B2) A note for whoever composes Part D with s 342(c)(2): that paragraph fixes the woman's age "בכפוף להוראות סעיף 245(ב2)" (line 3662), and s 245(b2) reads "(בוטל)" (line 2474), repealed.
   So the cross-reference points at nothing, and there is no second dependency to supply beside Part D (the comparison below, B2, found Axiom naming it as one).
+  (0.3.0) The day she reaches the age now declines, by default, where the month she reaches it in lacks her day of birth (fork N4, SHRUG); the age in months, which is what s 342(c)(2) and the capstone read, is unchanged.
 - **GAPS 6, s 72.** Fork K6 (ask row IL-06 about the first day of the month, declining a month with a birth or an 18th birthday after it) can give way to: for each child, whether `s 72 — the allowance is paid for month` M; then ask IL-06 about the family of the children paid for. Under s 72 the month of an 18th birthday is paid in full, and a child born after the 15th starts the next month. Which day of the month to put to IL-06 for the count and the amounts is still the adapter's choice; s 72 does not say.
   (0.2.0) The export's name, inputs and type are unchanged; it now declines a month from the death to the third month after it when an allowance is recorded as paid for a child for whom (a) and (b) made no month payable (item 08n-PAID), which the capstone, giving "was paid" as FALSE for living children, never reaches.
 - **GAPS 9, s 335.** The input convention "an employee pays in all nine branches" can give way to `s 335 — the branches for which contributions are payable, for`, which returns that list for a resident employee insured in every Chapter, and a shorter one for a controlling shareholder, a non-resident or a housewife. The statuses remain inputs.
@@ -308,7 +390,7 @@ No officially published table of Part D was fetched to cross-check the tests; th
 ## 10. What was not done
 
 - **No independent test pass**, **HG1 not sought**, **not committed**: as for the other half. (0.2.0: an independent pass has since been run, `INDEPENDENT-FINDINGS.md`, and 0.1.0 was committed; HG1 is still not sought.)
-- **No official cross-check of Part D**: the Institute publishes the women's ages by month of birth; a fetched copy would make a second oracle for the 37 assertions.
+- **No official cross-check of Part D**: the Institute publishes the women's ages by month of birth; a fetched copy would make a second oracle for the 37 assertions. (0.3.0: 51 assertions, the 37 of the table among them.)
 
 ## Comparison with Axiom's RuleSpec (2026-10-07)
 

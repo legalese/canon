@@ -28,16 +28,16 @@ L4="${L4:-l4}"
 # A module that is MEANT to fail (a draft's test cases run against the text as made,
 # say) is listed here with its exact count, and named in encoding.json `expected_red`.
 # Version 0.2.0 (BACKLOG IL-20): the independent tester's module, tests-independent.l4.
-# Its four remaining failures, each an #ASSERT REFUSED that gets a value:
+# Its remaining failure, an #ASSERT REFUSED that gets a value:
 #   line 247  72-57 recorded as not paid: fork N2, inventory 08n-N2 (AMBIGUITY, waits on a ruling)
-#   line 733  D-46, 31 June 2013:         fork N4, inventory DATE   (AMBIGUITY, BACKLOG IL-24)
-#   line 735  D-47, 29 February 2011:     fork N4, inventory DATE   (AMBIGUITY, BACKLOG IL-24)
-#   line 737  D-48, 31 November 2012:     fork N4, inventory DATE   (AMBIGUITY, BACKLOG IL-24)
 # Line 248 (72-57 recorded as paid, inventory 08n-PAID) passes from 0.2.0.
+# Version 0.3.0 (BACKLOG IL-41): lines 733, 735 and 737 (D-46 to D-48, a day the later month lacks;
+# fork N4, inventory DATE) pass: Meng ruled on 2026-10-08 (SHRUG) that such a day is declined by
+# default. They were failing from 0.1.0 to 0.2.0, when the day was clamped. 4 became 1.
 expected_failed() {
   case "$1" in
     # tests-red.l4) echo 3 ;;
-    tests-independent.l4) echo 4 ;;   # lines 247 (08n-N2), 733, 735, 737 (DATE)
+    tests-independent.l4) echo 1 ;;   # line 247 (08n-N2); 733, 735, 737 (DATE) pass from 0.3.0
     *) echo 0 ;;
   esac
 }
