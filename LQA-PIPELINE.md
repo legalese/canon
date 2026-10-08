@@ -69,7 +69,7 @@ human. An agent may help with an H step, but cannot complete one.
 | **6H** | Fidelity | Human | a certification that the encoding says what the law says, or a recorded waiver |
 | **7A** | Probe | Agent | candidate findings, and a record of which categories ran over which Parts |
 | **8A** | Demonstrate | Agent | the evidence for each candidate |
-| **9A** | Challenge | Agent | each candidate either OPEN or VERIFIED-NO-DEFECT |
+| **9A** | Challenge | Agent | each candidate either OPEN or VERIFIED-NO-DEFECT, and each OPEN finding a headline, a drafting note, or merged |
 | **10A** | Re-pin | Agent | each surviving finding stamped with the current print |
 | **11A** | Report | Agent | the LQA report |
 | **12H** | Release | Human | a signature for one release to one recipient |
@@ -203,6 +203,22 @@ answered as sound are kept, because knowing what was checked is part of the resu
 it, the answer still stands, but its absence from the set is recorded as a gap and repaired at 0H or
 3H.
 
+**Then triage what survives.** A thorough probe finds many things, and a reader given all of them at
+once cannot tell which matter. Each `OPEN` finding gets a `tier`:
+
+- **headline**: a real person (an owner, an applicant, a council, a court) gets a wrong, unfair or
+  uncertain result in a situation that could plausibly happen. A headline also gets a `plain_title`,
+  saying what happens to whom in words a non-lawyer understands, a `story` of about three sentences
+  (who, what happens, why it matters), and a `rank`, 1 being the most consequential.
+- **note**: a drafting note. Wording, form and style, cross-references that mislead without changing
+  an outcome, and questions of reading on which little turns in practice.
+- **merged**: the finding shares its cause or its fix with another, and is reported under it
+  (`merged_into`).
+
+At most ten findings are headlines. If more pass the test, the weakest become notes, and the report
+says how many did. Nothing is discarded: notes and merged findings keep their evidence and appear in
+full in the report and the console.
+
 ### 10A — Re-pin
 
 Check every surviving finding against the current print of the instrument, and of every referenced
@@ -219,6 +235,11 @@ method as `foundBy`; every `OPEN` finding shown by at least one scenario, except
 findings, which no run can show and which appear as `static` observations; findings verified sound shown as
 such; the simulation parameters with their defaults; and the text and L4 bundled where licences
 allow.
+
+**Both open on the headline findings.** The console's incident list opens on them, ranked, each under
+its plain title with its story first and the technical detail behind a fold; drafting notes and
+findings checked sound are one click away. The written report begins with a section of headline
+findings in plain words, before any technical material.
 
 **The written report**: each finding with its provision, evidence, category, severity, status and a
 suggested repair; the forks and the readings taken; the findings checked and found sound; the probe

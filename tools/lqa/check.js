@@ -24,6 +24,7 @@ var fs = require("fs"), path = require("path"), crypto = require("crypto"), vm =
     cp = require("child_process");
 
 var CATS = ["D", "R", "L", "T", "U", "P", "E", "M", "I", "X", "W", "F", "S"];
+var MAX_HEADLINES = 10;                          /* 9A: headline findings at most; the rest are drafting notes */
 var STEPS = [
   ["0H", "Jurisdiction"], ["1A", "Pin"], ["2A", "Gather"], ["3H", "Confirm"], ["4A", "Encode"],
   ["5A", "Fork"], ["6H", "Fidelity"], ["7A", "Probe"], ["8A", "Demonstrate"], ["9A", "Challenge"],
@@ -462,6 +463,31 @@ var scenarioRefs = null;   /* finding id -> labels of scenarios in which it fire
     }
     if (f.found_by === "EXT" && !f.external_source) fail("9A", f.id + ": found externally, but whose finding it was is not recorded");
   });
+  /* triage: every OPEN finding is a headline, a drafting note, or merged into another finding. Runs made
+     before triage was added carry no tiers at all and are not held to it. */
+  if (!findings.some(function (f) { return f.tier; })) return;
+  var heads = [];
+  findings.forEach(function (f) {
+    if (f.status !== "OPEN") {
+      if (f.tier) fail("9A", f.id + ": only OPEN findings are triaged, but it has tier " + f.tier);
+      return;
+    }
+    if (["headline", "note", "merged"].indexOf(f.tier) < 0) { fail("9A", f.id + ": OPEN but not triaged (headline, note or merged)"); return; }
+    if (f.tier === "headline") {
+      heads.push(f);
+      if (!f.plain_title) fail("9A", f.id + ": a headline needs a plain title");
+      if (!f.story) fail("9A", f.id + ": a headline needs a story");
+      if (!(f.rank >= 1)) fail("9A", f.id + ": a headline needs a rank");
+    }
+    if (f.tier === "merged") {
+      var into = byId[f.merged_into];
+      if (!into) fail("9A", f.id + ": merged into " + f.merged_into + ", which is not in the register");
+      else if (into.status !== "OPEN" || into.tier === "merged") fail("9A", f.id + ": merged into " + f.merged_into + ", which is not an OPEN headline or note");
+    } else if (f.merged_into) fail("9A", f.id + ": has merged_into but is not tier merged");
+  });
+  if (heads.length > MAX_HEADLINES) fail("9A", heads.length + " headlines; at most " + MAX_HEADLINES + ": move the weakest to drafting notes");
+  var ranks = heads.map(function (f) { return f.rank; }).sort(function (a, b) { return a - b; });
+  ranks.forEach(function (r, i) { if (r !== i + 1) { fail("9A", "headline ranks must run 1 to " + heads.length + " without gaps or repeats"); ranks.length = 0; } });
 })();
 
 /* ------------------------------------------------------------------ 10A */
@@ -507,6 +533,21 @@ var scenarioRefs = null;   /* finding id -> labels of scenarios in which it fire
       fail("11A", f.id + " is OPEN but no scenario in the scheme shows it");
   });
   if (!S.scheme.simulation) fail("11A", "the scheme has no simulation section");
+  /* triage travels with the finding: same tier in the scheme, and a headline under its plain title */
+  findings.forEach(function (f) {
+    var o = obsRefs[f.id];
+    if (!o || !f.tier) return;
+    if (o.tier !== f.tier) fail("11A", f.id + ": the register says " + f.tier + ", the scheme " + (o.tier || "nothing"));
+    if (f.tier === "headline" && o.label !== f.plain_title) fail("11A", f.id + ": the scheme does not show the headline's plain title");
+    if (f.tier === "headline" && o.rank !== f.rank) fail("11A", f.id + ": the scheme ranks it " + o.rank + ", the register " + f.rank);
+    if (f.tier === "merged" && o.mergedInto !== f.merged_into) fail("11A", f.id + ": the scheme does not show it merged into " + f.merged_into);
+  });
+  if (exists(report)) {
+    var rtxt = fs.readFileSync(report, "utf8");
+    findings.forEach(function (f) {
+      if (f.tier === "headline" && rtxt.indexOf(f.plain_title) < 0) fail("11A", "REPORT.md does not give " + f.id + " under its plain title");
+    });
+  }
 })();
 
 /* ------------------------------------------------------------------ 12H */

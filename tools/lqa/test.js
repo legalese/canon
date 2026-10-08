@@ -32,6 +32,10 @@ function block(out, stepId) {
 }
 function edit(file, fn) { fs.writeFileSync(file, fn(fs.readFileSync(file, "utf8"))); }
 function editJSON(file, fn) { var o = JSON.parse(fs.readFileSync(file, "utf8")); fn(o); fs.writeFileSync(file, JSON.stringify(o, null, 2)); }
+function triage(o) {
+  o.findings.forEach(function (f) { if (f.status === "OPEN") f.tier = "note"; });
+  var r = finding(o, "R-01"); r.tier = "headline"; r.rank = 1; r.plain_title = "A plain title"; r.story = "A story.";
+}
 function finding(o, id) { return o.findings.filter(function (f) { return f.id === id; })[0]; }
 
 var CASES = [
@@ -73,6 +77,12 @@ var CASES = [
     function (s) { edit(path.join(s, "REPORT.md"), function (t) { return t.split("R-01").join("R-1"); }); }],
   ["the scheme and the register disagree on how it was found", "11A", /the scheme says found by/,
     function (s) { editJSON(path.join(s, "incidents.json"), function (o) { finding(o, "T-02").found_by = "RD"; }); }],
+  ["once findings are triaged, an OPEN finding is left out", "9A", /T-02: OPEN but not triaged/,
+    function (s) { editJSON(path.join(s, "incidents.json"), function (o) { triage(o); delete finding(o, "T-02").tier; }); }],
+  ["a headline finding has no story", "9A", /R-01: a headline needs a story/,
+    function (s) { editJSON(path.join(s, "incidents.json"), function (o) { triage(o); delete finding(o, "R-01").story; }); }],
+  ["a finding is merged into one that is not in the register", "9A", /merged into P-99, which is not in the register/,
+    function (s) { editJSON(path.join(s, "incidents.json"), function (o) { triage(o); var t = finding(o, "T-02"); t.tier = "merged"; t.merged_into = "P-99"; }); }],
   ["the scheme changes after release was signed", "12H", /STALE/,
     function (s) { edit(path.join(s, "scheme.js"), function (t) { return t + "\n/* an edit after release */\n"; }); }],
   ["the findings change after release was signed", "12H", /STALE/,

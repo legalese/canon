@@ -15,6 +15,7 @@ every feature described here; the Retail Barring Orders Bill 2025 is leaner.
 ```js
 {
   id, title, jurisdiction, status, scope,   // labels for the reader
+  lqaProcess: false,                        // encoded before LQA-PIPELINE.md; Discussion says so
   startDate: "2026-01-01",                  // day 0. Ages are real calendar ages from here
   types:        [ ... ],   // kinds of actor, and what it takes to bring one into existence
   entities:     [ ... ],   // the cast the console opens with
@@ -274,6 +275,11 @@ Two optional fields for subjects run through the LQA pipeline (`LQA-PIPELINE.md`
   console shows it as a tag on each incident and lets the reader filter by it.
 - `static: true`: a Form or Style finding, which no run can show. No rule records it, and the
   checkers do not require one to.
+- `tier`: the 9A triage, copied from `incidents.json`: `"headline"`, `"note"` or `"merged"`. A
+  headline also carries `rank` and `story`, and its `label` is the register's `plain_title`; a merged
+  finding carries `mergedInto`, the ID it is reported under. When any observation has a tier, the
+  Incidents panel opens on the headlines, ranked, with the story first and the technical detail
+  folded. The LQA checker compares all of this with the register.
 
 The Incidents panel also lists, for each observation, the scenarios that produce it. Nobody
 writes that list: the console runs every scenario headless when a scheme loads and records

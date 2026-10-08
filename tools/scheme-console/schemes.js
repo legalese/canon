@@ -28,6 +28,7 @@
 
   var DOG_ACT = {
     id: "dog-act",
+    lqaProcess: false,          /* encoded before LQA-PIPELINE.md: no 0H-13A gates */
     title: "Dog Act 1976",
     jurisdiction: "Western Australia",
     status: "In force · compilation 08-b0-00, 28 Nov 2024",
@@ -1203,6 +1204,7 @@
 
   var RBO_BILL = {
     id: "rbo-bill",
+    lqaProcess: false,          /* encoded before LQA-PIPELINE.md: no 0H-13A gates */
     title: "Retail Barring Orders Bill 2025",
     jurisdiction: "Western Australia",
     status: "Not law · before the Legislative Council",
@@ -1553,6 +1555,7 @@
 
   var RTA_RENT_CAP = {
     id: "rta-rent-cap",
+    lqaProcess: false,          /* encoded before LQA-PIPELINE.md: no 0H-13A gates */
     title: "Residential Tenancies Act 1987, as amended by the Rent Cap Bill 2026",
     jurisdiction: "Western Australia",
     status: "Not law · Bill No. 70 at LC second reading · commencement assumed 1 Jan 2027 (day 92)",
@@ -2378,6 +2381,7 @@
 
   var CAT_ACT = {
     id: "cat-act",
+    lqaProcess: false,          /* encoded before LQA-PIPELINE.md: no 0H-13A gates */
     title: "Cat Act 2011",
     jurisdiction: "Western Australia",
     status: "In force · compilation 00-l0-01, 25 Sep 2025 · Cat Regulations 2012, 02-b0-00",

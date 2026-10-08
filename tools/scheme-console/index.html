@@ -149,6 +149,11 @@ p.lede{color:var(--ink-2);margin:0 0 12px;max-width:76ch}
 .sv i.on{background:var(--ink-2)}
 .row-t .ref{min-width:3.6em}
 .claim{font-size:11.5px;color:var(--ink-3);margin:4px 0 2px}
+.story{font-size:13.5px;line-height:1.55;color:var(--ink);margin:2px 0 6px}
+.merged{font-size:12px;color:var(--ink-2);margin:0 0 6px}
+.tech{margin:4px 0 2px;font-size:12.5px}
+.tech>summary{cursor:pointer;font-size:11.5px;color:var(--ink-3);font-family:var(--mono);letter-spacing:.04em}
+.tech[open]>summary{margin-bottom:4px}
 .rev{margin-top:10px;border-top:1px dashed var(--rule-2);padding-top:9px;display:flex;flex-direction:column;gap:7px}
 .rev-now{margin:0;font-size:12px;color:var(--ink-2);display:flex;flex-wrap:wrap;gap:4px 6px;align-items:baseline}
 .rev-now q{font-style:italic;color:var(--ink)}
@@ -359,6 +364,7 @@ body.resizing{user-select:none}
 .prose table{border-collapse:collapse;font-size:13px;display:block;overflow-x:auto;margin:0 0 10px}
 .prose th,.prose td{border:1px solid var(--rule);padding:4px 8px;text-align:left;vertical-align:top}
 .thinking{color:var(--ink-3);font-style:italic}
+.ask.off{font-weight:600;color:var(--ink-2)}
 .empty-chat{margin:auto;max-width:52ch;text-align:center;color:var(--ink-3);font-size:13.5px}
 .proc{margin:auto;max-width:62ch;color:var(--ink-2);font-size:13.5px;line-height:1.55}
 .proc p{margin:0 0 10px}
@@ -584,6 +590,8 @@ footer b{color:var(--ink-2)}
           <option value="fork">Two readings</option>
           <option value="sound">No defect</option>
         </select>
+        <label for="inc-tier" class="vh">Which findings</label>
+        <select id="inc-tier" hidden></select>
         <label for="inc-method" class="vh">How it was found</label>
         <select id="inc-method" hidden></select>
         <span class="rev-prog" id="rev-prog"></span>
@@ -676,6 +684,10 @@ footer b{color:var(--ink-2)}
   var PALETTE = ["#6f86d6","#d68f6f","#6fd6a8","#c86fd6","#d6c46f"];
 
   var eng = null, scheme = null;
+  /* A copy for people outside Legalese sets CONSOLE_OPTIONS = { discussion: false } (in schemes.js):
+     the Discussion view still explains the steps, but the page never reaches Claude. */
+  var DISCUSSION_OFF = !!(window.CONSOLE_OPTIONS && window.CONSOLE_OPTIONS.discussion === false);
+  var OFF_MSG = "Discussion is disabled in this mode.";
   var sel = null, act = null, awaitingTarget = false, chosenTarget = null, params = {};
   var mode = "view";        /* view | action | create | edit */
   var natureMode = false;   /* false: God mode, set any fact. true: Nature mode, only what could happen */
@@ -1557,7 +1569,7 @@ footer b{color:var(--ink-2)}
     { v: "sound", label: "No defect", hint: "Checked, and the drafting is sound or the consequence is ordinary" }
   ];
   function verdictDef(v){ return VERDICTS.filter(function(x){ return x.v === v; })[0]; }
-  var verdicts = {}, drafts = {}, names = {}, myId = null, userCap = null, incFilter = {}, methodFilter = {};
+  var verdicts = {}, drafts = {}, names = {}, myId = null, userCap = null, incFilter = {}, methodFilter = {}, tierFilter = {};
   /* verdicts this viewer recorded that the database did not take: kept on the page until it
      closes, so a database update cannot wipe them, and carried out by Export */
   var localV = {};
@@ -1565,6 +1577,12 @@ footer b{color:var(--ink-2)}
   function vKey(o){ return (scheme.id + "__" + o.id).replace(/[^A-Za-z0-9_\-.~:@+]/g, "_"); }
   /* a verdict this version does not know (an old "model error") reads as unverified */
   function statusOf(o){ var d = verdicts[vKey(o)]; return d && verdictDef(d.status) ? d.status : "unverified"; }
+  /* a finding the register triaged carries its tier; an untriaged finding was checked and found sound;
+     anything else (an offence count, an event) is something the model records, not a finding */
+  function tierOf(o){
+    if (o.tier) return o.tier;
+    return /^[DRLTUPEMIXWFS]-\d{2,}$/.test(refOf(o)) ? "sound" : "other";
+  }
   function stHTML(v){
     var d = verdictDef(v);
     return '<span class="dot" data-v="' + (d ? v : "unverified") + '" title="' + esc(d ? d.label : "Unverified") +
@@ -1709,12 +1727,26 @@ footer b{color:var(--ink-2)}
       $("inc-method").value = mfilt;
       if ($("inc-method").value !== mfilt){ mfilt = "all"; $("inc-method").value = "all"; }
     }
+    /* 9A triage: a law whose findings carry tiers opens on its headline findings */
+    var hasT = all.some(function(o){ return o.tier; });
+    var tfilt = hasT ? (tierFilter[scheme.id] || "headline") : "all";
+    $("inc-tier").hidden = !hasT;
+    if (hasT){
+      var tn = function(t){ return all.filter(function(o){ return tierOf(o) === t; }).length; };
+      $("inc-tier").innerHTML = [["headline", "Headline findings"], ["note", "Drafting notes"], ["sound", "Checked and sound"], ["other", "Other events the model records"]]
+        .filter(function(t){ return tn(t[0]); })
+        .map(function(t){ return '<option value="' + t[0] + '">' + t[1] + ' (' + tn(t[0]) + ')</option>'; }).join("") +
+        '<option value="all">Everything (' + all.length + ')</option>';
+      $("inc-tier").value = tfilt;
+    }
     var list = all.filter(function(o){
+      if (tfilt !== "all" && tierOf(o) !== tfilt) return false;
       if (filt !== "all" && statusOf(o) !== filt) return false;
       if (!hasM || mfilt === "all") return true;
       if (mfilt === "L4") return ["ENC", "CHK", "TST", "SIM"].indexOf(o.foundBy) >= 0;
       return o.foundBy === mfilt;
     });
+    if (tfilt === "headline") list.sort(function(a, b){ return (a.rank || 99) - (b.rank || 99); });
     $("inc-count").textContent = all.length;
     var open = openFor("inc");
     $("inc-all").textContent = list.length && list.every(function(o){ return open[o.id]; }) ? "Close all" : "Open all";
@@ -1727,12 +1759,21 @@ footer b{color:var(--ink-2)}
         '<span class="chev" aria-hidden="true">' + (isOpen ? "▾" : "▸") + '</span>' +
         stHTML(statusOf(o)) + codeHTML(o) + sevHTML(o) + fbHTML(o) +
         '<b>' + esc(o.label) + '</b></button>' +
-        (isOpen ? '<div class="row-b"><span class="cite">' + esc(o.cite) + '</span>' +
+        (isOpen ? '<div class="row-b">' + (o.story ? '<p class="story">' + esc(o.story) + '</p>' : "") +
+          (function(){
+            var with_ = all.filter(function(x){ return x.mergedInto && x.mergedInto === refOf(o); });
+            return with_.length ? '<p class="merged">Reported together with ' + with_.map(function(x){
+              return esc(refOf(x)) + ' (' + esc(x.label) + ')'; }).join("; ") + ', which has the same cause.</p>' : "";
+          })() +
+          (o.mergedInto ? '<p class="merged">Reported under ' + esc(o.mergedInto) + ', which has the same cause.</p>' : "") +
+          (o.story ? '<details class="tech"><summary>Technical detail</summary>' : "") +
+          '<span class="cite">' + esc(o.cite) + '</span>' +
           '<p class="claim">Raised by the model as ' + esc(SEV[o.sev] || o.sev) + '.</p>' +
           (o.quote ? '<p class="quote">“' + esc(o.quote) + '”</p>' : "") +
           '<p>' + esc(o.what) + ' ' + esc(o.why) + '</p>' +
           (methodDef(o.foundBy) ? '<p class="found">Found by ' + esc(methodDef(o.foundBy)[1].toLowerCase()) + ': ' +
             esc(methodDef(o.foundBy)[2]) + '.</p>' : "") +
+          (o.story ? '</details>' : "") +
           '<div class="inc-sc">' + (o.static
             ? '<span class="none">A matter of form or style: no run can show it. Read it in the text.</span>'
             : by.length
@@ -1770,6 +1811,15 @@ footer b{color:var(--ink-2)}
     var name = "review-" + scheme.id + "-" + data.exported.slice(0, 10) + ".json";
     var dl = null;
     try { dl = window.claude && window.claude.use ? await window.claude.use("downloads") : null; } catch (e){ dl = null; }
+    if (!dl && !(window.claude && window.claude.use)){
+      /* outside Claude (a standalone copy opened from disk): an ordinary browser download */
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+      a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+      ioNote("Exported " + nV + (nV === 1 ? " verdict" : " verdicts") + " and " + nS + (nS === 1 ? " scenario" : " scenarios") + ".");
+      return;
+    }
     if (!dl){ ioNote("Saving files is not available in this view. Open the page in Claude to export.", true); return; }
     try {
       await dl.save({ filename: name, data: JSON.stringify(data, null, 2) });
@@ -1848,6 +1898,7 @@ footer b{color:var(--ink-2)}
     });
     $("inc-filter").addEventListener("change", function(){ incFilter[scheme.id] = this.value; renderIncidents(); });
     $("inc-method").addEventListener("change", function(){ methodFilter[scheme.id] = this.value; renderIncidents(); });
+    $("inc-tier").addEventListener("change", function(){ tierFilter[scheme.id] = this.value; renderIncidents(); });
     $("rev-export").addEventListener("click", exportReview);
     $("rev-import").addEventListener("click", function(){ $("rev-file").click(); });
     $("rev-file").addEventListener("change", function(){ if (this.files[0]) importReview(this.files[0]); this.value = ""; });
@@ -1863,6 +1914,10 @@ footer b{color:var(--ink-2)}
       open[next.id] = true;
       var f = incFilter[scheme.id] || "all";
       if (f !== "all" && f !== "unverified") incFilter[scheme.id] = "all";
+      if (next.tier !== undefined || (scheme.observations || []).some(function(x){ return x.tier; })){
+        var tf = tierFilter[scheme.id] || "headline";
+        if (tf !== "all" && tierOf(next) !== tf) tierFilter[scheme.id] = "all";
+      }
       renderIncidents();
       var el = box.querySelector('[data-inc="' + next.id + '"]');
       if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
@@ -2257,7 +2312,7 @@ footer b{color:var(--ink-2)}
 
   function getSample(){
     if (!sampleP){
-      sampleP = (window.claude && window.claude.use)
+      sampleP = (!DISCUSSION_OFF && window.claude && window.claude.use)
         ? window.claude.use("sample").catch(function(){ return null; })
         : Promise.resolve(null);
     }
@@ -2800,6 +2855,7 @@ footer b{color:var(--ink-2)}
   }
 
   function corpusLine(id){
+    if (DISCUSSION_OFF) return "";
     if (!(id in corpusData)){ loadCorpus(id).then(function(){ renderChat(); }); return ""; }
     var c = corpusData[id];
     if (!c) return '<span>Claude reads the model only.</span>';
@@ -2831,16 +2887,19 @@ footer b{color:var(--ink-2)}
       ["12H", "Release", "Nothing leaves Legalese until a named person signs off that specific release to that specific recipient. This cannot be waived.", true],
       ["13A", "Publish", "The release is sent and logged."]    ];
     return '<div class="proc">' +
-      '<p class="lead">Every law in this console is encoded and checked through Legalese\u2019s legislative quality assurance process: fourteen steps, ' +
+      '<p class="lead">' + (s.lqaProcess === false ? 'Legalese now encodes and checks laws' : 'Every law in this console is encoded and checked') +
+      ' through Legalese\u2019s legislative quality assurance process: fourteen steps, ' +
       'ten by an agent (A) and four by a person (H). ' +
-      'What you see for ' + esc(s.title) + ' is work inside that process. ' + (s.released
+      (s.lqaProcess === false
+        ? esc(s.title) + ' was encoded before this process existed: one encoding, with its findings checked by L4 assertions and scenarios, but without the human steps or the release step.</p>'
+        : 'What you see for ' + esc(s.title) + ' is work inside that process. ' + (s.released
         ? 'Its findings were released to ' + esc(s.released.to) + ' on ' + esc(s.released.date) + ', under step 12H.</p>'
-        : 'Its findings have not been through the release step, so none has been released.</p>') +
+        : 'Its findings have not been through the release step, so none has been released.</p>')) +
       '<ol>' + steps.map(function(x){
         return '<li' + (x[3] ? ' class="gate"' : '') + '><span class="n">' + x[0] + '</span><span><b>' + esc(x[1]) + '.</b> ' + esc(x[2]) + '</span></li>';
       }).join("") + '</ol>' +
-      '<p class="ask">Ask Claude about ' + esc(s.title) + '. It reads the model: the findings, the scenarios and the provision each rule applies' +
-      (c ? ', and the law’s L4 encoding' + (texted ? ' and text' : '') + '. Name a section and it will bring that part in.' : '.') + '</p>' +
+      (DISCUSSION_OFF ? '<p class="ask off">' + OFF_MSG + '</p>' : '<p class="ask">Ask Claude about ' + esc(s.title) + '. It reads the model: the findings, the scenarios and the provision each rule applies' +
+      (c ? ', and the law’s L4 encoding' + (texted ? ' and text' : '') + '. Name a section and it will bring that part in.' : '.') + '</p>') +
       '</div>';
   }
 
@@ -2876,7 +2935,7 @@ footer b{color:var(--ink-2)}
 
     var ready = !d || d.read;
     var sugg = [];
-    if (!busy && ready){
+    if (!busy && ready && !DISCUSSION_OFF){
       if (t.kind === "builtin") sugg = ["Summarise the findings for a client", "Which finding matters most, and why?",
         "Walk me through the first scenario", "What would a drafter change?"];
       else if (!s && turns.length) sugg = ["Which issue are you least sure of?", "Quote the provisions behind the first issue",
@@ -2887,9 +2946,9 @@ footer b{color:var(--ink-2)}
     $("sugg").innerHTML = sugg.map(function(q){
       return '<button type="button" data-q="' + esc(q) + '">' + esc(q) + '</button>'; }).join("");
 
-    $("ask").disabled = !ready;
-    $("ask").placeholder = ready ? "Ask about " + (s ? s.title : "this law") : "Upload the law first";
-    $("send").hidden = busy; $("send").disabled = !ready;
+    $("ask").disabled = !ready || DISCUSSION_OFF;
+    $("ask").placeholder = DISCUSSION_OFF ? OFF_MSG : ready ? "Ask about " + (s ? s.title : "this law") : "Upload the law first";
+    $("send").hidden = busy; $("send").disabled = !ready || DISCUSSION_OFF;
     $("stop").hidden = !busy;
     var hasReply = turns.some(function(m){ return m.role === "assistant" && !m.sys && m.content; });
     $("build").hidden = busy || t.kind === "builtin" || !hasReply;
@@ -2899,7 +2958,7 @@ footer b{color:var(--ink-2)}
     $("save").textContent = t.kind === "saved" ? "Save changes" : "Save to catalogue";
 
     var last = turns.filter(function(m){ return m.tier; }).pop();
-    $("chat-note").textContent = "Claude answers on the Claude account of whoever is using this page." +
+    $("chat-note").textContent = DISCUSSION_OFF ? "" : "Claude answers on the Claude account of whoever is using this page." +
       (db && !canWrite ? " Only the page’s owner can save laws to the catalogue." : "") +
       (last && last.tier !== "complex" ? " The last answer came from a lighter model than requested." : "");
   }
