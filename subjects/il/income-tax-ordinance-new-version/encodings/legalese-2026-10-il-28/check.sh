@@ -33,6 +33,19 @@ expected_failed() {
   esac
 }
 
+# Independent tests (fid-il-28, IL-56): assertions of the tester's decided answers that the encoding REFUSES, each a
+# disagreement recorded in INDEPENDENT-FINDINGS.md, not hidden. ito-il28-tests-independent.l4 lines:
+#   216 A11 (Area resident who is an Israeli resident: encoding says neither instrument reaches him; SCOPE)
+#   224 A15 (2022 money: s 37 text held only from 2023 so the total refuses; SCOPE)
+#   228, 230 A18, A18b (tax years 1995 and 2016: s 3A text held only from 2017; AMBIGUITY)
+#   232 A19-2022 (s 37 facts in 2022: s 37 text held only from 2023; SCOPE)
+expected_refused() {
+  case "$1" in
+    ito-il28-tests-independent.l4) echo 5 ;;
+    *) echo 0 ;;
+  esac
+}
+
 if ! command -v "$L4" >/dev/null 2>&1; then
   echo "check.sh: no l4 binary at '$L4'. Set L4=/path/to/l4 or put l4 on PATH." >&2
   exit 2
@@ -50,8 +63,9 @@ for f in "$DIR"/*.l4; do
   bad=$(printf '%s\n' "$msgs" | grep -cE 'assertion failed|assertion could not be evaluated')
   ref=$(printf '%s\n' "$msgs" | grep -cE 'assertion refused')
   exp=$(expected_failed "$m")
+  expref=$(expected_refused "$m")
   printf '%-40s %7d %9d %7d %8d %9d\n' "$m" "$err" "$ok" "$bad" "$ref" "$exp"
-  [ $((err - bad)) -eq 0 ] && [ "$ref" -eq 0 ] && [ "$bad" -eq "$exp" ] || status=1
+  [ $((err - bad)) -eq 0 ] && [ "$ref" -eq "$expref" ] && [ "$bad" -eq "$exp" ] || status=1
   total_err=$((total_err + err)) total_ok=$((total_ok + ok)) total_bad=$((total_bad + bad)) total_ref=$((total_ref + ref)) n=$((n + 1))
 done
 printf '%-40s %7d %9d %7d %8d\n' "TOTAL ($n modules)" "$total_err" "$total_ok" "$total_bad" "$total_ref"
