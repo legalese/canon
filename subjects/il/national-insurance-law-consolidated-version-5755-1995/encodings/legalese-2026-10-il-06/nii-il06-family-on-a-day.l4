@@ -14,6 +14,11 @@ IMPORT `nii-il06-published-figures`
 -- the day. s 72 (which months are paid) is not encoded; the answer is the monthly amount the
 -- family's facts on that day produce.
 --
+-- Version 0.2.0 adds a second question, for a family in a month (06-S72; at the end of this
+-- module): the allowance for the month, for the children the caller says s 72 pays for in it.
+-- It answers the months the day question cannot, such as the month of an 18th birthday that
+-- falls on the 1st (s 72(a) pays that month; on every day of it the child is 18).
+--
 -- Order of the answer:
 --   1. a day before 1 May 2015 is declined (nii-il06-period.l4);
 --   2. facts that cannot describe a case are returned as a problem (LEFT), for the caller to
@@ -31,20 +36,32 @@ GIVETH A BOOLEAN
 `no name repeats in` `the names` MEANS
     count (nub `the names`) EQUALS count `the names`
 
-GIVEN `the family` IS A `A family on a day`
+-- The checks a family on a day and a family in a month share, in the order they are made. The
+-- check on a child's birth (and, for a month, age) comes fourth and differs between the two, so
+-- it is an argument, reached only if the first three pass.
+-- Version 0.2.0 (06-F5): an absence that ended before the day is reported, not read. Before,
+-- such an absence was measured as the child's absence on the day, so a child who had come back
+-- was treated as abroad, with no diagnostic (INDEPENDENT-FINDINGS.md, finding 5). The return day
+-- itself is not "before the day": an absence that ends on the day asked about is in progress on it.
+GIVEN `the family`                       IS A `A family on a day`
+      `the problem with a child's birth` IS A MAYBE `A problem with the facts`
 GIVETH A MAYBE `A problem with the facts`
-`a problem with the facts of` `the family` MEANS
+`the first problem with the facts of` `the family` `, the check on births being` `the problem with a child's birth` MEANS
     BRANCH IF NOT `no name repeats in` (map (GIVEN p YIELD p's `name`) `the persons`)
            THEN JUST `two persons have the same name`
            IF any (GIVEN c YIELD any (GIVEN e YIELD null (`the persons named` (e's `name of the person`) `in` `the family`)) (c's `parents`)) `the children`
            THEN JUST `a child's record names a parent who is not among the persons`
            IF NOT `no name repeats in` (map (GIVEN c YIELD c's `name`) `the children`)
            THEN JUST `two children have the same name`
-           IF any (GIVEN c YIELD c's `date of birth` GREATER THAN `the day`) `the children`
-           THEN JUST `a child is born after the day`
-           IF any `an absence that cannot be` `the children`
-           THEN JUST `an absence from Israel begins after the day, or ends before it begins`
-           OTHERWISE NOTHING
+           OTHERWISE
+               CONSIDER `the problem with a child's birth`
+               WHEN JUST `the problem` THEN JUST `the problem`
+               WHEN NOTHING
+               THEN BRANCH IF any `an absence that cannot be` `the children`
+                           THEN JUST `an absence from Israel begins after the day, or ends before it begins`
+                           IF any `an absence that ended before the day` `the children`
+                           THEN JUST `an absence from Israel ended before the day`
+                           OTHERWISE NOTHING
     WHERE
         `the persons`  MEANS `the family`'s `the persons`
         `the children` MEANS `the family`'s `the children`
@@ -56,6 +73,40 @@ GIVETH A MAYBE `A problem with the facts`
                               OR (CONSIDER a's `the day the child returned to Israel`
                                   WHEN NOTHING THEN FALSE
                                   WHEN JUST r  THEN r LESS THAN a's `the day the child left Israel`)
+        `an absence that ended before the day` c MEANS
+            CONSIDER c's `absence from Israel`
+            WHEN NOTHING THEN FALSE
+            WHEN JUST a  THEN CONSIDER a's `the day the child returned to Israel`
+                              WHEN NOTHING THEN FALSE
+                              WHEN JUST r  THEN r LESS THAN `the day`
+
+-- The fourth check, for the question asked (version 0.2.0): for the day, a child born after it;
+-- for the month s 72 pays, a listed child born after the month, or 18 before it began (s 72
+-- cannot pay for either in that month; nii-s65-interpretation.l4, the month's age limb).
+GIVEN `the question` IS A `The question asked of a family on a day`
+      `the family`   IS A `A family on a day`
+GIVETH A MAYBE `A problem with the facts`
+`a problem with the facts, asked` `the question` `, of` `the family` MEANS
+    `the first problem with the facts of` `the family` `, the check on births being`
+        (CONSIDER `the question`
+         WHEN `the allowance on the family's day`
+         THEN IF   any (GIVEN c YIELD c's `date of birth` GREATER THAN `the day`) `the children`
+              THEN JUST `a child is born after the day`
+              ELSE NOTHING
+         WHEN `the allowance for the month of the family's day, for the children section 72 pays for in it`
+         THEN BRANCH IF any (GIVEN c YIELD c's `date of birth` GREATER THAN `the last day of the month of` `the day`) `the children`
+                     THEN JUST `a child said to be paid for in the month is born after the month`
+                     IF any (GIVEN c YIELD `the 18th anniversary of the birth of` c LESS THAN `the first day of the month of` `the day`) `the children`
+                     THEN JUST `a child said to be paid for in the month reached 18 before the month began`
+                     OTHERWISE NOTHING)
+    WHERE
+        `the day`      MEANS `the family`'s `the day`
+        `the children` MEANS `the family`'s `the children`
+
+GIVEN `the family` IS A `A family on a day`
+GIVETH A MAYBE `A problem with the facts`
+`a problem with the facts of` `the family` MEANS
+    `a problem with the facts, asked` `the allowance on the family's day` `, of` `the family`
 
 §§ `The answer, at basic amounts the caller supplies`
 
@@ -65,25 +116,35 @@ GIVETH AN a
 `the counts this model computed break section 67(a), which its construction is meant to rule out` MEANS
     REFUSE "the counts this model computed break section 67(a), which its construction is meant to rule out"
 
+-- Version 0.2.0: asked of the day or of the month s 72 pays (nii-il06-nouns.l4, `The question
+-- asked of a family on a day`); the day's form, as before, follows it.
 @ref National Insurance Law ss 65-68 (source lines 799-834)
-GIVEN `the family`  IS A `A family on a day`
-      `the amounts` IS A `The basic amounts for the child allowance`
+GIVEN `the question` IS A `The question asked of a family on a day`
+      `the family`   IS A `A family on a day`
+      `the amounts`  IS A `The basic amounts for the child allowance`
 GIVETH AN EITHER `A problem with the facts` (LIST OF `A person's child allowance for the month`)
-`the child allowance of each person, in` `the family` `, at` `the amounts` MEANS
+`the child allowance of each person, asked` `the question` `, in` `the family` `, at` `the amounts` MEANS
     BRANCH IF NOT `the deposited text of sections 65 to 68 was in force on` (`the family`'s `the day`)
            THEN `this model answers days from 1 May 2015, when sections 1 and 68 took their present wording; the text in force before then is not in its sources`
            OTHERWISE
-               CONSIDER `a problem with the facts of` `the family`
+               CONSIDER `a problem with the facts, asked` `the question` `, of` `the family`
                WHEN JUST `the problem` THEN LEFT `the problem`
                WHEN NOTHING
-               THEN IF   `s 67(a) — no child is counted with more than one insured parent, in` `the family`
+               THEN IF   `s 67(a) — no child is counted with more than one insured parent, asked` `the question` `, in` `the family`
                     THEN RIGHT (map `the answer for` (`the family`'s `the persons`))
                     ELSE `the counts this model computed break section 67(a), which its construction is meant to rule out`
     WHERE
         `the answer for` p MEANS
             `A person's child allowance for the month` WITH
                 `name of the person` IS p's `name`
-                `the answer`         IS `s 68 — the child allowance, in` `the family` `, at` `the amounts` `, of` p
+                `the answer`         IS `s 68 — the child allowance, asked` `the question` `, in` `the family` `, at` `the amounts` `, of` p
+
+@ref National Insurance Law ss 65-68 (source lines 799-834)
+GIVEN `the family`  IS A `A family on a day`
+      `the amounts` IS A `The basic amounts for the child allowance`
+GIVETH AN EITHER `A problem with the facts` (LIST OF `A person's child allowance for the month`)
+`the child allowance of each person, in` `the family` `, at` `the amounts` MEANS
+    `the child allowance of each person, asked` `the allowance on the family's day` `, in` `the family` `, at` `the amounts`
 
 §§ `The answer, at the basic amounts the Institute published`
 
@@ -98,3 +159,47 @@ GIVEN `the answers` IS A LIST OF `A person's child allowance for the month`
 GIVETH A NUMBER
 `the family's total, before rounding, of` `the answers` MEANS
     sum (map (GIVEN a YIELD `the total, before rounding, of` (a's `the answer`)) `the answers`)
+
+§ `A family in a month — the answer, for the children section 72 pays for`
+
+-- Version 0.2.0 (06-S72). s 72(a) pays the allowance from the 1st of the month in which
+-- entitlement arose, if it arose by the 15th, and to the last day of the month in which it
+-- ceased. So in the month of an 18th birthday the child is paid for although, from the birthday
+-- on, the child is not under 18; and in the month of a birth by the 15th the child is paid for
+-- although, before the birth, there is no child. The day question above cannot answer such a
+-- month where no single day of it finds every child paid for both born and under 18: an 18th
+-- birthday on the 1st, or one on or before the birth of another child paid for in the month.
+-- src:854 | (א) נוצרה זכאות לקצבת ילדים עד 15 בחודש פלוני, תשולם הקצבה החל ב־1 באותו חודש; נוצרה הזכאות אחרי 15 בחודש פלוני, תשולם הקצבה החל ב־1 בחודש שלאחריו; תשלום הקצבה יסתיים ביום האחרון של החודש שבו נפסקה הזכאות.
+--
+-- WHAT THIS QUESTION TAKES FROM THE CALLER. Which children s 72 pays for in the month (row IL-08
+-- encodes s 72; this row does not). Every other fact is as it stands on the day the record names.
+--
+-- HOW IT IS ANSWERED. Not by a second composition: the month is put as a family on its day
+-- (`the family in a month, on its day:`, nii-s65-interpretation.l4), and the rules of ss 65-68
+-- above and in their modules are asked `the allowance for the month of the family's day, …`
+-- instead of `the allowance on the family's day`. That changes two things only: s 65's age limb
+-- (a listed child whose 18th birthday is on or after the month's first day, and who is born by its
+-- last, is within it for the month), and the fourth check on the facts (a listed child outside
+-- that is a problem with the facts, not a child left out). The count for the month is the listed
+-- children s 67 places with the parent, eldest first (fork F4); a child paid for in the month of
+-- its 18th birthday keeps its place and counts for s 68(c)'s "three or more children" (fork F19).
+
+@ref National Insurance Law ss 65-68 (source lines 799-834), s 72(a) (source line 854) as the caller applies it
+GIVEN `the family`  IS A `A family in a month`
+          @desc a day in the month (on which every fact but the children's dates of birth stands), the persons, and the children s 72 pays for in that month
+      `the amounts` IS A `The basic amounts for the child allowance`
+          @desc the three basic amounts of s 1 "the basic amount" paragraph (2) in force in the month
+GIVETH AN EITHER `A problem with the facts` (LIST OF `A person's child allowance for the month`)
+`the child allowance of each person for the month, for the children section 72 pays for, in` `the family` `, at` `the amounts` MEANS
+    `the child allowance of each person, asked` `the allowance for the month of the family's day, for the children section 72 pays for in it`
+        `, in` (`the family in a month, on its day:` `the family`) `, at` `the amounts`
+
+-- The basic amounts change only on 1 January (s 1, updating clause (3), line 197), so the
+-- Institute's figures for the month's first day are its figures for every day of the month.
+@ref National Insurance Law ss 65-68, s 72(a) as the caller applies it; the basic amounts from nii-il06-published-figures.l4 (not encoded law)
+GIVEN `the family` IS A `A family in a month`
+          @desc a day in the month (on which every fact but the children's dates of birth stands), the persons, and the children s 72 pays for in that month
+GIVETH AN EITHER `A problem with the facts` (LIST OF `A person's child allowance for the month`)
+`the child allowance of each person for the month, for the children section 72 pays for, at the basic amounts the Institute published for the month, in` `the family` MEANS
+    `the child allowance of each person for the month, for the children section 72 pays for, in` `the family` `, at`
+        (`the basic amounts for the child allowance the Institute published for` (`the first day of the month of` (`the family`'s `a day in the month, on which the facts stand`)))
