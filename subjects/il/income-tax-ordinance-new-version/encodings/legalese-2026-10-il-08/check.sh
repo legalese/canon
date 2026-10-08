@@ -43,6 +43,9 @@ expected_failed() {
     # Version 0.4.0 (BACKLOG IL-42, Meng's ruling SHRUG on fork F35): the s 47 deduction declines by
     # default where the order of the deduction and the s 45A credit changes the answer, so D190 (676)
     # and D236 (767, 768), which expect that refusal, pass. Two remain: D019 (92) and D244 (779).
+    # Version 0.5.0 (BACKLOG IL-52, SHRUG on forks F2, F15, F16): line 552 (D165) re-pointed in place to
+    # the reading its author decided (F16 "once"), as the lead's note at the end of the file records;
+    # it passes. The counts are unchanged.
     tests-independent.l4) echo 2 ;;
     *) echo 0 ;;
   esac
