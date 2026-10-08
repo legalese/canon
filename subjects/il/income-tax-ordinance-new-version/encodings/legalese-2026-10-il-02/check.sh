@@ -30,13 +30,11 @@ L4="${L4:-l4}"
 expected_failed() {
   case "$1" in
     # tests-red.l4) echo 3 ;;
-    # Version 0.2.0 (CHK-02): the independent tester's module. One assertion is left failing:
-    #   line 385, E-4, inventory 02-E4, AMBIGUITY: a birth-year point elected in 2023 carried
-    #   into 2024; fork F19 in NOTES.md section 4, waiting on Meng (BACKLOG IL-24). The encoding
-    #   keeps 5 1/2 (reading (i)); the tester expected a refusal (reading (ii)).
-    # Its V-4 (line 204, inventory 02-V4, OURS-WRONG) passes from 0.2.0: the year gate now
-    # wraps every rule that takes the couple.
-    tests-independent.l4) echo 1 ;;
+    # The independent tester's module, tests-independent.l4, is expected to fail nothing.
+    # Version 0.2.0 (CHK-02) listed it with 1: line 385, E-4, inventory 02-E4, fork F19, a
+    # birth-year point elected in 2023 carried into 2024, which the encoding answered 5 1/2.
+    # Version 0.3.0 (BACKLOG IL-38): Meng ruled F19 on 2026-10-08 (SHRUG), default decline, so
+    # E-4's expected refusal holds and the entry is gone. Its V-4 (line 204) passes from 0.2.0.
     *) echo 0 ;;
   esac
 }
