@@ -1,9 +1,152 @@
 # NOTES — Income Tax Ordinance s 66 (separate calculation), row IL-02
 
 Encoder: one Claude session (Opus 5.5), run IL-02-20261006, 2026-10-06, working alone from `BRIEF.md`.
-Status: **draft**.
+Status: **draft**, version 0.2.0 (repairs of 2026-10-08, BACKLOG IL-15; see the next section). (0.2.0)
 No domain expert has read this against the source; HG1 has not been sought.
 No independent test pass was run (the run was instructed to work alone, without sub-agents); see section 8.
+(0.2.0, 02-W1: true of the encoding run, stale since. An independent test pass was run after deposit by fid-il-02, commit 240a478: `DECIDED-ANSWERS.md`, `tests-independent.l4`, `INDEPENDENT-FINDINGS.md`. Its V-4 is repaired in 0.2.0 and its E-4 is recorded as fork F19.)
+
+## Version 0.2.0 (2026-10-08): repairs (BACKLOG IL-15)
+
+Repair agent rep-il-15 (one Claude session, Opus 5.5), 2026-10-08, job B of `l4-pipeline/findings/il-2026-10-08/jobs.txt`, under the lead's repair brief of that day.
+Each item below is an id in `l4-pipeline/findings/il-2026-10-08/inventory.tsv`.
+Each finding was read where it was recorded (`INDEPENDENT-FINDINGS.md`, the Axiom comparison at the end of this file, and IL-07's `RECONCILE.md` N3, N7 and R2) before it was repaired.
+Every new expected value was worked out from the source, in a comment beside its assertion, before the module was run; all passed on their first run.
+A control copy in a scratch directory, with four of the new expectations made wrong, reported three failures and one refusal, so the new assertions can fail.
+
+### Items
+
+**02-V4 (OURS-WRONG): rules answered tax years before 2024.**
+The year gate `in tax year … , the answer is` (`ito66-tax-years.l4`) now wraps every rule that takes the couple, and so carries the tax year, and the one rule that takes a tax year directly:
+
+- `s 66(d) — subsection (a) applies to` (`ito66-d-common-source.l4`);
+- `s 66(a)(1) — the spouse who is not the registered spouse may claim a separate calculation, for` and `s 66(a)(1) — a separate calculation is made, for`;
+- `s 66(a)(2) — the spouse to whose taxable income the income not from personal exertion is added, for`;
+- `s 66(a)(3) — for … , the income of this child is the registered spouse's:` and `s 66(a)(3) — the children's income deemed the registered spouse's, for`;
+- `s 66(b) — for … , the spouse has other income for which a separate calculation is made:` and `s 66(b) — for … , the property income goes:`;
+- `s 66(c)(1A) — a separate calculation of income from personal exertion is requested by the`, `s 66(c) — governs the calculation of the`, `s 66(c)(4A), (6) — a child of the widowed partner of the` and `s 66(c)(4)-(6) — the credit points of the … for`;
+- `s 66(c)(4)(a)-(a1) — the mother's credit points for … in tax year`, which takes the year itself.
+
+The three rules gated in 0.1.0 keep their gate.
+Not wrapped, and why: the rules that take one spouse, one item, a child's age or a provision carry no year, and state the deposited text; `the particulars of the …` and `the particulars of the partner of the …` are plumbing; `a woman and a man:` is a fact about the couple, not a provision.
+The three parts of the (a)-(b) assembly in `ito66-ab-taxable-income.l4`, which is not among job B's files, are not wrapped; each sums a gated rule and refuses through it, as three new assertions show.
+The independent tests' V-4 (`tests-independent.l4:204`) now passes.
+No answer for a tax year from 2024 moved.
+
+**02-R2 (OURS-WRONG; assumed, not ruled: the lead's choice).**
+Row IL-01 declines s 36A for a woman who is a foreign worker, because s 48A (line 1811) lets regulations take the credits of Part C, Chapter Three from a foreign worker, and s 48A is not encoded.
+This row gave every woman in a separate calculation the half point that s 66(c)(4) gives "לפי סעיף 36א", with no foreign-worker input.
+Of the two options in the inventory (drop the half point and leave s 36A to IL-01, or add the fact and decline in IL-01's words) the lead chose the second.
+
+- New field on `A spouse`: `a foreign worker within the meaning of section 48A` (BOOLEAN), named apart from IL-01's `a foreign worker` so the two cannot collide (section 9).
+- New rule `s 66(c)(4) — the half point under section 36A, for`: a woman who is a foreign worker is declined with "section 48A and the regulations made under it are not encoded in this model", IL-01's words (`ito-s34-s36-s36a-credits.l4:103`, read at commons HEAD `3f7d673` and in the working tree on 2026-10-08, not edited); any other woman ½; a man 0, a foreign worker or not, as in IL-01, where s 36A does not reach a man and so s 48A cannot change the answer.
+- The decline is a rule named `row IL-02, section 66(c)(4): section 48A and the regulations made under it are not encoded in this model`, prefixed as row IL-08 prefixes its own, so it cannot collide with IL-01's rule of the same words where both rows are imported.
+- `s 66(c) — the credit points it gives the` takes its first field from the new rule. For a foreign-worker woman that field refuses and the other two answer, because L4 evaluates a field of a record only when it is read; asked as a whole, the record refuses.
+- `s 66(c) — in a separate calculation, the … has the entitlement under` `section 36A` declines alike.
+- The children's points of (c)(4)-(6) still answer for a foreign worker (A6, section 3).
+- The half point under s 37 in (c)(2) reads the caller's s 37 answer, which carries s 48A (row IL-08 declines s 37 for a foreign worker in its own words); nothing is added here.
+- The (c)(1) arms still answer "each of the spouses has the entitlement" for ss 34 and 36: they say who holds the entitlement in a separate calculation, and IL-01's counts decline those sections for a foreign worker.
+
+`ito66-fixtures.l4`, the row's own test builders, gains `a spouse, with the foreign-worker fact:`; the builder `a spouse:` keeps its call site and sets the fact FALSE, so `tests-independent.l4` needs no change for 02-R2.
+
+**02-X2 (WORDING).**
+Section 1 now says that s 66's own date edges are the caller's: the five-year window of the (a)(1) proviso, "בחמש השנים האחרונות שלפני תחילת תשלום הקיצבה", and the two conditions of (b), "שהיה בבעלותו שנה לפני נישואיו" and "שקיבל בירושה בתקופת נישואיו".
+Section 2 marks the two rows, and the headers of the (a) and (b) modules say it too.
+The optional computation of the window from the pension's start was not taken: it would change the interface (dates for the start of the pension and for each earlier entitlement), and AX-2 below records that the text fixes no whole-year convention at the edge, so computing it would itself take a reading.
+
+**02-W1 (WORDING).**
+The status lines at the head of this file and the recommendation at the end of section 8 said that no independent test pass had been run; one was, commit 240a478.
+Both are marked in place.
+
+**CHK-02 (housekeeping).**
+`check.sh` declares the tester's one remaining failure, `tests-independent.l4` line 385 (E-4, inventory 02-E4, class AMBIGUITY), as `expected_failed` 1, and gains `expected_refused`, 0 for every module, as IL-04's `check.sh` has.
+It exits 0.
+
+**02-E4 (fork; waits on Meng, BACKLOG IL-24).**
+Recorded as fork F19 in section 4, with both readings and who holds each.
+The behaviour of 0.1.0, reading (i), 5½, is kept as the default until the ruling.
+
+**02-N3 (WORDING), IL-02's half.**
+The type `A child` is now `A child, for section 66` (IL-07 `RECONCILE.md` N3), so that one module can name it beside row IL-06's child.
+The rename touches `ito66-nouns.l4` (the DECLARE and the `children` field of `Spouses in a tax year`), `ito66-a-separate-calculation.l4` (2), `ito66-c-credit-points.l4` (5), `ito66-fixtures.l4` (4) and `ito66-tests.l4` (2); no field, constructor of another type, or rule was renamed.
+The tester's `tests-independent.l4` names the type at lines 141, 143 (the record constructor), 158, 171 and 190; the lead authorised on 2026-10-08 replacing those five in place, on the precedent of IL-04 v0.3.1, and they were, with no line inserted and no expected value or input changed, and a dated "NOTE BY THE LEAD, 2026-10-08" appended at the end of that file.
+Its comment at line 293 still says `A child`; it is prose and needs no change to compile.
+No answer moved.
+
+### Assertions added or changed
+
+No expected value of 0.1.0 changed.
+One assertion of the independent tests changed outcome with its expected value untouched: `tests-independent.l4:204` (V-4), expected a refusal, answered `TRUE` (failed) in 0.1.0, refuses (satisfied) in 0.2.0.
+Added, all in `ito66-tests.l4` (none existed before, so "old" is none; "refused" is A1's sentence, "this encoding does not hold the text of section 66 for a tax year before 2024", unless another is named):
+
+| line | rule, case | new | why (source) |
+| --- | --- | --- | --- |
+| 492 | (d) applies, 2023 | refused | A1; line 2454 |
+| 494 | (a)(1) may claim, 2023 | refused | A1 |
+| 496 | (a)(1) made, 2023 | refused | A1 |
+| 498 | (a)(2) destination, 2023 | refused | A1 |
+| 500 | (a)(3), the child born 2015, 2023 | refused | A1 |
+| 502 | (a)(3) children's income, 2023 | refused | A1 |
+| 504 | (b) other separate calculation, registered spouse, 2023 | refused | A1 (it answered FALSE before) |
+| 506 | (b) where it goes, the woman, 2023 | refused | A1 |
+| 508 | (c)(1A) request, registered spouse, 2023 | refused | A1 |
+| 510 | (c) governs, the woman, 2023 | refused | A1 |
+| 512 | (4A), (6) child of the widowed partner, 2023 | refused | A1 |
+| 514 | (c)(4)-(6) the woman's points for the child, 2023 | refused | A1 (the tester's probe had 2) |
+| 518 | (a1) a child born 2023, deferring, in 2023 | refused | A1 (it answered 1½ before) |
+| 522 | (a)(2) pooled income, 2023 | refused | through line 506's rule |
+| 524 | (a) registered apart from the pool, 2023 | refused | through line 502's rule |
+| 526 | (a) separate apart from the pool, 2023 | refused | through line 506's rule |
+| 531 | (d) applies, 2024 | TRUE | (d)(1) chapeau, line 2479: no common source |
+| 533 | (a)(1) may claim, 2024 | TRUE | line 2456: 120,000 of salary |
+| 534 | (a)(1) made, 2024 | TRUE | line 2456: she claims |
+| 536 | (a)(2) destination, 2024 | `registered spouse` | line 2457: 200,000 > 120,000 |
+| 538 | (a)(3), the child, 2024 | TRUE | line 2458: 2024 − 2015 = 9 < 18, his child |
+| 539 | (a)(3) children's income, 2024 | 4000 | line 2458: the child's interest |
+| 541 | (b) other separate calculation, registered spouse, 2024 | FALSE | fork F7 |
+| 543 | (b) where it goes, the woman, 2024 | `it is not calculated separately` | line 2459: no (b) income, no claim |
+| 545 | (c)(1A) request, registered spouse, 2024 | FALSE | line 2462: he does not request |
+| 547 | (c) governs, the woman, 2024 | TRUE | line 2460, (a)(1) made |
+| 549 | (4A), (6), the child, 2024 | FALSE | line 2472: the child is hers |
+| 551 | (c)(4)-(6) the woman's points for the child, 2024 | 2 | line 2466: age 9, "החל בשנת המס שבה מלאו לו שש שנים" |
+| 593 | half point, a foreign-worker woman | refused, "section 48A and the regulations made under it are not encoded in this model" | 02-R2; line 1811; IL-01 |
+| 595 | half point, a woman not a foreign worker | 0.5 | line 2465 |
+| 597 | half point, a foreign-worker man | 0 | line 2465 ("האשה"); IL-01 alike |
+| 603 | (c)'s record for the foreign-worker woman, whole | refused, s 48A sentence | it holds the declined half point |
+| 605 | its half point under s 36A | refused, s 48A sentence | 02-R2 |
+| 607 | its children's points | 2 | line 2466: the child turns 10; A6 |
+| 608 | its half point under s 37 | 0 | line 2463: no s 37 point |
+| 611 | entitlement under s 36A, the foreign-worker woman | refused, s 48A sentence | 02-R2 |
+| 613 | entitlement under s 34, the foreign-worker woman | TRUE | line 2461, "יהיו לכל אחד מבני הזוג" |
+| 618 | (c)'s record for a foreign-worker man, registered | 0, 0, 1 | line 2465 ("האשה"); line 2476: (5)(c), age 10 |
+| 619 | (c)'s record for the woman married to him | 0.5, 0, 2 | lines 2465-2466 |
+| 620 | entitlement under s 36A, the foreign-worker man | FALSE | line 2465 ("האשה") |
+
+### What `check.sh` prints, version 0.2.0
+
+Run from 2026-10-08T07:02:05Z to 07:02:25Z as `./check.sh`, after every repair including 02-N3 (the same counts as a run at 06:59:43Z before the rename), with `l4` on PATH: `/Users/mengwong/.local/bin/l4` -> `~/.cabal/bin/l4` -> the cabal-store build `jl4-0.1-d4290e25`, sha256 `f4f2bd2558f02f828f0deced5f74313a33670f08cc3275ff95b83f2cde71e448`, the same before and after the run.
+`JL4_LIBRARY_PATH` unset.
+Before any edit, the same binary reproduced 0.1.0's figures: 2 errors, 266 satisfied, 2 failed (both in `tests-independent.l4`), 0 refused.
+
+```
+module                                    errors satisfied  failed  refused  expected
+ito66-a-separate-calculation.l4                0         0       0        0         0
+ito66-ab-taxable-income.l4                     0         0       0        0         0
+ito66-b-property-income.l4                     0         0       0        0         0
+ito66-c-credit-points.l4                       0         0       0        0         0
+ito66-d-common-source.l4                       0         0       0        0         0
+ito66-fixtures.l4                              0         0       0        0         0
+ito66-nouns.l4                                 0         0       0        0         0
+ito66-tax-years.l4                             0         3       0        0         0
+ito66-tests-ita.l4                             0        23       0        0         0
+ito66-tests.l4                                 0       179       0        0         0
+tests-independent.l4                           1       102       1        0         1
+TOTAL (11 modules)                             1       307       1        0
+```
+
+Exit 0.
+The one error is the one expected failure, `tests-independent.l4` line 385 (E-4, fork F19).
+`ito66-tests.l4` grew from 139 to 179 satisfied: the 40 assertions in the table above.
 
 ## 1. What is encoded, and what is not
 
@@ -23,6 +166,13 @@ What the modules answer, for a married couple in a tax year from 2024:
 What is not encoded, and is taken as an input or left to its owner:
 s 65 itself (the consolidated calculation is named as an outcome, not computed); the credit-point counts under ss 34, 35, 36 (IL-01 for 34 and 36); s 37's conditions (a GIVEN per spouse); the value of a credit point (s 33A, IL-01) and the tax on income from personal exertion (ss 121 ff., IL-03), both GIVENs of the one rule that needs them, with no default; the classification of income as personal exertion, transparent-company, REIT, interest or capital gain (the caller's); the determination of the registered spouse under s 64B (an input).
 
+(0.2.0, 02-X2) Nor are three date edges that s 66 itself sets; the caller decides each, and the encoding takes the conclusion:
+the five-year window of the (a)(1) proviso, "בחמש השנים האחרונות שלפני תחילת תשלום הקיצבה", is the BOOLEAN `the spouse was entitled to a separate calculation, in the five years before the pension began, …` on each item;
+and the two conditions of (b), "שהיה בבעלותו שנה לפני נישואיו" and "שקיבל בירושה בתקופת נישואיו", are decided by sorting the income into the two (b) fields of `A spouse`.
+"Encoded" in section 2 means the paragraph's consequences are computed from those conclusions, not that the edges are.
+
+(0.2.0, 02-R2) s 48A and the Income Tax (Credits for a Foreign Worker) Regulations 5775-2014 are not encoded; where they reach the ½ under s 36A that (c)(4) gives, a woman who is a foreign worker is declined in row IL-01's words (A6).
+
 ## 2. Coverage table
 
 ### s 66 itself
@@ -31,10 +181,10 @@ s 65 itself (the consolidated calculation is named as an outcome, not computed);
 | --- | --- | --- | --- | --- |
 | 66 heading | 2454 | חישוב נפרד | inert | module headers |
 | 66(a) chapeau | 2455 | notwithstanding s 65 | encoded | arm order, `s 66(a)-(b) — the calculations, for` |
-| 66(a)(1) | 2456 | the other spouse may claim; the pension proviso | encoded | `ito66-a-separate-calculation.l4` |
+| 66(a)(1) | 2456 | the other spouse may claim; the pension proviso | encoded; the five-year window is the caller's (0.2.0, 02-X2) | `ito66-a-separate-calculation.l4` |
 | 66(a)(2) | 2457 | non-personal-exertion income to the spouse with higher personal-exertion income; none → registered | encoded | same |
 | 66(a)(3) | 2458 | a child's transparent-company, REIT, interest, capital-gain income is the registered spouse's | encoded | same |
-| 66(b) | 2459 | pre-marriage or inherited property income; the proviso | encoded | `ito66-b-property-income.l4` |
+| 66(b) | 2459 | pre-marriage or inherited property income; the proviso | encoded; whether the property qualifies is the caller's (0.2.0, 02-X2) | `ito66-b-property-income.l4` |
 | 66(c) chapeau | 2460 | the provisions applying to the separate calculation | encoded | `s 66(c) — governs the calculation of the` |
 | 66(c)(1) | 2461 | ss 34, 35, 36, 45A, 47, 47A, 121A, 10, 11 for each spouse | encoded | `s 66(c) — in a separate calculation, as to` |
 | 66(c)(1A) | 2462 | a separate calculation even if the other has no personal-exertion income | encoded | `s 66(c)(1A) — …` |
@@ -70,7 +220,8 @@ s 65 itself (the consolidated calculation is named as an outcome, not computed);
 | s 64B, lines 2440-2445 | who is the registered spouse | out-of-scope: an input |
 | ss 64A1, 64A2 | transparent company, real estate investment trust | out-of-scope: the caller classifies the income |
 | ss 34, 35, 36, 45A, 47, 47A, 121A, 10, 11 | their own deductions, credits, benefits | out-of-scope: (c)(1) is encoded as "each spouse"; the amounts are those sections' |
-| s 36A, line 1597 | ½ point for a woman | out-of-scope: the ½ is stated in (c)(4) itself and encoded there |
+| s 36A, line 1597 | ½ point for a woman | out-of-scope: the ½ is stated in (c)(4) itself and encoded there; (0.2.0) declined for a woman who is a foreign worker, as IL-01 declines s 36A |
+| s 48A, lines 1810-1812 | whether the ½ under s 36A survives for a foreign worker | out-of-scope: declined by name where it reaches that ½ (0.2.0, 02-R2; A6) |
 | s 37, line 1600 | whether the spouse would have a point | out-of-scope: a GIVEN per spouse |
 | ss 38, 39 | nothing: (c)(2) excludes them | out-of-scope |
 | s 40(a) | pension points | out-of-scope: (c)(3) is encoded as "registered spouse only" |
@@ -78,6 +229,7 @@ s 65 itself (the consolidated calculation is named as an outcome, not computed);
 | ss 121 ff. | the tax on income from personal exertion | out-of-scope: a GIVEN, no default (IL-03) |
 
 **Totals for cross-references: 2 encoded, 10 out-of-scope.**
+(0.2.0: 2 encoded, 11 out-of-scope, with the s 48A row.)
 
 ## 3. Tax years, and assumptions
 
@@ -87,6 +239,7 @@ The page header (line 5) resolves them to ס״ח תשפ״ג, 400 (חוק הגד�
 The amending Acts could not be fetched: `fs.knesset.gov.il` redirected to a geographic maintenance page (2026-10-06).
 The commencement is taken from two Israel Tax Authority circulars (section 7), which say both changes to s 66 apply from tax year 2024, the second "רטרואקטיבית החל מיום 1.1.2024".
 For a tax year before 2024 every top-level rule refuses: `this encoding does not hold the text of section 66 for a tax year before 2024`.
+(0.2.0, 02-V4: in 0.1.0 only three rules did, and the independent tests found others answering 2023 (V-4). From 0.2.0 every rule that takes the couple, or a tax year, refuses; the rules that take no year state the deposited text. The list is in the version section at the top.)
 That is deliberate: the circulars print different 2023 figures for the children's table, so the earlier text certainly differed, and which other paragraphs differed is not known.
 
 **A2 — a tax year after 2026** is answered on the text as it stood on 2026-10-06; that is a projection, not a statement of what was enacted for that year.
@@ -96,6 +249,12 @@ That is deliberate: the circulars print different 2023 figures for the children'
 **A4 — ages are by tax year.** A child's "age in the tax year" is the tax year less the tax year of birth, as s 40(b)(3)'s definitions make every band of (c)(4)(a) and (c)(5).
 
 **A5 — the amounts are the caller's.** Every amount is taxable income in shekels, already classified by the caller.
+
+**A6 — s 48A reaches the ½ under s 36A in (c)(4), not s 66's own points (0.2.0, 02-R2; the decline is assumed, not ruled: the lead's choice).**
+s 48A, line 1811, lets the Minister provide that "הוראות פרק זה לענין זיכויים ... לא יחולו על עובד זר"; "פרק זה" is Part C, Chapter Three, "ניכויים, זיכויים וקיצבאות ילדים" (heading at line 1559), which holds s 36A.
+(c)(4) gives the woman ½ "לפי סעיף 36א", a credit under that Chapter, so for a woman who is a foreign worker the ½ is declined, in row IL-01's words, because s 48A and its Regulations (noted at line 1812) are not encoded.
+The children's points of (c)(4)-(6) are given by s 66 itself, which is in Part D, Chapter Three, "הכנסת בני־זוג" (heading at line 2437), outside "פרק זה"; on its words s 48A does not reach them, and they are answered.
+The ½ under s 37 in (c)(2) follows the caller's s 37 answer, in which s 48A is the caller's (row IL-08 declines s 37 for a foreign worker).
 
 ## 4. Fork register
 
@@ -122,6 +281,7 @@ None has been settled by a court or the Tax Authority to my knowledge; I did not
 | F16 | (c) chapeau with (c)(4), (5) | once (a)(1) gives a separate calculation, does (c) govern the registered spouse's calculation too? | yes | (c)(1) says "לכל אחד מבני הזוג", and (c)(4)/(5) speak of the woman and the man, one of whom is the registered spouse. |
 | F17 | (c)(4), (5) | must the child be maintained by, or live with, the spouse (as s 40(b)(1) requires)? | no condition | (c)(4) and (5) say only "ילדיה" / "ילדיו". |
 | F18 | (c)(1A) | does "בן זוג" include the registered spouse? | yes | the paragraph says "בן זוג", not "בן זוג שאיננו בן זוג רשום" as (a)(1) does, and it would otherwise add nothing to (a)(1). |
+| F19 (0.2.0, 02-E4) | (c)(4)(a1), line 2467, at the vintage boundary of A1 | a child born in 2023, the mother's election set, asked of tax year 2024: (i) the 2024 text governs the 2024 calculation and says where the point lands, 4½ + 1 = 5½; (ii) the point moved is one "מתוך נקודות הזיכוי שלהן היא זכאית כאמור באותה פסקה, בשנת הלידה", the year of birth is 2023, and whether a 2023 mother could elect and had a point to move is 2023 law, which is not held: refuse | (i), kept as the default; **waits on Meng** (BACKLOG IL-24) | (i) is the encoder's, taken by construction in 0.1.0 and unrecorded until 0.2.0. (ii) is the independent tester's (E-4, `tests-independent.l4:385`, confidence L; "on reflection I would not call the encoding wrong"), left failing and declared in `check.sh`. Axiom is silent: it does not apply (a1) (AX-14). The input `the mother elects to count one birth-year credit point in the following tax year` carries no year, so the encoding cannot tell an election of 2023 from one of 2024. Under the lead's recommendation for IL-24 (a named switch, default decline), (ii) would become the default. |
 
 **A consolidation oddity, not a fork.**
 The definitions of "שנת לידה" and "שנת בגרות" appear twice: inside (c)(4)(a) at line 2466 ("לעניין זה ולעניין פסקה (5) …") and again as an unnumbered line after (c)(4)(d) at line 2471 ("לענין זה …").
@@ -146,6 +306,8 @@ Through (4A) a woman married to a widower has the woman's column, without the (a
 Beside the children's points, (c)(4) gives the woman ½ under s 36A, and (c)(2) gives ½ (not 1) to a spouse whom s 37 would give a point.
 
 ## 6. What `check.sh` prints
+
+(0.2.0: this section is version 0.1.0's run, before the independent tests were added; the current table is in the version section at the top.)
 
 Run on 2026-10-06 as `L4=/Users/mengwong/.local/bin/l4 ./check.sh`.
 The binary has no `--version`; it resolves to a cabal-store build `jl4-0.1-0ee0100b`, sha256 `64bbcb157dbef2ef1020a6a75589313bba0a2aeeb807c921c5e65e62e9eca118`.
@@ -199,7 +361,10 @@ Not fetched: the amending Acts at `fs.knesset.gov.il/24/law/24_lsr_624898.pdf`, 
 8. F10: which unnamed credit provisions (ss 39A, 39B, 40A-40D, 44, 45, 46) apply to each spouse in a separate calculation?
 9. The text before 2024: encoding the earlier vintages needs the amending Acts (ס״ח 3048 and 3184, and earlier), which this run could not fetch.
 
+10. (0.2.0) F19: may a birth-year point elected in 2023 be carried into a 2024 calculation, when the 2023 text is not held? Waits on Meng (BACKLOG IL-24).
+
 Recommended next step: the independent test pass of the encoding skill (`references/second-pass.md`), in a fresh session given only `BRIEF.md` and the source, then a refuter on the (a)/(b) assembly, where the forks concentrate.
+(0.2.0, 02-W1: the independent test pass was done after deposit, commit 240a478, by fid-il-02; its findings are in `INDEPENDENT-FINDINGS.md`, and V-4 and E-4 are dealt with in the version section at the top. The refuter on the (a)/(b) assembly has not been run.)
 
 ## 9. Nouns to reconcile at IL-07
 
@@ -207,6 +372,8 @@ Read from the sibling directories on 2026-10-06, read-only; nothing imported.
 
 - **The person.** IL-01 declares `Individual` (`ito-credit-points-nouns.l4`) with `a woman` as a BOOLEAN; this row declares `A spouse` with `sex` IS A `Sex` (`a woman` | `a man`). Same person, two shapes; the constructor `a woman` here and IL-01's field `a woman` will also collide by name if both modules are imported together.
 - **Residence.** IL-01 declares `an Israeli resident in the tax year` on `Individual`; this row does not declare residence at all, because s 66 does not test it.
+- **The child** (0.2.0, 02-N3). This row's `A child` is now `A child, for section 66`, so it no longer shares a name with row IL-06's.
+- **Foreign worker** (0.2.0, 02-R2). IL-01 declares `a foreign worker` on `Individual`; this row now declares `a foreign worker within the meaning of section 48A` on `A spouse`, named apart so the two fields cannot collide, and read only for the ½ under s 36A (A6). IL-07 must pass the same fact to both rows.
 - **Income items.** IL-03 declares `An item of income` (`amount`, `from personal exertion` BOOLEAN, …) inside `An individual in a tax year`; this row declares `An item of income from personal exertion` (`kind`, `taxable amount`) and keeps income not from personal exertion as one NUMBER on `A spouse`. Same items, different granularity: this row needs the s 1 paragraph of each item for the (a)(1) pension proviso.
 - **The tax year.** IL-03's `An individual in a tax year` and this row's `Spouses in a tax year` both have a field `tax year` (NUMBER); two record fields of one name in one import scope are ambiguous in L4.
 - **The credit point and the tax.** The value of a credit point is a GIVEN here; IL-01's `ito-s33a-credit-point.l4` is where it is computed. The tax on income from personal exertion is a GIVEN here; IL-03's s 121 module computes tax, and whether it yields the tax on income from personal exertion alone, the figure (c)(4)-(5) needs, is for IL-07 to check.
