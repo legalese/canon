@@ -40,10 +40,18 @@ expected_failed() {
 }
 
 # Version 0.2.0: a module that is MEANT to refuse some plain assertions is listed with its
-# exact count. None is: the tester's module refuses none (its refusals are #ASSERT REFUSED
+# exact count. None was: the tester's module refused none (its refusals are #ASSERT REFUSED
 # directives, counted as satisfied or failed).
+# Version 0.4.0 (BACKLOG IL-47, Meng's SHRUG of 2026-10-08): eleven of the tester's plain
+# assertions rested on a reading the encoding took silently before, now a named alternative.
+# The lead authorised re-pointing those whose reading the tester had decided: five were
+# (lines 256, 300, 409, 416, 420; the file's NOTE BY THE LEAD of 2026-10-08) and now pass.
+# Six stay refused, class AMBIGUITY, fork F1, inventory 02-F1: lines 241, 243, 244, 248,
+# 250 (D-2, D-3, D-5, D-6) and 259 (D-9). Their decided answers settle whether the (d)(1)
+# conditions fail, not which of F1's readings holds, so no decided reading can be named.
 expected_refused() {
   case "$1" in
+    tests-independent.l4) echo 6 ;;
     *) echo 0 ;;
   esac
 }
