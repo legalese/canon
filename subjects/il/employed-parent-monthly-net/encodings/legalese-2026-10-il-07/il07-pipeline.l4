@@ -42,9 +42,11 @@ IMPORT `il07-adapter-il08-nii`
 --                                  IL-05 s 342(c); the Schedule J switch (K14)
 --   health insurance contribution  an input (no row encodes it; GAPS.md)
 --   child allowance for the month  IL-08 s 72 (which children are paid for),
---                                  IL-06 ss 65-68 on a day it counts them all
---                                  (K15), with the earner's s 121B liability
---                                  from IL-03 (fork K5)
+--                                  IL-06 ss 65-68 for the month, for those
+--                                  children (from version 0.3.0; 0.2.0 asked
+--                                  IL-06 on a day it counted them all, K15),
+--                                  with the earner's s 121B liability from
+--                                  IL-03 (fork K5)
 --   net                            salary - tax/12 - national insurance
 --                                  - health + child allowance
 --
@@ -53,6 +55,14 @@ IMPORT `il07-adapter-il08-nii`
 -- household`); the rules of version 0.1.0, without that ending, are the same
 -- rules given `IL-07: no further facts`, so every 0.1.0 caller is answered as
 -- before wherever no provision now encoded changes the answer.
+--
+-- VERSION 0.3.0 (2026-10-08, BACKLOG IL-22) follows the row repairs of that day
+-- (NOTES.md section 12): row IL-01's credits are asked for the tax year; row
+-- IL-08's s 65 is given the couple's two facts; the child allowance is row
+-- IL-06's answer for the month (fork K15's day and its decline are gone); and an
+-- earner whose immigration falls from 5 November 2025 to the end of 2026 is
+-- declined, under the Encouragement of Aliyah and Return (Temporary Provision)
+-- Law 5786-2026, which no row encodes (the second independent pass, F1).
 -- ===========================================================================
 
 § `IL-07 — the pipeline`
@@ -182,6 +192,9 @@ GIVETH AN `IL-07 the calculation of the earner's tax`
 -- K1), or, under s 65, IL-08's income charged in the registered spouse's name,
 -- which for a household with one earner is the same salary. (Where s 47 would
 -- deduct anything the tax is declined, so no deduction comes off it: fork K17.)
+-- Version 0.3.0: IL-08's s 65 takes whether a separate calculation under s 66
+-- governs some of the couple's income; that is row IL-02's s 66(c) answer, FALSE
+-- wherever this branch is reached.
 @ref ITO s 65 (row IL-08); NOTES.md forks K1, K4
 GIVEN h IS AN `IL-07 household in a month`
 GIVETH A NUMBER
@@ -191,6 +204,7 @@ GIVETH A NUMBER
     WHEN JUST c THEN
         IF   `IL-07: the calculation of the earner's tax, in` h EQUALS `the consolidated calculation under section 65, in the earner's name`
         THEN `IL-08: the income charged in the registered spouse's name under section 65, in` h `married as` c
+                 `, a separate calculation under section 66 governing some of the income:` (`IL-02: section 66(c) governs the earner's calculation, in` h `married as` c)
         ELSE `twelve times the salary`
     WHERE `twelve times the salary` MEANS 12 TIMES h's `the earner`'s `the earner's monthly salary`
 
@@ -294,6 +308,45 @@ GIVETH A NUMBER
     WHEN NOTHING  THEN 0
     WHEN JUST im THEN `IL-08: the credit points under section 35 for the earner, in` h `, who immigrated` im
 
+-- VERSION 0.3.0 (the second independent pass, finding F1). The Encouragement of
+-- Aliyah and Return (Temporary Provision) Law 5786-2026 (Economic Efficiency Law
+-- 5786-2026 ch D s 9) exempts from tax, in tax years 2026 to 2030, the income
+-- from personal exertion of "עולה" who first became an Israeli resident, and of
+-- "תושב חוזר ותיק" (a veteran returning resident, ITO s 14(a), with a returning
+-- resident's certificate) who became one, from 5 November 2025 to the end of tax
+-- year 2026 (its s 2(a)), unless the person asks otherwise. No composed row
+-- encodes it (BACKLOG IL-36, deferred). The household holds no fact of first
+-- residence, of the certificate or of the election; it holds s 35's immigration
+-- record. So the capstone declines an earner whose record puts in that period:
+--   * the day the earner became an immigrant, where it was the first time (an
+--     earlier immigration means an earlier residence, so not "לראשונה"), on any
+--     ground of s 35(d) but that of a returning resident: the Law of Return
+--     ground is the temporary Law's "עולה"; for the other grounds, and for a
+--     record that names none of them, the household cannot say whether the
+--     person is of a class entitled to an absorption basket, which that
+--     definition also takes in;
+--   * the day a returning resident returned and became an Israeli resident, where
+--     the earner had been a foreign resident for six consecutive years (s 35(d));
+--     with fewer than six the earner cannot have the ten years of ITO s 14(a),
+--     so is not a veteran returning resident, and is answered.
+-- The day the earner became an immigrant is taken as the day of first residence;
+-- where they differ the capstone may decline an earner the Law does not reach,
+-- never answer one it does. (Assumed, not ruled: the lead's direction for IL-22.)
+@ref Encouragement of Aliyah and Return (Temporary Provision) Law 5786-2026, ss 1, 2(a), 2(d), 6 (Sefer HaChukim 3511 pp. 416-418); ITO s 14(a); s 35(d) (row IL-08); INDEPENDENT-FINDINGS-2.txt F1
+GIVEN f IS AN `IL-07 further facts of the household`
+GIVETH A BOOLEAN
+`IL-07: the earner's immigration falls in the period of the Encouragement of Aliyah and Return (Temporary Provision) Law 5786-2026, by the further facts` f MEANS
+    CONSIDER f's `the earner's immigration, if the earner is an immigrant`
+    WHEN NOTHING  THEN FALSE
+    WHEN JUST im THEN
+        CONSIDER im's `the ground of immigration`
+        WHEN `IL-07: a returning resident` d `six years abroad`
+            THEN `six years abroad` AND `in the period` d
+        OTHERWISE
+            im's `it was the first time the earner became an immigrant` AND `in the period` (im's `the day the earner became an immigrant`)
+    WHERE
+        `in the period` d MEANS d AT LEAST YMD 2025 11 5 AND d AT MOST YMD 2026 12 31
+
 -- ITO s 47 and s 45A (row IL-08). Where s 47 would deduct anything, which of the
 -- two takes a payment first is unsettled (IL-08's D190): declined. For an
 -- employee whose whole salary is insured income, s 47 deducts nothing.
@@ -315,6 +368,9 @@ GIVETH A NUMBER
 
 §§ `Income tax for the tax year: the tax`
 
+-- Version 0.3.0: row IL-01's credits (ss 34, 36, 36A) and its s 33A are asked for
+-- the tax year (its v0.2.0 rules "in the tax year of" and "in tax year"), which
+-- refuse a year before each section's last listed amendment; 2026 is answered.
 -- Forks K3 and K17 (NOTES.md): every credit, in points (ITO s 33A) and the s 45A
 -- credit in money, is set off against the s 121 tax, no further than to nil
 -- (IL-01 fork F5), and the s 121B additional tax is added after. All the
@@ -334,6 +390,8 @@ GIVETH AN `IL-07 income tax for the tax year`
                 THEN `IL-07 apportions the tax for the year to a month only where the salary is the same in every month; withholding under section 164 of the Income Tax Ordinance is not encoded`
                 IF NOT h's `the earner`'s `the earner has no credit or deduction under the Income Tax Ordinance beyond those the composed rows encode`
                 THEN `the earner has a credit or deduction under the Income Tax Ordinance that IL-07 does not compute: it computes sections 35, 45A and 47 only from the further facts of its version 0.2.0, and no composed row encodes the others, such as section 39A, 44 or 46`
+                IF `IL-07: the earner's immigration falls in the period of the Encouragement of Aliyah and Return (Temporary Provision) Law 5786-2026, by the further facts` f
+                THEN `the Encouragement of Aliyah and Return (Temporary Provision) Law 5786-2026 exempts from tax the income from personal exertion of an immigrant who first became an Israeli resident, or a veteran returning resident who became one, from 5 November 2025 to the end of tax year 2026; no composed row encodes it, and the earner's immigration falls in that period`
                 IF NOT `IL-08: the insured income is part of the salary, in` h `, paying` (f's `the earner's pension contributions and insurance`)
                 THEN `the insured income the household gives is negative or more than the salary`
                 OTHERWISE `IL-07: once` `the tax` `is settled, the answer`
@@ -359,7 +417,8 @@ GIVETH AN `IL-07 income tax for the tax year`
         `the s 121B tax`      MEANS `IL-03: the additional tax under section 121B on a taxable income of` `the taxable income` `, in` h `, with the amount in section 121B(a) at`
                                         (`IL-07: the amount in section 121B(a) the Israel Tax Authority published for tax year` (h's `the year of the month`))
         v                     MEANS `IL-07: the value of one credit point in tax year` (h's `the year of the month`)
-        `the personal points` MEANS `IL-01: the credit points under sections 34, 36 and 36A for the earner` (h's `the earner`)
+        `the year`            MEANS h's `the year of the month`
+        `the personal points` MEANS `IL-01: the credit points under sections 34, 36 and 36A for the earner` (h's `the earner`) `in tax year` `the year`
         cp                    MEANS `IL-07: the credit points section 66(c) gives the earner, in` h `, with further facts` f
         `the s 35 points`     MEANS `IL-07: the credit points under section 35 for the earner, in` h `, with further facts` f
         `the s 37 to 39 points` MEANS `IL-07: the credit points under sections 37, 38 and 39 in a consolidated calculation, in` h `, with further facts` f
@@ -372,7 +431,7 @@ GIVETH AN `IL-07 income tax for the tax year`
                                    PLUS `the s 35 points`
                                    PLUS `the s 37 to 39 points`
                                    PLUS `the s 40(b) points`
-        `the other credits`   MEANS `IL-01: the amount of` `the other points` `credit points at a value of` v
+        `the other credits`   MEANS `IL-01: the amount of` `the other points` `credit points at a value of` v `in tax year` `the year`
         `the s 66(c) children's credit` MEANS
             `IL-02: the credit for` (cp's `IL-02's points for children, by section 66(c)(4) to (6)`) `children's points at a value of` v
                 `, set against a tax on income from personal exertion of` `the s 121 tax`
@@ -381,7 +440,7 @@ GIVETH AN `IL-07 income tax for the tax year`
             IF       `the s 121B tax` GREATER THAN 0
                  AND `the credits` GREATER THAN `the s 121 tax`
             THEN `the credits exceed the tax under section 121 and there is additional tax under section 121B; the text does not say whether credit points, or the credit under section 45A, are set off against the additional tax`
-            ELSE `IL-01: the tax after setting off` `the credits` `against` `the s 121 tax` PLUS `the s 121B tax`
+            ELSE `IL-01: the tax after setting off` `the credits` `against` `the s 121 tax` `in tax year` `the year` PLUS `the s 121B tax`
 
 @ref NOTES.md section 1; the rule above
 GIVEN h IS AN `IL-07 household in a month`
@@ -511,27 +570,25 @@ GIVETH A BOOLEAN
 
 -- NII s 72 (row IL-08) says, child by child, whether the month is paid: from the
 -- month of birth if born by the 15th (its fork N1), else the next; to the month
--- of the 18th birthday, as row IL-06 reckons that day. IL-06 answers the
--- allowance for a family on a day. Fork K15 (NOTES.md): IL-06 is asked about the
--- children s 72 pays for, on the first day of the month or, if one of them is
--- born later in it, that birthday (the latest such); every one of them must be
--- under 18 on that day by IL-06's rule, or no day of the month counts them all
--- and the month is declined (an 18th birthday on the 1st; or on or before the
--- birthday of another child paid for in the month). This replaces fork K6.
-@ref NII s 72 (row IL-08); ss 65-68 (row IL-06); NOTES.md forks K5, K15
+-- of the 18th birthday, as row IL-06 reckons that day. VERSION 0.3.0: row IL-06
+-- (its v0.2.0, repair 06-S72) answers the allowance for the month, for the
+-- children the caller says s 72 pays for in it; the capstone gives it those row
+-- IL-08 pays for. This replaces fork K15 (0.2.0), which asked IL-06 about a
+-- family on a day, the first of the month or a later birthday, and declined a
+-- month in which no day counted every child paid for (an 18th birthday on the
+-- 1st, or on or before the birth of another child paid for in the month); those
+-- months are now answered (NOTES.md section 12).
+@ref NII s 72 (row IL-08); ss 65-68 with s 72(a) (row IL-06 v0.2.0); NOTES.md forks K5, K15 (superseded)
 GIVEN h IS AN `IL-07 household in a month`
       f IS AN `IL-07 further facts of the household`
 GIVETH A NUMBER
 `IL-07: the child allowance for the month, in` h `, with further facts` f MEANS
     `IL-07: in the month of` h `, the answer is`
-        (BRANCH IF NOT h's `the earner`'s `the earner is paid that salary in every month of the tax year`
-                THEN `IL-07 apportions the tax for the year to a month only where the salary is the same in every month; withholding under section 164 of the Income Tax Ordinance is not encoded`
-                IF NOT all (GIVEN k YIELD `IL-06: under 18 on` `the day` `, in` h `:` k) `the children paid for`
-                THEN `section 72 pays the allowance for this month for children of the household whom row IL-06, which answers a day, counts together on no day of the month`
-                OTHERWISE
-                    `IL-06: the child allowance on` `the day` `, in` h `, for the children` `the children paid for`
-                        `, the earner's income chargeable to additional tax:`
-                        (`IL-07: the earner has income chargeable to additional tax in the tax year of the month, in` h))
+        (IF   NOT h's `the earner`'s `the earner is paid that salary in every month of the tax year`
+         THEN `IL-07 apportions the tax for the year to a month only where the salary is the same in every month; withholding under section 164 of the Income Tax Ordinance is not encoded`
+         ELSE `IL-06: the child allowance for the month, in` h `, for the children section 72 pays for` `the children paid for`
+                  `, the earner's income chargeable to additional tax:`
+                  (`IL-07: the earner has income chargeable to additional tax in the tax year of the month, in` h))
     WHERE
         `the month`            MEANS h's `the month of the year`
         `the year`             MEANS h's `the year of the month`
@@ -539,9 +596,6 @@ GIVETH A NUMBER
                                          `, for a child born on` (k's `the child's date of birth`)
                                          `who turns 18 on` (`IL-06: the 18th birthday of` k `, in` h)
         `the children paid for` MEANS filter `paid for` (h's `the children of the household`)
-        `the day`              MEANS foldr (GIVEN k, d YIELD IF k's `the child's date of birth` GREATER THAN d THEN k's `the child's date of birth` ELSE d)
-                                           (YMD `the year` `the month` 1)
-                                           `the children paid for`
 
 §§ `The net, and the household's month`
 
@@ -568,7 +622,7 @@ GIVETH A NUMBER
         `, reading Schedule J column D as` `IL-07: the reading of Schedule J column D the capstone takes`
 
 @export The monthly net income, in a month of 2026, of a household in Israel with one employed parent: income tax for tax year 2026 and its twelfth, national insurance deducted from the salary, the child allowance, and the net, composed from encodings of the Income Tax Ordinance and the National Insurance Law; declines by name what those encodings do not cover
-GIVEN h IS AN `IL-07 household in a month` @desc the household: the year (2026) and month (1-12); the earner (sex, date of birth, the same gross monthly salary in every month, residence and insurance facts); the spouse if any (with no income) and the couple's elections under Income Tax Ordinance s 66; the children, each with a name of its own; and the health insurance contribution for the month, which the caller computes
+GIVEN h IS AN `IL-07 household in a month` @desc the household: the year (2026) and month (1-12); the earner (sex, date of birth, the same gross monthly salary in every month, residence and insurance facts; residence under the Income Tax Ordinance as that Ordinance treats it, so TRUE for an Israeli citizen resident in or operating in the Area, whom s 3A(f) treats as an Israeli resident, the capstone giving row IL-01 no s 3A(f) fact of its own); the spouse if any (with no income) and the couple's elections under Income Tax Ordinance s 66; the children, each with a name of its own; and the health insurance contribution for the month, which the caller computes
       f IS AN `IL-07 further facts of the household` @desc what Income Tax Ordinance ss 35, 37, 40(b), 45A and 47 and National Insurance Law s 335 read that the household does not hold: the earner's pension contributions, insured income and insurance premiums; immigration; the statuses s 37 reads; the National Insurance statuses s 335 reads; and, for a parent without a spouse, the single-parent facts
 GIVETH AN `IL-07 the household's month`
 `IL-07: the household's month, in` h `, with further facts` f MEANS

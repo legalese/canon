@@ -26,7 +26,7 @@
 # Exit status: 0 only when the vendored copies check, no module has an error other than
 # its expected failed assertions, and each module fails exactly as often as expected_failed
 # says and refuses exactly as often as expected_refused says (0 for every module but the
-# independent tests, version 0.2.0). On this machine a full run takes several minutes:
+# independent tests, version 0.2.0; version 0.3.0 names each counted line below). On this machine a full run takes several minutes:
 # the modules that reach row IL-06 are slow.
 set -u
 DIR="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
@@ -36,9 +36,9 @@ L4="${L4:-l4}"
 # encoding.json `expected_red`.
 expected_failed() {
   case "$1" in
-    il07-tests-expected-red.l4) echo 2 ;;   # NOTES.md sections 6, 11.14: R2 (1), R3 (1, added in 0.2.0); R1 resolved in 0.2.1
-    tests-independent.l4) echo 18 ;;         # the independent tester's record against v0.1.0, not edited: 15 reworded refusals, H43's tax, H45's two; NOTES.md 11.8, 11.13
-    tests-independent-2.l4) echo 9 ;;        # the second independent tester (IL-13, fid-il-13), run against v0.2.2 at 79f0a29, not edited: F1 (H33, the 5786 temporary Aliyah exemption; capstone wrong) 2, F5 (tester's own error) 7; INDEPENDENT-FINDINGS-2.txt
+    # il07-tests-expected-red.l4: 0 from version 0.3.0 (was 2: R2, R3, both resolved by the row repairs of 2026-10-08, their assertions moved to the ordinary tests; R1 resolved in 0.2.1). NOTES.md section 12.
+    tests-independent.l4) echo 18 ;;         # the independent tester's record against v0.1.0, not edited: lines 597, 605, 613 (s 40(b)), 620-624, 629-633 (the period), 658, 665 (the unencoded credit): 15 refusals 0.2.0 reworded, inventory 07-T15, TESTER-WRONG (stale wording); 670, H43's tax, 07-H43, TESTER-WRONG; 678, 680, H45, 07-H45, TESTER-WRONG. NOTES.md 11.8, 11.13, 12
+    tests-independent-2.l4) echo 7 ;;        # the second independent tester (IL-13, fid-il-13), against v0.2.2, not edited: lines 215, 218 (H01), 524, 527 (H34), 584, 587, 589 (H40): its F5, the tester's own error on the Schedule K minimum, TESTER-WRONG. (0.2.2: 9; H33's two, its F1, are declined by name from 0.3.0.) INDEPENDENT-FINDINGS-2.txt; NOTES.md section 12
     *) echo 0 ;;
   esac
 }
@@ -48,8 +48,8 @@ expected_failed() {
 # Every other module must refuse nothing.
 expected_refused() {
   case "$1" in
-    tests-independent.l4) echo 2 ;;          # H44n's allowance and net: NII s 72 and fork K15
-    tests-independent-2.l4) echo 20 ;;       # IL-13: declined by name: F2 (fewer than six deduction branches at the printed totals) 9, F3 (part-time Schedule K minimum) 6, F4 (18th birthday on the 1st) 3, F6 (health read through the declined month) 2
+    # tests-independent.l4: 0 from version 0.3.0 (was 2: H44n's allowance and net, lines 518-519, NII s 72 and fork K15; answered from 0.3.0 through row IL-06's month question, inventory 06-S72)
+    tests-independent-2.l4) echo 20 ;;       # IL-13, declined by name: lines 562, 563, 565 (H38), 573, 574, 576 (H39), 604, 605, 607 (H42), its F2, fewer than six deduction branches at the printed totals, AMBIGUITY (BACKLOG IL-37, waits on Meng); 308, 309, 311 (H10), 640, 641, 643 (H46), its F3, a part-time Schedule K minimum below the full adult figure, recorded gap (0.3.0 answers at or above it); 514, 516, 518 (H33), its F1, the Encouragement of Aliyah and Return (Temporary Provision) Law 5786-2026, NOT-ENCODED (BACKLOG IL-36, deferred; 0.2.2 answered, wrongly); 668, 677 (H49, H50 health read through a declined month), its F6, propagation. (0.2.2: 20, of which H24's three, its F4, are answered from 0.3.0.)
     *) echo 0 ;;
   esac
 }
