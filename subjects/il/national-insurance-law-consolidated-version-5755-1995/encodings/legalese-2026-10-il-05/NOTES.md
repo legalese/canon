@@ -1,9 +1,62 @@
 # NOTES — il/national-insurance-law-consolidated-version-5755-1995, encoding row `legalese-2026-10-il-05`
 
 National Insurance Law [Consolidated Version], 5755-1995: **s 342** (who is liable to pay insurance contributions, and the employer's deduction), **s 348** (the maximum, the minimum and the disregarded amount) and **Schedule K** (לוח י״א, the maximum and minimum income for contributions), encoded in L4 by one agent in one session (run `IL-05-20261006`, 2026-10-06), from the brief in `BRIEF.md`.
-Status: **draft**.
+Status: **draft**. Version **0.3.0** (2026-10-07): row IL-04's Schedule J switch reaches s 342(c); see "Version 0.3.0" below.
 No domain expert has read it against the source; HG1 has not been sought.
 The row depends on row IL-04 (s 1, s 334, s 337, Schedule J), whose modules it could not import (section 8).
+
+## Version 0.3.0 (2026-10-07): Schedule J's printed totals or its items
+
+Backlog row IL-11, encoder `enc-il-11`, one session, no sub-agents, on Meng's ruling of 2026-10-07 as the lead relayed it: where Schedule J's totals row and its items differ (row IL-04's fork F4), the **printed totals govern by default** and the items' reading is **kept as the alternative**.
+The version goes from 0.1.0 to 0.3.0 to match row IL-04's, whose switch this is.
+Nothing in the sections below was deleted; the section "Comparison with Axiom's RuleSpec", `tests-independent.l4`, `DECIDED-ANSWERS.md` and `INDEPENDENT-FINDINGS.md` are untouched.
+
+### What changed
+
+1. **The reading is declared again** (`nii-il05-nouns.l4`), constructor for constructor as row IL-04 v0.3.0 declares it, `A reading of Schedule J where its totals row and its items differ` (`the printed totals govern`, `the items govern`), for the reason the branch types are (section 8).
+2. **One switch**, `section 342(c) — the reading of Schedule J this row takes where its totals row and its items differ`, now `the printed totals govern` (`nii-s342-liability-and-deduction.l4`, section "Version 0.3.0"); the other reading is a one-line change there.
+3. **What a reading changes here.** s 342(c)(1) deducts "percentages … as in Schedule J" (line 3661). At the items, the (c)(1) deduction is the sum of the per-branch column D amounts the case gives, as before. At the printed totals it is one amount for the branches in which the employer deducts, together, which no per-branch list can carry (column D's upper part prints 7.00 where its six items sum to 4.67): so the rules that read it take it as an **argument**, `column D at the printed totals being` x, the figure row IL-04 v0.3.0's `the column D deduction under …` gives at its default reading for those branches (fork F24). It is an argument, not a field of `An employee's month under section 342(c)`, so the records `tests-independent.l4` builds still build.
+4. **Which rules.** s 342(c), (c)(1), (c)(2)'s reduction, (d)'s coordinated contributions and outcome, and (e1) each have a form that takes a reading and the argument, and a form "…, column D at the printed totals being" x that follows the switch. **The rules under their 0.1.0 names read the items** (their bodies now call the reading form with `the items govern`; the argument is not read there), so every caller built before 0.3.0 answers as it did.
+5. **A police or prison officer** (s 342(c)(2): "the deduction in item 6 of Schedule J" is not deducted): at the printed totals, the total less item 6's own amount from the per-branch list (fork F23).
+
+### Fork register, added
+
+| # | where | the question | readings | taken, and why |
+| --- | --- | --- | --- | --- |
+| F23 | s 342(c)(2) (3662), at the printed totals | "the deduction in item 6" when the deduction is a total for the branches together | (i) item 6's own amount, from the items; (ii) a share of the total | **(i)**: item 6 is a row of Schedule J with its own printed figures; the total covers it, so the rest is the total less it. |
+| F24 | s 342(c)(1) (3661), "as in Schedule J" | row IL-04's fork F4, as it reaches this row | (i) the printed totals; (ii) the items | **(i) by default, ruled 2026-10-07**; (ii) by name. At (i) the amount for the branches together is an argument, computed by row IL-04. |
+
+### Assertions changed, or now asking the items by name
+
+`nii-il05-tests.l4`: the four s 342(d) assertions of the 2027 scenario that turn on column D's upper part (coordinated contributions 218.8, and the three outcomes on it) now ask the items' reading by name (`…, reading Schedule J as` `the items govern` …), values unchanged.
+Added (11, its last section, each worked by hand from the source's cells before the run): the switch's value; on a wage of 10,000 in 2026, the per-branch amounts by the items (27.6869, 3.9188, 6.3643, 65.0629, 5.5267, 78.8215), the deduction **187.3811** at the items (by the 0.1.0 name and by name) and **240.9012** at the printed totals (7,703 × 1.04% + 2,297 × 7%); a police officer, **234.5369** at the printed totals and **181.0168** at the items (item 6, 6.3643, left out); 7,000 at the printed totals, 72.8 (the readings agree below the threshold); s 342(d) in the 2027 scenario at the printed totals, coordinated contributions **312** (8,000 × 0.40% + 4,000 × 7%), and the outcomes: the employee pays 264, is refunded 88, pays 93.2.
+No other expected value changed.
+
+### What `check.sh` prints at 0.3.0
+
+Run from 2026-10-07T07:20:12Z to 07:20:25Z as `L4=/Users/mengwong/.local/bin/l4 ./check.sh`, `JL4_LIBRARY_PATH` unset, on the binary row IL-04's "Version 0.3.0" records (sha256 `6015a4c3…`, unchanged during the run; not `jl4-0.1-0ee0100b`, which section 0 used). No module changed during the run.
+
+```
+module                                    errors satisfied  failed  refused  expected
+nii-il05-nouns.l4                              0         0       0        0         0
+nii-il05-published-figures.l4                  0         0       0        0         0
+nii-il05-tests-expected-red.l4                 3         2       3        0         3
+nii-il05-tests.l4                              0       181       0        0         0
+nii-s342-liability-and-deduction.l4            0         0       0        0         0
+nii-s348-maximum-minimum.l4                    0         0       0        0         0
+nii-schedule-k.l4                              0         0       0        0         0
+tests-independent.l4                          15       122      15        2      15/2
+TOTAL (8 modules)                             18       305      18        2
+(a failed assertion is also an error; any other error, or a refused assertion a module is not expected to have, makes the run red; "expected" is failed/refused where a module may refuse)
+```
+
+**Re-run on a new binary.** `~/.cabal/bin/l4` was replaced at 2026-10-07T07:25:28Z, after the run above: sha256 3a1843a0e51ce1663cd71b4307e061fa425f2f9f23d78afb8ffa9be6fd20278f (233,039,712 bytes, modified 2026-10-07T07:25:28Z, again a regular file, not a store build). Re-run from 07:28:54Z to 07:29:01Z on it, the binary unchanged during the run and no module changed: the same table, exit 0.
+`check.sh` exit 0; every error is a failed assertion. `nii-il05-tests.l4`: 181 of 181, every new value satisfied on the first run that evaluated it.
+**`check.sh` changed**: it now lists `tests-independent.l4` (15 failed, 2 refused) and has `expected_refused`. Before 0.3.0, on the same binary, the same modules gave the same counts but `check.sh` exited **1**, because it did not list the independent tester's file, added after section 0 was written.
+
+### The independent tests at 0.3.0
+
+`tests-independent.l4` (not edited), 139 assertions: **122 satisfied, 15 failed, 2 refused**, assertion by assertion the same as before 0.3.0: its calls use the rules' 0.1.0 names, which read the items.
 
 ## 0. What `check.sh` prints
 
@@ -223,6 +276,7 @@ Neither s 342 nor s 348 nor Schedule K says to round; the Institute publishes wh
 | F20 | Schedule K "for a year" | A person in a category for part of a year | — | **not modelled**: the yearly figures are for the whole tax year. |
 | F21 | s 342(c)(2) "the deduction in item 6 of Schedule J" | — | — | item 6 is unemployment (line 4725); only that branch's column D amount is left out for a police or prison officer. |
 | F22 | s 342(e)(3)-(4) (3669-3670) | "column E of Schedule J" for deduction rates | (i) column D intended; (ii) as written | **not resolved**: (e) is a power and decides nothing here; checked red. |
+| F23, F24 | (0.3.0) | see "Version 0.3.0" above | — | — |
 
 **Where I looked for others and found none:** s 342(a)'s exception (one class, one limb); s 348(c)'s conditions (two facts of the order); Schedule K's yearly sums (the total of four quarters, read as written).
 

@@ -1,0 +1,136 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `cdcsa-types`
+IMPORT `cdcsa-common`
+IMPORT `cdcsa-scheme`
+IMPORT `cdcsa-maternity-adoption`
+IMPORT `cdcsa-fathers-shared`
+IMPORT `cdcsa-childcare`
+IMPORT `cdcsa-general-offences`
+
+-- Child Development Co-Savings Act 2001 — THE TOP-LEVEL GOAL.
+--
+--   "For this parent and this child, what paid leave or Government payment
+--    does the Act give, how much may be paid, and how much may the employer
+--    claim back from the Government?"
+--
+-- One answer through Part 3: which scheme the child belongs to (Goal 1);
+-- the parent's own leave — maternity, adoption or paternity — or, for a
+-- self-employed parent, the claim for lost income, or, failing both, the
+-- Government-paid benefit (Goals 3-5); and shared parental leave, by
+-- arrangement for an April 2025 Scheme child or by the mother's election for
+-- an earlier child (Goal 6). Childcare leave (Goal 7), the Scheme (Goal 2) and
+-- recovery and offences (Goal 8) answer their own questions.
+
+§ `The top-level goal`
+
+DECLARE `Parental position` HAS
+    `an April 2025 Scheme child`                 IS A BOOLEAN
+    `a January 2024 Scheme child`                IS A BOOLEAN
+    `own paid leave`                             IS A MAYBE `Leave payments`
+    `own claim for lost income, at most`         IS A MAYBE NUMBER
+    `Government-paid benefit, at most`           IS A MAYBE NUMBER
+    `shared parental units`                      IS A NUMBER
+    `shared parental leave`                      IS A MAYBE `Leave payments`
+    `shared parental claim from the Government, at most` IS A MAYBE NUMBER
+
+@ref ss 2, 9, 9A, 10, 12A-12AD, 12DA-12DD, 12E-12J; Second Schedule
+GIVEN p IS A `Parent case`
+GIVETH A `Parental position`
+`the parental position for` p MEANS
+    `Parental position` WITH
+        `an April 2025 Scheme child`                 IS `april`
+        `a January 2024 Scheme child`                IS `jan`
+        `own paid leave`                             IS IF `employee` AND `own eligible` THEN JUST `own leave` ELSE NOTHING
+        `own claim for lost income, at most`         IS IF `self-employed` AND `own eligible` THEN JUST `own claim` ELSE NOTHING
+        `Government-paid benefit, at most`           IS IF (NOT `own eligible`) AND `benefit eligible` THEN JUST `benefit` ELSE NOTHING
+        `shared parental units`                      IS `units`
+        `shared parental leave`                      IS IF `employee` AND `own eligible` AND `units` GREATER THAN 0 THEN JUST (`shared parental leave payments for` `units` `units, gross pay per week` `gross`) ELSE NOTHING
+        `shared parental claim from the Government, at most` IS
+            BRANCH IF `units` EQUALS 0                            THEN NOTHING
+                   IF `self-employed` AND `own eligible`           THEN JUST (`the Government pays a self-employed parent at most for` `units` `units, lost income per week` `gross`)
+                   IF april AND (NOT `own eligible`) AND `benefit eligible` THEN JUST (`the shared parental benefit at most for` `units` `units, total income per day` (w's `total income per day in the prescribed period`))
+                   OTHERWISE NOTHING
+    WHERE
+        w MEANS p's `work`
+        e MEANS p's `event`
+        n MEANS p's `specified event number`
+        `april` MEANS `an April 2025 Scheme child` e
+        `jan`   MEANS `a January 2024 Scheme child` e
+        `employee`      MEANS w's `status` EQUALS `an employee`
+        `self-employed` MEANS w's `status` EQUALS `a self-employed person`
+        `months` MEANS w's `months of service or of carrying on before the event`
+        `gross`  MEANS w's `gross pay (or lost income) per week of work days`
+        `daily`  MEANS w's `total income per day in the prescribed period`
+        `married` MEANS p's `lawfully married to the other parent in time`
+        `mother` MEANS p's `role` EQUALS `the natural mother` OR p's `role` EQUALS `the adoptive mother`
+        -- s 12E(7): the mother of an earlier child gives up the weeks she elects
+        `given up` MEANS IF mother AND (NOT april) THEN p's `weeks elected by the mother under s 12E(5)` ELSE 0
+        -- Own leave or a claim for lost income needs a current employer or
+        -- trade; a parent who "is or was" employed but is neither now goes to
+        -- the Government-paid benefit (ss 9(5A), 12A, 12HA). Fixed after the
+        -- independent pass.
+        `own eligible` MEANS (`employee` OR `self-employed`) AND `own eligible on the facts`
+        `own eligible on the facts` MEANS
+            CONSIDER e
+            WHEN `a birth` b THEN
+                CONSIDER p's `role`
+                WHEN `the natural mother` THEN
+                    IF   (NOT b's `a citizen at birth (or would have been, if stillborn)`) AND `eligible under s 9A(1A), with months of service` months `, for` b
+                    THEN REFUSE "the child became a citizen after birth: s 9(1A)-(1B) and (4A) apply; ask `the s 9(1A) outcome under s 76(1)` and `the s 9(1B) options`"
+                    ELSE `eligible under s 9A(1), with months of service` months `, for` b
+                WHEN `the natural father` THEN `a natural father eligible for paternity leave, birth` b `, married in time:` married `, months of service` months
+                OTHERWISE FALSE
+            WHEN `an adoption` a THEN
+                CONSIDER p's `role`
+                WHEN `the adoptive mother` THEN `eligible for adoption leave under s 12AC(1), months of service` months `, adoption` a
+                WHEN `the adoptive father` THEN `an adoptive father eligible for paternity leave, adoption` a `, months of service` months
+                OTHERWISE FALSE
+        `benefit eligible` MEANS
+            CONSIDER e
+            WHEN `a birth` b THEN
+                CONSIDER p's `role`
+                WHEN `the natural mother` THEN `eligible for the Government-paid maternity benefit under s 9A(2)` b w
+                WHEN `the natural father` THEN `eligible for the Government-paid paternity benefit, event` e `, married in time:` married `, work` w
+                OTHERWISE FALSE
+            WHEN `an adoption` a THEN
+                CONSIDER p's `role`
+                WHEN `the adoptive mother` THEN `eligible for the Government-paid adoption benefit under s 12AC(2)` a w
+                WHEN `the adoptive father` THEN `eligible for the Government-paid paternity benefit, event` e `, married in time:` married `, work` w
+                OTHERWISE FALSE
+        `own leave` MEANS
+            CONSIDER p's `role`
+            WHEN `the natural mother`  THEN `maternity leave payments, specified event` n `, weeks given up under s 12E` `given up` `, gross pay per week` `gross`
+            WHEN `the adoptive mother` THEN `adoption leave payments, specified event` n `, weeks given up under s 12E` `given up` `, gross pay per week` `gross`
+            OTHERWISE                       `paternity leave payments, an April 2025 Scheme child:` april `, gross pay per week` `gross`
+        `own claim` MEANS
+            CONSIDER p's `role`
+            WHEN `the natural mother`  THEN `the Government pays a self-employed mother at most, specified event` n `, lost income per week` `gross`
+            WHEN `the adoptive mother` THEN `the Government pays a self-employed adoptive mother at most, specified event` n `, lost income per week` `gross`
+            OTHERWISE                       `the Government pays a self-employed father at most, a January 2024 Scheme child:` jan `, lost income per week` `gross`
+        `benefit` MEANS
+            CONSIDER p's `role`
+            WHEN `the natural mother`  THEN `the Government-paid maternity benefit at most, specified event` n `, total income per day` `daily`
+            WHEN `the adoptive mother` THEN `the Government-paid adoption benefit at most, specified event` n `, total income per day` `daily`
+            OTHERWISE                       `the Government-paid paternity benefit at most, a January 2024 Scheme child:` jan `, total income per day` `daily`
+        -- Shared parental units: an April 2025 Scheme child, by arrangement
+        -- (s 12DD; the Second Schedule default if none is given) for a parent
+        -- eligible for own leave or a Government-paid benefit (ss 12DA(1),
+        -- 12DC(1)); an earlier child, the weeks the mother elected for a father
+        -- eligible under s 12F.
+        `units` MEANS
+            IF april
+            THEN IF `own eligible` OR `benefit eligible`
+                 THEN CONSIDER p's `units allocated under the arrangement`
+                      WHEN JUST u  THEN u
+                      WHEN NOTHING THEN `the default units for a parent of` e `, both parents eligible:` (p's `the other parent is also eligible for shared parental leave`)
+                 ELSE 0
+            ELSE IF `father may take elected leave` THEN p's `weeks elected by the mother under s 12E(5)` ELSE 0
+        `father may take elected leave` MEANS
+            CONSIDER e
+            WHEN `a birth` b THEN
+                    p's `role` EQUALS `the natural father`
+                AND `a natural father may take elected shared parental leave, birth` b `, married in time:` married
+            WHEN `an adoption` a THEN
+                    p's `role` EQUALS `the adoptive father`
+                AND `an adoptive father may take elected shared parental leave, adoption` a `, married in time:` married

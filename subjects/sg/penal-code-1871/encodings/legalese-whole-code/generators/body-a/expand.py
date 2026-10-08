@@ -22,6 +22,7 @@ KIND = {'-': '`not prescribed`', 'S': '`shall be punished with`', 'O': '`or with
 def decls(text):
     out = {}
     cur = None
+    pending = None
     for line in text.splitlines():
         m = re.match(r'^DECLARE (`[^`]+`|\w+) HAS\s*$', line)
         if m:
@@ -31,7 +32,14 @@ def decls(text):
             continue
         m = re.match(r'^    (`[^`]+`|\w+)\s+IS AN? (`[^`]+`|\w+)', line)
         if m:
-            out[cur][m.group(1).strip('`')] = m.group(2).strip('`'); continue
+            out[cur][m.group(1).strip('`')] = m.group(2).strip('`'); pending = None; continue
+        # A field whose name and type are on two lines (pc-exceptions-private-defence.l4).
+        m = re.match(r'^    (`[^`]+`|\w+)\s*$', line)
+        if m:
+            pending = m.group(1).strip('`'); continue
+        m = re.match(r'^\s+IS AN? (`[^`]+`|\w+)', line)
+        if m and pending:
+            out[cur][pending] = m.group(1).strip('`'); pending = None; continue
         if not line.startswith(' '):
             cur = None
     return out
@@ -95,6 +103,7 @@ def fixture(block, D):
         elif t == 'BOOLEAN': v = 'TRUE' if f in trues else 'FALSE'
         elif t == 'STRING': v = '""'
         elif t == 'Particulars': v = '`the particulars`'
+        elif t == 'Private Defence Facts': v = '`no private defence`'
         else: sys.exit(f'fixture {name}: no default for field {f} of type {t}')
         out.append(f'    {q(f).ljust(w)} IS {v}')
     return '\n'.join(out)

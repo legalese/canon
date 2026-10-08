@@ -42,6 +42,10 @@ IMPORT daydate
 -- * `the earner's age fixed by Part D of Schedule A1 ...`: NII s 342(c)(2)'s age
 --   for a woman, read from Schedule A1 Part D by month of birth (not encoded by
 --   any row: row IL-05 takes it in months). NOTHING for a man.
+--   SUPERSEDED IN PART by version 0.2.0: row IL-08 encodes Part D, and the
+--   pipeline computes the age from the date of birth. NOTHING now means "not
+--   given" and the computed age is used; a figure given must equal it, or the
+--   deduction is declined.
 -- * `the earner has no credit or deduction under the Income Tax Ordinance beyond
 --   those the composed rows encode`: the rows encode the credit points of
 --   ss 34, 36, 36A, s 37 as halved by s 66(c)(2), and s 66(c)'s children's
@@ -51,6 +55,14 @@ IMPORT daydate
 --   tax and is not encoded (GAPS.md). An employee with mandatory pension
 --   contributions has a s 45A credit, so for most real employees this is FALSE,
 --   and the capstone then declines rather than overstate the tax.
+--   READ IN VERSION 0.2.0 AS: the earner has no credit or deduction beyond those
+--   IL-07 computes from the household and its further facts (ss 34, 35, 36, 36A,
+--   37-39, 40(b), 45A, 47 and 66(c)). A caller of version 0.1.0, who gives no
+--   further facts, says by TRUE what it said before: no s 35, s 45A or s 47
+--   credit or deduction, so the further facts it implies give none (pipeline,
+--   `IL-07: no further facts`). TRUE also says the earner is in no class for
+--   which regulations under ITO s 47(d) set higher deductions (row IL-08 does
+--   not encode them). FALSE declines the tax, in either version.
 DECLARE `IL-07 earner` HAS
     `the earner's name`                                                              IS A STRING
     `the earner is a woman`                                                          IS A BOOLEAN
@@ -90,6 +102,13 @@ DECLARE `IL-07 spouse` HAS
 -- `the earner would be entitled to a credit point under section 37`: ITO s 37 is
 -- not encoded; row IL-02 takes the answer as an input and halves it under
 -- s 66(c)(2).
+-- SUPERSEDED IN PART by version 0.2.0: row IL-08 encodes ss 37-39, and the point
+-- is taken from s 37 on the statuses it reads (`IL-07 the statuses section 37
+-- reads`, below). This field must then agree with s 37's answer; TRUE without
+-- the statuses is declined.
+-- `the earner is the registered spouse`: row IL-08 encodes s 64B, but its rules
+-- read the couple's incomes two years back and their elections, which the
+-- household does not hold; who is registered stays an input (GAPS.md item 3).
 DECLARE `IL-07 couple` HAS
     `the earner's spouse`                                                            IS AN `IL-07 spouse`
     `the earner is the registered spouse`                                            IS A BOOLEAN
@@ -120,6 +139,142 @@ DECLARE `IL-07 household in a month` HAS
     `the children of the household`                                                  IS A LIST OF `IL-07 child`
     `the health insurance contribution the caller says is deducted for the month`    IS A NUMBER
 
+§ `IL-07 — the further facts version 0.2.0 reads`
+
+-- Version 0.2.0 (2026-10-07) composes row IL-08 as well (ITO ss 35, 37-39,
+-- 40(b), 45A, 47, 65; NII s 72, s 335, Schedule A1 Part D). The household
+-- records above are unchanged, so every caller of version 0.1.0, and the
+-- independent tests (tests-independent.l4), are answered as before wherever no
+-- provision now encoded changes the answer. The facts IL-08's sections read and
+-- the household records do not hold are here, in one record the pipeline's
+-- version 0.2.0 rules take as a second argument (`..., with further facts` f).
+-- A caller of the version 0.1.0 rules gets `IL-07: no further facts`
+-- (il07-pipeline.l4). Same membership test as above.
+
+§§ `Sections 45A and 47: the earner's pension contributions and insurance`
+
+-- `the earner's own contribution to a pension provident fund, each month`: the
+--   employee's deposit deducted from the salary; s 45A(b) "sums he paid to a
+--   pension provident fund", and the sums s 47(b) and (b1) deduct.
+-- `the employer's deposits to a pension provident fund for the earner, each
+--   month`: benefits and severance together. With the earner's own, they are the
+--   sums "paid for him, in respect of his income" that make a beneficiary member
+--   (s 47(a)(7); row IL-08's fork F2 counts every component).
+-- `the part of the monthly salary that is insured income`: s 47(a)(4), work
+--   income for which the employer paid to a pension fund; the payslip records it.
+-- `paid in the tax year for ...`: s 45A(b)'s survivors' pension insurance and
+--   (a)(1)'s life insurance, by the earner or the spouse, for the year.
+-- A month's figures are the same in every month of the year (the salary is,
+-- fork K1), so the year's are twelve times them.
+DECLARE `IL-07 the earner's pension contributions and insurance` HAS
+    `the earner's own contribution to a pension provident fund, each month`          IS A NUMBER
+    `the employer's deposits to a pension provident fund for the earner, each month` IS A NUMBER
+    `the part of the monthly salary that is insured income`                          IS A NUMBER
+    `paid in the tax year for survivors' pension insurance`                          IS A NUMBER
+    `paid in the tax year for insurance of the earner's or the spouse's life`        IS A NUMBER
+
+§§ `Section 35: the earner's immigration`
+
+-- ITO s 35(d) "עולה": the grounds row IL-08 encodes, in this row's own names (an
+-- adapter maps them; RECONCILE.md). A returning resident carries the two facts
+-- s 35(d) "תושב חוזר" reads.
+DECLARE `IL-07 the ground on which the earner is an immigrant` IS ONE OF
+    `IL-07: an immigrant's visa or certificate under the Law of Return`
+    `IL-07: entitled to such a visa or certificate, with a visa or licence for temporary residence`
+    `IL-07: a returning resident` HAS
+        `the day the earner returned and became an Israeli resident`                 IS A DATE
+        `the earner had been a foreign resident for six consecutive years before it` IS A BOOLEAN
+    `IL-07: of a class the Minister of Finance has determined to be treated as an immigrant`
+    `IL-07: none of the grounds of section 35(d)`
+
+-- `it was the first time the earner became an immigrant`: s 35(c) "ולא יינתן
+--   אלא בפעם הראשונה שנעשה לעולה".
+-- `the Minister's rules under section 35(e) reach the earner`: the rules of
+--   5738-1977, not in the source bundle (row IL-08 declines where they reach).
+-- The months of the tax year the earner resided in Israel are not asked: the
+-- household is not absent from Israel (BRIEF.md), so every month of the year is
+-- given, and s 35 itself gives nothing for a month before the immigration.
+DECLARE `IL-07 the earner's immigration` HAS
+    `the ground of immigration`                                                      IS AN `IL-07 the ground on which the earner is an immigrant`
+    `the earner's Israeli citizenship was cancelled under section 10(d) of the Citizenship Law` IS A BOOLEAN
+    `the day the earner became an immigrant`                                         IS A DATE
+    `it was the first time the earner became an immigrant`                           IS A BOOLEAN
+    `the Minister's rules under section 35(e) reach the earner`                      IS A BOOLEAN
+
+§§ `Section 37: the statuses it reads`
+
+-- ITO s 37 "יחיד מוטב": the earner or the spouse past retirement age (the
+-- Retirement Age Law, not in the bundle: a status), or blind or disabled within
+-- s 9(5)(a) or (a1); and the assessing officer's finding that the spouse's
+-- maintenance was on the earner. Read only where the earner has a spouse.
+DECLARE `IL-07 the statuses section 37 reads` HAS
+    `the earner has reached retirement age`                                          IS A BOOLEAN
+    `the earner's spouse has reached retirement age`                                          IS A BOOLEAN
+    `the earner is blind or disabled within section 9(5)(a) or (a1)`                 IS A BOOLEAN
+    `the earner's spouse is blind or disabled within section 9(5)(a) or (a1)`                 IS A BOOLEAN
+    `the earner proved to the assessing officer that the spouse's maintenance was on the earner in the tax year` IS A BOOLEAN
+
+§§ `Section 335 of the National Insurance Law: the earner's insurance statuses`
+
+-- Each is another Chapter's answer, which the Institute records (row IL-08's
+-- `A person in a contribution period, for section 335`). The two the household
+-- already holds (resident in Israel, insured under Chapter 11) are the earner
+-- record's; the earner is an employee, so never a housewife under s 238.
+DECLARE `IL-07 the earner's insurance statuses, for section 335` HAS
+    `the earner is insured under Chapter 5, work injury`                             IS A BOOLEAN
+    `the earner is insured under Chapter 6, accident injury`                         IS A BOOLEAN
+    `the earner is insured for unemployment, under paragraph (1) of insured in section 158` IS A BOOLEAN
+    `the earner is a controlling shareholder in a closely-held company`              IS A BOOLEAN
+    `the earner is an employee insured under Chapter 8, insolvency`                  IS A BOOLEAN
+    `the earner is insured under Chapter 9, disability`                              IS A BOOLEAN
+    `the earner is insured for long-term care`                                       IS A BOOLEAN
+    `the earner is a widow pensioner as defined in section 238`                      IS A BOOLEAN
+
+§§ `Section 40(b): a parent without a spouse, and the children's other parent`
+
+-- One entry per child of the household, matched to the child by its name (so
+-- every child needs a name of its own). The facts s 40(b)(1A) and (3) read about
+-- the child's other parent.
+DECLARE `IL-07 a child's other parent, for section 40(b)` HAS
+    `the name of the child`                                                          IS A STRING
+    `the child's other parent died in or before the tax year`                                IS A BOOLEAN
+    `the child is registered in the population register without the details of one parent` IS A BOOLEAN
+    `the child's other parent is an Israeli resident in the tax year`                        IS A BOOLEAN
+    `the child's other parent has credit points for the child under section 40(b)(1)`        IS A BOOLEAN
+
+-- `the earner and the children are a single-parent family`: s 40(b)(1)
+--   "הורה במשפחה חד־הורית" and (1A) "ילד במשפחה חד־הורית"; undefined in the
+--   Ordinance (row IL-08, A5), a status. The household is one family, so the
+--   earner's status and each child's are the same fact.
+-- `the earner maintained the children in the tax year`: (1) "שכלכלתם היתה עליו".
+-- `the earner lives apart from the children's other parent`, `the earner's share
+--   of the children's maintenance expenses` (0 to 1): s 40(b)(2).
+DECLARE `IL-07 the single-parent family, for section 40(b)` HAS
+    `the earner and the children are a single-parent family`                         IS A BOOLEAN
+    `the earner maintained the children in the tax year`                             IS A BOOLEAN
+    `the earner lives apart from the children's other parent`                        IS A BOOLEAN
+    `the earner's share of the children's maintenance expenses`                      IS A NUMBER
+    `each child's other parent`                                                      IS A LIST OF `IL-07 a child's other parent, for section 40(b)`
+
+§§ `The further facts, together`
+
+-- `the earner's immigration, if the earner is an immigrant`: NOTHING for one who
+--   is not.
+-- `the statuses section 37 reads, if given`: NOTHING where not given; the
+--   couple's s 37 field must then be FALSE, or the tax is declined.
+-- `the earner's insurance statuses for section 335, if given`: NOTHING where not
+--   given; an earner resident in Israel and insured under Chapter 11 is then
+--   taken to be insured in every branch, as version 0.1.0 took every employee to
+--   be (NOTES.md fork K16), and any other earner's contributions are declined.
+-- `the single-parent family, if given`: read only where the earner has no
+--   spouse and has children; NOTHING there declines the tax.
+DECLARE `IL-07 further facts of the household` HAS
+    `the earner's pension contributions and insurance`                               IS AN `IL-07 the earner's pension contributions and insurance`
+    `the earner's immigration, if the earner is an immigrant`                        IS A MAYBE `IL-07 the earner's immigration`
+    `the statuses section 37 reads, if given`                                        IS A MAYBE `IL-07 the statuses section 37 reads`
+    `the earner's insurance statuses for section 335, if given`                      IS A MAYBE `IL-07 the earner's insurance statuses, for section 335`
+    `the single-parent family, if given`                                             IS A MAYBE `IL-07 the single-parent family, for section 40(b)`
+
 § `IL-07 — what passes between the rows`
 
 -- Schedule J's column D amount on the earner's wage, one field per branch for
@@ -144,9 +299,48 @@ DECLARE `IL-07 credit points section 66(c) gives the earner` HAS
     `IL-02's half point under section 37, by section 66(c)(2)`                       IS A NUMBER
     `IL-02's points for children, by section 66(c)(4) to (6)`                        IS A NUMBER
 
+-- NII s 335's answer for the earner, one field per branch. Rows IL-04, IL-05 and
+-- IL-08 each declare their own `A branch of insurance` (RECONCILE.md, clash N1),
+-- so the IL-08 adapter fills this record from IL-08's list and the IL-05 adapter
+-- turns it into IL-05's, matched by the branch's name.
+DECLARE `IL-07 branches in which contributions are payable for the earner` HAS
+    `contributions are payable for maternity`                                        IS A BOOLEAN
+    `contributions are payable for children`                                         IS A BOOLEAN
+    `contributions are payable for work injury`                                      IS A BOOLEAN
+    `contributions are payable for accident injury`                                  IS A BOOLEAN
+    `contributions are payable for unemployment`                                     IS A BOOLEAN
+    `contributions are payable for employees' rights in insolvency proceedings`      IS A BOOLEAN
+    `contributions are payable for disability`                                       IS A BOOLEAN
+    `contributions are payable for long-term care`                                   IS A BOOLEAN
+    `contributions are payable for senior citizens and survivors`                    IS A BOOLEAN
+
+-- ITO s 40(b)'s points for the earner, split as row IL-08 splits them.
+DECLARE `IL-07 credit points under section 40(b)` HAS
+    `points set against the tax generally, under section 40(b)(1) and (2)`           IS A NUMBER
+    `points set against the tax on income from personal exertion, under section 40(b)(1A) and (1B)` IS A NUMBER
+
+-- Which calculation governs the earner's tax for the year.
+DECLARE `IL-07 the calculation of the earner's tax` IS ONE OF
+    `an individual without a spouse`
+    `a separate calculation under section 66`
+    `the consolidated calculation under section 65, in the earner's name`
+
+-- THE SCHEDULE J SWITCH (NOTES.md fork K14; RECONCILE.md R1 and section 5).
+-- Above the reduced collection threshold, Schedule J column D's items for the six
+-- deduction branches sum to 4.67 for 2026 and its totals row prints 7.00, the
+-- rate the Institute deducts (row IL-04's open fork F4, which computes from the
+-- items). Ruled by Meng, 2026-10-07: the printed totals by default, the items
+-- kept as the alternative. The pipeline's rule `IL-07: the reading of Schedule J
+-- column D the capstone takes` names the one in force.
+DECLARE `IL-07 a reading of Schedule J column D above the reduced collection threshold` IS ONE OF
+    `the sum of the items of the six deduction branches`
+    `the printed total of column D`
+
 § `IL-07 — the answer`
 
--- The income tax for the tax year, with the figures it is made of.
+-- The income tax for the tax year, with the figures it is made of. The fields
+-- from `the calculation` on were added in version 0.2.0; each is 0 where its
+-- section gives nothing or the calculation does not reach it.
 DECLARE `IL-07 income tax for the tax year` HAS
     `the earner's taxable income in the tax year`                                    IS A NUMBER
     `the tax under section 121`                                                      IS A NUMBER
@@ -157,6 +351,12 @@ DECLARE `IL-07 income tax for the tax year` HAS
     `the credit points for children under section 66(c)`                             IS A NUMBER
     `the credit for children, set against the tax on income from personal exertion`  IS A NUMBER
     `the income tax for the tax year`                                                IS A NUMBER
+    `the calculation`                                                                IS AN `IL-07 the calculation of the earner's tax`
+    `the credit points under section 35`                                             IS A NUMBER
+    `the credit points under sections 37, 38 and 39, in a consolidated calculation`  IS A NUMBER
+    `the credit points for children under section 40(b)`                             IS A NUMBER
+    `the credit under section 45A`                                                   IS A NUMBER
+    `the deduction under section 47`                                                 IS A NUMBER
 
 DECLARE `IL-07 the household's month` HAS
     `the gross salary for the month`                                                 IS A NUMBER

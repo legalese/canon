@@ -1,0 +1,171 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `cdcsa-types`
+
+-- Child Development Co-Savings Act 2001 — GOAL 1: THE MEASURES EVERY
+-- ENTITLEMENT IS COUNTED IN (s 2; First Schedule).
+--
+--   "Which scheme does this child belong to; what is the eligibility date;
+--    is this the parent's first, second or later specified event; what is
+--    the weekly index; how long is '4 times the weekly index or 24 days'?"
+--
+-- Source: ../source/CDCSA2001.txt lines 109-327 (s 2), 4456-4555 (First Schedule).
+
+§ `Goal 1 — the common measures`
+
+§§ `Which scheme the child belongs to (s 2(1))`
+
+-- s 2(1) "April 2025 Scheme child": "(a) a child born alive and whose mother's
+-- confinement in respect of the child occurs on or after 1 April 2025, or
+-- occurs before 1 April 2025 but the estimated delivery date for that
+-- confinement is on or after that date; or (b) a child in respect of whom the
+-- eligibility date of the application to adopt the child is on or after
+-- 1 April 2025". "January 2024 Scheme child" is the same with 1 January 2024.
+@ref s 2(1) "April 2025 Scheme child", "January 2024 Scheme child"
+GIVEN start IS A DATE, e IS A `Child event`
+GIVETH A BOOLEAN
+DECIDE `a Scheme child from` start e IF
+    CONSIDER e
+    WHEN `a birth` b THEN
+            NOT b's `stillborn`
+        AND (   b's `confinement on` AT LEAST start
+             OR b's `estimated delivery date` AT LEAST start)
+    WHEN `an adoption` a THEN
+        `the eligibility date of` a AT LEAST start
+
+GIVEN e IS A `Child event`
+GIVETH A BOOLEAN
+DECIDE `an April 2025 Scheme child` e IF `a Scheme child from` (YMD 2025 4 1) e
+
+GIVEN e IS A `Child event`
+GIVETH A BOOLEAN
+DECIDE `a January 2024 Scheme child` e IF `a Scheme child from` (YMD 2024 1 1) e
+
+-- s 2(1) "eligibility date": "(a) if the child is a citizen or permanent
+-- resident of Singapore, the date on which the application to adopt the child
+-- is made; or (b) if the child is not ..., the date on which a dependant's pass
+-- is issued in respect of the child". No pass issued yet: no eligibility date.
+@ref s 2(1) "eligibility date"
+GIVEN a IS AN Adoption
+GIVETH A DATE
+`the eligibility date of` a MEANS
+    IF a's `the child is a citizen or permanent resident when the application is made`
+    THEN a's `application made on`
+    ELSE CONSIDER a's `dependant's pass issued on`
+         WHEN JUST d  THEN d
+         WHEN NOTHING THEN REFUSE "no dependant's pass has been issued, so there is no eligibility date yet"
+
+-- The date entitlements run from: the confinement, or the eligibility date.
+GIVEN e IS A `Child event`
+GIVETH A DATE
+`the event date of` e MEANS
+    CONSIDER e
+    WHEN `a birth` b     THEN b's `confinement on`
+    WHEN `an adoption` a THEN `the eligibility date of` a
+
+-- The child's date of birth (an adoption's child; a birth's confinement).
+GIVEN e IS A `Child event`
+GIVETH A DATE
+`the child's birth date in` e MEANS
+    CONSIDER e
+    WHEN `a birth` b     THEN b's `confinement on`
+    WHEN `an adoption` a THEN a's `child born on`
+
+§§ `First, second or later specified event (s 2(2))`
+
+-- s 2(2): "(a) if the relevant specified event occurs before 1 November 2021,
+-- any previous specified event of the woman is to be disregarded if, at the
+-- time of the relevant specified event, either of the following applies to
+-- each child from the previous specified event: (i) the child is dead or was a
+-- stillborn child; (ii) the child has been adopted by another person (other
+-- than jointly with the woman); (aa) if the relevant specified event occurs on
+-- or after 1 November 2021, any previous specified event of the woman is to be
+-- disregarded if ... each child from that previous specified event has been
+-- adopted by another person (other than jointly with the woman); and (b) any
+-- previous specified event involving an application by the woman to adopt a
+-- child is to be disregarded if ... the application has been withdrawn or
+-- refused."
+@ref s 2(2)
+GIVEN relevant IS A DATE, earlier IS A LIST OF `Earlier specified event`
+GIVETH A NUMBER
+`the specified event number on` relevant `, earlier events` earlier MEANS
+    count (filter (GIVEN p YIELD NOT `disregarded` p) earlier) PLUS 1
+    WHERE
+        `disregarded` p MEANS
+                p's `an adoption application since withdrawn or refused`
+            OR  (IF relevant LESS THAN YMD 2021 11 1
+                 THEN p's `each child is dead or was stillborn` OR p's `each child adopted by another person, not jointly with her`
+                 ELSE p's `each child adopted by another person, not jointly with her`)
+
+GIVEN n IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `a first or second specified event` n IF n AT MOST 2
+
+§§ `Age (s 2(2A))`
+
+-- s 2(2A): a person attains an age "on the relevant anniversary"; a person born
+-- on 29 February has the anniversary on 28 February in a common year.
+-- `add years` moves 29 February to 28 February.
+@ref s 2(2A)
+GIVEN born IS A DATE, on IS A DATE
+GIVETH A NUMBER
+`the age in years of a person born` born `, on` on MEANS
+    `count from` 0
+    WHERE
+        `count from` n MEANS IF `add years` born (n PLUS 1) AT MOST on THEN `count from` (n PLUS 1) ELSE n
+
+-- "below 12 months of age": before the first anniversary.
+@ref ss 2(1) "specified event" (b)-(d); 12AC(1)(d)
+GIVEN born IS A DATE, on IS A DATE
+GIVETH A BOOLEAN
+DECIDE `below 12 months of age, born` born `, on` on IF
+    on LESS THAN `add years` born 1
+
+§§ `The weekly index (First Schedule)`
+
+-- Part 1: item 1 "Number of work days in a week"; item 2 "T/W"; item 3 "T/3",
+-- the formulas the PDF prints as images (PROVENANCE.md). Note 3: a day of 5
+-- hours or less counts as half a work day (the caller counts T so). Note 3A:
+-- "the maximum number of work days is 6".
+@ref First Schedule Part 1 items 1-3, notes 3, 3A
+GIVEN p IS A `Work pattern`
+GIVETH A NUMBER
+`the weekly index for` p MEANS
+    `at most 6` (CONSIDER p
+                 WHEN `the same number of work days every week` d          THEN d
+                 WHEN `a pattern repeated over a fixed number of weeks` t w THEN t DIVIDED BY w
+                 WHEN `no regular pattern` t                               THEN t DIVIDED BY 3)
+    WHERE
+        `at most 6` x MEANS IF x GREATER THAN 6 THEN 6 ELSE x
+
+-- Note 5: "Any duration calculated under this Act as a multiple of the weekly
+-- index, if not a whole number of days, is to be rounded down to the nearest
+-- half-day or whole day."
+@ref First Schedule Part 1 note 5
+GIVEN x IS A NUMBER
+GIVETH A NUMBER
+`rounded down to the half day` x MEANS FLOOR (x TIMES 2) DIVIDED BY 2
+
+-- "k times the employee's weekly index or 6k days, whichever is the lower" —
+-- the Act's recurring week-equivalent (k = 1, 2, 4, 8, N).
+@ref ss 9(1)(c)(ii), 9A(4), 10(2), 12AA(5), 12DB, 12F(2), 12H(1)(b), 12I(3); First Schedule note 5
+GIVEN k IS A NUMBER, wi IS A NUMBER, `cap days` IS A NUMBER
+GIVETH A NUMBER
+`the lower of` k `times the weekly index` wi `or` `cap days` MEANS
+    IF `multiple` LESS THAN `cap days` THEN `multiple` ELSE `cap days`
+    WHERE
+        `multiple` MEANS `rounded down to the half day` (k TIMES wi)
+
+§§ `Capped payments`
+
+-- The caps all read "an amount that does not exceed $X for every period
+-- equal in duration to [a week-equivalent] ... and ... a total of $Y". For
+-- `blocks` such periods paid at `pay per block`, the most payable.
+@ref ss 9A(4)-(5), 10(2), 12AA(5), 12AB(2), 12AD(2), 12DB, 12F(2)-(3), 12G(2), 12I(3)-(4), 12J(2), 12JA(4)
+GIVEN `cap per block` IS A NUMBER, `total cap` IS A NUMBER, blocks IS A NUMBER, `pay per block` IS A NUMBER
+GIVETH A NUMBER
+`at most` `cap per block` `per block and` `total cap` `in all, for` blocks `blocks paid at` `pay per block` MEANS
+    IF `uncapped` GREATER THAN `total cap` THEN `total cap` ELSE `uncapped`
+    WHERE
+        `per block` MEANS IF `pay per block` GREATER THAN `cap per block` THEN `cap per block` ELSE `pay per block`
+        `uncapped`  MEANS blocks TIMES `per block`

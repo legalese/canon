@@ -1,0 +1,159 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `cma-types`
+IMPORT `cma-definitions`
+IMPORT `cma-offences`
+
+-- Computer Misuse Act 1993 — GOAL 4: REACH AND PROCEDURE (ss 13-20).
+--
+--   "Does the Act reach this conduct; may the charges be amalgamated; which
+--    court tries it; may it be compounded, and for how much; may compensation
+--    be ordered; may the police arrest without warrant?"
+--
+-- Source: ../source/CMA1993.txt lines 541-667.
+
+§ `Goal 4 — reach and procedure`
+
+§§ `Territorial scope (s 13)`
+
+-- s 13(1)-(2): the Act has effect "whatever the person's nationality or
+-- citizenship, outside as well as within Singapore", and an offence committed
+-- outside Singapore may be dealt with as if committed within. s 13(3): "this
+-- Act applies if — (a) ... the accused was in Singapore at the material time;
+-- (b) for the offence in question (being one under section 3, 4, 5, 6, 7 or
+-- 8), the computer, program or data was in Singapore at the material time; (c)
+-- the offence causes, or creates a significant risk of, serious harm in
+-- Singapore; or (d) the offence is one under section 8A(1) or 8B(1)".
+-- s 13(5): it is immaterial whether the harm is direct or the only or main
+-- cause.
+@ref s 13(1)-(5)
+GIVEN o IS AN `Alleged offence`, t IS A `Territorial facts`
+GIVETH A BOOLEAN
+DECIDE `the Act reaches the conduct` o t IF
+        t's `the accused was in Singapore at the material time`
+    OR  (elem (`the provision of` o) (LIST "s 3", "s 4", "s 5", "s 6", "s 7", "s 8")
+         AND t's `the computer, program or data was in Singapore at the material time`)
+    OR  NOT t's `harm caused or significantly risked` EQUALS `no serious harm in Singapore`
+    OR  elem (`the provision of` o) (LIST "s 8A", "s 8B")
+
+§§ `Amalgamation of charges (s 14)`
+
+-- s 14(1): "2 or more acts — (a) each of which is an offence under the same
+-- provision in Part 2; (b) that involve the same computer; and (c) that are
+-- committed in a period that does not exceed 12 months". s 14(2)-(3): one
+-- charge, naming the computer and the dates between which the acts were
+-- committed, "is treated as a charge of one offence".
+-- FORK F2: the period runs from the first act to the last; it does not exceed
+-- 12 months if the last act is on or before the same day of the month twelve
+-- months after the first (the first day excluded, as in s 50(a) of the
+-- Interpretation Act 1965). Revised 2026-10-07 after the independent pass.
+DECLARE `Act charged` HAS
+    `provision`      IS A STRING
+    `computer`       IS A STRING
+    `committed on`   IS A DATE
+
+@ref s 14(1)-(3)
+GIVEN acts IS A LIST OF `Act charged`
+GIVETH A BOOLEAN
+DECIDE `the acts may be charged as one offence` acts IF
+    CONSIDER acts
+    WHEN EMPTY THEN FALSE
+    WHEN first FOLLOWED BY rest THEN
+            NOT null rest
+        AND all (GIVEN x YIELD x's `provision` EQUALS first's `provision`) rest
+        AND all (GIVEN x YIELD x's `computer` EQUALS first's `computer`) rest
+        AND `the latest of` (first's `committed on`) `days` AT MOST `add months` (`the earliest of` (first's `committed on`) `days`) 12
+        WHERE
+            `days` MEANS map (GIVEN x YIELD x's `committed on`) rest
+
+GIVEN d IS A DATE, ds IS A LIST OF DATE
+GIVETH A DATE
+`the earliest of` d ds MEANS
+    CONSIDER ds
+    WHEN EMPTY THEN d
+    WHEN e FOLLOWED BY more THEN `the earliest of` (IF e LESS THAN d THEN e ELSE d) more
+
+GIVEN d IS A DATE, ds IS A LIST OF DATE
+GIVETH A DATE
+`the latest of` d ds MEANS
+    CONSIDER ds
+    WHEN EMPTY THEN d
+    WHEN e FOLLOWED BY more THEN `the latest of` (IF e GREATER THAN d THEN e ELSE d) more
+
+§§ `Courts (s 15)`
+
+-- s 15: "A District Court or a Magistrate's Court has jurisdiction to hear and
+-- determine all offences under this Act and, despite anything to the contrary
+-- in the Criminal Procedure Code 2010, has power to impose the full penalty".
+@ref s 15
+GIVETH A LIST OF STRING
+`the courts that may try an offence and impose the full penalty` MEANS
+    LIST "a District Court", "a Magistrate's Court"
+
+§§ `Composition (s 16)`
+
+-- s 16(1): "The Commissioner of Police or any person authorised by the
+-- Commissioner may compound any offence under this Act that is prescribed as a
+-- compoundable offence by collecting ... a sum not exceeding $3,000." Which
+-- offences are prescribed is for regulations under s 16(2): an input.
+@ref s 16(1)-(2)
+GIVEN prescribed IS A BOOLEAN
+GIVETH A MAYBE NUMBER
+`the most that may be collected to compound, prescribed:` prescribed MEANS
+    IF prescribed THEN JUST 3000 ELSE NOTHING
+
+§§ `Compensation (s 17)`
+
+-- s 17(1): on conviction the court "may make an order ... for the payment ...
+-- of a sum to be fixed by the court by way of compensation to any other person
+-- for any damage caused to the other person's computer, program or data by
+-- the offence". "damage" here is the ordinary word: s 2(1) "damage" applies
+-- "except for the purposes of section 17".
+-- s 17(2): a claim for damages "is deemed to have been satisfied to the extent
+-- of any amount which has been paid ... under an order for compensation, but
+-- the order does not affect any right to a civil remedy for the recovery of
+-- damages beyond the amount of compensation paid". s 17(3): recoverable as a
+-- civil debt.
+@ref s 17(1)
+GIVEN convicted IS A BOOLEAN, harmed IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a compensation order may be made, convicted:` convicted `, another's computer, program or data harmed:` harmed IF
+    convicted AND harmed
+
+@ref s 17(2)
+GIVEN damages IS A NUMBER, paid IS A NUMBER
+GIVETH A NUMBER
+`the damages still recoverable in a civil claim, assessed at` damages `, compensation paid` paid MEANS
+    IF damages GREATER THAN paid THEN damages MINUS paid ELSE 0
+
+§§ `Investigation and arrest (ss 18-19)`
+
+-- s 18: nothing in the Act prohibits a police officer, an authorised person
+-- under s 39 of the Criminal Procedure Code 2010 or another duly authorised law
+-- enforcement officer "from lawfully conducting investigations pursuant to the
+-- powers conferred on him or her under any written law".
+@ref s 18
+GIVEN `a duly authorised law enforcement officer` IS A BOOLEAN
+      `lawfully investigating under a written law power` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Act does not prohibit the investigation, officer:` `a duly authorised law enforcement officer` `, lawful:` `lawfully investigating under a written law power` IF
+    `a duly authorised law enforcement officer` AND `lawfully investigating under a written law power`
+
+-- s 19: "Any police officer may arrest without warrant any person reasonably
+-- suspected of committing an offence under this Act."
+@ref s 19
+GIVEN `reasonably suspected` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a police officer may arrest without warrant, reasonably suspected:` `reasonably suspected` IF
+    `reasonably suspected`
+
+§§ `Provisions carried as text`
+
+-- Nothing to compute: the long title, s 1, s 20 (the Minister may amend the
+-- First and Second Schedules by order in the Gazette).
+@ref long title; ss 1, 20
+GIVETH A LIST OF STRING
+`provisions carried as text` MEANS
+    LIST "Long title: An Act to make provision for securing computer material against unauthorised access or modification, for preventing abuse of the national digital identity service, and for matters related thereto."
+         "s 1: This Act is the Computer Misuse Act 1993."
+         "s 20: The Minister may, by order in the Gazette, amend the First and Second Schedules."

@@ -369,3 +369,158 @@ The Israeli fetch proxy was not used.
 - **The capstone was not touched**; section 6 says what its adapters would need.
 - **Not committed**: the brief forbids any git change.
 - **The ITO credit sections outside the ruled scope** (ss 39A, 39B, 40A-40D, 44, 45, 46) remain unencoded; they are the obvious next unit, and GAPS item 8 lists them.
+
+## Comparison with Axiom's RuleSpec (2026-10-07)
+
+Written by the comparison author for row IL-08 (`lad-il-08`), one session, no sub-agents, on 2026-10-07, after both halves of the row and both independent passes had been deposited, as the semi-cleanroom ruling of 2026-10-06 requires.
+This section covers the Income Tax Ordinance half only; the National Insurance half's `NOTES.md` carries its own.
+Nothing else in this row, and nothing in the commons, was edited; nothing was repaired.
+A divergence below is a finding, not a fix.
+
+### What was read
+
+**Axiom.** A local clone of the Axiom Foundation's `rulespec-il`, read-only, at commit `95c6f32c87c75e318631cbd77c14b840bc536c15` (the merge of its PR #8, 2026-10-03); nothing was pulled.
+Read: `NOTICE`; the heads of `LICENSE` and `LICENSE-CODE`; `data/coverage/tax-benefit-source-map.json` (whole); `docs/ENCODING-GAPS.md` (lines 140-714, and its headings above); `docs/encoding-charter.md` lines 40-55; `known-missing-money-atoms.yaml` and `known-validation-gaps.yaml` (whole; neither has any entry); `README.md` by search; `il/statutes/composed/worker-with-children-monthly-net-pipeline.yaml` (lines 1-535, and its rule list) and the child facts and outputs of all 15 cases in its `.test.yaml`; `il/statutes/income-tax-ordinance/section-66.yaml` lines 1-140 (its deferrals) and the input names of its `.test.yaml`; the residence condition in `section-34.yaml` and `section-36.yaml`.
+No Axiom module exists for any provision of this half (`ls il/statutes/income-tax-ordinance/`: ss 33A, 34, 36, 36A, 66, 120B, 121, 121B only), so there was no module or companion test file of theirs to read for it.
+Nothing of any other Axiom repository was read, and nothing under `l4-ide/specs/research/AXIOM-*`.
+
+**Ours.** This row's `BRIEF.md`, `NOTES.md`, `encoding.json`, `INDEPENDENT-FINDINGS.md`, `DECIDED-ANSWERS.md` and `tests-independent.l4`, in full; the modules `ito-il08-tax-years.l4`, `ito-il08-published-figures.l4`, `ito-s1-israeli-resident.l4`, `ito-s2-sources-of-income.l4`, `ito-s35-new-immigrant.l4`, `ito-s40-children-credit-points.l4` and `ito-s64b-s65-registered-spouse.l4` in full; `ito-s37-s38-s39-spouse-credits.l4` to line 120; `ito-s45a-insurance-and-pension-credit.l4`, `ito-s47-deduction.l4`, `ito-s47a-definitions.l4` and `ito-il08-nouns.l4` through their headers, exported rules and the records the comparison used.
+Row IL-07's `GAPS.md`.
+The deposited Ordinance at the lines cited below (sha256 `b87f2cf4…94b81b6`, checked), and the deposited National Insurance Law at the lines cited for F19.
+
+**Licence.** `NOTICE` puts Axiom's encodings, companion test cases, parameter values and provenance metadata under CC BY 4.0 (`LICENSE`) and its tooling under Apache 2.0 (`LICENSE-CODE`); confirmed from the three files.
+Axiom material appears here only as short attributed snippets: Axiom Foundation RuleSpec corpus (CC BY 4.0), https://github.com/TheAxiomFoundation.
+
+**Runs.** Axiom's cases were put through a scratch copy of this directory (the session scratchpad, `lad-il-08/ito/zz-axiom-cases.l4`; cross-directory `IMPORT` does not work), with `/Users/mengwong/.local/bin/l4 run`, `JL4_LIBRARY_PATH` unset, at 2026-10-07T05:59:57Z.
+The binary had changed since section 0: `~/.cabal/bin/l4` is now `/Volumes/transcend/caches/cabal/bin/l4`, sha256 `6015a4c3fa181842c597c95948290fe45537963d279ae5b5918a106a0c3b54a6`, modified 2026-10-07T05:35:45Z.
+Under it this row's `ito-il08-tests-s37-s40.l4` still gives 52 satisfied, 0 failed, 0 refused, as section 0 records.
+The scratch module: 33 assertions, 33 satisfied, 0 errors.
+
+### Coverage: what Axiom did with each provision of this half
+
+Axiom's own inventory, `tax-benefit-source-map.json`, lists the Ordinance's encoded sections as ss 33A, 34, 36, 36A, 66, 120B, 121 and 121B (lines 33-42); its `not_encoded` list names "§35 עולה credit", "§37-§39 credits", s 40(a) and (b), s 45A and s 121A, after "every other section of the Ordinance" (lines 51-58); and its `applied_without_a_module` list names ss 2, 1 and 40, each as one quoted definition used inside the composed pipeline (lines 59-78).
+
+| provision (ours) | source lines | ours | Axiom | Axiom file, status |
+| --- | --- | --- | --- | --- |
+| s 1 "Israeli resident" (a), individual | 143-163 | encoded: (a)(2)-(3); (a)(1) a recorded finding; (a)(4) refused | **input**: Boolean `taxpayer_is_israeli_resident`, fed to ss 34 and 36 | composed pipeline lines 310-326; `ENCODING-GAPS.md` lines 516-520 ("the Ordinance's §1 residence definition is not encoded") |
+| s 1 "work income", s 2(2)(a) | 121, 216 | encoded | **applied without a module**: the whole wage is classed as s 2(2) income, quoting the words of s 2(2)(a) | composed pipeline lines 253-275; source map lines 60-65 |
+| s 2 chapeau and (1)-(10) | 209-245 | encoded (territorial charge; sources an enumeration) | **left out** ("every other section") | — |
+| s 35 | 1572-1588 | encoded; (e) refused | **left out**, named | source map line 53; `section-66.yaml` lines 35-38 name it among the "unavailable mechanics" of s 66(c)(1) |
+| s 37 | 1599-1600 | encoded | **left out**, named | source map line 54; `section-66.yaml` lines 39-43: s 66(c)(2)'s half point kept as a parameter, its application deferred for want of s 37 |
+| s 38, s 39 | 1602-1607 | encoded | **left out**, named | source map line 54 |
+| s 40(a) | 1632 | inert (fork F19; an input to ss 38, 39) | **left out**, named | source map line 55; `ENCODING-GAPS.md` lines 425-429; `section-66.yaml` lines 44-46 (s 66(c)(3) deferred for want of it) |
+| s 40(b)(1), (1A), (1A1), (1B), (2) | 1633-1640 | encoded | **left out**, named; "A single-parent household therefore cannot be computed by this pilot" | source map line 55; `ENCODING-GAPS.md` lines 425-429 |
+| s 40(b)(3) "year of birth", "year of majority" | 1644-1645 | encoded (derived from the child's tax year of birth) | **applied without a module**: the 18 of "year of majority" as a parameter; year of birth and year of majority as Boolean inputs per child | composed pipeline lines 432-453; source map lines 72-77; `ENCODING-GAPS.md` lines 410-415 |
+| s 45A | 1714-1739 | encoded | **left out**, named; "deliberately out of scope" | source map line 56; `encoding-charter.md` lines 51-53; `ENCODING-GAPS.md` line 682 |
+| s 47 | 1763-1789 | encoded; (d) refused | **left out** (not named; "every other section") | `section-66.yaml` lines 35-38 names it with s 45A among s 66(c)(1)'s "unavailable mechanics" |
+| s 64B | 2439-2445 | encoded (the conditions on the power and the election) | **left out**; whether a person is the non-registered spouse is an input of their s 66 | `section-66.yaml` line 670 (input `person_is_nonregistered_spouse`) |
+| s 65 | 2447-2448 | encoded | **left out**; the composition assumes a separate calculation is elected | composed pipeline lines 137-140; `ENCODING-GAPS.md` lines 522-525 |
+| s 121A | 4452-4453 | inert (repealed) | **left out**, named, no reason given | source map line 57; `section-66.yaml` lines 35-38 ("unavailable mechanics" of s 121A) |
+| *not ours:* s 1 "tax year" | 202 | **not encoded, no coverage row** | **applied without a module**: 12 months, to annualise the wage and to divide the year's tax | composed pipeline lines 183-198; source map lines 66-71 |
+
+**Counts**, over the fourteen rows of ours: encoded by Axiom as a module, **0**; applied without a module inside their composition, **2** (s 1 "work income" with s 2(2), and s 40(b)(3)); handled as an input, **2** (residence; the registered-spouse status s 64B decides); left out, **10**, of which 7 are named in their `not_encoded` list (ss 35, 37, 38-39, 40(a), 40(b)(1)-(2), 45A, 121A) and 3 fall only under "every other section" (s 2's charge, s 47, s 65).
+Where Axiom gives a reason for leaving a provision out, the reason is one of scope (the pilot's bounds, its entity model, its charter), never a reading of the text; the one stated reason that is wrong on the text is s 121A's (A10 below).
+
+### Where Axiom applies one of our provisions: scope, numbers, readings, interface
+
+**s 40(b)(3)** (lines 1644-1645).
+Axiom quotes the definition of the year of majority as one parameter, `child_maturity_age_years` = 18, effective 2026-01-01, and uses it as the upper bound of the age-six-to-majority band of s 66(c)(4)-(5) (`age < 18`).
+The year of birth and the year of majority are two further Boolean inputs per child (`child_N_is_in_birth_year`, `child_N_is_in_maturity_year`), independent of the age input; their s 66 module says it "does not infer a maturity year from an invented age" (`section-66.yaml` lines 52-55).
+Their `child_N_age_years` is "the age the child reaches during the tax year" (composed pipeline lines 72-81), which is our s 40(b)(3) age (the tax year less the tax year of birth).
+The text leaves nothing open here; the difference is in the interface.
+Where the inputs disagree with each other Axiom has no check: by their formula (composed pipeline lines 492-506), an age of 18 with the maturity flag FALSE gives 0 points, and an age of 17 with it TRUE gives a woman 0.5, without a diagnostic (read, not run).
+Ours derives all three from one fact and cannot be contradicted.
+
+**s 2(2)(a)** (line 216) and **s 1 "work income"** (line 121).
+Axiom classes the composition's whole wage as s 2(2) income so that it falls in the first category of s 121B(e); it quotes the words of s 2(2)(a) as a definition and computes nothing from s 2.
+Ours takes the item's source from the caller and encodes s 2's territorial charge and s 1's "work income".
+They agree.
+
+**s 1 "tax year"** (line 202) is applied by Axiom as `months_in_tax_year` = 12, quoting the first limb only (twelve consecutive months from 1 January); the second limb, a special assessment period, does not reach an employee.
+This half does not encode it and its coverage table has no row for it; the independent pass's D004 lists it as not represented.
+
+### Axiom's cases put through our encoding
+
+Axiom has no test case of its own on any provision of this half.
+The 15 cases of its composed pipeline (`worker-with-children-monthly-net-pipeline.test.yaml`, all for 2026) each rest on our s 1 residence and s 2(2), and, where there are children, on s 40(b)(3); they were put through ours as far as their facts allow.
+
+| Axiom case(s) (test-file line) | what the case takes from our provisions | put through ours | result |
+| --- | --- | --- | --- |
+| C1 (1), C3 (123), C5 (245), C10 (548), C15 (837): children aged 2 and 8 | s 40(b)(3): neither child in its year of birth or of majority | `s 40(b)(3) — the age the child turns in tax year` 2026, children born 2024 and 2018 | **match** (age 2 and 8; neither 0 nor 18) |
+| C2 (62): the same children, a father | the same | the same | **match** |
+| C6 (304), C7 (365), C13 (731): a child in its year of birth (age 0) and one in its year of majority (age 18) | s 40(b)(3), both flags | born 2026 and 2008 | **match** (0 is the year of birth; 18 the year of majority) |
+| C8 (426): aged 3 and 5 | s 40(b)(3) | born 2023 and 2021 | **match** |
+| C9 (487): aged 19 and 8 | s 40(b)(3): 19 is past the year of majority | born 2007 and 2018 | **match** |
+| C11 (609): aged 17 and 8 | s 40(b)(3) | born 2009 and 2018 | **match** |
+| C12 (670): `child_1_age_years` 3, `child_1_age_at_month_years` 2 | s 40(b)(3): the age reached in the year, 3 | born 2023 | **match** |
+| C4 (184), C14 (792): no children | — | — | not applicable |
+| all 15 | s 2(2): the wage (12 × the monthly wage) is s 2(2) income | `s 1 — work income:` and s 2's charge on an employment item of 180,000 (C1's figure; the rule does not read the amount) | **match** |
+| all 15 | s 1 residence | — | **could not be run**: the case supplies the conclusion (`taxpayer_is_israeli_resident: true`), not the days in Israel or a finding our rule reads |
+| all 15 | s 1 "tax year" (12 months) | — | **could not be run**: not encoded in this half |
+
+Beside these, labelled as a cross-check of figures and not of a reading: the per-child points Axiom's composition reads from s 66(c)(4)(a) (a woman) and s 66(c)(5) (a man), at every age its cases use, equal our s 40(b)(1) table (2.5, 4.5, 3.5, 2.5, 2, 2, 0.5, 0 at ages 0, 2, 3, 5, 8, 17, 18, 19) and our s 40(b)(1A) table (2.5, 4.5, 1, 0 at ages 0, 2, 8, 18).
+The two Ordinance provisions print the same ladders (lines 1633, 1635-1637; 2466, 2473-2476).
+12 assertions, all satisfied.
+
+A probe, not an Axiom case: the father of C2's children (aged 2 and 8) as a single parent with whom they live gets 6.5 points under our s 40(b)(1) (4.5 + 2, against the tax generally, 0 against the tax on income from personal exertion; 2 assertions, satisfied).
+C2's own figures for the same children, under s 66(c)(5), are 4.5 + 1 = 5.5; that is what Axiom's composition gives such a father, since nothing in its inputs says he has no spouse (A6).
+
+### Divergences and differences
+
+| id | provision | ours | Axiom | source lines | classification | repair if ours is wrong |
+| --- | --- | --- | --- | --- | --- | --- |
+| A1 | s 40(b)(3) | year of birth and of majority derived from the child's tax year of birth | the 18 as a parameter; both years as Boolean inputs per child, unchecked against the age | 1644-1645 | representational difference; no case diverges | — |
+| A2 | s 2(2), s 1 "work income" | caller classifies the item; territorial charge encoded | the whole wage is s 2(2) income, quoted | 121, 210, 216 | representational difference; agree | — |
+| A3 | s 1 "tax year" | not encoded; no coverage row | applied: 12 months | 202 | scope difference (a gap in our coverage table, not in a rule; D004 of the independent pass says the same) | none needed in a rule; a coverage row in section 2 |
+| A4 | s 1 "Israeli resident" | encoded as far as the text decides, refusing otherwise | a Boolean input | 143-163 | scope difference | — |
+| A5 | s 40(a) | inert; F19: the old s 109 it points at maps to the present s 68 and Schedule D, and Schedule D is repealed | described as a live entitlement ("נקודות קיצבה for children, paid by the National Insurance Institute under §109 of the 1968 Law"); their s 66(c)(3) deferral calls them "pension points" and says computing them "requires the unavailable section 40(a) entitlement" | ITO 1632, 2464; NII 5405, 4518 | genuine ambiguity, recorded by us and not by them; no figure differs (neither computes it) | — |
+| A6 | s 40(b)(1)-(2) and a single parent | encoded | not encoded, and the composition has no input for whether the earner has a spouse: a single parent put to it gets s 66(c)'s ladders | 1633-1640; s 66(a)(1) line 2456 gives the separate calculation to "a spouse who is not the registered spouse" | scope difference, silent on their side (their gap entry says single parents cannot be computed; the pipeline does not refuse them) | — |
+| A7 | s 45A, s 47 | encoded | left out; the composition's taxable income is twelve times the wage, with no s 47 deduction, no s 45A credit and no input for either | 1714-1739, 1763-1789 | scope difference, documented in their prose, silent in their output | — |
+| A8 | s 35, ss 37-39 | encoded | left out; their s 66(c)(1) and (c)(2) deferrals name ss 35, 37, 45A and 47 as missing dependencies | 1572-1607; s 66(c)(1)-(2) lines 2461, 2463 | scope difference; our modules are the dependencies their deferrals name, subject to each module's inputs | — |
+| A9 | s 64B, s 65 | encoded | left out; separate calculation assumed; the non-registered status an input to their s 66 | 2439-2448 | scope difference, silent on their side for a couple assessed under s 65 | — |
+| A10 | s 121A | inert: repealed, its only text "(בוטל)" | in `not_encoded` without a reason, and among the "unavailable mechanics" their s 66(c)(1) deferral says it needs | 4452-4453; s 66(c)(1) line 2461 still names it | **theirs wrong** in a stated reason (a repealed section has no mechanics to supply); no figure affected | — |
+| A11 | s 40(b)(1A1); their s 66(c)(4)(a1) | the mother's election applied from the child's record (a flag, and the age 0 or 1) | the parallel election of s 66(c)(4)(a1) not applied: it "needs the same mother and child connected across two tax years, which this pilot's entity surface cannot express" | 1638; `ENCODING-GAPS.md` lines 417-423 | representational difference (two provisions, one device); ours applies it, and the independent pass found it moves two points for a child of one parent (its observation 1) | — |
+| A12 | tax years | every top-level rule refuses a year before 2024 (A1) | the composition answers from 2026-01-01; most of their atomic modules carry `effective_from: '0001-01-01'` and "will answer a request for any earlier year with the current text" | `ENCODING-GAPS.md` lines 192-217 | representational difference; no Axiom module of this half for it to bite on | — |
+
+No divergence shows a rule of this half wrong on the text.
+
+### Our independent pass's findings, and Axiom
+
+| finding (`INDEPENDENT-FINDINGS.md`) | Axiom |
+| --- | --- |
+| 1, D187: the s 45A(d)(1) floor is lost when survivors' insurance exceeds it (an encoding error, a cliff) | nothing: s 45A not encoded |
+| R1, D183: life insurance alone above the 5% proviso refused where the text answers | nothing: s 45A not encoded |
+| 2, D019: the second limb of "foreign resident" (lines 167-169) can overlap a centre-of-life residence | nothing: residence is a Boolean input, so their caller decides; neither encoding has a coverage row for "foreign resident" |
+| 3, D055: a second immigration, and the rules of s 35(e) | nothing: s 35 not encoded |
+| 4-6, D190, D236: whether the s 47(b) deduction or the s 45A credit takes a payment first | nothing: both left out, and their s 66(c)(1) deferral names both |
+| 7, D244: the tester's own error | — |
+| R2-R8: years before 2024 refused (A1) | see A12 |
+| observation 1: (1A1) moves two points for a child of one parent | see A11: Axiom declined the parallel election rather than apply it |
+| D004 (not represented): a date's tax year | Axiom applies s 1's definition (A3) |
+| D300, D303 (not represented): the value of a credit point | Axiom also takes it as an input, `credit_point_value_for_tax_year_ils`, 2,904 in every case, sourced from OECD TaxBEN as "a reference, not a source of law" (`ENCODING-GAPS.md` lines 366-368) |
+| D109, D271, D292, D293 (silent paths on ss 39, 64B, 65) | the same class of silent assumption in their composition: a separate calculation is assumed, with no input for spouses, the registered spouse or s 65 (A9) |
+
+### Our forks, and F19
+
+Axiom encodes none of ss 35, 37-40(b), 45A, 47, 64B and 65, so none of F1-F33 has an Axiom reading to set against it.
+Two touch something Axiom does.
+F12 (a child "not yet 19 in the tax year" is in through the year of majority) agrees with the banding of their s 66 ladders, which give the year of majority its own band and nothing from 19 (their C9).
+F19: Axiom's record does not address it.
+`ENCODING-GAPS.md` (lines 425-429) describes s 40(a) as allowance points paid "under §109 of the 1968 Law", and their s 66 module defers s 66(c)(3) because computing those points "requires the unavailable section 40(a) entitlement"; neither notes that the National Insurance Law's own table maps the old s 109 to the present s 68 and Schedule D (NII line 5405) and that Schedule D is repealed (NII line 4518).
+One further piece of evidence for F19 found in this pass: the consolidation's own link on the words "s 109 of the National Insurance Law [Consolidated Version], 5728-1968" at ITO line 1632 targets the present Law's s 68 (an editorial link of an unofficial consolidation, not law).
+F19 stays open; it is a question for a domain expert, not one Axiom's material settles.
+
+### What Axiom does that this half does not, and the reverse
+
+**Axiom, not us**: s 1's definition of the tax year (A3); a composed monthly net with proof atoms quoting each figure, reporting the statute's nominal child-allowance amounts beside the supplied current ones; a written list of what the composition assumes (`composed-capstone-bounds`); records of encoder runs that failed, and why.
+**Us, not Axiom**: every one of the fourteen provisions in the table above, with refusals where the text does not decide (the s 35(e) rules, the s 47(d) regulations, s 48, s 48A, s 14(b), s 1(a)(4)), the year gate, the Tax Authority's 2024-2026 figures carried as published figures and not as law, and 33 recorded forks.
+Of Axiom's own stated dependencies, our modules supply s 66(c)(1)'s ss 35, 45A and 47, s 66(c)(2)'s s 37, and s 66(c)(4)(a)'s s 40(b)(3); s 66(c)(3)'s s 40(a) we do not supply either (F19).
+
+### Bottom line
+
+Axiom encodes none of the provisions of this half.
+Two of them it applies as one-line definitions inside its composed pipeline, and on those our encoding agrees with every one of its fifteen cases.
+No finding of this comparison shows a rule of this half wrong.
+What the comparison shows is mostly about scope: Axiom's composed net leaves out ss 35, 37-40(b), 45A, 47 and 65 by design, with no input by which a caller could say any of them applies, so a single parent, a pension contributor, a new immigrant or a couple assessed together is answered without them and without a diagnostic, where row IL-07 declines such households and this row supplies the sections.
+Axiom's record treats one repealed section (s 121A) as a missing dependency, and does not examine s 40(a)'s pointer to a repealed schedule (F19).
+Two definitions are worth carrying into this row's coverage table, as rows and not as repairs: s 1's "tax year", which Axiom applies (A3), and s 1's "foreign resident", which our own independent pass raised (D019) and which Axiom does not touch either.

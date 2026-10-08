@@ -11,6 +11,10 @@
 # Only rule modules, their nouns and their published-figure modules are copied: never a
 # row's tests, tests-independent.l4, DECIDED-ANSWERS.md, INDEPENDENT-FINDINGS.md or tools.
 #
+# Version 0.2.0 (2026-10-07) adds row IL-08's two halves, each in its own subject's directory:
+# the modules the capstone composes and their import closure (the ITO half's s 1 and s 2
+# modules are not composed and not copied). 36 + 14 = 50 modules.
+#
 # Usage:
 #   vendor.sh            copy every module, then check it against VENDORED.sha256;
 #                        fails if a row's source no longer matches what was recorded
@@ -34,6 +38,8 @@ rows() {
   echo "IL-04 $NII/legalese-2026-10-il-04 nii-il04-nouns.l4 nii-il04-published-figures.l4 nii-s1-definitions.l4 nii-s334-interpretation.l4 nii-schedule-j-tables.l4 nii-schedule-j.l4 nii-s337-rates.l4"
   echo "IL-05 $NII/legalese-2026-10-il-05 nii-il05-nouns.l4 nii-il05-published-figures.l4 nii-schedule-k.l4 nii-s348-maximum-minimum.l4 nii-s342-liability-and-deduction.l4"
   echo "IL-06 $NII/legalese-2026-10-il-06 nii-il06-nouns.l4 nii-il06-period.l4 nii-s1-basic-amount.l4 nii-s65-interpretation.l4 nii-s66-entitlement.l4 nii-s67-count-of-children.l4 nii-s68-amount.l4 nii-il06-published-figures.l4 nii-il06-family-on-a-day.l4"
+  echo "IL-08 $ITO/legalese-2026-10-il-08 ito-il08-nouns.l4 ito-il08-tax-years.l4 ito-il08-published-figures.l4 ito-s47a-definitions.l4 ito-s45a-insurance-and-pension-credit.l4 ito-s47-deduction.l4 ito-s40-children-credit-points.l4 ito-s37-s38-s39-spouse-credits.l4 ito-s35-new-immigrant.l4 ito-s64b-s65-registered-spouse.l4"
+  echo "IL-08 $NII/legalese-2026-10-il-08 nii-il08-nouns.l4 nii-s72-period-of-allowance.l4 nii-s335-branches.l4 nii-schedule-a1-part-d.l4"
 }
 
 sha() { shasum -a 256 "$1" | cut -d' ' -f1; }

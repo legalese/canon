@@ -11,6 +11,7 @@ Both say: no copyright in the statute text (Copyright Act 5768-2007, s 6); the d
 ## The vendored modules
 
 The `.l4` files this directory's `vendor.sh` copies in are the six composed rows' own modules, under those rows' licence (Apache-2.0, each row's `encoding.json`).
+(Version 0.2.0: and the modules of row IL-08's two halves, under the same licence, each half's `encoding.json`. Row IL-08's Income Tax Ordinance half quotes the Tax Authority's 2026 withholding booklet and Amendment 262, as its own `SOURCE-LICENSE.md` records; nothing more is quoted here.)
 They are not committed here (`.gitignore`); `VENDORED.sha256` records which bytes were composed.
 
 ## Other material quoted

@@ -1,0 +1,224 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `ia-types`
+IMPORT `ia-penalties`
+
+-- Insurance Act 1966 — GOALS 1-3: IS THE ACTIVITY PERMITTED?
+--
+--   Goal 1, authorisation and conduct (ss 3-10, 64-92): may this person
+--   carry on, solicit, broke, place, name itself, act as agent?
+--   Goal 2, ownership and control (ss 26-37, 87-89): does this holding,
+--   stake, appointment or loan need approval, or exceed a limit?
+--   Goal 3, funds and premiums (ss 16, 22): may this allocation, withdrawal
+--   or premium be made?
+--
+-- One rule answers all three: `the activity is permitted`, with the offence
+-- the Act makes of it if not. Discretions and approvals are inputs.
+-- Source: ../source/IA1966.txt, the sections cited on each limb.
+
+§ `Goals 1-3 — permission`
+
+§§ `Thresholds (ss 26(7), 27(2), 34(9), 87(3))`
+
+-- s 26(7)(a): effective control: "(A) holds 20% or more of the total number of
+-- issued shares ...; or (B) is in a position to control 20% or more of the
+-- voting power"; or the directors act on the person's directions, or the person
+-- determines policy; (b): not an approved director or officer, nor a
+-- professional adviser only.
+@ref s 26(7)(a)-(b)
+GIVEN h IS A `Shareholding facts`
+GIVETH A BOOLEAN
+DECIDE `effective control of an insurer` h IF
+        (   h's `percentage of issued shares held with associates` AT LEAST 20
+         OR h's `percentage of voting power controlled with associates` AT LEAST 20
+         OR h's `the directors act on the person's directions`
+         OR h's `the person can determine the insurer's policy`)
+    AND NOT h's `an approved director or officer, or a professional adviser only`
+
+-- s 34(9)(a): "major stake": "(i) any beneficial interest exceeding 10% of the
+-- total number of issued shares ...; (ii) control over more than 10% of the
+-- voting power ...; or (iii) any interest ... where the directors ... act in
+-- accordance with the directions ... of the licensed insurer ... or where the
+-- insurer is in a position to determine the policy of the corporation".
+@ref s 34(9)(a)
+GIVEN shares IS A NUMBER, votes IS A NUMBER, directs IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a major stake, shares` shares `, votes` votes `, directs:` directs IF
+    shares GREATER THAN 10 OR votes GREATER THAN 10 OR directs
+
+-- s 87(3)(a): effective control of a broker: "20% or more of the issued share
+-- capital" or "20% or more of the voting power".
+@ref s 87(3)(a)
+GIVEN shares IS A NUMBER, votes IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `effective control of a broker, shares` shares `, votes` votes IF
+    shares AT LEAST 20 OR votes AT LEAST 20
+
+§§ `Fund rules (s 16(7), (9), (10))`
+
+-- s 16(7)(c): no allocation to the surplus account "except — (i) with the
+-- approval of the directors ... upon considering a written recommendation
+-- from the actuary ...; (ii) where ... [it] does not contravene the fund
+-- solvency requirement under section 17; (iii) [nor any prescribed condition];
+-- and (iv) where the amount does not exceed 1/9th of the amount allocated
+-- pursuant to paragraph (b) for a particular accounting period". (9): an
+-- unused balance cannot be carried forward.
+@ref s 16(7)(c), (9)
+GIVEN f IS A `Fund facts`
+GIVETH A NUMBER
+`the most that may be allocated to the surplus account` f MEANS
+    f's `allocated to participating policies by way of bonus this period` DIVIDED BY 9
+
+-- s 16(10): the insurer "may ... withdraw from the fund an amount not exceeding
+-- the surplus over any fund solvency requirement ... if and only if — (a) there
+-- is no provision in any instrument or contract binding the insurer disallowing
+-- such a withdrawal; and (b) the insurer ascertains from the latest statement
+-- of accounts ... that there is in fact such a surplus".
+@ref s 16(10)
+GIVEN surplus IS A NUMBER, requirement IS A NUMBER, disallowed IS A BOOLEAN
+GIVETH A NUMBER
+`the most that may be withdrawn from a fund, surplus` surplus `, solvency requirement` requirement `, disallowed:` disallowed MEANS
+    IF disallowed OR surplus LESS THAN requirement THEN 0 ELSE surplus MINUS requirement
+
+§§ `Is the activity permitted, and which offence if not`
+
+@ref ss 3(6), 4-9, 16, 22, 26, 27, 34-37, 64, 70, 75, 83-92
+GIVEN s IS A Standing, a IS AN Activity
+GIVETH A BOOLEAN
+DECIDE `the activity is permitted` s a IF
+    s's `exempted by the Authority from the provision` OR `permitted on the facts`
+    WHERE
+        `licensed for` c MEANS
+            CONSIDER c
+            WHEN `life business`    THEN s's `licensed for life business`
+            WHEN `general business` THEN s's `licensed for general business`
+        `may carry on insurance` MEANS
+                s's `licensed for life business` OR s's `licensed for general business`
+             OR s's `an authorised reinsurer` OR s's `a foreign insurer under a foreign insurer scheme`
+        `permitted on the facts` MEANS
+            CONSIDER a
+            -- s 4(1), (3); s 3(6); s 55: a licence for the class; a life
+            -- licence covers short-term accident and health business; a
+            -- reinsurer acting wholly abroad is not carrying on business here.
+            WHEN `carrying on a class of insurance business in Singapore as an insurer` c st abroad THEN
+                    abroad
+                OR `licensed for` c
+                OR (st AND s's `licensed for life business`)
+                OR s's `a foreign insurer under a foreign insurer scheme`
+            -- s 4(2)
+            WHEN `providing reinsurance from outside Singapore to persons in Singapore` unsolicited THEN
+                    s's `licensed for life business` OR s's `licensed for general business`
+                OR s's `a foreign insurer under a foreign insurer scheme`
+                OR s's `an authorised reinsurer`
+                OR unsolicited
+            -- s 5: holding out without the licence or authorisation
+            WHEN `holding out as a licensed insurer or authorised reinsurer` THEN
+                s's `licensed for life business` OR s's `licensed for general business` OR s's `an authorised reinsurer`
+            -- s 6(1)-(6)
+            WHEN `using the word "insurance" in a business name` consent intermediary indicated association THEN
+                    `may carry on insurance` OR consent OR association
+                OR (intermediary AND indicated)
+            -- s 7(1)
+            WHEN `co-branding with an unlicensed insurer's name or mark` consent THEN consent
+            -- s 8(1)-(2), (5)
+            WHEN `soliciting insurance business for an insurer` entitled abroad prescribed THEN
+                prescribed OR (entitled AND (NOT abroad))
+            -- s 9(1)
+            WHEN `operating a representative office` registered THEN registered
+            -- s 64(1), (3)-(5)
+            WHEN `arranging a contract as agent for a licensed insurer` agreement employee adviser THEN
+                agreement OR employee OR adviser
+            -- s 70(1)
+            WHEN `acting as agent for an insurer not entitled to carry on that business in Singapore` approval THEN approval
+            -- s 75(1), 92
+            WHEN `carrying on business as an insurance broker` THEN
+                s's `a registered insurance broker of the type` OR s's `an exempt insurance broker under s 92(1)(a)-(f), notified`
+            -- s 83(1)-(2), 84, 85
+            WHEN `a broker negotiating a contract with an insurer that is not licensed` excluded permission scheme THEN
+                excluded OR permission OR scheme
+            -- s 86(1), (2), (4)
+            WHEN `paying or receiving broker remuneration varied solely by volume` profit reinsurance THEN
+                profit OR reinsurance
+            -- s 90(1)
+            WHEN `holding out as a registered insurance broker` THEN s's `a registered insurance broker of the type`
+            -- s 91(1)-(3)
+            WHEN `using the words "insurance broking"` life association THEN
+                    s's `a registered insurance broker of the type` OR s's `an exempt insurance broker under s 92(1)(a)-(f), notified`
+                OR life OR association
+            -- s 26(1), 27(1)-(2)
+            WHEN `obtaining control of a licensed insurer incorporated in Singapore` h substantial arrangement approved THEN
+                    approved
+                OR (    NOT `effective control of an insurer` h
+                    AND NOT substantial
+                    AND arrangement LESS THAN 5)
+            -- s 34(1)-(2), (6)
+            WHEN `a licensed insurer acquiring or holding a stake in a corporation` sh vo directs excepted approved THEN
+                approved OR excepted OR (NOT `a major stake, shares` sh `, votes` vo `, directs:` directs)
+            -- s 87(2)
+            WHEN `agreeing to acquire shares of a registered insurance broker` sh vo approved THEN
+                approved OR (NOT `effective control of a broker, shares` sh `, votes` vo)
+            -- s 35(4)-(5), 36(1)
+            WHEN `appointing a key executive person, chairperson or director` approved disqualified consent THEN
+                approved AND ((NOT disqualified) OR consent)
+            -- s 37(1): a director, $5,000 in aggregate; an employee, one year's
+            -- emolument. s 89(1): a broker's non-employee director, none; an
+            -- employee (or employee-director), $3,000.
+            WHEN `granting an unsecured loan or advance` broker director employeeDirector outstanding emolument THEN
+                IF broker
+                THEN IF director AND (NOT employeeDirector) THEN outstanding EQUALS 0 ELSE outstanding AT MOST 3000
+                ELSE IF director THEN outstanding AT MOST 5000 ELSE outstanding AT MOST emolument
+            -- s 16(7)(c)
+            WHEN `allocating to the surplus account of a participating fund` f THEN
+                    f's `approved by the directors on the appointed actuary's written recommendation`
+                AND NOT f's `would breach the fund solvency requirement or a prescribed condition`
+                AND f's `proposed allocation to the surplus account this period` AT MOST `the most that may be allocated to the surplus account` f
+            -- s 16(10)
+            WHEN `withdrawing from an insurance fund` amount surplus requirement disallowed THEN
+                amount AT MOST `the most that may be withdrawn from a fund, surplus` surplus `, solvency requirement` requirement `, disallowed:` disallowed
+            -- s 22(1)
+            WHEN `issuing a life or long-term accident and health policy` approved THEN approved
+
+-- The offence the Act makes of each activity done without permission.
+-- s 16 and s 34's own fund rules are breaches of duty without a penalty of
+-- their own for s 16 (s 142(3) applies).
+@ref ss 4-9, 16, 22, 26, 27, 34-37, 64, 70, 75, 83-91, 142(3)
+GIVEN a IS AN Activity
+GIVETH AN `IA offence`
+`the offence for` a MEANS
+    CONSIDER a
+    WHEN `carrying on a class of insurance business in Singapore as an insurer` c st abroad THEN `s 4(5) carrying on insurance business, or providing reinsurance, unlicensed`
+    WHEN `providing reinsurance from outside Singapore to persons in Singapore` u            THEN `s 4(5) carrying on insurance business, or providing reinsurance, unlicensed`
+    WHEN `holding out as a licensed insurer or authorised reinsurer`                         THEN `s 5(2) holding out as a licensed insurer or authorised reinsurer`
+    WHEN `using the word "insurance" in a business name` a1 a2 a3 a4                         THEN `s 6(7) using the word "insurance" without entitlement`
+    WHEN `co-branding with an unlicensed insurer's name or mark` c1                          THEN `s 7(2) co-branding without consent`
+    WHEN `soliciting insurance business for an insurer` e1 e2 e3                             THEN `s 8(3) soliciting for an insurer not entitled, or for business outside Singapore`
+    WHEN `operating a representative office` r                                               THEN `s 9(8) operating an unregistered representative office`
+    WHEN `arranging a contract as agent for a licensed insurer` g1 g2 g3                     THEN `s 64(7) arranging as agent without a written agreement`
+    WHEN `acting as agent for an insurer not entitled to carry on that business in Singapore` p1 THEN `s 70(2) acting as agent for an insurer not entitled`
+    WHEN `carrying on business as an insurance broker`                                       THEN `s 75(2) carrying on broking unregistered`
+    WHEN `a broker negotiating a contract with an insurer that is not licensed` n1 n2 n3     THEN `s 83(3) placing risk with an unlicensed insurer`
+    WHEN `paying or receiving broker remuneration varied solely by volume` m1 m2             THEN `s 86(3) volume-based remuneration`
+    WHEN `holding out as a registered insurance broker`                                      THEN `s 90(2) holding out as a registered insurance broker`
+    WHEN `using the words "insurance broking"` w1 w2                                         THEN `s 91(4) using the words "insurance broking"`
+    WHEN `obtaining control of a licensed insurer incorporated in Singapore` h sub arr ap     THEN
+        IF `effective control of an insurer` h
+        THEN `s 26(6) obtaining effective control without approval, or breaching its conditions`
+        ELSE `s 27(7) becoming a substantial shareholder, or a 5% arrangement, without approval`
+    WHEN `a licensed insurer acquiring or holding a stake in a corporation` k1 k2 k3 k4 k5    THEN `s 34(8) acquiring or holding a major stake without approval`
+    WHEN `agreeing to acquire shares of a registered insurance broker` b1 b2 b3              THEN `s 87(4) agreeing to take control of a broker without approval`
+    WHEN `appointing a key executive person, chairperson or director` x1 x2 x3               THEN
+        IF x1 THEN `s 36(2) permitting a disqualified person to act` ELSE `s 35(16) lacking a required officer, or appointing without approval`
+    WHEN `granting an unsecured loan or advance` broker l2 l3 l4 l5                          THEN
+        IF broker THEN `s 89(3) a broker's unsecured loan over the limit` ELSE `s 142(3) breach of a duty with no penalty expressly provided`
+    WHEN `allocating to the surplus account of a participating fund` f                       THEN `s 142(3) breach of a duty with no penalty expressly provided`
+    WHEN `withdrawing from an insurance fund` w1 w2 w3 w4                                    THEN `s 142(3) breach of a duty with no penalty expressly provided`
+    WHEN `issuing a life or long-term accident and health policy` i1                         THEN `s 22(4) issuing a policy at a premium not approved by the actuary (each occasion)`
+
+-- s 145(2) reaches acts abroad only for offences under ss 4, 8, 70, 75.
+GIVEN a IS AN Activity
+GIVETH A BOOLEAN
+DECIDE `an offence under s 4, 8, 70 or 75` a IF
+    elem (`the offence for` a) (LIST `s 4(5) carrying on insurance business, or providing reinsurance, unlicensed`,
+                                     `s 8(3) soliciting for an insurer not entitled, or for business outside Singapore`,
+                                     `s 70(2) acting as agent for an insurer not entitled`,
+                                     `s 75(2) carrying on broking unregistered`)

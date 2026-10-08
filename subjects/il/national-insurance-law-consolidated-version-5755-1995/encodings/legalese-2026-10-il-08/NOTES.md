@@ -180,3 +180,120 @@ No officially published table of Part D was fetched to cross-check the tests; th
 
 - **No independent test pass**, **HG1 not sought**, **not committed**: as for the other half.
 - **No official cross-check of Part D**: the Institute publishes the women's ages by month of birth; a fetched copy would make a second oracle for the 37 assertions.
+
+## Comparison with Axiom's RuleSpec (2026-10-07)
+
+Written by the comparison author for row IL-08 (`lad-il-08`), one session, no sub-agents, on 2026-10-07, after both halves of the row and both independent passes had been deposited, as the semi-cleanroom ruling of 2026-10-06 requires.
+This section covers the National Insurance half only; the Income Tax Ordinance half's `NOTES.md` carries its own, including fork F19 (s 40(a)'s pointer to the old s 109 and the repealed Schedule D).
+Nothing else in this row, and nothing in the commons, was edited; nothing was repaired.
+A divergence below is a finding, not a fix.
+
+### What was read
+
+**Axiom.** A local clone of the Axiom Foundation's `rulespec-il`, read-only, at commit `95c6f32c87c75e318631cbd77c14b840bc536c15` (the merge of its PR #8, 2026-10-03, "encode/il-nii-contributions"); nothing was pulled.
+Read: `NOTICE`; the heads of `LICENSE` and `LICENSE-CODE`; `data/coverage/tax-benefit-source-map.json` (whole); `docs/ENCODING-GAPS.md` (lines 140-714, and its headings above); `docs/encoding-charter.md` lines 40-55; `known-missing-money-atoms.yaml` and `known-validation-gaps.yaml` (whole; neither has any entry); `README.md` by search; `il/statutes/national-insurance-law-1995/section-337.yaml`, `section-342.yaml` and `section-348.yaml` (whole) with their `.test.yaml` files; `schedule-j/sign-1.yaml` (its rule list, lines 1-125 and its total-rate rules); the composed pipeline (lines 1-535, and the child facts and outputs of all 15 cases).
+No Axiom module exists for Part D, s 72 or s 335 (`ls il/statutes/national-insurance-law-1995/`: ss 1, 66, 67, 68, 334, 337, 342, 348, Schedules J and K), so there was no module or companion test file of theirs for them.
+Nothing of any other Axiom repository was read, and nothing under `l4-ide/specs/research/AXIOM-*`.
+
+**Ours.** This row's `BRIEF.md`, `NOTES.md`, `encoding.json`, the four rule and noun modules, `INDEPENDENT-FINDINGS.md`, `DECIDED-ANSWERS.md` and `tests-independent.l4`, in full; row IL-07's `GAPS.md`.
+The deposited Law at the lines cited below (sha256 `78bf47ee…552a97`, checked).
+
+**Licence.** `NOTICE` puts Axiom's encodings, companion test cases, parameter values and provenance metadata under CC BY 4.0 (`LICENSE`) and its tooling under Apache 2.0 (`LICENSE-CODE`); confirmed from the three files.
+Axiom material appears here only as short attributed snippets: Axiom Foundation RuleSpec corpus (CC BY 4.0), https://github.com/TheAxiomFoundation.
+
+**Runs.** Axiom's stated conventions and figures for these provisions were put through a scratch copy of this directory (the session scratchpad, `lad-il-08/nii/zz-axiom-cases.l4`) with `/Users/mengwong/.local/bin/l4 run`, `JL4_LIBRARY_PATH` unset, at 2026-10-07T06:01:08Z, under the binary the other half's section records (sha256 `6015a4c3…3b54a6`, not the build section 0 used).
+14 assertions, 14 satisfied, 0 errors (a first run failed to compile on `length`, which this binary's prelude does not define; the two assertions were rewritten with list equality, and no expected value changed).
+
+### Coverage: what Axiom did with each provision of this half
+
+Axiom's inventory, `tax-benefit-source-map.json`, lists this Law's encoded sections as ss 1, 66, 67, 68, 334, 337, 342 and 348, with Schedules J and K (lines 88-109).
+
+| provision (ours) | source lines | ours | Axiom | Axiom file, status |
+| --- | --- | --- | --- | --- |
+| Schedule A1, Part D | 4431-4453 | encoded: the age in months by month of birth, and the day it is reached | **left out**, named, with a reason: "Three encoder attempts were blocked by the numeric-grounding check"; its absence is one of the reasons they give for deferring the employee deduction of s 342(c)(1) and the women's limb of s 342(c)(2) | source map line 125; `ENCODING-GAPS.md` lines 651-664; `section-342.yaml` lines 24-42; `README.md` line 53 |
+| s 72 | 853-856 | encoded: whether the allowance is paid for a month | **left out**, not named anywhere; the composition counts a child for "the allowance month" from two per-case inputs, `child_N_age_at_month_years` (below 18) and `child_N_is_present_in_israel` | composed pipeline lines 72-81, 148-170; `ENCODING-GAPS.md` lines 564-566 |
+| s 335 | 3610-3620 | encoded: the branches in which contributions are payable | **left out**, "deliberately out of scope"; **an input** to their s 348 (`contributions_payable_under_section_335`, one Boolean); their s 337 applies Schedule J's printed employee totals, so implicitly all nine branches | `encoding-charter.md` lines 51-52; `section-348.yaml` line 69; `section-337.yaml` lines 74-80; `ENCODING-GAPS.md` line 612 |
+| s 65 | 799-809 | not re-encoded here (row IL-06 encodes it) | **applied without a module**: the age-and-presence proviso of s 65(a), per child, inside the composition; the maintained-child limb and s 65(b) not modelled | source map lines 119, 127-133; `ENCODING-GAPS.md` lines 543-568 |
+| s 67A | — | inert: no such section | no s 67A either; the identifiers `nii-section-67a-*` are s 67(a) (see below) | `ENCODING-GAPS.md` lines 482-502; `README.md` line 49 |
+
+**Counts**, over the three provisions this half encodes: encoded by Axiom as a module, **0**; handled as an input, **1** (s 335, as one Boolean in s 348); left out, **3** (Part D with a stated reason; s 72 unmentioned; s 335 by its charter).
+The one stated reason, for Part D, is a limit of their encoder, not a reading of the text.
+
+### Where Axiom applies one of our provisions
+
+Nowhere: it applies none of Part D, s 72 or s 335.
+Three things Axiom states about them were put through our rules instead.
+
+**Part D.** `ENCODING-GAPS.md` (lines 652-654) gives the table's range as "65 for the oldest cohorts, rising to 70 for every woman born in May 1950 or later" and quotes the row for September 1939 to April 1940.
+Ours: born June 1939, 780 months; May 1950, 840; January 1990, 840; September 1939 and April 1940, 788 (5 assertions, satisfied).
+They agree.
+Axiom's stated obstacle, that "a month number taken as input is a literal the text does not print", does not arise in ours: the rule takes a date of birth, and the band edges are typed from the rows (lines 4438-4453) and tested edge by edge, here and by the independent pass.
+
+**s 72.** The composition's summary (lines 72-81) says a child who turns 18 later in the year "still counts for the allowance in the months before the birthday and stops counting after it"; its gap entry (lines 564-566) says the age "is one number for the case, so a child that turns 18 mid-year changes state at the start of the modelled month rather than on its birthday".
+Ours, for a child born 20 July 2008 whose entitlement ceases on 20 July 2026: paid for June and July 2026, not August (s 72(a), last limb, line 854).
+For a child born 20 March 2026: not paid for March, paid from April (s 72(a), second limb).
+5 assertions, satisfied.
+
+**s 335.** Their s 337 charges an employee Schedule J's printed totals, which cover all nine branch rows (items 1 and 3-10).
+Ours, for a resident employee insured in every Chapter s 335 reads: all nine branches; for the same person as a controlling shareholder in a closely-held company: seven, without unemployment and insolvency (s 335(e), (f), lines 3615-3616).
+4 assertions, satisfied.
+
+### Axiom's cases put through our encoding
+
+| Axiom case(s) (file, line) | what the case takes from our provisions | put through ours | result |
+| --- | --- | --- | --- |
+| `section-337.test.yaml` 1, 12: an employee's contributions on 15,000 and 5,000 for January 2026 | s 335 implicitly: the Schedule J totals, all nine branches | s 335 for a resident employee insured in every Chapter | **consistent**: nine branches; the case does not state the person's statuses, and the rates are outside this row |
+| `section-348.test.yaml` 1, 14, 27, 40 | s 335 as one Boolean (`true` three times, `false` once) | — | **could not be run**: the case supplies s 335's conclusion, not the statuses our rule reads |
+| `section-342.test.yaml`, all 5 | s 342(a) and (d) only | — | not applicable: none reaches Part D |
+| composed pipeline, all 15 | the monthly child count, which s 72 governs at a birth and at 18 | — | **could not be run**: no case gives a date of birth, and each case's period is the whole of 2026 (2026-01-01 to 2026-12-31) |
+
+### Divergences and differences
+
+| id | provision | ours | Axiom | source lines | classification | repair if ours is wrong |
+| --- | --- | --- | --- | --- | --- | --- |
+| B1 | Part D | encoded | not encoded (encoder failure); its figures as stated agree with ours | 4431-4453 | scope difference | — |
+| B2 | s 342(c)(2), the consumer of Part D | not ours; NOTES section 6 offers Part D to the composer of s 342(c)(2) without remark | names "the operative qualification in section 245(b2)" as a second missing dependency beside Part D | s 342(c)(2) line 3662 makes the women's age "subject to s 245(b2)"; s 245(b2) reads "(בוטל)", line 2474 | **theirs wrong** in a stated reason, on the deposited text: the qualification is repealed, so there is nothing to supply (not checked against their corpus expression of 2026-06-15, though every amendment tag on s 245, line 2464, is older than that) | — (a note for whoever composes Part D with s 342(c)(2): the cross-reference points at a repealed subsection) |
+| B3 | s 72 | encoded | not encoded; per-month age and presence supplied by the caller; no 15th-day rule, no seven-day rule, no three months after a death | 853-856 | scope difference; the convention their gap entry states (the state changes at the start of the month of the 18th birthday) would lose the month s 72(a) pays, and nothing in their pipeline declines the month of a birth after the 15th | — |
+| B4 | s 335 | encoded: the branch list | not encoded; s 337 charges every employee the full employee total, with no input through which s 335's exclusions reach the rate | 3611, 3615-3616 | scope difference, silent on their side: a controlling shareholder in a closely-held company (no unemployment, no insolvency) or a non-resident worker (s 335(a): maternity, with work injury and insolvency if insured under Chapters 5 and 8) is charged the full employee total, including branches s 335 does not impose on them | — |
+| B5 | Schedule J's branch rows against its totals | not ours | recorded as `unexplained` (`ENCODING-GAPS.md` lines 598-617) | checked here on the deposited text: in the 2025-2026 table the employee column above the reduced bracket sums over its nine rows (lines 4720, 4722-4729) to 14.39 against the printed 14.50 (line 4730), and to 14.49 against 14.60 at the 2024-2027 work-injury rate | not a divergence in s 335; a caution for composition: a rate built by summing the rows of our branch list will not reproduce the printed total even for a full employee | — |
+| B6 | s 67A | no such section | none either | 817; 5326; 1162-1163 | agreement | — |
+| B7 | s 65 | row IL-06's | applied in the composition without a module | 799-809 | scope difference (row IL-06's comparison, not this one) | — |
+
+No divergence shows a rule of this half wrong on the text.
+
+### Our independent pass's findings, and Axiom
+
+| finding (`INDEPENDENT-FINDINGS.md`) | Axiom |
+| --- | --- |
+| 1-2, 72-57: s 72(c) for a child whose payment window was empty (fork N2) | nothing: s 72 not encoded |
+| 3-5, D-46 to D-48: the day a woman reaches the Part D age when the day does not exist (fork N4) | nothing: Part D not encoded, and their man's age under s 342(c)(2) is a parameter (70), with no day computed |
+| 6-7, 72-14 and 72-30: the May 2015 gate (A2) | nothing to compare |
+| silent paths (the unchecked "was paid" input, the moved day, the gate only on the export) | nothing to compare |
+| 72-39, 72-42, 72-44: a 29 February birthday, how seven days are counted, a home birth | nothing: their composition leaves the 18th birthday to the caller as ours does, and has no seven-day rule |
+| 335-R1, the rate of contributions; 335-R4, who pays | **Axiom encodes both**: the rates in s 337 and Schedule J, the self-payer judgment of s 342(a) and the multiple-employer rules of s 342(d) |
+| D-R1, a man's age under Part D | Axiom carries the man's age of s 342(c)(2), 70, as a parameter (`section-342.yaml` lines 89-104; line 3662); Part D is for women only, as both the tester and our rule names say |
+
+### Our forks, and the s 67A observation
+
+N1, N2 and N4 have no Axiom counterpart.
+N3 (one maternity branch from s 335(a) and (i)): their Schedule J keys items 1 and 2 separately, item 2 being maternity for one who is neither an employee nor self-employed (line 4721); the employee column prints nothing for item 2, so nothing for an employee turns on the question, and nothing in Axiom conflicts with N3.
+
+**s 67A.** Axiom's record agrees that there is no s 67A.
+Its two gap entries whose identifiers read `nii-section-67a-…` (`ENCODING-GAPS.md` lines 482-502) are about s 67(a), the rule that a child is counted with one insured parent at a time, which they quote word for word from the provision at line 817; `README.md` line 49 calls it "§67(א)'s one-parent-at-a-time limit".
+Their source map lists s 67, not s 67A, among the encoded sections (lines 88-97).
+So the observation in section 2 stands, and Axiom's material supports it.
+A guess, not checked (the backlog was not read in this pass): the "s 67A" in row IL-08's ruled list may be a reading of Axiom's identifier `67a` as a section number; the same list's ITO s 121A matches an item of Axiom's `not_encoded` list.
+
+### What Axiom does that this half does not, and the reverse
+
+**Axiom, not us**: the rates (s 337, Schedule J), the reduced bracket (s 334), the ceiling and small non-work income (s 348, Schedule K), who pays (s 342(a), (d)), the man's age in s 342(c)(2); all outside this row's scope, and the natural consumers of our s 335 list and Part D age.
+**Us, not Axiom**: Part D, s 72 and s 335, with forks N1-N4 and the refusals for earlier periods.
+
+### Bottom line
+
+Axiom encodes none of the three provisions of this half.
+Part D it tried three times and could not encode for a reason in its tooling, and its absence is one of the reasons Axiom gives for deferring the employee's deduction under s 342(c)(1); our Part D module is that missing piece, and the figures Axiom states for the table agree with ours.
+s 335 it left out by charter, and its s 337 charges every employee the full employee rate; our branch list is what a composer needs to charge a controlling shareholder in a closely-held company or a non-resident worker correctly, with the caution that Schedule J's branch rows do not add up to its printed totals.
+s 72 does not appear in Axiom's material at all; its monthly child count leaves the first and last months to the caller.
+On s 67A the two records agree.
+No finding of this comparison shows a rule of this half wrong; one stated reason of Axiom's points at a repealed subsection (B2).

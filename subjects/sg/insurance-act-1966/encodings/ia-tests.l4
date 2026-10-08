@@ -1,0 +1,321 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `ia-types`
+IMPORT `ia-penalties`
+IMPORT `ia-permission`
+IMPORT `ia-supervision`
+IMPORT `ia-policies`
+IMPORT `ia-goal`
+
+-- Insurance Act 1966 — THE ENCODER'S TESTS.
+--
+-- Every expected value is worked by hand from ../source/IA1966.txt; the
+-- provision is on each group.
+
+§ `Tests`
+
+§§ `Helpers`
+
+GIVEN life IS A BOOLEAN, general IS A BOOLEAN, reins IS A BOOLEAN, scheme IS A BOOLEAN, broker IS A BOOLEAN, exempt IS A BOOLEAN, individual IS A BOOLEAN
+GIVETH A Standing
+`standing` life general reins scheme broker exempt individual MEANS Standing WITH
+    `licensed for life business` IS life
+    `licensed for general business` IS general
+    `an authorised reinsurer` IS reins
+    `a foreign insurer under a foreign insurer scheme` IS scheme
+    `a registered insurance broker of the type` IS broker
+    `an exempt insurance broker under s 92(1)(a)-(f), notified` IS exempt
+    `exempted by the Authority from the provision` IS FALSE
+    `an individual` IS individual
+
+`nobody` MEANS `standing` FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+`a lone individual` MEANS `standing` FALSE FALSE FALSE FALSE FALSE FALSE TRUE
+`a life insurer` MEANS `standing` TRUE FALSE FALSE FALSE FALSE FALSE FALSE
+`a broker` MEANS `standing` FALSE FALSE FALSE FALSE TRUE FALSE FALSE
+
+GIVEN c IS A `Class of business`, st IS A BOOLEAN, abroad IS A BOOLEAN
+GIVETH AN Activity
+`insuring` c st abroad MEANS `carrying on a class of insurance business in Singapore as an insurer` c st abroad
+
+GIVEN sh IS A NUMBER, vo IS A NUMBER
+GIVETH A `Shareholding facts`
+`holding` sh vo MEANS `Shareholding facts` OF sh, vo, FALSE, FALSE, FALSE
+
+§§ `Goals 1-3 — permission`
+
+-- s 4(1): a general business licence does not cover life business
+#ASSERT `the activity is permitted` `a life insurer` (`insuring` `life business` FALSE FALSE)
+#ASSERT NOT `the activity is permitted` (`standing` FALSE TRUE FALSE FALSE FALSE FALSE FALSE) (`insuring` `life business` FALSE FALSE)
+-- s 4(3): a life licence covers short-term accident and health business
+#ASSERT `the activity is permitted` `a life insurer` (`insuring` `general business` TRUE FALSE)
+#ASSERT NOT `the activity is permitted` `a life insurer` (`insuring` `general business` FALSE FALSE)
+-- s 3(6): a reinsurer acting wholly abroad does not carry on business here
+#ASSERT `the activity is permitted` `nobody` (`insuring` `general business` FALSE TRUE)
+-- s 55: a foreign insurer under a scheme
+#ASSERT `the activity is permitted` (`standing` FALSE FALSE FALSE TRUE FALSE FALSE FALSE) (`insuring` `general business` FALSE FALSE)
+-- s 4(2)(b): unsolicited reinsurance from abroad is permitted
+#ASSERT `the activity is permitted` `nobody` (`providing reinsurance from outside Singapore to persons in Singapore` TRUE)
+#ASSERT NOT `the activity is permitted` `nobody` (`providing reinsurance from outside Singapore to persons in Singapore` FALSE)
+#ASSERT `the activity is permitted` (`standing` FALSE FALSE TRUE FALSE FALSE FALSE FALSE) (`providing reinsurance from outside Singapore to persons in Singapore` FALSE)
+-- s 6: the word "insurance" — an intermediary that says so; one that does not
+#ASSERT `the activity is permitted` `a broker` (`using the word "insurance" in a business name` FALSE TRUE TRUE FALSE)
+#ASSERT NOT `the activity is permitted` `a broker` (`using the word "insurance" in a business name` FALSE TRUE FALSE FALSE)
+#ASSERT `the activity is permitted` `nobody` (`using the word "insurance" in a business name` FALSE FALSE FALSE TRUE)
+-- s 8(2): soliciting for a licensed insurer's overseas branch is not permitted
+#ASSERT `the activity is permitted` `nobody` (`soliciting insurance business for an insurer` TRUE FALSE FALSE)
+#ASSERT NOT `the activity is permitted` `nobody` (`soliciting insurance business for an insurer` TRUE TRUE FALSE)
+#ASSERT NOT `the activity is permitted` `nobody` (`soliciting insurance business for an insurer` FALSE FALSE FALSE)
+-- s 64: written agreement; an employee needs none
+#ASSERT NOT `the activity is permitted` `a lone individual` (`arranging a contract as agent for a licensed insurer` FALSE FALSE FALSE)
+#ASSERT `the activity is permitted` `a lone individual` (`arranging a contract as agent for a licensed insurer` FALSE TRUE FALSE)
+-- s 75, 92: broking needs registration or a s 92 exemption
+#ASSERT NOT `the activity is permitted` `nobody` `carrying on business as an insurance broker`
+#ASSERT `the activity is permitted` (`standing` FALSE FALSE FALSE FALSE FALSE TRUE FALSE) `carrying on business as an insurance broker`
+-- s 83: placing with an unlicensed insurer; reinsurance excepted; s 84 permission
+#ASSERT NOT `the activity is permitted` `a broker` (`a broker negotiating a contract with an insurer that is not licensed` FALSE FALSE FALSE)
+#ASSERT `the activity is permitted` `a broker` (`a broker negotiating a contract with an insurer that is not licensed` TRUE FALSE FALSE)
+#ASSERT `the activity is permitted` `a broker` (`a broker negotiating a contract with an insurer that is not licensed` FALSE TRUE FALSE)
+-- s 86: volume-based; profit commission excepted
+#ASSERT NOT `the activity is permitted` `a broker` (`paying or receiving broker remuneration varied solely by volume` FALSE FALSE)
+#ASSERT `the activity is permitted` `a broker` (`paying or receiving broker remuneration varied solely by volume` TRUE FALSE)
+#ASSERT `the activity is permitted` `nobody` (`using the words "insurance broking"` TRUE FALSE)
+
+-- s 26(7): 20% of shares is effective control; 19.9% is not
+#ASSERT `effective control of an insurer` (`holding` 20 0)
+#ASSERT NOT `effective control of an insurer` (`holding` 19.9 19.9)
+#ASSERT `effective control of an insurer` (`Shareholding facts` OF 5, 5, FALSE, TRUE, FALSE)
+#ASSERT NOT `effective control of an insurer` (`Shareholding facts` OF 30, 30, FALSE, FALSE, TRUE)
+#ASSERT NOT `the activity is permitted` `nobody` (`obtaining control of a licensed insurer incorporated in Singapore` (`holding` 20 0) FALSE 0 FALSE)
+#ASSERT `the activity is permitted` `nobody` (`obtaining control of a licensed insurer incorporated in Singapore` (`holding` 20 0) FALSE 0 TRUE)
+-- s 27: below 20% but a substantial shareholder; a 5% voting arrangement; 4.9% is free
+#ASSERT NOT `the activity is permitted` `nobody` (`obtaining control of a licensed insurer incorporated in Singapore` (`holding` 6 6) TRUE 0 FALSE)
+#ASSERT NOT `the activity is permitted` `nobody` (`obtaining control of a licensed insurer incorporated in Singapore` (`holding` 1 1) FALSE 5 FALSE)
+#ASSERT `the activity is permitted` `nobody` (`obtaining control of a licensed insurer incorporated in Singapore` (`holding` 1 1) FALSE 4.9 FALSE)
+#ASSERT `the offence for` (`obtaining control of a licensed insurer incorporated in Singapore` (`holding` 20 0) FALSE 0 FALSE) EQUALS `s 26(6) obtaining effective control without approval, or breaching its conditions`
+#ASSERT `the offence for` (`obtaining control of a licensed insurer incorporated in Singapore` (`holding` 6 6) TRUE 0 FALSE) EQUALS `s 27(7) becoming a substantial shareholder, or a 5% arrangement, without approval`
+-- s 34(9): a major stake is more than 10%
+#ASSERT `a major stake, shares` 10.1 `, votes` 0 `, directs:` FALSE
+#ASSERT NOT `a major stake, shares` 10 `, votes` 10 `, directs:` FALSE
+#ASSERT `the activity is permitted` `a life insurer` (`a licensed insurer acquiring or holding a stake in a corporation` 40 40 FALSE TRUE FALSE)
+#ASSERT NOT `the activity is permitted` `a life insurer` (`a licensed insurer acquiring or holding a stake in a corporation` 40 40 FALSE FALSE FALSE)
+-- s 87: 20% of a broker
+#ASSERT `effective control of a broker, shares` 0 `, votes` 20
+#ASSERT NOT `the activity is permitted` `nobody` (`agreeing to acquire shares of a registered insurance broker` 25 0 FALSE)
+-- s 35, 36: approval; a disqualified person only with consent
+#ASSERT `the activity is permitted` `a life insurer` (`appointing a key executive person, chairperson or director` TRUE FALSE FALSE)
+#ASSERT NOT `the activity is permitted` `a life insurer` (`appointing a key executive person, chairperson or director` TRUE TRUE FALSE)
+#ASSERT `the offence for` (`appointing a key executive person, chairperson or director` FALSE FALSE FALSE) EQUALS `s 35(16) lacking a required officer, or appointing without approval`
+-- s 37: a director, $5,000; an employee, one year's emolument
+#ASSERT `the activity is permitted` `a life insurer` (`granting an unsecured loan or advance` FALSE TRUE FALSE 5000 0)
+#ASSERT NOT `the activity is permitted` `a life insurer` (`granting an unsecured loan or advance` FALSE TRUE FALSE 5001 0)
+#ASSERT `the activity is permitted` `a life insurer` (`granting an unsecured loan or advance` FALSE FALSE FALSE 60000 60000)
+-- s 89: a broker's non-employee director, nothing; an employee, $3,000
+#ASSERT NOT `the activity is permitted` `a broker` (`granting an unsecured loan or advance` TRUE TRUE FALSE 100 0)
+#ASSERT `the activity is permitted` `a broker` (`granting an unsecured loan or advance` TRUE TRUE TRUE 3000 0)
+#ASSERT NOT `the activity is permitted` `a broker` (`granting an unsecured loan or advance` TRUE FALSE FALSE 3001 0)
+-- s 16(7)(c)(iv): $900,000 of bonus allows $100,000 to the surplus account
+`fund` MEANS `Fund facts` OF 900000, 100000, TRUE, FALSE
+#ASSERT `the most that may be allocated to the surplus account` `fund` EQUALS 100000
+#ASSERT `the activity is permitted` `a life insurer` (`allocating to the surplus account of a participating fund` `fund`)
+#ASSERT NOT `the activity is permitted` `a life insurer` (`allocating to the surplus account of a participating fund` (`Fund facts` OF 900000, 100001, TRUE, FALSE))
+#ASSERT NOT `the activity is permitted` `a life insurer` (`allocating to the surplus account of a participating fund` (`Fund facts` OF 900000, 50000, FALSE, FALSE))
+-- s 16(10): surplus $5m, requirement $3m: up to $2m
+#ASSERT `the most that may be withdrawn from a fund, surplus` 5000000 `, solvency requirement` 3000000 `, disallowed:` FALSE EQUALS 2000000
+#ASSERT `the most that may be withdrawn from a fund, surplus` 5000000 `, solvency requirement` 3000000 `, disallowed:` TRUE EQUALS 0
+#ASSERT NOT `the activity is permitted` `a life insurer` (`withdrawing from an insurance fund` 2000001 5000000 3000000 FALSE)
+#ASSERT NOT `the activity is permitted` `a life insurer` (`issuing a life or long-term accident and health policy` FALSE)
+
+§§ `Goal 4 — penalties`
+
+-- s 4(5): individual $125,000 / 3 years / $12,500 a day; otherwise $250,000 / $25,000 a day (split: no doubling)
+#ASSERT `the maximum penalty for` `s 4(5) carrying on insurance business, or providing reinsurance, unlicensed` `, an individual:` TRUE `, a corporation:` FALSE EQUALS `IA penalty` OF 125000, 3, 12500
+#ASSERT `the maximum penalty for` `s 4(5) carrying on insurance business, or providing reinsurance, unlicensed` `, an individual:` FALSE `, a corporation:` TRUE EQUALS `IA penalty` OF 250000, 0, 25000
+-- s 75(2): one penalty for anyone; s 143 doubles it for a corporation
+#ASSERT `the maximum penalty for` `s 75(2) carrying on broking unregistered` `, an individual:` TRUE `, a corporation:` FALSE EQUALS `IA penalty` OF 75000, 3, 7500
+#ASSERT `the maximum penalty for` `s 75(2) carrying on broking unregistered` `, an individual:` FALSE `, a corporation:` TRUE EQUALS `IA penalty` OF 150000, 0, 15000
+-- a firm, not a corporation: no doubling
+#ASSERT `the maximum penalty for` `s 75(2) carrying on broking unregistered` `, an individual:` FALSE `, a corporation:` FALSE EQUALS `IA penalty` OF 75000, 0, 7500
+-- s 17(6): a duty only on licensed insurers — no doubling
+#ASSERT `the maximum penalty for` `s 17(6) failing fund solvency or capital adequacy` `, an individual:` FALSE `, a corporation:` TRUE EQUALS `IA penalty` OF 250000, 0, 25000
+-- s 142(5): the officer of an insurer convicted under s 17(6): up to 2 years
+#ASSERT `the maximum penalty for an officer of the convicted corporation, for` `s 17(6) failing fund solvency or capital adequacy` `, due diligence proved:` FALSE EQUALS JUST (`IA penalty` OF 250000, 2, 25000)
+#ASSERT `the maximum penalty for an officer of the convicted corporation, for` `s 17(6) failing fund solvency or capital adequacy` `, due diligence proved:` TRUE EQUALS NOTHING
+-- s 6(7): individual $12,500 / 12 months / $1,250
+#ASSERT `the maximum penalty for` `s 6(7) using the word "insurance" without entitlement` `, an individual:` TRUE `, a corporation:` FALSE EQUALS `IA penalty` OF 12500, 1, 1250
+-- s 142(7): half the maximum fine
+#ASSERT `the most that may be collected to compound` `s 4(5) carrying on insurance business, or providing reinsurance, unlicensed` `, an individual:` TRUE `, prescribed:` TRUE EQUALS JUST 62500
+#ASSERT `the most that may be collected to compound` `s 4(5) carrying on insurance business, or providing reinsurance, unlicensed` `, an individual:` FALSE `, prescribed:` TRUE EQUALS JUST 125000
+#ASSERT `the most that may be collected to compound` `s 75(2) carrying on broking unregistered` `, an individual:` FALSE `, prescribed:` FALSE EQUALS NOTHING
+-- s 101(6) prescribes no penalty: s 142(3) applies
+#ASSERT `the maximum penalty for` `s 101(6) receiving a report knowing it was disclosed in breach (s 142(3))` `, an individual:` TRUE `, a corporation:` FALSE EQUALS `IA penalty` OF 50000, 2, 5000
+-- s 145
+#ASSERT `the Act reaches an act` `outside Singapore, with a substantial and reasonably foreseeable effect in Singapore` `, an offence under s 4, 8, 70 or 75:` TRUE
+#ASSERT NOT `the Act reaches an act` `outside Singapore, with a substantial and reasonably foreseeable effect in Singapore` `, an offence under s 4, 8, 70 or 75:` FALSE
+#ASSERT `the Act reaches an act` `partly in and partly outside Singapore` `, an offence under s 4, 8, 70 or 75:` FALSE
+#ASSERT `an offence under s 4, 8, 70 or 75` `carrying on business as an insurance broker`
+#ASSERT NOT `an offence under s 4, 8, 70 or 75` `holding out as a registered insurance broker`
+
+§§ `Goal 5 — supervision and winding up`
+
+-- s 13(6): informed 1 March 2026; the period of 30 days ends 31 March; effect 1 April
+#ASSERT `a cancellation takes effect, informed on` (YMD 2026 3 1) `, at its request:` FALSE `, appealed in time:` FALSE EQUALS JUST (YMD 2026 4 1)
+#ASSERT `a cancellation takes effect, informed on` (YMD 2026 3 1) `, at its request:` FALSE `, appealed in time:` TRUE EQUALS NOTHING
+#ASSERT `a cancellation takes effect, informed on` (YMD 2026 3 1) `, at its request:` TRUE `, appealed in time:` FALSE EQUALS JUST (YMD 2026 3 1)
+#ASSERT `the last day to appeal to the Minister, informed on` (YMD 2026 3 1) EQUALS YMD 2026 3 31
+#ASSERT `the Appeal Advisory Committee must be constituted by, appeal received` (YMD 2026 3 1) `, a refusal under s 11(7), 42(6) or 76(6):` FALSE EQUALS JUST (YMD 2026 3 29)
+#ASSERT `the Appeal Advisory Committee must be constituted by, appeal received` (YMD 2026 3 1) `, a refusal under s 11(7), 42(6) or 76(6):` TRUE EQUALS NOTHING
+-- s 13(3)(a): 12 months for an insurer; s 80(2)(a): 6 months for a broker
+#ASSERT `not commencing business is a ground for cancelling` `an insurer's licence` `, granted` (YMD 2025 1 15) `, commenced` NOTHING `, as at` (YMD 2026 1 16)
+#ASSERT NOT `not commencing business is a ground for cancelling` `an insurer's licence` `, granted` (YMD 2025 1 15) `, commenced` NOTHING `, as at` (YMD 2026 1 15)
+#ASSERT `not commencing business is a ground for cancelling` `a broker's registration` `, granted` (YMD 2025 1 15) `, commenced` (JUST (YMD 2025 7 16)) `, as at` (YMD 2026 1 1)
+#ASSERT `has control for a change-of-control ground, licence` `an insurer's licence` `, shares` 20 `, votes` 0
+#ASSERT NOT `has control for a change-of-control ground, licence` `a reinsurer's authorisation` `, shares` 49 `, votes` 49
+#ASSERT `copies of returns must be despatched by, applied on` (YMD 2026 6 1) EQUALS YMD 2026 6 15
+#ASSERT NOT `a lodged document may be inspected by the public, lodged` (YMD 2015 6 1) `, on` (YMD 2025 6 2)
+#ASSERT `notified in time for the s 30 defence, aware` (YMD 2026 6 1) `, notified` (YMD 2026 6 15)
+#ASSERT NOT `notified in time for the s 30 defence, aware` (YMD 2026 6 1) `, notified` (YMD 2026 6 16)
+#ASSERT `a moratorium order lapses at the latest on, made` (YMD 2026 1 31) EQUALS YMD 2026 7 31
+#ASSERT `the earliest date to publish notice of a transfer scheme, lodged` (YMD 2026 1 31) EQUALS YMD 2026 2 28
+#ASSERT `the transferee must lodge the documents by, scheme effective` (YMD 2026 5 10) EQUALS YMD 2026 6 10
+#ASSERT `a transfer must be by a confirmed s 117 scheme, foreign business:` FALSE `, reinsurance or captive:` FALSE `, opted in:` FALSE
+#ASSERT NOT `a transfer must be by a confirmed s 117 scheme, foreign business:` FALSE `, reinsurance or captive:` TRUE `, opted in:` FALSE
+-- s 123: $1,000 after preferential debts; levy $100, protected $500, unprotected $600, reinsurance $300, resolution $50
+#ASSERT `what each s 123 class receives from assets` 1000 `, class claims` (LIST 100, 500, 600, 300, 50) EQUALS LIST 100, 500, 400, 0, 0
+#ASSERT `what each s 123 class receives from assets` 2000 `, class claims` (LIST 100, 500, 600, 300, 50) EQUALS LIST 100, 500, 600, 300, 50
+-- s 123(4)(b): a $150 claim in a $600 class receiving $400 gets $100
+#ASSERT `a claim's payment, claim` 150 `, of a class totalling` 600 `, which receives` 400 EQUALS 100
+#ASSERT `the Authority may assist a foreign regulator, request` (YMD 2026 1 1) `, contravention` (YMD 2002 1 7) `, undertakings given:` TRUE `, assessment favourable:` TRUE EQUALS FALSE
+
+§§ `Goals 6-7 — the policy`
+
+GIVEN s IS A `Residence status`, out IS A NUMBER, now IS A BOOLEAN, days IS A NUMBER, cont IS A NUMBER
+GIVETH A `Residence facts`
+`residence` s out now days cont MEANS `Residence facts` OF s, out, now, days, cont
+
+-- para 2(4)(a): a citizen abroad 5 years and not now resident is not; 4 years is
+#ASSERT NOT `ordinarily resident in Singapore` (`residence` `a citizen` 5 FALSE 0 0)
+#ASSERT `ordinarily resident in Singapore` (`residence` `a citizen` 4 FALSE 0 0)
+#ASSERT `ordinarily resident in Singapore` (`residence` `a citizen` 6 TRUE 0 0)
+#ASSERT `ordinarily resident in Singapore` (`residence` `a permanent resident` 0 TRUE 183 0)
+#ASSERT NOT `ordinarily resident in Singapore` (`residence` `a work pass or permit holder` 0 TRUE 182 0)
+#ASSERT `ordinarily resident in Singapore` (`residence` `a holder of another pass longer than 90 days` 0 TRUE 0 90)
+#ASSERT `a Singapore treaty, Singapore premiums` 26 `, of` 100
+#ASSERT NOT `a Singapore treaty, Singapore premiums` 25 `, of` 100
+
+GIVEN k IS A `Kind of policy`, life IS A `Life insured`, interest IS A NUMBER, sum IS A NUMBER, years IS A NUMBER
+GIVETH A `Policy case`
+`policy` k life interest sum years MEANS `Policy case` WITH
+    `kind` IS k
+    `issued on` IS YMD 2020 1 1
+    `issued in the course of business in Singapore` IS TRUE
+    `the owner (or insured) is an individual` IS TRUE
+    `residence of the owner or insured` IS `residence` `a citizen` 0 TRUE 365 365
+    `a non-individual: Singapore address, residence or permanent establishment` IS FALSE
+    `the risk arises in Singapore` IS FALSE
+    `cargo carried between places outside Singapore` IS FALSE
+    `insurance on ships or goods, or a contract of indemnity` IS FALSE
+    `may be in force more than 5 years, insurer cannot end it but for fraud or non-disclosure` IS FALSE
+    `life insured` IS life
+    `insurable interest of the person effecting it` IS interest
+    `a trust policy meeting s 146(3) or (4)` IS FALSE
+    `sum insured` IS sum
+    `age of the person entering the contract` IS 30
+    `written consent of a parent or guardian` IS FALSE
+    `years in force` IS years
+    `an annuity, or no policy moneys necessarily payable` IS FALSE
+
+`own life` MEANS `policy` `a life policy` `the person's own life` 0 500000 4
+#ASSERT `the policy is` `own life` EQUALS "a Singapore policy"
+#ASSERT `the class of business of` `own life` EQUALS `life business`
+#ASSERT `the policy is valid for insurable interest` `own life`
+#ASSERT `the most that may be recovered under` `own life` EQUALS JUST 500000
+-- s 146: a stranger's life, no insurable interest — void; with $200,000 of interest, capped
+#ASSERT NOT `the policy is valid for insurable interest` (`policy` `a life policy` `another person` 0 500000 4)
+#ASSERT `the most that may be recovered under` (`policy` `a life policy` `another person` 200000 500000 4) EQUALS JUST 200000
+-- s 149: three years in force
+#ASSERT count (`the owner's statutory rights under` `own life`) EQUALS 4
+#ASSERT count (`the owner's statutory rights under` (`policy` `a life policy` `the person's own life` 0 500000 2.9)) EQUALS 1
+-- First Sch para 9: a short-term accident and health policy is general business
+#ASSERT `the class of business of` (`policy` `an accident and health policy` `the person's own life` 0 1000 1) EQUALS `general business`
+-- s 151: general insurance without interest is void, unless indemnity
+#ASSERT NOT `the policy is valid for insurable interest` (`policy` `a general insurance policy` `another person` 0 1000 1)
+-- s 147: 11 with consent, yes; 15 without, no; 16 alone, yes; 10, no
+#ASSERT `has capacity to insure, aged` 11 `, with a parent's written consent:` TRUE
+#ASSERT NOT `has capacity to insure, aged` 15 `, with a parent's written consent:` FALSE
+#ASSERT `has capacity to insure, aged` 16 `, with a parent's written consent:` FALSE
+-- fork F8 as revised: 10 or under, the section does not answer
+#ASSERT REFUSED `has capacity to insure, aged` 10 `, with a parent's written consent:` TRUE
+-- s 66
+#ASSERT `the insured still owes the insurer, owed` 1000 `, paid to the intermediary` 1000 EQUALS 0
+#ASSERT `the insurer still owes the insured, owed` 5000 `, paid to the intermediary` 5000 EQUALS 5000
+
+GIVEN k IS A `Nomination kind`
+      ns IS A LIST OF `Nominee`
+      age IS A NUMBER
+      trust IS A BOOLEAN
+      revoked IS A BOOLEAN
+      dealt IS A BOOLEAN
+      will IS A BOOLEAN
+      notice IS A BOOLEAN
+GIVETH AN `Estate facts`
+`estate` k ns age trust revoked dealt will notice MEANS `Estate facts` OF k, ns, age, trust, revoked, dealt, will, notice
+
+`wife and son` MEANS LIST (`Nominee` OF "wife", TRUE, 0.5, TRUE), (`Nominee` OF "son", TRUE, 0.5, TRUE)
+`a friend` MEANS LIST (`Nominee` OF "friend", FALSE, 1, TRUE)
+
+#ASSERT `the nomination is valid` (`estate` `a trust nomination under s 132` `wife and son` 40 TRUE FALSE FALSE FALSE TRUE)
+-- s 132(2): a friend cannot be a trust nominee; a 17-year-old cannot nominate
+#ASSERT NOT `the nomination is valid` (`estate` `a trust nomination under s 132` `a friend` 40 TRUE FALSE FALSE FALSE TRUE)
+#ASSERT NOT `the nomination is valid` (`estate` `a revocable nomination under s 133` `a friend` 17 FALSE FALSE FALSE FALSE TRUE)
+#ASSERT `the nomination is valid` (`estate` `a revocable nomination under s 133` `a friend` 18 FALSE FALSE FALSE FALSE TRUE)
+-- s 133(3): not all the death benefits disposed of
+#ASSERT NOT `the nomination is valid` (`estate` `a revocable nomination under s 133` (LIST (`Nominee` OF "friend", FALSE, 0.6, TRUE)) 40 FALSE FALSE FALSE FALSE TRUE)
+-- s 133(5)(c): A 0.2, B 0.3 (dies 0.5), C 0.5 — A gets 0.2 + 0.2/0.5 x 0.5 = 0.4; B 0.3 + 0.3 = 0.6
+`three` MEANS LIST (`Nominee` OF "A", FALSE, 0.2, TRUE), (`Nominee` OF "B", FALSE, 0.3, TRUE), (`Nominee` OF "C", FALSE, 0.5, FALSE)
+#ASSERT map (GIVEN n YIELD n's `portion`) (`the nominees after deaths before the owner` `three`) EQUALS LIST 0.4, 0.6
+-- s 133(8)
+#ASSERT `the death benefits go` (`estate` `a revocable nomination under s 133` `a friend` 40 FALSE FALSE FALSE TRUE TRUE) EQUALS "to the nominees, according to the last nomination (s 133(8)(a), (9)(a))"
+#ASSERT `the death benefits go` (`estate` `a revocable nomination under s 133` `a friend` 40 FALSE FALSE TRUE TRUE TRUE) EQUALS "according to the last will (s 133(8)(b))"
+#ASSERT `the death benefits go` (`estate` `no nomination` EMPTY 40 FALSE FALSE FALSE FALSE FALSE) EQUALS "according to the Intestate Succession Act 1967 (s 133(8)(c), (9)(b))"
+#ASSERT `the death benefits go` (`estate` `a trust nomination under s 132` `wife and son` 40 TRUE FALSE FALSE FALSE TRUE) EQUALS "to the trustees, in trust for the nominees; outside the owner's estate and debts (s 132(4))"
+-- s 132(7)
+#ASSERT `a trust nomination may be revoked, trustee other than owner:` FALSE `, trustee consents:` FALSE `, a nominee died:` FALSE `, nominees consent:` TRUE
+-- s 132(7)(b), as revised: after a nominee's death no consent is named
+#ASSERT `a trust nomination may be revoked, trustee other than owner:` FALSE `, trustee consents:` FALSE `, a nominee died:` TRUE `, nominees consent:` FALSE
+#ASSERT NOT `a trust nomination may be revoked, trustee other than owner:` TRUE `, trustee consents:` FALSE `, a nominee died:` TRUE `, nominees consent:` TRUE
+#ASSERT `a trust nomination may be revoked, trustee other than owner:` TRUE `, trustee consents:` TRUE `, a nominee died:` TRUE `, nominees consent:` FALSE
+-- s 150(11): claims of $30,000 and $20,000 against a $40,000 limit: 30/50 x 40 = $24,000
+#ASSERT `a proper claimant's payment, claim in full` 30000 `, all claims in full` 50000 `, prescribed amount` 40000 EQUALS 24000
+#ASSERT `a proper claimant's payment, claim in full` 30000 `, all claims in full` 35000 `, prescribed amount` 40000 EQUALS 30000
+#ASSERT `the insurer may pay without probate` (`estate` `no nomination` EMPTY 40 FALSE FALSE FALSE FALSE FALSE) EQUALS "any proper claimant (executor, widow or widower, parent, child, sibling, nephew or niece), up to the prescribed amount (s 150(10))"
+
+§§ `The top-level goals`
+
+GIVEN s IS A Standing, a IS AN Activity, p IS A `Place of the act`
+GIVETH A `Regulatory case`
+`case` s a p MEANS `Regulatory case` OF s, a, p, TRUE
+
+-- an unregistered broking company in Singapore: s 75(2), $75,000 doubled by s 143 to $150,000; compound up to $37,500
+`unregistered broker` MEANS `the regulatory position for` (`case` `nobody` `carrying on business as an insurance broker` `wholly in Singapore`)
+#ASSERT NOT `unregistered broker`'s `permitted`
+#ASSERT `unregistered broker`'s `the offence if not permitted` EQUALS JUST `s 75(2) carrying on broking unregistered`
+#ASSERT `unregistered broker`'s `maximum penalty` EQUALS JUST (`IA penalty` OF 150000, 0, 15000)
+#ASSERT `unregistered broker`'s `most that may be collected to compound` EQUALS JUST 37500
+-- an individual soliciting from abroad, with effect in Singapore, for an unlicensed insurer: s 145(2) reaches s 8
+`offshore solicitor` MEANS `the regulatory position for` (`case` `a lone individual` (`soliciting insurance business for an insurer` FALSE FALSE FALSE) `outside Singapore, with a substantial and reasonably foreseeable effect in Singapore`)
+#ASSERT `offshore solicitor`'s `the Act reaches the act`
+#ASSERT `offshore solicitor`'s `maximum penalty` EQUALS JUST (`IA penalty` OF 125000, 3, 12500)
+-- holding out as a broker from abroad: s 145(2) does not reach s 90
+`offshore holding out` MEANS `the regulatory position for` (`case` `nobody` `holding out as a registered insurance broker` `outside Singapore, with a substantial and reasonably foreseeable effect in Singapore`)
+#ASSERT NOT `offshore holding out`'s `the Act reaches the act`
+#ASSERT `offshore holding out`'s `maximum penalty` EQUALS NOTHING
+-- a licensed life insurer writing life business: permitted
+#ASSERT (`the regulatory position for` (`case` `a life insurer` (`insuring` `life business` FALSE FALSE) `wholly in Singapore`))'s `permitted`
+
+`a policy and nomination` MEANS `the policy position for` `own life` `, estate` (`estate` `a revocable nomination under s 133` `a friend` 40 FALSE FALSE FALSE FALSE TRUE)
+#ASSERT `a policy and nomination`'s `Singapore or offshore` EQUALS "a Singapore policy"
+#ASSERT `a policy and nomination`'s `valid for insurable interest`
+#ASSERT `a policy and nomination`'s `most that may be recovered` EQUALS JUST 500000
+#ASSERT `a policy and nomination`'s `the death benefits go` EQUALS "to the nominees, according to the last nomination (s 133(8)(a), (9)(a))"
+#ASSERT `a policy and nomination`'s `the insurer may pay without probate` EQUALS "each nominee (or a minor's parent or guardian, or a nominee's personal representative), up to that nominee's portion (s 150(8))"
+#ASSERT `a policy and nomination`'s `the person had capacity to insure`
