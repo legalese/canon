@@ -33,6 +33,16 @@ expected_failed() {
   esac
 }
 
+# Expected REFUSED assertions (a #ASSERT of a value where the model refuses), declared per module.
+# tests-independent.l4: 1 = line D16 (tax year 2024, s 121B entry), class TESTER-WRONG/AMBIGUITY
+# in INDEPENDENT-FINDINGS.md; the tester decided 8,353.2, the entry point refuses.
+expected_refused() {
+  case "$1" in
+    tests-independent.l4) echo 1 ;;
+    *) echo 0 ;;
+  esac
+}
+
 if ! command -v "$L4" >/dev/null 2>&1; then
   echo "check.sh: no l4 binary at '$L4'. Set L4=/path/to/l4 or put l4 on PATH." >&2
   exit 2
@@ -50,8 +60,9 @@ for f in "$DIR"/*.l4; do
   bad=$(printf '%s\n' "$msgs" | grep -cE 'assertion failed|assertion could not be evaluated')
   ref=$(printf '%s\n' "$msgs" | grep -cE 'assertion refused')
   exp=$(expected_failed "$m")
+  expref=$(expected_refused "$m")
   printf '%-40s %7d %9d %7d %8d %9d\n' "$m" "$err" "$ok" "$bad" "$ref" "$exp"
-  [ $((err - bad)) -eq 0 ] && [ "$ref" -eq 0 ] && [ "$bad" -eq "$exp" ] || status=1
+  [ $((err - bad)) -eq 0 ] && [ "$ref" -eq "$expref" ] && [ "$bad" -eq "$exp" ] || status=1
   total_err=$((total_err + err)) total_ok=$((total_ok + ok)) total_bad=$((total_bad + bad)) total_ref=$((total_ref + ref)) n=$((n + 1))
 done
 printf '%-40s %7d %9d %7d %8d\n' "TOTAL ($n modules)" "$total_err" "$total_ok" "$total_bad" "$total_ref"
