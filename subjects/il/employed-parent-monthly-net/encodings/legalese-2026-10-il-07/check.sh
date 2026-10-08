@@ -26,7 +26,7 @@
 # Exit status: 0 only when the vendored copies check, no module has an error other than
 # its expected failed assertions, and each module fails exactly as often as expected_failed
 # says and refuses exactly as often as expected_refused says (0 for every module but the
-# independent tests, version 0.2.0; version 0.3.0 names each counted line below). On this machine a full run takes several minutes:
+# independent tests, version 0.2.0; version 0.3.0 names each counted line below; version 0.4.0's counts below). On this machine a full run takes several minutes:
 # the modules that reach row IL-06 are slow.
 set -u
 DIR="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
@@ -49,7 +49,7 @@ expected_failed() {
 expected_refused() {
   case "$1" in
     # tests-independent.l4: 0 from version 0.3.0 (was 2: H44n's allowance and net, lines 518-519, NII s 72 and fork K15; answered from 0.3.0 through row IL-06's month question, inventory 06-S72)
-    tests-independent-2.l4) echo 20 ;;       # IL-13, declined by name: lines 562, 563, 565 (H38), 573, 574, 576 (H39), 604, 605, 607 (H42), its F2, fewer than six deduction branches at the printed totals, AMBIGUITY (BACKLOG IL-37, waits on Meng); 308, 309, 311 (H10), 640, 641, 643 (H46), its F3, a part-time Schedule K minimum below the full adult figure, recorded gap (0.3.0 answers at or above it); 514, 516, 518 (H33), its F1, the Encouragement of Aliyah and Return (Temporary Provision) Law 5786-2026, NOT-ENCODED (BACKLOG IL-36, deferred; 0.2.2 answered, wrongly); 668, 677 (H49, H50 health read through a declined month), its F6, propagation. (0.2.2: 20, of which H24's three, its F4, are answered from 0.3.0.)
+    tests-independent-2.l4) echo 14 ;;       # IL-13, declined by name: lines 573, 574, 576 (H39, a non-resident), its F2, fewer than six deduction branches at the printed totals, still declined by row IL-04's fork F21 (a set the Institute does not publish; AMBIGUITY); 308, 309, 311 (H10), 640, 641, 643 (H46), its F3, a part-time minimum below the full adult figure (recorded gap); 514, 516, 518 (H33), its F1, the Encouragement of Aliyah and Return (Temporary Provision) Law 5786-2026, NOT-ENCODED (BACKLOG IL-36); 668, 677 (H49, H50 health read through a declined month), its F6, propagation. (0.3.0: 20; 0.4.0: H38's and H42's six, its F2, now answered under TAKEAWAY, row IL-04 v0.5.0.)
     *) echo 0 ;;
   esac
 }

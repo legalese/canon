@@ -3,6 +3,18 @@
 Each entry is a provision the household needs that none of the six composed rows encodes: the exact provision, why the pipeline needs it, what the capstone does instead (a named input, a named refusal, or an input convention stated in `BRIEF.md`), and how much of the capstone's ground it costs.
 Line numbers are lines of the two deposited sources: `ITO` is `../../../income-tax-ordinance-new-version/registers/source-bundle/income-tax-ordinance-new-version.he.wiki.txt`, `NII` is `../../../national-insurance-law-consolidated-version-5755-1995/registers/source-bundle/national-insurance-law-consolidated-version-5755-1995.he.wiki.txt`.
 
+## Status after the rulings followed through (version 0.4.0, 2026-10-08)
+
+Meng's rulings of 2026-10-08 (SHRUG, TAKEAWAY, DESSERT), carried out in the rows by backlog rows IL-37 to IL-42 and IL-45 and followed into the capstone by IL-44 (`NOTES.md` section 13), change three items; the others stand as the 0.3.0 table below says.
+
+| # | provision | status | what version 0.4.0 does | still declined |
+| --- | --- | --- | --- | --- |
+| 1 | ITO s 45A, s 47 | **discharged in part** | Row IL-08's fork F35 (the order of the s 47 deduction and the s 45A credit) was ruled SHRUG and its version 0.4.0 declines only where the order changes the answer; the capstone's own decline of any s 47 deduction is removed, the deduction IL-08 gives is kept out of s 45A (s 47(c)) and taken off the taxable income (N6c: 2,220, credit 2,851.8, tax 3,738.6). | Where the order changes the answer, in IL-08's words (N6: 2,220 deduction first, 0 credit first); IL-08's own refusals under its fork F1; sums for a child of 18 or more are not composed. |
+| 6 | NII s 72 | **discharged** | Row IL-06's fork F2 (a day the later month lacks) was ruled SHRUG: its 18th birthday of a child born on 29 February is declined. The capstone asks s 72 at IL-06's two other readings (28 February, 1 March) and declines only where they differ. | March of the 18th year of a child born on 29 February (N31), in IL-06's words. |
+| 9 | NII s 335 with Schedule J, fewer than all deduction branches | **discharged in part (new)** | Row IL-04's fork F21, ruled TAKEAWAY and DESSERT: at the printed totals, the printed total less the items of the branches not paid, for the three sets whose rate the Institute publishes (a controlling shareholder, N26: 234.5369; aged 67 to 70 without an old-age pension, the second tester's H42; a woman between her retirement age and 67 without one, N29: 171.9195). | Every other set of fewer branches, a non-resident among them (N25; the second tester's H39). |
+
+Rows IL-02 (fork F19, a 2023 election carried into 2024), IL-05 (fork DATE in s 342(c)(2)) and IL-08's National Insurance half (fork N4 in Part D) were also ruled SHRUG; none moves a capstone answer (IL-02's turns on tax year 2024; IL-05's and IL-08's on the day a woman reaches her Part D age, which the capstone reads only in months, and IL-05 declines, in its words, the one month in which the two days differ).
+
 ## Status after the row repairs (version 0.3.0, 2026-10-08)
 
 The rows' repairs of 2026-10-08 (backlog rows IL-14 to IL-21) and the capstone's follow-through (IL-22, `NOTES.md` section 12) change five items of the table below and add two (14, 15).
