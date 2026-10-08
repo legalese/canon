@@ -7,6 +7,7 @@ No domain expert has read it; HG1 has not been sought.
 
 Read with it: `RECONCILE.md` (how the rows' nouns were reconciled, and the changes proposed to the rows) and `GAPS.md` (the provisions no row encodes, in IL-08's work order).
 
+**Version 0.4.0 (2026-10-08)** follows Meng's SHRUG, TAKEAWAY and DESSERT rulings, carried out in the rows by IL-37 to IL-42 and IL-45, into the capstone (backlog row IL-44, agent `capstone-il-44`): section 13.
 **Version 0.3.0 (2026-10-08)** follows the rows' repairs of that day into the capstone, and takes up three findings of the second independent pass (backlog row IL-22, agent `rep-il-22`): section 12.
 **Version 0.2.0 (2026-10-07)** integrates row IL-08 (backlog row IL-10, encoder `enc-il-10`): section 11. **Version 0.2.1 (2026-10-07)** follows row IL-04's own Schedule J switch (backlog row IL-11): section 11.14.
 Sections 0 to 10 describe version 0.1.0; where 0.2.0 changed what they say, the text is kept and marked "(0.2.0: …)" in place.
@@ -392,7 +393,7 @@ None has been settled by a court or a regulator to my knowledge.
 | K14 | Schedule J column D above the threshold: the items (4.67) or the printed total (7.00)? | **The items, as in 0.1.0; not ruled.** The switch is one named rule (11.9). **Superseded by Meng's ruling of 2026-10-07: the printed totals by default, the items kept as the alternative; section 11.13 has the fork as ruled.** |
 | K15 (0.3.0: **superseded**: row IL-06 v0.2.0 answers the month for the children s 72 pays for, so no day is chosen and none is declined; section 12.3) | s 72 says which children are paid for in a month; IL-06 answers a day. Which day? | The first day of the month or, where a child paid for is born later in it (by the 15th), that birthday, the latest such; IL-06 is given only the children s 72 pays for. If one of them is 18 on that day by IL-06's rule (`s 65 — under 18 on`), no day of the month counts them all, and the month is declined. That happens for an 18th birthday on the 1st (s 72 pays the month; IL-06 counts the child on none of its days) and for an 18th birthday on or before the birthday of another child paid for in the same month. Asking IL-06 about a day of another month was rejected: IL-06's answer is "the child allowance … for the month in which the day falls". |
 | K16 | s 335 where the caller gives no statuses? | An earner resident in Israel and insured under Chapter 11 is taken to be insured under Chapters 5, 6, 8, 9, for unemployment and for long-term care, and to be neither a controlling shareholder nor a widow pensioner: version 0.1.0's convention, now run through s 335, which gives all nine branches. Any other earner is declined. A caller who knows otherwise gives the statuses. |
-| K17 | How is the s 45A credit, in money, set off? | With the credit points, against the s 121 tax, no further than to nil, the s 121B tax added after (K3 extended); declined where the credits exceed the s 121 tax and there is additional tax. Row IL-08's fork F11 leaves the order to the composer; with all income from personal exertion every order gives the same total. |
+| K17 (0.4.0: revised; section 13.6, with s 47's deduction now composed) | How is the s 45A credit, in money, set off? | With the credit points, against the s 121 tax, no further than to nil, the s 121B tax added after (K3 extended); declined where the credits exceed the s 121 tax and there is additional tax. Row IL-08's fork F11 leaves the order to the composer; with all income from personal exertion every order gives the same total. |
 
 ### 11.5 Row IL-08's known defects, and where the capstone declines
 
@@ -402,7 +403,7 @@ From the two halves' `INDEPENDENT-FINDINGS.md`. A defect that could change the c
 | --- | --- | --- | --- | --- |
 | D187 (ITO) | Where s 45A's limits cut sums all at 35%, compares the fixed amount with limb (2) before the 1.5% survivors' proviso and never after, so the credit can fall below the s 45A(d)(1)/(e)(1) floor: a wrong number, no diagnostic. | Wherever something is cut, every creditable sum is at 35%, and IL-08's sums credited are below the lesser of those sums and the fixed amount. Under IL-08's own fork F5 that is never right; elsewhere its answer is right (worked: N3, survivors within the cap, 2,851.8). | Declines (`il07-adapter-il08-ito.l4`). (0.3.0: repaired by IL-08 v0.2.0; the decline is removed and N4 is answered, 793.8; section 12.3.) | N4 (refused); R3 (expected red: 611.1 against 793.8) |
 | D183 (ITO) | Refuses, with "sums of different kinds", where the limits cut sums that are all life insurance. | Wherever life insurance alone is cut. | Declines in its own words. (0.3.0: repaired by IL-08 v0.2.0; the decline is removed and N5 is answered, 1,455.) | N5 |
-| D190, D236 (ITO) | Always deducts under s 47 before crediting under s 45A, an unrecorded choice. | Wherever s 47 deducts anything (never for an employee whose whole salary is insured income). | Declines the tax. (0.3.0: still; IL-08 records the question as its fork F35, waiting on a ruling.) | N6 |
+| D190, D236 (ITO) | Always deducts under s 47 before crediting under s 45A, an unrecorded choice. | Wherever s 47 deducts anything (never for an employee whose whole salary is insured income). | Declines the tax. (0.3.0: still; IL-08 records the question as its fork F35, waiting on a ruling.) (0.4.0: ruled SHRUG; IL-08 v0.4.0 declines only where the order changes the answer, and the capstone's decline is removed; section 13.3.) | N6 |
 | D055 (ITO) | A second immigration gives 0 points under s 35 unless the caller says the s 35(e) rules reach the immigrant. | Every immigrant for whom it is not the first time. | Declines. (0.3.0: IL-08 v0.2.0 declines it itself, in its own words; the capstone's decline is removed.) | N13 |
 | observation 1 (ITO) | s 40(b)(1A1) moves two points, not one, for a child of one parent. | A mother's election for a child of one parent in its year of birth or the next. | Declines. (0.3.0: repaired by IL-08 v0.2.0, one point moves; the decline is removed and N10 is answered, 11 points.) | N10 |
 | D019 (ITO) | s 1 "foreign resident", second limb, not recorded. | Not reached: the capstone does not compose IL-08's s 1; residence is an input. | — | — |
@@ -940,6 +941,153 @@ Each is recorded in `encoding.json` `forks` under the id given here; none has be
 | K19 | ITO s 3A(f): row IL-01 now takes an Israeli citizen's residence in, or operation in, the Area; the household holds neither fact. | **An input convention** (assumed, not ruled: the lead's direction): both facts are given to IL-01 as FALSE, and the household's ITO residence fact is read as residence as the Ordinance treats it, s 3A(f) included. A new field on `IL-07 earner` would have broken both testers' household builders. |
 | K20 | The Encouragement of Aliyah and Return (Temporary Provision) Law 5786-2026 is not encoded: which earners does the capstone decline? | **Those whose immigration record puts in its period (5 November 2025 to the end of 2026) the first immigration, on any ground but a returning resident's, or a returning resident's return after six years abroad** (assumed, not ruled: the lead's direction to decline by name; the conditions are this agent's reading of ss 1, 2(a) of that Law and ITO s 14(a)). The day of immigration stands for the day of first residence, so the capstone may decline an earner the Law does not reach and never answers one it does. |
 | K21 | Schedule K's minimum for an earner to whom the full adult minimum wage does not apply. | **Answered on the salary where the salary is at least the full adult monthly figure of the quarter's first month; declined below it** (assumed, not ruled: the lead's direction, from the second tester's F3). The premise: a minimum that applies to a monthly-salaried employee (partial, or a young worker's) is at most the full adult figure. |
+
+## 13. Version 0.4.0 (2026-10-08): IL-37 to IL-42 and IL-45 followed through (BACKLOG IL-44)
+
+Agent `capstone-il-44`, run `IL-44-20261008`, one session, no sub-agents, on 2026-10-08, from the lead's brief for BACKLOG IL-44 and the rows' own notes for each change (each row's NOTES.md "Version …" section was read before its modules were re-vendored).
+Meng ruled on 2026-10-08: SHRUG (the four forks that gated code, each a named switch, declined by default where the readings part: rows IL-02's F19, IL-05's DATE, IL-06's F18 and F2, IL-08's N4 and F35; BACKLOG IL-38 to IL-42), TAKEAWAY (row IL-04's fork F21, Schedule J for fewer branches than a printed total is for; IL-37) and DESSERT (a third set for F21; IL-45).
+Nothing in the sections above was deleted; entries this version changes are marked "(0.4.0: …)" in place.
+The section "Comparison with Axiom's RuleSpec" was neither read nor edited (byte-identical to commons HEAD, checked by sha256 of the section).
+Neither tester's file was edited: both compile against version 0.4.0 unchanged, so the standing permission for interface-only edits was not used and no note by the lead was appended.
+
+### 13.1 What `check.sh` prints
+
+Run from 2026-10-08T16:53:30Z to 16:55:11Z as `L4=/Users/mengwong/.local/bin/l4 ./check.sh`, `JL4_LIBRARY_PATH` unset, after the last edit to any module.
+The binary is `~/.local/bin/l4` → `~/.cabal/bin/l4` → cabal store `jl4-0.1-d4290e25`, sha256 `f4f2bd2558f02f828f0deced5f74313a33670f08cc3275ff95b83f2cde71e448`, the same before and after, and the binary of every row's run that day; no module, vendored copy, `VENDORED.sha256` or `check.sh` changed during the run (sha256 of each, before and after).
+Before any edit the same binary reproduced version 0.3.0's counts module by module (`il07-tests.l4` 130, `il07-tests-il08.l4` 116, `tests-independent.l4` 260/18/0, `tests-independent-2.l4` 298/7/20), so every difference below comes from this version.
+
+```
+vendor.sh: 50 vendored modules match their sources and VENDORED.sha256
+module                                    errors satisfied  failed  refused  expected
+il07-adapter-il01.l4                           0         0       0        0         0
+il07-adapter-il02.l4                           0         0       0        0         0
+il07-adapter-il03.l4                           0         0       0        0         0
+il07-adapter-il04.l4                           0         0       0        0         0
+il07-adapter-il05.l4                           0         0       0        0         0
+il07-adapter-il06.l4                           0         0       0        0         0
+il07-adapter-il08-ito.l4                       0         0       0        0         0
+il07-adapter-il08-nii.l4                       0         0       0        0         0
+il07-nouns.l4                                  0         0       0        0         0
+il07-pipeline.l4                               0         0       0        0         0
+il07-published-figures.l4                      0         0       0        0         0
+il07-refusals.l4                               0         0       0        0         0
+il07-tests-expected-red.l4                     0         0       0        0         0
+il07-tests-il08.l4                             0       130       0        0         0
+il07-tests.l4                                  0       130       0        0         0
+tests-independent-2.l4                         7       304       7       14      7/14
+tests-independent.l4                          18       260      18        0        18
+TOTAL (17 modules)                            25       824      25       14
+(a failed assertion is also an error; any other error, or a refused assertion a module is not expected to have, makes the run red; "expected" is failed/refused where a module may refuse)
+```
+
+`check.sh` exit 0; it now expects 14 refusals, not 20, from `tests-independent-2.l4`, each line named.
+
+### 13.2 Re-vendoring
+
+`vendor.sh --check` named 15 changed sources; `vendor.sh --record` was run after reading each row's section, and `vendor.sh --check` then passed.
+No other line of `VENDORED.sha256` moved (diffed: exactly these 15).
+
+| row | modules | commit now pinned |
+| --- | --- | --- |
+| IL-02 v0.3.0 (F19, SHRUG) | `ito66-c-credit-points.l4` | `1093c6c7` |
+| IL-04 v0.5.0 and v0.6.0 (F21, TAKEAWAY, DESSERT) | `nii-il04-nouns.l4`; `nii-schedule-j.l4` | `0720ea90`; `6646ac96` |
+| IL-05 v0.5.0 (DATE, SHRUG) | `nii-il05-nouns.l4`, `nii-s342-liability-and-deduction.l4` | `8a3eeb22` |
+| IL-06 v0.3.0 (F18, F2, SHRUG) | `nii-il06-nouns.l4`, `nii-s65-interpretation.l4`, `nii-s66-entitlement.l4`, `nii-s67-count-of-children.l4`, `nii-s68-amount.l4`, `nii-il06-family-on-a-day.l4` | `1bc6d2ab` |
+| IL-08 ITO v0.4.0 (F35, SHRUG) | `ito-il08-nouns.l4`, `ito-s47-deduction.l4` (which now imports `ito-s45a-insurance-and-pension-credit.l4`, already vendored) | `c08f8e6c` |
+| IL-08 NII v0.3.0 (N4, SHRUG) | `nii-il08-nouns.l4`, `nii-schedule-a1-part-d.l4` | `f1c061f9` |
+
+Every module compiled against the new copies with no change of the capstone's; nothing it calls was renamed or removed.
+
+### 13.3 What changed in the composition
+
+- **Row IL-08's fork F35 (D190, D236), ruled SHRUG.** `the deduction under section 47 for` now declines, in IL-08's words ("sections 47 and 45A do not say whether the deduction or the credit takes a payment first, and here the order changes the answer"), only where the deduction first and the credit first give different deductions, and gives the deduction where they agree.
+  The capstone's own decline of any s 47 deduction, and its refusal, are removed.
+  Where IL-08 answers, its deduction is passed to s 45A as the sum s 47(c) (ITO line 1787) keeps out of the credit (`IL-08: the credit under section 45A for the earner, in … , paying … , with a deduction under section 47 of …`), and taken off the year's taxable income in the tax rule (fork K17, revised).
+  The s 66 additional-tax input of the child allowance (fork K5) is now asked with the further facts on the salary less that deduction, as the tax rule takes it; where the salary itself bears no additional tax the deduction is not asked, so a deduction IL-08 declines declines the allowance only where it could matter.
+- **Row IL-06's fork F2 (a day the later month lacks), ruled SHRUG.** IL-06 v0.3.0 declines `the 18th anniversary of the birth of` a child born on 29 February: eighteen years on is a common year, and the Law does not say whether the period ends on 28 February or on 1 March. The pipeline gave that day to row IL-08's s 72 for every child in every month, so every month would have been declined for such a child (IL-06's own measurement, its NOTES.md).
+  The pipeline now asks s 72 at each of IL-06's two other readings (the IL-06 adapter's `… , a missing day clamped to the last day of the shorter month` and `… , a missing day rolled to the 1st of the next month`) and declines, in IL-06's words, only a month whose answers differ: March of the 18th year (paid if the period ends on 1 March, not if on 28 February).
+  IL-06's month question, asked at its own defaults with the children s 72 pays for, then declines nothing more: in every month that both readings pay, its age limb agrees at both.
+  For any other child the two days are one day. Fork K22.
+- **Row IL-06's fork F18 (a resident housewife under s 65 "insured" (2)), ruled SHRUG.** No capstone answer moves, as IL-06 measured: the adapter puts every child with both parents, so the children are the father's on both readings and the housewife is paid nothing on either. Re-checked here: `il07-tests.l4`'s 130 assertions, the housewife households H3, H3b, H5, H7, H10, H11 and H16 among them, are satisfied assertion by assertion as at 0.3.0.
+- **Row IL-04's fork F21, ruled TAKEAWAY and DESSERT.** At the printed totals an earner who pays fewer than the six deduction branches is answered, at the printed total less the items not paid, for the three sets whose rate the Institute publishes: a controlling shareholder (1.02 / 6.79), aged 67 to 70 without an old-age pension (0.70 / 4.86), a woman between her retirement age and 67 without one (0.72 / 5.07); every other set (a non-resident among them) is still declined, in IL-04's words. The capstone needed no change: it already passes IL-04's column D for the deduction branches the earner pays, and row IL-05's s 342(c) takes that figure as given (IL-05 NOTES.md, "Row IL-37 (TAKEAWAY)").
+- **Rows IL-02 (F19), IL-05 (DATE) and IL-08 NII (N4).** No capstone answer moves: IL-02's fork turns on tax year 2024; IL-05's and IL-08's on the day a woman reaches her Part D age, which the capstone reads only in months, IL-05 declining in its own words the one month in which the two days differ.
+
+### 13.4 Every expected value changed or added
+
+Worked by hand from the rows' rules and the source before the run; none was changed to match a run.
+`il07-tests.l4`: none (130 of 130, as at 0.3.0).
+`il07-tests-il08.l4` (line numbers at 0.4.0; the changed lines are 0.3.0's, edited in place, so no earlier line moved):
+
+| line | assertion | 0.3.0 | 0.4.0 | why |
+| ---: | --- | --- | --- | --- |
+| 370 | N6, the s 47 deduction | 2,220 | REFUSED, IL-08's F35 words | deduction first 2,220; credit first, s 45A credits all 7,200 (within 8,148), so 0: the order changes the answer |
+| 371 | N6, the tax | REFUSED, the capstone's D190 words | REFUSED, IL-08's F35 words | the capstone's decline is removed; IL-08's reaches it |
+| 634 | N26 (a controlling shareholder), the deduction, default | REFUSED, IL-04's fewer-branches words | 234.5369 | TAKEAWAY: 7,703 × 1.02% + 2,297 × 6.79% = 78.5706 + 155.9663 |
+| 635 | N26, the net | REFUSED, the same | 8,822.8013 | 10,000 − 575.1 − 234.5369 − 367.5618 |
+| 664 | N26, the deduction, at the printed totals by name | REFUSED, the same | 234.5369 | as 634 |
+
+Added, section "Version 0.4.0" (14, all satisfied on the first run):
+
+| line | case | expected | why |
+| ---: | --- | --- | --- |
+| 681 | N6c (N6 paying 1,000 a month): not a beneficiary member | TRUE | deposits 12 × 1,750 = 21,000 < 26,436.48 |
+| 682 | N6c, the s 47 deduction | 2,220 | both orders: 2,220 first; credit first leaves 12,000 − 8,148 = 3,852 ≥ 2,220 |
+| 683 | N6c, the s 45A credit | 2,851.8 | s 47(c): 9,780 creditable, cut to 7% × 116,400 = 8,148, at 35% |
+| 684 | N6c, the taxable income | 117,780 | 120,000 − 2,220 |
+| 685 | N6c, the tax | 3,738.6 | s 121 on 117,780: 8,412 + 33,660 × 14% = 13,124.4; less 6,534 and 2,851.8 |
+| 686 | N6c, the net | 9,079.987 | 10,000 − 311.55 − 240.9012 − 367.5618 |
+| 705 | N29 (a woman of 63, between her retirement age and 67, without an old-age pension), the deduction | 171.9195 | DESSERT: 7,703 × 0.72% + 2,297 × 5.07% = 55.4616 + 116.4579 |
+| 706 | N29, at the items | 118.3994 | 55.4616 + 2,297 × 2.74% (62.9378) |
+| 707 | N29, the net | 9,006.4187 | 10,000 − 454.1 − 171.9195 − 367.5618 |
+| 714 | N30 (H3 with Eli born 29 February 2016), June: the allowance | 392 | 18 on 28 February or 1 March 2034, paid on either: 173 + 219 |
+| 715 | N30, the net | 13,692.537 | H3's: Eli, 10, one point under s 66(c)(5), as at 7 |
+| 724 | N31 (H3 with Keren born 29 February 2008), February | 611 | paid on both readings: Keren, Eli, Dana, 173 + 219 + 219 |
+| 725 | N31, March | REFUSED, IL-06's F2 words | paid at 1 March, not at 28 February |
+| 726 | N31, April | 392 | paid on neither |
+
+`il07-tests-expected-red.l4`: no assertion, as at 0.3.0.
+
+### 13.5 The independent tests, line by line (the record for BACKLOG IL-46)
+
+Neither file was edited. Both were run on the binary above with version 0.3.0's vendored copies (before) and 0.4.0's (after) and compared assertion by assertion.
+
+**`tests-independent.l4`** (fid-il-07, against version 0.1.0): 260 satisfied, 18 failed, 0 refused → **260 satisfied, 18 failed, 0 refused**.
+No assertion changed.
+Still failing, unchanged: 597, 605, 613 (s 40(b)), 620-624, 629-633 (the period), 658, 665 (the unencoded credit), refusals whose words 0.2.0 changed (inventory 07-T15, TESTER-WRONG, stale wording); 670 (H43's tax; 07-H43, TESTER-WRONG); 678, 680 (H45; 07-H45, TESTER-WRONG).
+
+**`tests-independent-2.l4`** (fid-il-13, against version 0.2.2): 298 satisfied, 7 failed, 20 refused → **304 satisfied, 7 failed, 14 refused**.
+
+| line | household, figure | 0.3.0 | 0.4.0 | class |
+| ---: | --- | --- | --- | --- |
+| 562 | H38 (a controlling shareholder, 30,000), NI, 1,592.5369 | refused | **satisfied** | its F2, resolved by TAKEAWAY (row IL-04 v0.5.0, fork F21) |
+| 563 | H38, health read through the household's month, 1,401.5618 | refused | **satisfied** | its F2/F6, as 562 |
+| 565 | H38, net, 21,443.4013 | refused | **satisfied** | its F2, as 562 |
+| 604 | H42 (aged 68, no old-age pension, 12,000), NI, 262.7552 | refused | **satisfied** | its F2, resolved by TAKEAWAY |
+| 605 | H42, health read through the household's month, 470.9618 | refused | **satisfied** | its F2/F6, as 604 |
+| 607 | H42, net, 10,830.783 | refused | **satisfied** | its F2, as 604 |
+
+No new failure or refusal.
+Still failing (7): 215, 218 (H01), 524, 527 (H34), 584, 587, 589 (H40): its F5, the tester's own error on the Schedule K minimum (TESTER-WRONG).
+Still refused (14):
+- 573, 574, 576 (H39, a non-resident, 0.10 / 3.20 by the tester's formula): its F2, still declined by IL-04's fork F21, the set's rate not being published; TAKEAWAY declines it by name (ruled).
+- 308, 309, 311 (H10), 640, 641, 643 (H46): its F3, a part-time minimum below the full adult figure (a recorded gap, GAPS.md item 11).
+- 514, 516, 518 (H33): its F1, the Encouragement of Aliyah and Return (Temporary Provision) Law 5786-2026, NOT-ENCODED (BACKLOG IL-36).
+- 668, 677 (H49, H50 health): its F6, propagation of the tax declines the tester expected.
+
+### 13.6 Forks and conventions, added or revised
+
+| # | the question | taken, and why |
+| --- | --- | --- |
+| K17 (revised) | How are the s 45A credit and the s 47 deduction composed? | **Row IL-08's F35 default** (Meng, SHRUG): declined, in IL-08's words, only where the order changes the answer; where it does not, the deduction comes off the taxable income and out of the s 45A sums (s 47(c)); the credit is set off as before. The capstone's own decline (0.2.0 to 0.3.0) is gone. |
+| K22 (new; assumed, not ruled: the lead's direction for IL-44, from IL-06's proposal) | The 18th birthday of a child born on 29 February, which row IL-06 now declines (its F2), is what s 72's month turns on. | **s 72 asked at both of IL-06's other readings, the month declined only where they differ** (March of the 18th year), in IL-06's words; the same policy as the rows' own SHRUG defaults. |
+| K5 (revised) | The s 66 additional-tax input with further facts | On the taxable income after the s 47 deduction, as the tax rule takes it; the deduction is asked only where the salary itself bears additional tax. |
+
+### 13.7 Not done, and left
+
+- **A household that wants the deduction under a named order** (row IL-08's `…, reading the order with the section 45A credit as` …) is not offered by the capstone; it takes IL-08's default.
+- **A child with the mother alone** (where IL-06's F18 could decline a housewife's family) cannot arise from the capstone's household, whose adapter puts every child with both parents.
+- **The first tester's stale strings** (07-T15) and its H43, H45; the second tester's F5 lines: the testers' own, as before.
+- **HG1** not sought; **not committed**.
 
 ## Comparison with Axiom's RuleSpec (2026-10-07)
 
