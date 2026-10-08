@@ -1,0 +1,281 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `ito-il27-nouns`
+IMPORT `ito-il27-tax-years`
+IMPORT `ito-il08-nouns`
+IMPORT `ito-il08-tax-years`
+IMPORT `ito-s35-new-immigrant`
+
+-- ===========================================================================
+-- Income Tax Ordinance s 35(e) and the Income Tax (Credit for Immigrants in Special Cases) Rules, 5738-1977. Row IL-27.
+-- Source: ITO lines 1585-1588; the Rules, regulations/income-tax-credit-for-immigrants-special-cases-rules-5738-1977.he.wiki.txt lines 16-28.
+--
+-- s 35(e) lets the Minister, notwithstanding s 35(c) (credit only the first time he became an immigrant), set rules (1) for giving the credits of
+-- (a) to one who was formerly an "immigrant", and (2) other provisions for the start of the 54-month (42-month) period and for interruptions of
+-- it. The Rules of 5738-1977 do both:
+--   RULE 2 treats as an immigrant, for the credits of s 35(a) and (b), (1) one who was an immigrant in the period before 31 March 1977, stayed in
+--   Israel a period or periods not exceeding two years together and received for his income in that period neither the s 9(16) exemption nor credit
+--   points under s 35; (2) one who was an immigrant, if he left Israel as a minor before 31 March 1977 and returned after not less than five
+--   years; (3) one who left Israel as a minor and returned after five years or more. A minor is under 18 (rule 1).
+--   RULE 3 leaves out of the count of "the 42 months" of s 35(c), at his request, a period of regular service under the Security Service Law and a
+--   period of study at a post-secondary institution.
+--   RULE 4: the rules apply from the 1975 tax year (inert here: this row answers tax years from 2024).
+--
+-- WHAT IS ENCODED.
+-- (1) `treated as an immigrant under rule 2`: the three limbs, from dates (birth, becoming an immigrant, leaving, returning) and the months he stayed.
+-- (2) THE DAY FROM WHICH HE COUNTS. The Rules say he is treated "as an immigrant" and not from when. Fork F10: the day he returned to Israel;
+--     or the day he first became an immigrant (limbs (1) and (2); limb (3) has none); declined. RULED by Meng on 2026-10-08 (SHRUG): one named
+--     switch, default declined, both readings kept by name and tested. The text of s 35(a) that governs (54 months or 42) turns on the same day (Amendment 262
+--     applies the 54-month text to "one who first became an immigrant" on or after 1 January 2022, row IL-08): this row selects it by the day the reading names.
+-- (3) RULE 3. The months left out of the count shift the months after them back, and a month inside a period left out is not credited.
+--     Fork F11: rule 3 speaks of "the 42 months"; s 35(c) now says 54 for one who first became an immigrant from 2022. Whether rule 3 reaches the 54 months
+--     as well. RULED by Meng on 2026-10-08 (SHRUG): one named switch, default declined where the readings give different points; for the 42-month text rule 3 applies as written.
+--
+-- COMPOSITION with row IL-08 (vendored beside this file, sha256 in NOTES.md): the fractions of a point for the k-th month are IL-08's
+-- (`s 35(a), from Amendment 262 ...`, `s 35(a), before Amendment 262 ...`); this module supplies the place k, which IL-08's own place function computes with one
+-- s 35(c) absence only. Periods are taken as not overlapping, and as lying in or after the month of the day he counts from (a period that began earlier is clipped to it).
+-- The rest of s 35 (who is an immigrant, residence, 48A) is IL-08's; this module takes the day he counts from, the months resided and the periods as inputs.
+-- ===========================================================================
+
+§ `Section 35(e) — the rules of 5738-1977`
+
+§§ `Rule 2 — treated as an immigrant`
+
+-- ext:[reg35:16] | בכללים אלה, ”קטין“ – מי שטרם מלאו לו 18 שנה.
+-- ext:[reg35:19] | לענין מתן זיכויים עפ״י סעיף 35(א) ו־(ב) לפקודה יראו כעולה את המפורטים להלן:
+-- ext:[reg35:20] | (1) מי שהיה עולה בתקופה שלפני י״ב בניסן תשל״ז (31 במרס 1977) ושהה בישראל תקופה או תקופות שלא עלו ביחד על שנתיים ולא קיבל, לגבי הכנסתו באותה תקופה, פטור ממס על פי סעיף 9(16) לפקודה או נקודות זיכוי על פי סעיף 35 לפקודה;
+-- ext:[reg35:21] | (2) מי שהיה עולה אם עזב את ישראל כקטין לפני י״ב בניסן תשל״ז (31 במרס 1977) וחזר אליה כעבור תקופה שאיננה פחותה מחמש שנים;
+-- ext:[reg35:22] | (3) מי שעזב את ישראל כקטין וחזר אליה כעבור תקופה של חמש שנים לפחות.
+
+-- A completed-years age on a day: the years between, less one if the birthday has not yet come.
+@ref the Rules of 5738-1977, rule 1 ("קטין")
+GIVEN born IS A DATE
+      day  IS A DATE
+GIVETH A NUMBER
+`rule 1 — the age of one born on` born `, on` day MEANS
+    DATE_YEAR day MINUS DATE_YEAR born
+    MINUS (IF DATE_MONTH day TIMES 100 PLUS DATE_DAY day LESS THAN DATE_MONTH born TIMES 100 PLUS DATE_DAY born THEN 1 ELSE 0)
+
+-- "left Israel as a minor": under 18 on the day he left.
+@ref the Rules of 5738-1977, rule 1 and rule 2(2), (3), lines 16, 21, 22
+GIVEN p IS A `A person who left Israel and returned, for rule 2 of the rules of 5738-1977`
+GIVETH A BOOLEAN
+`rule 2 — he left Israel as a minor:` p MEANS
+    CONSIDER p's `the day he left Israel`
+    WHEN NOTHING THEN FALSE
+    WHEN JUST d THEN `rule 1 — the age of one born on` (p's `date of birth`) `, on` d LESS THAN 18
+
+-- "returned after a period of not less than five years": the return is on or after the fifth anniversary of leaving.
+@ref the Rules of 5738-1977, rule 2(2), (3), lines 21, 22
+GIVEN p IS A `A person who left Israel and returned, for rule 2 of the rules of 5738-1977`
+GIVETH A BOOLEAN
+`rule 2 — he returned after not less than five years:` p MEANS
+    CONSIDER p's `the day he left Israel`
+    WHEN NOTHING THEN FALSE
+    WHEN JUST l THEN
+        CONSIDER p's `the day he returned to Israel`
+        WHEN NOTHING THEN FALSE
+        WHEN JUST r THEN r AT LEAST YMD (DATE_YEAR l PLUS 5) (DATE_MONTH l) (DATE_DAY l)
+
+@ref the Rules of 5738-1977, rule 2(1), line 20
+GIVEN p IS A `A person who left Israel and returned, for rule 2 of the rules of 5738-1977`
+GIVETH A BOOLEAN
+`rule 2(1) — he was an immigrant before 31 March 1977, stayed not more than two years and had no exemption or points:` p MEANS
+    CONSIDER p's `was an immigrant, and the day he became one`
+    WHEN NOTHING THEN FALSE
+    WHEN JUST d THEN
+            d LESS THAN YMD 1977 3 31
+        AND p's `months he stayed in Israel in total after becoming an immigrant, before 31 March 1977` AT MOST 24
+        AND NOT p's `received for his income in that period an exemption under section 9(16) or credit points under section 35`
+
+@ref the Rules of 5738-1977, rule 2(2), line 21
+GIVEN p IS A `A person who left Israel and returned, for rule 2 of the rules of 5738-1977`
+GIVETH A BOOLEAN
+`rule 2(2) — he was an immigrant, left as a minor before 31 March 1977 and returned after five years:` p MEANS
+    CONSIDER p's `was an immigrant, and the day he became one`
+    WHEN NOTHING THEN FALSE
+    WHEN JUST d THEN
+        CONSIDER p's `the day he left Israel`
+        WHEN NOTHING THEN FALSE
+        WHEN JUST l THEN
+                l LESS THAN YMD 1977 3 31
+            AND `rule 2 — he left Israel as a minor:` p
+            AND `rule 2 — he returned after not less than five years:` p
+
+@ref the Rules of 5738-1977, rule 2(3), line 22
+GIVEN p IS A `A person who left Israel and returned, for rule 2 of the rules of 5738-1977`
+GIVETH A BOOLEAN
+`rule 2(3) — he left Israel as a minor and returned after five years or more:` p MEANS
+        `rule 2 — he left Israel as a minor:` p
+    AND `rule 2 — he returned after not less than five years:` p
+
+@ref the Rules of 5738-1977, rule 2, lines 19-22
+GIVEN p IS A `A person who left Israel and returned, for rule 2 of the rules of 5738-1977`
+GIVETH A BOOLEAN
+`treated as an immigrant under rule 2 of the rules of 5738-1977:` p MEANS
+        `rule 2(1) — he was an immigrant before 31 March 1977, stayed not more than two years and had no exemption or points:` p
+     OR `rule 2(2) — he was an immigrant, left as a minor before 31 March 1977 and returned after five years:` p
+     OR `rule 2(3) — he left Israel as a minor and returned after five years or more:` p
+
+§§ `The day from which one treated as an immigrant counts (fork F10)`
+
+@ref the Rules of 5738-1977, rule 2, line 19; fork F10
+GIVEN a IS A TYPE
+GIVETH AN a
+`the rules of 5738-1977 treat him as an immigrant and do not say from which day the credit period counts` MEANS
+    REFUSE "the rules of 5738-1977 treat him as an immigrant and do not say from which day the credit period counts"
+
+@ref the Rules of 5738-1977, rule 2(3), line 22; fork F10
+GIVEN a IS A TYPE
+GIVETH AN a
+`he was never an immigrant, so there is no day on which he first became one` MEANS
+    REFUSE "he was never an immigrant, so there is no day on which he first became one"
+
+@ref the Rules of 5738-1977, rule 2, line 19; fork F10; Meng's ruling of 2026-10-08 (SHRUG)
+GIVETH A `A reading of the day from which one treated as an immigrant under rule 2 counts`
+`rules of 5738-1977 — the reading row IL-27 takes of the day the credit period counts from` MEANS
+    `declined`
+
+@ref the Rules of 5738-1977, rule 2, line 19; fork F10
+GIVEN r IS A `A reading of the day from which one treated as an immigrant under rule 2 counts`
+      p IS A `A person who left Israel and returned, for rule 2 of the rules of 5738-1977`
+GIVETH A DATE
+`the day from which one treated as an immigrant counts, reading it as` r `, for` p MEANS
+    CONSIDER r
+    WHEN `the day he returned to Israel` THEN
+        CONSIDER p's `the day he returned to Israel`
+        WHEN JUST d THEN d
+        WHEN NOTHING THEN `the rules of 5738-1977 treat him as an immigrant and do not say from which day the credit period counts`
+    WHEN `the day he first became an immigrant` THEN
+        CONSIDER p's `was an immigrant, and the day he became one`
+        WHEN JUST d THEN d
+        WHEN NOTHING THEN `he was never an immigrant, so there is no day on which he first became one`
+    WHEN `declined` THEN `the rules of 5738-1977 treat him as an immigrant and do not say from which day the credit period counts`
+
+§§ `Rule 3 — periods left out of the count`
+
+-- ext:[reg35:25] | לפי בקשת הנישום לא תובא במנין 42 החדשים כאמור בסעיף 35(ג) לפקודה תקופת שירות סדיר לפי חוק שירות בטחון, תשי״ט–1959 [נוסח משולב], ותקופת לימודים במוסד ללימוד על־תיכוני.
+
+-- Which text of s 35(a) governs, by the day he counts from (row IL-08, from Amendment 262 s 2).
+@ref ITO s 35(a), Amendment 262 s 2, via row IL-08
+GIVEN i IS AN `An immigrant counted under the rules of 5738-1977, in a tax year`
+GIVETH A BOOLEAN
+`s 35 with the rules — the text of Amendment 262 governs:` i MEANS
+    i's `the day from which he counts as an immigrant` AT LEAST YMD 2022 1 1
+
+-- The months of a period left out that fall in or after the month he counts from, clipped to it.
+@ref the Rules of 5738-1977, rule 3, line 25
+GIVEN `first month of the count` IS A NUMBER
+      p IS A `A period left out of the count of months under rule 3`
+GIVETH A NUMBER
+`the first month of the period left out, no earlier than` `first month of the count` `, for` p MEANS
+    max (`the serial number of the month of` (p's `first calendar month`)) `first month of the count`
+
+@ref the Rules of 5738-1977, rule 3, line 25
+GIVEN p IS A `A period left out of the count of months under rule 3`
+GIVETH A NUMBER
+`the last month of the period left out:` p MEANS
+    `the serial number of the month of` (p's `first calendar month`) PLUS p's `number of months` MINUS 1
+
+-- The place in the period of month m of the tax year, with the periods left out of the count (0 for a month inside one).
+@ref the Rules of 5738-1977, rule 3, line 25; ITO s 35(a), (c)
+GIVEN `month` IS A NUMBER
+      i       IS AN `An immigrant counted under the rules of 5738-1977, in a tax year`
+GIVETH A NUMBER
+`s 35 with rule 3 — the place in the period of month` `month` `of the tax year, with the periods left out, for` i MEANS
+    IF   `inside a period` THEN 0 ELSE `raw place` MINUS `months left out before this month`
+    WHERE
+        `first`        MEANS `the serial number of the month of` (i's `the day from which he counts as an immigrant`)
+        `this month`   MEANS `the month count of calendar month` `month` `of` (i's `tax year`)
+        `raw place`    MEANS `this month` MINUS `first` PLUS 1
+        `periods`      MEANS i's `periods left out of the count of months`
+        `inside a period` MEANS
+            elem TRUE (map (GIVEN p YIELD `the last month of the period left out:` p AT LEAST `the first month of the period left out, no earlier than` `first` `, for` p
+                                          AND `this month` AT LEAST `the first month of the period left out, no earlier than` `first` `, for` p
+                                          AND `this month` AT MOST `the last month of the period left out:` p) `periods`)
+        `months left out before this month` MEANS
+            sum (map (GIVEN p YIELD IF   `the last month of the period left out:` p AT LEAST `the first month of the period left out, no earlier than` `first` `, for` p
+                                          AND `this month` GREATER THAN `the last month of the period left out:` p
+                                     THEN `the last month of the period left out:` p MINUS `the first month of the period left out, no earlier than` `first` `, for` p PLUS 1
+                                     ELSE 0) `periods`)
+
+-- The place without rule 3: months counted from the month he counts from, the month itself the first.
+@ref ITO s 35(a), (c), lines 1573-1580
+GIVEN `month` IS A NUMBER
+      i       IS AN `An immigrant counted under the rules of 5738-1977, in a tax year`
+GIVETH A NUMBER
+`s 35 with the rules — the place in the period of month` `month` `of the tax year, with no period left out, for` i MEANS
+    `the month count of calendar month` `month` `of` (i's `tax year`) MINUS `the serial number of the month of` (i's `the day from which he counts as an immigrant`) PLUS 1
+
+-- The fraction of a point for month m: nothing for a month not resided in Israel, otherwise IL-08's fraction for the place, under the text that governs.
+@ref ITO s 35(a), (c), lines 1573-1580; row IL-08
+GIVEN `month` IS A NUMBER
+      `rule 3 applies` IS A BOOLEAN
+      i IS AN `An immigrant counted under the rules of 5738-1977, in a tax year`
+GIVETH A NUMBER
+`s 35 with the rules — the fraction of a point for month` `month` `, rule 3 applying as` `rule 3 applies` `, for` i MEANS
+    IF   NOT elem `month` (i's `months of the tax year in which he resided in Israel`)
+    THEN 0
+    ELSE IF   `s 35 with the rules — the text of Amendment 262 governs:` i
+         THEN `s 35(a), from Amendment 262 — the fraction of a point for month` `the place`
+         ELSE `s 35(a), before Amendment 262 — the fraction of a point for month` `the place`
+    WHERE
+        `the place` MEANS
+            IF   `rule 3 applies`
+            THEN `s 35 with rule 3 — the place in the period of month` `month` `of the tax year, with the periods left out, for` i
+            ELSE `s 35 with the rules — the place in the period of month` `month` `of the tax year, with no period left out, for` i
+
+-- The credit points, with rule 3 applying or not.
+@ref ITO s 35(a), (c); the Rules of 5738-1977, rule 3
+GIVEN `rule 3 applies` IS A BOOLEAN
+      i IS AN `An immigrant counted under the rules of 5738-1977, in a tax year`
+GIVETH A NUMBER
+`s 35 with the rules — the credit points, rule 3 applying as` `rule 3 applies` `, for` i MEANS
+    sum (map (GIVEN m YIELD `s 35 with the rules — the fraction of a point for month` m `, rule 3 applying as` `rule 3 applies` `, for` i)
+             (LIST 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12))
+
+@ref the Rules of 5738-1977, rule 3, line 25; fork F11
+GIVEN a IS A TYPE
+GIVETH AN a
+`rule 3 speaks of the 42 months and does not say whether it reaches the 54 months of s 35(c), and here the readings differ` MEANS
+    REFUSE "rule 3 speaks of the 42 months and does not say whether it reaches the 54 months of s 35(c), and here the readings differ"
+
+@ref the Rules of 5738-1977, rule 3, line 25; fork F11; Meng's ruling of 2026-10-08 (SHRUG)
+GIVETH A `A reading of "the 42 months" in rule 3 of the rules of 5738-1977`
+`rules of 5738-1977 — the reading row IL-27 takes of "the 42 months"` MEANS
+    `declined where the readings differ`
+
+@ref ITO s 35(a), (c), (e)(2); the Rules of 5738-1977, rule 3; forks F11; s 48A
+GIVEN r IS A `A reading of "the 42 months" in rule 3 of the rules of 5738-1977`
+      i IS AN `An immigrant counted under the rules of 5738-1977, in a tax year`
+GIVETH A NUMBER
+`the credit points under section 35 with rule 3 of the rules of 5738-1977, reading "the 42 months" as` r `, for` i MEANS
+    `for tax year` (i's `tax year`) `, row IL-27 answers`
+        (`the points, unless section 48A may take them from a foreign worker:` (i's `a foreign worker`) `,` `the points`)
+    WHERE
+        `with` MEANS `s 35 with the rules — the credit points, rule 3 applying as` TRUE `, for` i
+        `without` MEANS `s 35 with the rules — the credit points, rule 3 applying as` FALSE `, for` i
+        `the points` MEANS
+            IF   NOT `s 35 with the rules — the text of Amendment 262 governs:` i
+            THEN `with`
+            ELSE CONSIDER r
+                 WHEN `rule 3 reaches the 54 months as well` THEN `with`
+                 WHEN `rule 3 reaches only the 42 months`    THEN `without`
+                 WHEN `declined where the readings differ`
+                     THEN IF   `with` EQUALS `without`
+                          THEN `with`
+                          ELSE `rule 3 speaks of the 42 months and does not say whether it reaches the 54 months of s 35(c), and here the readings differ`
+
+@export The credit points under Income Tax Ordinance s 35(a) for an immigrant whose count of months leaves out, at his request, periods of regular service and post-secondary study under rule 3 of the rules of 5738-1977, for a tax year from 2024: a fraction of a point for each month of the 42-month (or 54-month) period, the months after a period left out moving back; declines for one who immigrated from 2022 where rule 3 changes the answer, since the rule speaks of 42 months
+@ref ITO s 35(e); the Rules of 5738-1977, rules 2, 3
+GIVEN i IS AN `An immigrant counted under the rules of 5738-1977, in a tax year`
+          @desc the tax year, the day from which he counts as an immigrant, the months of the year resided in Israel, and the periods left out under rule 3
+GIVETH A NUMBER
+`the credit points under section 35 with rule 3 for` i MEANS
+    `the credit points under section 35 with rule 3 of the rules of 5738-1977, reading "the 42 months" as` `rules of 5738-1977 — the reading row IL-27 takes of "the 42 months"` `, for` i
+
+§§ `Rules 4 and 5`
+
+-- rule 4 (line 28): the rules apply from the 1975 tax year: inert for tax years from 2024. Rule 5 (line 31): the name of the rules.
+-- ext:[reg35:28] | תחולתם של כללים אלה משנת המס 1975.
