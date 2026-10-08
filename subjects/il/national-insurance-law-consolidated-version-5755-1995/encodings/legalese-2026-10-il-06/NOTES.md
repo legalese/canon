@@ -1,9 +1,195 @@
 # NOTES — il/national-insurance-law-consolidated-version-5755-1995, encoding row `legalese-2026-10-il-06`
 
 National Insurance Law [Consolidated Version], 5755-1995, **ss 66, 67 and 68** (the child allowance: the right to it, the count of children, the amount), with **s 65** and the parts of **s 1** they read, encoded in L4 by one agent in one session (run `IL-06-20261006`, 2026-10-06), from the brief in `BRIEF.md`.
-Status: **draft, version 0.2.0** (repairs of 2026-10-08, BACKLOG IL-18; the section below).
-An independent test pass was run on 2026-10-06 (`INDEPENDENT-FINDINGS.md`); after 0.2.0 its five remaining failures are recorded forks that wait on rulings.
+Status: **draft, version 0.3.0** (forks F18 and F2 as switches, ruled by Meng on 2026-10-08, SHRUG, BACKLOG IL-40; and the repairs of 0.2.0, BACKLOG IL-18; the two sections below).
+An independent test pass was run on 2026-10-06 (`INDEPENDENT-FINDINGS.md`); after 0.3.0 three of its assertions still fail, from two recorded forks (F7, F3).
 No domain expert has read it against the source; HG1 has not been sought.
+
+## Version 0.3.0 (2026-10-08): forks F18 and F2 as switches (BACKLOG IL-40, SHRUG)
+
+Made by `shrug-il-40` (the agent of IL-18, under a new claim).
+Meng ruled on 2026-10-08 (SHRUG), for the four forks that gated code in BACKLOG IL-24, that each becomes one named switch, declined by default, with every other reading kept by name and tested.
+Two of the four are this row's: fork **F18** (06-HW) and fork **F2** (DATE).
+Answers move only where a case turns on one of them, and there the default is now a refusal by name.
+As narrowed by the lead on 2026-10-08, to match rows IL-05 (F26) and IL-08 (F35): a question is declined by default only where the other readings give it different answers, and is answered where they agree.
+Changed: `nii-il06-nouns.l4`, `nii-s65-interpretation.l4`, `nii-s66-entitlement.l4`, `nii-s67-count-of-children.l4`, `nii-s68-amount.l4`, `nii-il06-family-on-a-day.l4`, `nii-il06-tests.l4`, `check.sh`, `encoding.json` and this file.
+`tests-independent.l4` is unchanged.
+
+### The two switches
+
+- **F18, a resident housewife under s 65(a) "מבוטח" limb (2) (line 803).**
+  Readings, by name (`A reading of a resident housewife under section 65 "insured" (2)`): `a resident housewife is excluded from both limbs` (reading (A), this row's in 0.1.0 to 0.2.0); `a resident housewife is insured under limb (2)` (reading (B), the independent tester's); `a case that turns on a resident housewife's insurance is declined`.
+  The switch is `section 65 — the reading this row takes of a resident housewife under "insured" (2)`, which names the third.
+  The refusal: "section 65, in limb (2) of the definition of an insured person, does not say whether a resident housewife as defined in section 238, not insured under Chapter 11, is insured under it".
+  Limb (2) is `s 65 "insured" (2) — a resident of Israel not insured under Chapter 11, reading a resident housewife as` … `:` …, on the same lines as before (`nii-s65-interpretation.l4:40-44`); its last conjunct, the exception of a housewife, reads the switch, and is reached only for a person who is resident, not absent beyond a reasonable temporary absence, and not insured under Chapter 11.
+- **F2, a day the later month lacks (lines 807, 809).**
+  Readings, by name (`A reading of a day the later month lacks`): `a missing day clamps to the last day of the shorter month` (this row's reading in 0.1.0 to 0.2.0, `add years` and `add months`, and rows IL-05's and IL-08's); `a missing day rolls to the 1st of the next month`; `a case that turns on a missing day is declined`.
+  The switch is `section 65 — the reading this row takes of a day the later month lacks`, which names the third.
+  The refusal: "the Law does not say on which day a period ends that would end on a day the later month lacks, such as 29 February in a common year".
+  It is read in three places: the 18th anniversary (the day question's age limb, the month question's age limb, and the month question's check that a listed child was not 18 before the month began), and three months from the day a child left Israel (s 65(b)).
+
+The two readings travel together as one record, `The readings this model takes where the text does not decide`, built by `reading a resident housewife as` … `and a missing day as` …; `the readings this row takes where the text does not decide` is the two switches.
+
+### What "declined" means here
+
+**Each public question is answered at the other readings, and declined only if their answers differ.**
+At the declined reading of F18, the question is answered at (A) and at (B); at the declined reading of F2, at the clamp and at the roll; with both declined, at up to four pairs.
+If the answers are the same, that is the answer; otherwise the fork's refusal.
+This is one rule, `the answer to` … `at` … `, fork F18 mattering:` … `, fork F2 mattering:` … `, two answers merged by` … (`nii-s65-interpretation.l4`), which every public question of s 65, s 67, s 68 and the family's answer goes through; s 66's two rules compare (A) and (B) directly.
+The questions it covers: a child's status on a day or for a month (`s 65 — a child for this Chapter`, `s 67 — the insured parent in whose count`), s 67(a) and a person's count, a person's allowance (`s 68 — the child allowance`), and the family's allowances (day and month, at amounts given or published).
+The leaf questions (`s 65 — insured`, `s 65 — one who was insured`, `s 65 — under 18 on`, `s 65 — in Israel on`, `s 65(b) — …`, the month's age limb) compare the two readings where they read the fork, which for a single value is the same thing.
+
+**What "the same answer" means.**
+For a child's status, a count and s 67(a): equal.
+For a person's allowance: equal; or, where neither reading pays the person anything (no allowance, or an allowance with no child in the count), the same in substance, and the answer is a third kind of "no allowance", new in the nouns: `no child allowance on either reading of whether this person is insured, which section 65 does not decide`.
+Without it, a resident housewife at home would decline every family she is in, though on both readings she is paid nothing and her husband's count is the same (lines 796-800, 842).
+For the family's allowances: the same problem with the facts, or the same persons in the same order, each with one answer from the two.
+A family whose total is the same on both readings but whose money goes to a different parent is declined (lines 862-864: Ella and Gil with their mother only are Avi's on (A), Batya's on (B)).
+
+**Where a fork cannot matter, the question is answered once.**
+F18 can matter only if a person of the family is resident, not absent beyond a reasonable temporary absence, not insured under Chapter 11, and a housewife; F2 only if a child was born on 29 February or an absence began on a 29th, 30th or 31st (`fork F18 can matter in`, `fork F2 can matter in`, `… for` a person or a child).
+Otherwise the readings agree by construction, and the question is answered at the first reading.
+
+**Where it still declines, or declines in other words.**
+- `the 18th anniversary of the birth of` a child born on 29 February is declined by default: the day itself is what the readings part on, for every such child (18 years after a leap year is never one). The questions that use it are declined only on the one day, or in the one month, where clamp and roll give different answers (lines 812-827, 867-868).
+- A question that one reading itself declines for another reason is declined in that reason's words, since a refusal cannot be compared. Line 778: with Avi formerly insured and Batya a housewife, (A) falls to s 71, which this row does not encode, and (B) answers `JUST "Batya"`; by default the question is declined in s 71's words, not F18's.
+- Line 414's dependence on the order of a child's parents is gone: the question is answered at (A) and (B), each reading every parent it needs (line 846, the same with Batya first).
+
+### Interface changes (version 0.3.0)
+
+**New in `nii-il06-nouns.l4`** (lines 239-260, after every existing declaration; the three are at 247, 252 and 258), and a third member of `The child allowance of a person for the month`, `no child allowance on either reading of whether this person is insured, which section 65 does not decide` (line 179; the comment above it was shortened by a line, so lines 88, 123 and 188 still hold the declarations `RECONCILE.md` cites; a note on it is at the end of the file).
+New rules: `the answer to` … (the comparison) and `fork F18 can matter for` / `in`, `fork F2 can matter for` / `in` in `nii-s65-interpretation.l4`; `one answer for a person from two readings:` and `nothing is payable under` in `nii-s68-amount.l4`; `one answer for a family from two readings:` in `nii-il06-family-on-a-day.l4`. `A reading of a resident housewife under section 65 "insured" (2)`, `A reading of a day the later month lacks`, `The readings this model takes where the text does not decide`.
+
+**Every name a caller used before 0.3.0 keeps its name and type**, and answers at the readings the switches name, that is, declined where a case turns on either fork.
+Beside each public rule there is now a form that takes readings by name; given the declined reading by name, it answers exactly as the default does:
+
+| rule, by its old name | form with readings |
+| --- | --- |
+| `s 65 — insured` | `s 65 — insured, reading a resident housewife as` … `:` … |
+| `s 65 — one who was insured` | `s 65 — one who was insured, reading a resident housewife as` … `:` … |
+| `the 18th anniversary of the birth of` | … `, reading a missing day as` … |
+| `s 65 — under 18 on` … `:` … | … `, reading a missing day as` … |
+| `s 65(b) — the absence, as at` … | … `, reading a missing day as` … |
+| `s 65 — in Israel on` … `:` … | … `, reading a missing day as` … |
+| `s 65, read with s 72(a) — not 18 before the month of` … | … `, reading a missing day as` … |
+| `s 65 — a child for this Chapter, in` … `:` … | `s 65 — a child for this Chapter, reading` … `, in` … `:` … |
+| `s 66 — an insured parent with income chargeable to additional tax` | … `, reading a resident housewife as` … `:` … |
+| `s 66 — entitled to a monthly child allowance for each child in the count` | … `, reading a resident housewife as` … `:` … |
+| `s 67 — the insured parent in whose count, in` … | `s 67 — the insured parent in whose count, reading` … `, in` … |
+| `s 67(a) — no child is counted with more than one insured parent, in` … | `…, reading` … `, in` … |
+| `s 67 — the count of children, in` … | `s 67 — the count of children, reading` … `, in` … |
+| `s 68 — the child allowance, in` … | `s 68 — the child allowance, reading` … `, in` … |
+| `the child allowance of each person, in` … `, at` … | `the child allowance of each person, reading` … `, in` … `, at` … |
+| `the child allowance of each person, at the basic amounts the Institute published for the day, in` … | `the child allowance of each person, reading` … `, at the basic amounts the Institute published for the day, in` … |
+| `the child allowance of each person for the month, for the children section 72 pays for, in` … `, at` … | `…, for the children section 72 pays for, reading` … `, in` … `, at` … |
+| `the child allowance of each person for the month, for the children section 72 pays for, at the basic amounts the Institute published for the month, in` … | `…, for the children section 72 pays for, reading` … `, at the basic amounts the Institute published for the month, in` … |
+
+The month's forms in s 65, s 67 and s 68 (`…, for the month, in` …) keep their names and answer at the switches' readings.
+**Changed type** (none is called outside this row): the forms "asked" a question (0.2.0) now also take the readings, `…, asked` … `, reading` … `, in` …; `a problem with the facts, asked` … now takes `, reading a missing day as` …; and the helpers that read "insured" (`s 65 "child" (1)`, `s 65 "child" (2)`, `s 65 — a parent for this Chapter`, `the insured parents of`, `the parents of` … `who were insured`, `section 69A may apply`, `s 67 — the insured parent chosen`, `section 71 may apply`) take `, reading a resident housewife as` … at the end of their names.
+`s 65 "insured" (2) — a resident of Israel not insured under Chapter 11, other than a housewife` is renamed `s 65 "insured" (2) — a resident of Israel not insured under Chapter 11, reading a resident housewife as` … `:` …, on its old line.
+The lines cited elsewhere still hold the rules they held: s 65, 40-44; s 67, 169 and 223-227; s 68, 43-49 and 156-159.
+
+### Tests re-pointed (values unchanged) and added
+
+Re-pointed in place, on the same lines, to the reading each rests on, by name; no expected value changed:
+
+| line | before | after |
+| --- | --- | --- |
+| 379 | `NOT s 65 — insured` (Batya, a housewife) | `NOT s 65 — insured, reading a resident housewife as` `a resident housewife is excluded from both limbs` |
+| 392 | `NOT s 65 — under 18 on` 28 Feb 2026 (born 29 Feb 2008) | the same `, reading a missing day as` `a missing day clamps to the last day of the shorter month` |
+| 404 | `NOT s 65 — in Israel on` 1 Feb 2026 (left 30 Nov 2025, back 1 Mar 2026) | the same, at the clamp by name |
+| 415 | `NOT s 65 — a child for this Chapter, in` (Avi not insured, Batya a housewife) | `…, reading` `reading (A) of fork F18` `, in` … |
+| 444 | `s 67 — the insured parent in whose count, in` … `EQUALS NOTHING` | `…, reading` `reading (A) of fork F18` `, in` … |
+| 465 | `REFUSED s 67 — …, in` … `BECAUSE` s 71 | `…, reading` `reading (A) of fork F18` `, in` … |
+| 703 | the month's answer, March 2026, `EQUALS LEFT … reached 18 before the month began` | `the month's answer, reading` `clamping under fork F2` … |
+
+Their comment lines were reworded in place (376-378, 388-390, 400-402, 412-413, 442-443, 462, 698-701).
+Lines 391, 403, 414 and 702 rest on no reading (the same on both) and are answered by default.
+
+Added, lines 758-868 (50 assertions), every value worked from the source first; 2026 amounts, the first child 173, the second 219.
+Two of them, written before the default was narrowed and not yet committed, changed with it, and say so: 778 and 800.
+
+| line(s) | case | value(s) | why |
+| --- | --- | --- | --- |
+| 758-760 | the switches | both name the declined reading | Meng's ruling |
+| 764 | Batya, F18 (B) | insured | line 803, limb (2) negated whole |
+| 765-766 | Batya, F18 declined (by name; by default) | refused, F18 | the text does not decide |
+| 770 | a housewife not resident, by default | not insured | limb (2) stops at residence: no reading reached |
+| 773-775 | lines 415, 444, 465 on (B) | a child; `JUST "Batya"`; `JUST "Batya"` | Batya insured; with Avi formerly insured she is insured and entitled, so s 71's proviso puts Noa with her |
+| 777 | line 444 by default | refused, F18 | (A) NOTHING, (B) `JUST "Batya"` |
+| 778 | line 465 by default | refused, s 71 (first written as refused, F18) | (A) falls to s 71, (B) answers; a refusal cannot be compared, so (A)'s reason is the default's |
+| 785-787 | Batya alone with Noa (the tester's F10), 15 June 2026 | (A) no allowance, not insured; (B) 173; by default refused | |
+| 796-800 | Avi insured, Batya a housewife, Ella and Gil | (A) 392; (B) 392; Batya's answer (A) not insured, (B) allowance with no lines; by default 392 (line 800, first written as refused) | the count is Avi's on both; Batya is paid nothing on both |
+| 806-809 | 18th anniversary of a 29 February 2008 birth | clamp 28 Feb 2026; roll 1 Mar 2026; by default refused; Keren's, 1 Nov 2026, by default | |
+| 812-815 | under 18, 29 Feb 2008 birth | 28 Feb 2026: roll TRUE, default refused; 27 Feb TRUE and 1 Mar FALSE by default | |
+| 818-821 | the family on 28 Feb 2026 | roll 173; clamp 0; default refused; on 27 Feb 173 by default | |
+| 824-827 | March 2026, the month question | roll 173; default refused; the month's age limb roll TRUE, clamp FALSE | line 854: 18 on 1 March ceases in March |
+| 834-836 | left 30 Nov 2025, back 1 Mar 2026, asked 1 Feb 2026 | roll in Israel; default refused; Institute regards her in Israel: in Israel by default | |
+| 842-843 | Batya in the family of line 800, by default; and the person question for her | `no child allowance on either reading of whether this person is insured, which section 65 does not decide` | nothing payable to her on (A) or (B) |
+| 846 | line 414 with Batya listed first, by default | TRUE | TRUE on (A) (through Avi) and on (B) (through both) |
+| 850-851 | Batya, a housewife with income chargeable to additional tax, by default | not entitled; "an insured parent with that income" refused, F18 | (A) not insured, (B) excluded by s 66: not entitled on both; (A) FALSE, (B) TRUE |
+| 854 | the month question, Avi insured, Batya a housewife, Keren, Gil, Hila, November 2026, by default | 611 | Avi's count on both readings |
+| 862-864 | Avi insured, Batya a housewife, Ella and Gil with Batya only | (A) Avi 173, 219; (B) Batya 173, 219; by default refused, F18 | the same total, paid to a different parent |
+| 867-868 | Noa, born 29 Feb 2008, on 15 June 2025 and 15 June 2026, by default | 169; 0 | 17 and 18 on every reading |
+
+### The independent tester's file
+
+Unchanged.
+Its F8 (line 608, a 29 February birth on 28 February 2026) and F10 (line 619, a resident housewife alone with her child) expected refusals, and now get them.
+Probed with `#EVAL` in a scratch copy: line 608 refuses with "the Law does not say on which day a period ends that would end on a day the later month lacks, such as 29 February in a common year", and line 619 with "section 65, in limb (2) of the definition of an insured person, does not say whether a resident housewife as defined in section 238, not insured under Chapter 11, is insured under it".
+Three of its assertions still fail, each a recorded fork: line 594 (F4, fork F7) and lines 613 and 615 (F9, fork F3).
+
+### For the capstone (BACKLOG IL-44): what the default does to its households
+
+Measured on 2026-10-08 in a scratch copy of the capstone at commons `985940e` (IL-07 v0.3.0), not in the capstone itself.
+Its 50 vendored modules were rebuilt from `VENDORED.sha256` (each from its pinned commit, every sha256 matching), and a second copy had the six changed IL-06 modules swapped in by hand (nouns, s 65, s 66, s 67, s 68, family-on-a-day; period, published figures and s 1 are unchanged).
+Both copies ran the capstone's test modules with the same binary (`f4f2bd25…`):
+
+| module | before (IL-06 0.2.0) | after (IL-06 0.3.0) |
+| --- | --- | --- |
+| `il07-tests.l4` | 130 satisfied | 130 satisfied |
+| `il07-tests-il08.l4` | 116 satisfied | 116 satisfied |
+| `il07-tests-expected-red.l4` | no assertions (0.3.0 emptied it) | no assertions |
+| `tests-independent.l4` | 260 satisfied, 18 failed | 260 satisfied, 18 failed |
+| `tests-independent-2.l4` | 298 satisfied, 7 failed, 20 refused | 298 satisfied, 7 failed, 20 refused |
+
+Compared assertion by assertion (line, outcome, and the text of every failure and refusal): **no assertion changed.**
+
+**A working father and a mother at home.** The capstone's fixture `test: a housewife named` is a resident s 238 housewife not insured under Chapter 11, so fork F18 can matter in every household that uses it (H3, H3b, H5, H7, H10, H11, H16 and others in `il07-tests.l4`, and the households of `il07-tests-il08.l4` that use it).
+Its adapter puts every child with both parents, so the children are the father's on both readings (on (A) he is their only insured parent; on (B) the first limb), and the mother is paid nothing on either.
+Probed in the scratch copy: H3 (June 2026), at (A) the mother's answer is "not being an insured parent", at (B) an allowance with no lines, by default `no child allowance on either reading of whether this person is insured, which section 65 does not decide`; the family's total is 392 on all three, as before. H7, whose father has income chargeable to additional tax, is 0 on all three, as before. By default H5 is 830, H11 392 and H16 611, the values the capstone's tests assert, and H10 173.
+A household of the capstone's shape would be declined under F18 only if a child were with the mother alone, which the adapter never says.
+
+**A child born on 29 February: every month is declined.** The capstone's pipeline reckons each child's 18th birthday through IL-06's `the 18th anniversary of the birth of` and passes it to IL-08's s 72. By default that day is itself declined for a 29 February birth (the clamp and the roll give different days), so the pipeline is declined in every month, not only in the month the readings part on.
+Probed: H3 with Eli born on 29 February 2016 instead, June 2026: 392 with IL-06 0.2.0; declined, in F2's words, with 0.3.0, although Eli is 10 and every reading pays him.
+No capstone test has such a child, which is why no assertion moved. **Proposed for IL-44:** ask s 72 at the clamp and at the roll, each through `the 18th anniversary of the birth of` … `, reading a missing day as` …, and decline only the month whose answer differs (with IL-08's own F2 switch, BACKLOG IL-41); the month answer of IL-06 already declines only in the month the readings part on (March of the 18th year).
+
+### `check.sh` after the switches
+
+Run on 2026-10-08, 16:21:15Z to 16:21:39Z, in place with `L4=/Users/mengwong/.local/bin/l4 ./check.sh`, `JL4_LIBRARY_PATH` unset, after the default was narrowed.
+Binary `~/.cabal/bin/l4` -> cabal store `jl4-0.1-d4290e25`, sha256 `f4f2bd2558f02f828f0deced5f74313a33670f08cc3275ff95b83f2cde71e448`, the same before and after the run.
+
+```
+module                                    errors satisfied  failed  refused  expected
+nii-il06-family-on-a-day.l4                    0         0       0        0         0
+nii-il06-nouns.l4                              0         0       0        0         0
+nii-il06-period.l4                             0         0       0        0         0
+nii-il06-published-figures.l4                  0         0       0        0         0
+nii-il06-tests.l4                              0       206       0        0         0
+nii-s1-basic-amount.l4                         0         0       0        0         0
+nii-s65-interpretation.l4                      0         0       0        0         0
+nii-s66-entitlement.l4                         0         0       0        0         0
+nii-s67-count-of-children.l4                   0         0       0        0         0
+nii-s68-amount.l4                              0         0       0        0         0
+tests-independent.l4                           3       143       3        0         3
+TOTAL (11 modules)                             3       349       3        0
+```
+
+`check.sh` exit 0.
+Before the switches (0.2.0, the same binary): `nii-il06-tests.l4` 156 satisfied; `tests-independent.l4` 141 satisfied, 5 failed.
+With the first version of the switches (a refusal wherever a rule read the fork) and before the tests were re-pointed, the tests module refused six assertions and failed one (lines 379, 392, 404, 415, 444, 703 refused; 465 failed, the s 71 refusal displaced by F18's), exactly the labelled ones that rest on the old readings.
+With the default narrowed, the two 0.3.0 tests written against the first version failed (778, now declined in s 71's words; 800, now answered 392) and were changed, and 11 were added.
+`tools/srcquote.py` regenerates every module byte-identical, and `tools/hebcheck.py` passes on every module and this file.
 
 ## Version 0.2.0 (2026-10-08): repairs (BACKLOG IL-18)
 
@@ -34,14 +220,15 @@ No expected value of an existing assertion changed, in either test module.
   The day question is unchanged, and the tests assert that the two agree where every listed child is born and under 18 on the record's day.
   The guard against drift between the two questions is `nii-il06-tests.l4` lines 695-696, which assert that the month answer equals the day answer (173, 219, 219, 219, 173, 173; 1176) where both answer; since the first draft's restated s 67/s 68 composition was replaced by one composition asked a question, there is no second copy for them to guard, and they guard the month's age limb and check on births instead.
 - **06-HW, a resident s 238 housewife under s 65(a) "מבוטח" limb (2) (`INDEPENDENT-FINDINGS.md`, finding 4).**
-  Recorded as fork **F18**, with both readings and who holds each; the current reading (A) is kept as the default until Meng rules (BACKLOG IL-24).
+  Recorded as fork **F18**, with both readings and who holds each; the current reading (A) is kept as the default until Meng rules (BACKLOG IL-24). **(0.3.0) Ruled by Meng on 2026-10-08 (SHRUG): a switch, declined by default; see "Version 0.3.0".**
   Every test of the encoder's that rests on reading (A) is labelled: `nii-il06-tests.l4` lines 379 ("Batya"), 415, 444 and 465, and the `a housewife` fixture (lines 89-95).
   `nii-s65-interpretation.l4` is not changed.
 - **DATE, 29 February and other days a later month lacks (`INDEPENDENT-FINDINGS.md`, finding 2).**
-  Fork F2's row now names its three readings and who holds each; the clamp is kept as the default until Meng rules (BACKLOG IL-24).
+  Fork F2's row now names its three readings and who holds each; the clamp is kept as the default until Meng rules (BACKLOG IL-24). **(0.3.0) Ruled by Meng on 2026-10-08 (SHRUG): a switch, declined by default; see "Version 0.3.0".**
   The tests that rest on it are labelled (lines 391-392, 403-404), and the month question's two tests of a 29 February birthday (lines 702-703) show the clamp reaching s 72.
 - **CHK-06.** `check.sh` now declares the tester's five remaining failures (lines 594, 608, 613, 615, 619: 06-F7, DATE, 06-F3 twice, 06-HW), each named in a comment, and gains `expected_refused` as row IL-04's has (0 for every module).
   It exits 0.
+  **(0.3.0)** Three remain declared (594, 613, 615): lines 608 and 619 pass once forks F2 and F18 decline by default.
 - **06-W1.** Assumption A3 and the answer table no longer say that every day from 1 January 2027 is declined: it is declined wherever an amount is needed.
 - **06-W2.** Axiom's readings under F7 and F9-F11 are recorded in the fork register and open questions 2 and 3; section 9's "the independent test pass was not run" is marked stale.
 - **06-W3.** Section 6 and fork F5 record that the s 66 additional-tax input is joined to row IL-03's s 121B at IL-07, and how (IL-07 `RECONCILE.md` N12, its fork K5).
@@ -107,7 +294,7 @@ New constructors of `A problem with the facts`: `an absence from Israel ended be
 - `nii-s67-count-of-children.l4`: `s 67 — the insured parent in whose count, for the month, in` … `, is` …; `s 67 — the count of children, for the month, in` … `, of` …; `s 67(a) — no child is counted with more than one insured parent, for the month, in` ….
 - `nii-s65-interpretation.l4`: `s 65 — a child for this Chapter, for the month section 72 pays, in` … `:` …; `s 65, read with s 72(a) — not 18 before the month of` … `began, and born by its end:` …; `the family in a month, on its day:` …; `the first day of the month of` …; `the last day of the month of` ….
 
-**Rules asked of a question** (the forms both questions share; each day's form calls one with `the allowance on the family's day`):
+**Rules asked of a question** (the forms both questions share; each day's form calls one with `the allowance on the family's day`): **(0.3.0) Each now also takes the readings of forks F18 and F2: `…, asked` … `, reading` … `, in` …; see "Version 0.3.0".**
 `s 65 — a child for this Chapter, asked` … `, in` … `:` …; `s 65 — the age limb, asked` … `, on` … `:` …; `s 67 — the insured parent in whose count, asked` … `, in` … `, is` …; `s 67(a) — no child is counted with more than one insured parent, asked` … `, in` …; `s 67 — the count of children, asked` … `, in` … `, of` …; `s 68 — the child allowance, asked` … `, in` … `, at` … `, of` …; `the child allowance of each person, asked` … `, in` … `, at` …; `a problem with the facts, asked` … `, of` …; and `the first problem with the facts of` … `, the check on births being` … (the three checks both questions make first).
 
 **Nothing was renamed.** Every rule a caller used before 0.2.0 keeps its name and type: the day's forms are now one-line wrappers.
@@ -282,7 +469,7 @@ Each person in the family gets one answer; a person with no child in the count a
 | # | where | the question | readings | taken, and why |
 | --- | --- | --- | --- | --- |
 | F1 | s 65(a) "ילד" (1), line 805; s 1 "ילד", line 170 | Does "his child" in s 65 carry s 1's extension (stepchild, adopted child) and exclusion (married boy or girl)? | (i) yes: s 65 defines which children count for the Chapter but uses "child" within its own definition, which can only mean the Law's general sense; (ii) no: s 65 displaces s 1, so a stepchild counts only under (2) on proof of support, and a married minor is a child | **(i)**. Reading (ii) makes s 65's own definition circular, and the extension to stepchildren is in the Law's own general definition. A test asserts the married-minor exclusion. |
-| F2 | s 65(a) proviso, line 807; s 65(b), line 809 | Date arithmetic where the calendar has no corresponding day: an 18th birthday for a 29 February birth; three months from 30 November. | (i) clamp to the last day of the shorter month (28 February); (ii) roll into the next month (1 March, 2 March) | **(i)**, `add years` / `add months`. The text says nothing; the clamp is the conservative choice for both (the child stops being a child, and an absence stops being short, no later than the rolled date). Each changes the answer on one or two days. Tests sit on both. **(0.2.0, inventory DATE; waits on Meng, BACKLOG IL-24.)** Three readings, and who holds each: (i) clamp to the last day of the shorter month: this row, and rows IL-05 (its F19) and IL-08's National Insurance half (its N4), which took it to agree; (ii) roll to the 1st of the next month: no row or tester; (iii) refuse, the Law not saying: the independent tester (finding 2, `tests-independent.l4:608`) and IL-08's (its D-46 to D-48). Axiom: silent (no date arithmetic). The lead's recommendation (IL-24) is a named switch with decline as default; until a ruling, (i) stays the default. The tests that rest on (i) are labelled (`nii-il06-tests.l4:391-392`, `:403-404`, `:702-703`), and the month question carries the clamp into s 72: on (i) a 29 February child is not paid for March of her 18th year. |
+| F2 | s 65(a) proviso, line 807; s 65(b), line 809 | Date arithmetic where the calendar has no corresponding day: an 18th birthday for a 29 February birth; three months from 30 November. | (i) clamp to the last day of the shorter month (28 February); (ii) roll into the next month (1 March, 2 March) | **(i)**, `add years` / `add months`. The text says nothing; the clamp is the conservative choice for both (the child stops being a child, and an absence stops being short, no later than the rolled date). Each changes the answer on one or two days. Tests sit on both. **(0.2.0, inventory DATE; waits on Meng, BACKLOG IL-24.)** Three readings, and who holds each: (i) clamp to the last day of the shorter month: this row, and rows IL-05 (its F19) and IL-08's National Insurance half (its N4), which took it to agree; (ii) roll to the 1st of the next month: no row or tester; (iii) refuse, the Law not saying: the independent tester (finding 2, `tests-independent.l4:608`) and IL-08's (its D-46 to D-48). Axiom: silent (no date arithmetic). The lead's recommendation (IL-24) is a named switch with decline as default; until a ruling, (i) stays the default. The tests that rest on (i) are labelled (`nii-il06-tests.l4:391-392`, `:403-404`, `:702-703`), and the month question carries the clamp into s 72: on (i) a 29 February child is not paid for March of her 18th year. **(0.3.0) RULED by Meng on 2026-10-08 (SHRUG): one named switch, `section 65 — the reading this row takes of a day the later month lacks`, with the readings `a missing day clamps to the last day of the shorter month`, `a missing day rolls to the 1st of the next month` and `a case that turns on a missing day is declined`; the default is the third. Every reading is tested by name (`nii-il06-tests.l4:806-836`, `:867-868`); the tests that rest on the clamp name it (392, 404, 703). By default a question is declined only where the clamp and the roll give it different answers.** |
 | F3 | s 65(b), line 809 | "left Israel for a period not exceeding three months", for an absence that has not ended on the day asked. | (i) measure from the day of leaving to the day asked; (ii) the intended length of the trip; (iii) the actual length, known only afterwards | **(i)** where no return day is supplied; a caller who knows the return day (past or planned) supplies it and the full period is measured. **(0.2.0, 06-F5)** "past" meant past when the question is asked, not before the day asked about: an absence that ended before the day is not in progress on it, and is now reported as a problem with the facts. The return day itself is a day of the absence (an absence over three months leaves the child abroad on the day of return), as this row has always read it; stated in 0.2.0, assumed, not ruled (`nii-il06-tests.l4:611-612`). |
 | F4 | s 68(a)-(c), s 1 (2), lines 187-188, 821-826 | How is the count ordered: which child is "the first", "the fourth"? | (i) by date of birth, eldest first; (ii) by the order children entered the count | **(i)**, children born the same day keeping the order of the family's list. The Institute's page computes the allowance "according to the number of children in the family, the children's dates of birth" and lists amounts by the child's "place in the family"; that supports (i) but is practice, not text. Only s 68(b) and the s 68(c) supplement's attribution depend on it; totals without (b) do not. |
 | F5 | s 66, line 814 | "has income chargeable to additional tax": for which tax year? | (i) the tax year in which the month falls; (ii) the last assessed year | **not decided**: the input is the caller's answer for the day asked. **(0.2.0, 06-W3)** The capstone, row IL-07, joins this input to row IL-03's s 121B: chargeable if and only if IL-03's additional tax for the tax year in which the month falls is above nil (IL-07 `RECONCILE.md` N12, its fork K5, which takes reading (i) for the capstone). This row's F5 stays open. |
@@ -298,7 +485,7 @@ Each person in the family gets one answer; a person with no child in the count a
 | F15 | s 65(a) "ילד" (2), line 806 | Must the supporter be insured, or may they have been insured? | — | insured: "the insured supported him". A person who is a parent only under (2) is therefore always an insured parent. |
 | F16 | s 65(a) "מבוטח" (2), line 803 | The absence limb has three parts: temporary, reasonable in the authorised employee's opinion, and not contradicting the claim of residence. | — | one input, `absent from Israel beyond a reasonable temporary absence`, which is the authorised employee's determination on all three. |
 | F17 | s 68(c), line 826 | "entitled … for three or more children": counted how? | — | the number of children in the parent's count, children under s 68(b) included. |
-| F18 (0.2.0, 06-HW) | s 65(a) "מבוטח" (2), line 803 | Is a resident s 238 housewife, not insured under Chapter 11, insured under limb (2)? Limb (2) ends "ואינו מבוטח לפי פרק י״א, למעט עקרת בית כהגדרתה בסעיף 238". | (A) "and is not insured under Chapter 11; excluding a housewife": she is excluded from both limbs; (B) "and is not [insured under Chapter 11, other than a housewife]": the phrase repeats limb (1) verbatim and limb (2) negates it, so the limbs partition residents and she is insured under limb (2) | **(A)**, the reading `nii-s65-interpretation.l4:40-44` encodes, unrecorded until 0.2.0. Held by: (A) the encoder; (B) the independent tester (finding 4, who on reflection thinks (A) the weaker parse). Axiom: silent ("insured" is an input). It decides a child living with the mother only, or whose other parent is uninsured; the capstone's households are not affected (their children are with both parents). **Waits on Meng (BACKLOG IL-24)**; the lead recommends a named switch with decline as default. Until then (A) stays the default. The tests resting on (A) are labelled: `nii-il06-tests.l4:379`, `:415`, `:444`, `:465`. |
+| F18 (0.2.0, 06-HW) | s 65(a) "מבוטח" (2), line 803 | Is a resident s 238 housewife, not insured under Chapter 11, insured under limb (2)? Limb (2) ends "ואינו מבוטח לפי פרק י״א, למעט עקרת בית כהגדרתה בסעיף 238". | (A) "and is not insured under Chapter 11; excluding a housewife": she is excluded from both limbs; (B) "and is not [insured under Chapter 11, other than a housewife]": the phrase repeats limb (1) verbatim and limb (2) negates it, so the limbs partition residents and she is insured under limb (2) | **(A)**, the reading `nii-s65-interpretation.l4:40-44` encodes, unrecorded until 0.2.0. Held by: (A) the encoder; (B) the independent tester (finding 4, who on reflection thinks (A) the weaker parse). Axiom: silent ("insured" is an input). It decides a child living with the mother only, or whose other parent is uninsured; the capstone's households are not affected (their children are with both parents). **Waits on Meng (BACKLOG IL-24)**; the lead recommends a named switch with decline as default. Until then (A) stays the default. The tests resting on (A) are labelled: `nii-il06-tests.l4:379`, `:415`, `:444`, `:465`. **(0.3.0) RULED by Meng on 2026-10-08 (SHRUG): one named switch, `section 65 — the reading this row takes of a resident housewife under "insured" (2)`, with the readings `a resident housewife is excluded from both limbs` (A), `a resident housewife is insured under limb (2)` (B) and `a case that turns on a resident housewife's insurance is declined`; the default is the third. Every reading is tested by name (`nii-il06-tests.l4:758-800`, `:842-864`); the tests that rest on (A) name it (379, 415, 444, 465). By default a question is declined only where (A) and (B) give it different answers; a person paid nothing on both is answered `no child allowance on either reading of whether this person is insured, which section 65 does not decide`.** |
 | F19 (0.2.0, 06-S72) | s 72(a), line 854, with s 68(a)-(c), lines 821-826 | In a month s 72 pays for a child after its entitlement ceased (the month of its 18th birthday) or before it arose (the month of a birth by the 15th), is the child in the parent's count for that month, at what place, and does it count for s 68(c)'s "three or more children"? | (i) yes: the count for the month is the children paid for, eldest first, so the child keeps its place and counts for s 68(c); (ii) s 72 continues the child's payment at the amount it had, and the count for the other children is made without it | **(i)**, assumed, not ruled. s 68(a) is the allowance "for each child in the parent's count" for the month, and s 68(c) asks for which children the parent is entitled "for that month"; s 72 pays the allowance, not a separate sum. It agrees with the capstone's fork K15 wherever K15 found a day to ask about. It changes an answer only in such a month: Keren, Gil and Hila in November 2026 are 611 on (i) (`nii-il06-tests.l4:660`), 173 + 173 + 219 = 565 on (ii). IL-07 open question 9 asks the Institute the same. |
 
 Places where no fork was found, read for one and listed so a reviewer can disagree: s 68(b)'s "born before 1 June 2003" (strict: a child born on 1 June is not before it; the Institute's own heading "born until 31 May 2003" agrees, and a test sits on both days); "has not reached 18" (a child on the day before the 18th birthday, not on it); s 68(c)'s "the third child and the fourth child" (a parent with three children gets one supplement, with four or more two).
@@ -367,9 +554,9 @@ The claim in A1 that s 1 paragraph (2) is word for word the 5776 Law's was check
 6. F5: which tax year's additional-tax liability excludes a parent in a given month?
 7. F14: when one parent is paid Income Support and the children are counted with the other, is the s 68(c) supplement paid?
 8. The Institute's page lists old-age and survivors' pensioners with an income supplement among those who receive the s 68(c) supplement. Is that supplement "a benefit under the Income Support Law" within s 68(c)?
-9. F2: how are a 29 February birthday and a three-month period from the 30th or 31st of a month computed?
+9. F2: how are a 29 February birthday and a three-month period from the 30th or 31st of a month computed? (0.3.0) Ruled by Meng, 2026-10-08 (SHRUG): declined by default; the clamp and the roll kept by name. The Institute's practice is still worth asking.
 10. F13: in s 69A, is "נשים" women or wives?
-11. (0.2.0) F18: is a resident housewife within s 238, not insured under Chapter 11, insured under s 65(a) "מבוטח" limb (2)?
+11. (0.2.0) F18: is a resident housewife within s 238, not insured under Chapter 11, insured under s 65(a) "מבוטח" limb (2)? (0.3.0) Ruled by Meng, 2026-10-08 (SHRUG): declined by default; (A) and (B) kept by name. The Institute's practice is still worth asking.
 12. (0.2.0) F19: for the month in which a child turns 18 (or is born by the 15th), is that child in the parent's count for the month, at its place by date of birth, and does it count towards s 68(c)'s three children?
 
 ## 9. What was not done

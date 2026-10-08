@@ -30,14 +30,14 @@ L4="${L4:-l4}"
 expected_failed() {
   case "$1" in
     # tests-red.l4) echo 3 ;;
-    # Version 0.2.0 (CHK-06): the independent tester's five remaining failures, each a recorded
-    # fork that waits on a ruling (inventory class AMBIGUITY), none an encoding error:
+    # Version 0.2.0 (CHK-06): the independent tester's remaining failures, each a recorded fork
+    # (inventory class AMBIGUITY), none an encoding error. Version 0.3.0 (BACKLOG IL-40): forks F2
+    # and F18 were ruled by Meng on 2026-10-08 (SHRUG), declined by default, so the tester's two
+    # refusals for them (line 608, F8, DATE; line 619, F10, 06-HW) now pass. Three remain:
     #   line 594        F4,  06-F7  (s 67(b), one insured parent, child with the uninsured mother; fork F7)
-    #   line 608        F8,  DATE   (29 February in a common year; fork F2, BACKLOG IL-24)
     #   lines 613, 615  F9,  06-F3  (a six-month trip, with and without the return day; fork F3)
-    #   line 619        F10, 06-HW  (a resident s 238 housewife under s 65(a) limb (2); fork F18, BACKLOG IL-24)
     # Finding 5 (line 638, 06-F5) passes from 0.2.0: a finished absence is reported, not read.
-    tests-independent.l4) echo 5 ;;
+    tests-independent.l4) echo 3 ;;
     *) echo 0 ;;
   esac
 }
