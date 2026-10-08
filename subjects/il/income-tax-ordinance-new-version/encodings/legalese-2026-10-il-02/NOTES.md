@@ -1,10 +1,86 @@
 # NOTES — Income Tax Ordinance s 66 (separate calculation), row IL-02
 
 Encoder: one Claude session (Opus 5.5), run IL-02-20261006, 2026-10-06, working alone from `BRIEF.md`.
-Status: **draft**, version 0.2.0 (repairs of 2026-10-08, BACKLOG IL-15; see the next section). (0.2.0)
+Status: **draft**, version 0.3.0 (fork F19 ruled and made a switch, 2026-10-08, BACKLOG IL-38; see the next section). (0.3.0; version 0.2.0 was the repairs of BACKLOG IL-15, in the section after it.)
 No domain expert has read this against the source; HG1 has not been sought.
 No independent test pass was run (the run was instructed to work alone, without sub-agents); see section 8.
-(0.2.0, 02-W1: true of the encoding run, stale since. An independent test pass was run after deposit by fid-il-02, commit 240a478: `DECIDED-ANSWERS.md`, `tests-independent.l4`, `INDEPENDENT-FINDINGS.md`. Its V-4 is repaired in 0.2.0 and its E-4 is recorded as fork F19.)
+(0.2.0, 02-W1: true of the encoding run, stale since. An independent test pass was run after deposit by fid-il-02, commit 240a478: `DECIDED-ANSWERS.md`, `tests-independent.l4`, `INDEPENDENT-FINDINGS.md`. Its V-4 is repaired in 0.2.0 and its E-4 is recorded as fork F19; from 0.3.0, with F19 ruled, all 103 of its assertions hold.)
+
+## Version 0.3.0 (2026-10-08): fork F19 as a switch (BACKLOG IL-38, SHRUG)
+
+Agent shrug-il-38 (the repair session of IL-15, one Claude session, Opus 5.5), 2026-10-08, under the lead's repair brief of that day and its addendum.
+Meng ruled on 2026-10-08 (SHRUG, BACKLOG IL-24 and IL-38) that fork F19, inventory 02-E4, becomes one named switch, default DECLINE, the other reading kept by name and tested.
+F19: a child born before 2024 (in practice in 2023), the mother's (c)(4)(a1) election set, asked of tax year 2024, where the point moved is one she had "בשנת הלידה", a year whose text this row does not hold (A1).
+
+**What changed** (all in `ito66-c-credit-points.l4`):
+
+- A new type, `A reading of section 66(c)(4)(a1) for a child born before 2024`, with two readings: (i) `an election for a child born before 2024 is carried by the text of the year of the calculation`, the behaviour of 0.1.0 and 0.2.0 (4½ + 1 = 5½); (ii) `an election for a child born before 2024 is declined`.
+- The switch: `section 66(c)(4)(a1) — the reading this row takes for an election for a child born before 2024` names (ii).
+- The refusal, by name and in these words: "the text of section 66 this encoding holds does not decide a birth-year credit point elected for a child born before 2024".
+- Three rules gain a form that takes the reading, named with the suffix `, reading an election for a child born before 2024 as` r: `s 66(c)(4)(a)-(a1) — the mother's credit points for … in tax year …`, `s 66(c)(4)-(6) — the credit points of the … in … for …`, and `s 66(c) — the credit points it gives the … in …`.
+  Each rule of the old name keeps its signature and passes the switch, as IL-04's F6 switch does.
+- The fork is reached only where the election is set, the child turns 1 in the tax year, and the child's tax year of birth is before `the first tax year the deposited text of section 66 governs` (2024); everywhere else both readings answer alike, and the tax-year gate still refuses a year before 2024 before the reading is asked.
+- The man's points are never reached: the election is the mother's ("אמו של ילד").
+
+**Tests.**
+None of this row's own tests rested on reading (i): every election test before 0.3.0 has a child born in 2024 or later, which the fork does not reach, so none needed re-pointing.
+Fourteen assertions were added to `ito66-tests.l4`, every expected value worked out from lines 2466-2467 and 2475 in the comment beside it before the module was run; all passed on their first run.
+A control copy with three of them made wrong reported two failures and one refusal.
+The independent tester's E-4 (`tests-independent.l4:385`), which expected a refusal, now holds; its file was not edited for this change, and `check.sh` no longer lists it in `expected_failed`.
+
+**Answers changed** (old is 0.2.0's answer; "declined" is the F19 sentence above):
+
+| where | case | old | new | why |
+| --- | --- | --- | --- | --- |
+| `s 66(c)(4)(a)-(a1) — the mother's credit points for` | a child born 2023, the election set, tax year 2024 | 5½ | declined | F19 ruled, default (ii) |
+| `s 66(c)(4)-(6) — the credit points of the` | the woman, the same child, 2024 | 5½ | declined | the same, through (a1) |
+| `s 66(c) — the credit points it gives the` | the woman of a couple with that child, 2024 | ½, 0, 5½ | declined | the same, through the children's points |
+| `tests-independent.l4:385` (E-4) | the same as the row above, the tester's | answered (failed) | refused (satisfied) | expected value unchanged |
+
+No other answer moved: a child born from 2024 on, a child without the election, the year after next, and the man's points answer as before.
+
+**Assertions added** (`ito66-tests.l4`; none existed before, so "old" is none):
+
+| line | case | new | why (source) |
+| --- | --- | --- | --- |
+| 644 | the switch | `an election for a child born before 2024 is declined` | SHRUG |
+| 647 | mother's points, born 2023, elected, 2024, default | declined | SHRUG; line 2467 "בשנת הלידה" |
+| 649 | the same, reading (ii) by name | declined | SHRUG |
+| 651 | the same, reading (i) by name | 5.5 | line 2466, 4½ "החל בשנת המס שלאחר שנת לידתו"; line 2467, one point moved |
+| 653 | the same in 2023, reading (i) by name | refused, A1's sentence | the year gate comes first |
+| 658 | born 2023, no election, 2024, default | 4.5 | line 2466 |
+| 660 | born 2023, elected, 2025, default | 4.5 | line 2466, age 2; the election moves nothing then |
+| 662 | born 2024, elected, 2025, default | 5.5 | lines 2466-2467; the year of birth is held |
+| 665 | (c)(4)-(6), the woman, that child, 2024, default | declined | through (a1) |
+| 667 | the same, reading (i) by name | 5.5 | through (a1) |
+| 673 | (c), the woman, 2024, default | declined | through the children's points |
+| 675 | the same, reading (ii) by name | declined | the same |
+| 677 | the same, reading (i) by name | ½, 0, 5½ | line 2465 (s 36A ½); no s 37 point; 5½ as at 651 |
+| 678 | (c), the man, 2024, default | 0, 0, 4½ | line 2475, 4½ "החל בשנת המס שלאחר לידתו"; the election is the mother's |
+
+### What `check.sh` prints, version 0.3.0
+
+Run from 2026-10-08T15:56:54Z to 15:57:08Z as `./check.sh`, with `l4` on PATH: `/Users/mengwong/.local/bin/l4` -> `~/.cabal/bin/l4` -> the cabal-store build `jl4-0.1-d4290e25`, sha256 `f4f2bd2558f02f828f0deced5f74313a33670f08cc3275ff95b83f2cde71e448`, the same before and after the run.
+`JL4_LIBRARY_PATH` unset.
+
+```
+module                                    errors satisfied  failed  refused  expected
+ito66-a-separate-calculation.l4                0         0       0        0         0
+ito66-ab-taxable-income.l4                     0         0       0        0         0
+ito66-b-property-income.l4                     0         0       0        0         0
+ito66-c-credit-points.l4                       0         0       0        0         0
+ito66-d-common-source.l4                       0         0       0        0         0
+ito66-fixtures.l4                              0         0       0        0         0
+ito66-nouns.l4                                 0         0       0        0         0
+ito66-tax-years.l4                             0         3       0        0         0
+ito66-tests-ita.l4                             0        23       0        0         0
+ito66-tests.l4                                 0       193       0        0         0
+tests-independent.l4                           0       103       0        0         0
+TOTAL (11 modules)                             0       322       0        0
+```
+
+Exit 0.
+No module is expected to fail or refuse; `expected_red` in `encoding.json` is empty.
 
 ## Version 0.2.0 (2026-10-08): repairs (BACKLOG IL-15)
 
@@ -61,8 +137,9 @@ Both are marked in place.
 **CHK-02 (housekeeping).**
 `check.sh` declares the tester's one remaining failure, `tests-independent.l4` line 385 (E-4, inventory 02-E4, class AMBIGUITY), as `expected_failed` 1, and gains `expected_refused`, 0 for every module, as IL-04's `check.sh` has.
 It exits 0.
+(0.3.0: the entry is gone; E-4 holds once F19 is ruled.)
 
-**02-E4 (fork; waits on Meng, BACKLOG IL-24).**
+**02-E4 (fork; waits on Meng, BACKLOG IL-24).** (0.3.0: ruled by Meng, SHRUG; see the section above.)
 Recorded as fork F19 in section 4, with both readings and who holds each.
 The behaviour of 0.1.0, reading (i), 5½, is kept as the default until the ruling.
 
@@ -281,7 +358,7 @@ None has been settled by a court or the Tax Authority to my knowledge; I did not
 | F16 | (c) chapeau with (c)(4), (5) | once (a)(1) gives a separate calculation, does (c) govern the registered spouse's calculation too? | yes | (c)(1) says "לכל אחד מבני הזוג", and (c)(4)/(5) speak of the woman and the man, one of whom is the registered spouse. |
 | F17 | (c)(4), (5) | must the child be maintained by, or live with, the spouse (as s 40(b)(1) requires)? | no condition | (c)(4) and (5) say only "ילדיה" / "ילדיו". |
 | F18 | (c)(1A) | does "בן זוג" include the registered spouse? | yes | the paragraph says "בן זוג", not "בן זוג שאיננו בן זוג רשום" as (a)(1) does, and it would otherwise add nothing to (a)(1). |
-| F19 (0.2.0, 02-E4) | (c)(4)(a1), line 2467, at the vintage boundary of A1 | a child born in 2023, the mother's election set, asked of tax year 2024: (i) the 2024 text governs the 2024 calculation and says where the point lands, 4½ + 1 = 5½; (ii) the point moved is one "מתוך נקודות הזיכוי שלהן היא זכאית כאמור באותה פסקה, בשנת הלידה", the year of birth is 2023, and whether a 2023 mother could elect and had a point to move is 2023 law, which is not held: refuse | (i), kept as the default; **waits on Meng** (BACKLOG IL-24) | (i) is the encoder's, taken by construction in 0.1.0 and unrecorded until 0.2.0. (ii) is the independent tester's (E-4, `tests-independent.l4:385`, confidence L; "on reflection I would not call the encoding wrong"), left failing and declared in `check.sh`. Axiom is silent: it does not apply (a1) (AX-14). The input `the mother elects to count one birth-year credit point in the following tax year` carries no year, so the encoding cannot tell an election of 2023 from one of 2024. Under the lead's recommendation for IL-24 (a named switch, default decline), (ii) would become the default. |
+| F19 (0.2.0, 02-E4) | (c)(4)(a1), line 2467, at the vintage boundary of A1 | a child born in 2023, the mother's election set, asked of tax year 2024: (i) the 2024 text governs the 2024 calculation and says where the point lands, 4½ + 1 = 5½; (ii) the point moved is one "מתוך נקודות הזיכוי שלהן היא זכאית כאמור באותה פסקה, בשנת הלידה", the year of birth is 2023, and whether a 2023 mother could elect and had a point to move is 2023 law, which is not held: refuse | (i), kept as the default in 0.2.0; **(0.3.0) RULED by Meng on 2026-10-08 (SHRUG): one named switch, default (ii), a refusal by name; (i) kept by name and tested** (BACKLOG IL-38; switch `section 66(c)(4)(a1) — the reading this row takes for an election for a child born before 2024`) | (i) is the encoder's, taken by construction in 0.1.0 and unrecorded until 0.2.0. (ii) is the independent tester's (E-4, `tests-independent.l4:385`, confidence L; "on reflection I would not call the encoding wrong"), left failing and declared in `check.sh`. Axiom is silent: it does not apply (a1) (AX-14). The input `the mother elects to count one birth-year credit point in the following tax year` carries no year, so the encoding cannot tell an election of 2023 from one of 2024. Under the lead's recommendation for IL-24 (a named switch, default decline), (ii) would become the default. (0.3.0: it has; the tester's E-4 now holds.) |
 
 **A consolidation oddity, not a fork.**
 The definitions of "שנת לידה" and "שנת בגרות" appear twice: inside (c)(4)(a) at line 2466 ("לעניין זה ולעניין פסקה (5) …") and again as an unnumbered line after (c)(4)(d) at line 2471 ("לענין זה …").
@@ -361,7 +438,7 @@ Not fetched: the amending Acts at `fs.knesset.gov.il/24/law/24_lsr_624898.pdf`, 
 8. F10: which unnamed credit provisions (ss 39A, 39B, 40A-40D, 44, 45, 46) apply to each spouse in a separate calculation?
 9. The text before 2024: encoding the earlier vintages needs the amending Acts (ס״ח 3048 and 3184, and earlier), which this run could not fetch.
 
-10. (0.2.0) F19: may a birth-year point elected in 2023 be carried into a 2024 calculation, when the 2023 text is not held? Waits on Meng (BACKLOG IL-24).
+10. (0.2.0) F19: may a birth-year point elected in 2023 be carried into a 2024 calculation, when the 2023 text is not held? Waits on Meng (BACKLOG IL-24). (0.3.0: ruled by Meng on 2026-10-08, SHRUG: declined by default, the carrying reading kept by name. A domain expert could still say what the Tax Authority does.)
 
 Recommended next step: the independent test pass of the encoding skill (`references/second-pass.md`), in a fresh session given only `BRIEF.md` and the source, then a refuter on the (a)/(b) assembly, where the forks concentrate.
 (0.2.0, 02-W1: the independent test pass was done after deposit, commit 240a478, by fid-il-02; its findings are in `INDEPENDENT-FINDINGS.md`, and V-4 and E-4 are dealt with in the version section at the top. The refuter on the (a)/(b) assembly has not been run.)

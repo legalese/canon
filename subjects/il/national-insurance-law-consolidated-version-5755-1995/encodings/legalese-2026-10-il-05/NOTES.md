@@ -1,10 +1,108 @@
 # NOTES — il/national-insurance-law-consolidated-version-5755-1995, encoding row `legalese-2026-10-il-05`
 
 National Insurance Law [Consolidated Version], 5755-1995: **s 342** (who is liable to pay insurance contributions, and the employer's deduction), **s 348** (the maximum, the minimum and the disregarded amount) and **Schedule K** (לוח י״א, the maximum and minimum income for contributions), encoded in L4 by one agent in one session (run `IL-05-20261006`, 2026-10-06), from the brief in `BRIEF.md`.
-Status: **draft**. Version **0.4.0** (2026-10-08): repairs from the inventory of 2026-10-08 (BACKLOG IL-17): s 342(c), (d) and (e1) on the income s 348(a) takes into account, nine of the independent tester's assertions re-pointed to the printed totals it decided, one call for a person both employee and self-employed; see "Version 0.4.0" below.
+Status: **draft**. Version **0.5.0** (2026-10-08): fork DATE (a day of birth the month of the age lacks, s 342(c)(2)) is a switch, ruled by Meng (SHRUG), declined by default (BACKLOG IL-39); see "Version 0.5.0" below.
+Version 0.4.0 (2026-10-08): repairs from the inventory of 2026-10-08 (BACKLOG IL-17): s 342(c), (d) and (e1) on the income s 348(a) takes into account, nine of the independent tester's assertions re-pointed to the printed totals it decided, one call for a person both employee and self-employed; see "Version 0.4.0" below.
 Version 0.3.0 (2026-10-07): row IL-04's Schedule J switch reaches s 342(c); see "Version 0.3.0" below.
 No domain expert has read it against the source; HG1 has not been sought.
 The row depends on row IL-04 (s 1, s 334, s 337, Schedule J), whose modules it could not import (section 8).
+
+## Version 0.5.0 (2026-10-08): fork DATE as a switch (BACKLOG IL-39)
+
+Backlog row IL-39, agent `shrug-il-39`, one session, no sub-agents, on Meng's ruling of 2026-10-08 (SHRUG) as the lead relayed it: fork DATE becomes one named switch with three readings, the last day of the month (this row's reading until now), the first day of the next month, and a refusal by name saying the text does not say what such a day is; declined by default, the other two kept by name and tested.
+Nothing in the sections below was deleted; entries this version changes are marked **(0.5.0)** in place.
+`tests-independent.l4`, `DECIDED-ANSWERS.md`, `INDEPENDENT-FINDINGS.md`, the section "Comparison with Axiom's RuleSpec" and `check.sh` are unchanged: none of the tester's dates of birth (15 March 1986, 1 January 1956, 1 January 1957) lands on a day a month lacks.
+
+### What changed
+
+1. **The reading** (`nii-il05-nouns.l4`): `A reading of a day of birth the month of the age lacks`, with `the last day of that month`, `the first day of the next month` and `such a day is declined`.
+   It is an argument, never a field of the case records.
+2. **One switch** (`nii-s342-liability-and-deduction.l4`, s 342(c)(2)): `section 342(c)(2) — the reading this row takes of a day of birth the month of the age lacks`, now `such a day is declined`, with the refusal "section 342(c)(2) does not say on what day the insured reaches the age when the month it falls in lacks the day of the month of birth".
+   Either other reading is a one-line change there.
+3. **The day.** `s 342(c)(2) — the day the insured reaches the age, for` m `, reading a day the month lacks as` d: where the month the age falls in has the day of the month of birth, that day, under all three readings; where it lacks it, the month's last day (`add months`, fork F19), the first day of the next month, or the refusal.
+   The rule under its old name follows the switch, so for a day a month lacks it now declines where it gave the month's last day.
+4. **No deduction for the month.** The body before 0.5.0 is now `s 342(c)(2) — no deduction is made for the month, for` m `, the age being reached on` *day*; a form takes the reading; the old name follows the switch.
+   Where the day is lacking, the last day of the month (L) and the first day of the next (L + 1) answer every month the same but the one containing L: before it the age is reached after the month under both, and from the next month on, on or before its first day under both.
+   In that month they differ only where no senior citizen pension is payable for any of it: at L the age is reached during the month, declined by fork F9; at L + 1 it is reached after it, and the employer deducts.
+   So "declined" declines in that month only, and answers every other month as both readings do (fork F26, below).
+5. **The deduction.** A new most general form, `s 342(c) — the amount the employer deducts from the wage, for` m `, reading Schedule J as` r `, column D at the printed totals being` x `, reading a day the month lacks as` d; every other s 342(c), (c)(2), (d) and (e1) rule, those of 0.4.0 included, follows the switch.
+
+**What the default changes.** No answer that was a number became a refusal, or the reverse.
+In the one month in which the readings differ, the clamp already declined it (fork F9); it is now declined by fork DATE's refusal instead.
+The day rule under its old name declines where it gave the month's last day.
+The version is minor, not a patch, for those two.
+
+### Fork register (0.5.0)
+
+| # | where | the question | readings | taken, and why |
+| --- | --- | --- | --- | --- |
+| DATE | s 342(c)(2) (3662); fork F19 | see "Version 0.4.0" below | (i) the last day of the month; (ii) the first day of the next month; (iii) declined | **(iii) by default, ruled by Meng on 2026-10-08 (SHRUG)**; (i) and (ii) kept by name and tested. One ruling for rows IL-05, IL-06 and IL-08 (BACKLOG IL-39 to IL-41). |
+| F26 | fork DATE's (iii) | Does "declined" decline every question that reads the day, or only those the reading decides? | (i) only where (i) and (ii) of fork DATE give different answers; (ii) every question that reads the day | **(i)**, assumed by the agent, not ruled. Under (ii), every month's deduction for a woman born on the 31st whose Part D age ends in a month of 30 days would be declined, decades before or after that month, on a question the day cannot change. The day rule itself declines (it has no answer without the day). |
+
+### Assertions re-pointed or added
+
+No expected value changed.
+`nii-il05-tests.l4`, section "Fork DATE": **2 re-pointed** to the clamp by name, values unchanged, and **26 added** (210 to 236), in the same section.
+The two re-pointed called the rule under its 0.1.0 name; they now call the most general form with `the items govern`, 0 for the printed totals (what the 0.1.0 name passes) and `the last day of that month`.
+Every added value was worked out by hand before the first run that evaluated it (a wage of 7,000 at 1.04% is 72.8; the days by the calendar); all 26 were satisfied on that run, and with three of them altered in a scratch copy (a day, a value, a refusal's wording) the module reported each as failed.
+
+| assertion | value | why |
+| --- | --- | --- |
+| (re-pointed) a man born 29 February 1956, wage 7,000, February 2026, at the last day of the month | declined, fork F9 | 28 February is reached after the month's first day |
+| (re-pointed) the same, March 2026 | 0 | reached on or before 1 March |
+| the switch | `such a day is declined` | the ruling |
+| the day, that man: last day; first day of the next month; declined by name; at the switch | 28 February 2026; 1 March 2026; declined; declined | the readings |
+| the day, a man born 15 March 1956, under each of the three readings | 15 March 2026 (three times) | the month has the day |
+| February 2026, that man: first day of the next month; declined by name; the 0.1.0 name | 72.8; declined (DATE); declined (DATE) | reached on 1 March, after February; the readings differ |
+| January 2026, the 0.1.0 name; March 2026, the 0.1.0 name, the next day's reading, declined by name | 72.8; 0, 0, 0 | the readings agree |
+| February 2026 with a senior citizen pension for the whole month; for part of it (0.1.0 name) | 0; declined (the pension's refusal, fork F9) | the readings agree |
+| 0.4.0's rule from a wage of 60,000, February 2026, that man | declined (DATE) | it follows the switch, before column D is read |
+| SCENARIO: a woman whose Part D age is 836 months, born 31 August 1956: the day at the last day; at the first day of the next month | 30 April 2026; 1 May 2026 | April 2026 has no 31st |
+| the same woman, April 2026: last day; first day of the next month; the 0.1.0 name | declined (F9); 72.8; declined (DATE) | the readings differ |
+| the same woman, May 2026: the 0.1.0 name; last day; first day of the next month | 0; 0; 0 | the readings agree |
+
+### What `check.sh` prints at 0.5.0
+
+Run from 2026-10-08T16:04:45Z to 16:05:03Z as `L4=/Users/mengwong/.local/bin/l4 ./check.sh`, `JL4_LIBRARY_PATH` unset, on the binary of 0.4.0 (cabal store `jl4-0.1-d4290e25`, sha256 `f4f2bd2558f02f828f0deced5f74313a33670f08cc3275ff95b83f2cde71e448`), the same before and after the run.
+On it, a copy of the row as committed at 0.4.0 gave 0.4.0's table (16:05:13Z to 16:06:17Z).
+
+```
+module                                    errors satisfied  failed  refused  expected
+nii-il05-nouns.l4                              0         0       0        0         0
+nii-il05-published-figures.l4                  0         0       0        0         0
+nii-il05-tests-expected-red.l4                 3         2       3        0         3
+nii-il05-tests.l4                              0       236       0        0         0
+nii-s342-liability-and-deduction.l4            0         0       0        0         0
+nii-s348-maximum-minimum.l4                    0         0       0        0         0
+nii-schedule-k.l4                              0         0       0        0         0
+tests-independent.l4                           6       131       6        2       6/2
+TOTAL (8 modules)                              9       369       9        2
+```
+
+`check.sh` exit 0; every error is a failed assertion, each declared.
+**Mechanical checks** (row IL-04's tools, by path): `srcquote.py` over the three changed modules changed nothing; `hebcheck.py` passes on them, on this file and on `encoding.json`.
+
+### For the capstone (row IL-07; BACKLOG IL-44)
+
+- `nii-il05-nouns.l4` and `nii-s342-liability-and-deduction.l4` changed; re-vendor them.
+  Nothing the capstone calls was renamed or removed.
+- In a scratch copy of the capstone as committed (v0.3.0) with these two modules in place of its vendored copies, every capstone module compiled and gave the counts it gave before: `il07-tests.l4` 130 satisfied, `il07-tests-il08.l4` 116, `tests-independent.l4` 260 satisfied and 18 failed, `tests-independent-2.l4` 298 satisfied, 7 failed and 20 refused.
+- New: the reading type, the switch, the refusal, and the forms that take the reading; a capstone that wants the clamp or the next day passes it to the most general s 342(c) form.
+
+### Row IL-37 (TAKEAWAY): nothing is needed here
+
+TAKEAWAY changes row IL-04's column D for fewer than all deduction branches (the printed total less the printed items of the branches not paid, by default for a controlling shareholder, 1.02 and 6.79, and for ages 67 to 70 without an old-age pension, 0.70 and 4.86).
+This row needs no change for it, because:
+
+- At the printed totals this row never computes column D: it takes the figure for the deduction branches together from its caller (an argument since 0.3.0, a function of an income since 0.4.0), which is row IL-04's `the column D deduction under` … `in the branches` … for those branches.
+  Whatever IL-04 now answers for a partial set reaches s 342(c) unchanged, and so does a decline.
+- Its one partial-set computation, fork F23 (a police or prison officer: the printed total less item 6's own amount), is TAKEAWAY's construction on the set of all deduction branches but unemployment.
+  That is a controlling shareholder's column D set too: s 335(e) takes unemployment away from "בעל שליטה בחברת מעטים" (line 3615), and s 335(f)'s insolvency branch has no column D figure (line 4726).
+  So F23 gives TAKEAWAY's published 1.02 and 6.79 in 2026 (1.04 less 0.02, 7.00 less 0.21; the tester's B9 decided the same), and 0.39 and 6.79 under the permanent table.
+  It reaches that set by subtracting item 6 from the six-branch total, so it does not depend on whether IL-04 keys its default to the branch set or to the person's status.
+- The tester's re-pointed assertions and this row's own tests at the printed totals pay all six deduction branches, so none of them moves.
+
+At IL-07 the two may be named as one construction; that is a naming question, not a change in any answer.
 
 ## Version 0.4.0 (2026-10-08): repairs (BACKLOG IL-17)
 
@@ -49,13 +147,14 @@ The version is minor, not a patch, because the row now answers questions it coul
 - **05-W1 (WORDING).** Section 11's "independent test pass … was not run" is marked stale in place.
   The comparison section's "the composed answer would use 4.67" (its subsection "Schedule J column D: 4.67 or 7.00") is stale too, and is noted here because that section is not edited: since row IL-11 (IL-04 and this row v0.3.0, the capstone v0.2.1, which follows IL-04's switch), the printed totals govern by default, so the composed deduction above the threshold uses 7.00 (80.1812 at 7,704), and 4.67 only at the items' reading by name.
 - **DATE (fork, waits on Meng; BACKLOG IL-24).** Recorded in the fork register below with each reading and who holds it; the current behaviour (fork F19's clamp) is kept, and a test in `nii-il05-tests.l4` (section "Fork DATE") labels it.
+  **(0.5.0)** Ruled by Meng on 2026-10-08 (SHRUG): a switch, declined by default, the clamp and the next day kept by name; see "Version 0.5.0".
 
 ### Fork register, added (0.4.0)
 
 | # | where | the question | readings | taken, and why |
 | --- | --- | --- | --- | --- |
 | F25 | s 342(c)(1) (3661); s 348(a) (3763), (b) (3765) | the income the deduction is taken on, in the 0.4.0 rules that take the wage | (i) the wage, less what s 348(a) leaves out; (ii) the whole s 348 income, (b)'s minimum applied too (the capstone's fork K8 (i)); (iii) the wage as paid | **(i)**, assumed by the repair agent, not ruled: the item asked for the cap. Whether (b)'s minimum applies to each employer's wage or to the total, with several employers, is fork F17, not modelled; with one employer a caller who applies (b) gives the minimum as the wage. The rules that take amounts deduct on whatever income the caller used. |
-| DATE | s 342(c)(2) (3662); fork F19 | the day an age is reached, when the date of birth moved on by the age falls on a day the month lacks (a man born 29 February 1956 reaches 70 in 2026, which has no 29 February) | (i) clamp to the month's last day (28 February); (ii) roll to the first of the next month (1 March); (iii) decline | **(i), kept as the default until Meng rules (BACKLOG IL-24).** (i) is held by this row's encoder (F19), row IL-06's (its F2, s 65) and row IL-08's (its N4, Schedule A1 Part D, chosen to agree with F19). (ii) is named as the other reading by IL-06's F2 and IL-08's N4, and held by no one. (iii) is held by the independent testers of IL-06 (its finding 2) and IL-08 (its D-46 to D-48), and is the lead's recommendation for IL-24 (a named switch, default decline). Here it moves one month: February 2026, for that man, is declined under (i) (the age is reached on the 28th, after the month's first day: fork F9) and deducted under (ii); March is 0 under both. |
+| DATE | s 342(c)(2) (3662); fork F19 | the day an age is reached, when the date of birth moved on by the age falls on a day the month lacks (a man born 29 February 1956 reaches 70 in 2026, which has no 29 February) | (i) clamp to the month's last day (28 February); (ii) roll to the first of the next month (1 March); (iii) decline | **(i), kept as the default until Meng rules (BACKLOG IL-24).** **(0.5.0)** Ruled (SHRUG): (iii) by default, (i) and (ii) by name; see "Version 0.5.0". (i) is held by this row's encoder (F19), row IL-06's (its F2, s 65) and row IL-08's (its N4, Schedule A1 Part D, chosen to agree with F19). (ii) is named as the other reading by IL-06's F2 and IL-08's N4, and held by no one. (iii) is held by the independent testers of IL-06 (its finding 2) and IL-08 (its D-46 to D-48), and is the lead's recommendation for IL-24 (a named switch, default decline). Here it moves one month: February 2026, for that man, is declined under (i) (the age is reached on the 28th, after the month's first day: fork F9) and deducted under (ii); March is 0 under both. |
 
 ### Assertions added or re-pointed
 
@@ -84,7 +183,7 @@ All 29 were satisfied on that first run; with three of them altered in a scratch
 | (d) with one employer | does not apply | — |
 | (e1), total 80,000, the other employer deducted 2,340.9012; at the items, 1,588.3811 | 833.7; 556.197 | 3,174.6012 − 2,340.9012; 2,144.5781 − 1,588.3811 |
 | s 342(a)-(b), one call: both; employee; self-employed; neither; neither, insured under Chapter C only as a wife | [the employer, the person]; [the employer]; [the person]; [the person]; [no one …] | 05-P3 |
-| fork DATE: a man born 29 February 1956, wage 7,000, February 2026; March 2026 | declined (fork F9); 0 | reading (i), the current behaviour |
+| fork DATE: a man born 29 February 1956, wage 7,000, February 2026; March 2026 | declined (fork F9); 0 | reading (i), the current behaviour; **(0.5.0)** re-pointed to (i) by name, values unchanged |
 
 `tests-independent.l4`: **nine re-pointed**, values unchanged (05-RC1).
 
@@ -403,7 +502,7 @@ Neither s 342 nor s 348 nor Schedule K says to round; the Institute publishes wh
 | F16 | s 342(f)(2) (3674) | "lower than" the threshold | — | **strict**; at the threshold the difference is nil anyway, so nothing turns on it. |
 | F17 | s 342(b) and s 348(b) | With several employers, is (b)'s minimum applied to each employer's wage ("as if he alone were his employer") or to the total? | — | **not modelled**: the caller supplies the income the floor applies to. **(0.4.0)** It is also why the rules that take the wage apply s 348(a) and not (b): fork F25. |
 | F18 | s 350(c) (3805) | It disapplies s 348(b); does it reach (d) and (e)? | (i) (b) only; (ii) all minimums | **(i)**: it names (b) alone. A test shows a yeshiva student under s 350(c) still at the item 3 minimum. |
-| F19 | s 342(c)(2) | The day a person "reaches" an age | — | the date of birth plus the age in months, keeping the day of the month or the month's last day when it is shorter (`add months`). **(0.4.0)** The shorter month is fork DATE ("Version 0.4.0" above), which waits on Meng (BACKLOG IL-24); this reading is kept until then. |
+| F19 | s 342(c)(2) | The day a person "reaches" an age | — | the date of birth plus the age in months, keeping the day of the month or the month's last day when it is shorter (`add months`). **(0.4.0)** The shorter month is fork DATE ("Version 0.4.0" above), which waits on Meng (BACKLOG IL-24); this reading is kept until then. **(0.5.0)** Ruled (SHRUG): declined by default; this reading is kept by name, `the last day of that month`. |
 | F20 | Schedule K "for a year" | A person in a category for part of a year | — | **not modelled**: the yearly figures are for the whole tax year. |
 | F21 | s 342(c)(2) "the deduction in item 6 of Schedule J" | — | — | item 6 is unemployment (line 4725); only that branch's column D amount is left out for a police or prison officer. |
 | F22 | s 342(e)(3)-(4) (3669-3670) | "column E of Schedule J" for deduction rates | (i) column D intended; (ii) as written | **not resolved**: (e) is a power and decides nothing here; checked red. |
@@ -454,6 +553,7 @@ Read from the sibling deposits `legalese-2026-10-il-04` and `legalese-2026-10-il
 - **The case records.** IL-04's `An employee's month of contributions` (`calendar year of the month`, the branches, the monthly income, s 341 and s 343 flags) and this row's `An employee's month under section 342(c)` (`tax year`, `month`, the branches, the column D amounts, pension, age, police) and `An insured person's period under section 348` describe overlapping facts. The year field is `calendar year of the month` there and `tax year` here; a tax year is a calendar year in both (IL-04 F12). IL-04's `monthly income on which contributions are computed` is this row's output.
 - **The person.** IL-04 `A person who works`; IL-06 `A person` (insured under Chapter 11, resident, a housewife under s 238 …); this row `An insured person, for section 342(a)-(b)` (column; insured under Chapter C only as a wife) and the age record `The insured person, for the age limb of section 342(c)(2)` (`a man` / `a woman` with her Part D age). IL-06 has `Father or mother`, a second sex distinction. `date of birth` is a field name here and in IL-06's `A child`.
 - **The basic amount.** IL-06 `The basic amounts for the child allowance` (paragraph (2), fields `under paragraph (2)(a)` …); this row the paragraph (3) figure as a field of `The figures Schedule K reads for a tax year` and as `the basic amount under paragraph (3) from 1 January 2026, as published by the National Insurance Institute`.
+- **(0.5.0) Fork DATE's reading.** `A reading of a day of birth the month of the age lacks` is this row's; the same ruling is to be carried out in rows IL-06 and IL-08 (BACKLOG IL-40 and IL-41, queued when this was written), and any reading types they declare are to be joined with this one at IL-07.
 - **(0.4.0) Column D as a function.** The rules of 05-RC2 take column D as functions of an income, by branch and at the printed totals; at IL-07 they are IL-04's `the column D deduction under` with the version, threshold and average wage fixed, the second over the deduction branches.
   The record of 05-P3, `An insured person who may be both an employee and self-employed, for section 342(a)-(b)`, has two booleans where IL-04's `A person who works` and this row's one-column record each have one status.
 - **Refusal wording.** For the year boundary: IL-04 per provision ("section 334(a) as it stood before 1 January 2026 is not in the deposited text"); this row once for the row ("this row answers contribution periods from January 2026 only"). For unpublished figures: IL-04 and this row "had not been published when this encoding was made"; IL-06 "had not been published when this model's sources were fetched".
@@ -529,6 +629,7 @@ Section 6 lists what to delete or join at IL-07.
 7. Was the National-Civic Service Law's expiry moved again after 31.8.2026, and if not, does s 348(e)'s temporary text now reach only those who began before?
 8. **(0.4.0)** Fork DATE: from what day is a man born on 29 February 70 in a year without one, for s 342(c)(2)?
    One ruling for rows IL-05, IL-06 and IL-08: BACKLOG IL-24.
+   **(0.5.0)** Ruled by Meng on 2026-10-08 (SHRUG): declined by default, both other readings kept by name.
 9. **(0.4.0)** Was an order under Amendment 252 s 7(b) made extending the temporary Schedule J to 2027 (row IL-04's open question 7)?
    It decides which column D a caller passes for 2027 (05-RC5).
 

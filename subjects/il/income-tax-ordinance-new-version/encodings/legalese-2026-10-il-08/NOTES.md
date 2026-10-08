@@ -2,10 +2,96 @@
 
 The Income Tax Ordinance half of row IL-08, the extension of the Israel tier: ss 1 ("Israeli resident" for an individual), 2, 35, 37, 38, 39, 40, 45A, 47, 64B, 65 and 121A, taken in the order row IL-07's `GAPS.md` needs them.
 One agent, one session, no sub-agents (run `IL-08-20261007`, encoder `enc-il-08`, 2026-10-07), from the brief in `BRIEF.md`.
-Status: **draft**, version 0.3.0 (2026-10-08): the independent pass's findings repaired or recorded (BACKLOG IL-19; versions 0.2.0 and 0.3.0, the next two sections).
+Status: **draft**, version 0.4.0 (2026-10-08): fork F35 as a switch under Meng's ruling SHRUG (BACKLOG IL-42; the next section), on version 0.3.0, the independent pass's findings repaired or recorded (BACKLOG IL-19; the two sections after it).
 No domain expert has read it; HG1 has not been sought; no independent test pass has been run (version 0.1.0; an independent pass was run on 2026-10-07, `INDEPENDENT-FINDINGS.md`, and versions 0.2.0 and 0.3.0 repair what it found).
 
 The National Insurance Law half (Schedule A1 Part D, ss 72 and 335, and the dispositions of NII ss 65 and 67A) is the companion row, `../../../national-insurance-law-consolidated-version-5755-1995/encodings/legalese-2026-10-il-08/`.
+
+## Version 0.4.0 (2026-10-08): fork F35 as a switch (BACKLOG IL-42, Meng's ruling SHRUG)
+
+Agent `shrug-il-42` (the session that made versions 0.2.0 and 0.3.0), on version 0.3.0 (commons commit `379a778`), one session, no sub-agents.
+Files changed: `ito-il08-nouns.l4`, `ito-s47-deduction.l4`, `ito-il08-tests-s47-deduction.l4`, `check.sh`, this file and `encoding.json`; `tests-independent.l4` was not edited.
+
+**The ruling.**
+Meng ruled SHRUG on 2026-10-08 on fork F35 (inventory 08i-D190; the independent pass's D190, D236): whether the s 47 deduction or the s 45A credit takes a pension payment first.
+One named switch with the readings (i) the deduction first, (ii) the credit first, (iii) the taxpayer's choice, each kept by name and tested; and a default, DECLINE, used only where the order changes the answer, the answer being given under any reading where it does not.
+
+**What changed.**
+- `ito-il08-nouns.l4`: the type `A reading of the order between the deduction under section 47 and the credit under section 45A`, with `the deduction first`, `the credit first`, `the order the taxpayer chooses` (which carries his choice, `the taxpayer takes the deduction first`) and `declined where the order changes the answer`.
+- `ito-s47-deduction.l4`: the switch, `section 47 — the reading this row takes of the order between the deduction and the section 45A credit`, naming the default; the refusal `sections 47 and 45A do not say whether the deduction or the credit takes a payment first, and here the order changes the answer`; one rule per order (`s 47 — the deduction, the deduction taking the payment first, for`, `s 47 — the deduction, the section 45A credit taking the payment first, for`); the reading-aware entry point `the deduction under section 47 for` i `, at` a `, reading the order with the section 45A credit as` r; and the old name, `the deduction under section 47 for` i `, at` a, now that entry point at the switch's reading, still exported.
+  The module now imports `ito-s45a-insurance-and-pension-credit.l4`, for the credit-first order.
+- Reading (i) is versions 0.1.0 to 0.3.0's rule, unchanged: the deduction (b) or (b1) allows, out of the sums paid.
+- Reading (ii), as encoded: s 45A credits first, with nothing deducted; the deduction then takes what is left, up to the same limits.
+  The limits are those of the sums he paid, because s 47(b)(1)'s further 4% turns on what "he paid" above 12%, whichever takes it first; only the sums the deduction can take are fewer.
+  So it is the lesser of reading (i)'s deduction and the sums paid under s 47 less the pension sums s 45A credits.
+  Those are all its pension sums where nothing is cut, and its 35% rule's sums where its limits cut and they are its only creditable sums.
+  Where its limits cut them together with life or survivors' insurance, which sums it credits is fork F1's question, and (ii) declines in s 45A's own words (`section 45A does not say which sums are credited when its limits cut sums of different kinds`); so does the default, which cannot then tell whether the order matters.
+  For a foreign worker whom s 45A would credit, s 48A's regulations might take the credit away: (ii) declines in s 48A's words.
+  The 12% test on what he paid, and the comparison by sums rather than by tax, are this encoding's (assumed, not ruled).
+- Reading (iii), as encoded: the taxpayer's choice of which goes first, an input carried by the reading (assumed, not ruled: the choice is read as a choice of order, the fork's question, not as any split of the payment he likes).
+- The default answers where (i) and (ii) give the same deduction: where s 47 allows nothing (an employee whose salary is all insured income), and where the sums paid cover both s 47's deduction and the pension sums s 45A credits.
+  Worked, the independent pass's D190: self-employed, not a beneficiary member, 100,000 of income, 10,000 paid. (i): 7% of 100,000 = 7,000. (ii): s 45A(d)(2)(b)(1) credits 5% of 100,000 = 5,000, leaving 5,000. Declined. With 20,000 paid: (i) 7,000 + the further 4% capped at 4,000 = 11,000; (ii) 5,000 credited, 15,000 left, 11,000. Answered, 11,000.
+
+**Tests.**
+No expected value changed.
+This row's own s 47 tests (`ito-il08-tests-s47-deduction.l4`, 12) give no sums for s 45A, so no credit competes with the deduction there, every reading gives the same, and none rests on reading (i): they stay on the default, values unchanged.
+24 assertions were added there (12 to 36), every value worked by hand first and satisfied on the first run:
+
+| case | (i) | (ii) | (iii) | default |
+| --- | ---: | ---: | --- | --- |
+| self-employed, 100,000, 10,000 paid (D190) | 7,000 | 5,000 | 7,000 deduction first / 5,000 credit first | REFUSED (old name and the default by name) |
+| the same, 5,000 paid (D236) | 5,000 | 0 | — | REFUSED |
+| the same, 7,000 paid (D236) | 7,000 | 2,000 | — | REFUSED |
+| the same, 20,000 paid | — | 11,000 | — | 11,000 |
+| the same, 12,000 paid | — | — | — | 7,000 |
+| 10,000 to the fund and 2,000 for survivors' insurance | 7,000 | — | — | REFUSED (fork F1's words) |
+| an employee, 120,000 all insured, 7,200 paid | — | — | — | 0 |
+| row IL-07's N6: 120,000 salary, 72,000 insured, 7,200 paid | 2,220 | 0 | — | REFUSED |
+| a beneficiary member, self-employed, 100,000, 30,000 under (b1) | — | 11,000 | — | 11,000 |
+
+and one that the switch names the default.
+The independent tests' D190 (line 676) and D236 (lines 767, 768) expected the refusal and now get it; `check.sh` declares 2 failures there instead of 5 (D019, line 92; D244, line 779), and the same 7 refusals.
+Their other s 47 values hold, every one of them a case where the two orders agree: D188 and D240 (lines 670, 770, 11,000), D241 (772, 11,000), D242 (774, 8,000), D189 and D243 (673, 776, 7,000), D195 (703, 11,000), D235 and D194 (765, 691, 0); D244 (779) still fails as before, its facts making him a beneficiary member.
+
+**For row IL-07's capstone (IL-44).**
+Nothing the capstone calls was renamed and no record changed, so it compiles against version 0.4.0 unchanged; but the old name now declines where the order matters.
+In a scratch copy of the capstone at commons `985940e` with this version's two changed modules put in place of its vendored ones (2026-10-08T16:00:49Z to 16:02:07Z, the binary below), only `il07-tests-il08.l4` changes: N6's deduction (line 370, 2,220) is now refused, IL-08 saying the order changes the answer (2,220 deduction first, 0 credit first), and N6's tax (line 371) is refused in IL-08's words, not the capstone's.
+`il07-tests-expected-red.l4`, `il07-tests.l4` (130), `tests-independent.l4` (260, 18 failed) and `tests-independent-2.l4` (298, 7 failed, 20 refused) are as the capstone's `check.sh` declares.
+To follow: the capstone's own D190 decline (`IL-07: the credit under section 45A for the earner`, declining whenever s 47 deducts anything) can go.
+Where IL-08's default answers, the orders agree, and the deduction it gives is the `deducted` the capstone's builder passes to s 45A; where they disagree IL-08 declines by name.
+A household that should be answered under a reading calls `the deduction under section 47 for` i `, at` a `, reading the order with the section 45A credit as` r, and passes the same deduction to s 45A.
+N6 then either expects IL-08's refusal or names a reading (`the deduction first`: 2,220; `the credit first`: 0).
+
+**`check.sh`** run from 2026-10-08T15:58:47Z to 15:59:34Z as `L4=/Users/mengwong/.local/bin/l4 ./check.sh`, `JL4_LIBRARY_PATH` unset; the binary `~/.local/bin/l4` → `~/.cabal/bin/l4` → cabal store `jl4-0.1-d4290e25`, 233,567,184 bytes, sha256 `f4f2bd2558f02f828f0deced5f74313a33670f08cc3275ff95b83f2cde71e448` before and after; no module changed during the run.
+
+```
+module                                    errors satisfied  failed  refused  expected
+ito-il08-nouns.l4                              0         0       0        0         0
+ito-il08-published-figures.l4                  0         0       0        0         0
+ito-il08-tax-years.l4                          0         0       0        0         0
+ito-il08-tests-s1-s2.l4                        0        30       0        0         0
+ito-il08-tests-s35.l4                          0        32       0        0         0
+ito-il08-tests-s37-s40.l4                      0        73       0        0         0
+ito-il08-tests-s45a-s47.l4                     0        79       0        0         0
+ito-il08-tests-s47-deduction.l4                0        36       0        0         0
+ito-il08-tests-s64b-s65.l4                     0        32       0        0         0
+ito-s1-israeli-resident.l4                     0         0       0        0         0
+ito-s2-sources-of-income.l4                    0         0       0        0         0
+ito-s35-new-immigrant.l4                       0         0       0        0         0
+ito-s37-s38-s39-spouse-credits.l4              0         0       0        0         0
+ito-s40-children-credit-points.l4              0         0       0        0         0
+ito-s45a-insurance-and-pension-credit.l4       0         0       0        0         0
+ito-s47-deduction.l4                           0         0       0        0         0
+ito-s47a-definitions.l4                        0         0       0        0         0
+ito-s64b-s65-registered-spouse.l4              0         0       0        0         0
+tests-independent.l4                           2       196       2        7       2/7
+TOTAL (19 modules)                             2       478       2        7
+(a failed assertion is also an error; any other error, or a refused assertion a module is not expected to have, makes the run red; "expected" is failed/refused where a module may refuse)
+```
+
+`check.sh` exit 0.
+This row's own tests: 282 assertions, all satisfied (258 in version 0.3.0); 47 of them are `#ASSERT REFUSED … BECAUSE "…"` (41).
+`python3 -I tools/srcquote.py SOURCE` over every `ito-*.l4` module changed no line; `python3 -I tools/hebcheck.py SOURCE *.l4` exit 0.
 
 ## Version 0.3.0 (2026-10-08): the lead's addendum, and rider O1 (BACKLOG IL-19)
 
@@ -535,7 +621,7 @@ None has been settled by a court or the Tax Authority to my knowledge; no case l
 | F32 | s 64B(a), (c) | Equal incomes two years back: neither above 50%, neither at nil. | no power; either | **as written: neither power arises.** |
 | F33 | s 65 | The exception (inheritance, bodily injury) names interest, a REIT's income and capital gain, not a transparent company's income. | not excepted; excepted | **not excepted**, as written. |
 | F34 (0.2.0) | s 1 "תושב חוץ", second limb (lines 167-169) | An individual outside Israel 183 days or more in a tax year and the next, whose centre of life was not in Israel in the two tax years after, is a foreign resident. For which tax year does it deem him one (the first of the pair, or both), and does it prevail over a centre of life in Israel in that year? | (i) the centre of life prevails; (ii) the deeming prevails; (iii) the text does not say | **(iii): declined by name** in `s 1 — an Israeli resident in the tax year, the second limb of "foreign resident" considered:`, where the limb is met for a pair of tax years including the one asked about, or the facts given do not settle it, and the first definition makes him resident. The version 0.1.0 rule, which has no later-year facts, answers on the definition of "Israeli resident" alone, which is reading (i) for any individual the limb reaches; its description says so. Recorded from the independent pass's D019 (inventory 08i-D019), which expects a refusal. |
-| F35 (0.2.0) | s 47(b), (b1) and s 45A; s 47(c) (line 1787) | One payment may be deducted under s 47 or credited under s 45A, not both (s 47(c)). Which takes it first? | (i) the deduction first, as far as s 47 allows; (ii) the credit first; (iii) the taxpayer's choice | **(i), version 0.1.0's behaviour, kept until Meng rules (BACKLOG IL-24, inventory 08i-D190).** s 47(c), "סכום שנוכה לפי סעיף קטן (ב) או (ב1) לא יובא בחשבון לצורך סעיף 45א", assumes the deduction is fixed before s 45A applies; the independent tester reached the same view on reflection but kept a refusal as the expected answer (D190, D236), since the text does not say the individual must take the largest deduction. s 45A takes the deducted sum as an input; `the deduction under section 47 for` does not, and will take one only after the ruling. The lead's recommendation is a named switch defaulting to decline. Who holds which: (i) this row; (ii) or (iii), declined, the independent tester's expected answers. |
+| F35 (0.2.0) | s 47(b), (b1) and s 45A; s 47(c) (line 1787) | One payment may be deducted under s 47 or credited under s 45A, not both (s 47(c)). Which takes it first? | (i) the deduction first, as far as s 47 allows; (ii) the credit first; (iii) the taxpayer's choice | **(i), version 0.1.0's behaviour, kept until Meng rules (BACKLOG IL-24, inventory 08i-D190).** s 47(c), "סכום שנוכה לפי סעיף קטן (ב) או (ב1) לא יובא בחשבון לצורך סעיף 45א", assumes the deduction is fixed before s 45A applies; the independent tester reached the same view on reflection but kept a refusal as the expected answer (D190, D236), since the text does not say the individual must take the largest deduction. s 45A takes the deducted sum as an input; `the deduction under section 47 for` does not, and will take one only after the ruling. The lead's recommendation is a named switch defaulting to decline. Who holds which: (i) this row; (ii) or (iii), declined, the independent tester's expected answers. **RULED by Meng on 2026-10-08 (SHRUG; BACKLOG IL-42), version 0.4.0:** one named switch, `section 47 — the reading this row takes of the order between the deduction and the section 45A credit`, over `A reading of the order between the deduction under section 47 and the credit under section 45A`: `the deduction first` (i), `the credit first` (ii), `the order the taxpayer chooses` (iii, his choice an input of the reading), and the default, `declined where the order changes the answer`, which answers where (i) and (ii) give the same deduction and refuses by name otherwise. Each is tested by name. Under (ii) the deduction's limits are those of the sums paid, and it can take only what s 45A, crediting first with nothing deducted, leaves; where s 45A's limits cut its pension sums together with sums of another kind, which it credits is fork F1's question, and (ii) and the default decline in F1's words. |
 | F36 (0.2.0) | s 64B(d)(1) "בכפוף לאמור בסעיף קטן (ב)" | A designation stands five years "subject to (b)". Does a later election under (b) displace an earlier election within its five years, as it displaces an officer's determination? | yes: every designation is subject to (b); no: (b) overrides (a)'s determination ("על אף האמור בסעיף קטן (א)") and nothing says it overrides an earlier election | **declined** (inventory 08i-D273); a later election displaces a determination (the independent pass's D272). |
 | F37 (0.3.0) | s 40(b)(2), second limb (line 1640) | "ההורה שאינו זכאי לנקודת זיכוי על פי פסקה (1)" is set against the first limb's "ההורה הזכאי". Where neither parent is entitled under (1), does the second limb credit the parent who shares the maintenance? | yes: its only condition is the divided maintenance; no: it is the first limb's counterpart and presupposes a parent entitled under (1) | **declined** where it matters: the second limb would credit the parent, and the other parent has (1) points for none of the children (the field on each child's record, fork F14). Raised by the capstone's second independent pass, observation O1. |
 
@@ -651,7 +737,7 @@ The Israeli fetch proxy was not used.
 7. F30: on which sums is s 47(b1)(2)'s 12% test made?
 8. F11: in what order is the s 45A credit set off against the tax, beside the credit points?
 9. F34 (0.2.0): where the second limb of "foreign resident" reaches an individual whose centre of life is in Israel, for which tax year is he a foreign resident, and which prevails?
-10. F35 (0.2.0): does the s 47 deduction take a pension payment before the s 45A credit, or may the taxpayer choose? (Meng's ruling, BACKLOG IL-24.)
+10. F35 (0.2.0): does the s 47 deduction take a pension payment before the s 45A credit, or may the taxpayer choose? (Meng's ruling, BACKLOG IL-24.) (0.4.0: ruled SHRUG on 2026-10-08, a switch declining by default where the order matters; the question for a domain expert stands.)
 11. F36 (0.2.0): may a later election under s 64B(b) displace an earlier election within its five years?
 12. F18 and F37 (0.3.0): does s 40(b)(2)'s point for a share of the maintenance go to a parent who is not an Israeli resident, and to one whose children's other parent is not entitled under (1) either?
 

@@ -36,10 +36,14 @@ expected_failed() {
     #                 carries no later tax year; the form that takes them declines (ito-s1-israeli-resident.l4)
     #   line 676 D190, lines 767-768 D236 (08i-D190, AMBIGUITY, fork F35, waits on BACKLOG IL-24):
     #                 REFUSED expected; the deduction is taken first, as in version 0.1.0
+    #                 (version 0.4.0: these three pass; see below)
     #   line 779 D244 (08i-T1, TESTER-WRONG): the tester's facts contradict each other
     # D187 (line 667) and D055 (line 201) passed from version 0.2.0. Lines 286 and 860 were adapted in
     # place to version 0.3.0's interfaces (the lead's note at the end of the file); their assertions pass.
-    tests-independent.l4) echo 5 ;;
+    # Version 0.4.0 (BACKLOG IL-42, Meng's ruling SHRUG on fork F35): the s 47 deduction declines by
+    # default where the order of the deduction and the s 45A credit changes the answer, so D190 (676)
+    # and D236 (767, 768), which expect that refusal, pass. Two remain: D019 (92) and D244 (779).
+    tests-independent.l4) echo 2 ;;
     *) echo 0 ;;
   esac
 }

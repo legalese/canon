@@ -1,8 +1,237 @@
 # NOTES — il/national-insurance-law-consolidated-version-5755-1995, encoding row `legalese-2026-10-il-04`
 
 National Insurance Law [Consolidated Version], 5755-1995: **s 334** (interpretation for Chapter 15, insurance contributions), **s 337** (the rate of insurance contributions), **Schedule J** (לוח י׳, the rates), and the **s 1** definitions they use, encoded in L4 by one agent in one session (run `IL-04-20261006`, 2026-10-06), from the brief in `BRIEF.md`.
-Status: **draft**. Version **0.4.1** (2026-10-08): wording and records only, no answer changed (BACKLOG IL-21); see "Version 0.4.1" below. Version 0.4.0: fork F6 ruled, a fall in the index or the average wage declined by default. Version 0.3.1: the independent tests re-pointed to the items' reading. Version 0.3.0: the Schedule J switch, fork F4 ruled.
+Status: **draft**. Version **0.6.0** (2026-10-08): a third set joins fork F21 (DESSERT), a woman between her retirement age and 67 without an old-age pension (BACKLOG IL-45); see "Version 0.6.0" below. Version 0.5.0: fork F21 ruled (TAKEAWAY), column D at the printed totals for the two branch sets whose rate the Institute publishes, every other set of fewer branches declined (BACKLOG IL-37). Version 0.4.1: wording and records only, no answer changed (BACKLOG IL-21). Version 0.4.0: fork F6 ruled, a fall in the index or the average wage declined by default. Version 0.3.1: the independent tests re-pointed to the items' reading. Version 0.3.0: the Schedule J switch, fork F4 ruled.
 No domain expert has read it against the source; HG1 has not been sought.
+
+## Version 0.6.0 (2026-10-08): fork F21's third published set (BACKLOG IL-45)
+
+Backlog row IL-45, run `IL-45-20261008`, agent `dessert-il-45`, one session, no sub-agents, on Meng's ruling of 2026-10-08 (DESSERT) as the lead relayed it: add to fork F21's sets whose rate the National Insurance Institute publishes a woman between her retirement age and 67 who has no old-age pension (open question 8 of version 0.5.0).
+The version is minor, not a patch, because an answer changes: her deduction above the threshold, declined at 0.5.0, is now a figure.
+Nothing below was deleted; entries this version changes are marked **(0.6.0)** in place.
+The section "Comparison with Axiom's RuleSpec", `tests-independent.l4`, `DECIDED-ANSWERS.md` and `INDEPENDENT-FINDINGS.md` are untouched.
+
+### Which branches she does not pay, from the Law
+
+Established from the deposited source before she was added (the ruling's own wording, accident injury and disability, was checked, not assumed):
+
+- **Her retirement age.** s 1 "גיל הפרישה" (line 130), paragraph (2) for a woman (line 132): the age Part A of Schedule A1 fixes by her month of birth, or for one born from 1956 the Retirement Age Law's (not in the bundle). Which age it is does not matter here: the set holds at any age from it to 67.
+- **Accident injury: not paid.** Chapter 6's "מבוטח" is a resident aged 18 "וטרם הגיע לגיל פרישה" (s 150, line 1405), so s 335(d) (line 3614) does not reach her.
+- **Disability: not paid.** Chapter 9's "מבוטח" is likewise a resident aged 18 who has not reached retirement age (s 195, line 1929), so s 335(g) (line 3617) does not reach her.
+- **Unemployment: paid.** s 158's paragraph (1) (line 1444) insures a resident employee to the age Part B of Schedule A1 fixes by month of birth, and Part B, "the maximum age for unemployment insurance", fixes 67 for anyone born from May 1942, women and men alike (line 4412); so before 67 s 335(e) (line 3615) reaches her.
+- **Maternity, senior citizens and survivors, long-term care: paid.** s 240(a) (line 2439) insures under Chapter 11 a resident aged 18 with no upper age (it excludes only one first resident after a set age); s 335(i) (line 3619) charges such a person senior citizens and survivors and maternity, and s 223's "מבוטח" (paragraph (1), line 2175) is one insured under Chapter 11, so s 335(h) (line 3618) charges long-term care.
+- **Insolvency** (an employee, s 181, line 1830, no age limit), **children** and **work injury** print no column D figure and do not enter column D.
+
+So her column D branches not paid are **accident injury and disability**, as the ruling said.
+The same two citations, s 240(a) and s 223, also support the 67-to-70 set's "still pays maternity, senior citizens and survivors and long-term care" (version 0.5.0), which had cited s 335(h) and (i) only; marked **(0.6.0)** in `nii-schedule-j.l4`.
+
+### The arithmetic against the page
+
+The page is the Institute's employees' rates page as fetched by fid-il-13 on 2026-10-08T06:29:00Z (sha256 `74fc3652d8912f23004b6e2d1d3d7fc39e0fbe928c0b71948ff89e8b71827cf1`, as in version 0.5.0; read again from the same copy).
+Its form 102 table prints, for a woman between retirement age and "retirement age for a man" who does not receive an old-age pension: total 8.12% / 17.36%, employee 3.95% / 10.24%, employer 4.17% / 7.12% (up to the threshold / above it, with health insurance); the employee's health insurance is 3.23% / 5.17%.
+
+- **Column D** (2026, lines 4724, 4727, 4730): 1.04 − 0.03 − 0.29 = **0.72** and 7.00 − 0.07 − 1.86 = **5.07**; the page's 3.95 − 3.23 = 0.72 and 10.24 − 5.17 = 5.07. Exact.
+- **Column C** (an employee, 2026): 5.55 − 0.04 − 0.62 = 4.89 and 14.60 − 0.13 − 2.28 = 12.19; the page's National Insurance totals, 8.12 − 3.23 = 4.89 and 17.36 − 5.17 = 12.19. **Also exact**, unlike the other two sets (14.23 against 14.17; 11.86 against 11.82).
+  Column C nonetheless keeps the decline for fewer branches, for her as for the others (assumed, not ruled): TAKEAWAY and DESSERT are rulings on the employee's deduction, and reading the totals in column C for her alone would extend F21 to a column the rulings did not name. Open question 9.
+
+### What changed
+
+- `nii-schedule-j.l4`: her set, `accident injury` and `disability`, is the third entry of `the column D branches not paid, for each set whose employee's rate the National Insurance Institute publishes`; the comment above the switch records her branches, their sections and the arithmetic, and the column C finding. The other two sets and every other partial set are unchanged; nothing else in the module changed.
+- `nii-il04-tests.l4`: two assertions of version 0.5.0 that encoded "her set is not published" change, by the ruling (below), on the same lines; 16 are added.
+
+### Assertions changed or added
+
+Two expected values change, by the ruling, not by a run; both are on their 0.5.0 lines, so no cited line moved:
+
+| line | assertion | 0.5.0 | 0.6.0 | why |
+| ---: | --- | --- | --- | --- |
+| 621 | the Institute publishes the rate for her set | NOT (FALSE) | TRUE | DESSERT |
+| 651 | combined column D, upper, 2026, her branches, default | REFUSED, the fewer-branches words | 5.07 | 7.00 − 0.07 − 1.86 |
+
+The two comment lines above 651, and one above 621 (line 602), were reworded in place to say so.
+
+Added, section "Version 0.6.0" (16, all satisfied on the first run; each value worked by hand before it):
+
+| line | case | expected | why |
+| ---: | --- | --- | --- |
+| 699 | combined column D, lower, default | the page's 3.95 − 3.23 (0.72) | 1.04 − 0.03 − 0.29 |
+| 700 | combined column D, upper, default | the page's 10.24 − 5.17 (5.07) | 7.00 − 0.07 − 1.86 |
+| 701 | the same, reading (i) | REFUSED, the fewer-branches words | |
+| 706 | deduction, 7,800 (near the threshold), default | 60.3795 | 7,703 × 0.72% + 97 × 5.07% = 55.4616 + 4.9179 |
+| 707 | the same, reading (ii) | 60.3795 | |
+| 708 | the same, reading (i) | REFUSED, the fewer-branches words | |
+| 709 | the same, at the items | 58.1194 | 55.4616 + 97 × 2.74% (2.6578) |
+| 711 | deduction, 7,703, reading (i) | 55.4616 | nothing above the threshold |
+| 714 | deduction, 20,000 (well above), default | 678.9195 | 55.4616 + 12,297 × 5.07% (623.4579) |
+| 715 | the same, reading (ii) | 678.9195 | |
+| 716 | the same, reading (i) | REFUSED, the fewer-branches words | |
+| 717 | the same, at the items | 392.3994 | 55.4616 + 12,297 × 2.74% (336.9378) |
+| 720 | deduction, 2027, threshold 8,000, 10,000, default | 123.8 | 8,000 × (0.40 − 0.01 − 0.11)% + 2,000 × 5.07% = 22.4 + 101.4 |
+| 729 | column C, an employee, above, her branches, default | REFUSED, the fewer-branches words | column C keeps reading (i) |
+| 730 | the same, at the items | 12.08 | 14.49 − 0.13 − 2.28 |
+| 731 | column C, an employee, not above, her branches | 4.89 | the items reach the total: 5.55 − 0.04 − 0.62 |
+
+`tests-independent.l4` (not edited) and `nii-il04-tests-expected-red.l4` print what they printed at 0.5.0, assertion by assertion (compared line by line on the same binary): 641 satisfied, 5 failed; 26 satisfied, 15 failed. No tester line passes or changes.
+
+### What `check.sh` prints at 0.6.0
+
+```
+module                                    errors satisfied  failed  refused  expected
+nii-il04-nouns.l4                              0         0       0        0         0
+nii-il04-published-figures.l4                  0         0       0        0         0
+nii-il04-tests-expected-red.l4                15        26      15        0        15
+nii-il04-tests.l4                              0       235       0        0         0
+nii-s1-definitions.l4                          0         0       0        0         0
+nii-s334-interpretation.l4                     0         0       0        0         0
+nii-s337-rates.l4                              0         0       0        0         0
+nii-schedule-j-tables.l4                       0         0       0        0         0
+nii-schedule-j.l4                              0         0       0        0         0
+tests-independent.l4                           5       641       5        0         5
+TOTAL (10 modules)                            20       902      20        0
+```
+
+Exit 0. Run 2026-10-08T16:36:44Z to 16:37:11Z, `L4=~/.local/bin/l4`, `JL4_LIBRARY_PATH` unset; no module changed during the run.
+The binary resolves to the cabal store, `jl4-0.1-d4290e25/bin/l4`, sha256 `f4f2bd2558f02f828f0deced5f74313a33670f08cc3275ff95b83f2cde71e448`, the same before and after, and the binary of 0.5.0; before any edit it printed 0.5.0's counts (219; 641/5; 26/15).
+`check.sh` needed no change: no module's declared count moved.
+`tools/srcquote.py` leaves the two changed `.l4` modules byte-identical, and `tools/hebcheck.py` passes on them.
+
+**Row IL-05** was re-run (2026-10-08T16:37:12Z to 16:37:29Z, the same binary before and after): 9 errors, 369 satisfied, 9 failed, 2 refused, exit 0, its version 0.5.0's recorded counts.
+It needs nothing: it does not import row IL-04 (cross-directory IMPORT does not resolve; it re-declares IL-04's types), and at the printed totals it takes column D for the deduction branches as an argument from its caller, so IL-04's figure for her set reaches its s 342(c) unchanged; its one partial-set computation, fork F23, is the controlling shareholder's set, not hers.
+
+### For the capstone (BACKLOG IL-44)
+
+`nii-schedule-j.l4` is vendored and changed, so its pin must be re-recorded; no name, type or entry point changed.
+A capstone earner whose s 335 statuses leave out accident injury and disability (insured neither under Chapter 6 nor under Chapter 9, but for unemployment) now has a column D figure from IL-04 where 0.5.0 declined.
+
+## Version 0.5.0 (2026-10-08): fork F21, a printed total for fewer branches than it is for (BACKLOG IL-37)
+
+Backlog row IL-37, repair agent `rep-il-37`, one session, no sub-agents, on Meng's ruling of 2026-10-08 (TAKEAWAY) as the lead relayed it.
+Nothing below was deleted; entries this version changes are marked **(0.5.0)** in place.
+The section "Comparison with Axiom's RuleSpec", `tests-independent.l4`, `DECIDED-ANSWERS.md` and `INDEPENDENT-FINDINGS.md` are untouched.
+
+### The fork and its three readings
+
+At the printed totals (fork F4, ruled 2026-10-07) a total is Schedule J's figure for every branch that prints a figure in its column, together.
+Where a person pays fewer of those branches, and the items in that cell do not reach the total, the schedule prints no figure for them.
+In 2026 two cells are such: column D's upper part (printed 7.00, items 4.67; source lines 4720-4730) and column C above the threshold for an employee (printed 14.60, items 14.49).
+Versions 0.3.0 to 0.4.1 declined every such case, in the words "the printed total of Schedule J in this column is for every branch that prints a figure in it, together; the items do not add up to it, and these are fewer branches".
+The capstone's second independent tester (fid-il-13, its finding F2) proposed instead the printed total less the printed items of the branches not paid, which reproduces the National Insurance Institute's published employee rates for two sets of branches.
+
+Three readings are kept by name, the constructors of `A reading of a printed total of Schedule J where fewer branches are paid than it is for` (`nii-il04-nouns.l4`):
+
+| reading | name in the encoding | who holds it |
+| --- | --- | --- |
+| (i) declined | `fewer branches are declined` | this row, versions 0.3.0 to 0.4.1 |
+| (ii) the printed total less the items of the branches not paid, for any branches | `the printed total less the items of the branches not paid` | the second tester's default D5 (row IL-07, `INDEPENDENT-FINDINGS-2.txt` F2) |
+| (iii) reading (ii) only for the branch sets whose employee's rate the Institute publishes, every other set declined | `the printed total less the items of the branches not paid, for a set the Institute publishes` | **RULED by Meng on 2026-10-08 (TAKEAWAY), the default**, in column D |
+
+The switch is one named rule in `nii-schedule-j.l4`, `Schedule J — the reading this row takes of a printed total where fewer branches are paid than it is for`; another reading is a one-line change there.
+Every other partial set is declined at the default, in the words of reading (i), which stay true of it.
+For a person who pays the branches B of those printing a figure, the printed total less the items of the others equals the items of B plus the whole difference between the total and the items, so on each part of the wage the rule adds the part times (total − items) to the items' deduction.
+
+### The two sets, from s 335 and the Institute's page
+
+**The page.** The Institute's employees' rates page, `https://www.btl.gov.il/Insurance/Rates/Pages/%D7%9C%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D%20%D7%A9%D7%9B%D7%99%D7%A8%D7%99%D7%9D.aspx`, as fetched by fid-il-13 on 2026-10-08T06:29:00Z.
+Its copy, `scratchpad/fid-il-13/fetched/btl-rates-employees.html` in the lead's session, has sha256 `74fc3652d8912f23004b6e2d1d3d7fc39e0fbe928c0b71948ff89e8b71827cf1` (checked here; it equals the tester's `.meta` record), and was read by this agent's own HTML-to-text extraction, not the tester's.
+It is not deposited (the site reserves its rights); the Institute describes its pages as general information, not the binding Law, so its figures are evidence for which sets the default answers, not law.
+What it prints (rates "from 01.01.2025" or later; the reduced collection threshold 7,703 "from 01.01.2026"):
+
+- The first table, employees from 18 to retirement age: National Insurance, the employee 1.04% up to the threshold and 7% above; health insurance, the employee 3.23% and 5.17%.
+- The form 102 table, the employee's rate with health insurance, up to the threshold / above it:
+  - "column 2", a controlling shareholder in a closely-held company: 4.25% / 11.96%, so National Insurance 1.02% / 6.79%;
+  - women and men aged 67 to 70 who do not receive an old-age pension: 3.93% / 10.03%, so 0.70% / 4.86% (health insurance taken at the same 3.23% / 5.17%);
+  - a controlling shareholder among them: 3.93% / 10.03% as well;
+  - a woman between her retirement age and the men's, without an old-age pension: 3.95% / 10.24%, so 0.72% / 5.07%.
+- The last table, of National Insurance alone (a soldier in regular service, an organ donor, a resident of a treaty state): the employee 1.04% / 7%, and for a controlling shareholder 1.02% / 6.79%, which states the first set's figures without a health-insurance subtraction.
+
+**The branches each set does not pay, in column D.** Column D prints a figure for six branches: maternity, accident injury, unemployment, disability, long-term care, senior citizens and survivors (lines 4720-4729); children, work injury and insolvency print a dash.
+
+- A controlling shareholder: s 335(e) and (f) (lines 3615-3616) give unemployment and insolvency contributions "למעט בעל שליטה בחברת מעטים". Insolvency prints no column D figure, so the column D branch not paid is unemployment alone.
+  1.04 − 0.02 = **1.02** and 7.00 − 0.21 = **6.79** (lines 4725, 4730): the Institute's figures exactly.
+- Aged 67 to 70 without an old-age pension: past retirement age (s 1, line 130), and past 67, the person is not insured under Chapter 6 (s 150, line 1405: "וטרם הגיע לגיל פרישה"), for unemployment (s 158, line 1444: to the age Part B of Schedule A1 fixes, 67 for one born from May 1942, line 4412) or under Chapter 9 (s 195, line 1929), so s 335(d), (e) and (g) (lines 3614, 3615, 3617) do not reach him; maternity and senior citizens and survivors are still paid under s 335(i) (line 3619), and long-term care under s 335(h) (line 3618).
+  The column D branches not paid are accident injury, unemployment and disability: 1.04 − 0.03 − 0.02 − 0.29 = **0.70** and 7.00 − 0.07 − 0.21 − 1.86 = **4.86** (lines 4724-4727): the Institute's figures exactly.
+  A controlling shareholder aged 67 to 70 leaves out the same three, and the page prints the same figure for him.
+
+Each is recorded, with this provenance, in `nii-schedule-j.l4`'s `the column D branches not paid, for each set whose employee's rate the National Insurance Institute publishes`.
+
+**Declined at the default.** A non-resident employee (maternity only, s 335(a)): 1.04 − 0.94 = 0.10 and 7.00 − 3.80 = 3.20, a rate the Institute does not publish and the ruling does not accept; the items give 0.87.
+A woman between her retirement age and 67 without an old-age pension (not insured under Chapters 6 and 9, still insured for unemployment by Part B's 67): 7.00 − 0.07 − 1.86 = 5.07 and 1.04 − 0.03 − 0.29 = 0.72, which **is** the Institute's figure (10.24 − 5.17, 3.95 − 3.23); the ruling names two sets, so this third is declined by default and answered under reading (ii). Open question 8.
+
+### Choices made here (assumed, not ruled)
+
+- **Column D only.** The ruling is for the employee's deduction. In column C (the contributions, s 337) the formula does not reach the Institute's National Insurance totals above the threshold for either set: a controlling shareholder, 14.60 − 0.33 − 0.04 = 14.23 where the page's National Insurance table prints 14.17; aged 67 to 70, 14.60 − 0.13 − 0.33 − 2.28 = 11.86 where the page's 16.99 less 5.17 is 11.82. So column C keeps reading (i), unchanged; `nii-il04-tests.l4` line 565 still asserts it. Open question 2 (the controlling shareholder's 14.17) stands.
+- **The sets are recognised by their branches, in any table.** The Institute's figures confirm the formula on 2026's table (the temporary version); the same sets are answered by it for a later table too (2027's permanent version: a controlling shareholder at 10,000 with a threshold of 8,000, 8,000 × 0.39% + 2,000 × 6.79% = 167). The ruling names sets, not years.
+- **The words of the decline are unchanged** for every set the default declines, so callers' and testers' assertions of it hold.
+- **The rule names.** `the column D deduction under … , reading Schedule J as` r and `the combined percentage in column D of … , reading Schedule J as` r keep their names and now follow fork F21's switch; each has a form `…, fewer branches read as` f; `what the printed total adds in … , fewer branches read as` f is new. The rules without a fewer-branches reading in column C, and `what the printed total adds in …` without it, are unchanged.
+
+### Assertions added (none changed)
+
+All 38 in `nii-il04-tests.l4`, section "Version 0.5.0: a printed total for fewer branches than it is for (fork F21)", lines 616-682; every value was worked by hand from the cells before the run, and all were satisfied on the first run.
+The four sets of column D branches are named there; the Institute's printed rates are test expectations in that section, with their provenance, not figures any rule reads.
+
+| line(s) | case | expected | why |
+| --- | --- | --- | --- |
+| 616 | the switch | `… , for a set the Institute publishes` | TAKEAWAY |
+| 617 | the column D branches a controlling shareholder does not pay | `unemployment` | s 335(e) |
+| 618-621 | the Institute publishes the rate: controlling shareholder; 67-70; non-resident; woman between her retirement age and 67 | TRUE; TRUE; FALSE; FALSE | the two ruled sets |
+| 625, 626 | combined column D, upper, 2026, controlling shareholder, default | 6.79; the page's 11.96 − 5.17 | 7.00 − 0.21 |
+| 627 | the same, lower | the page's 4.25 − 3.23 (1.02) | 1.04 − 0.02 |
+| 628 | the same, upper, at the items | 4.46 | 4.67 − 0.21 |
+| 629 | upper, reading (ii) | 6.79 | |
+| 630 | upper, reading (i) | REFUSED, the fewer-branches words | |
+| 632 | lower, reading (i) | 1.02 | the items reach the total below the threshold |
+| 637-639 | aged 67 to 70, upper default; = the page's 10.03 − 5.17; lower = the page's 3.93 − 3.23 | 4.86; 4.86; 0.70 | 7.00 − 0.07 − 0.21 − 1.86; 1.04 − 0.03 − 0.02 − 0.29 |
+| 640 | the same, at the items | 2.53 | 0.87 + 0.14 + 1.52 |
+| 641 | the same, reading (i) | REFUSED, the fewer-branches words | |
+| 645 | non-resident, upper, default | REFUSED, the fewer-branches words | not a published set |
+| 646 | the same, reading (ii) | 3.2 | 7.00 − 3.80 |
+| 647 | the same, at the items | 0.87 | |
+| 651 | woman between her retirement age and 67, default | REFUSED, the fewer-branches words | not a ruled set |
+| 652 | the same, reading (ii) | 5.07 | 7.00 − 0.07 − 1.86; the page's 10.24 − 5.17 |
+| 653 | the same, at the items | 2.74 | 0.87 + 0.21 + 0.14 + 1.52 |
+| 658 | deduction, 2026, controlling shareholder, 10,000, default | 234.5369 | 7,703 × 1.02% + 2,297 × 6.79% = 78.5706 + 155.9663 |
+| 659 | the same, at the items | 181.0168 | 78.5706 + 2,297 × 4.46% (102.4462) |
+| 660 | the same, reading (ii) | 234.5369 | |
+| 661 | the same, reading (i) | REFUSED, the fewer-branches words | |
+| 663 | controlling shareholder, 30,000 (row IL-07's tester, H38) | 1,592.5369 | 78.5706 + 22,297 × 6.79% (1,513.9663) |
+| 665 | controlling shareholder, 7,000, reading (i) | 71.4 | below the threshold, every reading |
+| 669, 670 | aged 67 to 70, 12,000 (row IL-07's tester, H42): default; at the items | 262.7552; 162.6351 | 7,703 × 0.70% + 4,297 × 4.86% = 53.921 + 208.8342; 53.921 + 4,297 × 2.53% (108.7141) |
+| 673-675 | non-resident, 10,000: default; reading (ii); at the items | REFUSED; 81.207; 27.6869 | 7.703 + 2,297 × 3.20% (73.504); 7.703 + 2,297 × 0.87% (19.9839) |
+| 678, 679 | every deduction branch, 10,000: reading (i); the default | 240.9012; 240.9012 | the fork is not reached |
+| 682 | controlling shareholder, 2027, threshold 8,000, 10,000 | 167 | 8,000 × (0.40 − 0.01)% + 2,000 × 6.79% |
+
+`tests-independent.l4` (not edited) and `nii-il04-tests-expected-red.l4` print what they printed at 0.4.1, assertion by assertion (compared line by line on the same binary): 641 satisfied, 5 failed; 26 satisfied, 15 failed.
+The red module's two controlling-shareholder composites still compare the items with the Institute (14.12 against 14.17; 4.46 against 6.79) and still fail, as declared; at the default the deduction's 6.79 is now reached, above.
+
+### What `check.sh` prints at 0.5.0
+
+```
+module                                    errors satisfied  failed  refused  expected
+nii-il04-nouns.l4                              0         0       0        0         0
+nii-il04-published-figures.l4                  0         0       0        0         0
+nii-il04-tests-expected-red.l4                15        26      15        0        15
+nii-il04-tests.l4                              0       219       0        0         0
+nii-s1-definitions.l4                          0         0       0        0         0
+nii-s334-interpretation.l4                     0         0       0        0         0
+nii-s337-rates.l4                              0         0       0        0         0
+nii-schedule-j-tables.l4                       0         0       0        0         0
+nii-schedule-j.l4                              0         0       0        0         0
+tests-independent.l4                           5       641       5        0         5
+TOTAL (10 modules)                            20       886      20        0
+```
+
+Exit 0. Run 2026-10-08T16:06:58Z to 16:07:16Z, `L4=~/.local/bin/l4`, `JL4_LIBRARY_PATH` unset; no module changed during the run.
+The binary resolves to the cabal store, `jl4-0.1-d4290e25/bin/l4`, sha256 `f4f2bd2558f02f828f0deced5f74313a33670f08cc3275ff95b83f2cde71e448`, the same before and after the run, and the binary of 0.4.1.
+Before any edit the same binary printed 0.4.1's table (`nii-il04-tests.l4` 181, `tests-independent.l4` 641/5, the red module 26/15).
+`tools/srcquote.py` leaves the three changed `.l4` modules byte-identical, and `tools/hebcheck.py` passes on them.
+`check.sh` needed no change: no module's declared count moved.
+
+### For the capstone (BACKLOG IL-44)
+
+`nii-il04-nouns.l4` and `nii-schedule-j.l4` are vendored and changed, so their pins must be re-recorded.
+No name, type, field or entry point was renamed or removed; the type of fork F21 and the new forms are additions.
+The capstone's deduction takes IL-04's column D at the printed totals for the deduction branches the earner pays (its IL-04 adapter), so at the default IL-04 now gives a figure for a controlling shareholder (the capstone's N26, the second tester's H38) and for an earner aged 67 to 70 without an old-age pension (H42), and still declines a non-resident (N25, H39).
+Whether those reach the capstone's answer depends on row IL-05's s 342(c), which takes that figure as an argument and is being checked separately (rep-il-17).
 
 ## Version 0.4.1 (2026-10-08): repairs (BACKLOG IL-21)
 
@@ -585,7 +814,7 @@ The rules that take only a year assume the temporary provision was not extended 
 | F1 | Schedule J sub-heading (4711), label (4714) | "For the years 2025-2026": years of what? | (i) the calendar year of the month for which contributions are paid; (ii) the year of payment; (iii) the tax year of the income | **(i)**: the sub-heading dates the rates by the month contributions are "for" ("בעד אפריל"). (i) and (iii) coincide for an employee's monthly contributions. |
 | F2 | items 4 and totals (4723, 4741, 4730, 4748) | The 2024-2027 notes: which table do they modify in which year? | (i) each table's own notes apply while that table is in force (temporary in 2026, permanent in 2027); (ii) the notes apply to both tables in all of 2024-2027 | **(i)**, and it makes no difference: both tables note the same 2.06 above the threshold; only the permanent table notes 0.47 below it, and the permanent table governs only 2027 of those years. The temporary table's 0.60 below the threshold carries no note and stands. |
 | F3 | Schedule J temporary version, column D (4718) | **(revised 2026-10-07)** The consolidation prints column D's upper heading in the temporary table as "above 60% of the average wage" and the lower as "not above the reduced collection threshold"; in 2026 they do not meet (7,703 against 8,139.6 or 8,261.4). | (i) as printed: no figure for the part between; (ii) the upper heading is stale, and the upper part begins at the threshold; (iii) the lower part runs up to 60% of the average wage | **(ii), on the enacted Laws.** Amendment 252 s 7(a)(3) replaced only the lower sub-columns, so the upper sub-column is the principal Law's, and the 2025 budget-year Law s 19(6) changed "60% of the average wage" to "the reduced collection threshold" everywhere in Schedule J from 1 January 2026 (s 21). Line 4718's upper heading is a stale copy. The Institute applies the employee's 7% "on the part of the wage above the reduced collection threshold", and row IL-05 read the texts the same way. *Before the repair:* (i), declined, with every 2026 wage above 7,703 refused. |
-| F4 **(0.3.0: ruled by Meng on 2026-10-07: the printed totals by default, the items kept as the alternative; "Version 0.3.0" above. The choice recorded in this row, (i), is now the alternative.)** | totals rows (4730, 4748) | Ten printed totals differ from the sums of the items above them (section 0). Which governs? | (i) the items: s 335 imposes contributions branch by branch, s 337(a) applies "the rates under section 335", and s 28(a) credits contributions to the branches' accounts "in the ratio of the rates in Schedule J" (line 449); (ii) the totals: the Institute charges composites equal to them (14.6, 7.00) | **(i) for computing; the totals are data and are compared, red, in their own module.** Consequence: an employee in 2026 is charged 14.49% above the threshold here where the Institute charges 14.6%, and the deduction on the upper part sums to 4.67% where the Institute deducts 7%. The two items of evidence point in opposite directions; this is open question 1. **(added 2026-10-07)** Two enacted precedents: the 2025 budget-year Law s 20(1) changed a row so that it met its printed total (0.17 to 0.16), and the Economic Efficiency Law 5783-2023 s 24 moved item 4 and the totals together by 0.10. Both treat a total as tracking its items; neither says which is right where they already differ, and the gaps (0.11, 2.33, 0.31) predate both. Choice unchanged. |
+| F4 **(0.3.0: ruled by Meng on 2026-10-07: the printed totals by default, the items kept as the alternative; "Version 0.3.0" above. The choice recorded in this row, (i), is now the alternative.)** **(0.5.0: for fewer branches than a printed total is for, fork F21.)** | totals rows (4730, 4748) | Ten printed totals differ from the sums of the items above them (section 0). Which governs? | (i) the items: s 335 imposes contributions branch by branch, s 337(a) applies "the rates under section 335", and s 28(a) credits contributions to the branches' accounts "in the ratio of the rates in Schedule J" (line 449); (ii) the totals: the Institute charges composites equal to them (14.6, 7.00) | **(i) for computing; the totals are data and are compared, red, in their own module.** Consequence: an employee in 2026 is charged 14.49% above the threshold here where the Institute charges 14.6%, and the deduction on the upper part sums to 4.67% where the Institute deducts 7%. The two items of evidence point in opposite directions; this is open question 1. **(added 2026-10-07)** Two enacted precedents: the 2025 budget-year Law s 20(1) changed a row so that it met its printed total (0.17 to 0.16), and the Economic Efficiency Law 5783-2023 s 24 moved item 4 and the totals together by 0.10. Both treat a total as tracking its items; neither says which is right where they already differ, and the gaps (0.11, 2.33, 0.31) predate both. Choice unchanged. |
 | F5 | s 1 "the average wage" (222-226), s 2(b) (236) | Which figure is "the average wage" in Schedule J's column D heading, in "self-employed person" (2), and in s 334(a)(2)? | (i) the s 1 figure (13,566 for 2026); (ii) the figure as calculated under s 2, which s 2(b) applies "for benefits and contributions" (13,769) | **not decided**: every rule takes the average wage as an argument. The tests supply 13,566 (the s 1 figure, which the editors' note at line 226 also gives). The column D gap (F3) exists under either. The Institute publishes both, each "for contributions". **(added 2026-10-07)** After the F3 repair Schedule J no longer reads the average wage at all; the fork remains for "self-employed person" (2) and s 334(a)(2). Row IL-05 (its fork F1) found that every Institute figure for Chapter 15 it checked (3,442; 143; 171; the 2025 table's 3,134, 627 and 1,880) fits the s 2 figure and not the s 1 figure, which is evidence for (ii) in contributions; the s 1 definition of "self-employed person" serves benefits as well, so the rules still take the figure as an argument. **(0.4.1)** "At all" is for every version selected for a contribution month; the 2025 text kept as data still reads it. The four column D rules that take it now say so on the argument, in a `@desc` (inventory 04-N14; "Version 0.4.1" above). |
 | F6 **(0.4.0: ruled by Meng on 2026-10-07 (TRIDENT): a fall is declined by default, all three readings kept by name; "Version 0.4.0" above. The choice recorded in this row, (i), is now an alternative.)** | s 334(a)(1)-(2) (3606-3607) | If the index or the average wage falls, does the threshold fall? | (i) yes, the rate of rise is negative and is applied; (ii) no, "עליית" (rise) counts only rises; **(0.4.0)** (iii) neither is decided: the text provides for a rise and says nothing of a fall, so the case is declined | **(i)**: the update is a rate computed from two readings; a test shows a 1% fall lowering 8,000 to 7,920. **(0.4.0)** Now **(iii)** by default; (i) and (ii) are answered when a caller names them. |
 | F7 | s 334(a) | Is the updated threshold rounded? | (i) no; (ii) to the shekel, as the Institute publishes it | **(i)**: the section says nothing about rounding. The published 2026 figure is a whole number; the encoding uses it as published for 2026 and computes unrounded for any later year a caller supplies readings for. |
@@ -602,6 +831,7 @@ The rules that take only a year assume the temporary provision was not extended 
 | F18 | Amendment 252 s 7(a)(3) | **(added 2026-10-07)** The temporary lower sub-columns Amendment 252 inserts carry their own headings, "not above 60% of the average wage"; the 2025 budget-year Law s 20 amended that section's figures but not those headings, and s 19(6) amends "Schedule J, everywhere". Read literally for 2026 the lower part would run to 60% of the average wage while the upper part starts at the threshold: an overlap. | (i) the threshold: s 19(6) reaches Schedule J as read under the temporary provision; (ii) literal: the lower part runs to 60% of the average wage | **(i)**, the only workable reading, and the one the consolidation (line 4718) and the Institute follow. Not settled by any text read. |
 | F19 | item 4, employee, not above the split, 2026 (4723) | **(added 2026-10-07)** Two temporary provisions reach the same cell in 2026: the Economic Efficiency Law 5783-2023 s 24 reads 0.47 into the principal sub-column, and Amendment 252 s 7(a)(3) replaces that sub-column with its own (0.60). | (i) Amendment 252's sub-column, 0.60; (ii) 0.47 | **(i)**: s 7(a)(3) replaces the whole sub-column, and is the later Law; the consolidation prints 0.60, and the Institute's 2026 composite (5.55) includes it. |
 | F20 | Amendment 252 s 7(b) | **(added 2026-10-07)** The extension is "one year at a time": does an order for 2028 presuppose one for 2027? | — | **not checked**: the order is an input per year. |
+| F21 **(0.5.0: ruled by Meng on 2026-10-08 (TAKEAWAY), reading (iii) by default in column D; "Version 0.5.0" above)** **(0.6.0: a third published set, by DESSERT: a woman between her retirement age and 67 without an old-age pension, 0.72 / 5.07; "Version 0.6.0" above)** | totals rows (4730, 4748) with s 335 (3611-3619) | At the printed totals, a person pays fewer of the branches that print a figure in a cell whose items do not reach the total (2026: column D's upper part; column C above the threshold for an employee). What is that person's rate? | (i) declined: the schedule prints no figure for fewer branches; (ii) the printed total less the printed items of the branches not paid; (iii) (ii) only for the branch sets whose employee's rate the National Insurance Institute publishes (a controlling shareholder: 1.02 / 6.79; aged 67 to 70 without an old-age pension: 0.70 / 4.86), every other set declined | **(iii) in column D, by the ruling**; column C keeps (i), the formula not reaching the Institute's totals there (assumed, not ruled). Versions 0.3.0 to 0.4.1 took (i) everywhere. |
 
 **Where I looked for others and found none:** s 334(a)'s two carrier definitions; s 337(b)'s conditions (each a fact the order records); Schedule J's column E (data only).
 
@@ -661,6 +891,7 @@ Fetched on 2026-10-06 (curl; bytes not deposited, the site reserving its rights;
 | Law for the 2025 budget year, Hebrew Wikisource raw text | `https://he.wikisource.org/w/index.php?title=%D7%97%D7%95%D7%A7%20%D7%9C%D7%94%D7%A9%D7%92%D7%AA%20%D7%99%D7%A2%D7%93%D7%99%20%D7%94%D7%AA%D7%A7%D7%A6%D7%99%D7%91%20%D7%95%D7%9C%D7%99%D7%99%D7%A9%D7%95%D7%9D%20%D7%94%D7%9E%D7%93%D7%99%D7%A0%D7%99%D7%95%D7%AA%20%D7%94%D7%9B%D7%9C%D7%9B%D7%9C%D7%99%D7%AA%20%D7%9C%D7%A9%D7%A0%D7%AA%20%D7%94%D7%AA%D7%A7%D7%A6%D7%99%D7%91%202025%20%28%D7%AA%D7%99%D7%A7%D7%95%D7%A0%D7%99%20%D7%97%D7%A7%D7%99%D7%A7%D7%94%29&action=raw` | 14:10:35 | `8ca6d31272e4a29bf481ac8e3d32ce7c44cbfd43562a7401e08ccb7b93b86361` | Chapter E (National Insurance): s 19 amends the Law, s 20 amends Amendment 252 and its temporary provision, s 21 "this chapter commences on 1 January 2026" |
 
 The Institute's pages describe themselves as general information and not the binding text of the Law; they are used as the regulator's published figures and examples, not as law.
+**(0.5.0)** The employees' page was read again for fork F21 in the copy fid-il-13 fetched on 2026-10-08T06:29:00Z (sha256 `74fc3652d8912f23004b6e2d1d3d7fc39e0fbe928c0b71948ff89e8b71827cf1`, checked; not deposited): its form 102 rates for a controlling shareholder and for those aged 67 to 70 without an old-age pension ("Version 0.5.0" above).
 
 **Attempted and failed:** the amending Laws from `fs.knesset.gov.il` (Amendment 252, `25_lsr_5482787.pdf`) returned a 131,618-byte HTML page in place of a PDF, as it did for row IL-03; the Wayback Machine availability API answered 429 (too many requests); the Central Bureau of Statistics price-index API (`api.cbs.gov.il`) timed out after 40 seconds.
 Nothing was kept from those responses.
@@ -683,6 +914,8 @@ So the consumer price index is an input, and the commencement of Amendment 252's
 5. A3: from which month did the 2.06 work-injury rate apply: January 2024 (the editors' note) or February 2025 (the Institute's composite)? **(2026-10-07: the Economic Efficiency Law 5783-2023 s 24 says 1 January 2024; why the Institute dates the 14.6% composite from 1 February 2025 is still open.)**
 7. **(added 2026-10-07)** Was an order under Amendment 252 s 7(b) made extending the temporary provision to 2027 (A8)?
 6. F8: are the self-employed's advance periods ever other than months, and if so how does the Institute apply the threshold to them?
+8. **(added 0.5.0)** F21: the Institute's employees' page also prints a rate for a woman between her retirement age and the men's, without an old-age pension (3.95% / 10.24% with health insurance, so 0.72% / 5.07%), which is the printed total less accident injury and disability exactly. Should that set join the two the ruling names? At the default it is declined. **(0.6.0: answered: yes, by Meng's ruling of 2026-10-08 (DESSERT); her set is the third, "Version 0.6.0".)**
+9. **(added 0.6.0)** F21: for her set the formula reaches the Institute's National Insurance totals in column C too (4.89 / 12.19, exactly), where for the other two it does not; column C still declines fewer branches for all three. Should column C read F21 for the sets whose column C total the formula reaches?
 
 ## 9. What was not done
 
