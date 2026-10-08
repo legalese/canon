@@ -31,16 +31,24 @@ expected_failed() {
   case "$1" in
     # tests-red.l4) echo 3 ;;
     nii-il05-tests-expected-red.l4) echo 3 ;;   # NOTES.md section 0: s 342(e)(3)-(4) name column E (2); s 342(c)(2) is subject to the repealed s 245(b2) (1)
-    tests-independent.l4) echo 15 ;;             # the independent tester's, not edited; red before 0.3.0 too, when this table did not list it (NOTES.md, Version 0.3.0)
+    # tests-independent.l4, the independent tester's. Version 0.4.0 (BACKLOG IL-17): 15 became 6, the lead
+    # having re-pointed nine assertions to the printed totals the tester decided (05-RC1; NOTES.md, Version 0.4.0).
+    # The six that remain, each an inventory item of findings/il-2026-10-08/inventory.tsv:
+    #   lines 303-306 (E8: items 2-4 have no monthly cell) and 385 (H1: s 348(d) for a month): 05-RC3, TESTER-WRONG
+    #     (fork F2 stays an ambiguity; the tester now prefers this row's third of the quarter);
+    #   line 421 (I3: the deduction for February 2027): 05-RC5, WORDING (Amendment 252 s 7(b); NOTES.md, Version 0.4.0).
+    tests-independent.l4) echo 6 ;;
     *) echo 0 ;;
   esac
 }
 
 # Version 0.3.0: a module that is MEANT to refuse some assertions (the independent tests,
-# written before fork F4 was ruled, and never edited) is listed with its exact count.
+# written before fork F4 was ruled) is listed with its exact count.
 expected_refused() {
   case "$1" in
-    tests-independent.l4) echo 2 ;;              # the independent tester's, not edited (NOTES.md, Version 0.3.0)
+    # tests-independent.l4: lines 387 and 389 (H2, H3: s 348(d) for a quarter, refused by this row): 05-RC4,
+    # AMBIGUITY (fork F5, deeming or floor; waits on a ruling). Unchanged at 0.4.0.
+    tests-independent.l4) echo 2 ;;
     *) echo 0 ;;
   esac
 }

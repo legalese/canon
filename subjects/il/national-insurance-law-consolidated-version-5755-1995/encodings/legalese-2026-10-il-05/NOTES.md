@@ -1,9 +1,138 @@
 # NOTES — il/national-insurance-law-consolidated-version-5755-1995, encoding row `legalese-2026-10-il-05`
 
 National Insurance Law [Consolidated Version], 5755-1995: **s 342** (who is liable to pay insurance contributions, and the employer's deduction), **s 348** (the maximum, the minimum and the disregarded amount) and **Schedule K** (לוח י״א, the maximum and minimum income for contributions), encoded in L4 by one agent in one session (run `IL-05-20261006`, 2026-10-06), from the brief in `BRIEF.md`.
-Status: **draft**. Version **0.3.0** (2026-10-07): row IL-04's Schedule J switch reaches s 342(c); see "Version 0.3.0" below.
+Status: **draft**. Version **0.4.0** (2026-10-08): repairs from the inventory of 2026-10-08 (BACKLOG IL-17): s 342(c), (d) and (e1) on the income s 348(a) takes into account, nine of the independent tester's assertions re-pointed to the printed totals it decided, one call for a person both employee and self-employed; see "Version 0.4.0" below.
+Version 0.3.0 (2026-10-07): row IL-04's Schedule J switch reaches s 342(c); see "Version 0.3.0" below.
 No domain expert has read it against the source; HG1 has not been sought.
 The row depends on row IL-04 (s 1, s 334, s 337, Schedule J), whose modules it could not import (section 8).
+
+## Version 0.4.0 (2026-10-08): repairs (BACKLOG IL-17)
+
+Backlog row IL-17, job D of `l4-pipeline/findings/il-2026-10-08/jobs.txt`, repair agent `rep-il-17`, one session, no sub-agents, on the inventory of open findings taken on 2026-10-08 (`findings/il-2026-10-08/inventory.tsv`, the items named below).
+Nothing in the sections below was deleted; entries this version changes are marked **(0.4.0)** in place.
+The section "Comparison with Axiom's RuleSpec", `DECIDED-ANSWERS.md` and `INDEPENDENT-FINDINGS.md` are untouched; `tests-independent.l4` was edited only as item 05-RC1 says, with a dated note at its end.
+No existing entry point's answer changed: what this version adds has new names, and every assertion `nii-il05-tests.l4` had at 0.3.0 gives the value it gave.
+The version is minor, not a patch, because the row now answers questions it could not (a capped deduction from a wage; both liabilities in one call).
+
+### The items
+
+- **05-RC2: s 342(c) is uncapped by s 348(a) when called on its own (OURS-WRONG, interface).**
+  s 342(c)(1) deducts "percentages of the income on which the contributions are payable" (source line 3661), and s 348(a) says that the insured person's income above the Schedule K maximum "shall not be taken into account" (line 3763).
+  The s 342 rules take column D as amounts the caller has computed, so they deducted on whatever income the caller used: column D on a wage of 60,000 in 2026 gave 2,522.3811 at the items, where on the 51,910 s 348(a) takes into account it is 2,144.5781 (the independent tester's root cause 2).
+  Those rules are kept and answer as before; the record field `the column D amounts on the wage` and the s 342(c) rule under its 0.1.0 name now say in their `@desc` that the amounts must be on the wage as s 348(a) takes it into account.
+  New, in `nii-s342-liability-and-deduction.l4`, section "Version 0.4.0": rules that take the wage (for (d) and (e1), the total monthly income) and column D as Schedule J gives it, a function of an income, by branch and at the printed totals, and apply it to the wage as s 348(a) takes it into account: the wage, or the Schedule K item 1 maximum for a month if that is lower.
+  Each comes at a named reading of Schedule J with the Schedule K figures given, and at the switch's reading with the figures for the month's tax year (2026 as published; 2025, and 2027 on, declined by name): `s 342(c) — the amount the employer deducts from a wage of` …, `s 342(d) — "coordinated contributions", on a total monthly income of` …, `s 342(d) — the outcome, for the deductions` … `, on a total monthly income of` …, and `s 342(e1) — the contributions the renewed kibbutz pays for the member, for` … `, on a total monthly income of` ….
+  They do not read the month's own column D amounts.
+  Column D is a function argument, not computed here, because Schedule J is row IL-04's and this row cannot import it (section 8); row IL-04's `the column D deduction under` on an income is the function a composing row would pass.
+  `nii-s342-liability-and-deduction.l4` now imports `nii-s348-maximum-minimum` (for `s 348(a) — the income taken into account, of` and the refusal when the figures are for another year); that module does not import this one.
+  The new rules apply s 348(a) and not s 348(b) (fork F25, below).
+- **05-RC1: nine of the independent tester's assertions called the items' reading (OURS-WRONG, test wiring).**
+  Read before re-pointing: `DECIDED-ANSWERS.md` section 1 decides "col D (employee deduction) total 7.00 above the bracket, 1.04 below"; its B and C tables work every value on 7%; and its "Revised" section, item 1, keeps them on the printed total after finding that the rows sum to 4.67.
+  The nine called the s 342(c) and (d) rules under their 0.1.0 names, which read the items, so they failed with values that are right under the ruling of 2026-10-07.
+  They were re-pointed, as row IL-04 v0.3.1 re-pointed its tester's, to the reading the tester decided by name, `, reading Schedule J as` `the printed totals govern`, with no expected value changed and no line inserted: lines 220-223, 226, 228, 236, 245 and 248.
+  At the printed totals this row takes column D for the deduction branches together as an argument, so each line now carries the tester's own figure for it, 7,703 × 1.04% plus the rest of the wage × 7%, written out as an expression on the wage of the line.
+  05-RC2 was done first; line 226 (B8, a wage of 60,000) uses its new rule, with the tester's own `fid 2026 figures` and `fid column D amounts on a wage of` and, at the printed totals, a function applying 1.04 and 7.00 as the tester's `fid banded` applies the rows.
+  All nine now pass.
+  The note at the end of `tests-independent.l4` gives the details, including that lines 220-223 and 236 now check only that the figure passes through when nothing is left out: the arithmetic is row IL-04's, whose own tests assert two of the values at its default (80.1812 at 7,704 and 240.9012 at 10,000, its `nii-il04-tests.l4` lines 344 and 505).
+- **05-P3: a person who is both an employee and self-employed took two calls (OURS-WRONG, optional interface).**
+  New record `An insured person who may be both an employee and self-employed, for section 342(a)-(b)` (`nii-il05-nouns.l4`) and rule `s 342(a)-(b) — the persons liable to pay the contributions for`, which returns a list: the employer for the employee under (b), and the person for himself under (a).
+  Each status is put to the one-column rule, which is unchanged, so one call answers as the two calls did (the tester's A7; the Axiom comparison's X5 and P3).
+- **05-RC5: Amendment 252 s 7(b) (WORDING).**
+  Recorded here, as the inventory asks; this row's notes had not mentioned it.
+  Amendment 252 s 7(b) (the deposited `amending-laws/25_lsr_5482787.pdf`, PDF page 4, read with `pdftotext -raw`) lets the Minister of Finance, after consulting the Minister of Labour and with the approval of the Knesset Labour and Welfare Committee, extend by order the temporary provision for contributions collected for 2027 and 2028, one year at a time; s 7(c) has the order brought to the Committee at least two months before the year.
+  Row IL-04 takes no order by default (its assumption A8) and has entry points that take one.
+  This row takes column D from its caller, so whether the temporary or the permanent table applies in 2027 is the caller's: this row's own 2027 scenario (`nii-il05-tests.l4`, section "Section 342(d)") uses the permanent table, which is IL-04's A8 default, not a finding that no order was made.
+  The tester's I3 (`tests-independent.l4` line 421) expects a refusal for February 2027; the rules that take amounts answer on what they are given (187.3811), and it stays failing, declared in `check.sh`.
+  The new rules of 05-RC2 decline 2027 at the switch, because the Schedule K figures for 2027 were not published, not because of s 7(b).
+- **05-X1, its F3 rewording (P1) (WORDING).** Fork F3's reason is restated in place, and open question 2 is extended; the answer is unchanged.
+- **05-P2 and 05-P4 (WORDING).** The two presuppositions are stated in assumption A5.
+- **05-W1 (WORDING).** Section 11's "independent test pass … was not run" is marked stale in place.
+  The comparison section's "the composed answer would use 4.67" (its subsection "Schedule J column D: 4.67 or 7.00") is stale too, and is noted here because that section is not edited: since row IL-11 (IL-04 and this row v0.3.0, the capstone v0.2.1, which follows IL-04's switch), the printed totals govern by default, so the composed deduction above the threshold uses 7.00 (80.1812 at 7,704), and 4.67 only at the items' reading by name.
+- **DATE (fork, waits on Meng; BACKLOG IL-24).** Recorded in the fork register below with each reading and who holds it; the current behaviour (fork F19's clamp) is kept, and a test in `nii-il05-tests.l4` (section "Fork DATE") labels it.
+
+### Fork register, added (0.4.0)
+
+| # | where | the question | readings | taken, and why |
+| --- | --- | --- | --- | --- |
+| F25 | s 342(c)(1) (3661); s 348(a) (3763), (b) (3765) | the income the deduction is taken on, in the 0.4.0 rules that take the wage | (i) the wage, less what s 348(a) leaves out; (ii) the whole s 348 income, (b)'s minimum applied too (the capstone's fork K8 (i)); (iii) the wage as paid | **(i)**, assumed by the repair agent, not ruled: the item asked for the cap. Whether (b)'s minimum applies to each employer's wage or to the total, with several employers, is fork F17, not modelled; with one employer a caller who applies (b) gives the minimum as the wage. The rules that take amounts deduct on whatever income the caller used. |
+| DATE | s 342(c)(2) (3662); fork F19 | the day an age is reached, when the date of birth moved on by the age falls on a day the month lacks (a man born 29 February 1956 reaches 70 in 2026, which has no 29 February) | (i) clamp to the month's last day (28 February); (ii) roll to the first of the next month (1 March); (iii) decline | **(i), kept as the default until Meng rules (BACKLOG IL-24).** (i) is held by this row's encoder (F19), row IL-06's (its F2, s 65) and row IL-08's (its N4, Schedule A1 Part D, chosen to agree with F19). (ii) is named as the other reading by IL-06's F2 and IL-08's N4, and held by no one. (iii) is held by the independent testers of IL-06 (its finding 2) and IL-08 (its D-46 to D-48), and is the lead's recommendation for IL-24 (a named switch, default decline). Here it moves one month: February 2026, for that man, is declined under (i) (the age is reached on the 28th, after the month's first day: fork F9) and deducted under (ii); March is 0 under both. |
+
+### Assertions added or re-pointed
+
+No expected value changed anywhere.
+
+`nii-il05-tests.l4`: **29 added** (181 to 210), in its last three sections, every value worked out before the first run that evaluated it, from Schedule J column D (source lines 4720-4730, 4738-4748) and Schedule K item 1 (line 4758), by a script over exact fractions that does not use this encoding (`expected.py`, in the repair agent's scratchpad, not deposited), and each agreeing with the hand working in the comments.
+All 29 were satisfied on that first run; with three of them altered in a scratch copy (a value, a refusal's wording, a list's order) the module reported each as failed.
+
+| assertion (Feb 2026 unless marked; "D" = column D as a function) | value | why |
+| --- | --- | --- |
+| s 342(c) from a wage of 60,000, at the switch | 3,174.6012 | 51,910 taken into account (10,382 × 5): 7,703 × 1.04% + 44,207 × 7% |
+| the same at the printed totals by name, figures given | 3,174.6012 | the same |
+| the same at the items | 2,144.5781 | 80.1112 + 44,207 × 4.67% (the tester's "capped" figure) |
+| s 342(c) under its 0.1.0 name, given column D on 60,000 | 2,522.3811 | the rule that reads amounts is kept: 80.1112 + 52,297 × 4.67% |
+| from a wage of 51,910; of 51,911 | 3,174.6012; 3,174.6012 | at and above the maximum |
+| from a wage of 10,000, at the switch; at the items | 240.9012; 187.3811 | below the maximum, as the rules that take amounts |
+| a police officer, 60,000, at the switch; at the items | 3,080.2259; 2,050.2028 | item 6 on 51,910, 1.5406 + 92.8347 = 94.3753, left out |
+| a man who reached 70 on 1 January 2026, 60,000 | 0 | s 342(c)(2); column D not needed |
+| December 2025 | declined, "this row answers contribution periods from January 2026 only" | A1 |
+| February 2027, at the switch | declined, "the figures Schedule K reads for 2027 and later had not been published when this encoding was made" | Schedule K figures |
+| February 2027, scenario figures (basic amount 10,600) and the permanent version (threshold 8,000), at the printed totals; at the items | 3,182; 2,133.5 | 53,000 taken into account: 32 + 45,000 × 7%; 32 + 45,000 × 4.67% |
+| February 2026 with the 2027 figures | declined, "the figures given are for another tax year than the case" | — |
+| s 342(d) coordinated contributions on a total of 80,000 | 3,174.6012 | the total taken into account at 51,910 |
+| (d), two employers deducting 2,340.9012 each, total 80,000, at the switch | a refund of 1,507.2012 | 4,681.8024 − 3,174.6012 (the tester's C2, with the cap now this row's) |
+| (d) at the items, each deducting 1,588.3811 | a refund of 1,032.1841 | 3,176.7622 − 2,144.5781 |
+| (d) with one employer | does not apply | — |
+| (e1), total 80,000, the other employer deducted 2,340.9012; at the items, 1,588.3811 | 833.7; 556.197 | 3,174.6012 − 2,340.9012; 2,144.5781 − 1,588.3811 |
+| s 342(a)-(b), one call: both; employee; self-employed; neither; neither, insured under Chapter C only as a wife | [the employer, the person]; [the employer]; [the person]; [the person]; [no one …] | 05-P3 |
+| fork DATE: a man born 29 February 1956, wage 7,000, February 2026; March 2026 | declined (fork F9); 0 | reading (i), the current behaviour |
+
+`tests-independent.l4`: **nine re-pointed**, values unchanged (05-RC1).
+
+| line | id | expected | at 0.3.0 | at 0.4.0 |
+| ---: | --- | --- | --- | --- |
+| 220 | B4, 7,704 | 80.1812 | failed (80.1579) | satisfied |
+| 221 | B5, 8,000 | 100.9012 | failed (93.9811) | satisfied |
+| 222 | B6, 10,000 | 240.9012 | failed (187.3811) | satisfied |
+| 223 | B7, 51,910 | 3,174.6012 | failed (2,144.5781) | satisfied |
+| 226 | B8, 60,000 | 3,174.6012 | failed (2,522.3811) | satisfied, through the 05-RC2 rule |
+| 228 | B9, police, 10,000 | 234.5369 | failed (181.0168) | satisfied |
+| 236 | B12, a man of 69, 10,000 | 240.9012 | failed (187.3811) | satisfied |
+| 245 | C1, pays | 375.3012 | failed (228.5811) | satisfied |
+| 248 | C2, refund | 1,507.2012 | failed (2,537.2243) | satisfied |
+
+The six failures and two refusals that remain are the tester's E8 (lines 303-306) and H1 (385), inventory 05-RC3, TESTER-WRONG; H2 and H3 (387, 389, refused), 05-RC4, AMBIGUITY; and I3 (421), 05-RC5, WORDING.
+
+### What `check.sh` prints at 0.4.0
+
+Run from 2026-10-08T07:08:54Z to 07:09:08Z as `L4=/Users/mengwong/.local/bin/l4 ./check.sh`, `JL4_LIBRARY_PATH` unset.
+`~/.local/bin/l4` resolved to the cabal store build `jl4-0.1-d4290e25` (233,567,184 bytes, modified 2026-10-08T06:07:24Z), sha256 `f4f2bd2558f02f828f0deced5f74313a33670f08cc3275ff95b83f2cde71e448`, the same before and after the run; not the binary of 0.3.0 (`3a1843a0…`).
+On it, before any repair (06:50:57Z to 06:51:28Z), the row gave 0.3.0's table exactly, exit 0.
+
+```
+module                                    errors satisfied  failed  refused  expected
+nii-il05-nouns.l4                              0         0       0        0         0
+nii-il05-published-figures.l4                  0         0       0        0         0
+nii-il05-tests-expected-red.l4                 3         2       3        0         3
+nii-il05-tests.l4                              0       210       0        0         0
+nii-s342-liability-and-deduction.l4            0         0       0        0         0
+nii-s348-maximum-minimum.l4                    0         0       0        0         0
+nii-schedule-k.l4                              0         0       0        0         0
+tests-independent.l4                           6       131       6        2       6/2
+TOTAL (8 modules)                              9       343       9        2
+```
+
+`check.sh` exit 0; every error is a failed assertion.
+Re-run from 07:14:05Z to 07:14:27Z, after the last edits (a comment in the note at the end of `tests-independent.l4`, this file, `encoding.json`), on the same binary, unchanged during the run: the same table, exit 0.
+**`check.sh` changed**: `tests-independent.l4` is expected to fail 6 (was 15) and refuse 2, each line named in a comment with its inventory id and class.
+**Mechanical checks** (row IL-04's tools, by path, read-only): `srcquote.py` over the three changed modules changed nothing; `hebcheck.py` passes on them, on `tests-independent.l4`, this file and `encoding.json`, and fails on a planted string.
+
+### For the capstone (row IL-07; BACKLOG IL-22)
+
+- `nii-il05-nouns.l4` and `nii-s342-liability-and-deduction.l4` changed, so the capstone's pins for them in `VENDORED.sha256` are stale; `nii-s348-maximum-minimum.l4`, `nii-schedule-k.l4` and `nii-il05-published-figures.l4` did not change.
+- Nothing the capstone calls was renamed or removed, and no answer of it changed.
+  In a scratch copy of the capstone with the two changed modules put in place of its vendored copies, every capstone module compiled and gave the counts it gave before (its `il07-tests.l4` 114 satisfied, `il07-tests-il08.l4` 98, `tests-independent.l4` 258 satisfied, 18 failed, 2 refused, `il07-tests-expected-red.l4` 2 failed), on the binary above.
+- New: `nii-s342-liability-and-deduction.l4` imports `nii-s348-maximum-minimum` (both vendored); the record type of 05-P3; the rules of 05-RC2 and 05-P3.
+  The capstone already takes column D on the s 348 income (its fork K8), so it need not move to the 05-RC2 rules; if it does, it passes row IL-04's column D as their function arguments, and keeps (b)'s minimum its own (fork F25).
 
 ## Version 0.3.0 (2026-10-07): Schedule J's printed totals or its items
 
@@ -109,6 +238,7 @@ For 2026 the Institute's published figures are used; for 2027 and later a caller
 
 **Composition with IL-04.** IL-04's s 337 takes as an input "the monthly income on which contributions are computed … (s 348 and Schedule K, row IL-05)"; that is this row's `s 348 — the income on which contributions are computed, for`.
 This row's s 342(c) takes as an input the column D amount of each branch on the wage, which is IL-04's `the column D deduction under`, per branch.
+**(0.4.0)** Or, in the rules that take the wage (05-RC2), column D as a function of an income, which those rules apply to the wage as s 348(a) takes it into account; IL-04's `the column D deduction under` on an income is that function.
 
 ## 2. Coverage table
 
@@ -124,9 +254,9 @@ Altogether **41 encoded, 9 inert, 25 out-of-scope, 0 deferred**.
 | provision | line | gist | disposition | where |
 | --- | --- | --- | --- | --- |
 | s 342 heading and tags | 3658 | who is liable to pay contributions; tag תשפ״ה־7 | inert (the tag dates the text, A1) | `src:` heading, `nii-s342-liability-and-deduction.l4` |
-| s 342(a) | 3659 | the self-employed and those who are neither pay for themselves; a wife insured only under Chapter C does not | encoded | `s 342(a)-(b) — the person liable to pay the contributions for` |
+| s 342(a) | 3659 | the self-employed and those who are neither pay for themselves; a wife insured only under Chapter C does not | encoded | `s 342(a)-(b) — the person liable to pay the contributions for`; **(0.4.0)** one who is both employee and self-employed in one call, `s 342(a)-(b) — the persons liable to pay the contributions for` (05-P3) |
 | s 342(b) | 3660 | the employer pays for the employee; several employers each as if the only one; (d) and (e) apply | encoded | same rule; "as if the only one" is how each employer's (c) is computed; (d) below |
-| s 342(c)(1) | 3661 | the employer deducts the Schedule J percentages for s 335(a), (d), (e), (g), (h), (i) | encoded (F12, F13) | `the branches of the subsections of section 335 that section 342(c)(1) names`, `s 342(c)(1) — the deduction it requires, for` |
+| s 342(c)(1) | 3661 | the employer deducts the Schedule J percentages for s 335(a), (d), (e), (g), (h), (i) | encoded (F12, F13; **(0.4.0)** F25) | `the branches of the subsections of section 335 that section 342(c)(1) names`, `s 342(c)(1) — the deduction it requires, for`; **(0.4.0)** on the wage as s 348(a) takes it into account, `s 342(c) — the amount the employer deducts from a wage of` (05-RC2) |
 | s 342(c)(2) | 3662 | no deduction while a senior citizen pension is payable, or after 70 (a man) or the Part D age (a woman); police and prison officers: not item 6; the employer may reduce | encoded (F9, F10, F19, F21) | `s 342(c)(2) — no deduction is made for the month, for`, `s 342(c) — the amount the employer deducts from the wage, for`, `s 342(c)(2) — the amount by which the employer may reduce …` |
 | s 342(d) chapeau | 3663 | several employers | encoded | `section 342(d) does not apply: the insured person works for one employer` |
 | s 342(d)(1) | 3664 | actual deduction below the coordinated contributions: the employee pays the difference; the two definitions | encoded (F14) | `s 342(d) — "the actual deduction", of`, `s 342(d) — "coordinated contributions", for`, `s 342(d) — the outcome, …` |
@@ -144,7 +274,7 @@ Altogether **41 encoded, 9 inert, 25 out-of-scope, 0 deferred**.
 | provision | line | gist | disposition | where |
 | --- | --- | --- | --- | --- |
 | s 348 heading and tags | 3762 | maximum, minimum and disregarded amounts; tags into תשפ״ו־7 | inert (the tags dated, section 7) | `src:` heading, `nii-s348-maximum-minimum.l4` |
-| s 348(a) | 3763 | income above the Schedule K maximum is not taken into account | encoded | `s 348(a) — the income taken into account, of`, `the Schedule K maximum for` |
+| s 348(a) | 3763 | income above the Schedule K maximum is not taken into account | encoded | `s 348(a) — the income taken into account, of`, `the Schedule K maximum for`; **(0.4.0)** also inside the s 342(c), (d) and (e1) rules that take the wage, `s 342(c)(1) with s 348(a) — the income the deduction is taken on, from a wage of` (05-RC2, F25) |
 | s 348(a1) | 3764 | non-work income not exempt under s 350 and not above 25% of the average wage is not taken into account | encoded (F3, F4; the other reading also encoded, for comparison) | `s 348(a1) — the income not from work that is not taken into account, for`, `s 348(a1), read as all or nothing — …` |
 | s 348(b) | 3765 | no income or below the Schedule K minimum: as if the minimum | encoded (F6, F11, F18) | `s 348(b) — no income, or an income that does not reach the minimum: of`, `s 348(a) and (b) — …` |
 | s 348(c) | 3766 | the Minister may change the minimum amounts by order | encoded (the power's test; an order that reaches a period is declined) | `s 348(c) — the order is within the Minister's power`, `an order under section 348(c) changed a minimum amount …` |
@@ -244,6 +374,7 @@ The consolidation's editorial notes give the same basic amount and average wages
 No figure for 2027 was published at retrieval.
 
 **A5. Classifications outside the slice are inputs**, each listed in section 2 with its citation: the column of insured person, the branches payable, the income by source and after exemptions, the column D amounts, the employee's minimum wage, receipt of unemployment benefit, the s 348(e) statuses, s 350(c), an order under s 348(c), the senior citizen pension, the Part D age, police or prison service, s 3A, the regulations under s 342(e).
+**(0.4.0)** Two presuppositions, stated (the Axiom comparison's P2 and P4): every s 348 rule presupposes contributions payable under s 335, the limb with which (a) and (a1) open (lines 3763-3764), which is not an input, so a caller asks these rules only about such contributions (05-P2); and s 342(a)'s "an insured person" (line 3659) is presupposed by `An insured person, for section 342(a)-(b)` and its 0.4.0 companion, which cannot say "not insured", so a person who is not insured is not put to them (05-P4).
 
 **A6. Nothing is rounded.**
 Neither s 342 nor s 348 nor Schedule K says to round; the Institute publishes whole shekels, and the tests compare with `ROUND` where they compare with a printed figure.
@@ -256,7 +387,7 @@ Neither s 342 nor s 348 nor Schedule K says to round; the Institute publishes wh
 | --- | --- | --- | --- | --- |
 | F1 | Schedule K items 2-4 (4761-4765); s 348(a1) (3764) | Which "average wage": the s 1 figure (13,566 for 2026) or the figure calculated under s 2 (13,769)? | (i) s 1; (ii) s 2 | **(ii)**: s 2(b) says that "in calculating the average wage, for benefits and contributions, these changes apply" (line 236); and every Institute figure this row checked fits (ii) and not (i): 3,442 (25% of 13,769), 143 (6.92% of 15% of 13,769), 171 (48 + 123), the 2025 table's 3,134, 627 and 1,880 (25%, 5%, 15% of 12,536, the 2025 s 2 figure for contributions). The rules take the figure in the figures record; the 2026 record uses (ii); tests show (i) does not reproduce the Institute's figures. Bears on row IL-04's open fork F5. |
 | F2 | Schedule K items 2-4 | They print no figure for a month; what is a month's? | (i) a third of the quarter's; (ii) none (decline monthly periods) | **(i)**: every quarterly figure is written as a monthly amount "× 3"; s 337(a)(2) divides annual income into monthly advance periods (s 336); s 348(d) speaks of a month; the Institute prints monthly figures that are exactly a third (51,910, 3,442). |
-| F3 | s 348(a1) (3764) | "the income … which does not exceed 25% of the average wage shall not be taken into account": all of it if it does not exceed, none if it does; or the part up to 25%? | (i) all or nothing; (ii) a deduction of up to the 25% sum | **(ii)**: (a)'s "the amount of the income exceeding the maximum" is read as the part above it, and (a1) is the same construction from below; the Institute's January 2026 example deducts 3,442 from rent of 12,000. (i) is encoded beside it; the readings agree up to the sum and part above it (tests). |
+| F3 | s 348(a1) (3764) | "the income … which does not exceed 25% of the average wage shall not be taken into account": all of it if it does not exceed, none if it does; or the part up to 25%? | (i) all or nothing; (ii) a deduction of up to the 25% sum | **(ii)**: (a)'s "the amount of the income exceeding the maximum" is read as the part above it, and (a1) is the same construction from below; the Institute's January 2026 example deducts 3,442 from rent of 12,000. (i) is encoded beside it; the readings agree up to the sum and part above it (tests). **(0.4.0, 05-X1 and P1)** The first reason is withdrawn: (a) and (a1) are not the same construction. In (a) the subject is "the amount" of the income, with יבוא (line 3763), and read as all or nothing it would disregard the whole income of anyone above the maximum, which cannot be meant; in (a1) it is "the income" itself, with תובא and a qualifying clause (line 3764), and all or nothing gives a cliff at 3,442.25 in 2026, odd but not absurd. On the words the text reads at least as naturally as (i). (ii) is kept because the Institute's published example applies it (rent of 12,000 charged on 8,558); a second encoder (Axiom) took (i). The answer is unchanged. |
 | F4 | s 348(a1) | The 25% sum has no period. | (i) a month's; (ii) scaled to the period | **(i), and other periods declined**: the average wage is a monthly figure, and the Institute applies the sum "per month". A quarter or year with income not from work is declined by name. |
 | F5 | s 348(d) (3767) | (d) has no condition "who has no income or whose income does not reach". A deeming (the item 3 minimum whatever the income), or a floor like (e)? | (i) deeming; (ii) floor | **neither; answered only where they agree**: income not above the item 3 minimum gives the minimum under both; above it, declined by name. No source settles it. |
 | F6 | Schedule K item 3 (4763) | "an insured person as stated in s 348(d) and (e)": the classes (d) and (e) name, or only those meeting (e)'s income condition? | (i) the classes; (ii) the classes with the condition | **(i)**: (ii) puts a yeshiva student with a little income on item 4's 15% minimum, above the 5% minimum of one with none (a cliff the schedule's own grading does not suggest). A test shows (i)'s answer (1,557.75, not 2,065.35). |
@@ -270,13 +401,14 @@ Neither s 342 nor s 348 nor Schedule K says to round; the Institute publishes wh
 | F14 | s 342(d) "coordinated contributions" (3664) | Does (c)(2) apply to what one employer "would have had to deduct"? | — | **yes**: one employer would have had to deduct under (c) as a whole. |
 | F15 | s 342(e1) (3672) | The other employer deducted more than the coordinated contributions. | — | **declined**: (e1) speaks only of the kibbutz paying the difference. |
 | F16 | s 342(f)(2) (3674) | "lower than" the threshold | — | **strict**; at the threshold the difference is nil anyway, so nothing turns on it. |
-| F17 | s 342(b) and s 348(b) | With several employers, is (b)'s minimum applied to each employer's wage ("as if he alone were his employer") or to the total? | — | **not modelled**: the caller supplies the income the floor applies to. |
+| F17 | s 342(b) and s 348(b) | With several employers, is (b)'s minimum applied to each employer's wage ("as if he alone were his employer") or to the total? | — | **not modelled**: the caller supplies the income the floor applies to. **(0.4.0)** It is also why the rules that take the wage apply s 348(a) and not (b): fork F25. |
 | F18 | s 350(c) (3805) | It disapplies s 348(b); does it reach (d) and (e)? | (i) (b) only; (ii) all minimums | **(i)**: it names (b) alone. A test shows a yeshiva student under s 350(c) still at the item 3 minimum. |
-| F19 | s 342(c)(2) | The day a person "reaches" an age | — | the date of birth plus the age in months, keeping the day of the month or the month's last day when it is shorter (`add months`). |
+| F19 | s 342(c)(2) | The day a person "reaches" an age | — | the date of birth plus the age in months, keeping the day of the month or the month's last day when it is shorter (`add months`). **(0.4.0)** The shorter month is fork DATE ("Version 0.4.0" above), which waits on Meng (BACKLOG IL-24); this reading is kept until then. |
 | F20 | Schedule K "for a year" | A person in a category for part of a year | — | **not modelled**: the yearly figures are for the whole tax year. |
 | F21 | s 342(c)(2) "the deduction in item 6 of Schedule J" | — | — | item 6 is unemployment (line 4725); only that branch's column D amount is left out for a police or prison officer. |
 | F22 | s 342(e)(3)-(4) (3669-3670) | "column E of Schedule J" for deduction rates | (i) column D intended; (ii) as written | **not resolved**: (e) is a power and decides nothing here; checked red. |
 | F23, F24 | (0.3.0) | see "Version 0.3.0" above | — | — |
+| F25, DATE | (0.4.0) | see "Version 0.4.0" above | — | — |
 
 **Where I looked for others and found none:** s 342(a)'s exception (one class, one limb); s 348(c)'s conditions (two facts of the order); Schedule K's yearly sums (the total of four quarters, read as written).
 
@@ -311,6 +443,7 @@ Worked figures the tests assert (2026 unless marked):
 | two employers at 6,000 each, permanent version, threshold 8,000 (scenario 2027) | each deducts 24; coordinated 218.80; the employee pays 170.80 |
 | renewed kibbutz member, same, other employer deducted 24 | the kibbutz pays 194.80 |
 | employee also self-employed, wage 5,000, self-employed income 6,000 | 2,703 at the reduced rate, 3,297 above |
+| **(0.4.0)** employer's deduction from a wage of 60,000, February 2026, s 348(a) applied (51,910) | 3,174.6012 at the printed totals; 2,144.5781 at the items |
 
 ## 6. Nouns to reconcile at IL-07
 
@@ -321,6 +454,8 @@ Read from the sibling deposits `legalese-2026-10-il-04` and `legalese-2026-10-il
 - **The case records.** IL-04's `An employee's month of contributions` (`calendar year of the month`, the branches, the monthly income, s 341 and s 343 flags) and this row's `An employee's month under section 342(c)` (`tax year`, `month`, the branches, the column D amounts, pension, age, police) and `An insured person's period under section 348` describe overlapping facts. The year field is `calendar year of the month` there and `tax year` here; a tax year is a calendar year in both (IL-04 F12). IL-04's `monthly income on which contributions are computed` is this row's output.
 - **The person.** IL-04 `A person who works`; IL-06 `A person` (insured under Chapter 11, resident, a housewife under s 238 …); this row `An insured person, for section 342(a)-(b)` (column; insured under Chapter C only as a wife) and the age record `The insured person, for the age limb of section 342(c)(2)` (`a man` / `a woman` with her Part D age). IL-06 has `Father or mother`, a second sex distinction. `date of birth` is a field name here and in IL-06's `A child`.
 - **The basic amount.** IL-06 `The basic amounts for the child allowance` (paragraph (2), fields `under paragraph (2)(a)` …); this row the paragraph (3) figure as a field of `The figures Schedule K reads for a tax year` and as `the basic amount under paragraph (3) from 1 January 2026, as published by the National Insurance Institute`.
+- **(0.4.0) Column D as a function.** The rules of 05-RC2 take column D as functions of an income, by branch and at the printed totals; at IL-07 they are IL-04's `the column D deduction under` with the version, threshold and average wage fixed, the second over the deduction branches.
+  The record of 05-P3, `An insured person who may be both an employee and self-employed, for section 342(a)-(b)`, has two booleans where IL-04's `A person who works` and this row's one-column record each have one status.
 - **Refusal wording.** For the year boundary: IL-04 per provision ("section 334(a) as it stood before 1 January 2026 is not in the deposited text"); this row once for the row ("this row answers contribution periods from January 2026 only"). For unpublished figures: IL-04 and this row "had not been published when this encoding was made"; IL-06 "had not been published when this model's sources were fetched".
 
 ## 7. Sources: what was fetched, and what was not
@@ -386,15 +521,21 @@ Section 6 lists what to delete or join at IL-07.
 
 1. F1 (and IL-04's F5): is "the average wage" in Schedule K and s 348(a1) the figure calculated under s 2 (the Institute's practice), for every provision of Chapter 15?
 2. F3 and F5: does the Institute read s 348(a1) as a deduction because of the text, or by practice; and does it read s 348(d) as a deeming or a floor?
+   **(0.4.0)** On (a1) the words lean, if anywhere, to all or nothing (F3, as restated), so the question is whether a rule or ruling outside the Law supports the Institute's deduction.
 3. The Institute's yeshiva page says a yeshiva student who has not regularised his military status is charged from 1 January 2026 the full contributions, "95 NIS more each month" (the difference between the item 4 and item 3 minimums). Nothing in the deposited s 348(e) or Schedule K turns on military status. Where is that rule?
 4. F6 and F7: which Schedule K item applies to a yeshiva student or a volunteer who also works, and below what income?
 5. F9: how does the Institute apportion a month in which an employee reaches 70 (or her Part D age), or in which a pension begins?
 6. F22: is "column E" in s 342(e)(3)-(4) a remnant of an earlier numbering of Schedule J's columns?
 7. Was the National-Civic Service Law's expiry moved again after 31.8.2026, and if not, does s 348(e)'s temporary text now reach only those who began before?
+8. **(0.4.0)** Fork DATE: from what day is a man born on 29 February 70 in a year without one, for s 342(c)(2)?
+   One ruling for rows IL-05, IL-06 and IL-08: BACKLOG IL-24.
+9. **(0.4.0)** Was an order under Amendment 252 s 7(b) made extending the temporary Schedule J to 2027 (row IL-04's open question 7)?
+   It decides which column D a caller passes for 2027 (05-RC5).
 
 ## 11. What was not done
 
 - **The independent test pass** (skill step 8) was not run: the brief for this row is one session with no sub-agents. Every expected value was worked out before it was asserted, by a computation that does not use this encoding; no second reader has derived them.
+  **(0.4.0, 05-W1)** Stale: the pass was run after the deposit, by `fid-il-05` (`DECIDED-ANSWERS.md`, `INDEPENDENT-FINDINGS.md`, `tests-independent.l4`), deriving its own expected values without this encoding; the sentences above describe the encoding session only.
 - **HG1**, a human who knows Israeli national insurance reading the modules against the Hebrew, has not been sought.
 - **Semi-cleanroom** (ruled 2026-10-06): nothing from the Axiom Foundation, any RuleSpec repository, or the paths the brief lists was read, searched or fetched in this session. IL-04's and IL-06's deposits were read for names only, read-only; IL-04's `tests-independent.l4`, `DECIDED-ANSWERS.md` and `INDEPENDENT-FINDINGS.md` were not opened.
 
