@@ -1,8 +1,166 @@
 # NOTES — il/income-tax-ordinance-new-version, encoding row `legalese-2026-10-il-03`
 
 Income Tax Ordinance [New Version], **s 120B** (indexation), **s 121** (the individual's rate of tax) and **s 121B** (additional tax on high incomes), encoded in L4 by one agent in one session (run `IL-03-20261006`, 2026-10-06), from the brief in `BRIEF.md`.
-Status: **draft**. Version **0.2.0** (2026-10-08): repairs of the independent pass's two observations (O1, O2) and seven riders (BACKLOG IL-16); one helper's answer for 2025 is now declined, a silent 2028 answer is now declined by name, and four names were renamed; see "Version 0.2.0" below.
+Status: **draft**. Version **0.3.0** (2026-10-08): forks F1, F2 and F4 are switches, declined by default where their readings part, ruled by Meng (SHRUG; BACKLOG IL-48); F5 and 03-S13 recorded and left; see "Version 0.3.0" below. Version 0.2.0 (2026-10-08): repairs of the independent pass's two observations (O1, O2) and seven riders (BACKLOG IL-16); one helper's answer for 2025 is now declined, a silent 2028 answer is now declined by name, and four names were renamed; see "Version 0.2.0" below.
 No domain expert has read it against the source; HG1 has not been sought.
+
+## Version 0.3.0 (2026-10-08): SHRUG on the remaining ambiguities (BACKLOG IL-48)
+
+Backlog row IL-48, agent `shrug-il-48` (the same session as `rep-il-16`), one session, no sub-agents.
+**Ruling** (Meng, 2026-10-08, SHRUG, extended to all remaining ambiguities): where the text is silent, one named switch per ambiguity, by default a refusal by name saying the text does not decide, declining only where the readings give different answers to the question asked, every other reading kept by name and tested.
+Item ids are those of `l4-pipeline/findings/il-2026-10-08/inventory.tsv`; the classes are the lead's brief's: (a) a gating choice, made a switch; (b) already declines, or only one reading is arguable, or the readings never part in this model; (c) a modelling choice the text does not touch; (d) needs a source this row does not have.
+Nothing below was deleted; entries this version touches are marked **(0.3.0)** in place.
+Semi-cleanroom: in this job nothing of Axiom's was read, nor the section "Comparison with Axiom's RuleSpec" below.
+
+| id | fork | class | what changed | tests added |
+| --- | --- | --- | --- | --- |
+| 03-F1 | F1, s 121(b)(1): which shekels of the scale the eligible income occupies beside other income | (a) | `A reading of section 121(b)(1) on where the eligible income sits on the scale`: at the bottom (0.1.0's), the other income at the bottom, pro rata, and by default declined where the placement changes the tax; the 0.1.0 reasoning against (ii) corrected in the fork register | 6, and 2 re-pointed |
+| 03-F2 | F2, s 121(b)(1): on what day "has reached 60" is tested | (a) | `A reading of section 121(b)(1) on when the age of 60 is tested`: 60 by the end of the tax year (0.1.0's), 60 by the start, only the income derived after the 60th birthday (declines where that income would matter: not an input), and by default declined where the day changes the tax | 11, and 1 re-pointed |
+| 03-F4 | F4, s 120B(a)-(b): whether a fall of the index lowers the amounts | (a) | `A reading of section 120B where the index falls`: the fall applied (0.1.0's), the amount stays where it was, and by default a fall declined, as IL-04's F6 (TRIDENT) for the same words in NII s 334(a) | 16, and 1 re-pointed |
+| 03-F5 | F5, s 120B(e)(2): 2027's rise only, or the rise since 2024 | (b) | none: only reading (i) is arguable on the words (below) | — |
+| 03-S13 | s 121B in 2025 (the commencement of amendment 276) | (d), and (b) | none: Sefer HaChukim 3342 is not deposited; s 121B for 2025 already declines by name | — |
+
+### 03-F1 (a): where the eligible income sits on the scale
+
+Recorded at fork F1 (section 4), question 1 (section 8), `INDEPENDENT-FINDINGS.md` lines 34 and 51-55, and `tests-independent.l4` line 284; inventory class AMBIGUITY.
+s 121(b)(1) gives the reduced rates "על כל שקל חדש מ־84,120 השקלים החדשים הראשונים" and so on (lines 4354-4358) to the eligible income, and does not say which shekels of the scale that income occupies when other income is on the scale too.
+The readings part for an individual with both, and the s 121 tax is the question asked, so it is a gating choice.
+In `ito-121-individual-rates.l4` the rule `s 121 — the tax on … , at the ceilings … , placing the eligible income as` p computes each reading as arithmetic, with R(x) the reduced-rate tax on the first x shekels of the scale and the tax always (a) on the whole income, less (a)(1)'s 31% on the eligible shekels inside the first band, plus the reduced rates on those shekels:
+
+- **the eligible income at the bottom of the scale** (0.1.0's reading): the eligible shekels are the first ones; R(e), e the eligible income within the first band.
+- **the other income at the bottom of the scale**: the eligible shekels sit above the other income O, so they are those from O up to the top of the first band, and their reduced-rate tax is R(O + e′) − R(O); other income of 301,200 or more leaves them none.
+- **the eligible income spread pro rata**: each shekel of the first band is eligible in the share the eligible income bears to all the income on the scale; the tax is (a) less that share of (31% of the first band less R of it).
+- **declined where the placement changes the tax** (the default): the three are computed, and where they agree that is the answer; otherwise "section 121(b)(1) does not say which shekels of the scale the eligible income occupies when other income is on the scale too, and here the placement changes the tax".
+
+They agree where all the income on the scale is eligible, where none is, and where every eligible shekel falls in the same reduced band under every placement, as in the independent tester's F02 (12,300).
+The switch is `section 121(b)(1) — the reading this row takes of where the eligible income sits on the scale`; the 0.2.0 names `s 121 — the tax on … , at the ceilings …` and `the tax under section 121 for` now follow it.
+The fork register's 0.1.0 argument against (ii) overstated it, as the independent pass found, and is corrected there in place.
+The two tests of 0.2.0 that rest on (i) with mixed income (`ito-il03-tests.l4` lines 362 and 421) are re-pointed to it by name, values unchanged; six tests are added.
+The capstone is not reached: its earner has a salary only, all of it eligible.
+
+### 03-F2 (a): on what day the age of 60 is tested
+
+Recorded at fork F2 (section 4), question 2 (section 8), `INDEPENDENT-FINDINGS.md` lines 31-33 and 44-49, and `tests-independent.l4` lines 267-269; inventory class AMBIGUITY.
+"ולגבי הכנסה חייבת בשנת המס של יחיד שמלאו לו 60 שנים" (line 4354) names no day of the tax year for the age, and for an individual whose 60th birthday falls from 2 January to 31 December of the tax year, income that is eligible by the age limb alone (on the scale, not from personal exertion, with books kept where required) is eligible under one test and not under the other.
+The readings, `A reading of section 121(b)(1) on when the age of 60 is tested`:
+
+- **60 by the end of the tax year** (0.1.0's reading): the 60th birthday on or before 31 December;
+- **60 by the start of the tax year**: on or before 1 January (new: `aged 60 or more at the start of the tax year`);
+- **only the income derived after the 60th birthday**: this model has no split of the income by date, so this reading answers where the two tests give the same tax and otherwise declines, "this model does not have the income derived after the 60th birthday, which this reading of section 121(b)(1) needs here";
+- **declined where the day of the test changes the tax** (the default): the tax at both tests, the answer where they agree, otherwise "section 121(b)(1) does not say on what day of the tax year the individual must have reached 60, and here the day changes the tax".
+
+Where the two tests give the same tax, so does any split by date, because the tax falls as the eligible income grows under every placement of F1; the third reading therefore cannot give a different answer there.
+The switch is `section 121(b)(1) — the reading this row takes of when the age of 60 is tested`; the entry point with both readings is `the tax under section 121 for` i `, placing the eligible income as` p `and testing the age of 60 as` a.
+Eligibility now takes the age as a BOOLEAN argument (`eligible for the reduced rates` item `, as income of an individual who, for section 121(b)(1), has reached 60:` b, and `the income eligible for the reduced rates of` i `, who, for section 121(b)(1), has reached 60:` b); the 0.2.0 forms without it keep their names and decline where the two tests give different answers to what they ask.
+The 0.2.0 test that rests on the end-of-year test with a birthday inside the year (`ito-il03-tests.l4` line 389, born 31 December 1966) is re-pointed to it by name, value unchanged; eleven tests are added.
+The capstone is not reached: its earner's salary is eligible at any age.
+
+### 03-F4 (a): a fall of the index
+
+Recorded at fork F4 (section 4), `INDEPENDENT-FINDINGS.md` line 94, and the inventory's note that NII s 334(a) uses the same words and was ruled TRIDENT (IL-04 F6); inventory class AMBIGUITY.
+s 120B(a) and (b) adjust "לפי שיעור עליית המדד" (lines 4338-4339), and s 1's rate (line 180) is negative when the index falls; neither says whether a fall lowers the amounts.
+`ito-120b-indexation.l4` now adjusts through `the amount` `adjusted by the rise of the index over` `the readings` `, reading a fall as` r, with `A reading of section 120B where the index falls`: **the fall of the index is applied** (0.1.0's reading, and the independent tester's, `DECIDED-ANSWERS.md` R0.7), **the amount stays where it was**, and **a fall of the index is declined** (the default: "section 120B adjusts the amounts by the rate of rise of the index, and says nothing of a fall").
+A rise, or no change, is the same under all three.
+The switch is `section 120B — the reading this row takes where the index falls`; (a), (b), (e)(2), `s 120B — the amount for the tax year` and `s 120B — the amount in force in the tax year` each gain a form ending `, reading a fall as` r, and their 0.2.0 names follow the switch.
+The frozen years 2025-2027 read no index, so they are untouched.
+The one 0.2.0 test of a fall (`ito-il03-tests.l4` line 174) is re-pointed to "the fall of the index is applied" by name, value unchanged (990); sixteen tests are added.
+The independent tester's I04 (`tests-independent.l4` line 327) asserted the fall applied by the 0.2.0 name; by the lead's leave it was re-pointed in place to that reading by name, value 75,504.24 and inputs unchanged (below).
+The capstone is not reached: it reads s 120B only for 2025-2027.
+
+### 03-F5 (b): 2027's rise only, not a switch
+
+Recorded at fork F5 (section 4) and `INDEPENDENT-FINDINGS.md` line 94; inventory class AMBIGUITY, with only reading (i) listed.
+(e)(2) reads "ולעניין זה המדד בשנת המס הקודמת שיובא בחשבון לצורך תיאומם יהיה המדד של שנת המס 2027" (line 4345).
+The clause takes (a)'s own words, "the index in the previous tax year", and puts "the index of tax year 2027" in their place; (a) adjusts by the rate of rise "in the previous tax year", and s 1 measures a rate of rise over a period by the readings before its start and before its end, so the period is tax year 2027.
+A rise "since 1 January 2024" would need a period that begins on that day, and no word of (e)(2) gives one.
+What the clause does say, naming tax year 2027, is needed precisely because the base is the 1 January 2024 amounts, which might otherwise have been read as carrying the index of every year since.
+The encoder (0.1.0) and the independent tester (`DECIDED-ANSWERS.md` R0.8, which names the cumulative reading and rejects it) reached (i) separately.
+And the public answer the two readings would part on, the amount in force on 1 January 2028, is declined in any case, for want of the rounding Order (s 120B(d)); only the figure before rounding that `s 120B — the amount for the tax year` reports for 2028 would differ.
+So only one reading is arguable on the text, and no switch is made.
+**This class is this session's judgment, not a ruling**; the switch, if wanted, would be a reading of (e)(2) taking the index reading last published before 1 January 2024, and a refusal for 2028 by default.
+
+### 03-S13 (d): s 121B in 2025
+
+Recorded at `INDEPENDENT-FINDINGS.md` lines 37-38 and 64-67, `tests-independent.l4` lines 371 and 384, and question 4 (section 8); inventory class AMBIGUITY (factual; needs the enacted Law).
+Whether s 121B as amended in 5785 reaches tax year 2025 turns on the commencement of amendment 276 (Sefer HaChukim 3342), which is not deposited (`../../registers/source-bundle/amending-laws/` holds only the 5786 Law, checked 2026-10-08; BACKLOG IL-31).
+The row already declines s 121B for 2025 by name, and its s 121B(e) helpers have declined 2025 too since 0.2.0, so no code changes; the tester's S13 and S25 stay refused, as declared.
+The lead reports that agent `fetch-il` is fetching amendment 276 for IL-31; when it is deposited, its commencement section decides whether s 121B answers 2025 (moving the boundary in `the additional tax under section 121B for` and the two helpers), and nothing here assumes which way.
+
+### The independent tester's file
+
+No line of `tests-independent.l4` was edited for forks F1 and F2: the defaults decline where the tester decided to refuse.
+So D03-D05 (lines 267-269, 03-F2) and F01 (line 284, 03-F1), which failed from 0.1.0 to 0.2.0, pass as the tester wrote them.
+F02 (line 285) still fails: there every placement agrees, the default answers 12,300, and the tester's findings say that is right (03-T1); F03 (line 286) is unchanged (03-T1).
+For fork F4, the lead authorised one edit, under the terms of the repair brief's addendum and the precedent of IL-04 v0.3.1: line 327 (I04), in place, now names the reading the tester decided (`DECIDED-ANSWERS.md` R0.7), `, reading a fall as` `the fall of the index is applied`; its expected value, 75,504.24, and its inputs, readings 100 and 99.4, are unchanged.
+Without it, the new default would have refused it.
+A second dated "NOTE BY THE LEAD, 2026-10-08" is appended after the file's last line (lines 417-429, after a blank line) and lists the edit; nothing was inserted above it, and the first 415 lines differ from 0.2.0's on line 327 only (checked by `diff`).
+The file's counts move from 118 satisfied, 6 failed, 2 refused to 122 satisfied, 2 failed (285, 286; 03-T1), 2 refused (371, 384; 03-S13), and `check.sh` declares 2 and 2.
+
+### Expected values changed or added (`ito-il03-tests.l4`)
+
+No expected value changed: four tests were re-pointed to their reading by name with the same value (lines 174, 362, 389, 421).
+Added, each worked by hand before it was run:
+
+| assertion | expected | why |
+| --- | --- | --- |
+| `s 120B(a) — adjust` 1,000, index 100 to 99, by default | declined (F4) | a fall |
+| the same, `the amount stays where it was` | 1,000 | |
+| `s 120B(a) — adjust` 1,000, index 100 to 102, at `a fall of the index is declined` and at `the amount stays where it was` | 1,020 each | a rise is the same under every reading |
+| `s 120B(a) — adjust` 1,000, index 100 to 100, by default | 1,000 | no change is not a fall |
+| s 120B(b), 100 in 2029, increment from July, index 100 to 99: by default / applied / stays | declined / 99 / 100 | 100 × 0.99 |
+| `s 120B — the amount for the tax year`, the hypothetical amount (1,000.4 before rounding, 1,000 after, previous base 1,050) with the index falling 100 to 99: 2026 | `fixed by section 120B(e)(1) at` 1,000 (and 1,000 in force) | (e)(1) reads no index |
+| the same, 2028: by default / applied | declined / `adjusted, before rounding, to` 990.396 | 1,000.4 × 0.99 |
+| the same, 2029: by default / applied / stays | declined / 1,039.5 / 1,050 | 1,050 × 0.99 |
+| `s 120B — the amount in force in the tax year`, the same, 2029, applied | declined, the rounding Order | (d) |
+| s 121, under 60, salary 100,000 and other income 50,000: the other income at the bottom / pro rata / by default | 29,892 / 28,428 / declined (F1) | 15,500 + 14,392; 46,500 − ⅔ × 27,108 |
+| s 121, under 60, salary 30,000 and business income without required books 30,000, by default | 12,300 | the placements agree (the tester's F02) |
+| s 121, under 60, other income 301,200 and salary 50,000: at the bottom / the other income at the bottom | 100,372 / 110,872 | 110,872 − 15,500 + 5,000; no eligible shekel left in the first band |
+| s 121, 2026, born 15 June 1966, rent 100,000: 60 by the end / by the start / only after the birthday / by default | 10,635.2 / 31,000 / declined (not an input) / declined (F2) | 8,412 + 14% × 15,880; 31% × 100,000 |
+| `the income eligible for the reduced rates of` the same individual | declined (F2) | the 0.2.0 name, at the default |
+| s 121, 2026, born 1 January 1966, rent 100,000, by default | 10,635.2 | 60 on the first day of the year |
+| s 121, 2026, born 15 June 1966, salary 100,000, by default; its eligible income | 10,635.2; 100,000 | a salary is eligible at any age |
+| `aged 60 or more at the start of the tax year`, 2026: born 1 January 1966 / 2 January 1966 / 31 December 1965 | TRUE / FALSE / TRUE | |
+
+`ito-il03-tests.l4`: 103 assertions at 0.2.0, 136 at 0.3.0 (33 added).
+
+### What `check.sh` prints at 0.3.0
+
+Run on 2026-10-08 from 22:28:03Z to 22:28:11Z with `L4=/Users/mengwong/.local/bin/l4`, `JL4_LIBRARY_PATH` unset; the binary is now `~/.local/bin/l4` → the cabal store, `/Volumes/transcend/caches/cabal/store/ghc-9.10.3-fe9c/jl4-0.1-6df1397b/bin/l4`, sha256 `f0759b2ef2f1d1b2a577c68f059c54f487de9d913553fc9f0d9bf0f7f5dab0d8`, the same before and after the run (a newer build than 0.2.0's).
+The 0.2.0 baseline was re-run on this binary before any edit (22:18:35Z) and printed 0.2.0's table: `ito-il03-tests.l4` 103 satisfied, `tests-independent.l4` 118/6/2, exit 0.
+
+```
+module                                    errors satisfied  failed  refused  expected
+ito-120b-indexation.l4                         0         0       0        0         0
+ito-121-individual-rates.l4                    0         0       0        0         0
+ito-121b-additional-tax.l4                     0         0       0        0         0
+ito-il03-nouns.l4                              0         0       0        0         0
+ito-il03-published-figures.l4                  0         0       0        0         0
+ito-il03-tests.l4                              0       136       0        0         0
+tests-independent.l4                           2       122       2        2       2/2
+TOTAL (7 modules)                              2       258       2        2
+(a failed assertion is also an error; any other error, or a refused assertion a module is not expected to have, makes the run red; "expected" is failed/refused where a module may refuse)
+```
+
+`check.sh` exit 0. The two errors are exactly the two declared failures of the tester's file (03-T1), and its two refusals are declared (03-S13).
+`tools/srcquote.py` regenerates every `src:N` line of every module unchanged, and `tools/hebcheck.py` passes on the changed modules, `check.sh` and `encoding.json` against the source; on this file it flags only the Hebrew quoted from the 5786 Law and the booklet in 0.2.0's section, as before.
+
+### For IL-54 (the capstone), names this version adds
+
+No name the capstone uses was renamed; no record gained or lost a field, so no record the capstone builds changes.
+
+| kind | name | module (vendored) |
+| --- | --- | --- |
+| type | `A reading of section 121(b)(1) on where the eligible income sits on the scale` (four constructors) | `ito-il03-nouns.l4` |
+| type | `A reading of section 121(b)(1) on when the age of 60 is tested` (four constructors) | `ito-il03-nouns.l4` |
+| type | `A reading of section 120B where the index falls` (three constructors) | `ito-il03-nouns.l4` |
+| switches | `section 121(b)(1) — the reading this row takes of where the eligible income sits on the scale`, `section 121(b)(1) — the reading this row takes of when the age of 60 is tested` | `ito-121-individual-rates.l4` |
+| switch | `section 120B — the reading this row takes where the index falls` | `ito-120b-indexation.l4` |
+| entry point | `the tax under section 121 for` i `, placing the eligible income as` p `and testing the age of 60 as` a | `ito-121-individual-rates.l4` |
+| rules | the forms ending `, reading a fall as` r of `s 120B(a) — adjust`, `s 120B(b) — the allowance-point amount …`, `s 120B(e)(2) — adjust on 1 January 2028`, `s 120B — the amount for the tax year`, `s 120B — the amount in force in the tax year` | `ito-120b-indexation.l4` |
+| refusals | the four quoted above | `ito-121-individual-rates.l4`, `ito-120b-indexation.l4` |
+
+The capstone calls `the tax under section 121 for` (salary only: every placement and every test of the age agree) and `s 120B — the amount in force in the tax year` for 2025-2027 (no index read), so its answers should not move; it re-vendors `ito-il03-nouns.l4`, `ito-120b-indexation.l4` and `ito-121-individual-rates.l4`.
+That is a reading of the code, not a run of the capstone, which this job may not touch.
 
 ## Version 0.2.0 (2026-10-08): repairs (BACKLOG IL-16)
 
@@ -325,11 +483,11 @@ s 121B is computed separately and is not added to it here.
 
 | # | where | the question | readings | taken, and why |
 | --- | --- | --- | --- | --- |
-| F1 | s 121(b)(1), line 4354 | When an individual under 60 has both personal-exertion income and other income on the scale, which shekels of the scale does the eligible income occupy? | (i) the eligible income at the bottom; (ii) the other income at the bottom; (iii) pro rata | **(i)**. (b)(1)(a) speaks of "the first 84,120 shekels"; under (ii) those shekels would be other income and the reduced rates would never reach an individual with other income above 84,120, which empties (b)(1) for exactly the mixed case it names. Where the Ordinance does order income, it puts special-rate income at the highest step (s 91(b)(1), line 3347; s 125C(b), line 4530), which points the same way. Not settled by any text in the slice. |
-| F2 | s 121(b)(1), line 4354 | "of an individual who has reached 60": tested when? | (i) at any time up to the end of the tax year; (ii) at the start of the tax year; (iii) only income derived after the 60th birthday | **(i)**: the provision attaches the age to the individual and the income to the tax year, and the year is the unit of assessment. (iii) would need the income split by date, which the text does not ask for. |
+| F1 | s 121(b)(1), line 4354 | When an individual under 60 has both personal-exertion income and other income on the scale, which shekels of the scale does the eligible income occupy? | (i) the eligible income at the bottom; (ii) the other income at the bottom; (iii) pro rata | **(i)**. (b)(1)(a) speaks of "the first 84,120 shekels"; under (ii) those shekels would be other income and the reduced rates would never reach an individual with other income above 84,120, which empties (b)(1) for exactly the mixed case it names. Where the Ordinance does order income, it puts special-rate income at the highest step (s 91(b)(1), line 3347; s 125C(b), line 4530), which points the same way. Not settled by any text in the slice. **(0.3.0) Ruled by Meng 2026-10-08 (SHRUG): a switch, declined by default where the placement changes the tax**; readings (i), (ii), (iii) kept by name and tested. The argument against (ii) above is overstated, as the independent pass found (`INDEPENDENT-FINDINGS.md` lines 53-55): under (ii) only the 10% band is lost once other income passes 84,120, the eligible income still takes 14%, 20% and the reduced 31% in the bands it occupies, and (b)(1) is emptied only when other income reaches 301,200. See "Version 0.3.0". |
+| F2 | s 121(b)(1), line 4354 | "of an individual who has reached 60": tested when? | (i) at any time up to the end of the tax year; (ii) at the start of the tax year; (iii) only income derived after the 60th birthday | **(i)**: the provision attaches the age to the individual and the income to the tax year, and the year is the unit of assessment. (iii) would need the income split by date, which the text does not ask for. **(0.3.0) Ruled by Meng 2026-10-08 (SHRUG): a switch, declined by default where the day of the test changes the tax**; (i), (ii) and (iii) kept by name, (iii) declining where the income after the birthday would matter, because it is not an input. See "Version 0.3.0". |
 | F3 | s 121(b)(2), line 4359 | Does (b)(2) reach the over-60 individual's income that is not from personal exertion? | (i) yes, any income for which books were required and not kept; (ii) only personal-exertion income | **(i)**: the text says "income" without qualification. |
-| F4 | s 120B(a), line 4338; s 1, line 180 | If the index falls, is the amount reduced? | (i) yes, the s 1 arithmetic gives a negative rate and it is applied; (ii) no, "עליית" (rise) means only rises count | **(i)**: the definition is a formula and yields a negative number on its own terms. The editorial tables show amounts falling from 2020 to 2021 (e.g. 75,960 to 75,480, lines 4382 and 4394), which fits (i); they are aids, not authority. |
-| F5 | s 120B(e)(2), line 4345 | "the index in the previous tax year … shall be the index of tax year 2027": only 2027's rise, or the rise since 2024? | (i) 2027's rise only, so 2024-2026 inflation is not recovered; (ii) cumulative | **(i)**: it names one tax year's index, and (a)'s mechanism measures over one tax year. |
+| F4 | s 120B(a), line 4338; s 1, line 180 | If the index falls, is the amount reduced? | (i) yes, the s 1 arithmetic gives a negative rate and it is applied; (ii) no, "עליית" (rise) means only rises count | **(i)**: the definition is a formula and yields a negative number on its own terms. The editorial tables show amounts falling from 2020 to 2021 (e.g. 75,960 to 75,480, lines 4382 and 4394), which fits (i); they are aids, not authority. **(0.3.0) Ruled by Meng 2026-10-08 (SHRUG), as for the same words in NII s 334(a) (IL-04 F6, TRIDENT): a switch, a fall declined by default**; (i) the fall applied, (ii) the amount stays where it was, kept by name and tested. A rise or no change is answered the same under all three. See "Version 0.3.0". |
+| F5 | s 120B(e)(2), line 4345 | "the index in the previous tax year … shall be the index of tax year 2027": only 2027's rise, or the rise since 2024? | (i) 2027's rise only, so 2024-2026 inflation is not recovered; (ii) cumulative | **(i)**: it names one tax year's index, and (a)'s mechanism measures over one tax year. **(0.3.0) Classed (b), not a switch**: only (i) is arguable on the words, which put "the index of tax year 2027" in place of (a)'s "the index in the previous tax year"; the independent pass reached (i) separately (`DECIDED-ANSWERS.md` R0.8); and the amount in force for 2028 is declined in any case. See "Version 0.3.0". |
 | F6 | s 120B(a) | Does the year-on-year chain carry rounded or unrounded figures? | (i) unrounded, rounding only the figure in force; (ii) rounded | **(i)**: (e)(2) restarts "before rounding", which is natural only if the chain runs unrounded. It changes no answer this row gives, because every rounded figure is either supplied or declined. |
 | F7 | s 120B(e)(2) with s 121 as amended in 5786 | What is the 2028 base for the ceilings the 5786 amendment moved ((a)(1), (b)(1)(c), (b)(1)(d))? | (i) their 1 January 2024 figures, which would undo the 5786 change; (ii) the figures as amended; (iii) whatever the amending Law provides | **not answered**: s 121 from 2028 is declined by name. The amending Law could not be read (section 7). **(0.2.0) Answered: (iii), which comes to (ii).** Section 7 of the 5786 Law, now deposited, regards the amounts its chapter states as the amounts adjusted to 1 January 2024 for s 120B(e), so their 2028 base is the stated figure; see "Version 0.2.0", 03-F7. No answer here changes: s 121 from 2028 is still declined, for want of the 2027 index and the rounding Order. |
 | F8 | s 121(a)(1), (b)(1)(d) | The text prints the top of the 31% band twice (301,200). If the two ever differ, which governs? | — | **declined**: a supplied set of ceilings in which they differ is refused; the printed figures agree, and a test says so. |
@@ -373,8 +531,8 @@ Worked figures the tests assert (tax year 2026; the same for 2027):
 | 228,000 salary | 34,992 |
 | 301,200 salary | 57,684 |
 | 560,280 salary | 148,362 |
-| 100,000 salary + 50,000 other income, under 60 | 26,135.2 (F1) |
-| 150,000 other income, 60 by 31 December | 19,392 (F2) |
+| 100,000 salary + 50,000 other income, under 60 | 26,135.2 (F1); **(0.3.0)** at reading (i) by name; 29,892 at (ii), 28,428 at (iii); declined by default |
+| 150,000 other income, 60 by 31 December | 19,392 (F2); **(0.3.0)** at reading (i) by name; declined by default where the birthday is from 2 January to 31 December |
 | 200,000 business income without the acceptable books it required | 62,000 |
 
 | facts (s 121B(a) amount supplied as 721,560) | s 121B tax |
@@ -422,10 +580,10 @@ The 5785 Law (amendment 276, Sefer HaChukim 3342) is still not deposited.
 
 ## 8. Open questions for a domain expert
 
-1. F1: in practice, does the Tax Authority place personal-exertion income at the bottom of the s 121 scale for an individual under 60 with other income? Is there a provision or ruling outside this slice that says so?
-2. F2: for the year in which an individual turns 60, are the reduced rates applied to the whole year's income?
+1. F1 (**(0.3.0)** declined by default where it matters, SHRUG): in practice, does the Tax Authority place personal-exertion income at the bottom of the s 121 scale for an individual under 60 with other income? Is there a provision or ruling outside this slice that says so?
+2. F2 (**(0.3.0)** declined by default where it matters, SHRUG): for the year in which an individual turns 60, are the reduced rates applied to the whole year's income?
 3. F7: does the 5786 amendment of s 121 say how its new ceilings are treated on 1 January 2028 under s 120B(e)(2), or is the bracket change a temporary provision for 2026-2027? **(0.2.0) Answered by the enacted Law**: its s 7 regards them as the amounts adjusted to 1 January 2024 for s 120B(e), and its s 6 commences them on 1 January 2026 with no end date (see "Version 0.2.0", 03-F7).
-4. Does the 5785 amendment say from which tax year s 121B(a1) applies? (If from 2025, this row could answer s 121B for 2025.)
+4. Does the 5785 amendment say from which tax year s 121B(a1) applies? (If from 2025, this row could answer s 121B for 2025.) **(0.3.0)** Still open: amendment 276 (Sefer HaChukim 3342) is not deposited (inventory 03-S13, class (d)).
 5. Is the duplicated phrase at line 4462 in the Law as published?
 
 ## 9. What was not done
