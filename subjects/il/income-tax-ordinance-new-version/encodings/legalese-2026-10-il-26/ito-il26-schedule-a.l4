@@ -1,0 +1,206 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `ito-il03-nouns`
+IMPORT `ito-120b-indexation`
+IMPORT `ito-121-individual-rates`
+IMPORT `ito-121b-additional-tax`
+IMPORT `ito-il26-nouns`
+
+-- Schedule A (תוספת א׳) to the Income Tax (Deduction from Salary and Wages) Regulations 5753-1993:
+-- the tax an employer deducts from a monthly salary, and (item 1 of the schedule's preamble) from a partial
+-- salary or a pension on the employee's sole-income declaration of regulation 5(c).
+--
+-- Source: ../../registers/source-bundle/regulations/income-tax-deduction-from-salary-and-wages-regulations-5753-1993.he.wiki.txt
+-- (sha256 e6fd6975...b7b20f). Schedule A is lines 167-189.
+--
+-- WHAT THIS MODULE IS. Items (1) to (5) of the schedule are a calculation, and they are encoded as one:
+-- (1) multiply the month's salary by 12; (2) compute the tax on that under ss 121 and 121B, "taking into account
+-- the necessary adjustments from section 120B"; (3) take the credit points into account against that tax;
+-- (4) divide by 12; (5) round. Item (6) says the Director publishes a table and the employer deducts by the
+-- table. The table is NOT in the deposited sources (it is the Tax Authority's monthly booklet, recorded by
+-- pointer only), so this module computes "the tax Schedule A items (1)-(5) give" and never claims to be the
+-- table: see `the employer deducts, given the Director's table` in ito-il26-regulations.l4.
+--
+-- The s 120B adjustment ("annual adjustment") is not re-encoded: ss 120B, 121 and 121B are row IL-03, and its
+-- modules sit beside this one (vendored, sha256 in VENDORED.txt). They answer for tax years 2026 and 2027;
+-- every other year is declined by IL-03's own refusals, which pass through unchanged.
+
+§ `Schedule A — the tax to deduct from a monthly salary`
+
+§§ `The readings, by default`
+
+-- Each fork's default is the refusal by name where the readings part (Meng, SHRUG, 2026-10-08); the two
+-- section 121(b)(1) readings are IL-03's own defaults, passed through.
+@ref forks F1, F2, F3 (NOTES.md); IL-03 forks F1, F2
+GIVETH A `The readings of the withholding rules`
+`the readings of the withholding rules, by default` MEANS
+    `The readings of the withholding rules` WITH
+        `the set-off` IS `declined where the object of the set-off changes the tax`
+        `the salary`  IS `declined where the order of rounding changes the tax`
+        `the share`   IS `declined where rounding the share changes the tax`
+        `the amounts` IS `declined where the year changes the tax`
+        `the placing` IS `section 121(b)(1) — the reading this row takes of where the eligible income sits on the scale`
+        `the age`     IS `section 121(b)(1) — the reading this row takes of when the age of 60 is tested`
+
+§§ `Item (5) — rounding to the whole shekel`
+
+-- src:186 | כל שבר של שקל חדש מן המשכורת או מן המס העולה על 49 אגורות, יראוהו כשקל חדש אחד; שבר של שקל חדש שאינו עולה על 49 אגורות לא יובא בחשבון;
+@ref Regulations 5753-1993, Schedule A item (5) (source line 186)
+GIVEN x IS A NUMBER
+GIVETH A NUMBER
+`item (5) — rounded to the whole shekel` x MEANS
+    IF   (x MINUS (FLOOR x)) GREATER THAN 0.49
+    THEN (FLOOR x) PLUS 1
+    ELSE FLOOR x
+
+§§ `Items (1) to (4) — the tax before rounding`
+
+-- The salary is an item of income from personal exertion, employment income (s 2(2)), charged at the rates in
+-- s 121; it is the individual's only income, because the Schedule computes tax on the salary alone.
+-- ("income from personal exertion" is s 1's term and an employee's salary is within its "לרבות" list; IL-03 takes the
+-- item's classification as input and so does this module.)
+@ref Regulations 5753-1993, Schedule A items (1)-(2) (source lines 171-177)
+GIVEN `the annual amount` IS A NUMBER
+GIVETH AN `An item of income`
+`the salary item of` `the annual amount` MEANS
+    `An item of income` WITH
+        `amount`                                                               IS `the annual amount`
+        `from personal exertion`                                               IS TRUE
+        `under section 2(1) or 2(2)`                                           IS TRUE
+        `charged at the rates in section 121`                                  IS TRUE
+        `subject to a duty to keep books of account, and acceptable books were not kept` IS FALSE
+        `inflationary amount, as defined in section 88`                        IS 0
+
+@ref Regulations 5753-1993, Schedule A items (1)-(2) (source lines 171-177)
+GIVEN `the annual amount`    IS A NUMBER
+      `the tax year`         IS A NUMBER
+      `the date of birth`    IS A DATE
+GIVETH AN `An individual in a tax year`
+`the individual earning` `the annual amount` `in` `the tax year` `born` `the date of birth` MEANS
+    `An individual in a tax year` WITH
+        `tax year`                       IS `the tax year`
+        `date of birth`                  IS `the date of birth`
+        `items of income`                IS LIST (`the salary item of` `the annual amount`)
+        `sales of rights in real estate` IS EMPTY
+
+-- A problem inside IL-03's EITHER cannot arise here (the amounts were validated, and a negative salary never
+-- reaches this point); if one did, it is declined by name rather than read as nil.
+GIVEN e IS AN EITHER `A problem with the facts, for sections 121 and 121B` NUMBER
+GIVETH A NUMBER
+`the number in` e MEANS
+    CONSIDER e
+    WHEN LEFT  `the problem` THEN REFUSE "the section 121 or 121B computation reported a problem with the facts, which validation should have prevented"
+    WHEN RIGHT `the number`  THEN `the number`
+
+-- Item (3): the credit points are taken into account, according to the employee's declaration on the card.
+-- Fork F1 is what they are taken into account against; the two readings are computed here by name.
+@ref Regulations 5753-1993, Schedule A items (2)-(3) (source lines 176-180); fork F1
+GIVEN `the year's tax under section 121`  IS A NUMBER
+      `the year's tax under section 121B` IS A NUMBER
+      `the credits`                       IS A NUMBER
+GIVETH A NUMBER
+`the year's tax after set-off against the whole of both` `the year's tax under section 121` `and` `the year's tax under section 121B` `less` `the credits` MEANS
+    IF   (`the year's tax under section 121` PLUS `the year's tax under section 121B`) GREATER THAN `the credits`
+    THEN (`the year's tax under section 121` PLUS `the year's tax under section 121B`) MINUS `the credits`
+    ELSE 0
+
+@ref Regulations 5753-1993, Schedule A items (2)-(3) (source lines 176-180); fork F1
+GIVEN `the year's tax under section 121`  IS A NUMBER
+      `the year's tax under section 121B` IS A NUMBER
+      `the credits`                       IS A NUMBER
+GIVETH A NUMBER
+`the year's tax after set-off against the section 121 tax only` `the year's tax under section 121` `and` `the year's tax under section 121B` `less` `the credits` MEANS
+    (IF `the year's tax under section 121` GREATER THAN `the credits`
+     THEN `the year's tax under section 121` MINUS `the credits`
+     ELSE 0)
+    PLUS `the year's tax under section 121B`
+
+@ref Regulations 5753-1993, Schedule A item (3) (source lines 179-180)
+GIVEN `the points`           IS A NUMBER
+      `the value of a point` IS A NUMBER
+GIVETH A NUMBER
+`the credits of` `the points` `credit points at` `the value of a point` MEANS
+    `the points` TIMES `the value of a point`
+
+-- Items (1)-(5) for ONE salary figure and ONE reading of the set-off.
+-- * `the tax under 121` and `...121B` are IL-03's, on 12 times the salary (item 1);
+-- * the result is the whole-shekel monthly tax (items 4 and 5).
+@ref Regulations 5753-1993, Schedule A items (1)-(5) (source lines 171-186)
+GIVEN `the salary`              IS A NUMBER
+      `the payment's tax year`  IS A NUMBER
+      `the declarations`        IS AN `The employee's declarations`
+      `the figures`             IS AN `The annual figures for the tax year`
+      `the readings`            IS A `The readings of the withholding rules`
+      `against the whole`       IS A BOOLEAN
+GIVETH A NUMBER
+`the monthly tax on` `the salary` `in` `the payment's tax year` `for` `the declarations` `with` `the figures` `reading` `the readings` `setting off against the whole:` `against the whole` MEANS
+    `item (5) — rounded to the whole shekel`
+        ((IF `against the whole`
+          THEN `the year's tax after set-off against the whole of both` `the tax under 121` `and` `the tax under 121B` `less` `the credits`
+          ELSE `the year's tax after set-off against the section 121 tax only` `the tax under 121` `and` `the tax under 121B` `less` `the credits`)
+         DIVIDED BY 12)
+    WHERE
+        `the individual` MEANS
+            `the individual earning` (12 TIMES `the salary`) `in` `the payment's tax year` `born` (`the declarations`'s `date of birth`)
+        `the tax under 121` MEANS
+            `the number in` (`the tax under section 121 for` `the individual` `, placing the eligible income as` (`the readings`'s `the placing`) `and testing the age of 60 as` (`the readings`'s `the age`))
+        `the tax under 121B` MEANS
+            `the number in` (`the additional tax under section 121B for` `the individual` `, with the amount in section 121B(a) at` (`the figures`'s `the amount in section 121B(a) in force in the tax year`))
+        `the credits` MEANS
+            `the credits of` (`the declarations`'s `credit points claimed on the card`) `credit points at` (`the figures`'s `the value of one credit point`)
+
+§§ `Fork F1 — what the credit points are set off against`
+
+@ref Regulations 5753-1993, Schedule A items (2)-(3) (source lines 176-180); fork F1; Meng's ruling of 2026-10-08 (SHRUG)
+GIVEN a IS A TYPE
+GIVETH AN a
+`Schedule A item (3) does not say whether credit points reduce the section 121B additional tax, and here that changes the tax` MEANS
+    REFUSE "Schedule A item (3) takes the credit points into account against the tax computed under ss 121 and 121B, and the text does not say whether the s 121B additional tax is reduced by them; the two readings give different tax here"
+
+@ref Regulations 5753-1993, Schedule A items (2)-(3) (source lines 176-180); fork F1
+GIVEN `the salary`              IS A NUMBER
+      `the payment's tax year`  IS A NUMBER
+      `the declarations`        IS AN `The employee's declarations`
+      `the figures`             IS AN `The annual figures for the tax year`
+      `the readings`            IS A `The readings of the withholding rules`
+GIVETH A NUMBER
+`the monthly tax on` `the salary` `in` `the payment's tax year` `for` `the declarations` `with` `the figures` `reading` `the readings` MEANS
+    CONSIDER `the readings`'s `the set-off`
+    WHEN `against the whole of the tax computed under sections 121 and 121B` THEN `against the whole`
+    WHEN `against the section 121 tax only, never below nil, the section 121B tax added after` THEN `against 121 only`
+    WHEN `declined where the object of the set-off changes the tax`
+      THEN IF   `against the whole` EQUALS `against 121 only`
+           THEN `against the whole`
+           ELSE `Schedule A item (3) does not say whether credit points reduce the section 121B additional tax, and here that changes the tax`
+    WHERE
+        `against the whole` MEANS `the monthly tax on` `the salary` `in` `the payment's tax year` `for` `the declarations` `with` `the figures` `reading` `the readings` `setting off against the whole:` TRUE
+        `against 121 only`  MEANS `the monthly tax on` `the salary` `in` `the payment's tax year` `for` `the declarations` `with` `the figures` `reading` `the readings` `setting off against the whole:` FALSE
+
+§§ `Fork F2 — when the salary is rounded`
+
+@ref Regulations 5753-1993, Schedule A item (5) (source line 186); fork F2; Meng's ruling of 2026-10-08 (SHRUG)
+GIVEN a IS A TYPE
+GIVETH AN a
+`Schedule A item (5) does not say whether the salary is rounded before item (1) multiplies it, and here that changes the tax` MEANS
+    REFUSE "Schedule A item (5) rounds a fraction of a shekel from the salary or from the tax and does not say whether the salary is rounded before it is multiplied by 12; the two readings give different tax here"
+
+-- The tax Schedule A items (1) to (5) give for a month's salary.
+@ref Regulations 5753-1993, Schedule A items (1)-(5) (source lines 171-186); forks F1, F2
+GIVEN `the salary`              IS A NUMBER
+      `the payment's tax year`  IS A NUMBER
+      `the declarations`        IS AN `The employee's declarations`
+      `the figures`             IS AN `The annual figures for the tax year`
+      `the readings`            IS A `The readings of the withholding rules`
+GIVETH A NUMBER
+`Schedule A — the tax on a month's salary of` `the salary` `in` `the payment's tax year` `for` `the declarations` `with` `the figures` `reading` `the readings` MEANS
+    CONSIDER `the readings`'s `the salary`
+    WHEN `the salary is rounded before it is multiplied by 12` THEN `rounded first`
+    WHEN `the salary is multiplied by 12 as it stands and only the tax is rounded` THEN `as it stands`
+    WHEN `declined where the order of rounding changes the tax`
+      THEN IF   `rounded first` EQUALS `as it stands`
+           THEN `rounded first`
+           ELSE `Schedule A item (5) does not say whether the salary is rounded before item (1) multiplies it, and here that changes the tax`
+    WHERE
+        `rounded first` MEANS `the monthly tax on` (`item (5) — rounded to the whole shekel` `the salary`) `in` `the payment's tax year` `for` `the declarations` `with` `the figures` `reading` `the readings`
+        `as it stands`  MEANS `the monthly tax on` `the salary` `in` `the payment's tax year` `for` `the declarations` `with` `the figures` `reading` `the readings`
