@@ -1,0 +1,234 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `pti-nouns`
+IMPORT `pti-part1-definitions`
+IMPORT `pti-part4-conditions`
+IMPORT `pti-part2-benefits`
+IMPORT `pti-part3-exclusions`
+IMPORT `pti-part5-claims`
+
+-- PTI Phuc An Sinh rules: ASSESSING A CLAIM. This module adds no rule of its own; it puts
+-- the Parts together in the order the Rules imply, and says where each step comes from.
+--
+--   1. Part 5 clause 1: a claim filed late is refused in full (save for force majeure).
+--   2. For each item, in the order the claim lists them:
+--      a. Part 2 (with Part 4 clause 1 and definition 9): is it within the cover at all?
+--      b. Part 3: does an exclusion apply?
+--      c. Part 4 clause 5 and benefit 4(b): does a waiting period bar it?
+--      d. Part 2 and definitions 12, 13, 34, 35, 51: the amount, after any co-payment, within
+--         each limit that applies, less what has already been counted against that limit;
+--         during a waiting period after a continuous renewal at a higher option, within last
+--         year's limit (Part 4 clause 3);
+--      e. Part 4 clause 6: other insurance for the same medical expenses.
+--   3. What an item is paid is counted against its limits before the next item is assessed.
+
+§ `Assessing a claim`
+
+§§ `Waiting periods`
+-- src:43 | 8. Thời gian chờ
+-- src:44 | Là khoảng thời gian được tính kể từ ngày đầu tiên của thời hạn bảo hiểm, trong thời gian đó Người được bảo hiểm không được
+-- src:45 | thanh toán cho một quyền lợi bảo hiểm cụ thể theo quy định trong Hợp đồng bảo hiểm. Thời gian chờ áp dụng cho một quyền
+-- src:46 | lợi nào thì phải được thể hiện trong Hợp đồng bảo hiểm tương ứng với quyền lợi đó. Thời gian chờ cũng áp dụng cho các quyền
+-- src:47 | lợi mở rộng.
+-- src:590 | 5. Thời gian chờ
+-- src:591 | Tính từ ngày bắt đầu bảo hiểm, Quyền lợi được bảo hiểm sẽ không được chi trả trong các trường hợp dưới đây, nếu không có
+-- src:592 | qui định khác ghi trên Hợp đồng bảo hiểm:
+-- src:593 | • 30 ngày trong trường hợp ốm bệnh (bao gồm cả điều trị nội trú, điều trị ngoại trú, điều trị răng và tử vong do ốm đau,
+-- src:594 | bệnh tật);
+-- src:595 | • Các hợp đồng tái tục liên tục mặc nhiên có hiệu lực ngay sau khi Bên tham gia bảo hiểm đóng phí đầy đủ cho thời gian
+-- src:596 | tiếp theo.
+-- src:408 | b. Thời gian chờ:
+-- src:409 | • Chín mươi (90) ngày kể từ ngày bắt đầu bảo hiểm đối với trường hợp cắt bỏ buồng trứng, điều trị thai sản, sảy thai, phá thai
+-- src:410 | theo chỉ định của Bác sỹ;
+-- src:411 | • Ba trăm sáu mươi lăm (365) ngày kể từ ngày bắt đầu bảo hiểm đối với trường hợp sinh đẻ.
+-- src:552 | Đối với trường hợp chương trình tái tục tham gia với lựa chọn cao hơn chương trình năm liền trước thì phần quyền lợi cao hơn
+-- src:553 | sẽ vẫn phải áp dụng thời gian chờ.
+
+-- The length of the waiting period for the item: benefit 4(b) for maternity care; Part 4
+-- clause 5 for an illness; none for an accident or for newborn care (fork F28).
+GIVEN i IS AN `An item of a claim`
+GIVETH A MAYBE NUMBER
+`the waiting period, in days, for` i MEANS
+    BRANCH IF `the benefit of` i EQUALS `benefit 4: maternity care`
+              THEN `benefit 4(b): the waiting period, in days, for` ((`the line of` i)'s `the head of cost`)
+           IF `clause 5 treats as illness the event` (`the event of` i)
+              THEN JUST (`the waiting period for illness, in days, under` (`the schedule of` i))
+           OTHERWISE NOTHING
+
+-- A benefit that a continuous renewal added: all of it is "the part that is higher".
+GIVEN i IS AN `An item of a claim`
+GIVETH A BOOLEAN
+`the benefit was added at a continuous renewal, for` i MEANS
+    CONSIDER (`the policy of` i)'s `the schedule for the previous period`
+    WHEN NOTHING    THEN FALSE
+    WHEN JUST prev  THEN     (`the policy of` i)'s `renewed continuously`
+                         AND NOT ((`the benefit of` i) `was bought in` prev)
+
+-- The last day of the waiting period that bars the item, if one does. Measured from the
+-- start date of fork F3; for a benefit added at a continuous renewal, also from the first
+-- day of cover in the current period.
+GIVEN i IS AN `An item of a claim`
+GIVETH A MAYBE DATE
+`the last day of the waiting period that bars` i MEANS
+    CONSIDER `the waiting period, in days, for` i
+    WHEN NOTHING THEN NOTHING
+    WHEN JUST n  THEN
+        BRANCH IF `a waiting period of` n `days, counted from` start `, contains` d
+                  THEN JUST (`the last day of a waiting period of` n `days, counted from` start)
+               IF `the benefit was added at a continuous renewal, for` i AND `a waiting period of` n `days, counted from` current `, contains` d
+                  THEN JUST (`the last day of a waiting period of` n `days, counted from` current)
+               OTHERWISE NOTHING
+    WHERE
+        d MEANS (`the line of` i)'s `the date`
+        start MEANS `the start date for` i
+        current MEANS `the first day of cover in the current period of` (`the policy of` i)
+
+§§ `Limits`
+-- src:56 | 12. Tổng giới hạn bồi thường (Giới hạn chính)
+-- src:57 | Là giới hạn trách nhiệm tối đa của PTI đối với Người được bảo hiểm trong suốt thời hạn bảo hiểm. Giới hạn này được qui định
+-- src:58 | trong Hợp đồng bảo hiểm.
+-- src:70 | 13. Giới hạn phụ
+-- src:71 | Là giới hạn trách nhiệm tối đa áp dụng cho mỗi quyền lợi bảo hiểm được qui định chi tiết trong Hợp đồng bảo hiểm. Tuy nhiên
+-- src:72 | tổng các giới hạn chi tiết không vượt quá số tiền bảo hiểm tối đa của mỗi chương trình.
+
+-- What has been counted against one limit so far.
+GIVEN l IS A `A limit`
+      counted IS A LIST OF `An amount counted against a limit`
+GIVETH A NUMBER
+`the amount counted against` l `in` counted MEANS
+    sum (map (GIVEN x YIELD x's `the amount`) (filter (GIVEN x YIELD x's `the limit` EQUALS l) counted))
+
+-- The same item, read against the previous period's schedule (Part 4 clause 3).
+GIVEN i IS AN `An item of a claim`
+      prev IS A `The schedule`
+GIVETH AN `An item of a claim`
+`the item` i `read against the schedule` prev MEANS
+    `An item of a claim` WITH
+        `the claim` IS `The claim` WITH
+            `the insured person`                    IS c's `the insured person`
+            `the policy`                            IS `The policy` WITH
+                `the schedule`                                       IS prev
+                `the schedule for the previous period`               IS NOTHING
+                `date of joining`                                    IS p's `date of joining`
+                `first day of the period, as the certificate states` IS p's `first day of the period, as the certificate states`
+                `last day of the period, as the certificate states`  IS p's `last day of the period, as the certificate states`
+                `date PTI received the premium in full`              IS p's `date PTI received the premium in full`
+                `renewed continuously`                               IS p's `renewed continuously`
+                `the annual premium`                                 IS p's `the annual premium`
+            `the event`                             IS c's `the event`
+            `the items`                             IS c's `the items`
+            `the filing`                            IS c's `the filing`
+            `other insurance`                       IS c's `other insurance`
+            `already counted earlier in the period` IS c's `already counted earlier in the period`
+        `the item` IS i's `the item`
+    WHERE
+        c MEANS i's `the claim`
+        p MEANS c's `the policy`
+
+-- The size of a limit for this item. During the waiting period counted from the first day of
+-- the current period, a continuous renewal at a higher option pays within last year's size.
+GIVEN l IS A `A limit that applies`
+      i IS AN `An item of a claim`
+GIVETH A NUMBER
+`the size of` l `for` i MEANS
+    CONSIDER `the waiting period, in days, for` i
+    WHEN NOTHING THEN l's `its size`
+    WHEN JUST n  THEN
+        CONSIDER (`the policy of` i)'s `the schedule for the previous period`
+        WHEN NOTHING   THEN l's `its size`
+        WHEN JUST prev THEN
+            IF     (`the policy of` i)'s `renewed continuously`
+               AND `a waiting period of` n `days, counted from` current `, contains` ((`the line of` i)'s `the date`)
+            THEN min (l's `its size`) (`last year's size` prev)
+            ELSE l's `its size`
+    WHERE
+        current MEANS `the first day of cover in the current period of` (`the policy of` i)
+        `last year's size` prev MEANS
+            sum (map (GIVEN x YIELD x's `its size`)
+                     (filter (GIVEN x YIELD x's `the limit` EQUALS l's `the limit`)
+                             (`Part 2: the limits that apply to` (`the item` i `read against the schedule` prev))))
+
+§§ `The amount payable for an item`
+-- src:597 | 6. Đồng bảo hiểm/các Đơn bảo hiểm giống nhau
+-- src:598 | Trong trường hợp chi phí y tế liên quan tới cùng thương tật, bệnh tật được bảo hiểm theo Quy tắc này có thể đòi bồi thường từ
+-- src:599 | những loại hình bảo hiểm khác, PTI chỉ thanh toán khoản tiền vượt quá mức được bồi thường theo các Quy tắc bảo hiểm khác
+-- src:600 | đó hoặc theo tỷ lệ giữa số tiền bảo hiểm của Quy tắc bảo hiểm này với tổng giới hạn trách nhiệm của tất cả Quy tắc bảo hiểm.
+
+GIVEN i IS AN `An item of a claim`
+      counted IS A LIST OF `An amount counted against a limit`
+GIVETH A NUMBER
+`the amount payable for` i `, given what was counted before:` counted MEANS
+    CONSIDER i's `the claim`'s `other insurance`
+    WHEN NOTHING THEN `within the limits`
+    WHEN JUST o  THEN
+        IF   i `is a cost, not a fixed sum`
+        THEN `clause 6: PTI pays, of` `within the limits` `on a cost of` base `with a limit of` `the first limit` `, given` o
+        ELSE `within the limits`
+    WHERE
+        base MEANS `Part 2: the amount before limits for` i
+        limits MEANS `Part 2: the limits that apply to` i
+        `room under` l MEANS max 0 (`the size of` l `for` i MINUS `the amount counted against` (l's `the limit`) `in` counted)
+        `within the limits` MEANS minimum (base FOLLOWED BY map (GIVEN l YIELD `room under` l) limits)
+        `the first limit` MEANS
+            CONSIDER limits
+            WHEN l FOLLOWED BY rest THEN `the size of` l `for` i
+            WHEN EMPTY THEN base
+
+§§ `The outcome for an item, and for a claim`
+
+GIVEN i IS AN `An item of a claim`
+      counted IS A LIST OF `An amount counted against a limit`
+GIVETH A `The outcome for an item`
+`the outcome for` i `, given what was counted before:` counted MEANS
+    CONSIDER `Part 2: why this item is not covered, if it is not:` i
+    WHEN JUST r  THEN `not covered` r
+    WHEN NOTHING THEN
+        IF   NOT null (`the exclusions of Part 3 that apply to` i)
+        THEN `excluded` (`the exclusions of Part 3 that apply to` i)
+        ELSE CONSIDER `the last day of the waiting period that bars` i
+             WHEN JUST d  THEN `in a waiting period` d
+             WHEN NOTHING THEN `payable` (`the amount payable for` i `, given what was counted before:` counted)
+
+GIVEN o IS A `The outcome for an item`
+      i IS AN `An item of a claim`
+GIVETH A LIST OF `An amount counted against a limit`
+`what` o `counts against the limits of` i MEANS
+    CONSIDER o
+    WHEN `payable` a THEN
+        map (GIVEN l YIELD `An amount counted against a limit` WITH `the limit` IS l's `the limit`, `the amount` IS a)
+            (`Part 2: the limits that apply to` i)
+    OTHERWISE EMPTY
+
+GIVEN items IS A LIST OF `An item of a claim`
+      counted IS A LIST OF `An amount counted against a limit`
+GIVETH A LIST OF `The outcome for an item`
+`the outcomes for` items `, given what was counted before:` counted MEANS
+    CONSIDER items
+    WHEN EMPTY THEN EMPTY
+    WHEN i FOLLOWED BY rest THEN
+        LET o MEANS `the outcome for` i `, given what was counted before:` counted
+        IN  o FOLLOWED BY `the outcomes for` rest `, given what was counted before:` (append (`what` o `counts against the limits of` i) counted)
+
+GIVEN o IS A `The outcome for an item`
+GIVETH A NUMBER
+`the amount paid on` o MEANS
+    CONSIDER o
+    WHEN `payable` a THEN a
+    OTHERWISE 0
+
+GIVEN c IS A `The claim`
+GIVETH A `The outcome for a claim`
+`the outcome for the claim` c MEANS
+    IF   `clause 1 refuses in full, for lateness,` c
+    THEN `refused in full, the claim being filed late`
+    ELSE `assessed` outcomes (sum (map (GIVEN o YIELD `the amount paid on` o) outcomes))
+    WHERE
+        outcomes MEANS `the outcomes for` (`the items of` c) `, given what was counted before:` (c's `already counted earlier in the period`)
+
+GIVEN c IS A `The claim`
+GIVETH A NUMBER
+`the total payable on the claim` c MEANS
+    CONSIDER `the outcome for the claim` c
+    WHEN `assessed` os t THEN t
+    WHEN `refused in full, the claim being filed late` THEN 0

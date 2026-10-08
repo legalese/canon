@@ -115,3 +115,59 @@ Measured, not assumed: s 382 is now "10 years, and shall also be liable to canin
 ## P-21 (design) — the robbery recitals follow the reference row
 
 The reference row pins "did rob one X of Y" to a reported charge (Chen Weixiong Jerriek v PP [2003] SGHC 103), with no words for the night limb; that text is asserted byte for byte here. The s 394 recital follows the reference row's shape ("were jointly concerned in committing robbery of ... and whilst committing the said robbery, voluntarily caused hurt to ..."), with "attempting to commit" substituted when the robbery was only attempted. Neither of these two s 394 wordings is pinned to a reported charge.
+
+## P-22 — s 405's last limb: whose dishonesty "to do so" needs
+
+"or intentionally suffers any other person to do so".
+**Readings.** (a) "Do so" takes up everything before it, "dishonestly" included: the other person must dishonestly misappropriate or convert the property, or dishonestly use or dispose of it in violation of the direction of law or the contract; the accused's own fault element is "intentionally".
+(b) The dishonesty must be the accused's, and the other person may act in good faith, as an innocent agent.
+**Taken:** (a), on the plain words.
+This is an open question, and a reviewer should rule on it.
+**Why:** "do so" has no other antecedent, and "intentionally" is the only fault word the limb gives the accused.
+The reference row's single leaf read "so" the same way: its `@desc` said that answering TRUE asserts the other person's dishonesty.
+**Consequence, pinned by tests:** an honest trustee who intentionally suffers a dishonest person to misuse the property commits criminal breach of trust (`a trustee suffers another`); a dishonest trustee who suffers a person acting in good faith does not, on this limb (`a dishonest trustee suffers another, who acts in good faith`).
+Under (b) both answers flip.
+Switching means reading the accused's `dishonestly` in place of `the other person acts dishonestly`, in the ladder and in `the suffer limb is made out`; done by mutation on a scratch copy, that fails 5 assertions.
+**A second, smaller reading, same limb.** The violation clause speaks of "any legal contract ... which he has made touching the discharge of such trust".
+**Taken:** "he" is the person entrusted, because "such trust" is his; the leaf says "which the accused has made".
+The other reading (a contract the other person made) would need a contract touching the discharge of a trust that is not the other person's.
+
+## P-23 (design) — a charge names the alternative that a merged leaf folds
+
+A leaf that folds alternatives the charge must choose between comes with a particular naming the one chosen, unless leaves already distinguish them, in which case the recital is computed from the leaves.
+Found in a review of charge texts on 2026-09-29.
+s 405's last limb recited "did intentionally suffer another person so to do", with nothing for "so" to refer to.
+s 409(1)(b) recited "in the way of your business as a banker, merchant, factor, broker, attorney or agent" for an attorney, which calls a profession a business and names no role.
+s 409(1)(g) recited "as a key executive" of nothing, and s 419 recited "cheat by personation" with no mode.
+**What was done.**
+- s 405's last limb is now leaves: `intentionally suffers any other person`, then the other person's dishonesty, four acts and two violations.
+  The recital is computed from them ("did intentionally suffer one Lim Bee Choo dishonestly to use the said sum in violation of a legal contract ..."), so it cannot disagree with the ladder.
+  The only new STRING is the other person's name, with a `Pronoun` for "his own use".
+  This departs from the reference row, which kept one leaf, recited the anaphor, and said that naming the act would need new fields tested by the ladder; this is that change.
+- s 409(1)(b) and (g) keep one BOOLEAN each and gain STRING particulars, recited verbatim: `the trade, profession or business` and `the role as banker, merchant, factor, broker, attorney or agent` for (b), and `the body of which he is a key executive` for (g).
+  The reference row split (b) into three and six BOOLEAN leaves and (g) into three; that is the alternative.
+  It gives the same verdict, because which alternative applies never decides whether the offence is made out.
+- s 416's three modes were already three leaves, so the s 419 recital names the mode from them, with no new field.
+
+**A blank particular.** The charge is still framed, and the recital falls back to the Code's own alternatives: "trade, profession or business", "a banker, a merchant, a factor, a broker, an attorney or an agent", "a corporation, an unincorporated association or a partnership", "another person".
+**Why not refuse:** PLAN §3.4 says STRING particulars are recited, not tested, and the charge generator completes an unanswered STRING as blank.
+`frame the charge` words every refusal as the facts not fulfilling "every legal condition", which would be false when only a particular is missing.
+The fallback is true of every case the leaf admits, but it is a charge in the alternative, which a practitioner would particularise.
+Refusing instead would first need a refusal form in `pc-general` for "a particular not given".
+**Not done.** s 416's third mode recites the Code's pair "you or any other person", and none of the three modes names the person personated.
+The pair is not an alternative the charge can drop, but a real charge would say who was personated.
+s 409(1)(d)-(f) name the kind of body and not which body; no alternative is folded there, so no particular was added.
+**Consequence for the catalogue and saved state:** `CBT Facts` loses `intentionally suffers any other person to do so` and gains thirteen fields.
+Anything that stored an investigator's answers by leaf name must be migrated.
+
+## P-24 — s 415 Explanation 1: "dishonest" in its ordinary sense, not s 24's
+
+"A dishonest concealment of facts is a deception within the meaning of this section."
+**Readings.** (a) "Dishonest" has s 24's meaning, so a concealment must aim at wrongful gain or loss of property.
+(b) It has its ordinary meaning.
+**Taken:** (b), as the Court of Appeal held in *Poh Yuan Nie v Public Prosecutor* [2022] SGCA 74 at [15] (the answer to the question referred, [50]).
+The court construed the 2008 text, whose Explanation 1 it quotes at [5] in the same words as the current one.
+**Why no logic changed:** the second limb reads `intentionally`, not `dishonestly`; the `dishonestly` leaf is read only by the first limb and by `offence under s 420(1)` and `offence under s 420(2)`.
+The risk was in the words the investigator reads, so the court's gloss now rides in the `deceived the victim` `@desc`.
+The court's example at [28], a forged degree used to get an unpaid internship, is a test (`Poh Yuan Nie [28], the forged degree`): `cheats` and `offence under s 417` hold, and `offence under s 420(1)` does not.
+Importing s 24 into the second limb, done by mutation on a scratch copy, fails it.

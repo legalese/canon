@@ -1,0 +1,203 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `ktv-nouns`
+IMPORT `ktv-annex1-definitions`
+IMPORT `ktv-part1-benefits`
+IMPORT `ktv-part3-premiums-and-account`
+IMPORT `ktv-part3-exclusions-and-termination`
+IMPORT `ktv-part4-claims`
+IMPORT `ktv-part5-general`
+IMPORT `ktv-assessment`
+
+-- The hostile reading: each assertion below states the SURPRISING answer the document gives, as
+-- encoded, and passes. NOTES.md section 4 (Findings) cites them by number. A finding that the
+-- encoding cannot demonstrate is marked "reading only" there and has no test here.
+
+§ `Tests — evidence for the findings`
+
+§§ `Fixtures`
+
+`the insured` MEANS `Insured person` WITH
+    `date of birth`                                       IS YMD 1980 6 10
+    `sex`                                                 IS `male`
+    `living in Vietnam when the application was submitted` IS TRUE
+    `one in whom the policyowner has an insurable interest` IS TRUE
+    `accepted for insurance by the Company`               IS TRUE
+
+`the policyowner` MEANS Policyowner WITH
+    `kind`                                            IS `an individual`
+    `age in completed years`                          IS 42
+    `full civil legal capacity`                       IS TRUE
+    `lawfully established and operating in Vietnam`   IS FALSE
+    `alive`                                           IS TRUE
+
+GIVEN `accepted on` IS A DATE
+GIVETH A Policy
+`a policy effective 15 March 2022, accepted on` `accepted on` MEANS Policy WITH
+    `effective date`                           IS YMD 2022 3 15
+    `date the Company accepted the insurance`  IS `accepted on`
+    `date of the latest reinstatement`         IS NOTHING
+    `premium frequency`                        IS `yearly`
+    `the insured`                              IS `the insured`
+    `the policyowner`                          IS `the policyowner`
+
+`one million` MEANS 1000000
+
+GIVEN `basic` IS A NUMBER
+      `debts` IS A NUMBER
+GIVETH AN `Account snapshot`
+`an account of 1 billion, basic` `basic` `, debts` `debts` MEANS `Account snapshot` WITH
+    `sum insured`                IS 1000 TIMES `one million`
+    `basic account value`        IS `basic`
+    `top-up account value`       IS 50 TIMES `one million`
+    `debts`                      IS `debts`
+    `annualised basic premium`   IS 20 TIMES `one million`
+
+GIVEN `alcohol`  IS A BOOLEAN
+      `injury`   IS A BOOLEAN
+      `racing`   IS A BOOLEAN
+GIVETH A `Circumstances of the insured event`
+`circumstances: alcohol` `alcohol` `, self-injury` `injury` `, racing` `racing` MEANS `Circumstances of the insured event` WITH
+    `suicide by the insured`                                                IS FALSE
+    `acts of insurance fraud`                                               IS EMPTY
+    `a breach of the law on alcohol concentration`                          IS `alcohol`
+    `use of narcotics without a doctor's prescription`                      IS FALSE
+    `use of medicine without a doctor's prescription`                       IS FALSE
+    `fighting or resisting arrest by a competent authority`                 IS FALSE
+    `self-inflicted injury`                                                 IS `injury`
+    `a sport or recreational activity`                                      IS (IF `racing` THEN JUST `vehicle racing` ELSE NOTHING)
+    `air travel`                                                            IS FALSE
+    `as passenger or crew on a licensed, regularly scheduled commercial flight` IS FALSE
+
+GIVEN `the payments`       IS A LIST OF `Payment already made`
+      `the circumstances`  IS A `Circumstances of the insured event`
+GIVETH A `Claim context`
+`a context after` `the payments` `, given` `the circumstances` MEANS `Claim context` WITH
+    `the policy`                         IS `a policy effective 15 March 2022, accepted on` (YMD 2022 3 20)
+    `the account at the event`           IS `an account of 1 billion, basic` (200 TIMES `one million`) `, debts` 0
+    `benefits already paid`              IS `the payments`
+    `in force on the date of the event`  IS TRUE
+    `the circumstances`                  IS `the circumstances`
+
+`nothing unusual` MEANS `circumstances: alcohol` FALSE `, self-injury` FALSE `, racing` FALSE
+
+GIVEN `the benefit` IS A Benefit
+GIVETH A `Payment already made`
+`300 million paid for` `the benefit` MEANS `Payment already made` WITH `the benefit` IS `the benefit`, `the amount` IS 300 TIMES `one million`
+
+`three early-stage payments` MEANS LIST (`300 million paid for` (`the cancer benefit for` `early-stage cancer`)),
+                                        (`300 million paid for` (`the cancer benefit for` `carcinoma in situ`)),
+                                        (`300 million paid for` (`the early-stage critical illness benefit for` `corneal transplant`))
+
+`a diagnosis of minor burns in 2025` MEANS `Diagnosis of an early-stage critical illness` WITH
+    `date of diagnosis`                                   IS YMD 2025 6 1
+    `arising for the first time for the insured`          IS TRUE
+    `diagnosed or treated at a Hospital`                  IS TRUE
+    `in line with usual standards of medical practice`    IS TRUE
+    `the early-stage findings`                            IS `findings on minor burns` (`Findings: minor burns` WITH `third-degree burns caused by an accident` IS TRUE, `percent of the body surface burnt` IS 12, `percent of the face burnt` IS 0)
+
+§§ `X2 — the early-stage advances can pass 100% of the sum insured`
+
+-- Three early-stage payments of 300 million (900 million) leave the contract in force; the
+-- fourth is paid in full, so 1.2 billion is advanced on a 1 billion sum insured before Article
+-- 24(a)(iii) ends the contract.
+#ASSERT `the early-stage critical illness benefit on` `a diagnosis of minor burns in 2025` `in` (`a context after` `three early-stage payments` `, given` `nothing unusual`) EQUALS `payable` (300 TIMES `one million`)
+#ASSERT `the early-stage benefits already paid in` ((`300 million paid for` (`the early-stage critical illness benefit for` `minor burns`)) FOLLOWED BY `three early-stage payments`) EQUALS 1200 TIMES `one million`
+
+§§ `X3 — the main benefit formula has no floor`
+
+-- Sum insured 1 billion, basic 50 million, top-up 50 million, 900 million advanced, debts 250
+-- million: 1 000 + 50 - 900 - 250 = -100 million. The document does not say what is paid.
+#ASSERT REFUSED `Article 6(a) — the TPD or death benefit on` (`an account of 1 billion, basic` (50 TIMES `one million`) `, debts` (250 TIMES `one million`)) `after` `three early-stage payments` BECAUSE "the main benefit formula gives less than nothing, and the document does not say what is paid"
+
+§§ `X4 — the waiting period runs from acceptance, not from the effective date`
+
+-- Effective (premium paid) 15 March 2022; accepted after underwriting on 15 May 2022. A cancer
+-- diagnosed on 10 August 2022, 148 days after the effective date, is still excluded: it is 87
+-- days after acceptance.
+#ASSERT `Article 23(c)(i) — under` (`a policy effective 15 March 2022, accepted on` (YMD 2022 5 15)) `, a diagnosis on` (YMD 2022 8 10) `is within the waiting period`
+#ASSERT Day (YMD 2022 8 10) MINUS Day (YMD 2022 3 15) EQUALS 148
+
+§§ `X5 — benefits "maintained" in the grace period, then lapsed back to the due date`
+
+`a basic premium due 15 March 2023, never paid` MEANS `Unpaid premium` WITH
+    `contract year`                                 IS 2
+    `due date`                                      IS YMD 2023 3 15
+    `date the contract account value became zero`   IS NOTHING
+    `the amount required was paid in full by the end of the grace period` IS FALSE
+
+-- On 1 April 2023, inside the grace period, Article 21(b) says the benefits are maintained, and
+-- Article 21(c) says the contract had lapsed from 15 March.
+#ASSERT `Article 21(b) — on` (YMD 2023 4 1) `the benefits are maintained in the grace period for` `a basic premium due 15 March 2023, never paid`
+#ASSERT NOT `Article 21 — on` (YMD 2023 4 1) `the contract is in force, given` `a basic premium due 15 March 2023, never paid`
+
+§§ `X6 — from contract year 5 the lapse dates from a due date the grace period does not start from`
+
+`an account that ran dry on 1 June 2027` MEANS `Unpaid premium` WITH
+    `contract year`                                 IS 6
+    `due date`                                      IS YMD 2027 3 15
+    `date the contract account value became zero`   IS JUST (YMD 2027 6 1)
+    `the amount required was paid in full by the end of the grace period` IS FALSE
+
+#ASSERT `Article 21(a) — the day the grace period starts for` `an account that ran dry on 1 June 2027` EQUALS YMD 2027 6 1
+#ASSERT `Article 21(c) — the date from which the contract has lapsed, for` `an account that ran dry on 1 June 2027` EQUALS JUST (YMD 2027 3 15)
+
+§§ `X8 — no exclusion reaches the ICU benefit`
+
+-- An ICU stay after a drink-driving accident that the insured caused to himself: the TPD and
+-- the critical-illness benefits would be excluded, the ICU benefit is not.
+`an ICU stay after a drink-driving crash` MEANS `ICU stay` WITH
+    `start date`                                          IS YMD 2025 2 1
+    `consecutive days of treatment in the unit`           IS 7
+    `the direct cause`                                    IS `an Accident`
+    `the unit`                                            IS `Intensive care unit` WITH
+        `the hospital it belongs to` IS `Medical facility` WITH
+            `established and operating under the law of Vietnam or of the host country`  IS TRUE
+            `licensed as a hospital under the rules of Vietnam or of the host country`    IS TRUE
+            `in Vietnam`                                                                  IS TRUE
+            `its official seal shows the word for hospital`                               IS TRUE
+            `its status is shown in the local language by a word understood as hospital`  IS TRUE
+            `established for convalescence, nursing, elderly care, or alcohol or drug rehabilitation, or a similar purpose` IS FALSE
+            `at provincial level or higher, or equivalent`                                IS TRUE
+        `established for special care and treatment`                       IS TRUE
+        `reserved for critically ill patients needing a Doctor's continuous monitoring` IS TRUE
+        `equipped to save patients' lives quickly`                         IS TRUE
+        `a post-operative recovery room or an emergency room`              IS FALSE
+    `ICU benefits already paid to the insured under the insured's other contracts` IS 0
+
+#ASSERT `the ICU benefit on` `an ICU stay after a drink-driving crash` `in` (`a context after` EMPTY `, given` (`circumstances: alcohol` TRUE `, self-injury` TRUE `, racing` FALSE)) EQUALS `payable` (300 TIMES `one million`)
+#ASSERT `Article 23(b) — the TPD benefit is excluded, given` (`circumstances: alcohol` TRUE `, self-injury` TRUE `, racing` FALSE)
+
+§§ `X14 — one predeceased beneficiary sends the whole death benefit to the policyowner`
+
+#ASSERT `Article 28(b) — the payee of the death benefit, the policyowner being` `the policyowner` `and the beneficiaries` (LIST (Beneficiary WITH `designated share` IS 0.5, `took part in the insurance fraud` IS FALSE, `died before or at the same time as the insured` IS TRUE), (Beneficiary WITH `designated share` IS 0.5, `took part in the insurance fraud` IS FALSE, `died before or at the same time as the insured` IS FALSE)) EQUALS `the policyowner, as payee`
+
+§§ `X15 — a large first premium turns the temporary-cover benefit into a refund`
+
+#ASSERT `Article 29 — the outcome of` (`Temporary-cover claim` WITH `date the application was completed and the first premium paid in full` IS YMD 2022 3 1, `date the certificate was issued` IS NOTHING, `date the insurance was declined` IS NOTHING, `date the policyowner asked to cancel the application` IS NOTHING, `date of death` IS YMD 2022 3 5, `death caused by an Accident` IS TRUE, `death by suicide` IS FALSE, `total sum insured of all applications for the same insured` IS 5000 TIMES `one million`, `total first premium paid on all applications for the same insured` IS 101 TIMES `one million`, `costs of the medical examination` IS NOTHING) EQUALS `the first premium is refunded, without interest` (101 TIMES `one million`)
+
+§§ `X18 — a twelve-month time-bar against definitions that take twelve months or more to meet`
+
+-- Kawasaki disease (Annex 7(40)) needs an echocardiogram no sooner than 12 months after onset;
+-- loss of speech (Annex 7(33)) 12 continuous months. Counted from onset, Article 25's last day
+-- is the very day the definition can first be met.
+#ASSERT `Article 25 — the last day to claim for an event on` (YMD 2024 1 10) EQUALS YMD 2025 1 10
+#ASSERT NOT `Article 25 — a claim for an event on` (YMD 2024 1 10) `submitted on` (YMD 2025 1 11) `is in time`
+
+§§ `X21 — the same racing crash: TPD excluded, death paid`
+
+#ASSERT `Article 23(b) — the TPD benefit is excluded, given` (`circumstances: alcohol` FALSE `, self-injury` FALSE `, racing` TRUE)
+#ASSERT `Article 23(a) — under` (`a policy effective 15 March 2022, accepted on` (YMD 2022 3 20)) `, the outcome of a death on` (YMD 2030 1 1) `, given` (`circumstances: alcohol` FALSE `, self-injury` FALSE `, racing` TRUE) EQUALS `the death benefit is paid`
+
+§§ `X24 — a basic-account withdrawal in years 2-4 removes the no-lapse guarantee, and no grace period replaces it`
+
+#ASSERT NOT `Article 9 — the no-lapse guarantee applies in contract year` 3 `on` (`Premium record` WITH `the contract has ever lapsed` IS FALSE, `annual basic premium paid in full before each policy anniversary so far` IS TRUE, `lowest sum insured during the term so far` IS 1000 TIMES `one million`, `basic premiums of the first 4 contract years paid in full` IS TRUE, `a withdrawal has ever been made from the basic account` IS TRUE)
+-- In contract year 3 Article 21's grace period runs only from a premium due date; with every
+-- premium paid there is none, and the deduction the account cannot meet is simply left unpaid.
+#ASSERT `Article 21 — on` (YMD 2024 9 1) `the contract is in force, given` (`Unpaid premium` WITH `contract year` IS 3, `due date` IS YMD 2024 3 15, `date the contract account value became zero` IS JUST (YMD 2024 8 15), `the amount required was paid in full by the end of the grace period` IS TRUE)
+
+§§ `X29 — the 100% termination refund ignores debts, the surrender value deducts them`
+
+#ASSERT `Article 24(a)(iii) — the refund when the early-stage benefits reach 100%, on` (`an account of 1 billion, basic` (200 TIMES `one million`) `, debts` (10 TIMES `one million`)) EQUALS 50 TIMES `one million`
+#ASSERT `Article 24(c) — the value paid on early termination at the customer's request, on` (`an account of 1 billion, basic` (200 TIMES `one million`) `, debts` (10 TIMES `one million`)) EQUALS 240 TIMES `one million`

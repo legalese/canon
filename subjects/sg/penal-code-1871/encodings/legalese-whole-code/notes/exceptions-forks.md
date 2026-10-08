@@ -119,6 +119,36 @@ The Illustration's father "has his child cut for the stone by a surgeon": the ac
 
 notes/PLAN.md §2 says "the single input is always `GIVEN f IS A ...`"; §5 writes the exception ladders as `` `exception under s N` e ``. `f` was used throughout, because the charge generator's catalogue records `factsParam: 'f'`. Reported as a PLAN inconsistency.
 
+## E-17 - Which conditions of Chapter 4A make the right ARISE, and which make an act EXCEED it
+
+Added 2026-09-30 (WONTON), when s 300 Exception 2 was wired to this module.
+
+**Text.** s 300 Exception 2: "if the offender, in the exercise of the right of private defence of person or property, exceeds the power given to him by law".
+s 96 needs only "done in the exercise of the right"; Exception 2 needs a right that was being exercised and an act that went beyond it.
+So the one boolean `exception under s 96` has to become three outcomes: no right, a right exceeded, a valid exercise.
+
+**Taken.**
+The right ARISES (`the right of private defence of the body arose`, `... of property arose`) on: the kind of act defended against (s 97, with s 99), the start of the right (ss 101(1), 104(1)), s 98(2) (recourse to a public authority), and s 106A.
+It EXTENDS to the act (unchanged in meaning: `... extends to the act`, and so `exception under s 96`) when it arose AND it still continued (ss 101(2), 104(2)-(5)) AND the harm was within its extent (ss 100, 102, 103, 105, 106) AND within s 98(1).
+It WAS EXCEEDED (`the right of private defence was exceeded`) when the act was done in defence, the right arose, and it did not extend to the act.
+s 98(1) and the extent sections are the Code's own "does not extend to", which is what exceeding a power is; ss 98(2) and 106A are the Code's own "there is no right".
+
+**Two placements are readings, not text, and want a ruling.**
+(1) Continuance on the EXCEEDED side.
+A defender who strikes after the belief of danger has ended (s 101(2)), or after a thief's property is recovered (s 104(2)(c)), is here exceeding a right that arose, so Exception 2 can reach him.
+The other reading: once the right has ceased there is no right to exercise, so Exception 2 cannot apply and the killing is murder.
+The Code says only that the right "continues as long as" / "continues till"; it does not say which.
+Woon, *Essential Criminal Law* paras 10.9-10.9.1, files these cases as exceeding, in the third stage of its private-defence flowchart (as we read that stage, whose drawing is ambiguous).
+(2) s 98(2) on the ARISE side, as one leaf.
+The leaf cannot tell recourse available at the outset from recourse that became available during the struggle (s 98 illus (b): the police arrive midway).
+Woon's flowchart files the second as exceeding too; here both are "no right".
+Splitting the leaf in two would let the encoding take that reading; it would add a field to every `Private Defence Facts` record, and is not done.
+
+**Polarity (E-1).** `the right of private defence was exceeded` puts NOT over the two `extends to the act` ladders, never over a leaf.
+An unknown continuance, extent or s 98(1) leaf is filled FALSE, which withholds s 96 and can make "exceeded" TRUE; it cannot make the right ARISE, because every `arose` leaf faces the defender's way.
+Exception 2 still needs its own leaves (the death of the person defended against, no premeditation, no intention of more harm than necessary), so a FALSE-filled record cannot reach Exception 2 without the defender establishing that the right arose.
+The all-FALSE assertions cover the six new ladders.
+
 ## Where I looked and found nothing to fork
 
 - ss 76, 77, 82, 83, 93, 95: each is one condition or a plain conjunction; the ladders read straight off the text.

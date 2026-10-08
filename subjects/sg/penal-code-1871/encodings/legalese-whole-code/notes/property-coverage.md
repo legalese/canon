@@ -9,7 +9,7 @@ Modules (all in `deposit/`):
 | `pc-property-trust.l4` | ss 403-414 | `Misappropriation Facts`, `CBT Facts`, `Stolen Property Facts` |
 | `pc-property-cheating.l4` | ss 415-424B | `Cheating Facts`, `Personal Information Facts`, `Services Facts`, `Fraudulent Disposition Facts`, `Fraud by False Representation Facts` |
 | `pc-property-mischief.l4` | ss 425-462 | `Mischief Facts`, `Criminal Trespass Facts`, `Found Armed Facts`, `Receptacle Facts` |
-| `pc-property-tests.l4` | tests for all four | 98 fixtures, 195 assertions |
+| `pc-property-tests.l4` | tests for all four | 109 fixtures, 218 assertions |
 
 The section text quoted above each rule is copied from the source by a script, not retyped.
 The same script writes every `punishment prescribed by s N` record from one table.
@@ -22,10 +22,12 @@ The same script writes every `punishment prescribed by s N` record from one tabl
 | `pc-property-trust.l4` | 0 | 0 | 0 | 0 |
 | `pc-property-cheating.l4` | 0 | 0 | 0 | 0 |
 | `pc-property-mischief.l4` | 0 | 0 | 0 | 0 |
-| `pc-property-tests.l4` | 0 | 0 | 195 | 0 |
+| `pc-property-tests.l4` | 0 | 0 | 218 | 0 |
 
-The tests file carries 195 `#ASSERT` lines, and 195 are satisfied.
+The tests file carries 218 `#ASSERT` lines, and 218 are satisfied (195 before the 2026-09-30 fixes to ss 405, 409, 415 and 419; forks P-22 to P-24).
 Positive control: two deliberately false assertions appended to a copy of the tests (`commits theft` on illustration (i); `offence under s 420(1)` on the fraudulently-only fixture) both came back `assertion failed`, so the harness can fail.
+Positive control for the 23 assertions added on 2026-09-30: seven mutations, each on a scratch copy of the modules, each failed exactly the assertions it targets and nothing else.
+They were: dropping the other person's dishonesty from s 405's ladder (4 failed), reading the accused's dishonesty in its place (5), restoring the old s 405 recital (2), restoring the old s 409(1)(b) recital (2), restoring the old s 409(1)(g) recital (2), dropping the mode from the s 419 recital (3), and importing s 24 dishonesty into s 415's second limb (4, among them the Poh Yuan Nie test).
 There are no expected failures.
 
 Dispositions: `encoded` (a ladder and, for a punishing section, `offence under s N` + `charge under s N` + `punishment prescribed by s N`, all `@export`ed with `@desc`), `encoded (definition)` (a defining section: its predicate is exported; there is no charge under it, because a charge is laid under the punishing section), `repealed`, `none` (no such section).
@@ -88,13 +90,14 @@ Explanation 2's illustrations (b)-(f) are further instances of the all-TRUE patt
 
 | s | heading | disposition | functions | illustrations tested |
 | --- | --- | --- | --- | --- |
-| 405 | Criminal breach of trust | encoded (definition) | `commits criminal breach of trust` | (a), (b), (c), (d), (e), (f) |
-| 406 | Punishment of criminal breach of trust | encoded | `offence under s 406`, `charge under s 406`, `punishment prescribed by s 406` | charge text; refusal on (d) |
+| 405 | Criminal breach of trust | encoded (definition) | `commits criminal breach of trust` | (a), (b), (c), (d), (e), (f); the last limb, suffering a dishonest person, and its converses: a person in good faith, the same with a dishonest accused, a use breaking no direction or contract (fork P-22) |
+| 406 | Punishment of criminal breach of trust | encoded | `offence under s 406`, `charge under s 406`, `punishment prescribed by s 406` | charge text; refusal on (d); last-limb charge text, the other person unnamed |
 | 407 | Criminal breach of trust of property entrusted for purposes of transportation or storage | encoded | `offence under s 407`, `charge under s 407`, `punishment prescribed by s 407` | the Illustration; s 405 illus (b), (f) |
 | 408 | Criminal breach of trust by employees | encoded | `offence under s 408`, `charge under s 408`, `punishment prescribed by s 408` | — |
-| 409 | Criminal breach of trust by public servant, or by banker, merchant, agent, director, officer, partner, key executive or fiduciary | encoded | `entrusted in a capacity within section 409(1)`, `offence under s 409`, `charge under s 409`, `punishment prescribed by s 409` | s 405 illus (a) (executor = fiduciary), (c) (agent), (e) (public servant) |
+| 409 | Criminal breach of trust by public servant, or by banker, merchant, agent, director, officer, partner, key executive or fiduciary | encoded | `entrusted in a capacity within section 409(1)`, `offence under s 409`, `charge under s 409`, `punishment prescribed by s 409` | s 405 illus (a) (executor = fiduciary), (c) (agent), (e) (public servant); charge texts: (b) with its particulars and without, (g) with the body named and without, the s 405 last limb (fork P-23) |
 
 s 408(2) and s 409(2)-(3) (who is an employee, director, officer, partner, key executive, fiduciary) ride in the `@desc` of the capacity leaves.
+s 409(1)(b) and (g) each fold alternatives the charge must choose between, so each has STRING particulars the charge recites; blank, the charge recites the Code's alternatives (fork P-23).
 
 ## Receiving stolen property (ss 410-414) — `Stolen Property Facts`
 
@@ -110,13 +113,13 @@ s 408(2) and s 409(2)-(3) (who is an employee, director, officer, partner, key e
 
 | s | heading | disposition | functions | illustrations tested |
 | --- | --- | --- | --- | --- |
-| 415 | Cheating | encoded (definition) | `cheats` | (a)-(f), (h), (i) as one pattern; (g); (k); the second limb |
+| 415 | Cheating | encoded (definition) | `cheats` | (a)-(f), (h), (i) as one pattern; (g); (k); the second limb; *Poh Yuan Nie* [2022] SGCA 74 at [28], a concealment with no property (fork P-24) |
 | 416 | Cheating by personation | encoded (definition) | `cheats by personation` | (a) |
 | 416A | Illegally obtained personal information | encoded | `offence under s 416A`, `charge under s 416A`, `punishment prescribed by s 416A` (`Personal Information Facts`) | (1)(b) with knowledge; (1)(a) with no offence in view |
 | 416B | Cheating by remote communication | encoded (definition) | `cheats by remote communication` | a scam call; a Minister-excluded system |
-| 417 | Punishment for cheating | encoded | `offence under s 417`, `charge under s 417`, `punishment prescribed by s 417` | — |
+| 417 | Punishment for cheating | encoded | `offence under s 417`, `charge under s 417`, `punishment prescribed by s 417` | *Poh Yuan Nie* [28]: offence and charge text |
 | 418 | Cheating with knowledge that wrongful loss may be thereby caused to a person whose interest the offender is bound to protect | encoded | `offence under s 418`, `charge under s 418`, `punishment prescribed by s 418` | — |
-| 419 | Punishment for cheating by personation | encoded | `offence under s 419`, `charge under s 419`, `punishment prescribed by s 419` | s 416 illus (a) |
+| 419 | Punishment for cheating by personation | encoded | `offence under s 419`, `charge under s 419`, `punishment prescribed by s 419` | s 416 illus (a); charge text naming each of the three modes (fork P-23) |
 | 420 | Cheating and dishonestly inducing a delivery of property | encoded | `offence under s 420(1)`, `offence under s 420(2)`, `charge under s 420(1)`, `charge under s 420(2)`, `punishment prescribed by s 420(1)`, `punishment prescribed by s 420(2)` | Lewis Christine charge text byte-for-byte (reference row) |
 | 420A | Obtaining services dishonestly or fraudulently | encoded | `offence under s 420A`, `charge under s 420A`, `punishment prescribed by s 420A` (`Services Facts`) | the Illustration (the flight) |
 

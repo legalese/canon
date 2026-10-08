@@ -111,6 +111,25 @@ A places armed men at the exits and tells Z they will fire. The obstruction is b
 
 The two limbs of s 305(2) ("minor" = below 18; "person who lacks capacity" = four causes) are one leaf with the helper `below 18 years of age` for the age limb. Splitting them would let the ladder show which; not done for time.
 
+## F-20. Exception 2 reads Chapter 4A; Exception 7's abnormality is its own leaf; a grievous hurt is a hurt
+
+Added 2026-09-30 (WONTON), from probed findings.
+
+**Exception 2.** The flat leaf "in the exercise of the right of private defence of person or property, exceeds the power given to him by law" is gone.
+`Homicide Facts` carries a `private defence` field of type `Private Defence Facts`, and Exception 2 reads `the right of private defence was exceeded` from `pc-exceptions-private-defence.l4`.
+Which Chapter 4A conditions count as "exceeding" rather than "no right" is FORK E-17 in exceptions-forks.md, and wants a ruling.
+Before this, Exception 2 and the private-defence rules could contradict each other silently, because nothing joined them.
+
+**Exception 7.** The statute puts "suffering from such abnormality of mind (whether arising from ... or induced by disease or injury)" in series before (a)(i), (a)(ii) and (b).
+The encoding had folded it into the names of the (a)(i) and (b) leaves and left it out of (a)(ii), so an intoxicated accused with no abnormality of mind came within Exception 7 on the (a)(ii) pair alone.
+Now two leaves, the abnormality and its listed cause, are ANDed before the three-way OR, and the impairment leaves name the impairment alone.
+
+**Grievous hurt.** `causes hurt` (s 319) now also reads `grievous hurt within section 320`, and the s 321 fault also reads the aimed-grievous leaf, because s 320 lists "kinds of hurt".
+A record that ticks only the grievous leaves used to refuse ss 322 and 325 for want of the s 319 and s 321 atoms.
+The aimed-NOT-grievous leaf (s 323A) was not added to the s 321 fault: the s 323A recital chooses its words from the s 321 leaves, so on a record ticking only that leaf it would come out empty.
+
+**The murder refusal** names each Exception that applies, instead of "the case is not within any of the Exceptions to section 300".
+
 ## Where I looked and found no fork
 
 s 319's Explanation (unconsciousness) widens the leaf set without ambiguity; s 320's list is closed ("only"); s 349's three ways are exhaustive by its proviso; ss 341, 342, 345-348 punish without qualification; s 353's three limbs mirror s 332's.

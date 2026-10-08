@@ -1,0 +1,292 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `uic-autojoy-nouns`
+IMPORT `uic-autojoy-p1-general`
+IMPORT `uic-autojoy-p1-cover`
+IMPORT `uic-autojoy-p1-settlement`
+IMPORT `uic-autojoy-test-fixtures`
+
+-- Tests for how much Part 1 pays: Article 10.2 (costs), 12 (sum insured, under-insurance,
+-- the aggregate cap), 13 (repair or replace, depreciation, total loss, theft, the wreck, the
+-- order of settlement), 14 (deductible) and 15 (reductions), with both sides of every
+-- threshold the document prints and two scenarios that make the layers interact.
+-- Every expected value was worked by hand from the source; the arithmetic is beside it.
+
+§ `Tests — how much is payable?`
+
+GIVEN l IS A `A loss`
+      c IS A `The conduct after the loss`
+GIVETH A NUMBER
+`the rate applied, under the standard policy, to` l `with conduct` c MEANS
+    `Art 15.2 — the one rate applied to` (`a claim for` l `with conduct` c) `under` `the standard policy`
+
+GIVEN l IS A `A loss`
+GIVETH A `A claim under Part 1`
+`a blameless claim for` l MEANS
+    `a claim for` l
+
+GIVEN rm  IS A `A calendar month`
+      si  IS A NUMBER
+      ded IS A `A deductible`
+      cs  IS A LIST OF `A supplementary clause`
+GIVETH A `A policy`
+`a policy on a car first registered in` rm `, insuring` si `of a value of 500.000.000, deductible` ded `, clauses` cs MEANS
+    `the policy on` (`a car first registered in` rm) `, insuring` si `of a value of` 500_000_000 `, concluded in` (`month` 1 `of` 2026) `, for` `the 2026 period, no hours stated` `, instalments` `the premium paid in one instalment` `, owing allowed` FALSE `, deductible` ded `, clauses` cs `, termination` NOTHING `, transfer` NOTHING
+
+§§ `Article 10.2 — costs`
+
+-- 5% of a sum insured of 500.000.000 is 25.000.000; 10% is 50.000.000.
+-- src:331 | 2.1. Chi phí ngăn ngừa hạn chế tổn thất phát sinh thêm, nhưng tối đa không vượt quá 5% số tiền bảo hiểm.
+-- src:333 | 2.2. Chi phí cứu hộ và vận chuyển xe bị thiệt hại tới nơi sửa chữa gần nhất nhưng tối đa không vượt quá 5%
+-- src:334 | số tiền bảo hiểm.
+-- src:335 | 2.3. Đối với tổn thất toàn bộ thuộc phạm vi bảo hiểm, ngoài số tiền bồi thường toàn bộ, UIC sẽ chi trả các
+-- src:336 | khoản chi phí tại Khoản 2, Điều 10 này. Tuy nhiên, trong mọi trường hợp tổng số tiền bồi thường theo
+-- src:337 | Khoản 2, Điều 10 này, không vượt quá 10% số tiền bảo hiểm.
+#ASSERT `Art 10.2 — the costs payable, on the assessment` (`the standard assessment with costs` 20_000_000 `and` 10_000_000 `, instructed` TRUE) `, under` `the standard policy` EQUALS 30_000_000
+#ASSERT `Art 10.2 — the costs payable, on the assessment` (`the standard assessment with costs` 25_000_000 `and` 0 `, instructed` TRUE) `, under` `the standard policy` EQUALS 25_000_000
+#ASSERT `Art 10.2 — the costs payable, on the assessment` (`the standard assessment with costs` 25_000_001 `and` 0 `, instructed` TRUE) `, under` `the standard policy` EQUALS 25_000_000
+#ASSERT `Art 10.2 — the costs payable, on the assessment` (`the standard assessment with costs` 0 `and` 25_000_001 `, instructed` TRUE) `, under` `the standard policy` EQUALS 25_000_000
+#ASSERT `Art 10.2 — the costs payable, on the assessment` (`the standard assessment with costs` 30_000_000 `and` 30_000_000 `, instructed` TRUE) `, under` `the standard policy` EQUALS 50_000_000
+-- Not done at UIC's request and on its instructions: nothing.
+#ASSERT `Art 10.2 — the costs payable, on the assessment` (`the standard assessment with costs` 20_000_000 `and` 10_000_000 `, instructed` FALSE) `, under` `the standard policy` EQUALS 0
+-- In a claim: 13.000.000 indemnity on the standard collision, plus 30.000.000 of costs.
+#ASSERT (`the settlement in` (`Part 1 — the answer to` (`a claim for` `the standard collision` `assessed as` (`the standard assessment with costs` 20_000_000 `and` 10_000_000 `, instructed` TRUE)) `under` `the standard policy`))'s `amount payable` EQUALS 43_000_000
+
+§§ `Article 12 — sum insured, under-insurance, the aggregate cap`
+
+-- 12.1: over the whole period, compensation is not above the sum insured. 495.000.000 paid
+-- already leaves 5.000.000; 500.000.000 leaves nothing.
+-- src:398 | Hợp Đồng Bảo Hiểm và không lớn hơn giá thị trường của xe. Trong mọi trường hợp tổng số tiền bồi thường trong
+-- src:399 | toàn bộ thời hạn bảo hiểm không lớn hơn số tiền bảo hiểm.
+#ASSERT `the amount paid out on` (`a claim for` `the standard collision` `assessed as` (`the assessment: extent` (10%) `, value at the loss` 480_000_000 `, costs` 0 `and` 0 `, instructed` FALSE `, police concluded` FALSE `, wreck kept` FALSE `valued at` 0 `, other sums insured` EMPTY `, already paid` 495_000_000 `, earlier losses` 0 `, set off` FALSE)) `under` `the standard policy` EQUALS 5_000_000
+#ASSERT `the amount paid out on` (`a claim for` `the standard collision` `assessed as` (`the assessment: extent` (10%) `, value at the loss` 480_000_000 `, costs` 0 `and` 0 `, instructed` FALSE `, police concluded` FALSE `, wreck kept` FALSE `valued at` 0 `, other sums insured` EMPTY `, already paid` 500_000_000 `, earlier losses` 0 `, set off` FALSE)) `under` `the standard policy` EQUALS 0
+
+-- 12.2 with 13.1.2.1: 400.000.000 insured of a 500.000.000 vehicle is 0,8; at or above, 1.
+-- src:400 | 2 Cơ sở xác định số tiền bảo hiểm là giá thị trường của xe. Chủ Hợp Đồng Bảo Hiểm có thể thỏa thuận tham gia số
+-- src:401 | tiền bảo hiểm bằng hoặc thấp hơn giá thị trường. Trong trường hợp thấp hơn, UIC xác định bồi thường sẽ theo
+-- src:402 | nguyên tắc bảo hiểm dưới giá trị.
+-- src:421 | 1.2.1. Trường hợp xe được bảo hiểm với số tiền bảo hiểm thấp hơn giá trị thực tế thì số tiền bồi thường
+-- src:422 | của UIC được tính theo tỷ lệ giữa số tiền bảo hiểm và giá thị trường của tài sản được bảo hiểm tại
+-- src:423 | thời điểm giao kết hợp đồng.
+#ASSERT `Art 12.2 and 13.1.2.1 — the insured proportion under` (`the standard car insured for` 400_000_000 `of a value of` 500_000_000 `, deductible` (`a deductible per loss of` 1_000_000)) EQUALS 0.8
+#ASSERT `Art 12.2 and 13.1.2.1 — the insured proportion under` `the standard policy` EQUALS 1
+#ASSERT `Art 12.2 and 13.1.2.1 — the insured proportion under` (`the standard car insured for` 600_000_000 `of a value of` 500_000_000 `, deductible` (`a deductible per loss of` 1_000_000)) EQUALS 1
+-- The standard collision under-insured: 14.000.000 × 0,8 = 11.200.000, less 1.000.000.
+#ASSERT `the amount paid out on` (`a claim for` `the standard collision`) `under` (`the standard car insured for` 400_000_000 `of a value of` 500_000_000 `, deductible` (`a deductible per loss of` 1_000_000)) EQUALS 10_200_000
+
+§§ `Article 13.1 — repair or replace, and depreciation`
+
+-- A new part only where the part is beyond repair or repair "vượt quá" (exceeds) 70% of the
+-- new value: repair of 8.400.000 against a new value of 12.000.000 is exactly 70%, so repaired.
+-- src:415 | áp dụng mức khấu trừ (nếu có). UIC chỉ chấp nhận thay thế mới đối với những hạng mục tổn thất không
+-- src:416 | thể khắc phục được theo đánh giá và đề xuất kỹ thuật từ bên chuyên môn hoặc chi phí khắc phục vượt
+-- src:417 | quá 70% giá trị thay mới hạng mục đó.
+#ASSERT NOT `Art 13.1.1 — a new part replaces` (`an ordinary part costing` 8_400_000 `to repair and` 12_000_000 `new`)
+#ASSERT     `Art 13.1.1 — a new part replaces` (`an ordinary part costing` 8_400_001 `to repair and` 12_000_000 `new`)
+#ASSERT     `Art 13.1.1 — a new part replaces` (`an ordinary part beyond repair, costing new` 6_000_000)
+#ASSERT `Art 13.1.1 — the cost of the part` (`an ordinary part costing` 8_400_001 `to repair and` 12_000_000 `new`) EQUALS 12_000_000
+#ASSERT `Art 13.1.1 — the cost of the part` (`an ordinary part costing` 8_400_000 `to repair and` 12_000_000 `new`) EQUALS 8_400_000
+
+-- Depreciation: a car first registered January 2022, contract concluded January 2026, is 48
+-- months (4 years) in use: "from 3 years to under 6 years: 15%". A part replaced new at
+-- 10.000.000 is depreciated 1.500.000; with the supplementary clause waiving depreciation,
+-- nothing; a part repaired, nothing.
+-- src:424 | 1.2.2. Trường hợp xe được bảo hiểm bằng hoặc trên giá trị thực tế, UIC bồi thường theo giá trị thực tế
+-- src:425 | của bộ phận đó ngay trước khi xe bị tai nạn. Cách xác định chi phí hợp lý cho bộ phận hư hỏng
+-- src:426 | phải thay thế mới được tính bằng chi phí thay thế thực tế trừ đi số tiền khấu hao (trừ trường hợp
+-- src:427 | có thỏa thuận bảo hiểm bổ sung bồi thường không áp dụng khấu hao thay mới), phần tính khấu
+-- src:428 | hao được tính cụ thể như sau:
+-- src:429 | - Xe dưới 3 năm: khấu hao 0%.
+-- src:430 | - Xe từ 3 năm đến dưới 6 năm: khấu hao 15% giá trị bộ phận thay mới.
+-- src:431 | - Xe từ 6 năm đến dưới 10 năm: khấu hao 25% giá trị bộ phận thay mới.
+#ASSERT `Art 13.1.2.2 — the depreciation on the part` (`an ordinary part beyond repair, costing new` 10_000_000) `under` (`a policy on a car first registered in` (`month` 1 `of` 2022) `, insuring` 500_000_000 `of a value of 500.000.000, deductible` (`a deductible per loss of` 1_000_000) `, clauses` EMPTY) EQUALS 1_500_000
+#ASSERT `Art 13.1.2.2 — the depreciation on the part` (`an ordinary part beyond repair, costing new` 10_000_000) `under` (`a policy on a car first registered in` (`month` 1 `of` 2022) `, insuring` 500_000_000 `of a value of 500.000.000, deductible` (`a deductible per loss of` 1_000_000) `, clauses` (LIST `no deduction for depreciation on new parts`)) EQUALS 0
+#ASSERT `Art 13.1.2.2 — the depreciation on the part` (`an ordinary part costing` 5_000_000 `to repair and` 8_000_000 `new`) `under` (`a policy on a car first registered in` (`month` 1 `of` 2022) `, insuring` 500_000_000 `of a value of 500.000.000, deductible` (`a deductible per loss of` 1_000_000) `, clauses` EMPTY) EQUALS 0
+
+§§ `Article 13.2 — total loss`
+
+-- 13.2.1: the technical assessment "trên 75%" (more than 75%): 75% is not, 76% is.
+-- src:435 | 2.1. UIC bồi thường tổn thất toàn bộ trong trường hợp xe bị thiệt hại trên 75% theo đánh giá và đề xuất kỹ
+-- src:436 | thuật từ bên chuyên môn hoặc chi phí sửa chữa thiệt hại bằng hoặc trên 75% giá thị trường của xe được
+-- src:437 | bảo hiểm tại thời điểm tổn thất.
+#ASSERT NOT `Art 13.2.1 — a total loss, in` (`a claim for` `the standard collision` `assessed as` (`the standard assessment with an extent of` (75%))) `under` `the standard policy`
+#ASSERT     `Art 13.2.1 — a total loss, in` (`a claim for` `the standard collision` `assessed as` (`the standard assessment with an extent of` (76%))) `under` `the standard policy`
+-- ... or repair "bằng hoặc trên 75%" (equal to or more than 75%) of the market value at the
+-- loss: 75% of 480.000.000 is 360.000.000.
+#ASSERT     `Art 13.2.1 — a total loss, in` (`a claim for` (`a collision damaging` (LIST `an ordinary part costing` 360_000_000 `to repair and` 600_000_000 `new`))) `under` `the standard policy`
+#ASSERT NOT `Art 13.2.1 — a total loss, in` (`a claim for` (`a collision damaging` (LIST `an ordinary part costing` 359_999_999 `to repair and` 600_000_000 `new`))) `under` `the standard policy`
+
+-- A total loss, settled: technical damage 80%; market value at the loss 480.000.000; costs of
+-- 20.000.000 and 10.000.000 incurred on UIC's instructions; the policyholder keeps the wreck,
+-- which UIC values at 50.000.000.
+-- 13.2.3: 480.000.000; less the deductible 1.000.000 = 479.000.000; less the wreck 50.000.000
+-- × 1 = 429.000.000; within the sum insured; plus costs 30.000.000 = 459.000.000.
+-- src:440 | 2.3. Trong trường hợp tổn thất toàn bộ, giá thị trường của xe cùng chủng loại và thông số kỹ thuật với được
+-- src:441 | bảo hiểm tại thời điểm tổn thất là căn cứ để tính toán xác định bồi thường.
+-- src:450 | tương đương theo tỷ lệ tham gia bảo hiểm. Trường hợp Chủ Hợp Đồng Bảo Hiểm có yêu cầu nhận lại
+-- src:451 | chiếc xe bị tổn thất toàn bộ, UIC sẽ giảm số tiền bồi thường tổn thất toàn bộ tương đương giá trị thu hồi
+-- src:452 | chiếc xe bị tổn thất theo định giá của UIC.
+#ASSERT `Part 1 — the answer to` (`a claim for` `the standard collision` `assessed as` (`the assessment: extent` (80%) `, value at the loss` 480_000_000 `, costs` 20_000_000 `and` 10_000_000 `, instructed` TRUE `, police concluded` FALSE `, wreck kept` TRUE `valued at` 50_000_000 `, other sums insured` EMPTY `, already paid` 0 `, earlier losses` 0 `, set off` FALSE)) `under` `the standard policy` EQUALS `payable` (`A settlement` WITH `basis` IS `a total loss`, `parts excluded` IS EMPTY, `cost of repair and replacement` IS 480_000_000, `depreciation` IS 0, `insured proportion` IS 1, `sanction rate` IS 0, `deductible` IS 1_000_000, `wreck deduction` IS 50_000_000, `UIC's share under Article 8` IS 1, `indemnity` IS 429_000_000, `costs under Article 10.2` IS 30_000_000, `amount payable` IS 459_000_000, `unpaid premium set off` IS 0, `amount paid out` IS 459_000_000)
+
+-- 13.2.2: theft of the whole vehicle is paid once the police have concluded: 480.000.000 less
+-- 1.000.000. Under-insured at 0,8: 480.000.000 × 0,8 − 1.000.000 = 383.000.000.
+-- src:438 | 2.2. UIC có trách nhiệm bồi thường tổn thất toàn bộ do xe bị mất trộm, mất cướp khi nguyên nhân được điều
+-- src:439 | tra và kết luận bởi cơ quan công an có thẩm quyền.
+#ASSERT `the amount paid out on` (`a claim for` (`a loss by` `theft or robbery of the whole vehicle` `of origin` `neither a natural disaster nor an accident` `, sudden` TRUE) `assessed as` (`the assessment: extent` (0%) `, value at the loss` 480_000_000 `, costs` 0 `and` 0 `, instructed` FALSE `, police concluded` TRUE `, wreck kept` FALSE `valued at` 0 `, other sums insured` EMPTY `, already paid` 0 `, earlier losses` 0 `, set off` FALSE)) `under` `the standard policy` EQUALS 479_000_000
+#ASSERT `Part 1 — the answer to` (`a claim for` (`a loss by` `theft or robbery of the whole vehicle` `of origin` `neither a natural disaster nor an accident` `, sudden` TRUE) `assessed as` (`the assessment: extent` (0%) `, value at the loss` 480_000_000 `, costs` 0 `and` 0 `, instructed` FALSE `, police concluded` FALSE `, wreck kept` FALSE `valued at` 0 `, other sums insured` EMPTY `, already paid` 0 `, earlier losses` 0 `, set off` FALSE)) `under` `the standard policy` EQUALS `not yet payable, because the police have not concluded the theft`
+#ASSERT `the amount paid out on` (`a claim for` (`a loss by` `theft or robbery of the whole vehicle` `of origin` `neither a natural disaster nor an accident` `, sudden` TRUE) `assessed as` (`the assessment: extent` (0%) `, value at the loss` 480_000_000 `, costs` 0 `and` 0 `, instructed` FALSE `, police concluded` TRUE `, wreck kept` FALSE `valued at` 0 `, other sums insured` EMPTY `, already paid` 0 `, earlier losses` 0 `, set off` FALSE)) `under` (`the standard car insured for` 400_000_000 `of a value of` 500_000_000 `, deductible` (`a deductible per loss of` 1_000_000)) EQUALS 383_000_000
+
+-- 13.3: replaced parts and a recovered stolen vehicle belong to UIC.
+-- src:444 | Khi UIC đã bồi thường tổn thất bộ phận hoặc toàn bộ xe thì bộ phận hư hỏng hoặc toàn bộ xe đó thuộc quyền sở
+-- src:445 | hữu của UIC, cụ thể:
+-- src:446 | 3.1. Đối với trường hợp bồi thường thay mới bộ phận, UIC sẽ thu hồi bộ phận hư hỏng đã được trả tiền bồi
+-- src:447 | thường thay mới (kể cả trường hợp trừ khấu hao).
+#ASSERT `Art 13.3.1 and 13.3.3 — who owns a replaced part, or a stolen vehicle found after payment` EQUALS `UIC`
+
+§§ `Article 14 — the deductible`
+
+-- 14.1: the contract's deductible, never below 500.000 (năm trăm nghìn) a loss.
+-- src:467 | 1 Mức khấu trừ là số tiền được ấn định trong Hợp Đồng Bảo Hiểm mà Chủ Hợp Đồng Bảo Hiểm phải tự chịu trong
+-- src:468 | mỗi và mọi vụ tổn thất đối với xe tham gia bảo hiểm vật chất xe tại UIC. Trong mọi trường hợp, UIC luôn áp dụng
+-- src:469 | một mức khấu trừ bắt buộc và tối thiểu 500.000 (năm trăm nghìn) Đồng/vụ tổn thất.
+#ASSERT `Art 14 — the deductible on` (`a claim for` `the standard collision`) `under` (`the standard car insured for` 500_000_000 `of a value of` 500_000_000 `, deductible` (`a deductible per loss of` 300_000)) EQUALS 500_000
+#ASSERT `Art 14 — the deductible on` (`a claim for` `the standard collision`) `under` (`the standard car insured for` 500_000_000 `of a value of` 500_000_000 `, deductible` (`a deductible per loss of` 500_000)) EQUALS 500_000
+#ASSERT `Art 14 — the deductible on` (`a claim for` `the standard collision`) `under` (`the standard car insured for` 500_000_000 `of a value of` 500_000_000 `, deductible` (`a deductible per loss of` 500_001)) EQUALS 500_001
+-- 14.2: the tiered deductible, by the loss's number in the period (fork F23).
+-- src:470 | 2 Mức khấu trừ theo bậc thang là số tiền được ấn định trong Hợp Đồng Bảo Hiểm mà Chủ Hợp Đồng Bảo Hiểm
+-- src:471 | phải tự chịu số tiền tăng dần theo số lần tổn thất cụ thể vụ tổn thất đầu tiên Chủ Hợp Đồng Bảo Hiểm tự chịu
+-- src:472 | 500.000 Đồng, vụ tổn thất thứ hai là 1.000.000 Đồng và từ vụ tổn thất thứ 3 là 2.000.000 Đồng. Trong mọi trường
+-- src:473 | hợp, UIC luôn áp dụng một mức khấu trừ bắt buộc và tối thiểu 500.000 (năm trăm nghìn) Đồng/vụ tổn thất.
+#ASSERT `Art 14 — the deductible on` (`a claim for` `the standard collision` `assessed as` (`the standard assessment after earlier losses` 0)) `under` (`the standard car insured for` 500_000_000 `of a value of` 500_000_000 `, deductible` `the tiered deductible`) EQUALS 500_000
+#ASSERT `Art 14 — the deductible on` (`a claim for` `the standard collision` `assessed as` (`the standard assessment after earlier losses` 1)) `under` (`the standard car insured for` 500_000_000 `of a value of` 500_000_000 `, deductible` `the tiered deductible`) EQUALS 1_000_000
+#ASSERT `Art 14 — the deductible on` (`a claim for` `the standard collision` `assessed as` (`the standard assessment after earlier losses` 2)) `under` (`the standard car insured for` 500_000_000 `of a value of` 500_000_000 `, deductible` `the tiered deductible`) EQUALS 2_000_000
+#ASSERT `Art 14 — the deductible on` (`a claim for` `the standard collision` `assessed as` (`the standard assessment after earlier losses` 7)) `under` (`the standard car insured for` 500_000_000 `of a value of` 500_000_000 `, deductible` `the tiered deductible`) EQUALS 2_000_000
+-- A loss smaller than the deductible pays nothing (and is still a covered loss).
+#ASSERT `the amount paid out on` (`a claim for` (`a collision damaging` (LIST `an ordinary part costing` 400_000 `to repair and` 1_000_000 `new`))) `under` (`the standard car insured for` 500_000_000 `of a value of` 500_000_000 `, deductible` (`a deductible per loss of` 500_000)) EQUALS 0
+
+§§ `Article 15 — reductions`
+
+-- 15.1.1.1: the hotline not told at once: 10%. The standard collision: 14.000.000 × 0,9 =
+-- 12.600.000, less 1.000.000 = 11.600.000.
+-- src:480 | 1.1. Giảm trừ 10% trong các trường hợp sau:
+-- src:481 | 1.1.1. Khi xảy ra tổn thất/tai nạn, Chủ Hợp Đồng Bảo Hiểm không thông báo ngay đến Tổng Đài (Call-
+-- src:482 | Center/Hotline) của UIC để phối hợp giải quyết tai nạn.
+#ASSERT `the rate applied, under the standard policy, to` `the standard collision` `with conduct` (`conduct with failures` (LIST `not notifying the UIC hotline immediately`) `and excuses` EMPTY) EQUALS 10%
+#ASSERT `the amount paid out on` (`a claim for` `the standard collision` `with conduct` (`conduct with failures` (LIST `not notifying the UIC hotline immediately`) `and excuses` EMPTY)) `under` `the standard policy` EQUALS 11_600_000
+#ASSERT `the rate applied, under the standard policy, to` `the standard collision` `with conduct` `blameless conduct` EQUALS 0
+
+-- 15.1.1.2: the police not told at once, where a third party is involved, or where none is
+-- and the estimate is "lớn hơn 10 triệu đồng" (more than 10.000.000); save force majeure
+-- confirmed by UIC.
+-- src:484 | 1.1.2. Không thông báo ngay cho cơ quan công an hoặc cơ quan chức năng hoặc chính quyền địa
+-- src:485 | phương nơi gần nhất (ngoại trừ các trường hợp bất khả kháng và được UIC xác nhận) khi:
+-- src:486 | * Tổn thất/tai nạn liên quan đến bên thứ ba;
+-- src:487 | * Tổn thất/tai nạn không liên quan đến bên thứ ba nhưng có thiệt hại ước tính lớn hơn 10 triệu
+-- src:488 | đồng
+#ASSERT `the rate applied, under the standard policy, to` (`the standard collision, third party` TRUE  `, estimate` 5_000_000)  `with conduct` (`conduct with failures` (LIST `not notifying the police or the local authority immediately`) `and excuses` EMPTY) EQUALS 10%
+#ASSERT `the rate applied, under the standard policy, to` (`the standard collision, third party` FALSE `, estimate` 5_000_000)  `with conduct` (`conduct with failures` (LIST `not notifying the police or the local authority immediately`) `and excuses` EMPTY) EQUALS 0
+#ASSERT `the rate applied, under the standard policy, to` (`the standard collision, third party` FALSE `, estimate` 10_000_000) `with conduct` (`conduct with failures` (LIST `not notifying the police or the local authority immediately`) `and excuses` EMPTY) EQUALS 0
+#ASSERT `the rate applied, under the standard policy, to` (`the standard collision, third party` FALSE `, estimate` 10_000_001) `with conduct` (`conduct with failures` (LIST `not notifying the police or the local authority immediately`) `and excuses` EMPTY) EQUALS 10%
+#ASSERT `the rate applied, under the standard policy, to` (`the standard collision, third party` TRUE  `, estimate` 5_000_000)  `with conduct` (`conduct with failures` (LIST `not notifying the police or the local authority immediately`) `and excuses` (LIST `force majeure, confirmed by UIC`)) EQUALS 0
+#ASSERT `the rate applied, under the standard policy, to` (`the standard collision, third party` TRUE  `, estimate` 5_000_000)  `with conduct` (`conduct with failures` (LIST `not notifying the police or the local authority immediately`) `and excuses` (LIST `force majeure`)) EQUALS 10%
+
+-- 15.1.1.3: damage not limited nor the scene protected: 10%; save moving for safety or at an
+-- authority's demand.
+-- src:489 | 1.1.3. Chủ Hợp Đồng Bảo Hiểm không thực hiện đầy đủ các biện pháp cứu chữa, hạn chế thiệt hại về
+-- src:490 | người và tài sản, bảo vệ hiện trường tổn thất trừ trường hợp di chuyển để đảm bảo an toàn hoặc
+-- src:491 | phải thi hành theo yêu cầu của cơ quan chức năng.
+#ASSERT `the rate applied, under the standard policy, to` `the standard collision` `with conduct` (`conduct with failures` (LIST `not fully rescuing, limiting the damage and protecting the scene`) `and excuses` EMPTY) EQUALS 10%
+#ASSERT `the rate applied, under the standard policy, to` `the standard collision` `with conduct` (`conduct with failures` (LIST `not fully rescuing, limiting the damage and protecting the scene`) `and excuses` (LIST `the vehicle was moved for safety`)) EQUALS 0
+#ASSERT `the rate applied, under the standard policy, to` `the standard collision` `with conduct` (`conduct with failures` (LIST `not fully rescuing, limiting the damage and protecting the scene`) `and excuses` (LIST `an authority required it`)) EQUALS 0
+
+-- 15.1.1.4: "up to 30%" where breaking two of the duties above increased the damage (fork F24).
+-- src:492 | 1.1.4. Giảm trừ đến 30% trong trường hợp việc vi phạm 2 trách nhiệm trên làm gia tăng mức độ thiệt hại.
+#ASSERT `the rate applied, under the standard policy, to` (`the standard collision, third party` TRUE `, estimate` 5_000_000) `with conduct` (`the conduct: failures` (LIST `not notifying the UIC hotline immediately`, `not notifying the police or the local authority immediately`) `, excuses` EMPTY `, increasing the damage` TRUE `, rate under 15.1.1.4` (JUST (30%)) `, rate under 15.1.3` NOTHING `, premium that should have been charged` NOTHING) EQUALS 30%
+-- One duty broken, though the damage increased: the 10% only.
+#ASSERT `the rate applied, under the standard policy, to` `the standard collision` `with conduct` (`the conduct: failures` (LIST `not notifying the UIC hotline immediately`) `, excuses` EMPTY `, increasing the damage` TRUE `, rate under 15.1.1.4` (JUST (30%)) `, rate under 15.1.3` NOTHING `, premium that should have been charged` NOTHING) EQUALS 10%
+-- Two broken, damage increased, no rate set by UIC: the encoding cannot pick it.
+#ASSERT REFUSED `the rate applied, under the standard policy, to` (`the standard collision, third party` TRUE `, estimate` 5_000_000) `with conduct` (`the conduct: failures` (LIST `not notifying the UIC hotline immediately`, `not notifying the police or the local authority immediately`) `, excuses` EMPTY `, increasing the damage` TRUE `, rate under 15.1.1.4` NOTHING `, rate under 15.1.3` NOTHING `, premium that should have been charged` NOTHING) BECAUSE "Art 15.1.1.4 leaves the rate to UIC, and none was supplied"
+-- A rate above 30% is invalid input.
+#ASSERT `Part 1 — the answer to` (`a claim for` `the standard collision` `with conduct` (`the conduct: failures` EMPTY `, excuses` EMPTY `, increasing the damage` FALSE `, rate under 15.1.1.4` (JUST (35%)) `, rate under 15.1.3` NOTHING `, premium that should have been charged` NOTHING)) `under` `the standard policy` EQUALS `the facts are invalid` (LIST `a rate UIC set is outside the range its article allows`)
+
+-- 15.1.2.1: dismantling or repairing without UIC's approval: 25%; save safety or an authority.
+-- src:495 | 1.2.1. Chủ Hợp Đồng Bảo Hiểm tự ý tháo gỡ hoặc sửa chữa xe bị thiệt hại khi chưa có ý kiến chấp
+-- src:496 | thuận của UIC (trừ trường hợp cần thiết để đảm bảo an toàn, đề phòng hạn chế thiệt hại về người
+-- src:497 | và tài sản hoặc phải thi hành theo yêu cầu của cơ quan có thẩm quyền).
+#ASSERT `the rate applied, under the standard policy, to` `the standard collision` `with conduct` (`conduct with failures` (LIST `dismantling or repairing the vehicle without UIC's approval`) `and excuses` EMPTY) EQUALS 25%
+#ASSERT `the rate applied, under the standard policy, to` `the standard collision` `with conduct` (`conduct with failures` (LIST `dismantling or repairing the vehicle without UIC's approval`) `and excuses` (LIST `it was necessary for safety or to prevent harm to persons or property`)) EQUALS 0
+
+-- 15.1.2.2: speeding "từ 20% đến 50%": 72 in a 60 zone is 20% over (25%); 71 is 18,3% (none).
+-- src:498 | 1.2.2. Xe vượt quá tốc độ cho phép từ 20% đến 50%.
+#ASSERT `the rate applied, under the standard policy, to` (`the standard collision at speed` 72 `in a limit of` 60) `with conduct` `blameless conduct` EQUALS 25%
+#ASSERT `the rate applied, under the standard policy, to` (`the standard collision at speed` 71 `in a limit of` 60) `with conduct` `blameless conduct` EQUALS 0
+#ASSERT `the rate applied, under the standard policy, to` (`the standard collision at speed` 89 `in a limit of` 60) `with conduct` `blameless conduct` EQUALS 25%
+
+-- 15.1.3: the right against the third party not kept for UIC: the rate UIC sets.
+-- src:499 | 1.3. Giảm trừ từ 50% đến 100% số tiền bồi thường hoặc giảm trừ số tiền bồi thường tùy theo mức độ lỗi của
+-- src:500 | Chủ Hợp Đồng Bảo Hiểm trong trường hợp Chủ Hợp Đồng Bảo Hiểm từ chối chuyển quyền cho UIC,
+-- src:501 | không bảo lưu hoặc từ bỏ quyền yêu cầu người thứ ba bồi thường (bao gồm nhưng không giới hạn ở việc
+-- src:502 | cung cấp kèm theo toàn bộ hồ sơ, các căn cứ tài liệu cần thiết để đòi lại bên thứ ba hoặc tự động thỏa
+-- src:503 | thuận bồi thường với bên thứ ba gây thiệt hại).
+#ASSERT `the rate applied, under the standard policy, to` `the standard collision` `with conduct` (`the conduct: failures` (LIST `refusing to transfer, not preserving, or waiving the right to claim from the third party`) `, excuses` EMPTY `, increasing the damage` FALSE `, rate under 15.1.1.4` NOTHING `, rate under 15.1.3` (JUST (60%)) `, premium that should have been charged` NOTHING) EQUALS 60%
+#ASSERT REFUSED `the rate applied, under the standard policy, to` `the standard collision` `with conduct` (`the conduct: failures` (LIST `refusing to transfer, not preserving, or waiving the right to claim from the third party`) `, excuses` EMPTY `, increasing the damage` FALSE `, rate under 15.1.1.4` NOTHING `, rate under 15.1.3` NOTHING `, premium that should have been charged` NOTHING) BECAUSE "Art 15.1.3 leaves the rate to UIC, and none was supplied"
+
+-- 15.1.4: overloading "từ trên 20% đến dưới 50%", reduced by the overload. A car for 5
+-- persons carrying 7 is 40% over; carrying 6 is 20% over, not "more than 20%".
+-- A truck permitted 10.000 carrying 12.001 is 20,01% over; carrying 14.999, 49,99%.
+-- src:504 | 1.4. Giảm số tiền bồi thường tương ứng với tỷ lệ % chở quá trọng tải, số người (từ trên 20% đến dưới 50%)
+-- src:505 | theo quy định trong Giấy chứng nhận kiểm định an toàn kỹ thuật và bảo vệ môi trường phương tiện giao
+-- src:506 | thông cơ giới đường bộ.
+#ASSERT `the rate applied, under the standard policy, to` (`the standard collision carrying a load of` 0 `and persons` 7) `with conduct` `blameless conduct` EQUALS 40%
+#ASSERT `the rate applied, under the standard policy, to` (`the standard collision carrying a load of` 0 `and persons` 6) `with conduct` `blameless conduct` EQUALS 0
+#ASSERT `Art 15.1.4 — for the vehicle` `the standard truck` `, the reduction for overloading at` (`the standard collision carrying a load of` 12_001 `and persons` 1) EQUALS 0.2001
+#ASSERT `Art 15.1.4 — for the vehicle` `the standard truck` `, the reduction for overloading at` (`the standard collision carrying a load of` 14_999 `and persons` 1) EQUALS 0.4999
+#ASSERT `Art 15.1.4 — for the vehicle` `the standard truck` `, the reduction for overloading at` (`the standard collision carrying a load of` 12_000 `and persons` 1) EQUALS 0
+
+-- 15.1.5: in the ratio of the premium paid to the premium that should have been paid:
+-- 10.950.000 / 14.600.000 = 0,75, so a reduction of 25%.
+-- src:507 | 1.5. Giảm số tiền bồi thường theo tỷ lệ giữa số phí thực nộp và số phí phải nộp theo quy định trong trường hợp:
+-- src:509 | 1.5.1. Chủ Hợp Đồng Bảo Hiểm kê khai giấy yêu cầu bảo hiểm sai (không đúng mục đích sử dụng của
+-- src:510 | xe) làm thu thiếu phí bảo hiểm so với quy định.
+-- src:511 | 1.5.2. Chủ Hợp Đồng Bảo Hiểm không thông báo cho UIC trong trường hợp có sự gia tăng mức độ rủi
+-- src:512 | ro bảo hiểm để bổ sung phí bảo hiểm (như chuyển đổi mục đích sử dụng, hoán cải, nâng cấp làm
+-- src:513 | tăng giá xe).
+#ASSERT `the rate applied, under the standard policy, to` `the standard collision` `with conduct` (`the conduct: failures` (LIST `declaring the vehicle's use wrongly, so that too little premium was charged`) `, excuses` EMPTY `, increasing the damage` FALSE `, rate under 15.1.1.4` NOTHING `, rate under 15.1.3` NOTHING `, premium that should have been charged` (JUST 14_600_000)) EQUALS 25%
+#ASSERT `the rate applied, under the standard policy, to` `the standard collision` `with conduct` (`the conduct: failures` (LIST `not notifying UIC of an increase in risk`) `, excuses` EMPTY `, increasing the damage` FALSE `, rate under 15.1.1.4` NOTHING `, rate under 15.1.3` NOTHING `, premium that should have been charged` (JUST 21_900_000)) EQUALS 50%
+#ASSERT REFUSED `the rate applied, under the standard policy, to` `the standard collision` `with conduct` (`conduct with failures` (LIST `not notifying UIC of an increase in risk`) `and excuses` EMPTY) BECAUSE "Art 15.1.5 needs the premium that should have been paid, and none was supplied"
+
+-- 15.2: one reduction only, the highest: 10% (hotline), 25% (dismantling) and 40% (7 persons
+-- in a 5-person car) give 40%.
+-- src:516 | Khi Chủ Hợp Đồng Bảo Hiểm bị giảm trừ số tiền bồi thường theo nhiều tỷ lệ khác nhau cho các hành vi vi phạm
+-- src:517 | khác nhau, UIC sẽ lựa chọn áp dụng duy nhất một loại giảm trừ số tiền bồi thường theo tỷ lệ cao nhất.
+#ASSERT `the rate applied, under the standard policy, to` (`the standard collision carrying a load of` 0 `and persons` 7) `with conduct` (`conduct with failures` (LIST `not notifying the UIC hotline immediately`, `dismantling or repairing the vehicle without UIC's approval`) `and excuses` EMPTY) EQUALS 40%
+
+§§ `Article 13.4 — the order of settlement, every layer at once`
+
+-- A car first registered January 2022 (48 months in use: 15% depreciation), insured for
+-- 400.000.000 of a 500.000.000 value (0,8), on the tiered deductible, after one earlier loss
+-- (1.000.000), with another insurer's 100.000.000 contract on the same vehicle (share
+-- 400 / 500 = 0,8), the hotline not told (10%). Damage: a door, repair 9.000.000 against
+-- 10.000.000 new (more than 70%: replaced, 10.000.000); a wing, repair 5.000.000 against
+-- 8.000.000 new (not more than 70%: repaired, 5.000.000); a tyre (excluded, 11.12).
+-- 13.4.1: 15.000.000. 13.4.2: less 15% of 10.000.000 = 13.500.000; × 0,8 = 10.800.000;
+-- × 0,9 = 9.720.000. 13.4.3: less 1.000.000 = 8.720.000. 13.4.4: nothing. 13.4.5: × 0,8 =
+-- 6.976.000. Within the sum insured; no costs; no set-off.
+-- src:456 | UIC xem xét và tính toán số tiền bồi thường theo thứ tự sau:
+-- src:457 | 4.1. Xác định chi phí cần thiết và hợp lý để sửa chữa xe, khắc phục tổn thất và quyền lợi bảo hiểm khác.
+-- src:459 | 4.2. Áp dụng các giảm trừ bảo hiểm theo thứ tự: khấu hao thay mới bộ phận, giảm trừ do bảo hiểm dưới giá
+-- src:460 | trị, giảm trừ do chế tài.
+-- src:461 | 4.3. Trừ mức khấu trừ/miễn thường.
+-- src:462 | 4.4. Trừ bán thanh lý tài sản (nếu có).
+-- src:463 | 4.5. Áp dụng bảo hiểm trùng (nếu có).
+-- src:464 | 4.6. Hoặc các giảm trừ khác (nếu có)
+#ASSERT `Part 1 — the answer to` (`the claim for` (`a collision damaging` (LIST (`an ordinary part costing` 9_000_000 `to repair and` 10_000_000 `new`), (`an ordinary part costing` 5_000_000 `to repair and` 8_000_000 `new`), (`a manufacturer's` `a tyre or inner tube` `damaged by` `the insured event`))) `, conduct` (`conduct with failures` (LIST `not notifying the UIC hotline immediately`) `and excuses` EMPTY) `, assessment` (`the assessment: extent` (10%) `, value at the loss` 400_000_000 `, costs` 0 `and` 0 `, instructed` FALSE `, police concluded` FALSE `, wreck kept` FALSE `valued at` 0 `, other sums insured` (LIST 100_000_000) `, already paid` 0 `, earlier losses` 1 `, set off` FALSE) `, made on` (YMD 2026 6 20) `, obstacle days` 0) `under` (`a policy on a car first registered in` (`month` 1 `of` 2022) `, insuring` 400_000_000 `of a value of 500.000.000, deductible` `the tiered deductible` `, clauses` EMPTY) EQUALS `payable` (`A settlement` WITH `basis` IS `a partial loss`, `parts excluded` IS (LIST `11.12 tyres, tarpaulins, cargo bodies and labels`), `cost of repair and replacement` IS 15_000_000, `depreciation` IS 1_500_000, `insured proportion` IS 0.8, `sanction rate` IS 10%, `deductible` IS 1_000_000, `wreck deduction` IS 0, `UIC's share under Article 8` IS 0.8, `indemnity` IS 6_976_000, `costs under Article 10.2` IS 0, `amount payable` IS 6_976_000, `unpaid premium set off` IS 0, `amount paid out` IS 6_976_000)
+
+-- The standard collision, every layer neutral: 14.000.000 less 1.000.000.
+#ASSERT `Part 1 — the answer to` (`a claim for` `the standard collision`) `under` `the standard policy` EQUALS `payable` (`A settlement` WITH `basis` IS `a partial loss`, `parts excluded` IS EMPTY, `cost of repair and replacement` IS 14_000_000, `depreciation` IS 0, `insured proportion` IS 1, `sanction rate` IS 0, `deductible` IS 1_000_000, `wreck deduction` IS 0, `UIC's share under Article 8` IS 1, `indemnity` IS 13_000_000, `costs under Article 10.2` IS 0, `amount payable` IS 13_000_000, `unpaid premium set off` IS 0, `amount paid out` IS 13_000_000)
+
+§§ `Invalid facts`
+
+#ASSERT `Part 1 — the answer to` (`a claim for` (`a collision damaging` (LIST `an ordinary part costing` (0 MINUS 1) `to repair and` 1_000_000 `new`))) `under` `the standard policy` EQUALS `the facts are invalid` (LIST `a sum of money is negative`)
+#ASSERT `Part 1 — the answer to` (`a claim for` (`the standard collision at speed` 50 `in a limit of` 0)) `under` `the standard policy` EQUALS `the facts are invalid` (LIST `the speed limit is not positive`)

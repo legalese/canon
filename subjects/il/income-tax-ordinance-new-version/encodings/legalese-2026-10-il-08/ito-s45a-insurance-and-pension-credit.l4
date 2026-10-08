@@ -1,0 +1,500 @@
+@lang en
+IMPORT prelude
+IMPORT `ito-il08-nouns`
+IMPORT `ito-il08-tax-years`
+IMPORT `ito-s47a-definitions`
+
+-- ===========================================================================
+-- Income Tax Ordinance s 45A — "זיכוי בעד דמי ביטוח ותגמולים", the credit for life-insurance
+-- premiums and pension contributions. Row IL-08. Source lines 1714-1739.
+--
+-- GAPS.md item 1 of row IL-07: an employee's pension contribution gives a s 45A credit, and the
+-- capstone declined every earner who has one. This module computes the credit, in shekels, for a
+-- tax year, from the sums paid, the individual's income, and the year's amounts (inputs).
+--
+-- SHAPE OF THE SECTION.
+--   (a), (b), (b1): the rates. 25% of sums for life insurance; 35% of sums to a pension provident
+--        fund, to the State or a body to keep a pension right, and for survivors' pension
+--        insurance; (b1) extends both to a beneficiary member's child aged 18 or more.
+--   (c): definitions, three of them borrowed from s 47 (ito-s47a-definitions.l4).
+--   (d): the limit for an individual who is NOT a beneficiary member; (e): for one who is. Each is
+--        "the higher of" a fixed amount ((d)(1), adjusted under s 120B) and "the lower of" the sums
+--        paid and a percentage of income, with provisos that cap survivors' insurance and life
+--        insurance within the percentage.
+--   (f): a separate 35% credit for a self-employed member's deposits.
+-- s 47(c) keeps out of s 45A any sum deducted under s 47(b) or (b1).
+--
+-- WHERE THE TEXT DOES NOT DECIDE, THE RULE REFUSES. (d) and (e) cap "the total amount for which
+-- credit is given", and the provisos cap parts of it, but the sums are credited at two rates and
+-- the section never says which sums are credited when a limit cuts sums of different kinds, nor,
+-- under (e)(2)(b)(2), to which of its two parts a sum belongs. The credit is computed exactly
+-- where no such choice arises: when no limit cuts anything, or when every creditable sum is
+-- credited at one rate (35%, or from version 0.2.0 also 25%) and the answer does not turn on the
+-- part of (e)(2)(b)(2) a sum belongs to. Otherwise the rule declines by name (fork F1).
+--
+-- THE FLOOR (version 0.2.0, 2026-10-08, D187). Limb (1)'s fixed amount is a floor: the total
+-- credited is the higher of it and limb (2) as limb (2)'s provisos limit it (fork F5(i)), within the
+-- sums paid. Version 0.1.0 compared the floor with limb (2) before the provisos only, so where a
+-- proviso cut limb (2) below the floor the credit fell below it (2,268 of survivors' insurance gave
+-- 793.80 and 2,269 gave 525).
+-- ===========================================================================
+
+§ `Section 45A — credit for insurance premiums and pension contributions`
+
+§§ `(a), (b), (b1) — the sums and the rates`
+
+-- src:1715 | (א) יחיד יזוכה ממס ב־25% מן הסכומים ששילמו הוא או בן זוגו בשנת המס –
+-- src:1716 | (1) לביטוח חייו או חיי בן זוגו בחברת ביטוח אם הוא תושב ישראל;
+-- src:1717 | (2) [note: (נמחקה).]
+-- "אם הוא תושב ישראל": read as the individual being an Israeli resident (fork F4); a non-resident's
+-- life-insurance sums are not creditable under (a).
+@ref ITO s 45A(a)(1), line 1716
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+GIVETH A NUMBER
+`s 45A(a)(1) — the life-insurance sums that may be credited, for` i MEANS
+    IF   i's `an Israeli resident in the tax year`
+    THEN i's `sums paid, for section 45A`'s `for insurance of the individual's or the spouse's life with an insurance company`
+    ELSE 0
+
+@ref ITO s 45A(a), line 1715
+GIVETH A NUMBER
+`s 45A(a) — the rate` MEANS 25%
+
+-- src:1718 | (ב) יחיד יזוכה ממס ב־35% מן הסכומים ששילמו הוא או בן זוגו בשנת המס לקופת גמל לקיצבה, או ששילמו כאמור למדינה, לרשות מקומית או לגוף אחר שקבע שר האוצר, לשם שמירת זכות הפנסיה שלו או של בן זוגו או שישולמו כאמור לביטוח קצבת שאירים.
+-- The first two limbs, less any sum deducted under s 47(b) or (b1): s 47(c), line 1787. s 47 deducts
+-- only sums paid to a pension provident fund or to keep a pension right, so the deducted sums come
+-- out of these two limbs and never out of survivors' insurance.
+-- src:1787 | (ג) סכום שנוכה לפי סעיף קטן (ב) או (ב1) לא יובא בחשבון לצורך סעיף 45א.
+@ref ITO s 45A(b), first and second limbs, line 1718; s 47(c), line 1787
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+GIVETH A NUMBER
+`s 45A(b) — the pension sums that may be credited, for` i MEANS
+    max 0 (     `the sums`'s `to a pension provident fund`
+           PLUS `the sums`'s `to the State, a local authority or a designated body, to keep a pension right`
+           MINUS i's `sums deducted under section 47(b) or (b1)`)
+    WHERE `the sums` MEANS i's `sums paid, for section 45A`
+
+@ref ITO s 45A(b), third limb, line 1718
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+GIVETH A NUMBER
+`s 45A(b) — the survivors' pension insurance sums that may be credited, for` i MEANS
+    i's `sums paid, for section 45A`'s `for survivors' pension insurance`
+
+@ref ITO s 45A(b), line 1718
+GIVETH A NUMBER
+`s 45A(b) — the rate` MEANS 35%
+
+-- src:1719 | (ב1) עמית מוטב יזוכה ממס כאמור בסעיפים קטנים (א) ו־(ב) גם בשל סכומים ששילם לביטוח חיי ילדו בחברת ביטוח, לקופת גמל לטובת ילדו או לשם שמירת זכויות הפנסיה של ילדו, בכפוף לתנאים האמורים באותם סעיפים קטנים, לפי הענין, ובלבד שגילו של אותו ילד, בשנת המס, היה 18 שנים ומעלה.
+-- Only a beneficiary member; the child's life insurance "as in (a)" (25%, with (a)'s residence
+-- condition), the child's provident fund or pension rights "as in (b)" (35%). The sums are recorded
+-- only for a child aged 18 or more in the tax year (the fields' names say so).
+@ref ITO s 45A(b1), line 1719
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+      a IS A `The amounts of sections 45A and 47 in force in the tax year`
+GIVETH A NUMBER
+`s 45A(b1) — the child's life-insurance sums that may be credited, for` i `, at` a MEANS
+    IF   `s 47(a)(7) — a beneficiary member:` i `, at` a AND i's `an Israeli resident in the tax year`
+    THEN i's `sums paid, for section 45A`'s `for the life insurance of a child aged 18 or more`
+    ELSE 0
+
+@ref ITO s 45A(b1), line 1719
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+      a IS A `The amounts of sections 45A and 47 in force in the tax year`
+GIVETH A NUMBER
+`s 45A(b1) — the child's pension sums that may be credited, for` i `, at` a MEANS
+    IF   `s 47(a)(7) — a beneficiary member:` i `, at` a
+    THEN i's `sums paid, for section 45A`'s `to a provident fund, or to keep pension rights, for a child aged 18 or more`
+    ELSE 0
+
+-- The two classes, by rate.
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+      a IS A `The amounts of sections 45A and 47 in force in the tax year`
+GIVETH A NUMBER
+`s 45A — the sums that may be credited at 25%, for` i `, at` a MEANS
+         `s 45A(a)(1) — the life-insurance sums that may be credited, for` i
+    PLUS `s 45A(b1) — the child's life-insurance sums that may be credited, for` i `, at` a
+
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+      a IS A `The amounts of sections 45A and 47 in force in the tax year`
+GIVETH A NUMBER
+`s 45A — the sums that may be credited at 35%, for` i `, at` a MEANS
+         `s 45A(b) — the pension sums that may be credited, for` i
+    PLUS `s 45A(b) — the survivors' pension insurance sums that may be credited, for` i
+    PLUS `s 45A(b1) — the child's pension sums that may be credited, for` i `, at` a
+
+§§ `(c) — definitions`
+
+-- src:1720 | (ג) בסעיף זה –
+-- src:1721 | ”ביטוח חיים“ – ביטוח מפני הסיכון למקרה מוות של המבוטח, בלא מרכיב החיסכון שאינו כולל תשלומי פנסיה לשאירים;
+-- src:1722 | ”ביטוח קצבת שאירים“ – ביטוח מפני הסיכון למקרה מוות של המבוטח, בלא מרכיב החיסכון, הכולל תשלומי פנסיה לשאירים;
+-- src:1723 | ”הכנסה מבוטחת“, ”הכנסה מזכה“ ו”עמית מוטב“ – כהגדרתם בסעיף 47;
+-- src:1724 | ”פנסיה מקיפה“ – [note: (נמחקה).]
+-- The two insurances classify a payment, which the caller records by putting it in the right field
+-- of `Sums paid in the tax year, for section 45A`. The three borrowed terms are in
+-- ito-s47a-definitions.l4.
+
+§§ `(d) — the limit for an individual who is not a beneficiary member`
+
+-- src:1725 | (ד) על אף האמור בסעיפים קטנים (א) ו־(ב), הסכום הכולל שבשלו יינתן זיכוי ליחיד שאינו עמית מוטב בעד סכומים ששולמו כאמור באותם סעיפים קטנים, לא יעלה על הגבוה מבין הסכומים המפורטים להלן:
+-- src:1726 | (1) סכום של 1,632 שקלים חדשים [note: (נקוב לשנת 2004; בשנת 2023, 2,196 ש״ח; בשנים 2024–2027, 2,268 ש״ח)];
+-- src:1727 | (2) הסכום הנמוך מבין אלה:
+-- src:1728 | (א) כלל הסכומים ששולמו כאמור בסעיפים קטנים (א) ו־(ב);
+-- src:1729 | (ב)(1) לעניין יחיד שלא היתה לו בשנת המס הכנסת עבודה – 5% מהכנסתו המזכה, ובלבד שהסכום הכולל שבשלו יינתן זיכוי בעד סכומים ששולמו לביטוח קצבת שאירים כאמור בסעיף קטן (ב) לא יעלה על 1.5% מהכנסתו המזכה של היחיד;
+-- src:1730 | (2) לעניין יחיד שהיתה לו בשנת המס הכנסת עבודה – 7% מהכנסתו המזכה, ובלבד שהסכום הכולל שבשלו יינתן זיכוי בעד סכומים ששולמו לביטוח קצבת שאירים כאמור בסעיף קטן (ב) לא יעלה על 1.5% מהכנסתו המזכה של היחיד, ושהסכום הכולל שבשלו יינתן זיכוי בעד סך הסכומים ששולמו לביטוח חיים כאמור בסעיף קטן (א)(1), לביטוח קצבת שאירים כאמור בסעיף קטן (ב) ובשל הכנסה שאינה מעבודה, לא יעלה על 5% מהכנסתו המזכה של היחיד.
+
+@ref ITO s 45A(d)(2)(b)(1)-(2), lines 1729-1730
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+      a IS A `The amounts of sections 45A and 47 in force in the tax year`
+GIVETH A NUMBER
+`s 45A(d)(2)(b) — the percentage of qualifying income, for` i `, at` a MEANS
+    IF   `the individual had work income in the tax year:` i
+    THEN 7% TIMES `s 47(a)(1) — the qualifying income of` i `, at` a      -- (b)(2)
+    ELSE 5% TIMES `s 47(a)(1) — the qualifying income of` i `, at` a      -- (b)(1)
+
+-- (d)(2): the lower of all the sums paid under (a) and (b), and the percentage.
+@ref ITO s 45A(d)(2), lines 1727-1730
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+      a IS A `The amounts of sections 45A and 47 in force in the tax year`
+GIVETH A NUMBER
+`s 45A(d)(2) — the lower of the sums and the percentage, for` i `, at` a MEANS
+    min (`s 45A — the sums that may be credited at 25%, for` i `, at` a PLUS `s 45A — the sums that may be credited at 35%, for` i `, at` a)
+        (`s 45A(d)(2)(b) — the percentage of qualifying income, for` i `, at` a)
+
+-- The provisos of (d)(2)(b) are part of limb (2): they bind where limb (2) is the higher amount,
+-- and not where the fixed amount of limb (1) is (fork F5).
+@ref ITO s 45A(d)(2)(b), provisos, lines 1729-1730
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+      a IS A `The amounts of sections 45A and 47 in force in the tax year`
+GIVETH A BOOLEAN
+`s 45A(d)(2)(b) — the sums as paid are within the provisos, for` i `, at` a MEANS
+        `survivors` AT MOST 1.5% TIMES `qualifying income`
+    AND (    NOT `the individual had work income in the tax year:` i
+         OR  `life` PLUS `survivors` PLUS `not from work` AT MOST 5% TIMES `qualifying income`)
+    WHERE
+        `qualifying income` MEANS `s 47(a)(1) — the qualifying income of` i `, at` a
+        `survivors`         MEANS `s 45A(b) — the survivors' pension insurance sums that may be credited, for` i
+        `life`              MEANS `s 45A(a)(1) — the life-insurance sums that may be credited, for` i
+        `not from work`     MEANS i's `sums paid, for section 45A`'s `of the pension sums above, those paid in respect of income not from work`
+
+§§ `(e) — the limit for a beneficiary member`
+
+-- src:1731 | (ה) על אף האמור בסעיפים קטנים (א) עד (ב1), הסכום הכולל שבשלו יינתן זיכוי לעמית מוטב בעד סכומים ששולמו כאמור באותם סעיפים קטנים, לא יעלה על הגבוה מבין הסכומים המפורטים להלן:
+-- src:1732 | (1) הסכום האמור בסעיף קטן (ד)(1);
+-- src:1733 | (2) הסכום הנמוך מבין אלה:
+-- src:1734 | (א) כלל הסכומים ששולמו כאמור בסעיפים קטנים (א) עד (ב1);
+-- src:1735 | (ב)(1) לענין עמית מוטב שלא היתה לו בשנת המס הכנסה מבוטחת – 5% מהכנסתו החייבת עד לסכום השווה לפעמיים הסכום האמור בפסקה (1) להגדרה ”הכנסה מזכה“ שבסעיף 47(א)(1) לשנה ובלבד שהסכום הכולל שבשלו יינתן זיכוי בעד סכומים ששולמו לביטוח קצבת שאירים כאמור בסעיף קטן (ב) לא יעלה על 1.5% מהכנסתו המזכה של העמית המוטב;
+-- src:1736 | (2) לענין עמית מוטב שהיתה לו בשנת המס הכנסה מבוטחת – הסכום המתקבל מצירוף הסכומים המפורטים להלן:
+-- src:1737 | (א) 7% מהכנסתו המזכה שהיא הכנסה מבוטחת, ובלבד שהסכום הכולל שבשלו יינתן זיכוי בעד סכומים ששולמו לביטוח קצבת שאירים כאמור בסעיף קטן (ב) לא יעלה על 1.5% מהכנסתו כאמור, ושהסכום הכולל שבשלו יינתן זיכוי בעד סך הסכומים ששולמו לביטוח חיים לפי סעיפים קטנים (א)(1) ו־(ב1), ולביטוח קצבת שאירים לפי סעיף קטן (ב) לא יעלה על 5% מהכנסתו כאמור;
+-- src:1738 | (ב) 5% מהכנסתו החייבת שאינה הכנסה מבוטחת, עד לסכום השווה לפעמיים הסכום האמור בפסקה (1) להגדרה ”הכנסה מזכה“ שבסעיף 47(א)(1) לשנה, בניכוי סכום כאמור בפסקה (1) לאותה הגדרה או סכום הכנסתו המבוטחת, לפי הנמוך מביניהם, ובלבד שהסכום הכולל שבשלו יינתן זיכוי בעד סכומים ששולמו לביטוח קצבת שאירים כאמור בסעיף קטן (ב) לא יעלה על 1.5% מהכנסתו החייבת שאינה הכנסה מבוטחת.
+
+-- "הכנסתו המזכה שהיא הכנסה מבוטחת": the part of the qualifying income that is insured income. The
+-- qualifying income takes work income up to the paragraph (1) amount; insured income is work income,
+-- and is read as taken into that part first (fork F6), so the part is the lesser of the two.
+@ref ITO s 45A(e)(2)(b)(2)(a), line 1737
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+      a IS A `The amounts of sections 45A and 47 in force in the tax year`
+GIVETH A NUMBER
+`s 45A(e)(2)(b)(2)(a) — the qualifying income that is insured income, for` i `, at` a MEANS
+    min (i's `insured income`)
+        (`s 47(a)(1) — the part of the qualifying income that is work income:` i `,` a)
+
+@ref ITO s 45A(e)(2)(b)(2)(b), line 1738
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+      a IS A `The amounts of sections 45A and 47 in force in the tax year`
+GIVETH A NUMBER
+`s 45A(e)(2)(b)(2)(b) — the taxable income that is not insured income, up to its ceiling, for` i `, at` a MEANS
+    min (max 0 (`the individual's total taxable income, before the deductions under sections 47 and 47A:` i MINUS i's `insured income`))
+        (max 0 (2 TIMES `paragraph (1) amount` MINUS min `paragraph (1) amount` (i's `insured income`)))
+    WHERE `paragraph (1) amount` MEANS a's `the amount in paragraph (1) of the definition of qualifying income`
+
+@ref ITO s 45A(e)(2)(b), lines 1735-1738
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+      a IS A `The amounts of sections 45A and 47 in force in the tax year`
+GIVETH A NUMBER
+`s 45A(e)(2)(b) — the percentage of income, for` i `, at` a MEANS
+    IF   i's `insured income` GREATER THAN 0
+    THEN      7% TIMES `s 45A(e)(2)(b)(2)(a) — the qualifying income that is insured income, for` i `, at` a       -- (b)(2)(a)
+         PLUS 5% TIMES `s 45A(e)(2)(b)(2)(b) — the taxable income that is not insured income, up to its ceiling, for` i `, at` a  -- (b)(2)(b)
+    ELSE 5% TIMES min (`the individual's total taxable income, before the deductions under sections 47 and 47A:` i)
+                      (2 TIMES a's `the amount in paragraph (1) of the definition of qualifying income`)                         -- (b)(1)
+
+@ref ITO s 45A(e)(2), lines 1733-1738
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+      a IS A `The amounts of sections 45A and 47 in force in the tax year`
+GIVETH A NUMBER
+`s 45A(e)(2) — the lower of the sums and the percentage, for` i `, at` a MEANS
+    min (`s 45A — the sums that may be credited at 25%, for` i `, at` a PLUS `s 45A — the sums that may be credited at 35%, for` i `, at` a)
+        (`s 45A(e)(2)(b) — the percentage of income, for` i `, at` a)
+
+-- The provisos, as for (d) (fork F5). Under (b)(2) a sum may belong to part (a) or part (b), and the
+-- text does not say which; the sums as paid are within the provisos if they fit part (a)'s, which
+-- is enough for the total to be credited (part (b) then holds only pension sums). If they do not fit
+-- part (a)'s, whether they fit is a question of attribution the text leaves open (fork F1).
+@ref ITO s 45A(e)(2)(b), provisos, lines 1735, 1737, 1738
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+      a IS A `The amounts of sections 45A and 47 in force in the tax year`
+GIVETH A BOOLEAN
+`s 45A(e)(2)(b) — the sums as paid are within the provisos, for` i `, at` a MEANS
+    IF   i's `insured income` GREATER THAN 0
+    THEN     `survivors` AT MOST 1.5% TIMES `insured qualifying income`
+         AND `life` PLUS `child's life` PLUS `survivors` AT MOST 5% TIMES `insured qualifying income`
+    ELSE `survivors` AT MOST 1.5% TIMES `s 47(a)(1) — the qualifying income of` i `, at` a
+    WHERE
+        `insured qualifying income` MEANS `s 45A(e)(2)(b)(2)(a) — the qualifying income that is insured income, for` i `, at` a
+        `survivors`                 MEANS `s 45A(b) — the survivors' pension insurance sums that may be credited, for` i
+        `life`                      MEANS `s 45A(a)(1) — the life-insurance sums that may be credited, for` i
+        `child's life`              MEANS `s 45A(b1) — the child's life-insurance sums that may be credited, for` i `, at` a
+
+§§ `(d) and (e) together — the limit, and the credit`
+
+-- src:1732 | (1) הסכום האמור בסעיף קטן (ד)(1);
+-- Both subsections have the same limb (1), the fixed amount (as adjusted under s 120B: an input).
+-- `the amount of limb (2)` is limb (2) before its provisos; whether the sums as paid are within them
+-- is the last field (version 0.2.0: said, not changed).
+DECLARE `The limit under section 45A(d) or (e)` HAS
+    `the subsection`                          IS A STRING
+    `the fixed amount of limb (1)`            IS A NUMBER
+    `the amount of limb (2)`                  IS A NUMBER
+    `the sums as paid are within the provisos of limb (2)` IS A BOOLEAN
+
+@ref ITO s 45A(d), (e), lines 1725-1738
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+      a IS A `The amounts of sections 45A and 47 in force in the tax year`
+GIVETH A `The limit under section 45A(d) or (e)`
+`s 45A(d)-(e) — the limit that governs, for` i `, at` a MEANS
+    IF   `s 47(a)(7) — a beneficiary member:` i `, at` a
+    THEN `The limit under section 45A(d) or (e)` WITH
+             `the subsection`                                       IS "(e)"
+             `the fixed amount of limb (1)`                         IS a's `the amount in section 45A(d)(1)`
+             `the amount of limb (2)`                               IS `s 45A(e)(2) — the lower of the sums and the percentage, for` i `, at` a
+             `the sums as paid are within the provisos of limb (2)` IS `s 45A(e)(2)(b) — the sums as paid are within the provisos, for` i `, at` a
+    ELSE `The limit under section 45A(d) or (e)` WITH
+             `the subsection`                                       IS "(d)"
+             `the fixed amount of limb (1)`                         IS a's `the amount in section 45A(d)(1)`
+             `the amount of limb (2)`                               IS `s 45A(d)(2) — the lower of the sums and the percentage, for` i `, at` a
+             `the sums as paid are within the provisos of limb (2)` IS `s 45A(d)(2)(b) — the sums as paid are within the provisos, for` i `, at` a
+
+-- "לא יעלה על הגבוה מבין הסכומים": the total for which credit is given may not exceed the higher of
+-- the two limbs. This is the higher of the fixed amount and limb (2) BEFORE limb (2)'s provisos; it
+-- is the most credited where nothing is cut, or where limb (1) is at least limb (2) before them.
+-- Where a proviso cuts limb (2), the most credited is the higher of the fixed amount and limb (2) as
+-- the provisos limit it, which the one-rate rules below compute (version 0.2.0, D187; fork F5).
+@ref ITO s 45A(d), (e), chapeaux, lines 1725, 1731
+GIVEN l IS A `The limit under section 45A(d) or (e)`
+GIVETH A NUMBER
+`s 45A(d)-(e) — the most for which credit is given, under` l MEANS
+    max (l's `the fixed amount of limb (1)`) (l's `the amount of limb (2)`)
+
+@ref ITO s 45A(d)-(e): the section does not say which sums are credited when a limit cuts sums of different kinds
+GIVEN a IS A TYPE
+GIVETH AN a
+`section 45A does not say which sums are credited when its limits cut sums of different kinds` MEANS
+    REFUSE "section 45A does not say which sums are credited when its limits cut sums of different kinds"
+
+@ref ITO s 45A(e)(2)(b)(2): the subsection does not say whether a survivors' insurance sum belongs to its part (a) or part (b)
+GIVEN a IS A TYPE
+GIVETH AN a
+`section 45A(e)(2)(b)(2) does not say to which of its two parts a survivors' insurance sum belongs` MEANS
+    REFUSE "section 45A(e)(2)(b)(2) does not say to which of its two parts a survivors' insurance sum belongs"
+
+-- Version 0.2.0 (D183): the same question for life insurance. Part (a) caps life insurance (under
+-- (a)(1) and (b1)) with survivors' insurance at 5% of the insured qualifying income; part (b) has no
+-- cap on life insurance. Where the life-insurance sums are more than part (a)'s cap, the answer
+-- turns on which part they belong to (fork F1).
+@ref ITO s 45A(e)(2)(b)(2): the subsection does not say whether a life-insurance sum belongs to its part (a) or part (b)
+GIVEN a IS A TYPE
+GIVETH AN a
+`section 45A(e)(2)(b)(2) does not say to which of its two parts a life-insurance sum belongs` MEANS
+    REFUSE "section 45A(e)(2)(b)(2) does not say to which of its two parts a life-insurance sum belongs"
+
+-- Where every creditable sum is of the 35% class (no life insurance), the rate is one and the only
+-- question is how much is credited: the total limit, and the provisos of limb (2) where limb (2)
+-- governs (fork F5). Each proviso caps a part of the sums: survivors' insurance at 1.5%; under
+-- (d)(2)(b)(2), survivors' insurance together with pension sums paid in respect of income not from
+-- work at 5% (fork F7). Which sum inside a capped part is cut does not matter, all being at 35%.
+-- Under (e)(2)(b)(2) a survivors' sum may belong to part (a) (capped at 1.5% of the insured
+-- qualifying income) or to part (b) (1.5% of the income not insured); where it is more than part
+-- (a)'s cap the answer turns on which, and is declined.
+--
+-- Version 0.2.0 (D187). In every arm the sums credited are the sums paid, up to the higher of the
+-- fixed amount of limb (1) and limb (2) as its provisos limit it: "max `the fixed amount`" below.
+-- Where limb (2) after its provisos is lower than the fixed amount, limb (1) is the higher, and under
+-- fork F5(i) the provisos then do not bind. In the last arm the provisos' effect turns on the part of
+-- (e)(2)(b)(2) a survivors' sum belongs to; but where the fixed amount is at least the most limb (2)
+-- could give under any attribution (survivors' sums capped at 1.5% of the insured qualifying income
+-- plus 1.5% of the taxable income not insured, lines 1737-1738), limb (1) governs whichever part
+-- they belong to, and the answer does not turn on it.
+-- Worked: D187, an employee not a beneficiary member, 100,000 of insured work income, 5,000 of
+-- survivors' insurance only. Limb (2) = min(5,000, 7% x 100,000) = 5,000 before the proviso and
+-- min(5,000, 1.5% x 100,000) = 1,500 after it; the higher of 2,268 and 1,500 is 2,268; credited
+-- min(5,000, 2,268) = 2,268, credit 35% x 2,268 = 793.80 (version 0.1.0: 35% x 1,500 = 525).
+@ref ITO s 45A(d), (e), lines 1725-1738
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+      a IS A `The amounts of sections 45A and 47 in force in the tax year`
+GIVETH A NUMBER
+`s 45A(d)-(e) — the sums credited, where every creditable sum is at 35%, for` i `, at` a MEANS
+    BRANCH
+        IF   `limb (1) governs`
+        THEN min `at 35%` `the most`
+        IF   `the limit`'s `the subsection` EQUALS "(d)" AND `the individual had work income in the tax year:` i
+        THEN min `at 35%`
+                 (max `the fixed amount`
+                      (min `limb (2)`
+                           ((`pension` MINUS `not from work`)
+                            PLUS min (min `survivors` (1.5% TIMES `qualifying income`) PLUS `not from work`)
+                                     (5% TIMES `qualifying income`))))
+        IF   `the limit`'s `the subsection` EQUALS "(d)"
+        THEN min `at 35%` (max `the fixed amount` (min `limb (2)` (`pension` PLUS min `survivors` (1.5% TIMES `qualifying income`))))
+        IF   i's `insured income` EQUALS 0
+        THEN min `at 35%` (max `the fixed amount` (min `limb (2)` (`pension` PLUS `child's pension` PLUS min `survivors` (1.5% TIMES `qualifying income`))))
+        IF   `survivors` AT MOST 1.5% TIMES `insured qualifying income`
+        THEN min `at 35%` (max `the fixed amount` `limb (2)`)
+        IF   `the fixed amount` AT LEAST
+                 min `limb (2)` (`pension` PLUS `child's pension`
+                                 PLUS min `survivors` (1.5% TIMES `insured qualifying income` PLUS 1.5% TIMES `taxable income not insured`))
+        THEN min `at 35%` `the fixed amount`
+        OTHERWISE `section 45A(e)(2)(b)(2) does not say to which of its two parts a survivors' insurance sum belongs`
+    WHERE
+        `the limit`                 MEANS `s 45A(d)-(e) — the limit that governs, for` i `, at` a
+        `the most`                  MEANS `s 45A(d)-(e) — the most for which credit is given, under` `the limit`
+        `the fixed amount`          MEANS `the limit`'s `the fixed amount of limb (1)`
+        `limb (2)`                  MEANS `the limit`'s `the amount of limb (2)`
+        `limb (1) governs`          MEANS `the fixed amount` AT LEAST `limb (2)`
+        `at 35%`                    MEANS `s 45A — the sums that may be credited at 35%, for` i `, at` a
+        `pension`                   MEANS `s 45A(b) — the pension sums that may be credited, for` i
+        `child's pension`           MEANS `s 45A(b1) — the child's pension sums that may be credited, for` i `, at` a
+        `survivors`                 MEANS `s 45A(b) — the survivors' pension insurance sums that may be credited, for` i
+        `not from work`             MEANS min `pension` (i's `sums paid, for section 45A`'s `of the pension sums above, those paid in respect of income not from work`)
+        `qualifying income`         MEANS `s 47(a)(1) — the qualifying income of` i `, at` a
+        `insured qualifying income` MEANS `s 45A(e)(2)(b)(2)(a) — the qualifying income that is insured income, for` i `, at` a
+        `taxable income not insured` MEANS max 0 (`the individual's total taxable income, before the deductions under sections 47 and 47A:` i MINUS i's `insured income`)
+
+-- Version 0.2.0 (D183): where every creditable sum is of the 25% class (life insurance under (a)(1),
+-- and a beneficiary member's child's life insurance under (b1)), the rate is again one. Version 0.1.0
+-- tested only the 35% class at nil, and declined this case in words about "sums of different kinds",
+-- which were false of it. The provisos that reach life insurance: under (d)(2)(b)(2), life insurance
+-- with survivors' insurance and sums in respect of income not from work at 5% of the qualifying income
+-- (here survivors' and pension sums are nil); under (e)(2)(b)(2), part (a)'s 5% of the insured
+-- qualifying income for life insurance under (a)(1) and (b1) with survivors' insurance. Neither
+-- (d)(2)(b)(1) nor (e)(2)(b)(1) caps life insurance. Under (e)(2)(b)(2) part (b) has no cap on life
+-- insurance, so where the life-insurance sums are more than part (a)'s cap the answer turns on the
+-- part they belong to, and is declined unless the fixed amount is at least the most limb (2) could
+-- give under any attribution (5% of the insured qualifying income plus all of part (b)).
+-- Worked: D183, an employee not a beneficiary member, 100,000 of insured work income, resident, 6,000
+-- of life insurance only. Limb (2) = min(6,000, 7,000) = 6,000; the 5% proviso cuts it to
+-- min(6,000, 5,000) = 5,000; the higher of 2,268 and 5,000 is 5,000; credited min(6,000, 5,000) =
+-- 5,000, credit 25% x 5,000 = 1,250 (version 0.1.0: declined).
+@ref ITO s 45A(a)(1), (b1), (d), (e), lines 1716, 1719, 1725-1738
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+      a IS A `The amounts of sections 45A and 47 in force in the tax year`
+GIVETH A NUMBER
+`s 45A(d)-(e) — the sums credited, where every creditable sum is at 25%, for` i `, at` a MEANS
+    BRANCH
+        IF   `limb (1) governs`
+        THEN min `at 25%` `the most`
+        IF   `the limit`'s `the subsection` EQUALS "(d)" AND `the individual had work income in the tax year:` i
+        THEN min `at 25%` (max `the fixed amount` (min `limb (2)` (min `at 25%` (5% TIMES `qualifying income`))))
+        IF   `the limit`'s `the subsection` EQUALS "(d)" OR i's `insured income` EQUALS 0
+        THEN min `at 25%` (max `the fixed amount` `limb (2)`)
+        IF   `at 25%` AT MOST 5% TIMES `insured qualifying income`
+        THEN min `at 25%` (max `the fixed amount` `limb (2)`)
+        IF   `the fixed amount` AT LEAST
+                 min `limb (2)` (5% TIMES `insured qualifying income`
+                                 PLUS 5% TIMES `s 45A(e)(2)(b)(2)(b) — the taxable income that is not insured income, up to its ceiling, for` i `, at` a)
+        THEN min `at 25%` `the fixed amount`
+        OTHERWISE `section 45A(e)(2)(b)(2) does not say to which of its two parts a life-insurance sum belongs`
+    WHERE
+        `the limit`                 MEANS `s 45A(d)-(e) — the limit that governs, for` i `, at` a
+        `the most`                  MEANS `s 45A(d)-(e) — the most for which credit is given, under` `the limit`
+        `the fixed amount`          MEANS `the limit`'s `the fixed amount of limb (1)`
+        `limb (2)`                  MEANS `the limit`'s `the amount of limb (2)`
+        `limb (1) governs`          MEANS `the fixed amount` AT LEAST `limb (2)`
+        `at 25%`                    MEANS `s 45A — the sums that may be credited at 25%, for` i `, at` a
+        `qualifying income`         MEANS `s 47(a)(1) — the qualifying income of` i `, at` a
+        `insured qualifying income` MEANS `s 45A(e)(2)(b)(2)(a) — the qualifying income that is insured income, for` i `, at` a
+
+-- The credit, in shekels, under (a), (b) and (b1) as limited by (d) or (e).
+--   1. Nothing is cut: the total is within the limit and, where limb (2) governs, the sums as paid
+--      are within its provisos. Every sum is credited at its own rate.
+--   2. Something is cut, and every creditable sum is of the 35% class: the rule above.
+--   2A. Something is cut, and every creditable sum is of the 25% class: the rule above (version
+--      0.2.0, D183; version 0.1.0 declined it as 3).
+--   3. Something is cut, and there are sums at both rates: the answer turns on which sums are
+--      credited, which the section does not say. Refused (fork F1).
+@ref ITO s 45A(a), (b), (b1), (d), (e), lines 1715-1738
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+      a IS A `The amounts of sections 45A and 47 in force in the tax year`
+GIVETH A NUMBER
+`s 45A(a)-(e) — the credit for insurance premiums and pension contributions, for` i `, at` a MEANS
+    `for tax year` (i's `tax year`) `, row IL-08 answers`
+        (BRANCH
+            IF   `the total` AT MOST `the most`
+             AND (`limb (1) governs` OR `the limit`'s `the sums as paid are within the provisos of limb (2)`)
+            THEN (`s 45A(a) — the rate` TIMES `at 25%`) PLUS (`s 45A(b) — the rate` TIMES `at 35%`)
+            IF   `at 25%` EQUALS 0
+            THEN `s 45A(b) — the rate` TIMES `s 45A(d)-(e) — the sums credited, where every creditable sum is at 35%, for` i `, at` a
+            IF   `at 35%` EQUALS 0
+            THEN `s 45A(a) — the rate` TIMES `s 45A(d)-(e) — the sums credited, where every creditable sum is at 25%, for` i `, at` a
+            OTHERWISE `section 45A does not say which sums are credited when its limits cut sums of different kinds`)
+    WHERE
+        `the limit`       MEANS `s 45A(d)-(e) — the limit that governs, for` i `, at` a
+        `the most`        MEANS `s 45A(d)-(e) — the most for which credit is given, under` `the limit`
+        `limb (1) governs` MEANS `the limit`'s `the fixed amount of limb (1)` AT LEAST `the limit`'s `the amount of limb (2)`
+        `at 25%`          MEANS `s 45A — the sums that may be credited at 25%, for` i `, at` a
+        `at 35%`          MEANS `s 45A — the sums that may be credited at 35%, for` i `, at` a
+        `the total`       MEANS `at 25%` PLUS `at 35%`
+
+§§ `(f) — a self-employed member's deposits`
+
+-- src:1739 | (ו) יחיד שלא נוכו לו סכומים בעד רכישת ביטוח מועדף מפני אבדן כושר עבודה לפי סעיף 32(14)(ב), יזוכה ממס בשיעור של 35% מן הסכומים שהפקיד לקופת גמל לקצבה בעבור עצמו כעמית עצמאי ולא זוכה בשלהם ממס לפי סעיף קטן (ב), עד לשיעור של 0.5% מהכנסתו מעסק או ממשלח יד עד לסכום השווה לפעמיים הסכום האמור בפסקה (1) להגדרה ”הכנסה מזכה“ שבסעיף 47(א)(1) בניכוי הכנסתו המבוטחת.
+-- "עד לשיעור של 0.5% מהכנסתו מעסק או ממשלח יד", "עד לסכום השווה לפעמיים הסכום", "בניכוי הכנסתו
+-- המבוטחת": the deposits credited are at most 0.5% of the business or professional income, that
+-- income counted up to twice the paragraph (1) amount less the insured income (nil if less).
+@ref ITO s 45A(f), line 1739
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+      a IS A `The amounts of sections 45A and 47 in force in the tax year`
+GIVETH A NUMBER
+`s 45A(f) — the most of a self-employed member's deposits that is credited, for` i `, at` a MEANS
+    0.5% TIMES min (i's `taxable income from a business or profession`)
+                   (max 0 (2 TIMES a's `the amount in paragraph (1) of the definition of qualifying income` MINUS i's `insured income`))
+
+@ref ITO s 45A(f), line 1739
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+      a IS A `The amounts of sections 45A and 47 in force in the tax year`
+GIVETH A NUMBER
+`s 45A(f) — the credit for a self-employed member's deposits, for` i `, at` a MEANS
+    `for tax year` (i's `tax year`) `, row IL-08 answers`
+        (IF   i's `a deduction was made for him under section 32(14)(b) for preferred insurance against loss of working capacity`
+         THEN 0
+         ELSE 35% TIMES min (i's `sums deposited to a pension provident fund as a self-employed member for himself, not credited under section 45A(b)`)
+                            (`s 45A(f) — the most of a self-employed member's deposits that is credited, for` i `, at` a))
+
+§§ `The section as a whole, and section 48A`
+
+-- src:1811 | שר האוצר רשאי לקבוע כי הוראות פרק זה לענין זיכויים, כולן או מקצתן, לא יחולו על עובד זר או על סוגי עובדים זרים שיקבע, או שיחולו עליהם באופן חלקי בתנאים שיקבע; לענין זה, ”עובד זר“ – כהגדרתו בחוק עובדים זרים (איסור העסקה שלא כדין והבטחת תנאים הוגנים), התשנ״א–1991, אף אם רואים אותו כתושב לענין פקודה זו.
+-- src:1812 | [note: פורסמו תקנות מס הכנסה (זיכויים לעובד זר), התשע״ה–2014.]
+-- s 45A is a credit in this Chapter, so s 48A reaches it. The 2014 Regulations are not in the
+-- source bundle; they can only take a credit away, so the rule declines a foreign worker exactly
+-- where the section would give him a credit, and answers 0 where it gives none. Row IL-01 reads
+-- s 48A the same way, with the same words of refusal.
+@ref ITO s 48A, lines 1810-1812 — not encoded in this row
+GIVEN a IS A TYPE
+GIVETH AN a
+`row IL-08: section 48A and the regulations made under it are not encoded` MEANS
+    REFUSE "section 48A and the regulations made under it are not encoded in this model"
+
+@export The credit against income tax, in NIS for a tax year from 2024, under Income Tax Ordinance s 45A for life-insurance premiums and pension contributions (subsections (a)-(e)) plus the self-employed member's credit of subsection (f); declines where the section does not say which sums its limits cut
+@ref ITO s 45A, lines 1714-1739
+GIVEN i IS AN `An individual in a tax year, for sections 45A and 47`
+          @desc the individual, the tax year, the income split into work and other income, the insured income, every sum paid by limb, and any sum already deducted under s 47
+      a IS A `The amounts of sections 45A and 47 in force in the tax year`
+          @desc NIS; the s 45A(d)(1) amount and the two s 47(a)(1) amounts as adjusted under s 120B for the tax year, and the National Insurance average wage summed over the tax year
+GIVETH A NUMBER
+`the credit under section 45A for` i `, at` a MEANS
+    IF   i's `a foreign worker` AND `the credit` GREATER THAN 0
+    THEN `row IL-08: section 48A and the regulations made under it are not encoded`
+    ELSE `the credit`
+    WHERE
+        `the credit` MEANS
+                 `s 45A(a)-(e) — the credit for insurance premiums and pension contributions, for` i `, at` a
+            PLUS `s 45A(f) — the credit for a self-employed member's deposits, for` i `, at` a

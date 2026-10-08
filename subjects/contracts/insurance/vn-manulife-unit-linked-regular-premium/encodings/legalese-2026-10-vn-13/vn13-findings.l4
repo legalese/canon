@@ -1,0 +1,180 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `vn13-nouns`
+IMPORT `vn13-fixtures`
+IMPORT `vn13-art01-02-definitions`
+IMPORT `vn13-art03-benefits`
+IMPORT `vn13-art04-08-conditions`
+IMPORT `vn13-art09-10-premiums`
+IMPORT `vn13-art11-12-funds`
+IMPORT `vn13-art14-20-general`
+
+-- Evidence for NOTES.md section 4, Findings: the hostile reading. Each block shows an
+-- answer the text gives that a policyholder or the Company would not expect. Where a block
+-- defines a function, it is the OTHER reading, labelled as such, kept here so the two
+-- readings can be compared on one case; no rule module uses it.
+-- Every expected value was worked by hand from the text before the assertion was run.
+
+§ `Findings`
+
+§§ `Finding 1 — the premium debt is deducted twice (Article 3.1 and 3.2 with Article 1)`
+
+-- Article 1 makes the surrender value the account value LESS the premium debt; 3.1 ii adds
+-- that surrender value and 3.1 v subtracts the premium debt again. On the main claim the
+-- debt is 2,000,000: as written 757,300,000; with the debt taken once, 759,300,000.
+GIVEN `the claim` IS A `A death claim`
+GIVETH A NUMBER
+`the death benefit, the premium debt taken only once, on` `the claim` MEANS
+          `the claim`'s `the schedule`'s `sum assured`
+    PLUS  `the total account value of` (`the valuation`'s `holdings`)
+    PLUS  `the claim`'s `amounts deducted from the death to the notice`
+    PLUS  `the claim`'s `rider benefits payable`
+    MINUS `the valuation`'s `premium debt`
+    WHERE
+        `the valuation` MEANS
+            `the valuation on the next Valuation Date after` (`the claim`'s `date the Company received the complete and valid claim`) `among` (`the claim`'s `valuations after the death`)
+
+#ASSERT `Article 3.1 — the death benefit on` `the main claim` EQUALS 757_300_000
+#ASSERT `the death benefit, the premium debt taken only once, on` `the main claim` EQUALS 759_300_000
+-- 3.2 the same: 209,000,000 less 2,000,000 again is 207,000,000.
+#ASSERT `Article 3.2 — the surrender value paid instead, on` (`the main claim with own offence` TRUE `, other's offence` FALSE `, AIDS` FALSE) EQUALS 207_000_000
+
+§§ `Finding 2 — whose offence? (Article 3.2 i)`
+
+-- Read literally, "phạm tội" has no subject, so a death caused by anyone's offence, a
+-- murder victim's included, is excluded.
+GIVEN `the claim` IS A `A death claim`
+GIVETH A BOOLEAN
+`Article 3.2, read literally — the death is excluded:` `the claim` MEANS
+        `the claim`'s `caused directly or indirectly by an offence of the Life Insured`
+    ..  `the claim`'s `caused directly or indirectly by an offence of another person`
+    OR  `the claim`'s `related to AIDS, ARC or HIV infection`
+
+-- A murder victim: the reading taken pays 757,300,000; the literal reading 207,000,000.
+#ASSERT `Article 3.2, read literally — the death is excluded:` (`the main claim with own offence` FALSE `, other's offence` TRUE `, AIDS` FALSE)
+#ASSERT `what the Company pays on` (`the main claim with own offence` FALSE `, other's offence` TRUE `, AIDS` FALSE) EQUALS `the death benefit under Article 3.1` 757_300_000
+
+§§ `Finding 3 — a grace period that never ends (Article 9.4, second policy year on)`
+
+-- "60 days from the day the surrender value was MOST RECENTLY found not enough": the
+-- surrender value is found not enough again at every monthly deduction, so on the literal
+-- reading the 60 days restart every month and the contract never ends.
+GIVEN `the dates` IS A LIST OF DATE
+      `the day`   IS A DATE
+GIVETH A LIST OF DATE
+`the determinations among` `the dates` `on or before` `the day` MEANS
+    filter (GIVEN d YIELD d AT MOST `the day`) `the dates`
+
+GIVEN `the day`   IS A DATE
+      `the dates` IS A LIST OF DATE
+GIVETH A BOOLEAN
+`the contract has ended by` `the day` `, the grace period counted from the most recent of` `the dates` MEANS
+    CONSIDER `the determinations among` `the dates` `on or before` `the day`
+    WHEN EMPTY THEN FALSE
+    WHEN d FOLLOWED BY `the rest` THEN
+        foldl (GIVEN x, y YIELD IF y GREATER THAN x THEN y ELSE x) d `the rest` PLUS 61 AT MOST `the day`
+
+GIVEN `the day`   IS A DATE
+      `the first` IS A DATE
+GIVETH A BOOLEAN
+`the contract has ended by` `the day` `, the grace period counted from` `the first` MEANS
+    `the first` PLUS 61 AT MOST `the day`
+
+-- Shortfalls found on the 10th of every month from March 2028 to June 2029.
+GIVETH A LIST OF DATE
+`monthly shortfalls from March 2028` MEANS
+    map (GIVEN k YIELD `the monthly anniversary number` k `of a contract effective on` (YMD 2028 3 10))
+        (LIST 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
+
+-- On 30 June 2029: on the reading taken the contract ended on 10 May 2028; on the literal
+-- reading it has not ended, and at no later day will it, while the shortfalls go on.
+#ASSERT `the contract has ended by` (YMD 2029 6 30) `, the grace period counted from` (YMD 2028 3 10)
+#ASSERT NOT (`the contract has ended by` (YMD 2029 6 30) `, the grace period counted from the most recent of` `monthly shortfalls from March 2028`)
+#ASSERT NOT (`the contract has ended by` (YMD 2028 5 10) `, the grace period counted from the most recent of` `monthly shortfalls from March 2028`)
+
+§§ `Finding 4 — the first policy year has no rule for a shortfall (Article 9.4)`
+
+-- Premiums paid, but the surrender value cannot meet a monthly deduction in the first
+-- policy year (the initial charge takes 90% of the first year's premium): neither 9.3 nor
+-- 9.4 says what happens.
+#ASSERT REFUSED `Article 9.4 — a grace period begins at a monthly deduction on` (YMD 2026 6 10) `, for a contract effective on` (YMD 2026 1 10) `, given` (`an account with a surrender value of` 0) BECAUSE "Article 9.4 does not say what follows when the surrender value cannot meet a monthly deduction in the first policy year"
+
+§§ `Finding 5 — the beneficiary carries the market from the death to the claim (Article 3.1 ii)`
+
+-- The surrender value is taken after the CLAIM date, not at the death. One death, two claim
+-- dates: complete on 10 March 2030, 757,300,000; on 13 March, 768,300,000 (the surrender
+-- value of 20 March, 220,000,000). A fall in prices would cut the benefit the same way.
+GIVEN `the complete claim date` IS A DATE
+GIVETH A `A death claim`
+`the main claim, complete on` `the complete claim date` MEANS
+    `a death claim on` `a clean history` `, death on` (YMD 2030 3 1) `, own offence` FALSE `, other's offence` FALSE `, AIDS` FALSE `, suicide` FALSE
+        `, notice on` (YMD 2030 3 3) `, claim made on` (YMD 2030 3 3) `, complete on` `the complete claim date`
+        `, valuations` `the valuations of March 2030` `, deducted after death` 300_000 `, riders` 50_000_000 `, unpaid in grace` 0
+        `, misstatement` NOTHING `, non-disclosure` NOTHING
+
+#ASSERT `Article 3.1 — the death benefit on` (`the main claim, complete on` (YMD 2030 3 10)) EQUALS 757_300_000
+#ASSERT `Article 3.1 — the death benefit on` (`the main claim, complete on` (YMD 2030 3 13)) EQUALS 768_300_000
+
+§§ `Finding 6 — avoidance does not give the premiums back (Article 7)`
+
+-- Avoided in the first year with flat prices (bid 9,500, offer 10,000): premium paid
+-- 20,000,000; initial charge 18,000,000; the other 2,000,000 bought 200 units at the
+-- offer, worth 1,900,000 at the bid; 150,000 of risk premium and policy fee were taken, so
+-- the account is 1,750,000. Refund: 18,000,000 + 100,000 + 50,000 + 1,750,000 =
+-- 19,900,000, 100,000 short of the premium, the spread. LAW: Article 22(2) of the Law has
+-- the premiums refunded less reasonable costs (NOTES.md fork register).
+#ASSERT `Article 7 — the refund on avoidance decided on` (YMD 2026 6 1) `, having collected` (`The charges collected` WITH `initial charges collected` IS 18_000_000, `risk premiums collected` IS 100_000, `policy fees collected` IS 50_000) `, among` (LIST (`a valuation on` (YMD 2026 6 3) `: Growth` (1_750_000 DIVIDED BY 9_500) `at` 9_500 `, Balanced` 0 `at` 19_000 `, premium debt` 0)) EQUALS 19_900_000
+
+§§ `Finding 7 — a beneficiary who learns late is out of time (Article 18)`
+
+-- The one-year limit runs from the death, and only the POLICYHOLDER may show that he or she
+-- did not know of the event. In a death claim the Policyholder is the one who died. A
+-- beneficiary who learns of the death 18 months on and claims at once gets nothing.
+-- LAW: Article 30(2) of the Law extends the same relief to the beneficiary.
+#ASSERT `what the Company pays on` (`the main claim with history` `a clean history` `, first claimed` (YMD 2031 9 1) `, unpaid in grace` 0) EQUALS `nothing, because the claim was made after the Article 18 time limit`
+
+§§ `Finding 8 — "the anniversary following the 99th birthday" (Article 20 iv)`
+
+-- Born 10 January 1990 under a contract effective 10 January 2026: the contract ends on
+-- the anniversary at which the Life Insured reaches 99, 10 January 2089; read strictly,
+-- "the anniversary following the day the Life Insured turns 99" is a year later.
+GIVEN `the date of birth`  IS A DATE
+      `the effective date` IS A DATE
+GIVETH A DATE
+`the policy anniversary strictly after the 99th birthday of a Life Insured born on` `the date of birth` `, effective` `the effective date` MEANS
+    IF   `add years` `the effective date` k GREATER THAN `add years` `the date of birth` 99
+    THEN `add years` `the effective date` k
+    ELSE `add years` `the effective date` (k PLUS 1)
+    WHERE
+        k MEANS DATE_YEAR `the date of birth` PLUS 99 MINUS DATE_YEAR `the effective date`
+
+#ASSERT `Article 20(iv) — the policy anniversary at which a Life Insured born on` (YMD 1990 1 10) `reaches Age 99, under a contract effective on` (YMD 2026 1 10) EQUALS YMD 2089 1 10
+#ASSERT `the policy anniversary strictly after the 99th birthday of a Life Insured born on` (YMD 1990 1 10) `, effective` (YMD 2026 1 10) EQUALS YMD 2090 1 10
+
+§§ `Finding 9 — a misstated age outside the range voids the cover at any duration (Article 6 with Article 7)`
+
+-- Article 7's two-year bar does not reach age; Article 6 pays only the surrender value
+-- once two years have passed. Discovered twenty years on, the sum assured is gone: the
+-- payment is the surrender value, 300,000,000.
+#ASSERT `Article 6 — the payment for` (`a misstated birth date, truly` (YMD 1955 1 1) `, discovered` (YMD 2046 1 10)) `, effective from` (YMD 2026 1 10) `, having collected` `the charges collected` `, among` (LIST (`a valuation on` (YMD 2046 1 11) `: Growth` 10_000 `at` 20_000 `, Balanced` 10_000 `at` 10_000 `, premium debt` 0)) EQUALS 300_000_000
+
+§§ `Finding 10 — "at least 20% for each fund" (Article 17.2)`
+
+-- Read as every fund that exists, the common half-and-half allocation fails (the
+-- Development Fund gets nothing), and once the Company has six funds (Article 11.4) no
+-- allocation can pass at all: 6 x 20% is 120%.
+GIVEN `the allocation` IS A LIST OF `An allocation to a fund`
+      `the funds`      IS A LIST OF `A unit-linked fund`
+GIVETH A BOOLEAN
+`Article 17.2, read as every fund — the allocation` `the allocation` `gives each of` `the funds` `at least 20%` MEANS
+    all (GIVEN f YIELD sum (map (GIVEN a YIELD IF a's `fund` EQUALS f THEN a's `share` ELSE 0) `the allocation`) AT LEAST 20%)
+        `the funds`
+
+#ASSERT NOT (`Article 17.2, read as every fund — the allocation` `half Growth, half Balanced` `gives each of` (LIST `the Growth Fund`, `the Development Fund`, `the Balanced Fund`) `at least 20%`)
+#ASSERT `Article 17.2 — the allocation may change to` `half Growth, half Balanced` `, for future premiums only:` TRUE `; approved:` TRUE
+#ASSERT 6 TIMES 20% GREATER THAN 100%
+
+§§ `Finding 11 — the Company may keep part of a premium it refuses (Article 11.8)`
+
+#ASSERT `Article 11.8 — a refund of` 1 `of a refused premium of` 19_000_000 `is one the Article allows`

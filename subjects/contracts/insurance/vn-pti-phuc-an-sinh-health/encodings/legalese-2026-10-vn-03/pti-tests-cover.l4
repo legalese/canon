@@ -1,0 +1,444 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `pti-nouns`
+IMPORT `pti-part1-definitions`
+IMPORT `pti-part4-conditions`
+IMPORT `pti-part2-benefits`
+IMPORT `pti-part3-exclusions`
+IMPORT `pti-part5-claims`
+IMPORT `pti-assessment`
+IMPORT `pti-tests-fixtures`
+
+-- TESTS for Part 2 (the benefits) and for the assessment (waiting periods, limits, other
+-- insurance, several layers at once). Expected values are worked by hand from the Rules'
+-- words and from the fixtures' hypothetical figures (pti-tests-fixtures.l4 lists them):
+-- Programme I sum insured 100m, main 120m, medical 20m; Programme II main 200m, benefit 1
+-- 50m, bed 1m a day, benefit 2 60m, benefit 3 40m, before admission 5m, after discharge 5m,
+-- home nursing 3m, allowance 200k a day up to 6m; outpatient 1m a visit, 10m in all;
+-- dental and maternity co-payment 20%, limits 5m and 30m, newborn 5m; income allowance 300k
+-- a day up to 9m; benefit 6 sum insured 50m. A failing assertion is a finding.
+
+§ `Tests — Part 2 and the assessment`
+
+§§ `Helpers`
+
+GIVEN e IS A `The event`
+      pol IS A `The policy`
+      it IS A `A claim item`
+GIVETH A `The outcome for an item`
+`the outcome, for the event` e `under` pol `, of` it MEANS
+    `the outcome of the line` it `in` (`a claim by` `the insured person` `under` pol `for` e `with the lines` (LIST it))
+
+GIVEN e IS A `The event`
+      pol IS A `The policy`
+      counted IS A LIST OF `An amount counted against a limit`
+      it IS A `A claim item`
+GIVETH A `The outcome for an item`
+`the outcome, for the event` e `under` pol `, counting` counted `, of` it MEANS
+    `the outcome for` (`the line` it `in` (`a claim by` `the insured person` `under` pol `for` e `with the lines` (LIST it))) `, given what was counted before:` counted
+
+GIVEN p IS A `The insured person`
+      e IS A `The event`
+      pol IS A `The policy`
+      it IS A `A claim item`
+GIVETH A `The outcome for an item`
+`the outcome, for` p `, for the event` e `under` pol `, of` it MEANS
+    `the outcome of the line` it `in` (`a claim by` p `under` pol `for` e `with the lines` (LIST it))
+
+GIVEN n IS A NUMBER
+      l IS A `A limit`
+GIVETH A LIST OF `An amount counted against a limit`
+`already` n `against` l MEANS
+    LIST (`An amount counted against a limit` WITH `the limit` IS l, `the amount` IS n)
+
+-- A line during the stay whose reasonable amount differs from the charge.
+GIVEN b IS A `A benefit`
+      h IS A `A head of cost`
+      d IS A DATE
+      amt IS A NUMBER
+      r IS A NUMBER
+GIVETH A `A claim item`
+`a line under` b `for` h `on` d `charged` amt `, reasonable` r MEANS
+    `A claim item` WITH
+        `the benefit`                                  IS b
+        `the head of cost`                             IS h
+        `the date`                                     IS d
+        `the amount charged`                           IS amt
+        `the reasonable and customary amount`          IS r
+        `the treatments it involves`                   IS EMPTY
+        `the order`                                    IS JUST `a licensed doctor`
+        `given during the hospital stay`               IS TRUE
+        `the place of treatment`                       IS `a hospital in Vietnam`
+        `directly related to the illness or injury for which the insured person was then admitted` IS TRUE
+        `the insured person was in a critical condition threatening life and needing emergency treatment` IS FALSE
+        `the main benefit it belongs to`               IS NOTHING
+        `the visit`                                    IS 0
+        `a visit to one specialty of one medical establishment, with tests or diagnostics, a specific diagnosis and a doctor's order for treatment` IS TRUE
+        `the prescription was paid once already`       IS FALSE
+
+-- A line during the stay at a given place.
+GIVEN b IS A `A benefit`
+      h IS A `A head of cost`
+      d IS A DATE
+      amt IS A NUMBER
+      pl IS A `The place of treatment`
+GIVETH A `A claim item`
+`a line during the stay under` b `for` h `on` d `of` amt `at` pl MEANS
+    `A claim item` WITH
+        `the benefit`                                  IS b
+        `the head of cost`                             IS h
+        `the date`                                     IS d
+        `the amount charged`                           IS amt
+        `the reasonable and customary amount`          IS amt
+        `the treatments it involves`                   IS EMPTY
+        `the order`                                    IS JUST `a licensed doctor`
+        `given during the hospital stay`               IS TRUE
+        `the place of treatment`                       IS pl
+        `directly related to the illness or injury for which the insured person was then admitted` IS TRUE
+        `the insured person was in a critical condition threatening life and needing emergency treatment` IS FALSE
+        `the main benefit it belongs to`               IS NOTHING
+        `the visit`                                    IS 0
+        `a visit to one specialty of one medical establishment, with tests or diagnostics, a specific diagnosis and a doctor's order for treatment` IS TRUE
+        `the prescription was paid once already`       IS FALSE
+
+-- A transport line on 1 March 2026, 2m.
+GIVEN h IS A `A head of cost`
+      critical IS A BOOLEAN
+      mb IS A MAYBE `A benefit`
+      o IS A MAYBE `The doctor who gave the order`
+GIVETH A `A claim item`
+`a transport line by` h `, critical:` critical `, going with` mb `, ordered by` o MEANS
+    `A claim item` WITH
+        `the benefit`                                  IS `Programme II other benefit: transport`
+        `the head of cost`                             IS h
+        `the date`                                     IS YMD 2026 3 1
+        `the amount charged`                           IS 2_000_000
+        `the reasonable and customary amount`          IS 2_000_000
+        `the treatments it involves`                   IS EMPTY
+        `the order`                                    IS o
+        `given during the hospital stay`               IS FALSE
+        `the place of treatment`                       IS `a hospital in Vietnam`
+        `directly related to the illness or injury for which the insured person was then admitted` IS TRUE
+        `the insured person was in a critical condition threatening life and needing emergency treatment` IS critical
+        `the main benefit it belongs to`               IS mb
+        `the visit`                                    IS 0
+        `a visit to one specialty of one medical establishment, with tests or diagnostics, a specific diagnosis and a doctor's order for treatment` IS TRUE
+        `the prescription was paid once already`       IS FALSE
+
+-- Events.
+GIVEN cause IS A `A cause`
+      acc IS A MAYBE `The accident`
+      ill IS A MAYBE `The illness`
+      death IS A MAYBE DATE
+      dis IS A MAYBE `The disablement`
+      st IS A MAYBE `The hospital stay`
+      diag IS A MAYBE DATE
+GIVETH A `The event`
+`an event of` cause `with accident` acc `, illness` ill `, death` death `, disablement` dis `, stay` st `, outpatient diagnosis` diag MEANS
+    `The event` WITH
+        `the cause`                                IS cause
+        `the accident`                             IS acc
+        `the illness`                              IS ill
+        `the conditions diagnosed`                 IS LIST `a condition the Rules do not name`
+        `the circumstances`                        IS EMPTY
+        `the sporting activity`                    IS NOTHING
+        `the hospital stay`                        IS st
+        `the date of death`                        IS death
+        `the cause of death unknown`               IS FALSE
+        `the disablement`                          IS dis
+        `the date the surgery was first ordered`   IS NOTHING
+        `the date of the outpatient diagnosis`     IS diag
+
+GIVEN d IS A DATE
+GIVETH A `The event`
+`the standard accident, with death on` d MEANS
+    `an event of` `an accident` `with accident` (JUST `the standard accident`) `, illness` NOTHING `, death` (JUST d) `, disablement` NOTHING `, stay` NOTHING `, outpatient diagnosis` NOTHING
+
+GIVEN dis IS A `The disablement`
+GIVETH A `The event`
+`the standard accident, with the disablement` dis MEANS
+    `an event of` `an accident` `with accident` (JUST `the standard accident`) `, illness` NOTHING `, death` NOTHING `, disablement` (JUST dis) `, stay` NOTHING `, outpatient diagnosis` NOTHING
+
+GIVEN d IS A DATE
+GIVETH A `The event`
+`the standard illness, with death on` d MEANS
+    `an event of` `an illness` `with accident` NOTHING `, illness` (JUST `the standard illness`) `, death` (JUST d) `, disablement` NOTHING `, stay` NOTHING `, outpatient diagnosis` NOTHING
+
+GIVEN dis IS A `The disablement`
+GIVETH A `The event`
+`the standard illness, with the disablement` dis MEANS
+    `an event of` `an illness` `with accident` NOTHING `, illness` (JUST `the standard illness`) `, death` NOTHING `, disablement` (JUST dis) `, stay` NOTHING `, outpatient diagnosis` NOTHING
+
+`an outpatient illness` MEANS
+    `an event of` `an illness` `with accident` NOTHING `, illness` (JUST `the standard illness`) `, death` NOTHING `, disablement` NOTHING `, stay` NOTHING `, outpatient diagnosis` (JUST (YMD 2026 3 1))
+
+`an occupational disease` MEANS
+    `an event of` `an occupational disease` `with accident` NOTHING `, illness` (JUST `the standard illness`) `, death` NOTHING `, disablement` NOTHING `, stay` NOTHING `, outpatient diagnosis` (JUST (YMD 2026 3 10))
+
+`a birth` MEANS
+    `an event of` `pregnancy or childbirth` `with accident` NOTHING `, illness` NOTHING `, death` NOTHING `, disablement` NOTHING `, stay` (JUST `the standard stay`) `, outpatient diagnosis` NOTHING
+
+GIVEN adm IS A DATE
+      dis IS A DATE
+GIVETH A `The event`
+`an illness with a stay from` adm `to` dis MEANS
+    `an illness, with the stay` (`a stay from` adm `to` dis `, hours` 50 `, admitted` TRUE `, overnight` TRUE `, at` `a hospital in Vietnam`)
+
+`the continuous policy` MEANS `a policy renewed continuously since 2023 on` `the full schedule`
+
+`the doctor's order` MEANS JUST `a licensed doctor`
+
+§§ `Programme I — personal accident`
+-- Death 9 days after the accident: 100% of the sum insured.
+#ASSERT `the outcome, for the event` (`the standard accident, with death on` (YMD 2026 3 10)) `under` `the standard policy` `, of` (`a fixed-sum line under` `Programme I: death from an accident` `on` (YMD 2026 3 10)) EQUALS `payable` 100_000_000
+-- Death on the last day of the 104 weeks (728 days after the accident), and the day after.
+#ASSERT `the outcome, for the event` (`the standard accident, with death on` ((YMD 2026 3 1) PLUS 728)) `under` `the standard policy` `, of` (`a fixed-sum line under` `Programme I: death from an accident` `on` ((YMD 2026 3 1) PLUS 728)) EQUALS `payable` 100_000_000
+#ASSERT `the outcome, for the event` (`the standard accident, with death on` ((YMD 2026 3 1) PLUS 729)) `under` `the standard policy` `, of` (`a fixed-sum line under` `Programme I: death from an accident` `on` ((YMD 2026 3 1) PLUS 729)) EQUALS `not covered` `the benefit's own conditions are not met`
+-- Total permanent disablement listed in the table, beginning 4 days after: 100%.
+#ASSERT `the outcome, for the event` (`the standard accident, with the disablement` (`a disablement from` (YMD 2026 3 5) `lasting` 1 `weeks, listed as total:` TRUE `, partial rate:` NOTHING)) `under` `the standard policy` `, of` (`a fixed-sum line under` `Programme I: total permanent disablement from an accident` `on` (YMD 2026 3 5)) EQUALS `payable` 100_000_000
+-- One that begins 729 days after the accident: outside the 104 weeks.
+#ASSERT `the outcome, for the event` (`the standard accident, with the disablement` (`a disablement from` ((YMD 2026 3 1) PLUS 729) `lasting` 1 `weeks, listed as total:` TRUE `, partial rate:` NOTHING)) `under` `the standard policy` `, of` (`a fixed-sum line under` `Programme I: total permanent disablement from an accident` `on` ((YMD 2026 3 1) PLUS 729)) EQUALS `not covered` `the benefit's own conditions are not met`
+-- Partial, at the table's 25%: 25% of 100m.
+#ASSERT `the outcome, for the event` (`the standard accident, with the disablement` (`a disablement from` (YMD 2026 3 5) `lasting` 60 `weeks, listed as total:` FALSE `, partial rate:` (JUST 25))) `under` `the standard policy` `, of` (`a fixed-sum line under` `Programme I: partial permanent disablement from an accident` `on` (YMD 2026 3 5)) EQUALS `payable` 25_000_000
+-- Partial under definition 17's second limb, which the table does not list: no rate.
+#ASSERT REFUSED `the amount paid on` (`the outcome, for the event` (`the standard accident, with the disablement` (`a disablement from` (YMD 2026 3 5) `lasting` 52 `weeks, listed as total:` FALSE `, partial rate:` NOTHING)) `under` `the standard policy` `, of` (`a fixed-sum line under` `Programme I: partial permanent disablement from an accident` `on` (YMD 2026 3 5))) BECAUSE "the Rules give no rate for a partial permanent disablement that Appendix 03 does not list"
+-- Medical expenses: charged 5m, of which 4m reasonable: 4m.
+#ASSERT `the outcome, for the event` `the standard accident event` `under` `the standard policy` `, of` (`a line under` `Programme I: medical expenses for an accidental injury` `for` `surgery` `on` (YMD 2026 3 1) `charged` 5_000_000 `, reasonable` 4_000_000) EQUALS `payable` 4_000_000
+-- 25m of medical expenses: the 20m limit.
+#ASSERT `the outcome, for the event` `the standard accident event` `under` `the standard policy` `, of` (`a line under` `Programme I: medical expenses for an accidental injury` `for` `surgery` `on` (YMD 2026 3 1) `of` 25_000_000) EQUALS `payable` 20_000_000
+-- 5m when 18m has already been counted against the 20m: 2m.
+#ASSERT `the outcome, for the event` `the standard accident event` `under` `the standard policy` `, counting` (`already` 18_000_000 `against` (`the limit for` `Programme I: medical expenses for an accidental injury`)) `, of` (`a line under` `Programme I: medical expenses for an accidental injury` `for` `surgery` `on` (YMD 2026 3 1) `of` 5_000_000) EQUALS `payable` 2_000_000
+-- Total disablement when 30m has already been counted against Programme I's 120m: 90m.
+#ASSERT `the outcome, for the event` (`the standard accident, with the disablement` (`a disablement from` (YMD 2026 3 5) `lasting` 1 `weeks, listed as total:` TRUE `, partial rate:` NOTHING)) `under` `the standard policy` `, counting` (`already` 30_000_000 `against` (`the main limit of` `Programme I`)) `, of` (`a fixed-sum line under` `Programme I: total permanent disablement from an accident` `on` (YMD 2026 3 5)) EQUALS `payable` 90_000_000
+-- Occupational disease: medicine 1m, paid; the same line for an ordinary illness is not.
+#ASSERT `the outcome, for the event` `an occupational disease` `under` `the standard policy` `, of` (`an outside line under` `Programme I: medical expenses for an occupational disease` `for` `medicines` `on` (YMD 2026 3 10) `of` 1_000_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`) EQUALS `payable` 1_000_000
+#ASSERT `the outcome, for the event` `an outpatient illness` `under` `the standard policy` `, of` (`an outside line under` `Programme I: medical expenses for an occupational disease` `for` `medicines` `on` (YMD 2026 3 10) `of` 1_000_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`) EQUALS `not covered` `the benefit's own conditions are not met`
+-- The surgeon is not a head of Programme I's medical expenses as the Rules list them.
+#ASSERT `the outcome, for the event` `the standard accident event` `under` `the standard policy` `, of` (`a line under` `Programme I: medical expenses for an accidental injury` `for` `the surgeon` `on` (YMD 2026 3 1) `of` 1_000_000) EQUALS `not covered` `the head of cost is not one the benefit pays`
+-- Programme I not bought.
+#ASSERT `the outcome, for the event` (`the standard accident, with death on` (YMD 2026 3 10)) `under` (`a first-year policy on` `Programme II alone`) `, of` (`a fixed-sum line under` `Programme I: death from an accident` `on` (YMD 2026 3 10)) EQUALS `not covered` `the benefit was not bought`
+-- An accident on 20 December 2025, before cover took effect.
+#ASSERT `the outcome, for the event` (`an event of` `an accident` `with accident` (JUST (`an accident on` (YMD 2025 12 20) `of the kind` `an accident in daily life`)) `, illness` NOTHING `, death` (JUST (YMD 2025 12 25)) `, disablement` NOTHING `, stay` NOTHING `, outpatient diagnosis` NOTHING) `under` `the standard policy` `, of` (`a fixed-sum line under` `Programme I: death from an accident` `on` (YMD 2025 12 25)) EQUALS `not covered` `the event is outside the period of insurance`
+
+§§ `Programme II — benefits 1, 2 and 3`
+-- Benefit 1, the bed: 4m charged over three days, within 1m a day: 3m.
+#ASSERT `the standard outcome of` (`a line under` `Programme II benefit 1: hospitalisation for illness` `for` `the bed` `on` (YMD 2026 3 1) `of` 4_000_000) EQUALS `payable` 3_000_000
+#ASSERT `the standard outcome of` (`a line under` `Programme II benefit 1: hospitalisation for illness` `for` `(IV) physiotherapy` `on` (YMD 2026 3 1) `of` 2_000_000) EQUALS `payable` 2_000_000
+#ASSERT `the standard outcome of` (`a line under` `Programme II benefit 1: hospitalisation for illness` `for` `the surgeon` `on` (YMD 2026 3 1) `of` 2_000_000) EQUALS `not covered` `the head of cost is not one the benefit pays`
+-- 60m of medicines: the 50m limit for benefit 1.
+#ASSERT `the standard outcome of` (`a line under` `Programme II benefit 1: hospitalisation for illness` `for` `(I) medicines used during the hospital stay` `on` (YMD 2026 3 1) `of` 60_000_000) EQUALS `payable` 50_000_000
+-- A stay of 23 hours is not a hospitalisation (definition 31).
+#ASSERT `the outcome, for the event` (`an illness, with the stay` (`a stay from` (YMD 2026 3 1) `to` (YMD 2026 3 2) `, hours` 23 `, admitted` TRUE `, overnight` TRUE `, at` `a hospital in Vietnam`)) `under` `the standard policy` `, of` `a clean benefit 1 line` EQUALS `not covered` `the benefit's own conditions are not met`
+-- Programme II is for illness, not accident.
+#ASSERT `the outcome, for the event` `the standard accident event` `under` `the standard policy` `, of` `a clean benefit 1 line` EQUALS `not covered` `the benefit's own conditions are not met`
+-- Benefit 2: the surgeon 30m; 70m against the 60m limit; an exploratory procedure is not paid.
+#ASSERT `the standard outcome of` (`a line under` `Programme II benefit 2: surgery for illness` `for` `the surgeon` `on` (YMD 2026 3 1) `of` 30_000_000) EQUALS `payable` 30_000_000
+#ASSERT `the standard outcome of` (`a line under` `Programme II benefit 2: surgery for illness` `for` `the surgeon` `on` (YMD 2026 3 1) `of` 70_000_000) EQUALS `payable` 60_000_000
+#ASSERT `the standard outcome of` (`a line under` `Programme II benefit 2: surgery for illness` `for` `an exploratory or diagnostic procedure` `on` (YMD 2026 3 1) `of` 3_000_000) EQUALS `not covered` `the head of cost is not one the benefit pays`
+-- Benefit 3: the transplant surgery 35m; buying the organ is not paid.
+#ASSERT `the standard outcome of` (`a line under` `Programme II benefit 3: organ transplant` `for` `surgery` `on` (YMD 2026 3 1) `of` 35_000_000) EQUALS `payable` 35_000_000
+#ASSERT `the standard outcome of` (`a line under` `Programme II benefit 3: organ transplant` `for` `buying the organ` `on` (YMD 2026 3 1) `of` 35_000_000) EQUALS `not covered` `the head of cost is not one the benefit pays`
+
+§§ `Programme II — the other benefits`
+-- Before admission (admitted 1 May 2026): 1 April is the 30th day before, paid; 31 March
+-- is not; the day of admission is not; without a doctor's order it is not.
+#ASSERT `the outcome, for the event` (`an illness with a stay from` (YMD 2026 5 1) `to` (YMD 2026 5 3)) `under` `the standard policy` `, of` (`an outside line under` `Programme II other benefit: costs before admission` `for` `examination` `on` (YMD 2026 4 1) `of` 500_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`) EQUALS `payable` 500_000
+#ASSERT `the outcome, for the event` (`an illness with a stay from` (YMD 2026 5 1) `to` (YMD 2026 5 3)) `under` `the standard policy` `, of` (`an outside line under` `Programme II other benefit: costs before admission` `for` `examination` `on` (YMD 2026 3 31) `of` 500_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`) EQUALS `not covered` `the benefit's own conditions are not met`
+#ASSERT `the outcome, for the event` (`an illness with a stay from` (YMD 2026 5 1) `to` (YMD 2026 5 3)) `under` `the standard policy` `, of` (`an outside line under` `Programme II other benefit: costs before admission` `for` `examination` `on` (YMD 2026 5 1) `of` 500_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`) EQUALS `not covered` `the benefit's own conditions are not met`
+#ASSERT `the outcome, for the event` (`an illness with a stay from` (YMD 2026 5 1) `to` (YMD 2026 5 3)) `under` `the standard policy` `, of` (`an outside line under` `Programme II other benefit: costs before admission` `for` `examination` `on` (YMD 2026 4 1) `of` 500_000 `at` `a hospital in Vietnam` `, ordered by` NOTHING) EQUALS `not covered` `the benefit's own conditions are not met`
+-- After discharge (discharged 3 March 2026): 17 April is the 45th day after, paid; 18 April
+-- is not; the day of discharge is not.
+#ASSERT `the standard outcome of` (`an outside line under` `Programme II other benefit: treatment after discharge` `for` `examination` `on` (YMD 2026 4 17) `of` 500_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`) EQUALS `payable` 500_000
+#ASSERT `the standard outcome of` (`an outside line under` `Programme II other benefit: treatment after discharge` `for` `examination` `on` (YMD 2026 4 18) `of` 500_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`) EQUALS `not covered` `the benefit's own conditions are not met`
+#ASSERT `the standard outcome of` (`an outside line under` `Programme II other benefit: treatment after discharge` `for` `examination` `on` (YMD 2026 3 3) `of` 500_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`) EQUALS `not covered` `the benefit's own conditions are not met`
+-- Home nursing after a 7-day stay (1-7 March): 22 March is the 15th day after discharge,
+-- paid; 23 March is not. After a 6-day stay (1-6 March): not.
+#ASSERT `the outcome, for the event` (`an illness with a stay from` (YMD 2026 3 1) `to` (YMD 2026 3 7)) `under` `the standard policy` `, of` (`an outside line under` `Programme II other benefit: home nursing` `for` `hiring a nurse` `on` (YMD 2026 3 22) `of` 1_000_000 `at` `the insured person's home in Vietnam` `, ordered by` `the doctor's order`) EQUALS `payable` 1_000_000
+#ASSERT `the outcome, for the event` (`an illness with a stay from` (YMD 2026 3 1) `to` (YMD 2026 3 7)) `under` `the standard policy` `, of` (`an outside line under` `Programme II other benefit: home nursing` `for` `hiring a nurse` `on` (YMD 2026 3 23) `of` 1_000_000 `at` `the insured person's home in Vietnam` `, ordered by` `the doctor's order`) EQUALS `not covered` `the benefit's own conditions are not met`
+#ASSERT `the outcome, for the event` (`an illness with a stay from` (YMD 2026 3 1) `to` (YMD 2026 3 6)) `under` `the standard policy` `, of` (`an outside line under` `Programme II other benefit: home nursing` `for` `hiring a nurse` `on` (YMD 2026 3 10) `of` 1_000_000 `at` `the insured person's home in Vietnam` `, ordered by` `the doctor's order`) EQUALS `not covered` `the benefit's own conditions are not met`
+-- The daily allowance: three days at 200k; forty days at 200k is 8m, within the 6m limit.
+#ASSERT `the standard outcome of` (`a fixed-sum line under` `Programme II other benefit: daily hospital allowance` `on` (YMD 2026 3 1)) EQUALS `payable` 600_000
+#ASSERT `the outcome, for the event` (`an illness with a stay from` (YMD 2026 3 1) `to` (YMD 2026 4 9)) `under` `the standard policy` `, of` (`a fixed-sum line under` `Programme II other benefit: daily hospital allowance` `on` (YMD 2026 3 1)) EQUALS `payable` 6_000_000
+-- Transport: an ambulance in a critical condition, going with benefit 1: 2m.
+#ASSERT `the standard outcome of` (`a transport line by` `an ambulance of a hospital, of a lawful clinic, or of the 115 service` `, critical:` TRUE `, going with` (JUST `Programme II benefit 1: hospitalisation for illness`) `, ordered by` NOTHING) EQUALS `payable` 2_000_000
+#ASSERT `the standard outcome of` (`a transport line by` `an ambulance of a hospital, of a lawful clinic, or of the 115 service` `, critical:` FALSE `, going with` (JUST `Programme II benefit 1: hospitalisation for illness`) `, ordered by` NOTHING) EQUALS `not covered` `the benefit's own conditions are not met`
+#ASSERT `the standard outcome of` (`a transport line by` `a taxi` `, critical:` TRUE `, going with` (JUST `Programme II benefit 2: surgery for illness`) `, ordered by` NOTHING) EQUALS `payable` 2_000_000
+#ASSERT `the standard outcome of` (`a transport line by` `transport from a lower-level to a higher-level hospital in Vietnam` `, critical:` FALSE `, going with` (JUST `Programme II benefit 1: hospitalisation for illness`) `, ordered by` `the doctor's order`) EQUALS `payable` 2_000_000
+#ASSERT `the standard outcome of` (`a transport line by` `transport from a lower-level to a higher-level hospital in Vietnam` `, critical:` FALSE `, going with` (JUST `Programme II benefit 1: hospitalisation for illness`) `, ordered by` NOTHING) EQUALS `not covered` `the benefit's own conditions are not met`
+#ASSERT `the standard outcome of` (`a transport line by` `an ambulance of a hospital, of a lawful clinic, or of the 115 service` `, critical:` TRUE `, going with` NOTHING `, ordered by` NOTHING) EQUALS `not covered` `the benefit's own conditions are not met`
+-- Transport is within benefit 1's limit: 49m already counted against it leaves 1m.
+#ASSERT `the outcome, for the event` `the standard illness event` `under` `the standard policy` `, counting` (`already` 49_000_000 `against` (`the limit for` `Programme II benefit 1: hospitalisation for illness`)) `, of` (`a transport line by` `an ambulance of a hospital, of a lawful clinic, or of the 115 service` `, critical:` TRUE `, going with` (JUST `Programme II benefit 1: hospitalisation for illness`) `, ordered by` NOTHING) EQUALS `payable` 1_000_000
+
+§§ `Optional benefit 2 — outpatient treatment`
+#ASSERT `the outcome, for the event` `an outpatient illness` `under` `the standard policy` `, of` (`an outside line under` `optional benefit 2: outpatient treatment` `for` `examination fee` `on` (YMD 2026 3 1) `of` 500_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`) EQUALS `payable` 500_000
+-- 1.5m at one visit: the 1m limit per visit.
+#ASSERT `the outcome, for the event` `an outpatient illness` `under` `the standard policy` `, of` (`an outside line under` `optional benefit 2: outpatient treatment` `for` `examination fee` `on` (YMD 2026 3 1) `of` 1_500_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`) EQUALS `payable` 1_000_000
+-- 9.8m already counted against the 10m benefit limit: 200k left.
+#ASSERT `the outcome, for the event` `an outpatient illness` `under` `the standard policy` `, counting` (`already` 9_800_000 `against` (`the limit for` `optional benefit 2: outpatient treatment`)) `, of` (`an outside line under` `optional benefit 2: outpatient treatment` `for` `examination fee` `on` (YMD 2026 3 1) `of` 500_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`) EQUALS `payable` 200_000
+-- Physiotherapy in a hospital, paid; at an acupuncture clinic (not a medical establishment,
+-- definition 27), not.
+#ASSERT `the outcome, for the event` `an outpatient illness` `under` `the standard policy` `, of` (`an outside line under` `optional benefit 2: outpatient treatment` `for` `(IV) physiotherapy` `on` (YMD 2026 3 1) `of` 400_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`) EQUALS `payable` 400_000
+#ASSERT `the outcome, for the event` `an outpatient illness` `under` `the standard policy` `, of` (`an outside line under` `optional benefit 2: outpatient treatment` `for` `acupuncture` `on` (YMD 2026 3 1) `of` 400_000 `at` `a licensed acupuncture clinic in Vietnam` `, ordered by` `the doctor's order`) EQUALS `not covered` `the benefit's own conditions are not met`
+-- Treatment given during an inpatient stay is not outpatient treatment.
+#ASSERT `the standard outcome of` (`a line under` `optional benefit 2: outpatient treatment` `for` `examination fee` `on` (YMD 2026 3 1) `of` 500_000) EQUALS `not covered` `the benefit's own conditions are not met`
+-- A prescription already paid once.
+#ASSERT `the outcome, for the event` `an outpatient illness` `under` `the standard policy` `, of` (`A claim item` WITH `the benefit` IS `optional benefit 2: outpatient treatment`, `the head of cost` IS `medicines prescribed by a doctor`, `the date` IS YMD 2026 3 1, `the amount charged` IS 300_000, `the reasonable and customary amount` IS 300_000, `the treatments it involves` IS EMPTY, `the order` IS JUST `a licensed doctor`, `given during the hospital stay` IS FALSE, `the place of treatment` IS `a hospital in Vietnam`, `directly related to the illness or injury for which the insured person was then admitted` IS TRUE, `the insured person was in a critical condition threatening life and needing emergency treatment` IS FALSE, `the main benefit it belongs to` IS NOTHING, `the visit` IS 1, `a visit to one specialty of one medical establishment, with tests or diagnostics, a specific diagnosis and a doctor's order for treatment` IS TRUE, `the prescription was paid once already` IS TRUE) EQUALS `not covered` `the benefit's own conditions are not met`
+-- Two lines of one visit, 700k and 600k: the second gets the 300k left of the 1m.
+#ASSERT `the total payable on the claim` (`a claim by` `the insured person` `under` `the standard policy` `for` `an outpatient illness` `with the lines` (LIST (`an outside line under` `optional benefit 2: outpatient treatment` `for` `examination fee` `on` (YMD 2026 3 1) `of` 700_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`), (`an outside line under` `optional benefit 2: outpatient treatment` `for` `tests` `on` (YMD 2026 3 1) `of` 600_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`))) EQUALS 1_000_000
+
+§§ `Benefits 3 and 4 — dental, maternity, newborn`
+-- Dental: 1m, less the 20% co-payment: 800k. 10m: 8m after co-payment, then the 5m limit
+-- (fork F18: co-payment first, then the limit).
+#ASSERT `the outcome, for the event` `an outpatient illness` `under` `the standard policy` `, of` (`an outside line under` `benefit 3: dental treatment` `for` `a filling of a diseased tooth` `on` (YMD 2026 3 1) `of` 1_000_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`) EQUALS `payable` 800_000
+#ASSERT `the outcome, for the event` `an outpatient illness` `under` `the standard policy` `, of` (`an outside line under` `benefit 3: dental treatment` `for` `root canal treatment` `on` (YMD 2026 3 1) `of` 10_000_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`) EQUALS `payable` 5_000_000
+-- Several layers: co-payment, then what is left of the limit (4.5m already counted): 500k.
+#ASSERT `the outcome, for the event` `an outpatient illness` `under` `the standard policy` `, counting` (`already` 4_500_000 `against` (`the limit for` `benefit 3: dental treatment`)) `, of` (`an outside line under` `benefit 3: dental treatment` `for` `a filling of a diseased tooth` `on` (YMD 2026 3 1) `of` 1_000_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`) EQUALS `payable` 500_000
+-- Dental treatment after an accident is not benefit 3, which is for illness.
+#ASSERT `the outcome, for the event` `the standard accident event` `under` `the standard policy` `, of` (`an outside line under` `benefit 3: dental treatment` `for` `a filling of a diseased tooth` `on` (YMD 2026 3 1) `of` 1_000_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`) EQUALS `not covered` `the benefit's own conditions are not met`
+-- Maternity, on a policy renewed since 2023 (no waiting period left): a normal delivery of
+-- 10m pays 8m; a caesarean section of 40m pays 32m, cut to the 30m limit.
+#ASSERT `the outcome, for the event` `a birth` `under` `the continuous policy` `, of` (`a line under` `benefit 4: maternity care` `for` `a normal delivery` `on` (YMD 2026 3 1) `of` 10_000_000) EQUALS `payable` 8_000_000
+#ASSERT `the outcome, for the event` `a birth` `under` `the continuous policy` `, of` (`a line under` `benefit 4: maternity care` `for` `a caesarean section` `on` (YMD 2026 3 1) `of` 40_000_000) EQUALS `payable` 30_000_000
+-- An abortion without a doctor's order.
+#ASSERT `the outcome, for the event` `a birth` `under` `the continuous policy` `, of` (`an outside line under` `benefit 4: maternity care` `for` `an abortion ordered by a doctor` `on` (YMD 2026 3 1) `of` 3_000_000 `at` `a hospital in Vietnam` `, ordered by` NOTHING) EQUALS `not covered` `the benefit's own conditions are not met`
+-- Benefit 4(b) on a first-year policy: a delivery on 1 June 2026 is within the 365 days
+-- that end on 31 December 2026; a complication on 15 March is within the 90 days that end
+-- on 31 March; one on 1 April is not.
+#ASSERT `the outcome, for the event` `a birth` `under` `the standard policy` `, of` (`a line under` `benefit 4: maternity care` `for` `a normal delivery` `on` (YMD 2026 6 1) `of` 10_000_000) EQUALS `in a waiting period` (YMD 2026 12 31)
+#ASSERT `the outcome, for the event` `a birth` `under` `the standard policy` `, of` (`a line under` `benefit 4: maternity care` `for` `treatment of a complication of pregnancy` `on` (YMD 2026 3 15) `of` 1_000_000) EQUALS `in a waiting period` (YMD 2026 3 31)
+#ASSERT `the outcome, for the event` `a birth` `under` `the standard policy` `, of` (`a line under` `benefit 4: maternity care` `for` `treatment of a complication of pregnancy` `on` (YMD 2026 4 1) `of` 1_000_000) EQUALS `payable` 800_000
+-- Newborn care: a vaccination of 1m pays 800k; food is not paid; hygiene care outside the
+-- mother's stay is not.
+#ASSERT `the outcome, for the event` `a birth` `under` `the continuous policy` `, of` (`a line under` `benefit 4: newborn care` `for` `vaccination` `on` (YMD 2026 3 1) `of` 1_000_000) EQUALS `payable` 800_000
+#ASSERT `the outcome, for the event` `a birth` `under` `the continuous policy` `, of` (`a line under` `benefit 4: newborn care` `for` `food` `on` (YMD 2026 3 1) `of` 1_000_000) EQUALS `not covered` `the head of cost is not one the benefit pays`
+#ASSERT `the outcome, for the event` `a birth` `under` `the continuous policy` `, of` (`an outside line under` `benefit 4: newborn care` `for` `hygiene care of a baby rooming in with the mother right after the birth` `on` (YMD 2026 3 1) `of` 500_000 `at` `a hospital in Vietnam` `, ordered by` NOTHING) EQUALS `not covered` `the benefit's own conditions are not met`
+
+§§ `Optional benefit 5 — income allowance`
+-- Three days at 300k.
+#ASSERT `the standard outcome of` (`a fixed-sum line under` `optional benefit 5: income allowance` `on` (YMD 2026 3 1)) EQUALS `payable` 900_000
+-- Under 18 on the day of admission (born 1 June 2008, admitted 1 March 2026: 17).
+#ASSERT `the outcome, for` (`a person born on` (YMD 2008 6 1)) `, for the event` `the standard illness event` `under` `the standard policy` `, of` (`a fixed-sum line under` `optional benefit 5: income allowance` `on` (YMD 2026 3 1)) EQUALS `not covered` `the benefit's own conditions are not met`
+-- 18 on the day of admission (born 1 March 2008).
+#ASSERT `the outcome, for` (`a person born on` (YMD 2008 3 1)) `, for the event` `the standard illness event` `under` `the standard policy` `, of` (`a fixed-sum line under` `optional benefit 5: income allowance` `on` (YMD 2026 3 1)) EQUALS `payable` 900_000
+-- Not inpatient treatment (no night in a hospital bed).
+#ASSERT `the outcome, for the event` (`an illness, with the stay` (`a stay from` (YMD 2026 3 1) `to` (YMD 2026 3 2) `, hours` 30 `, admitted` TRUE `, overnight` FALSE `, at` `a hospital in Vietnam`)) `under` `the standard policy` `, of` (`a fixed-sum line under` `optional benefit 5: income allowance` `on` (YMD 2026 3 1)) EQUALS `not covered` `the benefit's own conditions are not met`
+-- An accident: paid; maternity: not.
+#ASSERT `the outcome, for the event` `the standard accident event` `under` `the standard policy` `, of` (`a fixed-sum line under` `optional benefit 5: income allowance` `on` (YMD 2026 3 1)) EQUALS `payable` 900_000
+#ASSERT `the outcome, for the event` `a birth` `under` `the continuous policy` `, of` (`a fixed-sum line under` `optional benefit 5: income allowance` `on` (YMD 2026 3 1)) EQUALS `not covered` `the benefit's own conditions are not met`
+
+§§ `Benefit 6 — death and disablement from illness`
+#ASSERT `the outcome, for the event` (`the standard illness, with death on` (YMD 2026 3 10)) `under` `the standard policy` `, of` (`a fixed-sum line under` `benefit 6: death from illness` `on` (YMD 2026 3 10)) EQUALS `payable` 50_000_000
+-- No clear conclusion from a competent authority.
+#ASSERT `the outcome, for the event` (`an event of` `an illness` `with accident` NOTHING `, illness` (JUST (`The illness` WITH `the date it began` IS YMD 2026 2 25, `where it arose` IS `Vietnam`, `dates on which it was treated before` IS EMPTY, `the date the insured person first knew of its symptoms or of the illness` IS NOTHING, `its marks` IS EMPTY, `a competent authority has given a clear conclusion on the pathology` IS FALSE, `the direct cause of the death or the disablement` IS TRUE)) `, death` (JUST (YMD 2026 3 10)) `, disablement` NOTHING `, stay` NOTHING `, outpatient diagnosis` NOTHING) `under` `the standard policy` `, of` (`a fixed-sum line under` `benefit 6: death from illness` `on` (YMD 2026 3 10)) EQUALS `not covered` `the benefit's own conditions are not met`
+-- A person who had cancer when this period began, insured under Part 4 because renewed
+-- continuously, is still not covered by benefit 6 (fork F30).
+#ASSERT `the outcome, for` (`a person born in 1990 with mental illness:` FALSE `, leprosy:` FALSE `, epilepsy:` FALSE `, cancer:` TRUE `, disablement:` 0) `, for the event` (`the standard illness, with death on` (YMD 2026 3 10)) `under` `the continuous policy` `, of` (`a fixed-sum line under` `benefit 6: death from illness` `on` (YMD 2026 3 10)) EQUALS `not covered` `the benefit's own conditions are not met`
+-- Total disablement from illness, 52 weeks: 50m. Partial, listed at 20%: 10m. Partial not
+-- in the table: no route (definition 17's other limb needs an accident; finding X9).
+#ASSERT `the outcome, for the event` (`the standard illness, with the disablement` (`a disablement from` (YMD 2026 3 5) `lasting` 52 `weeks, listed as total:` FALSE `, partial rate:` NOTHING)) `under` `the standard policy` `, of` (`a fixed-sum line under` `benefit 6: total permanent disablement from illness` `on` (YMD 2026 3 5)) EQUALS `payable` 50_000_000
+#ASSERT `the outcome, for the event` (`the standard illness, with the disablement` (`a disablement from` (YMD 2026 3 5) `lasting` 52 `weeks, listed as total:` FALSE `, partial rate:` (JUST 20))) `under` `the standard policy` `, of` (`a fixed-sum line under` `benefit 6: partial permanent disablement from illness` `on` (YMD 2026 3 5)) EQUALS `payable` 10_000_000
+#ASSERT `the outcome, for the event` (`the standard illness, with the disablement` (`a disablement from` (YMD 2026 3 5) `lasting` 52 `weeks, listed as total:` FALSE `, partial rate:` NOTHING)) `under` `the standard policy` `, of` (`a fixed-sum line under` `benefit 6: partial permanent disablement from illness` `on` (YMD 2026 3 5)) EQUALS `not covered` `the benefit's own conditions are not met`
+
+§§ `Who, when, where`
+-- 66 on the first day of cover.
+#ASSERT `the outcome, for` (`a person born on` (YMD 1960 1 1)) `, for the event` `the standard illness event` `under` `the standard policy` `, of` `a clean benefit 1 line` EQUALS `not covered` `the insured person is not a person PTI insures`
+-- Treated in another Asian country: not without the extension; paid with it.
+#ASSERT `the outcome, for the event` (`an event: cause` `an illness` `, accident` NOTHING `, illness` (JUST (`an illness that began on` (YMD 2026 2 25) `in` `another country in Asia`)) `, diagnoses` (LIST `a condition the Rules do not name`) `, circumstances` EMPTY `, stay` (JUST (`a stay from` (YMD 2026 3 1) `to` (YMD 2026 3 3) `, hours` 50 `, admitted` TRUE `, overnight` TRUE `, at` `a hospital in another Asian country`))) `under` `the standard policy` `, of` (`a line during the stay under` `Programme II benefit 1: hospitalisation for illness` `for` `(I) medicines used during the hospital stay` `on` (YMD 2026 3 1) `of` 2_000_000 `at` `a hospital in another Asian country`) EQUALS `not covered` `the event or the treatment is outside the geographical scope`
+#ASSERT `the outcome, for the event` (`an event: cause` `an illness` `, accident` NOTHING `, illness` (JUST (`an illness that began on` (YMD 2026 2 25) `in` `another country in Asia`)) `, diagnoses` (LIST `a condition the Rules do not name`) `, circumstances` EMPTY `, stay` (JUST (`a stay from` (YMD 2026 3 1) `to` (YMD 2026 3 3) `, hours` 50 `, admitted` TRUE `, overnight` TRUE `, at` `a hospital in another Asian country`))) `under` (`a first-year policy on` `the full schedule, extended to Asia`) `, of` (`a line during the stay under` `Programme II benefit 1: hospitalisation for illness` `for` `(I) medicines used during the hospital stay` `on` (YMD 2026 3 1) `of` 2_000_000 `at` `a hospital in another Asian country`) EQUALS `payable` 2_000_000
+-- Admitted on 2 January 2027, after the period.
+#ASSERT `the outcome, for the event` (`an illness with a stay from` (YMD 2027 1 2) `to` (YMD 2027 1 4)) `under` `the standard policy` `, of` (`a line under` `Programme II benefit 1: hospitalisation for illness` `for` `(I) medicines used during the hospital stay` `on` (YMD 2027 1 2) `of` 2_000_000) EQUALS `not covered` `the event is outside the period of insurance`
+
+§§ `Waiting periods`
+-- Illness, first-year policy: admitted 20 January 2026, within the 30 days ending 30 January.
+#ASSERT `the outcome, for the event` (`an illness with a stay from` (YMD 2026 1 20) `to` (YMD 2026 1 22)) `under` `the standard policy` `, of` (`a line under` `Programme II benefit 1: hospitalisation for illness` `for` `(I) medicines used during the hospital stay` `on` (YMD 2026 1 20) `of` 2_000_000) EQUALS `in a waiting period` (YMD 2026 1 30)
+-- Admitted 31 January: paid.
+#ASSERT `the outcome, for the event` (`an illness with a stay from` (YMD 2026 1 31) `to` (YMD 2026 2 2)) `under` `the standard policy` `, of` (`a line under` `Programme II benefit 1: hospitalisation for illness` `for` `(I) medicines used during the hospital stay` `on` (YMD 2026 1 31) `of` 2_000_000) EQUALS `payable` 2_000_000
+-- An accident has no waiting period: 10 January 2026, paid.
+#ASSERT `the outcome, for the event` (`an event: cause` `an accident` `, accident` (JUST (`an accident on` (YMD 2026 1 10) `of the kind` `an accident in daily life`)) `, illness` NOTHING `, diagnoses` EMPTY `, circumstances` EMPTY `, stay` NOTHING) `under` `the standard policy` `, of` (`a line under` `Programme I: medical expenses for an accidental injury` `for` `surgery` `on` (YMD 2026 1 10) `of` 2_000_000) EQUALS `payable` 2_000_000
+-- A contract that writes 60 days for illness: admitted 15 February, within the 60 days
+-- ending 1 March.
+#ASSERT `the outcome, for the event` (`an illness with a stay from` (YMD 2026 2 15) `to` (YMD 2026 2 17)) `under` (`a first-year policy on` `the full schedule, with a 60-day waiting period for illness`) `, of` (`a line under` `Programme II benefit 1: hospitalisation for illness` `for` `(I) medicines used during the hospital stay` `on` (YMD 2026 2 15) `of` 2_000_000) EQUALS `in a waiting period` (YMD 2026 3 1)
+-- Renewed continuously since 2023, at a higher option for 2026 (benefit 1 up from 30m to
+-- 50m): within the 30 days from 1 January 2026, 40m of medicines pays last year's 30m; on
+-- 10 February it pays 40m.
+#ASSERT `the outcome, for the event` (`an illness with a stay from` (YMD 2026 1 10) `to` (YMD 2026 1 12)) `under` (`a policy renewed continuously since 2023, now on` `the full schedule` `, last year on` (`the full schedule, with a benefit 1 limit of` 30_000_000)) `, of` (`a line under` `Programme II benefit 1: hospitalisation for illness` `for` `(I) medicines used during the hospital stay` `on` (YMD 2026 1 10) `of` 40_000_000) EQUALS `payable` 30_000_000
+#ASSERT `the outcome, for the event` (`an illness with a stay from` (YMD 2026 2 10) `to` (YMD 2026 2 12)) `under` (`a policy renewed continuously since 2023, now on` `the full schedule` `, last year on` (`the full schedule, with a benefit 1 limit of` 30_000_000)) `, of` (`a line under` `Programme II benefit 1: hospitalisation for illness` `for` `(I) medicines used during the hospital stay` `on` (YMD 2026 2 10) `of` 40_000_000) EQUALS `payable` 40_000_000
+-- A benefit added at the renewal (dental): within the 30 days from 1 January 2026 it waits.
+#ASSERT `the outcome, for the event` `an outpatient illness` `under` (`a policy renewed continuously since 2023, now on` `the full schedule` `, last year on` `the full schedule without dental cover`) `, of` (`an outside line under` `benefit 3: dental treatment` `for` `a filling of a diseased tooth` `on` (YMD 2026 1 10) `of` 1_000_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`) EQUALS `in a waiting period` (YMD 2026 1 30)
+#ASSERT `the outcome, for the event` `an outpatient illness` `under` (`a policy renewed continuously since 2023, now on` `the full schedule` `, last year on` `the full schedule without dental cover`) `, of` (`an outside line under` `benefit 3: dental treatment` `for` `a filling of a diseased tooth` `on` (YMD 2026 2 10) `of` 1_000_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`) EQUALS `payable` 800_000
+
+§§ `Other insurance (Part 4 clause 6)`
+-- Benefit 2, the surgeon, 10m; another insurer pays 3m; all the limits come to 120m, PTI's
+-- for benefit 2 being 60m. Excess: min(10m, 7m) = 7m; ratio: 10m x 60/120 = 5m; 7m.
+`a claim with other insurance` MEANS
+    `The claim` WITH
+        `the insured person`                    IS `the insured person`
+        `the policy`                            IS `the standard policy`
+        `the event`                             IS `the standard illness event`
+        `the items`                             IS EMPTY
+        `the filing`                            IS `a filing in time`
+        `other insurance`                       IS JUST (`Other insurance` WITH `the amount the other insurance pays` IS 3_000_000, `the limits of all the insurances, in total` IS 120_000_000)
+        `already counted earlier in the period` IS EMPTY
+
+#ASSERT `the outcome of the line` (`a line under` `Programme II benefit 2: surgery for illness` `for` `the surgeon` `on` (YMD 2026 3 1) `of` 10_000_000) `in` `a claim with other insurance` EQUALS `payable` 7_000_000
+
+§§ `Several layers at once`
+-- Admitted 1 May 2026, discharged 4 May (four days), first-year policy; 45m already counted
+-- against benefit 1 and against Programme II earlier in the period. Lines, in order:
+--   costs before admission, examination on 25 April, 600k            -> 600k
+--   benefit 1, the bed, charged 6m, 5m reasonable; 1m a day x 4 = 4m -> 4m (5m left of 50m)
+--   benefit 1, medicines, 3m                                          -> 1m (1m left of 50m)
+--   income allowance, 4 days x 300k                                  -> 1.2m
+-- Total 6.8m.
+`the May lines` MEANS
+    LIST (`an outside line under` `Programme II other benefit: costs before admission` `for` `examination` `on` (YMD 2026 4 25) `of` 600_000 `at` `a hospital in Vietnam` `, ordered by` `the doctor's order`)
+       , (`a line under` `Programme II benefit 1: hospitalisation for illness` `for` `the bed` `on` (YMD 2026 5 1) `charged` 6_000_000 `, reasonable` 5_000_000)
+       , (`a line under` `Programme II benefit 1: hospitalisation for illness` `for` `(I) medicines used during the hospital stay` `on` (YMD 2026 5 1) `of` 3_000_000)
+       , (`a fixed-sum line under` `optional benefit 5: income allowance` `on` (YMD 2026 5 1))
+
+`the May counts` MEANS
+    LIST (`An amount counted against a limit` WITH `the limit` IS `the limit for` `Programme II benefit 1: hospitalisation for illness`, `the amount` IS 45_000_000)
+       , (`An amount counted against a limit` WITH `the limit` IS `the main limit of` `Programme II`, `the amount` IS 45_000_000)
+
+GIVEN n IS A DATE
+      d IS A DATE
+GIVETH A `The filing of the claim`
+`a filing notified on` n `and submitted on` d MEANS
+    `The filing of the claim` WITH
+        `the date PTI was notified`                     IS JUST n
+        `the date the claim file was submitted`         IS JUST d
+        `the date PTI asked for more documents`         IS NOTHING
+        `the date the further documents were submitted` IS NOTHING
+        `prevented by force majeure`                    IS FALSE
+        `the documents submitted`                       IS EMPTY
+        `an invoice gives only a combined total`        IS FALSE
+
+`the May claim` MEANS
+    `The claim` WITH
+        `the insured person`                    IS `the insured person`
+        `the policy`                            IS `the standard policy`
+        `the event`                             IS `an illness with a stay from` (YMD 2026 5 1) `to` (YMD 2026 5 4)
+        `the items`                             IS `the May lines`
+        `the filing`                            IS `a filing notified on` (YMD 2026 5 10) `and submitted on` (YMD 2026 5 20)
+        `other insurance`                       IS NOTHING
+        `already counted earlier in the period` IS `the May counts`
+
+#ASSERT `the outcome for the claim` `the May claim` EQUALS `assessed` (LIST (`payable` 600_000), (`payable` 4_000_000), (`payable` 1_000_000), (`payable` 1_200_000)) 6_800_000
+#ASSERT `the total payable on the claim` `the May claim` EQUALS 6_800_000
+
+-- Filed late: the standard stay ended 3 March 2026, so the file was due by 30 August 2026.
+GIVEN d IS A DATE
+GIVETH A `The claim`
+`the standard claim, filed on` d MEANS
+    `The claim` WITH
+        `the insured person`                    IS `the insured person`
+        `the policy`                            IS `the standard policy`
+        `the event`                             IS `the standard illness event`
+        `the items`                             IS LIST `a clean benefit 1 line`
+        `the filing`                            IS `a filing notified on` (YMD 2026 3 10) `and submitted on` d
+        `other insurance`                       IS NOTHING
+        `already counted earlier in the period` IS EMPTY
+
+#ASSERT `the outcome for the claim` (`the standard claim, filed on` (YMD 2026 8 30)) EQUALS `assessed` (LIST (`payable` 2_000_000)) 2_000_000
+#ASSERT `the outcome for the claim` (`the standard claim, filed on` (YMD 2026 8 31)) EQUALS `refused in full, the claim being filed late`

@@ -1,0 +1,108 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `pvi-health-nouns`
+IMPORT `pvi-health-part1-general`
+IMPORT `pvi-health-part2-definitions`
+IMPORT `pvi-health-part3-benefits`
+IMPORT `pvi-health-part4-exclusions`
+
+-- PVI comprehensive health care rules: the assessment of one claim, putting the Parts together.
+--
+-- Layer 1, IS THE EVENT COVERED: `the grounds of refusal of` a claim lists every ground the Rules
+-- give, each citing its clause: the premium (Part I clause 4); the benefit on the certificate
+-- (Part III); the event in the insurance term (Part II "Tai nạn", Part I clause 10); the cost or
+-- consequence within PVI's liability (Part I clause 10); the waiting period (Part III); the scope
+-- of the benefit and its own exclusions (Part III); the general exclusions (Part IV). A claim is
+-- covered when the list is empty.
+--
+-- Layer 2, HOW MUCH: the amount rules of Part III, paid only on a covered claim.
+--
+-- Layer 3, WHAT EACH PARTY MUST DO AND BY WHEN, is pvi-health-part5-claims.l4.
+
+§ `The assessment of a claim`
+
+§§ `Part I clause 10 — the cost or consequence within PVI's liability`
+
+-- For the medical-expense benefits, the first day of the costs claimed must be within PVI's
+-- liability (the days of a stay after it are dropped by the A.2 amount rule). For a death, the
+-- date of death. Part III A.1.4 (iv) pays a death within one year of the accident after a Benefit 2
+-- payment, which is read as prevailing over clause 10 (fork F21; finding X1). A permanent injury
+-- is read as a consequence that arose with the accident, whenever it was determined (fork F21).
+-- A cost BEFORE the start of the term is not clause 10's business: an event before the term fails
+-- the term ground instead.
+@ref PVI Rules Part I clause 10 (src:169-189)
+GIVEN `the day` IS A DATE
+      c IS A `A claim`
+GIVETH A BOOLEAN
+`clause 10 — after the last day of PVI's liability:` `the day` `, for` c MEANS
+    `the day` GREATER THAN `clause 10 — the last day of PVI's liability under` (c's `the certificate`)
+
+@ref PVI Rules Part I clause 10 (src:169-189); Part III A.1.4 (src:544-548)
+GIVEN c IS A `A claim`
+GIVETH A BOOLEAN
+`clause 10 — the claim's cost or consequence arose after PVI's liability ended` c MEANS
+    CONSIDER c's `the benefit claimed`
+    WHEN `personal accident` THEN
+        CONSIDER c's `the death or injury facts`'s `outcome`
+        WHEN `death of the insured person` dd THEN
+                `clause 10 — after the last day of PVI's liability:` dd `, for` c
+            AND NOT (`A.1.4 (iv) — a death within one year after a Benefit 2 payment, on` dd `, for` c)
+        OTHERWISE FALSE
+    WHEN `death from illness` THEN
+        CONSIDER c's `the death or injury facts`'s `outcome`
+        WHEN `death of the insured person` dd THEN
+            `clause 10 — after the last day of PVI's liability:` dd `, for` c
+        OTHERWISE FALSE
+    OTHERWISE
+        `clause 10 — after the last day of PVI's liability:` (c's `the date of treatment`) `, for` c
+
+@ref PVI Rules Part III A.1.4, fourth limb (src:544-548)
+GIVEN `the date of death` IS A DATE
+      c IS A `A claim`
+GIVETH A BOOLEAN
+`A.1.4 (iv) — a death within one year after a Benefit 2 payment, on` `the date of death` `, for` c MEANS
+        c's `the death or injury facts`'s `already paid under Benefit 2 for the same accident` GREATER THAN 0
+    AND `the date of death` AT MOST `add years` (c's `the date the event arose`) 1
+
+§§ `Layer 1 — Is the event covered?`
+
+GIVEN g IS A `A ground of refusal`
+      p IS A BOOLEAN
+GIVETH A LIST OF `A ground of refusal`
+`the ground` g `where` p MEANS
+    IF p THEN LIST g ELSE EMPTY
+
+@ref PVI Rules Parts I-IV
+GIVEN c IS A `A claim`
+GIVETH A LIST OF `A ground of refusal`
+`the grounds of refusal of` c MEANS
+    concat (LIST
+        `the ground` `the premium was not paid in full and on time`
+            `where` (`clause 4 — PVI is not liable because the premium was not paid in full and on time` (c's `the certificate`))
+      , `the ground` `the benefit is not on the certificate`
+            `where` (NOT (`the certificate carries the benefit claimed in` c))
+      , `the ground` `the event did not arise in the insurance term`
+            `where` (NOT (`the event arose in the insurance term` c))
+      , `the ground` `the cost arose after PVI's liability ended`
+            `where` (`clause 10 — the claim's cost or consequence arose after PVI's liability ended` c)
+      , `the ground` `the event arose in the waiting period`
+            `where` (NOT (`the event in` c `arose after a waiting period of` (`the waiting period in days for` c)))
+      , `what the claim lacks for the scope of the benefit claimed` c
+      , map (GIVEN n YIELD `excluded by Part IV item` n) (`the Part IV items engaged by` c))
+
+@ref PVI Rules Parts I-IV
+GIVEN c IS A `A claim`
+GIVETH A BOOLEAN
+`the claim is covered` c MEANS
+    null (`the grounds of refusal of` c)
+
+§§ `Layer 2 — How much is payable?`
+
+@ref PVI Rules Part III, with Part I clause 3 and Part II "Đồng chi trả", "Số tiền bảo hiểm"
+GIVEN c IS A `A claim`
+GIVETH A NUMBER
+`the amount PVI pays on` c MEANS
+    IF   `the claim is covered` c
+    THEN `the amount the benefit claimed pays on` c
+    ELSE 0

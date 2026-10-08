@@ -1,0 +1,212 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `il07-nouns`
+IMPORT `il07-refusals`
+IMPORT `ito66-nouns`
+IMPORT `ito66-tax-years`
+IMPORT `ito66-d-common-source`
+IMPORT `ito66-a-separate-calculation`
+IMPORT `ito66-b-property-income`
+IMPORT `ito66-ab-taxable-income`
+IMPORT `ito66-c-credit-points`
+
+-- ===========================================================================
+-- IL-07 adapter for row IL-02: Income Tax Ordinance s 66, separate calculation.
+--
+-- Imports this row's nouns and refusals and IL-02's modules, and no other row.
+-- It builds IL-02's `Spouses in a tax year` from the household and hands it to
+-- IL-02's rules. It exposes booleans, numbers and this row's own record.
+--
+-- THE COUPLE AS IL-02 SEES IT (input conventions, BRIEF.md "The household"):
+-- * the earner's only income is the salary, one item of income from personal
+--   exertion of the kind `from employment` (s 66(a)(1)), for the whole year;
+-- * the spouse has no income (the pipeline declines otherwise, and so does this
+--   adapter, rather than build a spouse whose income it does not know);
+-- * no property income under s 66(b), and neither spouse claims under (b);
+-- * no common source of income (s 66(d)): a salary from an employer is not
+--   "a source of income of one spouse that depends on the other's";
+-- * every child is a child of both spouses, so (4A) and (6), which reach only a
+--   widowed partner's own children, add nothing; the widowed flags are FALSE;
+-- * no child has income within s 66(a)(3).
+--
+-- VERSION 0.2.0: whether the earner would be entitled to a point under s 37,
+-- which IL-02 halves under s 66(c)(2), is no longer read from the couple's
+-- record by the pipeline: it passes row IL-08's s 37 answer to the rules below
+-- whose names end "..., with a point under section 37:". The rules without that
+-- ending read the couple's record as version 0.1.0 did (the tests use them).
+--
+-- VERSION 0.3.0 (2026-10-08, BACKLOG IL-22). Row IL-02's version 0.2.0 renamed
+-- its `A child` to `A child, for section 66` (its 02-N3, so that a module can name
+-- it beside row IL-06's) and gave `A spouse` the field `a foreign worker within
+-- the meaning of section 48A`, which s 66(c)(4)'s half point under s 36A reads
+-- (its 02-R2: a foreign-worker woman is declined in row IL-01's words). The
+-- earner's comes from the household's `the earner is a foreign worker`, the fact
+-- the IL-01 and IL-08 adapters already pass; the spouse's is a named refusal,
+-- never read (il07-refusals.l4). Row IL-02's tax-year gate now wraps every rule
+-- that takes the couple; the capstone asks 2026 only, which it answers.
+-- ===========================================================================
+
+§ `IL-07 adapter — row IL-02`
+
+§§ `The household, as IL-02's spouses in a tax year`
+
+GIVEN `is a woman` IS A BOOLEAN
+GIVETH A `Sex`
+`IL-02: the sex` `is a woman` MEANS
+    IF `is a woman` THEN `a woman` ELSE `a man`
+
+GIVEN h IS AN `IL-07 household in a month`
+      c IS AN `IL-07 couple`
+      `s 37` IS A BOOLEAN
+GIVETH A `A spouse`
+`IL-02: the earner as a spouse, in` h `married as` c `, with a point under section 37:` `s 37` MEANS
+    `A spouse` WITH
+        `sex`                                            IS `IL-02: the sex` (e's `the earner is a woman`)
+        `income from personal exertion`                  IS LIST (`An item of income from personal exertion` WITH
+            `kind`           IS `from employment`
+            `taxable amount` IS 12 TIMES e's `the earner's monthly salary`
+            `paid in respect of employment income for which the spouse was entitled to a separate calculation` IS FALSE
+            `the spouse was entitled to a separate calculation, in the five years before the pension began, for the income by virtue of which it is paid` IS FALSE)
+        `taxable income not from personal exertion`      IS 0
+        `taxable income from property owned one year before the marriage` IS 0
+        `taxable income from property inherited during the marriage`      IS 0
+        `claims a separate calculation of the tax on income from personal exertion` IS c's `the earner claims a separate calculation of the tax on the earner's income from personal exertion`
+        `claims a separate calculation of the tax on the property income in subsection (b)` IS FALSE
+        `a widow or widower when the present marriage was contracted` IS FALSE
+        `would be entitled to a credit point under section 37`        IS `s 37`
+        `a foreign worker within the meaning of section 48A`          IS e's `the earner is a foreign worker`
+    WHERE
+        e MEANS h's `the earner`
+
+GIVEN c IS AN `IL-07 couple`
+GIVETH A `A spouse`
+`IL-02: the earner's spouse as a spouse, in` c MEANS
+    IF   NOT (s's `the spouse's taxable income in the tax year` EQUALS 0)
+    THEN `IL-07 composes a household with one earner; a spouse with taxable income is outside it`
+    ELSE `A spouse` WITH
+             `sex`                                            IS `IL-02: the sex` (s's `the spouse is a woman`)
+             `income from personal exertion`                  IS EMPTY
+             `taxable income not from personal exertion`      IS 0
+             `taxable income from property owned one year before the marriage` IS 0
+             `taxable income from property inherited during the marriage`      IS 0
+             `claims a separate calculation of the tax on income from personal exertion` IS FALSE
+             `claims a separate calculation of the tax on the property income in subsection (b)` IS FALSE
+             `a widow or widower when the present marriage was contracted` IS FALSE
+             `would be entitled to a credit point under section 37`        IS FALSE
+             `a foreign worker within the meaning of section 48A`          IS `IL-07 holds no foreign-worker fact for the earner's spouse, and computes none of the spouse's own credits`
+    WHERE
+        s MEANS c's `the earner's spouse`
+
+-- s 40(b)(3), incorporated by s 66(c)(4)(a): "שנת לידה" is the tax year in which
+-- the child was born; a tax year is a calendar year (IL-02 NOTES.md A4).
+GIVEN k IS AN `IL-07 child`
+GIVETH A `A child, for section 66`
+`IL-02: the household's child` k MEANS
+    `A child, for section 66` WITH
+        `tax year of birth`                              IS DATE_YEAR (k's `the child's date of birth`)
+        `a child of the registered spouse`               IS TRUE
+        `a child of the spouse who is not the registered spouse` IS TRUE
+        `the mother elects to count one birth-year credit point in the following tax year` IS k's `the child's mother elects to count one birth-year credit point in the following tax year`
+        `taxable income from a transparent company`      IS 0
+        `taxable income from a real estate investment trust` IS 0
+        `taxable income from interest`                   IS 0
+        `taxable income from capital gain`               IS 0
+
+GIVEN h IS AN `IL-07 household in a month`
+      c IS AN `IL-07 couple`
+GIVETH A `Spouses in a tax year`
+`IL-02: the spouses in the tax year, in` h `married as` c MEANS
+    `IL-02: the spouses in the tax year, in` h `married as` c `, with a point under section 37:`
+        (c's `the earner would be entitled to a credit point under section 37 of the Income Tax Ordinance`)
+
+GIVEN h IS AN `IL-07 household in a month`
+      c IS AN `IL-07 couple`
+      `s 37` IS A BOOLEAN
+GIVETH A `Spouses in a tax year`
+`IL-02: the spouses in the tax year, in` h `married as` c `, with a point under section 37:` `s 37` MEANS
+    `Spouses in a tax year` WITH
+        `tax year`                                       IS h's `the year of the month`
+        `the registered spouse`                          IS IF c's `the earner is the registered spouse` THEN `earner's record` ELSE `other's record`
+        `the spouse who is not the registered spouse`    IS IF c's `the earner is the registered spouse` THEN `other's record` ELSE `earner's record`
+        `children`                                       IS map `IL-02: the household's child` (h's `the children of the household`)
+        `common source of income`                        IS NOTHING
+    WHERE
+        `earner's record` MEANS `IL-02: the earner as a spouse, in` h `married as` c `, with a point under section 37:` `s 37`
+        `other's record`  MEANS `IL-02: the earner's spouse as a spouse, in` c
+
+GIVEN c IS AN `IL-07 couple`
+GIVETH A `Which spouse`
+`IL-02: which spouse the earner is, in` c MEANS
+    IF c's `the earner is the registered spouse` THEN `registered spouse` ELSE `spouse who is not the registered spouse`
+
+§§ `Section 66(c) — whether it governs, and what it gives`
+
+@ref ITO s 66(c) chapeau, (a)(1), (c)(1A) (row IL-02, ito66-c-credit-points.l4)
+GIVEN h IS AN `IL-07 household in a month`
+      c IS AN `IL-07 couple`
+GIVETH A BOOLEAN
+`IL-02: section 66(c) governs the earner's calculation, in` h `married as` c MEANS
+    `s 66(c) — governs the calculation of the` (`IL-02: which spouse the earner is, in` c) `in` (`IL-02: the spouses in the tax year, in` h `married as` c)
+
+@ref ITO s 66(c) (row IL-02, ito66-c-credit-points.l4)
+GIVEN a IS A TYPE
+GIVETH AN a
+`IL-02 reports that section 66(c) does not govern the earner's calculation` MEANS
+    REFUSE "IL-02 reports that section 66(c) does not govern the earner's calculation"
+
+@ref ITO s 66(c)(2), (4)-(6) (row IL-02, ito66-c-credit-points.l4); IL-02's tax-year gate (ito66-tax-years.l4)
+GIVEN h IS AN `IL-07 household in a month`
+      c IS AN `IL-07 couple`
+GIVETH AN `IL-07 credit points section 66(c) gives the earner`
+`IL-02: the credit points section 66(c) gives the earner, in` h `married as` c MEANS
+    `IL-02: the credit points section 66(c) gives the earner, in` h `married as` c `, with a point under section 37:`
+        (c's `the earner would be entitled to a credit point under section 37 of the Income Tax Ordinance`)
+
+@ref ITO s 66(c)(2), (4)-(6) (row IL-02, ito66-c-credit-points.l4); IL-02's tax-year gate (ito66-tax-years.l4)
+GIVEN h IS AN `IL-07 household in a month`
+      c IS AN `IL-07 couple`
+      `s 37` IS A BOOLEAN
+GIVETH AN `IL-07 credit points section 66(c) gives the earner`
+`IL-02: the credit points section 66(c) gives the earner, in` h `married as` c `, with a point under section 37:` `s 37` MEANS
+    CONSIDER `s 66(c) — the credit points it gives the` (`IL-02: which spouse the earner is, in` c) `in` (`IL-02: the spouses in the tax year, in` h `married as` c `, with a point under section 37:` `s 37`)
+    WHEN `section 66(c) does not govern the spouse's calculation`
+        THEN `IL-02 reports that section 66(c) does not govern the earner's calculation`
+    WHEN `in a separate calculation` cp
+        THEN `IL-07 credit points section 66(c) gives the earner` WITH
+                 `IL-02's half point under section 36A, by section 66(c)(4)` IS cp's `one half point under section 36A, by paragraph (4)`
+                 `IL-02's half point under section 37, by section 66(c)(2)`  IS cp's `one half point under section 37, by paragraph (2)`
+                 `IL-02's points for children, by section 66(c)(4) to (6)`  IS cp's `points for children, by paragraphs (4), (4A), (5) and (6)`
+
+-- F13 of row IL-02: the children's credit is the lesser of their value and the
+-- tax on the spouse's income from personal exertion.
+@ref ITO s 66(c)(1A), (4), (5) (row IL-02, ito66-c-credit-points.l4; IL-02 fork F13)
+GIVEN `the points for children` IS A NUMBER
+      `the value`               IS A NUMBER
+      `the tax`                 IS A NUMBER
+GIVETH A NUMBER
+`IL-02: the credit for` `the points for children` `children's points at a value of` `the value` `, set against a tax on income from personal exertion of` `the tax` MEANS
+    `s 66(c)(4)-(5) — the credit for children, set against the tax on income from personal exertion:` `the points for children` `,` `the value` `,` `the tax`
+
+§§ `Subsections (a) and (b) — where the salary is assessed (a cross-check only)`
+
+-- The pipeline takes the earner's taxable income to be the year's salary in every
+-- case the capstone answers (NOTES.md fork K4). Where the earner is the spouse
+-- who is not registered, IL-02 itself places that income in the separate
+-- calculation, and the tests compare the two. Where the earner is the registered
+-- spouse, IL-02 says s 65 governs and does not compute it (its assumption A3).
+@ref ITO s 66(a), (b) (row IL-02, ito66-ab-taxable-income.l4)
+GIVEN a IS A TYPE
+GIVETH AN a
+`IL-02 reports that no separate calculation is made under section 66(a) for this couple` MEANS
+    REFUSE "IL-02 reports that no separate calculation is made under section 66(a) for this couple"
+
+@ref ITO s 66(a), (b) (row IL-02, ito66-ab-taxable-income.l4)
+GIVEN h IS AN `IL-07 household in a month`
+      c IS AN `IL-07 couple`
+GIVETH A NUMBER
+`IL-02: the taxable income in the separate calculation under section 66(a), in` h `married as` c MEANS
+    CONSIDER `s 66(a)-(b) — the calculations, for` (`IL-02: the spouses in the tax year, in` h `married as` c)
+    WHEN `a separate calculation is made under subsection (a)` `on the registered spouse` `in the separate calculation` `own (b)`
+        THEN `in the separate calculation`
+    OTHERWISE `IL-02 reports that no separate calculation is made under section 66(a) for this couple`

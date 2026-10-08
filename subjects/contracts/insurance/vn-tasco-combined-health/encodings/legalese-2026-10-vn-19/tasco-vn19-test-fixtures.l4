@@ -1,0 +1,795 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `tasco-vn19-nouns`
+
+-- Fixtures for the tests of the rules: named facts, and helpers that build a claim from another with
+-- one thing changed. NO assertions here, and no figure from the source: the people, dates, costs and
+-- sums insured are hypothetical, chosen to make the arithmetic visible. The rates, day limits,
+-- periods and thresholds the tests check are the source's, and the tests say where each comes from.
+
+§ `Test fixtures`
+
+§§ `People`
+
+GIVEN `birth date` IS A DATE
+GIVETH A `The insured person`
+`a healthy Vietnamese insured born on` `birth date` MEANS
+    `The insured person` WITH
+        `nationality and residence`                  IS `Vietnamese`
+        `date of birth`                              IS `birth date`
+        `suffering from a neurological disease`      IS FALSE
+        `suffering from a psychiatric disease`       IS FALSE
+        `suffering from leprosy`                     IS FALSE
+        `suffering from cancer`                      IS FALSE
+        `permanent disability or injury, in percent` IS 0
+        `in a period of treatment for illness or injury` IS FALSE
+
+`Ms Lan` MEANS `a healthy Vietnamese insured born on` (YMD 1990 3 15)
+
+GIVEN `birth date` IS A MAYBE DATE
+      `organisation` IS A BOOLEAN
+GIVETH A `The policyholder`
+`a policyholder` `birth date` `organisation` MEANS
+    `The policyholder` WITH
+        `an organisation`                                IS `organisation`
+        `lawfully established and operating in Vietnam`  IS `organisation`
+        `an individual in Vietnam`                       IS NOT `organisation`
+        `date of birth`                                  IS `birth date`
+        `full civil act capacity when the contract is concluded` IS TRUE
+        `meets the conditions for buying insurance under the rules, conditions and terms` IS TRUE
+        `an insurable interest under the law`            IS TRUE
+        `date the contract is concluded`                 IS YMD 2026 1 1
+
+`an individual policyholder` MEANS `a policyholder` (JUST (YMD 1985 1 1)) FALSE
+`an employer` MEANS `a policyholder` NOTHING TRUE
+
+`a licensed doctor` MEANS `The treating doctor` WITH
+    `holds a lawful practising licence recognised by Vietnamese law` IS TRUE
+    `treating within the licence and the field of training`          IS TRUE
+    `relation to the insured`                                        IS `none`
+    `registered to practise as required`                             IS TRUE
+
+GIVEN k IS A `A kind of facility`
+GIVETH A `The treating facility`
+`a facility of kind` k MEANS
+    `The treating facility` WITH
+        `name`                                                         IS "a general hospital"
+        `a lawful facility for medical examination and treatment in Vietnam` IS TRUE
+        `able and equipped to diagnose, treat and operate`             IS TRUE
+        `equipped for inpatient treatment, daily monitoring and outpatient treatment` IS TRUE
+        `kind`                                                         IS k
+
+`a general hospital` MEANS `a facility of kind` `a facility of none of the excluded kinds`
+
+§§ `Contracts and histories`
+
+GIVEN `start` IS A DATE
+      `end`   IS A DATE
+      `months` IS A NUMBER
+      a IS A MAYBE NUMBER
+      b IS A MAYBE NUMBER
+      s IS A MAYBE NUMBER
+      `persons` IS A NUMBER
+      `group` IS A BOOLEAN
+      `the 10.2 clause` IS A BOOLEAN
+      `row 3 agreed` IS A MAYBE NUMBER
+GIVETH A `The contract`
+`a contract` `start` `end` `months` a b s `persons` `group` `the 10.2 clause` `row 3 agreed` MEANS
+    `The contract` WITH
+        `start date`              IS `start`
+        `end date`                IS `end`
+        `term in months`          IS `months`
+        `sum insured for scope A` IS a
+        `sum insured for scope B` IS b
+        `sum insured for scope C` IS s
+        `premium`                 IS 1200000
+        `a group contract`        IS `group`
+        `number of persons insured` IS `persons`
+        `waiting periods agreed`  IS `Waiting periods agreed in the contract` WITH
+            `row 2, hospitalisation for a special disease or a pre-existing condition` IS NOTHING
+            `row 3, ordinary illness`                                                  IS `row 3 agreed`
+            `row 5, pregnancy complications`                                           IS NOTHING
+            `row 6, childbirth`                                                        IS NOTHING
+        `supplementary waiting-period clause stated on the contract` IS `the 10.2 clause`
+
+-- A one-person contract for 2026, by its three sums insured.
+GIVEN a IS A MAYBE NUMBER
+      b IS A MAYBE NUMBER
+      s IS A MAYBE NUMBER
+GIVETH A `The contract`
+`a 2026 contract insuring` a b s MEANS
+    `a contract` (YMD 2026 1 1) (YMD 2026 12 31) 12 a b s 1 FALSE FALSE NOTHING
+
+`the standard contract` MEANS `a 2026 contract insuring` (JUST 20000000) (JUST 20000000) (JUST 20000000)
+`the special contract`  MEANS `a 2026 contract insuring` (JUST 100000000) (JUST 100000000) (JUST 50000000)
+`the 10 million contract` MEANS `a 2026 contract insuring` (JUST 10000000) (JUST 10000000) (JUST 10000000)
+
+GIVEN `start` IS A DATE
+GIVETH A `The history`
+`a first contract from` `start` MEANS
+    `The history` WITH
+        `the previous contract`                           IS NOTHING
+        `start of the insured's continuous participation` IS `start`
+        `date of the most recent reinstatement`           IS NOTHING
+
+GIVEN p IS A `The previous contract`
+      `since` IS A DATE
+GIVETH A `The history`
+`a renewal of` p `continuous since` `since` MEANS
+    `The history` WITH
+        `the previous contract`                           IS JUST p
+        `start of the insured's continuous participation` IS `since`
+        `date of the most recent reinstatement`           IS NOTHING
+
+GIVEN `start` IS A DATE
+      `end`   IS A DATE
+      a IS A MAYBE NUMBER
+      b IS A MAYBE NUMBER
+      s IS A MAYBE NUMBER
+GIVETH A `The previous contract`
+`a previous contract` `start` `end` a b s MEANS
+    `The previous contract` WITH
+        `start date`              IS `start`
+        `end date`                IS `end`
+        `the same insured person` IS TRUE
+        `sum insured for scope A` IS a
+        `sum insured for scope B` IS b
+        `sum insured for scope C` IS s
+
+-- The 2025 contract before the 2026 standard contract, same sums insured.
+`the 2025 standard contract` MEANS `a previous contract` (YMD 2025 1 1) (YMD 2025 12 31) (JUST 20000000) (JUST 20000000) (JUST 20000000)
+
+GIVEN `paid under B` IS A NUMBER
+      `paid under C` IS A NUMBER
+GIVETH A `The state of the contract`
+`a state with payments of` `paid under B` `under B and` `paid under C` `under C` MEANS
+    `The state of the contract` WITH
+        `date the premium was not paid in full or on time`  IS NOTHING
+        `date of an earlier death or total permanent disability of the insured` IS NOTHING
+        `date Tasco terminated for ineligibility under Article 4.1(e)` IS NOTHING
+        `amount already paid under scope A`                 IS 0
+        `amount already paid under scope B`                 IS `paid under B`
+        `amount already paid under scope C this policy year` IS `paid under C`
+
+`a clean state` MEANS `a state with payments of` 0 `under B and` 0 `under C`
+
+§§ `Illnesses, stays, surgeries, injuries`
+
+GIVEN `special` IS A BOOLEAN
+      `treated before` IS A BOOLEAN
+GIVETH A `The illness`
+`an illness` `special` `treated before` MEANS
+    `The illness` WITH
+        `a special disease`                                             IS `special`
+        `treated within the 3 years before the start date`              IS `treated before`
+        `symptoms or onset before the start date, known to the insured` IS FALSE
+
+`an ordinary illness`        MEANS `an illness` FALSE FALSE
+`a special disease`          MEANS `an illness` TRUE FALSE
+`a pre-existing condition`   MEANS `an illness` FALSE TRUE
+
+GIVEN `admitted`   IS A DATE
+      `discharged` IS A DATE
+      `hours`      IS A MAYBE NUMBER
+      `cost`       IS A NUMBER
+      `used`       IS A NUMBER
+GIVETH A `A hospital stay`
+`a stay` `admitted` `discharged` `hours` `cost` `used` MEANS
+    `A hospital stay` WITH
+        `admission date`                               IS `admitted`
+        `discharge date`                               IS `discharged`
+        `hours in hospital`                            IS `hours`
+        `admission and discharge procedures completed` IS TRUE
+        `actual reasonable cost of treatment`          IS `cost`
+        `days already paid this policy year, same kind of medicine` IS `used`
+
+GIVEN `on`  IS A DATE
+      `percent` IS A MAYBE NUMBER
+      `cost` IS A NUMBER
+GIVETH A `A surgery`
+`a surgery` `on` `percent` `cost` MEANS
+    `A surgery` WITH
+        `date of surgery`                                                     IS `on`
+        `by licensed surgeons, by hand or with medical equipment, in a hospital` IS TRUE
+        `in the Ministry of Health list of surgeries`                         IS TRUE
+        `percentage in the surgery table`                                     IS `percent`
+        `cost of consultation, anaesthesia, the operation and the operating room` IS `cost`
+
+GIVEN k        IS A `A consequence of an accident`
+      `began`  IS A DATE
+      `certified` IS A DATE
+      `percent` IS A MAYBE NUMBER
+      `cost`   IS A NUMBER
+      `paid`   IS A NUMBER
+GIVETH AN `An accidental injury`
+`an injury` k `began` `certified` `percent` `cost` `paid` MEANS
+    `An accidental injury` WITH
+        `consequence`                           IS k
+        `date the consequence began`            IS `began`
+        `date of certification`                 IS `certified`
+        `percentage in the injury table`        IS `percent`
+        `actual reasonable cost of treatment`   IS `cost`
+        `amount already paid for this accident` IS `paid`
+
+§§ `Base claims`
+
+-- A five-day stay in Western medicine for an ordinary illness, 1-5 May 2026, under the standard
+-- contract (all sums insured 20 million dong), a first contract, nothing paid before.
+`the illness stay claim` MEANS
+    `A claim` WITH
+        `the policyholder`           IS `an individual policyholder`
+        `the insured person`         IS `Ms Lan`
+        `the contract`               IS `the standard contract`
+        `the history`                IS `a first contract from` (YMD 2026 1 1)
+        `the state of the contract`  IS `a clean state`
+        `benefit claimed`            IS `III.1 hospitalisation in Western medicine`
+        `cause`                      IS `an illness`
+        `date of the insured event`  IS YMD 2026 5 1
+        `date treatment began`       IS YMD 2026 5 1
+        `in Vietnam`                 IS TRUE
+        `the illness`                IS JUST `an ordinary illness`
+        `maternity event`            IS NOTHING
+        `a miscarriage, or a complication that required curettage on a doctor's order` IS FALSE
+        `the stay`                   IS JUST (`a stay` (YMD 2026 5 1) (YMD 2026 5 5) NOTHING 3000000 0)
+        `the surgery`                IS NOTHING
+        `the injury`                 IS NOTHING
+        `the treating doctor`        IS JUST `a licensed doctor`
+        `the treating facility`      IS JUST `a general hospital`
+        `circumstances`              IS EMPTY
+        `breath alcohol while driving` IS NOTHING
+        `blood alcohol while driving`  IS NOTHING
+        `paid by another insurance contract for the same treatment` IS 0
+
+-- A temporary injury from an accident on 1 May 2026, treated at a cost of 3 million; the injury
+-- table's percentage for it is supplied as 5 (a hypothetical figure: the table is not in the source).
+`the accident claim` MEANS
+    `claiming` `II.3 temporary injury from accident` `an accident`
+        (`with the illness` NOTHING
+            (`with the stay` NOTHING
+                (`with the injury` (JUST (`an injury` `temporary injury` (YMD 2026 5 1) (YMD 2026 5 1) (JUST 5) 3000000 0))
+                    `the illness stay claim`)))
+
+-- A death from an ordinary illness that began on 1 May 2026, with no treatment.
+`the death claim` MEANS
+    `claiming` `I.1 death from illness, sickness or maternity` `an illness`
+        (`with the stay` NOTHING
+            (`with the doctor` NOTHING
+                (`with the facility` NOTHING `the illness stay claim`)))
+
+§§ `Helpers: a claim with one thing changed`
+
+-- GENERATED by scratch genhelpers.py: one copy-with helper per varied field (L4 has no record update).
+GIVEN x IS A `The policyholder`
+      c IS A `A claim`
+GIVETH A `A claim`
+`with the policyholder` x c MEANS
+    `A claim` WITH
+        `the policyholder` IS x
+        `the insured person` IS c's `the insured person`
+        `the contract` IS c's `the contract`
+        `the history` IS c's `the history`
+        `the state of the contract` IS c's `the state of the contract`
+        `benefit claimed` IS c's `benefit claimed`
+        `cause` IS c's `cause`
+        `date of the insured event` IS c's `date of the insured event`
+        `date treatment began` IS c's `date treatment began`
+        `in Vietnam` IS c's `in Vietnam`
+        `the illness` IS c's `the illness`
+        `maternity event` IS c's `maternity event`
+        `a miscarriage, or a complication that required curettage on a doctor's order` IS c's `a miscarriage, or a complication that required curettage on a doctor's order`
+        `the stay` IS c's `the stay`
+        `the surgery` IS c's `the surgery`
+        `the injury` IS c's `the injury`
+        `the treating doctor` IS c's `the treating doctor`
+        `the treating facility` IS c's `the treating facility`
+        `circumstances` IS c's `circumstances`
+        `breath alcohol while driving` IS c's `breath alcohol while driving`
+        `blood alcohol while driving` IS c's `blood alcohol while driving`
+        `paid by another insurance contract for the same treatment` IS c's `paid by another insurance contract for the same treatment`
+
+GIVEN x IS A `The insured person`
+      c IS A `A claim`
+GIVETH A `A claim`
+`with the insured` x c MEANS
+    `A claim` WITH
+        `the policyholder` IS c's `the policyholder`
+        `the insured person` IS x
+        `the contract` IS c's `the contract`
+        `the history` IS c's `the history`
+        `the state of the contract` IS c's `the state of the contract`
+        `benefit claimed` IS c's `benefit claimed`
+        `cause` IS c's `cause`
+        `date of the insured event` IS c's `date of the insured event`
+        `date treatment began` IS c's `date treatment began`
+        `in Vietnam` IS c's `in Vietnam`
+        `the illness` IS c's `the illness`
+        `maternity event` IS c's `maternity event`
+        `a miscarriage, or a complication that required curettage on a doctor's order` IS c's `a miscarriage, or a complication that required curettage on a doctor's order`
+        `the stay` IS c's `the stay`
+        `the surgery` IS c's `the surgery`
+        `the injury` IS c's `the injury`
+        `the treating doctor` IS c's `the treating doctor`
+        `the treating facility` IS c's `the treating facility`
+        `circumstances` IS c's `circumstances`
+        `breath alcohol while driving` IS c's `breath alcohol while driving`
+        `blood alcohol while driving` IS c's `blood alcohol while driving`
+        `paid by another insurance contract for the same treatment` IS c's `paid by another insurance contract for the same treatment`
+
+GIVEN x IS A `The contract`
+      c IS A `A claim`
+GIVETH A `A claim`
+`with the contract` x c MEANS
+    `A claim` WITH
+        `the policyholder` IS c's `the policyholder`
+        `the insured person` IS c's `the insured person`
+        `the contract` IS x
+        `the history` IS c's `the history`
+        `the state of the contract` IS c's `the state of the contract`
+        `benefit claimed` IS c's `benefit claimed`
+        `cause` IS c's `cause`
+        `date of the insured event` IS c's `date of the insured event`
+        `date treatment began` IS c's `date treatment began`
+        `in Vietnam` IS c's `in Vietnam`
+        `the illness` IS c's `the illness`
+        `maternity event` IS c's `maternity event`
+        `a miscarriage, or a complication that required curettage on a doctor's order` IS c's `a miscarriage, or a complication that required curettage on a doctor's order`
+        `the stay` IS c's `the stay`
+        `the surgery` IS c's `the surgery`
+        `the injury` IS c's `the injury`
+        `the treating doctor` IS c's `the treating doctor`
+        `the treating facility` IS c's `the treating facility`
+        `circumstances` IS c's `circumstances`
+        `breath alcohol while driving` IS c's `breath alcohol while driving`
+        `blood alcohol while driving` IS c's `blood alcohol while driving`
+        `paid by another insurance contract for the same treatment` IS c's `paid by another insurance contract for the same treatment`
+
+GIVEN x IS A `The history`
+      c IS A `A claim`
+GIVETH A `A claim`
+`with the history` x c MEANS
+    `A claim` WITH
+        `the policyholder` IS c's `the policyholder`
+        `the insured person` IS c's `the insured person`
+        `the contract` IS c's `the contract`
+        `the history` IS x
+        `the state of the contract` IS c's `the state of the contract`
+        `benefit claimed` IS c's `benefit claimed`
+        `cause` IS c's `cause`
+        `date of the insured event` IS c's `date of the insured event`
+        `date treatment began` IS c's `date treatment began`
+        `in Vietnam` IS c's `in Vietnam`
+        `the illness` IS c's `the illness`
+        `maternity event` IS c's `maternity event`
+        `a miscarriage, or a complication that required curettage on a doctor's order` IS c's `a miscarriage, or a complication that required curettage on a doctor's order`
+        `the stay` IS c's `the stay`
+        `the surgery` IS c's `the surgery`
+        `the injury` IS c's `the injury`
+        `the treating doctor` IS c's `the treating doctor`
+        `the treating facility` IS c's `the treating facility`
+        `circumstances` IS c's `circumstances`
+        `breath alcohol while driving` IS c's `breath alcohol while driving`
+        `blood alcohol while driving` IS c's `blood alcohol while driving`
+        `paid by another insurance contract for the same treatment` IS c's `paid by another insurance contract for the same treatment`
+
+GIVEN x IS A `The state of the contract`
+      c IS A `A claim`
+GIVETH A `A claim`
+`with the state` x c MEANS
+    `A claim` WITH
+        `the policyholder` IS c's `the policyholder`
+        `the insured person` IS c's `the insured person`
+        `the contract` IS c's `the contract`
+        `the history` IS c's `the history`
+        `the state of the contract` IS x
+        `benefit claimed` IS c's `benefit claimed`
+        `cause` IS c's `cause`
+        `date of the insured event` IS c's `date of the insured event`
+        `date treatment began` IS c's `date treatment began`
+        `in Vietnam` IS c's `in Vietnam`
+        `the illness` IS c's `the illness`
+        `maternity event` IS c's `maternity event`
+        `a miscarriage, or a complication that required curettage on a doctor's order` IS c's `a miscarriage, or a complication that required curettage on a doctor's order`
+        `the stay` IS c's `the stay`
+        `the surgery` IS c's `the surgery`
+        `the injury` IS c's `the injury`
+        `the treating doctor` IS c's `the treating doctor`
+        `the treating facility` IS c's `the treating facility`
+        `circumstances` IS c's `circumstances`
+        `breath alcohol while driving` IS c's `breath alcohol while driving`
+        `blood alcohol while driving` IS c's `blood alcohol while driving`
+        `paid by another insurance contract for the same treatment` IS c's `paid by another insurance contract for the same treatment`
+
+GIVEN b IS A `A benefit`
+      k IS A `A cause`
+      c IS A `A claim`
+GIVETH A `A claim`
+`claiming` b k c MEANS
+    `A claim` WITH
+        `the policyholder` IS c's `the policyholder`
+        `the insured person` IS c's `the insured person`
+        `the contract` IS c's `the contract`
+        `the history` IS c's `the history`
+        `the state of the contract` IS c's `the state of the contract`
+        `benefit claimed` IS b
+        `cause` IS k
+        `date of the insured event` IS c's `date of the insured event`
+        `date treatment began` IS c's `date treatment began`
+        `in Vietnam` IS c's `in Vietnam`
+        `the illness` IS c's `the illness`
+        `maternity event` IS c's `maternity event`
+        `a miscarriage, or a complication that required curettage on a doctor's order` IS c's `a miscarriage, or a complication that required curettage on a doctor's order`
+        `the stay` IS c's `the stay`
+        `the surgery` IS c's `the surgery`
+        `the injury` IS c's `the injury`
+        `the treating doctor` IS c's `the treating doctor`
+        `the treating facility` IS c's `the treating facility`
+        `circumstances` IS c's `circumstances`
+        `breath alcohol while driving` IS c's `breath alcohol while driving`
+        `blood alcohol while driving` IS c's `blood alcohol while driving`
+        `paid by another insurance contract for the same treatment` IS c's `paid by another insurance contract for the same treatment`
+
+GIVEN d IS A DATE
+      c IS A `A claim`
+GIVETH A `A claim`
+`with the event and treatment on` d c MEANS
+    `A claim` WITH
+        `the policyholder` IS c's `the policyholder`
+        `the insured person` IS c's `the insured person`
+        `the contract` IS c's `the contract`
+        `the history` IS c's `the history`
+        `the state of the contract` IS c's `the state of the contract`
+        `benefit claimed` IS c's `benefit claimed`
+        `cause` IS c's `cause`
+        `date of the insured event` IS d
+        `date treatment began` IS d
+        `in Vietnam` IS c's `in Vietnam`
+        `the illness` IS c's `the illness`
+        `maternity event` IS c's `maternity event`
+        `a miscarriage, or a complication that required curettage on a doctor's order` IS c's `a miscarriage, or a complication that required curettage on a doctor's order`
+        `the stay` IS c's `the stay`
+        `the surgery` IS c's `the surgery`
+        `the injury` IS c's `the injury`
+        `the treating doctor` IS c's `the treating doctor`
+        `the treating facility` IS c's `the treating facility`
+        `circumstances` IS c's `circumstances`
+        `breath alcohol while driving` IS c's `breath alcohol while driving`
+        `blood alcohol while driving` IS c's `blood alcohol while driving`
+        `paid by another insurance contract for the same treatment` IS c's `paid by another insurance contract for the same treatment`
+
+GIVEN d IS A DATE
+      c IS A `A claim`
+GIVETH A `A claim`
+`with treatment beginning on` d c MEANS
+    `A claim` WITH
+        `the policyholder` IS c's `the policyholder`
+        `the insured person` IS c's `the insured person`
+        `the contract` IS c's `the contract`
+        `the history` IS c's `the history`
+        `the state of the contract` IS c's `the state of the contract`
+        `benefit claimed` IS c's `benefit claimed`
+        `cause` IS c's `cause`
+        `date of the insured event` IS c's `date of the insured event`
+        `date treatment began` IS d
+        `in Vietnam` IS c's `in Vietnam`
+        `the illness` IS c's `the illness`
+        `maternity event` IS c's `maternity event`
+        `a miscarriage, or a complication that required curettage on a doctor's order` IS c's `a miscarriage, or a complication that required curettage on a doctor's order`
+        `the stay` IS c's `the stay`
+        `the surgery` IS c's `the surgery`
+        `the injury` IS c's `the injury`
+        `the treating doctor` IS c's `the treating doctor`
+        `the treating facility` IS c's `the treating facility`
+        `circumstances` IS c's `circumstances`
+        `breath alcohol while driving` IS c's `breath alcohol while driving`
+        `blood alcohol while driving` IS c's `blood alcohol while driving`
+        `paid by another insurance contract for the same treatment` IS c's `paid by another insurance contract for the same treatment`
+
+GIVEN c IS A `A claim`
+GIVETH A `A claim`
+`outside Vietnam` c MEANS
+    `A claim` WITH
+        `the policyholder` IS c's `the policyholder`
+        `the insured person` IS c's `the insured person`
+        `the contract` IS c's `the contract`
+        `the history` IS c's `the history`
+        `the state of the contract` IS c's `the state of the contract`
+        `benefit claimed` IS c's `benefit claimed`
+        `cause` IS c's `cause`
+        `date of the insured event` IS c's `date of the insured event`
+        `date treatment began` IS c's `date treatment began`
+        `in Vietnam` IS FALSE
+        `the illness` IS c's `the illness`
+        `maternity event` IS c's `maternity event`
+        `a miscarriage, or a complication that required curettage on a doctor's order` IS c's `a miscarriage, or a complication that required curettage on a doctor's order`
+        `the stay` IS c's `the stay`
+        `the surgery` IS c's `the surgery`
+        `the injury` IS c's `the injury`
+        `the treating doctor` IS c's `the treating doctor`
+        `the treating facility` IS c's `the treating facility`
+        `circumstances` IS c's `circumstances`
+        `breath alcohol while driving` IS c's `breath alcohol while driving`
+        `blood alcohol while driving` IS c's `blood alcohol while driving`
+        `paid by another insurance contract for the same treatment` IS c's `paid by another insurance contract for the same treatment`
+
+GIVEN x IS A MAYBE `The illness`
+      c IS A `A claim`
+GIVETH A `A claim`
+`with the illness` x c MEANS
+    `A claim` WITH
+        `the policyholder` IS c's `the policyholder`
+        `the insured person` IS c's `the insured person`
+        `the contract` IS c's `the contract`
+        `the history` IS c's `the history`
+        `the state of the contract` IS c's `the state of the contract`
+        `benefit claimed` IS c's `benefit claimed`
+        `cause` IS c's `cause`
+        `date of the insured event` IS c's `date of the insured event`
+        `date treatment began` IS c's `date treatment began`
+        `in Vietnam` IS c's `in Vietnam`
+        `the illness` IS x
+        `maternity event` IS c's `maternity event`
+        `a miscarriage, or a complication that required curettage on a doctor's order` IS c's `a miscarriage, or a complication that required curettage on a doctor's order`
+        `the stay` IS c's `the stay`
+        `the surgery` IS c's `the surgery`
+        `the injury` IS c's `the injury`
+        `the treating doctor` IS c's `the treating doctor`
+        `the treating facility` IS c's `the treating facility`
+        `circumstances` IS c's `circumstances`
+        `breath alcohol while driving` IS c's `breath alcohol while driving`
+        `blood alcohol while driving` IS c's `blood alcohol while driving`
+        `paid by another insurance contract for the same treatment` IS c's `paid by another insurance contract for the same treatment`
+
+GIVEN x IS A MAYBE `A maternity event`
+      y IS A BOOLEAN
+      c IS A `A claim`
+GIVETH A `A claim`
+`with the maternity event` x y c MEANS
+    `A claim` WITH
+        `the policyholder` IS c's `the policyholder`
+        `the insured person` IS c's `the insured person`
+        `the contract` IS c's `the contract`
+        `the history` IS c's `the history`
+        `the state of the contract` IS c's `the state of the contract`
+        `benefit claimed` IS c's `benefit claimed`
+        `cause` IS c's `cause`
+        `date of the insured event` IS c's `date of the insured event`
+        `date treatment began` IS c's `date treatment began`
+        `in Vietnam` IS c's `in Vietnam`
+        `the illness` IS c's `the illness`
+        `maternity event` IS x
+        `a miscarriage, or a complication that required curettage on a doctor's order` IS y
+        `the stay` IS c's `the stay`
+        `the surgery` IS c's `the surgery`
+        `the injury` IS c's `the injury`
+        `the treating doctor` IS c's `the treating doctor`
+        `the treating facility` IS c's `the treating facility`
+        `circumstances` IS c's `circumstances`
+        `breath alcohol while driving` IS c's `breath alcohol while driving`
+        `blood alcohol while driving` IS c's `blood alcohol while driving`
+        `paid by another insurance contract for the same treatment` IS c's `paid by another insurance contract for the same treatment`
+
+GIVEN x IS A MAYBE `A hospital stay`
+      c IS A `A claim`
+GIVETH A `A claim`
+`with the stay` x c MEANS
+    `A claim` WITH
+        `the policyholder` IS c's `the policyholder`
+        `the insured person` IS c's `the insured person`
+        `the contract` IS c's `the contract`
+        `the history` IS c's `the history`
+        `the state of the contract` IS c's `the state of the contract`
+        `benefit claimed` IS c's `benefit claimed`
+        `cause` IS c's `cause`
+        `date of the insured event` IS c's `date of the insured event`
+        `date treatment began` IS c's `date treatment began`
+        `in Vietnam` IS c's `in Vietnam`
+        `the illness` IS c's `the illness`
+        `maternity event` IS c's `maternity event`
+        `a miscarriage, or a complication that required curettage on a doctor's order` IS c's `a miscarriage, or a complication that required curettage on a doctor's order`
+        `the stay` IS x
+        `the surgery` IS c's `the surgery`
+        `the injury` IS c's `the injury`
+        `the treating doctor` IS c's `the treating doctor`
+        `the treating facility` IS c's `the treating facility`
+        `circumstances` IS c's `circumstances`
+        `breath alcohol while driving` IS c's `breath alcohol while driving`
+        `blood alcohol while driving` IS c's `blood alcohol while driving`
+        `paid by another insurance contract for the same treatment` IS c's `paid by another insurance contract for the same treatment`
+
+GIVEN x IS A MAYBE `A surgery`
+      c IS A `A claim`
+GIVETH A `A claim`
+`with the surgery` x c MEANS
+    `A claim` WITH
+        `the policyholder` IS c's `the policyholder`
+        `the insured person` IS c's `the insured person`
+        `the contract` IS c's `the contract`
+        `the history` IS c's `the history`
+        `the state of the contract` IS c's `the state of the contract`
+        `benefit claimed` IS c's `benefit claimed`
+        `cause` IS c's `cause`
+        `date of the insured event` IS c's `date of the insured event`
+        `date treatment began` IS c's `date treatment began`
+        `in Vietnam` IS c's `in Vietnam`
+        `the illness` IS c's `the illness`
+        `maternity event` IS c's `maternity event`
+        `a miscarriage, or a complication that required curettage on a doctor's order` IS c's `a miscarriage, or a complication that required curettage on a doctor's order`
+        `the stay` IS c's `the stay`
+        `the surgery` IS x
+        `the injury` IS c's `the injury`
+        `the treating doctor` IS c's `the treating doctor`
+        `the treating facility` IS c's `the treating facility`
+        `circumstances` IS c's `circumstances`
+        `breath alcohol while driving` IS c's `breath alcohol while driving`
+        `blood alcohol while driving` IS c's `blood alcohol while driving`
+        `paid by another insurance contract for the same treatment` IS c's `paid by another insurance contract for the same treatment`
+
+GIVEN x IS A MAYBE `An accidental injury`
+      c IS A `A claim`
+GIVETH A `A claim`
+`with the injury` x c MEANS
+    `A claim` WITH
+        `the policyholder` IS c's `the policyholder`
+        `the insured person` IS c's `the insured person`
+        `the contract` IS c's `the contract`
+        `the history` IS c's `the history`
+        `the state of the contract` IS c's `the state of the contract`
+        `benefit claimed` IS c's `benefit claimed`
+        `cause` IS c's `cause`
+        `date of the insured event` IS c's `date of the insured event`
+        `date treatment began` IS c's `date treatment began`
+        `in Vietnam` IS c's `in Vietnam`
+        `the illness` IS c's `the illness`
+        `maternity event` IS c's `maternity event`
+        `a miscarriage, or a complication that required curettage on a doctor's order` IS c's `a miscarriage, or a complication that required curettage on a doctor's order`
+        `the stay` IS c's `the stay`
+        `the surgery` IS c's `the surgery`
+        `the injury` IS x
+        `the treating doctor` IS c's `the treating doctor`
+        `the treating facility` IS c's `the treating facility`
+        `circumstances` IS c's `circumstances`
+        `breath alcohol while driving` IS c's `breath alcohol while driving`
+        `blood alcohol while driving` IS c's `blood alcohol while driving`
+        `paid by another insurance contract for the same treatment` IS c's `paid by another insurance contract for the same treatment`
+
+GIVEN x IS A MAYBE `The treating doctor`
+      c IS A `A claim`
+GIVETH A `A claim`
+`with the doctor` x c MEANS
+    `A claim` WITH
+        `the policyholder` IS c's `the policyholder`
+        `the insured person` IS c's `the insured person`
+        `the contract` IS c's `the contract`
+        `the history` IS c's `the history`
+        `the state of the contract` IS c's `the state of the contract`
+        `benefit claimed` IS c's `benefit claimed`
+        `cause` IS c's `cause`
+        `date of the insured event` IS c's `date of the insured event`
+        `date treatment began` IS c's `date treatment began`
+        `in Vietnam` IS c's `in Vietnam`
+        `the illness` IS c's `the illness`
+        `maternity event` IS c's `maternity event`
+        `a miscarriage, or a complication that required curettage on a doctor's order` IS c's `a miscarriage, or a complication that required curettage on a doctor's order`
+        `the stay` IS c's `the stay`
+        `the surgery` IS c's `the surgery`
+        `the injury` IS c's `the injury`
+        `the treating doctor` IS x
+        `the treating facility` IS c's `the treating facility`
+        `circumstances` IS c's `circumstances`
+        `breath alcohol while driving` IS c's `breath alcohol while driving`
+        `blood alcohol while driving` IS c's `blood alcohol while driving`
+        `paid by another insurance contract for the same treatment` IS c's `paid by another insurance contract for the same treatment`
+
+GIVEN x IS A MAYBE `The treating facility`
+      c IS A `A claim`
+GIVETH A `A claim`
+`with the facility` x c MEANS
+    `A claim` WITH
+        `the policyholder` IS c's `the policyholder`
+        `the insured person` IS c's `the insured person`
+        `the contract` IS c's `the contract`
+        `the history` IS c's `the history`
+        `the state of the contract` IS c's `the state of the contract`
+        `benefit claimed` IS c's `benefit claimed`
+        `cause` IS c's `cause`
+        `date of the insured event` IS c's `date of the insured event`
+        `date treatment began` IS c's `date treatment began`
+        `in Vietnam` IS c's `in Vietnam`
+        `the illness` IS c's `the illness`
+        `maternity event` IS c's `maternity event`
+        `a miscarriage, or a complication that required curettage on a doctor's order` IS c's `a miscarriage, or a complication that required curettage on a doctor's order`
+        `the stay` IS c's `the stay`
+        `the surgery` IS c's `the surgery`
+        `the injury` IS c's `the injury`
+        `the treating doctor` IS c's `the treating doctor`
+        `the treating facility` IS x
+        `circumstances` IS c's `circumstances`
+        `breath alcohol while driving` IS c's `breath alcohol while driving`
+        `blood alcohol while driving` IS c's `blood alcohol while driving`
+        `paid by another insurance contract for the same treatment` IS c's `paid by another insurance contract for the same treatment`
+
+GIVEN x IS A LIST OF `A circumstance of the event`
+      c IS A `A claim`
+GIVETH A `A claim`
+`with the circumstances` x c MEANS
+    `A claim` WITH
+        `the policyholder` IS c's `the policyholder`
+        `the insured person` IS c's `the insured person`
+        `the contract` IS c's `the contract`
+        `the history` IS c's `the history`
+        `the state of the contract` IS c's `the state of the contract`
+        `benefit claimed` IS c's `benefit claimed`
+        `cause` IS c's `cause`
+        `date of the insured event` IS c's `date of the insured event`
+        `date treatment began` IS c's `date treatment began`
+        `in Vietnam` IS c's `in Vietnam`
+        `the illness` IS c's `the illness`
+        `maternity event` IS c's `maternity event`
+        `a miscarriage, or a complication that required curettage on a doctor's order` IS c's `a miscarriage, or a complication that required curettage on a doctor's order`
+        `the stay` IS c's `the stay`
+        `the surgery` IS c's `the surgery`
+        `the injury` IS c's `the injury`
+        `the treating doctor` IS c's `the treating doctor`
+        `the treating facility` IS c's `the treating facility`
+        `circumstances` IS x
+        `breath alcohol while driving` IS c's `breath alcohol while driving`
+        `blood alcohol while driving` IS c's `blood alcohol while driving`
+        `paid by another insurance contract for the same treatment` IS c's `paid by another insurance contract for the same treatment`
+
+GIVEN x IS A MAYBE NUMBER
+      y IS A MAYBE NUMBER
+      c IS A `A claim`
+GIVETH A `A claim`
+`with alcohol readings` x y c MEANS
+    `A claim` WITH
+        `the policyholder` IS c's `the policyholder`
+        `the insured person` IS c's `the insured person`
+        `the contract` IS c's `the contract`
+        `the history` IS c's `the history`
+        `the state of the contract` IS c's `the state of the contract`
+        `benefit claimed` IS c's `benefit claimed`
+        `cause` IS c's `cause`
+        `date of the insured event` IS c's `date of the insured event`
+        `date treatment began` IS c's `date treatment began`
+        `in Vietnam` IS c's `in Vietnam`
+        `the illness` IS c's `the illness`
+        `maternity event` IS c's `maternity event`
+        `a miscarriage, or a complication that required curettage on a doctor's order` IS c's `a miscarriage, or a complication that required curettage on a doctor's order`
+        `the stay` IS c's `the stay`
+        `the surgery` IS c's `the surgery`
+        `the injury` IS c's `the injury`
+        `the treating doctor` IS c's `the treating doctor`
+        `the treating facility` IS c's `the treating facility`
+        `circumstances` IS c's `circumstances`
+        `breath alcohol while driving` IS x
+        `blood alcohol while driving` IS y
+        `paid by another insurance contract for the same treatment` IS c's `paid by another insurance contract for the same treatment`
+
+GIVEN x IS A NUMBER
+      c IS A `A claim`
+GIVETH A `A claim`
+`with another contract paying` x c MEANS
+    `A claim` WITH
+        `the policyholder` IS c's `the policyholder`
+        `the insured person` IS c's `the insured person`
+        `the contract` IS c's `the contract`
+        `the history` IS c's `the history`
+        `the state of the contract` IS c's `the state of the contract`
+        `benefit claimed` IS c's `benefit claimed`
+        `cause` IS c's `cause`
+        `date of the insured event` IS c's `date of the insured event`
+        `date treatment began` IS c's `date treatment began`
+        `in Vietnam` IS c's `in Vietnam`
+        `the illness` IS c's `the illness`
+        `maternity event` IS c's `maternity event`
+        `a miscarriage, or a complication that required curettage on a doctor's order` IS c's `a miscarriage, or a complication that required curettage on a doctor's order`
+        `the stay` IS c's `the stay`
+        `the surgery` IS c's `the surgery`
+        `the injury` IS c's `the injury`
+        `the treating doctor` IS c's `the treating doctor`
+        `the treating facility` IS c's `the treating facility`
+        `circumstances` IS c's `circumstances`
+        `breath alcohol while driving` IS c's `breath alcohol while driving`
+        `blood alcohol while driving` IS c's `blood alcohol while driving`
+        `paid by another insurance contract for the same treatment` IS x

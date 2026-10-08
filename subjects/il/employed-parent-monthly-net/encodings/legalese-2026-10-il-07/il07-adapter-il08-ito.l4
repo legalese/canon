@@ -1,0 +1,358 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `il07-nouns`
+IMPORT `il07-refusals`
+IMPORT `ito-il08-nouns`
+IMPORT `ito-il08-tax-years`
+IMPORT `ito-il08-published-figures`
+IMPORT `ito-s47a-definitions`
+IMPORT `ito-s45a-insurance-and-pension-credit`
+IMPORT `ito-s47-deduction`
+IMPORT `ito-s40-children-credit-points`
+IMPORT `ito-s37-s38-s39-spouse-credits`
+IMPORT `ito-s35-new-immigrant`
+IMPORT `ito-s64b-s65-registered-spouse`
+
+-- ===========================================================================
+-- IL-07 adapter for row IL-08, its Income Tax Ordinance half: ss 35, 37-39,
+-- 40(b), 45A, 47 and 65 (version 0.2.0, 2026-10-07).
+--
+-- Imports this row's nouns and refusals and IL-08's ITO modules (vendored copies,
+-- VENDORED.sha256), and no other row. It builds IL-08's records from the
+-- household and its further facts, hands them to IL-08's rules, and exposes
+-- numbers, booleans and this row's own records under names beginning "IL-08:".
+--
+-- IL-08'S KNOWN DEFECTS (its INDEPENDENT-FINDINGS.md). Where one could change the
+-- answer, the rule here declines by name instead of passing IL-08's answer on:
+--   D187  s 45A's floor lost after the 1.5% survivors' proviso (a wrong number);
+--   D183  s 45A refused, in words that do not fit, where only life insurance is
+--         cut;
+--   D190, D236  s 47 before s 45A, an unrecorded choice;
+--   D055  a second immigration answered as 0 points under s 35;
+--   observation 1  s 40(b)(1A1) moving two points for a child of one parent.
+-- D019 (s 1 "foreign resident") is not reached: the capstone takes residence as
+-- an input and does not compose IL-08's s 1. D244 was the tester's own error.
+-- SUPERSEDED IN PART by version 0.3.0 (2026-10-08, BACKLOG IL-22): row IL-08
+-- repaired D187, D183, D055 and observation 1 (its versions 0.2.0 and 0.3.0), so
+-- the rules below pass its answers on and the four declines are removed (NOTES.md
+-- section 12). D190 and D236 are now its fork F35, waiting on a ruling (BACKLOG
+-- IL-24): still declined, by the pipeline. Version 0.3.0 also follows two changes
+-- of interface: the ss 37-39 record's election is a three-way field (D109), and
+-- s 65 takes the couple's two facts (D292, D293).
+--
+-- THE EARNER AS IL-08 SEES IT (input conventions, BRIEF.md "The household"):
+-- the earner's only income is the salary, work income under s 2(2) for the
+-- whole year (twelve times the month's, fork K1); no income from a business or
+-- profession and no deposits as a self-employed member; no deduction under
+-- s 32(14)(b); the spouse has no income (the pipeline declines otherwise); no
+-- child of the household is 18 or more in a way s 45A(b1) or s 47(b1) reads (no
+-- sums are paid for such a child); not in a class for which regulations under
+-- s 47(d) set higher deductions (the earner's "no credit or deduction beyond"
+-- field says so: il07-nouns.l4).
+-- ===========================================================================
+
+§ `IL-07 adapter — row IL-08, Income Tax Ordinance`
+
+§§ `Sections 45A and 47 — the earner, and the year's amounts`
+
+GIVEN h          IS AN `IL-07 household in a month`
+      p          IS AN `IL-07 the earner's pension contributions and insurance`
+      `deducted` IS A NUMBER
+GIVETH AN `An individual in a tax year, for sections 45A and 47`
+`IL-08: the earner for sections 45A and 47, in` h `, paying` p `, with a deduction under section 47 of` `deducted` MEANS
+    `An individual in a tax year, for sections 45A and 47` WITH
+        `tax year`                                                                     IS h's `the year of the month`
+        `an Israeli resident in the tax year`                                          IS e's `the earner was an Israeli resident in the tax year, under the Income Tax Ordinance`
+        `taxable income from work, before the deductions under sections 47 and 47A`    IS 12 TIMES e's `the earner's monthly salary`
+        `taxable income not from work, before the deductions under sections 47 and 47A` IS 0
+        `taxable income from a business or profession`                                 IS 0
+        `insured income`                                                               IS 12 TIMES p's `the part of the monthly salary that is insured income`
+        `sums paid in the tax year to a pension provident fund in respect of the individual's income` IS
+            12 TIMES (p's `the earner's own contribution to a pension provident fund, each month` PLUS p's `the employer's deposits to a pension provident fund for the earner, each month`)
+        `sums paid, for section 45A`                                                   IS `Sums paid in the tax year, for section 45A` WITH
+            `for insurance of the individual's or the spouse's life with an insurance company` IS p's `paid in the tax year for insurance of the earner's or the spouse's life`
+            `to a pension provident fund`                                                      IS `own`
+            `to the State, a local authority or a designated body, to keep a pension right`    IS 0
+            `for survivors' pension insurance`                                                 IS p's `paid in the tax year for survivors' pension insurance`
+            `for the life insurance of a child aged 18 or more`                                IS 0
+            `to a provident fund, or to keep pension rights, for a child aged 18 or more`      IS 0
+            `of the pension sums above, those paid in respect of income not from work`         IS 0
+        `sums paid, for section 47`                                                    IS `Sums paid in the tax year, for section 47` WITH
+            `to a pension provident fund only, by the individual or the spouse, for the benefit of one of them`       IS `own`
+            `to the State, a local authority or a designated body, to keep the pension right of one of them`          IS 0
+            `to a pension provident fund, by the individual or the spouse, for the benefit of the beneficiary member` IS `own`
+            `to a pension provident fund, by the beneficiary member, for the benefit of a child aged 18 or more`      IS 0
+        `sums deducted under section 47(b) or (b1)`                                    IS `deducted`
+        `sums deposited to a pension provident fund as a self-employed member for himself, not credited under section 45A(b)` IS 0
+        `a deduction was made for him under section 32(14)(b) for preferred insurance against loss of working capacity` IS FALSE
+        `within a class for which regulations under section 47(d) set higher deductions` IS FALSE
+        `a foreign worker`                                                             IS e's `the earner is a foreign worker`
+    WHERE
+        e     MEANS h's `the earner`
+        `own` MEANS 12 TIMES p's `the earner's own contribution to a pension provident fund, each month`
+
+-- The Tax Authority's 2024-2026 figures, as twelve times the booklet's monthly
+-- ones (row IL-08's published-figures module and its assumption A3): for 2026,
+-- 2,268; 116,400; 164,400; and the average wage 165,228. Not law.
+@ref row IL-08, ito-il08-published-figures.l4 ([booklet-2026] PDF p. 9, sha256 282bb886...6e86285); IL-08 NOTES.md A3, A4
+GIVEN `the tax year` IS A NUMBER
+GIVETH A `The amounts of sections 45A and 47 in force in the tax year`
+`IL-08: the amounts of sections 45A and 47 for tax year` `the tax year` MEANS
+    `the amounts of sections 45A and 47, as twelve times the Tax Authority's monthly figures, for tax year` `the tax year`
+
+GIVEN h IS AN `IL-07 household in a month`
+      p IS AN `IL-07 the earner's pension contributions and insurance`
+GIVETH A BOOLEAN
+`IL-08: the insured income is part of the salary, in` h `, paying` p MEANS
+    `s 47(a)(4) — the insured income is part of the work income:` (`IL-08: the earner for sections 45A and 47, in` h `, paying` p `, with a deduction under section 47 of` 0)
+
+§§ `Section 47 — the deduction`
+
+@ref ITO s 47(b)-(d) (row IL-08, ito-s47-deduction.l4)
+GIVEN h IS AN `IL-07 household in a month`
+      p IS AN `IL-07 the earner's pension contributions and insurance`
+GIVETH A NUMBER
+`IL-08: the deduction under section 47 for the earner, in` h `, paying` p MEANS
+    `the deduction under section 47 for` (`IL-08: the earner for sections 45A and 47, in` h `, paying` p `, with a deduction under section 47 of` 0)
+        `, at` (`IL-08: the amounts of sections 45A and 47 for tax year` (h's `the year of the month`))
+
+§§ `Section 45A — the credit, declining where IL-08's defects reach`
+
+-- IL-08's own answer, passed on unexamined. Version 0.2.0 kept it for
+-- il07-tests-expected-red.l4 (R3), which showed D187 on a household; from 0.3.0
+-- the rule below returns it, and R3's assertion holds (il07-tests-il08.l4, N4).
+@ref ITO s 45A (row IL-08, ito-s45a-insurance-and-pension-credit.l4)
+GIVEN h IS AN `IL-07 household in a month`
+      p IS AN `IL-07 the earner's pension contributions and insurance`
+GIVETH A NUMBER
+`IL-08: the credit under section 45A as row IL-08 computes it, for the earner, in` h `, paying` p MEANS
+    `the credit under section 45A for` (`IL-08: the earner for sections 45A and 47, in` h `, paying` p `, with a deduction under section 47 of` 0)
+        `, at` (`IL-08: the amounts of sections 45A and 47 for tax year` (h's `the year of the month`))
+
+-- The credit, with no sum deducted under s 47 (the pipeline declines where s 47
+-- deducts anything: D190).
+-- Version 0.2.0 declined two cases here, row IL-08's defects D187 (the floor of
+-- s 45A(d)(1) or (e)(1) lost after the 1.5% survivors' proviso) and D183 (sums
+-- all for life insurance, cut, declined in words that did not fit). Row IL-08's
+-- version 0.2.0 repaired both: the floor is applied after the provisos in every
+-- arm, and a 25%-only rule computes life insurance alone. VERSION 0.3.0 passes
+-- IL-08's answer on, after this row's own check of the insured income.
+@ref ITO s 45A(a)-(e) (row IL-08, ito-s45a-insurance-and-pension-credit.l4)
+GIVEN h IS AN `IL-07 household in a month`
+      p IS AN `IL-07 the earner's pension contributions and insurance`
+GIVETH A NUMBER
+`IL-08: the credit under section 45A for the earner, in` h `, paying` p MEANS
+    IF   NOT `IL-08: the insured income is part of the salary, in` h `, paying` p
+    THEN `the insured income the household gives is negative or more than the salary`
+    ELSE `IL-08: the credit under section 45A as row IL-08 computes it, for the earner, in` h `, paying` p
+
+-- For the tests: whether IL-08 counts the earner a beneficiary member (s 47(a)(7)).
+@ref ITO s 47(a)(7) (row IL-08, ito-s47a-definitions.l4)
+GIVEN h IS AN `IL-07 household in a month`
+      p IS AN `IL-07 the earner's pension contributions and insurance`
+GIVETH A BOOLEAN
+`IL-08: the earner is a beneficiary member, in` h `, paying` p MEANS
+    `s 47(a)(7) — a beneficiary member:` (`IL-08: the earner for sections 45A and 47, in` h `, paying` p `, with a deduction under section 47 of` 0)
+        `, at` (`IL-08: the amounts of sections 45A and 47 for tax year` (h's `the year of the month`))
+
+§§ `Section 35 — the new immigrant`
+
+GIVEN g IS AN `IL-07 the ground on which the earner is an immigrant`
+GIVETH A `The ground on which a person claims to be an immigrant, for section 35`
+`IL-08: the ground` g MEANS
+    CONSIDER g
+    WHEN `IL-07: an immigrant's visa or certificate under the Law of Return`
+        THEN `holds an immigrant's visa or certificate under the Law of Return`
+    WHEN `IL-07: entitled to such a visa or certificate, with a visa or licence for temporary residence`
+        THEN `is entitled to such a visa or certificate and holds a visa or licence for temporary residence under the Entry into Israel Law`
+    WHEN `IL-07: a returning resident` d y
+        THEN `returned and became an Israeli resident` d y
+    WHEN `IL-07: of a class the Minister of Finance has determined to be treated as an immigrant`
+        THEN `is of a class the Minister of Finance has determined to be treated as an immigrant`
+    WHEN `IL-07: none of the grounds of section 35(d)`
+        THEN `none of these`
+
+-- Every month of the tax year is given as resided in (the household is not
+-- absent; s 35 gives nothing for a month before the immigration), and no absence
+-- is left out of the count.
+GIVEN h  IS AN `IL-07 household in a month`
+      im IS AN `IL-07 the earner's immigration`
+GIVETH AN `An immigrant in a tax year, for section 35`
+`IL-08: the earner as an immigrant, in` h `:` im MEANS
+    `An immigrant in a tax year, for section 35` WITH
+        `tax year`                                                        IS h's `the year of the month`
+        `ground`                                                          IS `IL-08: the ground` (im's `the ground of immigration`)
+        `citizenship cancelled under section 10(d) of the Citizenship Law` IS im's `the earner's Israeli citizenship was cancelled under section 10(d) of the Citizenship Law`
+        `the day the individual became an immigrant`                      IS im's `the day the earner became an immigrant`
+        `the first time the individual became an immigrant`               IS im's `it was the first time the earner became an immigrant`
+        `absence left out of the count at the immigrant's request`        IS NOTHING
+        `months of the tax year in which the immigrant resided in Israel` IS LIST 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+        `rules under section 35(e) apply to the immigrant`                IS im's `the Minister's rules under section 35(e) reach the earner`
+        `a foreign worker`                                                IS h's `the earner`'s `the earner is a foreign worker`
+
+-- Version 0.2.0 declined here an immigrant (s 35(d)) for whom it was not the
+-- first time, row IL-08's defect D055 (it answered 0). Row IL-08's version 0.2.0
+-- declines that case itself, in its own words ("one who was formerly an immigrant
+-- is credited, notwithstanding section 35(c), under rules made under section
+-- 35(e)(1), which are not encoded in this model"), so VERSION 0.3.0 passes its
+-- answer on.
+@ref ITO s 35 (row IL-08, ito-s35-new-immigrant.l4)
+GIVEN h  IS AN `IL-07 household in a month`
+      im IS AN `IL-07 the earner's immigration`
+GIVETH A NUMBER
+`IL-08: the credit points under section 35 for the earner, in` h `, who immigrated` im MEANS
+    `the credit points under section 35 for` (`IL-08: the earner as an immigrant, in` h `:` im)
+
+§§ `Sections 37, 38 and 39 — credits for a spouse`
+
+-- The spouse has no income (one earner), so the registered spouse's income
+-- includes none of the spouse's and s 38(a) does not apply; the earner's only
+-- income is a salary, so the spouse helped in no business and s 39 does not
+-- apply. "Entitled to allowance points under s 40(a)" (IL-08's open fork F19) is
+-- read only by ss 38 and 39: given as FALSE, never read here.
+-- Version 0.3.0: row IL-08's version 0.3.0 replaced the boolean `elects the
+-- credits of section 39 rather than those of section 38` with a three-way field
+-- (its D109: an election never made no longer silently means s 38). s 39 does not
+-- apply to this household, so no election is read: `made no election`.
+GIVEN h IS AN `IL-07 household in a month`
+      c IS AN `IL-07 couple`
+      s IS AN `IL-07 the statuses section 37 reads`
+GIVETH AN `An individual in a tax year, for sections 37 to 39`
+`IL-08: the earner for sections 37 to 39, in` h `married as` c `, with the statuses` s MEANS
+    `An individual in a tax year, for sections 37 to 39` WITH
+        `tax year`                                                       IS h's `the year of the month`
+        `an Israeli resident in the tax year`                            IS e's `the earner was an Israeli resident in the tax year, under the Income Tax Ordinance`
+        `has a spouse`                                                   IS TRUE
+        `the individual has reached retirement age`                      IS s's `the earner has reached retirement age`
+        `the spouse has reached retirement age`                          IS s's `the earner's spouse has reached retirement age`
+        `the individual is blind or disabled within section 9(5)(a) or (a1)` IS s's `the earner is blind or disabled within section 9(5)(a) or (a1)`
+        `the spouse is blind or disabled within section 9(5)(a) or (a1)` IS s's `the earner's spouse is blind or disabled within section 9(5)(a) or (a1)`
+        `proved to the assessing officer's satisfaction that the spouse's maintenance was on the individual in the tax year` IS
+            s's `the earner proved to the assessing officer that the spouse's maintenance was on the earner in the tax year`
+        `the registered spouse`                                          IS c's `the earner is the registered spouse`
+        `the taxable income includes the spouse's income`                IS FALSE
+        `proved that the spouse's income was from personal exertion within paragraphs (1) to (6) of its definition` IS FALSE
+        `the spouse's taxable income`                                    IS c's `the earner's spouse`'s `the spouse's taxable income in the tax year`
+        `entitled to allowance points under section 40(a)`              IS FALSE
+        `the spouse helped at least 24 hours a week, within 9 months of the tax year, in earning the individual's income from a business or profession` IS FALSE
+        `the election under section 39 between sections 38 and 39`      IS `made no election`
+        `a resident of the Area who is not an Israeli citizen`           IS e's `the earner is a resident of the Area who is not an Israeli citizen`
+        `a foreign worker`                                               IS e's `the earner is a foreign worker`
+    WHERE e MEANS h's `the earner`
+
+@ref ITO s 37 (row IL-08, ito-s37-s38-s39-spouse-credits.l4)
+GIVEN h IS AN `IL-07 household in a month`
+      c IS AN `IL-07 couple`
+      s IS AN `IL-07 the statuses section 37 reads`
+GIVETH A NUMBER
+`IL-08: the credit point under section 37 for the earner, in` h `married as` c `, with the statuses` s MEANS
+    `the credit points under section 37 for` (`IL-08: the earner for sections 37 to 39, in` h `married as` c `, with the statuses` s)
+
+@ref ITO ss 37-39 (row IL-08, ito-s37-s38-s39-spouse-credits.l4)
+GIVEN h       IS AN `IL-07 household in a month`
+      c       IS AN `IL-07 couple`
+      s       IS AN `IL-07 the statuses section 37 reads`
+      `value` IS A NUMBER
+GIVETH A NUMBER
+`IL-08: the credit points under sections 37, 38 and 39 for the earner, in` h `married as` c `, with the statuses` s `, at a credit-point value of` `value` MEANS
+    `the credit points under sections 37, 38 and 39 for` (`IL-08: the earner for sections 37 to 39, in` h `married as` c `, with the statuses` s)
+        `at a credit-point value of` `value`
+
+§§ `Section 40(b) — a parent without a spouse`
+
+-- The child's other parent, found by the child's name; none, or more than one,
+-- is declined.
+GIVEN k  IS AN `IL-07 child`
+      sp IS AN `IL-07 the single-parent family, for section 40(b)`
+GIVETH AN `IL-07 a child's other parent, for section 40(b)`
+`IL-08: the other parent of` k `, in` sp MEANS
+    CONSIDER filter (GIVEN o YIELD o's `the name of the child` EQUALS k's `the child's name`) (sp's `each child's other parent`)
+    WHEN o FOLLOWED BY EMPTY THEN o
+    OTHERWISE `the single-parent facts give no entry, or more than one, for a child of the household; each child needs exactly one, under its own name`
+
+-- Each child is with the earner (BRIEF.md: the children live with the parent);
+-- the household is one family, so the child's single-parent status is the
+-- earner's; s 40(b)(3) "שנת לידה" is the tax year of birth.
+GIVEN h  IS AN `IL-07 household in a month`
+      sp IS AN `IL-07 the single-parent family, for section 40(b)`
+      k  IS AN `IL-07 child`
+GIVETH A `A child, for section 40(b)`
+`IL-08: the child for section 40(b), in` h `, single-parent facts` sp `:` k MEANS
+    `A child, for section 40(b)` WITH
+        `tax year of birth`                                                IS DATE_YEAR (k's `the child's date of birth`)
+        `the parent is`                                                    IS IF h's `the earner`'s `the earner is a woman` THEN `the mother of the child` ELSE `the father of the child`
+        `the parent maintained the child`                                  IS sp's `the earner maintained the children in the tax year`
+        `the child is with the parent`                                     IS TRUE
+        `in a single-parent family`                                        IS sp's `the earner and the children are a single-parent family`
+        `the other parent died in or before the tax year`                  IS o's `the child's other parent died in or before the tax year`
+        `registered in the population register without the details of one parent` IS o's `the child is registered in the population register without the details of one parent`
+        `the mother elects to count one birth-year credit point in the following tax year` IS k's `the child's mother elects to count one birth-year credit point in the following tax year`
+        `the other parent is an Israeli resident in the tax year`          IS o's `the child's other parent is an Israeli resident in the tax year`
+        `the other parent has credit points for the child under paragraph (1)` IS o's `the child's other parent has credit points for the child under section 40(b)(1)`
+    WHERE o MEANS `IL-08: the other parent of` k `, in` sp
+
+-- A parent without a spouse is never entitled to a point under s 37, which needs
+-- a spouse.
+GIVEN h  IS AN `IL-07 household in a month`
+      sp IS AN `IL-07 the single-parent family, for section 40(b)`
+GIVETH A `A parent in a tax year, for section 40(b)`
+`IL-08: the earner as a parent for section 40(b), in` h `, single-parent facts` sp MEANS
+    `A parent in a tax year, for section 40(b)` WITH
+        `tax year`                                   IS h's `the year of the month`
+        `an Israeli resident in the tax year`        IS h's `the earner`'s `the earner was an Israeli resident in the tax year, under the Income Tax Ordinance`
+        `a parent in a single-parent family`         IS sp's `the earner and the children are a single-parent family`
+        `entitled to a credit point under section 37` IS FALSE
+        `living apart from the other parent`         IS sp's `the earner lives apart from the children's other parent`
+        `share of the children's maintenance expenses borne` IS sp's `the earner's share of the children's maintenance expenses`
+        `a foreign worker`                           IS h's `the earner`'s `the earner is a foreign worker`
+        `children`                                   IS map (GIVEN k YIELD `IL-08: the child for section 40(b), in` h `, single-parent facts` sp `:` k) (h's `the children of the household`)
+
+-- Version 0.2.0 declined here the mother's (1A1) election for a child of one
+-- parent in its year of birth or the next, where row IL-08 moved two points
+-- rather than one (observation 1 of its independent pass). Row IL-08's version
+-- 0.2.0 moves one point, in (1) only (its OB1; fork F13, extended), so VERSION
+-- 0.3.0 passes its answer on. Its version 0.3.0 also repaired s 40(b)(2) (rider
+-- O1): a share of the maintenance of 1 or 0 is not "divided", and gives nothing.
+@ref ITO s 40(b) (row IL-08, ito-s40-children-credit-points.l4)
+GIVEN h  IS AN `IL-07 household in a month`
+      sp IS AN `IL-07 the single-parent family, for section 40(b)`
+GIVETH AN `IL-07 credit points under section 40(b)`
+`IL-08: the credit points under section 40(b) for the earner, in` h `, single-parent facts` sp MEANS
+    `IL-07 credit points under section 40(b)` WITH
+        `points set against the tax generally, under section 40(b)(1) and (2)`  IS `the credit points under section 40(b) set against the tax generally, for` p
+        `points set against the tax on income from personal exertion, under section 40(b)(1A) and (1B)` IS
+            `the credit points under section 40(b) set against the tax on income from personal exertion, for` p
+    WHERE
+        p MEANS `IL-08: the earner as a parent for section 40(b), in` h `, single-parent facts` sp
+
+§§ `Section 65 — the consolidated calculation`
+
+-- The couple's items of income: the earner's salary, the spouse's nothing (one
+-- earner), no child's income (BRIEF.md). The salary is "any other income" of
+-- s 65's kinds, charged in the registered spouse's name whichever spouse earns it.
+-- Version 0.3.0: row IL-08's version 0.2.0 takes the couple's two facts (its
+-- D292, D293), in `A couple in a tax year, for section 65`. "Married, living
+-- together and running a joint household" (s 1 "בן זוג") is TRUE by the
+-- household's input convention: `the couple, if the earner has a spouse` is a
+-- couple who are spouses within ITO s 1, as the ss 37-39 record above already
+-- reads them (`has a spouse`). Whether a separate calculation under s 66 governs
+-- some of their income is the caller's argument: the pipeline passes row IL-02's
+-- answer, and calls this rule only where it is FALSE.
+@ref ITO s 65, s 1 "בן זוג" (row IL-08, ito-s64b-s65-registered-spouse.l4)
+GIVEN h          IS AN `IL-07 household in a month`
+      c          IS AN `IL-07 couple`
+      `separate` IS A BOOLEAN
+GIVETH A NUMBER
+`IL-08: the income charged in the registered spouse's name under section 65, in` h `married as` c `, a separate calculation under section 66 governing some of the income:` `separate` MEANS
+    `s 65 — the income charged in the registered spouse's name, for the couple`
+        (`A couple in a tax year, for section 65` WITH
+            `tax year`                                                                     IS h's `the year of the month`
+            `married, living together and running a joint household`                      IS TRUE
+            `a separate calculation under section 66 governs some of the couple's income` IS `separate`)
+        `, from`
+        (LIST `An item of a household's income, for section 65` WITH
+            `whose`          IS IF c's `the earner is the registered spouse` THEN `the registered spouse's` ELSE `the other spouse's`
+            `kind`           IS `any other income`
+            `taxable amount` IS 12 TIMES h's `the earner`'s `the earner's monthly salary`
+            `from assets received by inheritance, or originating in compensation or insurance money received for bodily injury` IS FALSE)

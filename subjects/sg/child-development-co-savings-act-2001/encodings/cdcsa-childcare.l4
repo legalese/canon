@@ -1,0 +1,227 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `cdcsa-types`
+IMPORT `cdcsa-common`
+
+-- Child Development Co-Savings Act 2001 — GOAL 7: CHILDCARE AND INFANT CARE
+-- LEAVE (ss 12B, 12C, 12CA, 12D).
+--
+--   "How many days of childcare, extended childcare and unpaid infant care
+--    leave does a parent have this relevant period; how much must the employer
+--    pay; how much of it may the employer claim back; and what may a
+--    self-employed parent claim?"
+--
+-- A "relevant period" is 12 months agreed with the employer, or else a
+-- calendar year (s 12B(21)). A "qualifying child" is a citizen (s 12B(21)).
+-- Source: ../source/CDCSA2001.txt lines 1924-2421.
+
+§ `Goal 7 — childcare and infant care leave`
+
+§§ `Who is entitled (s 12B(1)-(1C), 12D(1)-(1B))`
+
+-- s 12B(1B)-(1C), 12D(1A)-(1B): a male employee who is the natural father is
+-- not entitled if "either the male employee or the natural mother ... was
+-- lawfully married to another person, or both of them were lawfully married
+-- but not to each other, at the time the qualifying child was conceived" —
+-- unless they later marry each other, from the child's birth (if before it)
+-- or the marriage.
+DECLARE `Father's marital facts` HAS
+    `the natural father, a party married to another at conception` IS A BOOLEAN
+    `the parents later married each other on`                    IS A MAYBE DATE
+
+@ref s 12B(1B)-(1C), (16B); 12D(1A)-(1B)
+GIVEN on IS A DATE, born IS A DATE, f IS A `Father's marital facts`
+GIVETH A BOOLEAN
+DECIDE `the father's exclusion lets him claim on` on `, child born` born `, facts` f IF
+    IF NOT f's `the natural father, a party married to another at conception` THEN TRUE
+    ELSE CONSIDER f's `the parents later married each other on`
+         WHEN JUST m  THEN on AT LEAST (IF m LESS THAN born THEN born ELSE m)
+         WHEN NOTHING THEN FALSE
+
+§§ `Childcare leave (s 12B(1)-(2))`
+
+-- s 12B(1): an employee who "(a) has served an employer for a period of not
+-- less than 3 months; and (b) has any child who is below 7 years of age and
+-- who is, or who becomes, a qualifying child, at any time during any relevant
+-- period" has childcare leave of "(i) 2 days, if the employee serves the
+-- employer for a period of less than 5 months during that relevant period;
+-- (ii) 3 days, ... not less than 5 months but less than 7 months ...; (iii) 4
+-- days, ... not less than 7 months but less than 9 months ...; (iv) 5 days,
+-- ... not less than 9 months but less than 11 months ...; and (v) 6 days, if
+-- ... not less than 11 months".
+@ref s 12B(1)
+GIVEN served IS A NUMBER, `months served in the period` IS A NUMBER, `youngest qualifying child's age` IS A NUMBER
+GIVETH A NUMBER
+`childcare leave days, months served` served `, months served in the relevant period` `months served in the period` `, a qualifying child aged` `youngest qualifying child's age` MEANS
+    IF served LESS THAN 3 OR `youngest qualifying child's age` AT LEAST 7 THEN 0
+    ELSE BRANCH IF `months served in the period` LESS THAN 5  THEN 2
+                IF `months served in the period` LESS THAN 7  THEN 3
+                IF `months served in the period` LESS THAN 9  THEN 4
+                IF `months served in the period` LESS THAN 11 THEN 5
+                OTHERWISE 6
+
+-- s 12B(1A): "2 days of extended childcare leave" for a child "of or above 7
+-- years of age but below 13 years of age".
+@ref s 12B(1A)
+GIVEN served IS A NUMBER, age IS A NUMBER
+GIVETH A NUMBER
+`extended childcare leave days, months served` served `, a qualifying child aged` age MEANS
+    IF served AT LEAST 3 AND age AT LEAST 7 AND age LESS THAN 13 THEN 2 ELSE 0
+
+-- s 12B(2)(a): not "(i) more than 42 days of childcare leave in respect of any
+-- qualifying child; (ii) more than 12 days of extended childcare leave in
+-- respect of any qualifying child; and (iii) more than a combined total of 6
+-- days of childcare leave and extended childcare leave during any relevant
+-- period".
+@ref s 12B(2)(a)
+GIVEN childcare IS A NUMBER, extended IS A NUMBER, `childcare taken for the child` IS A NUMBER, `extended taken for the child` IS A NUMBER
+GIVETH A NUMBER
+`the days that may be taken this period, childcare` childcare `, extended` extended `, already taken for the child: childcare` `childcare taken for the child` `, extended` `extended taken for the child` MEANS
+    `at most` 6 (`at most` (42 MINUS `childcare taken for the child`) childcare PLUS `at most` (12 MINUS `extended taken for the child`) extended)
+    WHERE
+        `at most` cap x MEANS IF x GREATER THAN cap THEN (IF cap LESS THAN 0 THEN 0 ELSE cap) ELSE x
+
+§§ `Pay and reimbursement (ss 12B(9)-(10A), 12C, 12CA)`
+
+-- s 12B(9)-(10A): gross rate of pay for every day taken; "Where an employee
+-- has taken 3 days of childcare leave, the amount of payment ... must not
+-- exceed $500 for each subsequent day"; extended childcare leave "must not
+-- exceed $500 for each day".
+@ref s 12B(9)-(10A)
+GIVEN days IS A NUMBER, `gross per day` IS A NUMBER
+GIVETH A NUMBER
+`the employer pays at most for` days `days of childcare leave at gross pay per day` `gross per day` MEANS
+    `first` TIMES `gross per day` PLUS `later` TIMES (IF `gross per day` GREATER THAN 500 THEN 500 ELSE `gross per day`)
+    WHERE
+        `first` MEANS IF days GREATER THAN 3 THEN 3 ELSE days
+        `later` MEANS days MINUS `first`
+
+@ref s 12B(10A)
+GIVEN days IS A NUMBER, `gross per day` IS A NUMBER
+GIVETH A NUMBER
+`the employer pays at most for` days `days of extended childcare leave at gross pay per day` `gross per day` MEANS
+    days TIMES (IF `gross per day` GREATER THAN 500 THEN 500 ELSE `gross per day`)
+
+-- s 12C(1)-(2): the employer, having paid "for not less than 4 days of
+-- childcare leave", may claim for "(a) one day ..., if the employer granted
+-- the employee 4 days ...; (b) 2 days ..., if ... 5 days ...; and (c) 3 days
+-- ..., if ... 6 days", up to "(a) $500 for each day ...; and (b) $1,500 in any
+-- calendar year". s 12C(3)-(4): the Government may refuse beyond 3 days in a
+-- calendar year or 21 days for the child.
+@ref s 12C(1)-(4)
+GIVEN granted IS A NUMBER, `paid per day` IS A NUMBER, `reimbursed this year` IS A NUMBER, `reimbursed for the child` IS A NUMBER
+GIVETH A NUMBER
+`the Government reimburses childcare leave at most, days granted` granted `, paid per day` `paid per day` `, days already reimbursed: this year` `reimbursed this year` `, for the child` `reimbursed for the child` MEANS
+    `days` TIMES (IF `paid per day` GREATER THAN 500 THEN 500 ELSE `paid per day`)
+    WHERE
+        `by grant` MEANS BRANCH IF granted AT LEAST 6 THEN 3
+                                IF granted EQUALS 5  THEN 2
+                                IF granted EQUALS 4  THEN 1
+                                OTHERWISE 0
+        `year room`  MEANS IF 3 MINUS `reimbursed this year` LESS THAN 0 THEN 0 ELSE 3 MINUS `reimbursed this year`
+        `child room` MEANS IF 21 MINUS `reimbursed for the child` LESS THAN 0 THEN 0 ELSE 21 MINUS `reimbursed for the child`
+        `days` MEANS minimum (LIST `by grant`, `year room`, `child room`)
+
+-- s 12CA(1)-(4): extended childcare leave "not exceeding 2 days", up to "$500
+-- for each day" and "$1,000 in any calendar year"; refusable beyond 2 days a
+-- year or 12 days for the child.
+@ref s 12CA(1)-(4)
+GIVEN taken IS A NUMBER, `paid per day` IS A NUMBER, `reimbursed this year` IS A NUMBER, `reimbursed for the child` IS A NUMBER
+GIVETH A NUMBER
+`the Government reimburses extended childcare leave at most, days taken` taken `, paid per day` `paid per day` `, days already reimbursed: this year` `reimbursed this year` `, for the child` `reimbursed for the child` MEANS
+    `days` TIMES (IF `paid per day` GREATER THAN 500 THEN 500 ELSE `paid per day`)
+    WHERE
+        `year room`  MEANS IF 2 MINUS `reimbursed this year` LESS THAN 0 THEN 0 ELSE 2 MINUS `reimbursed this year`
+        `child room` MEANS IF 12 MINUS `reimbursed for the child` LESS THAN 0 THEN 0 ELSE 12 MINUS `reimbursed for the child`
+        `days` MEANS minimum (LIST taken, 2, `year room`, `child room`)
+
+§§ `Self-employed parents (s 12B(16)-(19))`
+
+-- s 12B(16): a self-employed person (3 months' carrying on; a qualifying child
+-- below 7) who ceases work "for childcare purposes for not less than 4 days"
+-- in a calendar year claims the income for "(i) one day, if ... 4 days ...;
+-- (ii) 2 days, if ... 5 days ...; and (iii) 3 days, if ... 6 or more days".
+-- (16A): a child 7 to 12, "periods not exceeding 2 days". (18): not more than
+-- 21 days for a child under (16); (18A) 12 days under (16A); (18B) "not ...
+-- more than 3 days in total in a calendar year ... regardless of the number of
+-- qualifying children". (19): "must not exceed $500 for each day".
+@ref s 12B(16)-(19)
+GIVEN `days ceased, child below 7` IS A NUMBER, `days ceased, child 7 to 12` IS A NUMBER, `income per day` IS A NUMBER
+GIVETH A NUMBER
+`the Government pays a self-employed parent at most for childcare, days ceased for a child below 7` `days ceased, child below 7` `, for a child 7 to 12` `days ceased, child 7 to 12` `, income per day` `income per day` MEANS
+    `days` TIMES (IF `income per day` GREATER THAN 500 THEN 500 ELSE `income per day`)
+    WHERE
+        `(16)` MEANS BRANCH IF `days ceased, child below 7` AT LEAST 6 THEN 3
+                            IF `days ceased, child below 7` EQUALS 5  THEN 2
+                            IF `days ceased, child below 7` EQUALS 4  THEN 1
+                            OTHERWISE 0
+        `(16A)` MEANS IF `days ceased, child 7 to 12` GREATER THAN 2 THEN 2 ELSE `days ceased, child 7 to 12`
+        `days` MEANS IF `(16)` PLUS `(16A)` GREATER THAN 3 THEN 3 ELSE `(16)` PLUS `(16A)`
+
+-- s 12B(16)(a), (16A)(a): "carrying on a trade ... for a continuous period of
+-- not less than 3 months"; (18)(a): not more than 21 days under (16), and
+-- (18A)(a) 12 days under (16A), "in respect of any qualifying child". Added
+-- after the independent pass.
+@ref s 12B(16)(a), (16A)(a), (18)(a), (18A)(a), (18B), (19)
+GIVEN months IS A NUMBER, `days ceased, child below 7` IS A NUMBER, `claimed for that child under (16)` IS A NUMBER, `days ceased, child 7 to 12` IS A NUMBER, `claimed for that child under (16A)` IS A NUMBER, `income per day` IS A NUMBER
+GIVETH A NUMBER
+`the Government pays a self-employed parent at most for childcare, months carried on` months `, days ceased for a child below 7` `days ceased, child below 7` `, already claimed for that child` `claimed for that child under (16)` `, for a child 7 to 12` `days ceased, child 7 to 12` `, already claimed for that child` `claimed for that child under (16A)` `, income per day` `income per day` MEANS
+    IF months LESS THAN 3 THEN 0
+    ELSE `days` TIMES (IF `income per day` GREATER THAN 500 THEN 500 ELSE `income per day`)
+    WHERE
+        `room` cap used MEANS IF cap MINUS used LESS THAN 0 THEN 0 ELSE cap MINUS used
+        `(16)` MEANS minimum (LIST (BRANCH IF `days ceased, child below 7` AT LEAST 6 THEN 3
+                                          IF `days ceased, child below 7` EQUALS 5  THEN 2
+                                          IF `days ceased, child below 7` EQUALS 4  THEN 1
+                                          OTHERWISE 0), `room` 21 `claimed for that child under (16)`)
+        `(16A)` MEANS minimum (LIST (IF `days ceased, child 7 to 12` GREATER THAN 2 THEN 2 ELSE `days ceased, child 7 to 12`), `room` 12 `claimed for that child under (16A)`)
+        `days` MEANS IF `(16)` PLUS `(16A)` GREATER THAN 3 THEN 3 ELSE `(16)` PLUS `(16A)`
+
+§§ `Unpaid infant care leave (s 12D)`
+
+-- s 12D(1): an employee with 3 months' service and "any child who is below 2
+-- years of age and who is, or who becomes, a qualifying child ... is entitled
+-- to unpaid infant care leave of 12 days for that relevant period". (2)(a):
+-- "not ... more than 24 days ... in respect of any qualifying child".
+@ref s 12D(1)-(2)
+GIVEN served IS A NUMBER, age IS A NUMBER, `taken for the child` IS A NUMBER
+GIVETH A NUMBER
+`unpaid infant care leave days, months served` served `, a qualifying child aged` age `, already taken for the child` `taken for the child` MEANS
+    IF served LESS THAN 3 OR age AT LEAST 2 THEN 0
+    ELSE IF 24 MINUS `taken for the child` LESS THAN 12
+         THEN (IF 24 MINUS `taken for the child` LESS THAN 0 THEN 0 ELSE 24 MINUS `taken for the child`)
+         ELSE 12
+
+§§ `The Employment Act fallback (s 12B(5))`
+
+-- s 12B(5): when the employee ceases to be entitled under this section but
+-- has a child below 7, the Employment Act s 87A entitlement for the relevant
+-- period is "(i) 2 days ..., if he or she had not taken any childcare leave or
+-- extended childcare leave under this section during that relevant period;
+-- (ii) ... one day ..., if ... one day ...; and (iii) ... not entitled ..., if
+-- ... 2 or more days".
+@ref s 12B(5)
+GIVEN taken IS A NUMBER
+GIVETH A NUMBER
+`Employment Act s 87A days left, s 12B days taken` taken MEANS
+    BRANCH IF taken EQUALS 0 THEN 2
+           IF taken EQUALS 1 THEN 1
+           OTHERWISE 0
+
+§§ `Lapse (s 12B(8), (11), (11A); 12D(5)-(6A))`
+
+-- Leave for a relevant period must be taken by its last day (subject to the
+-- first entitlement carrying into the next period, s 12B(2)(b), 12D(2)(b));
+-- it lapses without pay in lieu on termination, on the child's adoption by
+-- another, or on the end of a foster arrangement.
+@ref s 12B(2)(b), (8), (11), (11A); 12D(2)(b), (5), (6), (6A)
+GIVETH A LIST OF STRING
+`childcare provisions carried as text` MEANS
+    LIST "s 12B(2)(b), 12D(2)(b): the first entitlement may be taken in that relevant period or the next; later ones in the next succeeding period"
+         "s 12B(8), 12D(5): leave not taken by the last day of the relevant period lapses, without payment in lieu"
+         "s 12B(11), 12D(6): leave lapses on termination of employment, without payment in lieu"
+         "s 12B(11A), 12D(6A): leave for a child adopted by another, or whose foster care ends, lapses"
+         "s 12B(3): childcare leave under s 87A of the Employment Act 1968 is displaced while entitled under s 12B, and leave and pay under s 87A are treated as under s 12B"
+         "s 12B(7), 12D(4): the leave is in addition to rest days, holidays, annual and sick leave (and, for childcare leave, unpaid infant care leave)"
+         "s 12D(9): unpaid infant care leave counts towards length of service under the Employment Act 1968"
+         "s 12C(2A), 12CA(2A): leave in a relevant period spanning two calendar years may be treated as taken in either"

@@ -1,0 +1,392 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `vn13-nouns`
+IMPORT `vn13-art01-02-definitions`
+IMPORT `vn13-art11-12-funds`
+IMPORT `vn13-art13-charges`
+
+-- Article 9 (paying premiums: allocation, top-ups, holidays, grace, lapse, reinstatement)
+-- and Article 10 (currency).
+-- Quotations (`src:N`) are generated from line N of ../../source/raw/manulife-maxx.txt.
+-- The numbers 9.2 to 9.5 stand on their own lines (src 299-303, 356), away from their text.
+--
+-- PERIODS. "60 ngày", "hai (02) năm": the document never says calendar or working days;
+-- they are read as calendar days and years, and a period "from" a day is counted from the
+-- next day, its last day being the corresponding date (NOTES.md fork register, counting).
+
+§ `Article 9 — Paying premiums`
+-- src:277 | ĐIỀU 9  THANH TOÁN PHÍ BẢO HIỂM
+
+§§ `9.1 Regular basic premium`
+
+-- The regular basic premium in the Schedule is payable for as long as the Life Insured
+-- lives. Inert as a rule here: the due dates are the Schedule's, and Article 20 ends the
+-- contract at age 99.
+-- src:278 | 9.1
+-- src:280 | Phí Bảo hiểm Cơ bản Định kỳ …
+
+-- After the first premium, a regular premium not paid on or before its due date counts as
+-- not paid, unless a premium holiday under 9.3 applies.
+-- src:285 | Sau kỳ đóng phí bảo hiểm đầu tiên, việc không đóng
+-- src:286 | phí bảo hiểm định kỳ trong hoặc trước kỳ hạn đóng
+-- src:287 | phí được xem là không đóng phí bảo hiểm, ngoại trừ
+-- src:288 | trường hợp đang áp dụng điều khoản tạm ngưng đóng
+-- src:289 | phí như mô tả trong điều 9.3 dưới đây.
+@ref Article 9.1, second paragraph (src 285-289)
+GIVEN `the premium`         IS A `A regular premium falling due`
+      `a premium holiday`   IS A BOOLEAN
+GIVETH A BOOLEAN
+`Article 9.1 —` `the premium` `counts as not paid, a premium holiday applying:` `a premium holiday` MEANS
+    IF   `a premium holiday`
+    THEN FALSE
+    ELSE CONSIDER `the premium`'s `date paid`
+         WHEN NOTHING THEN TRUE
+         WHEN JUST d  THEN d GREATER THAN `the premium`'s `due date`
+
+-- The allocated basic premium buys units in the funds, in the allocation's proportions, at
+-- the offer price on the next Valuation Date immediately after the transaction effective
+-- date. A top-up (9.2) is bought the same way. The prices are computed by Article 11.2 from
+-- each fund's valuation on that day.
+-- src:290 | Phần phí bảo hiểm cơ bản được phân bổ đầu tư sẽ được
+-- src:291 | phân bổ theo tỷ lệ vào các Quỹ bằng cách mua các Đơn
+-- src:292 | vị quỹ tại Giá bán, được xác định vào Ngày định giá kế
+-- src:293 | tiếp ngay sau Ngày giao dịch có hiệu lực.
+@ref Article 11.2 (src 437-443)
+GIVEN a IS A TYPE
+GIVETH AN a
+`no valuation of that fund on the Valuation Date was supplied` MEANS
+    REFUSE "no valuation of that fund on the Valuation Date was supplied"
+
+GIVEN `the fund`  IS A `A unit-linked fund`
+      `the funds` IS A LIST OF `A fund on a valuation date`
+GIVETH A NUMBER
+`the bid price of` `the fund` `among` `the funds` MEANS
+    CONSIDER filter (GIVEN f YIELD f's `fund` EQUALS `the fund`) `the funds`
+    WHEN EMPTY                    THEN `no valuation of that fund on the Valuation Date was supplied`
+    WHEN f FOLLOWED BY `the rest` THEN `Article 11.2 — the bid price of a unit of` f
+
+@ref Article 9.1, third paragraph (src 290-293); Article 9.2 (src 310-314); Article 11.2 (src 440-443); Article 11.3 i (src 448-449)
+GIVEN `the allocated premium` IS A NUMBER
+      `the allocation`        IS A LIST OF `An allocation to a fund`
+      `the funds`             IS A LIST OF `A fund on a valuation date`
+      `the spread`            IS A NUMBER
+GIVETH A LIST OF `A change in units`
+`Article 9.1 and 9.2 — the units bought with` `the allocated premium` `allocated by` `the allocation` `at the offer prices of` `the funds` `with a spread of` `the spread` MEANS
+    map (GIVEN a YIELD
+            `A change in units` WITH
+                `fund`        IS a's `fund`
+                `reason`      IS `allocation of a regular basic premium or a top-up premium`
+                `units added` IS `the allocated premium` TIMES a's `share`
+                                     DIVIDED BY `Article 11.2 — the offer price for a bid price of` (`the bid price of` (a's `fund`) `among` `the funds`) `and a spread of` `the spread`)
+        `the allocation`
+
+@ref Article 9.1 (src 290-293); Article 13.1 (src 566-570)
+GIVEN `the instalment` IS A `A regular basic premium instalment`
+      `the allocation` IS A LIST OF `An allocation to a fund`
+      `the funds`      IS A LIST OF `A fund on a valuation date`
+      `the spread`     IS A NUMBER
+GIVETH A LIST OF `A change in units`
+`Article 9.1 — the units bought with` `the instalment` `allocated by` `the allocation` `at the offer prices of` `the funds` `with a spread of` `the spread` MEANS
+    `Article 9.1 and 9.2 — the units bought with` (`the allocated basic premium of` `the instalment`) `allocated by` `the allocation` `at the offer prices of` `the funds` `with a spread of` `the spread`
+
+§§ `9.2 Top-up premiums`
+
+-- While the contract is in force the Policyholder may invest more by paying a top-up. The
+-- allocated top-up buys units in the funds the Policyholder names, at the offer price on the
+-- next Valuation Date after the transaction effective date. The conditions are Annex 2 B.
+-- src:307 | Phí bảo hiểm đóng thêm
+-- src:308 | Trong thời gian hiệu lực Hợp đồng, Bên mua bảo hiểm
+-- src:309 | có thể đầu tư thêm bằng cách đóng thêm phí, ngoài phí
+-- src:310 | bảo hiểm cơ bản định kỳ. Phí bảo hiểm đóng thêm được
+-- src:311 | phân bổ sẽ được đầu tư vào các Quỹ tương ứng theo chỉ
+-- src:312 | định của Bên mua bảo hiểm và được dùng để mua Đơn
+-- src:313 | vị quỹ tại Giá bán được xác định vào Ngày định giá kế
+-- src:314 | tiếp sau Ngày giao dịch có hiệu lực. Điều kiện tham gia
+-- src:315 | Phí bảo hiểm đóng thêm được đề cập trong phụ lục 02
+-- src:316 | đính kèm.
+@ref Article 9.2 (src 310-314); Article 13.1 (src 566-570); Annex 2 B (src 968-971)
+GIVEN `the top-up`     IS A `A top-up premium`
+      `the allocation` IS A LIST OF `An allocation to a fund`
+      `the funds`      IS A LIST OF `A fund on a valuation date`
+      `the spread`     IS A NUMBER
+GIVETH A LIST OF `A change in units`
+`Article 9.2 — the units bought with` `the top-up` `allocated by` `the allocation` `at the offer prices of` `the funds` `with a spread of` `the spread` MEANS
+    `Article 9.1 and 9.2 — the units bought with` (`the allocated top-up premium of` `the top-up`) `allocated by` `the allocation` `at the offer prices of` `the funds` `with a spread of` `the spread`
+
+§§ `9.3 Premium holiday`
+
+-- From the second policy year, while the contract is in force, the Policyholder may ask to
+-- stop paying the regular premium, under Annex 2 C. The contract stays in force, subject to
+-- Article 20.
+-- src:317 | Tạm ngưng đóng phí bảo hiểm
+-- src:318 | Bắt đầu từ năm thứ hai của hợp đồng và khi hợp đồng
+-- src:319 | đang có hiệu lực. Bên mua bảo hiểm có thể yêu cầu tạm
+-- src:320 | ngưng đóng Phí bảo hiểm định kỳ theo quy định trong
+-- src:321 | phụ lục 02 của Hợp đồng này. Hợp đồng bảo hiểm vẫn
+-- src:322 | tiếp tục có hiệu lực và tuân theo quy định về chấm dứt
+-- src:323 | Hợp đồng bảo hiểm tại điều 20.
+@ref Article 9.3, first paragraph (src 318-321)
+GIVEN `the date of the request`  IS A DATE
+      `the effective date`       IS A DATE
+      `in force`                 IS A BOOLEAN
+GIVETH A BOOLEAN
+`Article 9.3 — a premium holiday may be asked for on` `the date of the request` `, the contract being effective from` `the effective date` `and in force:` `in force` MEANS
+        `in force`
+    AND `the policy year in which` `the date of the request` `falls, for a contract effective on` `the effective date` AT LEAST 2
+
+-- A delay without notice: every rider ends "immediately after the grace period"; the main
+-- contract stays in force subject to Article 20. In the first policy year the grace period
+-- is the 60 days of 9.4 after the due date. From the second policy year a missed premium
+-- opens no grace period (9.4, src 364-367), so the paragraph has nothing to count from
+-- (NOTES.md, findings).
+-- src:324 | Nếu Bên mua bảo hiểm trì hoãn việc thanh toán phí mà
+-- src:325 | không gửi thông báo đến Công ty, tất cả các quyền lợi
+-- src:326 | bảo hiểm bổ trợ sẽ tự động chấm dứt ngay sau thời gian
+-- src:327 | gia hạn. Hợp đồng bảo hiểm chính vẫn tiếp tục có hiệu
+-- src:328 | lực và tuân thủ theo quy định về chấm dứt Hợp đồng
+-- src:329 | bảo hiểm tại điều 20.
+@ref Article 9.3, second paragraph (src 324-329); Article 9.4 (src 364-367)
+GIVEN a IS A TYPE
+GIVETH AN a
+`from the second policy year a delay in premiums opens no grace period, so Article 9.3 does not say when the riders end` MEANS
+    REFUSE "from the second policy year a delay in premiums opens no grace period, so Article 9.3 does not say when the riders end"
+
+@ref Article 9.3, second paragraph (src 324-329); Article 9.4 (src 353-358)
+GIVEN `the due date`       IS A DATE
+      `the effective date` IS A DATE
+GIVETH A DATE
+`Article 9.3 — the day the riders end, a premium due on` `the due date` `being delayed without notice, for a contract effective on` `the effective date` MEANS
+    IF   `the policy year in which` `the due date` `falls, for a contract effective on` `the effective date` EQUALS 1
+    THEN `the day after the grace period of a premium due on` `the due date`
+    ELSE `from the second policy year a delay in premiums opens no grace period, so Article 9.3 does not say when the riders end`
+
+-- A holiday with notice: every benefit continues; the rider premiums are taken from the
+-- surrender value at the bid price. Whenever the surrender value cannot meet the monthly
+-- risk premium, policy fee AND rider premiums, the riders end and the surrender value meets
+-- only the risk premium and policy fee. When it cannot meet those, the grace period of 9.4
+-- begins. "không đủ" (not enough) is read as strictly less than.
+-- src:330 | Nếu Bên mua bảo hiểm yêu cầu tạm ngưng đóng phí
+-- src:331 | và có gửi thông báo đến Công ty, tất cả quyền lợi bảo
+-- src:332 | hiểm cơ bản và quyền lợi bảo hiểm bổ trợ vẫn tiếp tục
+-- src:333 | có hiệu lực và tuân thủ theo quy định về chấm dứt Hợp
+-- src:334 | đồng bảo hiểm tại điều 20. Trong thời gian tạm ngưng
+-- src:335 | đóng phí, phí bảo hiểm bổ trợ được ghi trong Trang hợp
+-- src:336 | đồng hay trong Xác nhận thay đổi hợp đồng bảo hiểm
+-- src:337 | (nếu có) sẽ được khấu trừ từ Giá trị hoàn lại theo Giá
+-- src:338 | mua đơn vị quỹ. Tại bất kỳ thời điểm nào khi Giá trị hoàn
+-- src:339 | lại không đủ thanh toán cho Phí Bảo hiểm Rủi ro và Phí
+-- src:340 | Quản lý Hợp đồng hàng tháng và phí bảo hiểm bổ trợ,
+-- src:341 | tất cả các quyền lợi bảo hiểm bổ trợ sẽ tự động chấm
+-- src:342 | dứt và Giá trị hoàn lại lúc này chỉ được dùng để thanh
+-- src:343 | toán cho Phí Bảo hiểm Rủi ro và Phí Quản lý Hợp đồng
+-- src:344 | hàng tháng. Khi giá trị hoàn lại không đủ thanh toán
+-- src:345 | khoản Phí Bảo hiểm Rủi ro và Phí Quản lý Hợp đồng
+-- src:346 | hàng tháng, Hợp đồng bảo hiểm sẽ bắt đầu tính thời
+-- src:347 | gian gia hạn như trong quy định tại điều 9.4.
+@ref Article 9.3, third paragraph (src 330-347)
+GIVEN `the account` IS A `The account at a monthly deduction`
+GIVETH A `The contract at a monthly deduction`
+`Article 9.3 — the contract at a monthly deduction during a notified premium holiday, given` `the account` MEANS
+    BRANCH
+      IF `the account`'s `surrender value` LESS THAN `the account`'s `risk premium` PLUS `the account`'s `policy fee`
+         THEN `the grace period of Article 9.4 begins`
+      IF `the account`'s `surrender value` LESS THAN `the account`'s `risk premium` PLUS `the account`'s `policy fee` PLUS `the account`'s `rider premium`
+         THEN `the riders end, and the surrender value meets only the risk premium and policy fee`
+      OTHERWISE `the deductions are met, riders included`
+
+-- When the Policyholder starts paying again, "the new regular premium will be calculated
+-- for the period from when payment stopped". Two readings: arrears for the holiday fall
+-- due, or a new premium runs from the restart. The document states no figure and no
+-- method, so the amount is not computed (NOTES.md fork register).
+-- src:348 | Khi Bên mua bảo hiểm bắt đầu đóng Phí bảo hiểm định
+-- src:349 | kỳ trở lại, khoản Phí bảo hiểm định kỳ mới sẽ được tính
+-- src:350 | cho khoảng thời gian từ khi ngừng đóng phí.
+@ref Article 9.3, last paragraph (src 348-350)
+GIVEN a IS A TYPE
+GIVETH AN a
+`Article 9.3 does not say how the premium after a holiday is calculated` MEANS
+    REFUSE "Article 9.3 does not say how the premium after a holiday is calculated"
+
+§§ `9.4 Grace period and lapse`
+
+-- First policy year: a regular basic premium not paid before its due date has 60 days of
+-- grace; still unpaid after them, the contract lapses, and the Policyholder receives the
+-- surrender value on the next Valuation Date after the lapse date. 9.1 says "on or before"
+-- the due date and 9.4 "before" it; a payment ON the due date is on time (NOTES.md fork
+-- register). The grace period's last day is the 60th day after the due date; the lapse
+-- date is the day after that.
+-- src:351 | Gia hạn đóng phí bảo hiểm và Mất hiệu lực Hợp
+-- src:352 | đồng
+-- src:353 | Trong năm đầu tiên của Hợp đồng, nếu phí bảo hiểm cơ
+-- src:354 | bản định kỳ không được thanh toán trước ngày đến hạn
+-- src:358 | đóng phí, hợp đồng được áp dụng 60 ngày gia hạn. Hợp
+-- src:359 | đồng sẽ mất hiệu lực nếu phí bảo hiểm vẫn không được
+-- src:360 | thanh toán sau thời gian gia hạn nêu trên. Bên mua bảo
+-- src:361 | hiểm được nhận lại giá trị hoàn lại của Hợp Đồng, giá
+-- src:362 | được xác định vào ngày định giá kế tiếp sau ngày Hợp
+-- src:363 | đồng bảo hiểm bị xem là mất hiệu lực.
+@ref Article 9.4, first paragraph (src 353-358)
+GIVEN `the due date` IS A DATE
+GIVETH A DATE
+`the last day of the grace period of a premium due on` `the due date` MEANS
+    `the due date` PLUS 60
+
+@ref Article 9.4, first paragraph (src 358-360)
+GIVEN `the due date` IS A DATE
+GIVETH A DATE
+`the day after the grace period of a premium due on` `the due date` MEANS
+    `the due date` PLUS 61
+
+@ref Article 9.4, first and second paragraphs (src 353-367)
+GIVEN `the premium`        IS A `A regular premium falling due`
+      `the effective date` IS A DATE
+GIVETH A `The outcome of a regular premium falling due`
+`Article 9.4 — what follows from` `the premium` `, for a contract effective on` `the effective date` MEANS
+    IF   `the policy year in which` (`the premium`'s `due date`) `falls, for a contract effective on` `the effective date` GREATER THAN 1
+    THEN `no grace period, the premium falling due after the first policy year`
+    ELSE CONSIDER `the premium`'s `date paid`
+         WHEN JUST d  THEN BRANCH
+                             IF d AT MOST `the premium`'s `due date` THEN `paid on or before the due date`
+                             IF d AT MOST `the last day of the grace period of a premium due on` (`the premium`'s `due date`)
+                                                                     THEN `paid within the grace period`
+                             OTHERWISE `the contract lapses on` (`the day after the grace period of a premium due on` (`the premium`'s `due date`))
+         WHEN NOTHING THEN `the contract lapses on` (`the day after the grace period of a premium due on` (`the premium`'s `due date`))
+
+@ref Article 9.4, first paragraph (src 360-363)
+GIVEN `the lapse date`  IS A DATE
+      `the valuations`  IS A LIST OF `A valuation of the account`
+GIVETH A NUMBER
+`Article 9.4 — the surrender value paid on a first-year lapse on` `the lapse date` `, among` `the valuations` MEANS
+    `the surrender value on the next Valuation Date after` `the lapse date` `among` `the valuations`
+
+-- The same first-year rule as a duty with its consequence: the Policyholder must pay within
+-- the 60 days (the clock is in days, day 0 the due date); if not, the contract lapses and
+-- the Company must pay the surrender value. The text gives the Company no time to pay it,
+-- so that duty carries no WITHIN.
+@ref Article 9.4, first paragraph (src 353-363)
+GIVETH A DEONTIC `A party` `An act`
+`Article 9.4 — the first-year premium and its grace period` MEANS
+    PARTY  `the Policyholder`
+    MUST   `pay the regular basic premium`
+    WITHIN 60
+    HENCE  FULFILLED
+    LEST   ( PARTY `the Company`
+             MUST  `pay the surrender value`
+             HENCE FULFILLED )
+
+-- From the second policy year: the grace period counts from the day the surrender value is
+-- found not enough to meet the monthly risk premium and policy fee.
+-- src:364 | Bắt đầu từ năm hiệu lực Hợp đồng thứ hai trở đi, thời
+-- src:365 | gian gia hạn đóng phí sẽ được tính khi Giá trị hoàn lại
+-- src:366 | của Hợp đồng không đủ thanh toán cho Phí bảo hiểm
+-- src:367 | rủi ro và Phí quản lý hợp đồng hàng tháng.
+-- In the first policy year the paragraph does not apply, and nothing else in 9.3 or 9.4
+-- says what follows when premiums ARE paid but the surrender value cannot meet a monthly
+-- deduction (90% of the first year's premium goes to the initial charge). That case is
+-- declined (NOTES.md, findings).
+@ref Article 9.4, first and second paragraphs (src 353-367)
+GIVEN a IS A TYPE
+GIVETH AN a
+`Article 9.4 does not say what follows when the surrender value cannot meet a monthly deduction in the first policy year` MEANS
+    REFUSE "Article 9.4 does not say what follows when the surrender value cannot meet a monthly deduction in the first policy year"
+
+@ref Article 9.4, second paragraph (src 364-367)
+GIVEN `the date`           IS A DATE
+      `the effective date` IS A DATE
+      `the account`        IS A `The account at a monthly deduction`
+GIVETH A BOOLEAN
+`Article 9.4 — a grace period begins at a monthly deduction on` `the date` `, for a contract effective on` `the effective date` `, given` `the account` MEANS
+    IF   NOT `the shortfall`
+    THEN FALSE
+    ELSE IF   `the policy year in which` `the date` `falls, for a contract effective on` `the effective date` AT LEAST 2
+         THEN TRUE
+         ELSE `Article 9.4 does not say what follows when the surrender value cannot meet a monthly deduction in the first policy year`
+    WHERE
+        `the shortfall` MEANS
+            `the account`'s `surrender value` LESS THAN `the account`'s `risk premium` PLUS `the account`'s `policy fee`
+
+-- The contract stays in force for 60 days from the day the surrender value was "most
+-- recently" found not enough. After them it ends automatically, with no surrender value,
+-- unless the Company has received a payment it calculates as enough. Read with the 60 days
+-- counted from the determination that opened the grace period (NOTES.md fork register);
+-- the literal "most recently" restarts the count at every later monthly determination,
+-- and the findings module shows what that does.
+-- src:368 | Hợp đồng bảo hiểm sẽ tiếp tục còn hiệu lực trong thời
+-- src:369 | gian gia hạn hợp đồng là sáu mươi (60) ngày tính từ
+-- src:370 | ngày Giá trị hoàn lại của Hợp đồng được xác định gần
+-- src:371 | nhất là không đủ để trang trải cho khoản Phí Bảo hiểm
+-- src:372 | rủi ro và Phí quản lý hợp đồng hàng tháng. Sau thời
+-- src:373 | gian gia hạn, Hợp đồng bảo hiểm sẽ tự động chấm dứt
+-- src:374 | và không còn Giá trị hoàn lại nếu Công ty không nhận
+-- src:375 | được bất kỳ khoản phí nào được tính toán bởi Công ty
+-- src:376 | đủ để trang trải cho Phí bảo hiểm rủi ro và Phí quản lý
+-- src:377 | hợp đồng hàng tháng.
+@ref Article 9.4, third paragraph (src 368-377)
+GIVEN `the day the grace period began` IS A DATE
+      `a sufficient payment received`  IS A BOOLEAN
+GIVETH A `The end of a grace period from the second policy year`
+`Article 9.4 — the end of a grace period that began on` `the day the grace period began` `, a sufficient payment being received:` `a sufficient payment received` MEANS
+    IF   `a sufficient payment received`
+    THEN `the contract continues, a sufficient payment having been received`
+    ELSE `the contract ends without surrender value on` (`the day the grace period began` PLUS 61)
+
+-- A benefit falling due during a grace period is paid less the unpaid risk premiums and
+-- policy fees.
+-- src:378 | Trong thời gian gia hạn đóng phí, nếu có phát sinh bất
+-- src:379 | kỳ khoản chi trả quyền lợi bảo hiểm nào, khoản Phí bảo
+-- src:380 | hiểm rủi ro và Phí quản lý hợp đồng chưa thanh toán sẽ
+-- src:381 | bị khấu trừ từ quyền lợi bảo hiểm.
+@ref Article 9.4, last paragraph (src 378-381)
+GIVEN `the benefit`        IS A NUMBER
+      `the unpaid charges` IS A NUMBER
+GIVETH A NUMBER
+`Article 9.4 — a benefit of` `the benefit` `paid in a grace period, less unpaid charges of` `the unpaid charges` MEANS
+    `the benefit` MINUS `the unpaid charges`
+
+§§ `9.5 Reinstatement`
+
+-- Within two years from the lapse date, while the Life Insured is alive, a contract not
+-- surrendered for its surrender value may be reinstated if the Policyholder (i) asks in
+-- writing, (ii) gives evidence of insurability the Company accepts, and (iii) pays the
+-- amount the Company sets. It takes effect on the day the Company accepts the request.
+-- "hủy ngang để lãnh Giá trị hoàn lại" is a surrender under Article 12, not the automatic
+-- payment of the surrender value on a first-year lapse (NOTES.md fork register).
+-- src:382 | Khôi phục hiệu lực Hợp đồng bảo hiểm
+-- src:383 | Trong thời hạn hai (02) năm kể từ ngày mất hiệu lực
+-- src:384 | của Hợp đồng bảo hiểm và trong thời gian Người được
+-- src:385 | bảo hiểm còn sống, Bên mua bảo hiểm có thể khôi
+-- src:386 | phục hiệu lực Hợp đồng nếu như Hợp đồng chưa bị hủy
+-- src:387 | ngang để lãnh Giá trị hoàn lại. Bên mua bảo hiểm phải
+-- src:388 | đáp ứng đầy đủ các điều kiện sau:
+-- src:389 | i) Gửi yêu cầu bằng văn bản đến Công ty yêu cầu khôi
+-- src:390 | phục hiệu lực Hợp đồng.
+-- src:391 | ii) Cung cấp bằng chứng về khả năng có thể bảo hiểm
+-- src:392 | được Công ty chấp nhận.
+-- src:393 | iii) Thanh toán số tiền phải nộp do Công ty quy định để
+-- src:394 | khôi phục hiệu lực Hợp đồng.
+-- src:395 | Việc khôi phục hiệu lực Hợp đồng bảo hiểm sẽ có hiệu
+-- src:396 | lực vào ngày Công ty chấp nhận yêu cầu khôi phục hiệu
+-- src:397 | lực Hợp đồng.
+@ref Article 9.5 (src 383-394)
+GIVEN `the request` IS A `A reinstatement request`
+GIVETH A BOOLEAN
+`Article 9.5 — the contract may be reinstated on` `the request` MEANS
+        `the request`'s `request date` AT MOST `add years` (`the request`'s `lapse date`) 2
+    ... `the request`'s `the Life Insured alive on the request date`
+    ... NOT (`the request`'s `surrendered for its surrender value`)
+    ... `the request`'s `request in writing`
+    ... `the request`'s `evidence of insurability accepted by the Company`
+    AND `the request`'s `the amount the Company set has been paid`
+
+§ `Article 10 — Currency`
+-- src:399 | ĐIỀU 10  TIỀN TỆ
+
+-- Every payment to or by the Company is in Vietnamese dong.
+-- src:400 | Toàn bộ các khoản thanh toán cho Công ty hoặc do Công ty
+-- src:401 | thanh toán đều bằng đồng Việt Nam.
+@ref Article 10 (src 400-401)
+GIVEN `the currency` IS A `A currency`
+GIVETH A BOOLEAN
+`Article 10 — a payment complies, being in` `the currency` MEANS
+    `the currency` EQUALS `Vietnamese dong`

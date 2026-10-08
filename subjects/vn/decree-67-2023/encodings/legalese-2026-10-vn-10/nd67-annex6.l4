@@ -1,0 +1,274 @@
+@lang en
+IMPORT prelude
+IMPORT `nd67-vn10-nouns`
+IMPORT `nd67-ch1-general`
+IMPORT `nd67-art5-7-cover`
+IMPORT `nd67-annex6-table`
+
+-- Decree 67/2023/NĐ-CP, Annex VI (Phụ lục VI): the table of payments for damage to health and
+-- life, which Article 12(6)(a) applies. The rows themselves are data, generated from the raw
+-- text by tools/annex6.py into nd67-annex6-table.l4; this module looks them up and applies the
+-- formula, the notes it encodes, and the six special cases.
+-- DECREE 220/2026 does not amend Annex VI: one rule answers for both vintages.
+
+§ `Annex VI — looking a row up`
+
+-- The parts and sections: Part A, the cases paid at 100% of the limit; Part B, the partial
+-- injuries, in ten sections by body system ("B.I" to "B.X").
+GIVEN key IS A STRING
+GIVETH A LIST OF `An Annex VI row`
+`the rows of Annex VI in` key MEANS
+    BRANCH IF key EQUALS "A"      THEN `the rows of Annex VI, Part A`
+           IF key EQUALS "B.I"    THEN `the rows of Annex VI, Part B, section I`
+           IF key EQUALS "B.II"   THEN `the rows of Annex VI, Part B, section II`
+           IF key EQUALS "B.III"  THEN `the rows of Annex VI, Part B, section III`
+           IF key EQUALS "B.IV"   THEN `the rows of Annex VI, Part B, section IV`
+           IF key EQUALS "B.V"    THEN `the rows of Annex VI, Part B, section V`
+           IF key EQUALS "B.VI"   THEN `the rows of Annex VI, Part B, section VI`
+           IF key EQUALS "B.VII"  THEN `the rows of Annex VI, Part B, section VII`
+           IF key EQUALS "B.VIII" THEN `the rows of Annex VI, Part B, section VIII`
+           IF key EQUALS "B.IX"   THEN `the rows of Annex VI, Part B, section IX`
+           IF key EQUALS "B.X"    THEN `the rows of Annex VI, Part B, section X`
+           OTHERWISE EMPTY
+
+GIVEN key  IS A STRING
+      item IS A STRING
+GIVETH A MAYBE `Annex VI rate`
+`the rate in Annex VI for` key item MEANS
+    CONSIDER filter (GIVEN r YIELD r's `item` EQUALS item) (`the rows of Annex VI in` key)
+    WHEN EMPTY              THEN NOTHING
+    WHEN r FOLLOWED BY rest THEN JUST (r's `rate`)
+
+§ `Annex VI — the formula`
+
+-- Part A pays 100% of the limit. Part B: "Số tiền bồi thường = Tỷ lệ tổn thương x Giới hạn
+-- trách nhiệm bảo hiểm" (the payment is the injury rate times the limit of liability, which is
+-- Article 6(1)'s 150 million đồng per person per accident).
+-- src:nd67-congbao-1019-1020:597 | A. CÁC TRƯỜNG HỢP ĐƯỢC GIẢI QUYẾT BỒI THƯỜNG 100%
+-- src:nd67-congbao-1019-1020:598 | GIỚI HẠN TRÁCH NHIỆM BẢO HIỂM
+-- src:nd67-congbao-1019-1020:599 | 1. Chết
+-- src:nd67-congbao-1019-1020:600 | 2. Tổn thương não gây di chứng sống kiểu thực vật
+-- src:nd67-congbao-1019-1020:601 | B. CÁC TRƯỜNG HỢP TỔN THƯƠNG BỘ PHẬN
+-- src:nd67-congbao-1019-1020:602 | Số tiền bồi thường = Tỷ lệ tổn thương x Giới hạn trách nhiệm bảo hiểm
+@ref Decree 67/2023 Annex VI, Part B formula; Article 6(1)
+GIVEN `rate in percent` IS A NUMBER
+GIVETH A NUMBER
+`Annex VI — the payment for an injury rate of` `rate in percent` MEANS
+    `rate in percent` DIVIDED BY 100 TIMES `Article 6(1) — the limit for health and life, per person per accident`
+
+-- The band of payment a row gives: its lowest and highest rate, times the limit. A row with no
+-- rate of its own (a heading, or a row whose text sends the assessor elsewhere) gives none, and
+-- an item number the table does not have is invalid input.
+@ref Decree 67/2023 Annex VI
+GIVEN key  IS A STRING
+      item IS A STRING
+GIVETH AN EITHER `A problem with the facts` `A payment band`
+`the payment band in Annex VI for` key item MEANS
+    CONSIDER `the rate in Annex VI for` key item
+    WHEN NOTHING   THEN LEFT `the item is not in Annex VI`
+    WHEN JUST rate THEN
+        CONSIDER rate
+        WHEN `no rate of its own`  THEN LEFT `the item fixes no rate of its own`
+        WHEN `a band of` low high  THEN RIGHT (`A payment band` OF (`Annex VI — the payment for an injury rate of` low), (`Annex VI — the payment for an injury rate of` high))
+
+§ `Annex VI — the acuity table of section VIII`
+
+-- The rate for the two eyes together, read at the crossing of the two axes.
+GIVEN one   IS A `A visual acuity class`
+      other IS A `A visual acuity class`
+GIVETH A NUMBER
+`the acuity table rate for` one other MEANS
+    CONSIDER filter (GIVEN r YIELD r's `acuity of one eye` EQUALS one) `the rows of the acuity table`
+    WHEN EMPTY              THEN `the acuity table has a row for every class`
+    WHEN r FOLLOWED BY rest THEN
+        CONSIDER other
+        WHEN `8/10 to 10/10`       THEN r's `with the other eye at 8/10 to 10/10`
+        WHEN `6/10 to 7/10`        THEN r's `with the other eye at 6/10 to 7/10`
+        WHEN `5/10`                THEN r's `with the other eye at 5/10`
+        WHEN `4/10`                THEN r's `with the other eye at 4/10`
+        WHEN `3/10`                THEN r's `with the other eye at 3/10`
+        WHEN `2/10`                THEN r's `with the other eye at 2/10`
+        WHEN `1/10`                THEN r's `with the other eye at 1/10`
+        WHEN `1/20`                THEN r's `with the other eye at 1/20`
+        WHEN `below 1/20`          THEN r's `with the other eye below 1/20`
+        WHEN `no light perception` THEN r's `with the other eye at no light perception`
+
+-- Unreachable: every class has a row (a test in nd67-annex6-tests.l4 reads every cell).
+GIVEN a IS A TYPE
+GIVETH AN a
+`the acuity table has a row for every class` MEANS
+    REFUSE "the acuity table has a row for every class"
+
+§ `Annex VI — the two notes that fix a point within a band`
+
+-- Section I, after item 4.2.16: for items 4.2.9 to 4.2.16 (paralysis of limbs), an upper limb
+-- takes the highest rate and a lower limb the lowest.
+-- src:nd67-congbao-1019-1020:670 | Ghi chú: Mục 4.2.9 đến 4.2.16: Liệt chi trên lấy tỷ lệ tối đa, liệt chi
+-- src:nd67-congbao-1019-1020:671 | dưới lấy tỷ lệ tối thiểu
+-- Section I, after item 6.3.8: for items 6.3.7 and 6.3.8, a woman takes the highest rate and a
+-- man the lowest.
+-- src:nd67-congbao-1019-1020:763 | Ghi chú: Mục 6.3.7 và 6.3.8 Nữ được tính tỷ lệ tối đa, Nam: tỷ lệ tối thiểu
+-- The other notes and instructions of the table (sixteen in all, NOTES.md §2) are quoted in
+-- nd67-annex6-table.l4 and not encoded: most direct a "cộng lùi" combination the sources never
+-- define (finding R7).
+@ref Decree 67/2023 Annex VI, section I, notes after items 4.2.16 and 6.3.8
+GIVEN key  IS A STRING
+      item IS A STRING
+      low  IS A NUMBER
+      high IS A NUMBER
+      limb IS A MAYBE `A limb`
+      sex  IS A MAYBE `A sex`
+GIVETH A MAYBE NUMBER
+`the point a note of Annex VI fixes for` key item low high limb sex MEANS
+    BRANCH
+        IF     key EQUALS "B.I"
+           AND elem item (LIST "4.2.9", "4.2.10", "4.2.11", "4.2.12", "4.2.13", "4.2.14", "4.2.15", "4.2.16")
+            THEN CONSIDER limb
+                 WHEN JUST `an upper limb` THEN JUST high
+                 WHEN JUST `a lower limb`  THEN JUST low
+                 WHEN NOTHING              THEN NOTHING
+        IF     key EQUALS "B.I"
+           AND (item EQUALS "6.3.7" OR item EQUALS "6.3.8")
+            THEN CONSIDER sex
+                 WHEN JUST `female` THEN JUST high
+                 WHEN JUST `male`   THEN JUST low
+                 WHEN NOTHING       THEN NOTHING
+        OTHERWISE NOTHING
+
+§ `Annex VI — the rate for one injury`
+
+-- Where a row gives a band and nothing fixes a point in it, the decree says nothing about who
+-- chooses the point or how (finding R6); the rate the medical assessment fixed is then an input,
+-- and without one the encoding declines rather than choose.
+@ref Decree 67/2023 Annex VI; Article 12(6)(a)
+GIVEN a IS A TYPE
+GIVETH AN a
+`Annex VI gives a band for this item and no rule for choosing a point in it: supply the assessed rate` MEANS
+    REFUSE "Annex VI gives a band for this item and no rule for choosing a point in it: supply the assessed rate"
+
+@ref Decree 67/2023 Annex VI, rows that direct a "cộng lùi" or other addition
+GIVEN a IS A TYPE
+GIVETH AN a
+`the addition this row of Annex VI directs is not defined in the sources and is not encoded` MEANS
+    REFUSE "the addition this row of Annex VI directs is not defined in the sources and is not encoded"
+
+@ref Decree 67/2023 Annex VI, special case 5
+GIVEN a IS A TYPE
+GIVETH AN a
+`special case 5: an unlisted injury needs a rate fixed by comparison or by the Medical Assessment Council` MEANS
+    REFUSE "special case 5: an unlisted injury needs a rate fixed by comparison or by the Medical Assessment Council"
+
+GIVEN key        IS A STRING
+      item       IS A STRING
+      assessed   IS A MAYBE NUMBER
+      limb       IS A MAYBE `A limb`
+      sex        IS A MAYBE `A sex`
+GIVETH AN EITHER `A problem with the facts` NUMBER
+`the rate in percent for item` key item `as assessed at` assessed `for limb` limb `and sex` sex MEANS
+    CONSIDER `the rate in Annex VI for` key item
+    WHEN NOTHING   THEN LEFT `the item is not in Annex VI`
+    WHEN JUST rate THEN
+        CONSIDER rate
+        WHEN `no rate of its own` THEN LEFT `the item fixes no rate of its own`
+        WHEN `a band of` low high THEN
+            CONSIDER `the point a note of Annex VI fixes for` key item low high limb sex
+            WHEN JUST point THEN RIGHT point
+            WHEN NOTHING    THEN
+                CONSIDER assessed
+                WHEN JUST r  THEN IF   r AT LEAST low AND r AT MOST high
+                                  THEN RIGHT r
+                                  ELSE LEFT `the assessed rate lies outside the band of the item`
+                WHEN NOTHING THEN IF   low EQUALS high
+                                  THEN RIGHT low
+                                  ELSE `Annex VI gives a band for this item and no rule for choosing a point in it: supply the assessed rate`
+
+-- The special cases at the foot of the table.
+-- src:nd67-congbao-1019-1020:2177 | Những trường hợp đặc biệt:
+-- src:nd67-congbao-1019-1020:2178 | 1. Trường hợp bị dính các khớp ngón tay (trừ ngón cái và ngón trỏ) và các
+-- src:nd67-congbao-1019-1020:2179 | khớp ngón chân (trừ ngón cái) thì số tiền bồi thường chỉ bằng 50% số tiền bồi
+-- src:nd67-congbao-1019-1020:2180 | thường quy định trong trường hợp cụt ngón đó.
+-- src:nd67-congbao-1019-1020:2181 | 2. Trường hợp mất hẳn chức năng của từng bộ phận hoặc hỏng vĩnh viễn chỉ
+-- src:nd67-congbao-1019-1020:2182 | được coi như mất bộ phận đó hoặc mất chi.
+-- src:nd67-congbao-1019-1020:2183 | 3. Trường hợp trước khi xảy ra tai nạn, người bị tai nạn chỉ còn một mắt và
+-- src:nd67-congbao-1019-1020:2184 | nay mất nốt mắt lành còn lại thì được coi như mất hoàn toàn hai mắt.
+-- src:nd67-congbao-1019-1020:2185 | 4. Trường hợp người bị tai nạn bị nhiều hơn một loại thương tật thì số tiền bồi
+-- src:nd67-congbao-1019-1020:2186 | thường sẽ là tổng số tiền bồi thường cho từng loại thương tật. Tổng số tiền bồi
+-- src:nd67-congbao-1019-1020:2187 | thường sẽ không vượt quá giới hạn trách nhiệm bảo hiểm theo quy định.
+-- 1. Stiffness of the joints of a finger (not the thumb or index finger) or a toe (not the big
+--    toe): 50% of the payment for the loss of that digit.
+-- 2. Total and permanent loss of function of a part counts as the loss of that part: the caller
+--    names the loss row (an input convention, not a rule here).
+-- 3. A person with one eye who loses it: "coi như mất hoàn toàn hai mắt" (as the total loss of
+--    both eyes). No row bears that name; this encoding takes section VIII item 1.4, "Mù tuyệt
+--    đối hai mắt", 87%, which is also the acuity table's cell for no light perception in both
+--    eyes (fork F13).
+-- 4. Several injuries: the sum of the payments for each, at most the limit (`the Annex VI
+--    amount for` below).
+@ref Decree 67/2023 Annex VI, rows of Parts A and B, the acuity table, special cases 1, 3, 5
+GIVEN injury IS AN `An injury`
+GIVETH AN EITHER `A problem with the facts` NUMBER
+`Annex VI — the rate in percent for the injury` injury MEANS
+    CONSIDER injury
+    WHEN `an item of Annex VI` key item assessed limb sex addition THEN
+        IF   addition
+        THEN `the addition this row of Annex VI directs is not defined in the sources and is not encoded`
+        ELSE `the rate in percent for item` key item `as assessed at` assessed `for limb` limb `and sex` sex
+    WHEN `reduced visual acuity of both eyes, by the acuity table` one other THEN
+        RIGHT (`the acuity table rate for` one other)
+    WHEN `stiffness of the joints of a digit, special case 1` excepted key item assessed THEN
+        IF   excepted
+        THEN LEFT `special case 1 does not apply to a thumb, an index finger or a big toe`
+        ELSE CONSIDER `the rate in percent for item` key item `as assessed at` assessed `for limb` NOTHING `and sex` NOTHING
+             WHEN LEFT problem THEN LEFT problem
+             WHEN RIGHT r      THEN RIGHT (r TIMES 50%)
+    WHEN `the loss of the only remaining eye, special case 3` THEN
+        `the rate in percent for item` "B.VIII" "1.4" `as assessed at` NOTHING `for limb` NOTHING `and sex` NOTHING
+    WHEN `an injury not listed in Annex VI, special case 5` fixed THEN
+        CONSIDER fixed
+        WHEN JUST r  THEN RIGHT r
+        WHEN NOTHING THEN `special case 5: an unlisted injury needs a rate fixed by comparison or by the Medical Assessment Council`
+
+GIVEN injuries IS A LIST OF `An injury`
+GIVETH AN EITHER `A problem with the facts` NUMBER
+`the sum of the rates in percent of` injuries MEANS
+    CONSIDER injuries
+    WHEN EMPTY THEN RIGHT 0
+    WHEN i FOLLOWED BY rest THEN
+        CONSIDER `Annex VI — the rate in percent for the injury` i
+        WHEN LEFT problem THEN LEFT problem
+        WHEN RIGHT r THEN
+            CONSIDER `the sum of the rates in percent of` rest
+            WHEN LEFT problem THEN LEFT problem
+            WHEN RIGHT s      THEN RIGHT (r PLUS s)
+
+§ `Annex VI — the amount for a person`
+
+-- Death is Part A item 1, 100% of the limit; a brain injury leaving a persistent vegetative
+-- state is Part A item 2 (and again Part B section I item 4.1), 100%. Several injuries: special
+-- case 4, the sum, at most the limit. A dead victim who cannot be identified or has no lawful
+-- heir: special case 6, the actual necessary costs of burial and of keeping the remains to trace
+-- identity, at most the limit.
+-- src:nd67-congbao-1019-1020:2185 | 4. Trường hợp người bị tai nạn bị nhiều hơn một loại thương tật thì số tiền bồi
+-- src:nd67-congbao-1019-1020:2186 | thường sẽ là tổng số tiền bồi thường cho từng loại thương tật. Tổng số tiền bồi
+-- src:nd67-congbao-1019-1020:2187 | thường sẽ không vượt quá giới hạn trách nhiệm bảo hiểm theo quy định.
+-- src:nd67-congbao-1019-1020:2188 | 5. Những trường hợp thương tật không được liệt kê trong Bảng quy định trả
+-- src:nd67-congbao-1019-1020:2189 | tiền bồi thường thiệt hại về sức khỏe, tính mạng sẽ được bồi thường theo tỷ lệ trên
+-- src:nd67-congbao-1019-1020:2190 | cơ sở so sánh tính nghiêm trọng của nó với những trường hợp khác có trong Bảng
+-- src:nd67-congbao-1019-1020:2191 | hoặc được căn cứ vào kết luận của Hội đồng giám định y khoa.
+-- src:nd67-congbao-1019-1020:2192 | 6. Nạn nhân bị chết nhưng không xác định được tung tích hoặc không có người
+-- src:nd67-congbao-1019-1020:2193 | thừa kế hợp pháp thì số tiền bồi thường căn cứ chi phí thực tế cần thiết để mai táng
+-- src:nd67-congbao-1019-1020:2194 | và phục vụ cho việc lưu trữ tìm tung tích nạn nhân. Tổng số tiền bồi thường không
+-- src:nd67-congbao-1019-1020:2195 | vượt quá giới hạn trách nhiệm bảo hiểm theo quy định.
+@ref Decree 67/2023 Annex VI, Part A, Part B, special cases 4 and 6
+GIVEN p IS A `A person harmed in the accident`
+GIVETH AN EITHER `A problem with the facts` NUMBER
+`the Annex VI amount for` p MEANS
+    IF   p's `died`
+    THEN IF   p's `unidentified, or without a lawful heir`
+         THEN RIGHT (min (p's `actual necessary costs of burial and of keeping the remains to trace identity`) `Article 6(1) — the limit for health and life, per person per accident`)
+         ELSE CONSIDER `the payment band in Annex VI for` "A" "1"
+              WHEN LEFT problem THEN LEFT problem
+              WHEN RIGHT band   THEN RIGHT (band's `most`)
+    ELSE CONSIDER `the sum of the rates in percent of` (p's `injuries`)
+         WHEN LEFT problem THEN LEFT problem
+         WHEN RIGHT total  THEN RIGHT (min (`Annex VI — the payment for an injury rate of` total) `Article 6(1) — the limit for health and life, per person per accident`)

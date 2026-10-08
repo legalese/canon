@@ -1,0 +1,196 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `il07-nouns`
+IMPORT `il07-refusals`
+IMPORT `nii-il05-nouns`
+IMPORT `nii-il05-published-figures`
+IMPORT `nii-schedule-k`
+IMPORT `nii-s348-maximum-minimum`
+IMPORT `nii-s342-liability-and-deduction`
+
+-- ===========================================================================
+-- IL-07 adapter for row IL-05: National Insurance Law Schedule K, ss 342, 348.
+--
+-- Imports this row's nouns and refusals and IL-05's modules, and no other row.
+-- Exposes numbers. IL-05 declares its own copies of IL-04's `A branch of
+-- insurance` and `A column of insured persons in Schedule J` (RECONCILE.md,
+-- clash N1); here the constructors are IL-05's. The column D amounts arrive in
+-- this row's record from the IL-04 adapter and are matched to IL-05's branches
+-- by name.
+--
+-- THE EARNER AS IL-05 SEES IT (input conventions, BRIEF.md "The household"):
+-- an employee (s 1, row IL-04) for a month; income from work the monthly
+-- salary, no income not from work; contributions payable in every branch s 335
+-- imposes on an employee (s 335 is not encoded; IL-04's tests read all nine
+-- branches for an employee, and the Institute's composites confirm them, IL-04
+-- NOTES.md section 5); no unemployment benefit, no s 348(e) status, s 350(c)
+-- not reached, no order under s 348(c); no senior citizen pension; not a police
+-- or prison officer; no regulations under s 342(e)(3)-(4) govern the deduction.
+--
+-- VERSION 0.2.0 SUPERSEDES two of these: the branches are s 335's answer (row
+-- IL-08), passed in this row's record `IL-07 branches in which contributions
+-- are payable for the earner`; and a woman's age under Schedule A1 Part D is the
+-- age row IL-08 computes from her date of birth, passed in, not read from the
+-- earner record. The 0.1.0 rules that read them are replaced below.
+-- ===========================================================================
+
+§ `IL-07 adapter — row IL-05`
+
+§§ `Section 348 — the income on which contributions are computed`
+
+-- Schedule K item 1's minimum for an employee is "שכר מינימום של החודש הראשון
+-- ברבעון" (source line 4758), and "שכר מינימום" is the minimum wage, partial
+-- minimum wage, daily or hourly minimum wage "החל ... לגבי עובד פלוני" (line
+-- 4772): the minimum that applies to the particular employee (row IL-05, fork
+-- F11). The capstone holds only the full monthly figure for an employee aged 18
+-- or over, as the Institute publishes it for 2026 (row IL-05).
+-- VERSION 0.3.0 (2026-10-08; the second independent pass, finding F3). Version
+-- 0.2.0 declined every earner to whom the full adult figure does not apply. But
+-- s 348(b) raises an income only where it is below the minimum, and a minimum
+-- wage that applies to a monthly-salaried employee (partial for part-time work,
+-- lower for a young worker) is at most the full adult monthly figure. So where
+-- the salary is at least the full adult figure of the quarter's first month, no
+-- minimum the earner could have binds, and s 348 gives the salary under any of
+-- them: the full figure is passed as the bound it is, and the deduction is
+-- answered. Below it the earner's own minimum could bind, and is still declined.
+-- (Assumed, not ruled: the lead's direction for IL-22, from the tester's proposal.)
+@ref NII Schedule K item 1, "שכר מינימום" (source lines 4758, 4772), s 348(b) (source line 3765) (row IL-05, nii-schedule-k.l4, fork F11); INDEPENDENT-FINDINGS-2.txt F3
+GIVEN h IS AN `IL-07 household in a month`
+GIVETH A MAYBE `The minimum wage applicable to the employee in the first month of each quarter`
+`IL-05: the minimum wage applicable to the earner, in` h MEANS
+    BRANCH IF   e's `the full monthly minimum wage of an employee aged 18 or over applies to the earner`
+           THEN JUST `the full figures`
+           IF   e's `the earner's monthly salary` AT LEAST `the full figure of the month's quarter`
+           THEN JUST `the full figures`
+           OTHERWISE `IL-07 holds Schedule K's minimum only for an employee to whom the full monthly minimum wage of an adult applies`
+    WHERE
+        e                                    MEANS h's `the earner`
+        `the full figures`                   MEANS `the full monthly minimum wage in the first month of each quarter of 2026`
+        `the full figure of the month's quarter` MEANS
+            `the minimum wage applicable to the employee in the first month of` (`the quarter that contains month` (h's `the month of the year`)) `, under` `the full figures`
+
+GIVEN h IS AN `IL-07 household in a month`
+GIVETH AN `An insured person's period under section 348`
+`IL-05: the earner's month under section 348, in` h MEANS
+    `An insured person's period under section 348` WITH
+        `tax year`                                                            IS h's `the year of the month`
+        `period`                                                              IS `a month of the tax year` (h's `the month of the year`)
+        `column`                                                              IS `an employee`
+        `income from work in the period`                                      IS h's `the earner`'s `the earner's monthly salary`
+        `income not from work in the period, not exempt under section 350`    IS 0
+        `the minimum wage applicable to the employee`                         IS `IL-05: the minimum wage applicable to the earner, in` h
+        `received unemployment benefit for a full month under Chapter G`      IS FALSE
+        `a volunteer in national service or in community volunteering`        IS FALSE
+        `a student in a Torah institution or in a yeshiva`                    IS FALSE
+        `serving in civil service as defined in section 6(a) of the Deferral of Service for Yeshiva Students Law` IS FALSE
+        `the day the person began national-civic service, if serving in it`   IS NOTHING
+        `section 350(c) disapplies section 348(b) to the person`              IS FALSE
+        `an order under section 348(c) has changed a minimum amount for the period` IS FALSE
+
+@ref NII s 348 and Schedule K (row IL-05, nii-s348-maximum-minimum.l4)
+GIVEN h IS AN `IL-07 household in a month`
+GIVETH A NUMBER
+`IL-05: the income on which the earner's contributions are computed, in` h MEANS
+    `s 348 — the income on which contributions are computed, for` (`IL-05: the earner's month under section 348, in` h)
+
+§§ `Section 342(c) — what the employer deducts from the wage`
+
+GIVEN e               IS AN `IL-07 earner`
+      `the Part D age` IS A MAYBE NUMBER
+GIVETH A `The insured person, for the age limb of section 342(c)(2)`
+`IL-05: the earner for the age limb of section 342(c)(2)` e `, at a Part D age of` `the Part D age` MEANS
+    IF   e's `the earner is a woman`
+    THEN CONSIDER `the Part D age`
+         WHEN JUST `the months` THEN `a woman` `the months`
+         WHEN NOTHING           THEN `the earner is a woman, and the age Part D of Schedule A1 fixes for her is not given`
+    ELSE `a man`
+
+-- s 335's answer, in this row's record, as IL-05's list (in Schedule J's order).
+GIVEN br IS AN `IL-07 branches in which contributions are payable for the earner`
+GIVETH A LIST OF `A branch of insurance`
+`IL-05: the branches, by IL-05's branches` br MEANS
+    filter `payable`
+        (LIST `maternity`, `children`, `work injury`, `accident injury`, `unemployment`
+            , `employees' rights in insolvency proceedings`, `disability`, `long-term care`
+            , `senior citizens and survivors`)
+    WHERE
+        `payable` b MEANS
+            CONSIDER b
+            WHEN `maternity`                                   THEN br's `contributions are payable for maternity`
+            WHEN `children`                                    THEN br's `contributions are payable for children`
+            WHEN `work injury`                                 THEN br's `contributions are payable for work injury`
+            WHEN `accident injury`                             THEN br's `contributions are payable for accident injury`
+            WHEN `unemployment`                                THEN br's `contributions are payable for unemployment`
+            WHEN `employees' rights in insolvency proceedings` THEN br's `contributions are payable for employees' rights in insolvency proceedings`
+            WHEN `disability`                                  THEN br's `contributions are payable for disability`
+            WHEN `long-term care`                              THEN br's `contributions are payable for long-term care`
+            WHEN `senior citizens and survivors`               THEN br's `contributions are payable for senior citizens and survivors`
+
+GIVEN d IS AN `IL-07 column D amounts on the earner's wage`
+GIVETH A LIST OF `A branch's column D amount`
+`IL-05: the column D amounts, by IL-05's branches` d MEANS
+    LIST `for` `maternity`                     (d's `the column D amount for maternity`)
+       , `for` `accident injury`               (d's `the column D amount for accident injury`)
+       , `for` `unemployment`                  (d's `the column D amount for unemployment`)
+       , `for` `disability`                    (d's `the column D amount for disability`)
+       , `for` `long-term care`                (d's `the column D amount for long-term care`)
+       , `for` `senior citizens and survivors` (d's `the column D amount for senior citizens and survivors`)
+    WHERE
+        `for` b x MEANS `A branch's column D amount` WITH `branch` IS b, `amount` IS x
+
+GIVEN h                IS AN `IL-07 household in a month`
+      d                IS AN `IL-07 column D amounts on the earner's wage`
+      br               IS AN `IL-07 branches in which contributions are payable for the earner`
+      `the Part D age` IS A MAYBE NUMBER
+GIVETH AN `An employee's month under section 342(c)`
+`IL-05: the earner's month under section 342(c), in` h `, with column D amounts` d `, in the branches` br `, at a Part D age of` `the Part D age` MEANS
+    `An employee's month under section 342(c)` WITH
+        `tax year`                                                            IS h's `the year of the month`
+        `month`                                                               IS h's `the month of the year`
+        `branches for which contributions are payable under section 335`      IS `IL-05: the branches, by IL-05's branches` br
+        `the column D amounts on the wage`                                    IS `IL-05: the column D amounts, by IL-05's branches` d
+        `senior citizen pension`                                              IS `not payable for any of the month`
+        `the insured person`                                                  IS `IL-05: the earner for the age limb of section 342(c)(2)` (h's `the earner`) `, at a Part D age of` `the Part D age`
+        `date of birth`                                                       IS h's `the earner`'s `the earner's date of birth`
+        `a police officer or a prison officer`                                IS FALSE
+        `the employer deducts under regulations made under section 342(e)(3) or an approval under section 342(e)(4)` IS FALSE
+
+-- Version 0.2.1: IL-05 v0.3.0 (backlog row IL-11) reads s 342(c)(1)'s "as in Schedule J" at a
+-- reading of row IL-04's fork F4 (the printed totals by default). At the items it sums the per-branch
+-- amounts in `d`; at the printed totals it takes column D for the deduction branches together, the
+-- number the IL-04 adapter computes (`IL-04: column D in a month of …, reading …`).
+GIVEN r IS AN `IL-07 a reading of Schedule J column D above the reduced collection threshold`
+GIVETH A `A reading of Schedule J where its totals row and its items differ`
+`IL-05: the reading` r MEANS
+    CONSIDER r
+    WHEN `the printed total of column D`                      THEN `the printed totals govern`
+    WHEN `the sum of the items of the six deduction branches` THEN `the items govern`
+
+@ref NII s 342(c) (row IL-05, nii-s342-liability-and-deduction.l4); Schedule J (row IL-04, fork F4)
+GIVEN h                IS AN `IL-07 household in a month`
+      d                IS AN `IL-07 column D amounts on the earner's wage`
+      br               IS AN `IL-07 branches in which contributions are payable for the earner`
+      `the Part D age` IS A MAYBE NUMBER
+      r                IS AN `IL-07 a reading of Schedule J column D above the reduced collection threshold`
+      `at the totals`  IS A NUMBER
+GIVETH A NUMBER
+`IL-05: the amount the employer deducts from the earner's wage, in` h `, with column D amounts` d `, in the branches` br `, at a Part D age of` `the Part D age` `, reading` r `, column D at the printed totals being` `at the totals` MEANS
+    `s 342(c) — the amount the employer deducts from the wage, for` (`IL-05: the earner's month under section 342(c), in` h `, with column D amounts` d `, in the branches` br `, at a Part D age of` `the Part D age`)
+        `, reading Schedule J as` (`IL-05: the reading` r) `, column D at the printed totals being` `at the totals`
+
+-- (Version 0.2.0's `IL-05: the employer deducts in every branch section 342(c)(1)
+-- names, …`, which the capstone's own composition of the printed totals read, is
+-- removed in 0.2.1: row IL-04 now decides that, NOTES.md section 11.14.)
+
+§§ `Figures IL-05 sourced from the National Insurance Institute (not law)`
+
+@ref National Insurance Institute, 2026 figures (row IL-05, nii-il05-published-figures.l4)
+GIVETH A NUMBER
+`IL-05: the reduced collection threshold for 2026, as published` MEANS
+    `the reduced collection threshold for 2026, as published by the National Insurance Institute`
+
+@ref NII Schedule K item 1 (row IL-05, nii-schedule-k.l4), with the 2026 figures
+GIVETH A NUMBER
+`IL-05: the Schedule K item 1 maximum for a month of 2026` MEANS
+    `Schedule K item 1 — the maximum income for a month, under` `the figures Schedule K reads for 2026, as published`

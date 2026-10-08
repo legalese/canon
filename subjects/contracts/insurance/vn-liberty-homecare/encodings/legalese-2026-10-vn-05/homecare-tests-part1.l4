@@ -1,0 +1,617 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `homecare-nouns`
+IMPORT `homecare-definitions`
+IMPORT `homecare-perils`
+IMPORT `homecare-general-exclusions`
+IMPORT `homecare-general-conditions`
+IMPORT `homecare-part1`
+IMPORT `homecare-test-fixtures`
+
+-- Tests for the Definitions, the Insured Perils and Part 1. Every expected value was worked
+-- out from the source text (the clause is cited beside each group) before the assertion was
+-- run; none was copied from an evaluation. Policy Summary figures are the HYPOTHETICAL ones
+-- of homecare-test-fixtures.l4. A failing assertion is a finding, never a value to edit.
+--
+-- For every exclusion there is a case that triggers it and a near miss that does not; where
+-- the exclusion has a carve-back, the near miss is the carve-back.
+
+§ `Tests: Definitions, Insured Perils, Part 1`
+
+§§ `Helpers`
+
+GIVEN loss IS A `A Part 1 loss`
+GIVETH A LIST OF `A ground under Part 1`
+`the grounds against` loss MEANS
+    `the grounds on which a Part 1 claim fails, under` `the owner's policy` `with` `good conduct` `for` loss `, as at` `1 April 2026`
+
+GIVEN loss IS A `A Part 1 loss`
+GIVETH A BOOLEAN
+`covered:` loss MEANS null (`the grounds against` loss)
+
+GIVEN g    IS A `A ground under the Insured Perils`
+      loss IS A `A Part 1 loss`
+GIVETH A BOOLEAN
+`the peril ground` g `defeats` loss MEANS elem (`an Insured Peril ground` g) (`the grounds against` loss)
+
+GIVEN g    IS A `A ground under Part 1`
+      loss IS A `A Part 1 loss`
+GIVETH A BOOLEAN
+`the ground` g `defeats` loss MEANS elem g (`the grounds against` loss)
+
+-- The house damaged by fire with one circumstance.
+GIVEN c IS A `A circumstance of a loss`
+GIVETH A `A Part 1 loss`
+`a house fire with` c MEANS `the house damaged by` `fire` `with` (LIST c)
+
+§§ `Introduction: when cover attaches (src:21-24)`
+
+GIVEN agreed  IS A BOOLEAN
+      accepted IS A BOOLEAN
+      paid    IS A BOOLEAN
+GIVETH A `The policy`
+`a policy where Certificate agreed` agreed `, proposal accepted` accepted `, premium paid in time` paid MEANS
+    `The policy` WITH
+        `the Policy Summary`                                     IS `the 2026 Summary`
+        `the Insured`                                            IS `an Insured born 15 June 1980, a tenant` FALSE
+        `the premises`                                           IS `a brick house`
+        `issued to a company`                                    IS FALSE
+        `the Insured also has Personal Accident cover`           IS FALSE
+        `the Insurer agreed to issue a Certificate or the Policy Summary` IS agreed
+        `the Insurer received and accepted a completed Proposal Form`     IS accepted
+        `the premium was paid in full within the prescribed time`         IS paid
+        `the premium paid`                                       IS 4_000_000
+
+#ASSERT `cover has attached under` (`a policy where Certificate agreed` TRUE `, proposal accepted` FALSE `, premium paid in time` FALSE)
+#ASSERT `cover has attached under` (`a policy where Certificate agreed` FALSE `, proposal accepted` TRUE `, premium paid in time` TRUE)
+#ASSERT NOT `cover has attached under` (`a policy where Certificate agreed` FALSE `, proposal accepted` TRUE `, premium paid in time` FALSE)
+#ASSERT NOT `cover has attached under` (`a policy where Certificate agreed` FALSE `, proposal accepted` FALSE `, premium paid in time` TRUE)
+#ASSERT elem `Introduction: cover had not attached` (`the grounds on which a Part 1 claim fails, under` (`a policy where Certificate agreed` FALSE `, proposal accepted` TRUE `, premium paid in time` FALSE) `with` `good conduct` `for` (`the house damaged by` `fire` `with` EMPTY) `, as at` `1 April 2026`)
+
+§§ `The base case`
+
+-- A house damaged by fire, nothing else ticked: covered, and nothing defeats it.
+#ASSERT `the grounds against` (`the house damaged by` `fire` `with` EMPTY) EQUALS EMPTY
+#ASSERT `covered:` (`a sofa damaged by` `fire` `with` EMPTY)
+
+§§ `Period of Insurance (src:59-61, 402-404), fork F-period`
+
+GIVEN d IS A DATE
+GIVETH A `A Part 1 loss`
+`a house fire on` d MEANS
+    `a loss to` `the Home` `of` (LIST `the house or apartment itself`) `owned by` `the Insured` `at` `inside a lockable part of the Home`
+        `on` d `by` `fire` `with` EMPTY `, unattended for` 0 `days`
+
+-- The written claim is delivered five days after each loss, so GC4(g) is met.
+GIVEN d IS A DATE
+GIVETH A LIST OF `A ground under Part 1`
+`the grounds against a house fire on` d MEANS
+    `the grounds on which a Part 1 claim fails, under` `the owner's policy` `with` (`conduct with the written claim delivered` (JUST (d PLUS 5)))
+        `for` (`a house fire on` d) `, as at` (d PLUS 10)
+
+#ASSERT `the grounds against a house fire on` (YMD 2026 1 1) EQUALS EMPTY
+#ASSERT `the grounds against a house fire on` (YMD 2026 12 31) EQUALS EMPTY
+#ASSERT `the grounds against a house fire on` (YMD 2025 12 31) EQUALS (LIST `the loss was not in the Period of Insurance`)
+#ASSERT `the grounds against a house fire on` (YMD 2027 1 1) EQUALS (LIST `the loss was not in the Period of Insurance`)
+
+§§ `Insured Location and the Home as a building (src:69-80, 93-103), fork F-home-c`
+
+GIVEN premises IS A `The insured premises`
+GIVETH A BOOLEAN
+`a house fire is covered at` premises MEANS
+    `Part 1 covers the loss, under` (`the owner's policy, at` premises) `with` `good conduct` `for` (`the house damaged by` `fire` `with` EMPTY) `, as at` `1 April 2026`
+
+#ASSERT `a house fire is covered at` (`premises that are a` `a house`)
+#ASSERT `a house fire is covered at` (`premises that are a` `an apartment in an apartment building`)
+#ASSERT NOT `a house fire is covered at` (`premises that are a` `a hotel`)
+#ASSERT NOT `a house fire is covered at` (`premises that are a` `a boarding house`)
+#ASSERT NOT `a house fire is covered at` (`premises that are a` `a strata-title apartment`)
+#ASSERT NOT `a house fire is covered at` (`premises that are a` `a mobile home`)
+#ASSERT NOT `a house fire is covered at` (`premises that are a` `another kind of building`)
+
+-- The construction requirement, and the Summary's special provision that lifts it.
+GIVEN `walls ok` IS A BOOLEAN
+      `roof ok`  IS A BOOLEAN
+GIVETH A `The insured premises`
+`a house with walls ok` `walls ok` `, roof ok` `roof ok` MEANS
+    `The insured premises` WITH
+        `the kind of building`                                     IS `a house`
+        `at the address in the Policy Summary`                     IS TRUE
+        `the Insured's principal personal residence`               IS TRUE
+        `used wholly or mainly as the Insured's private residence` IS TRUE
+        `part used as an office`                                   IS FALSE
+        `office use approved by the authorities`                   IS FALSE
+        `used for a trade or business other than an office`        IS FALSE
+        `walls of concrete, brick or stone`                        IS `walls ok`
+        `roof of concrete, tiles, slate or incombustible metal sheet` IS `roof ok`
+        `under construction`                                       IS FALSE
+        `being demolished or vacant pending demolition`            IS FALSE
+        `a temporary building or structure`                        IS FALSE
+        `enclosed by walls or fences`                              IS TRUE
+        `some part is lent, let or sublet`                         IS FALSE
+        `some part is used to manufacture, deposit or store goods` IS FALSE
+
+#ASSERT `a house fire is covered at` (`a house with walls ok` TRUE `, roof ok` TRUE)
+#ASSERT NOT `a house fire is covered at` (`a house with walls ok` FALSE `, roof ok` TRUE)
+#ASSERT NOT `a house fire is covered at` (`a house with walls ok` TRUE `, roof ok` FALSE)
+
+-- An office in part of the Home: covered only if the authorities approve.
+GIVEN approved IS A BOOLEAN
+GIVETH A `The insured premises`
+`a house partly used as an office, approved` approved MEANS
+    `The insured premises` WITH
+        `the kind of building`                                     IS `a house`
+        `at the address in the Policy Summary`                     IS TRUE
+        `the Insured's principal personal residence`               IS TRUE
+        `used wholly or mainly as the Insured's private residence` IS TRUE
+        `part used as an office`                                   IS TRUE
+        `office use approved by the authorities`                   IS approved
+        `used for a trade or business other than an office`        IS FALSE
+        `walls of concrete, brick or stone`                        IS TRUE
+        `roof of concrete, tiles, slate or incombustible metal sheet` IS TRUE
+        `under construction`                                       IS FALSE
+        `being demolished or vacant pending demolition`            IS FALSE
+        `a temporary building or structure`                        IS FALSE
+        `enclosed by walls or fences`                              IS TRUE
+        `some part is lent, let or sublet`                         IS FALSE
+        `some part is used to manufacture, deposit or store goods` IS FALSE
+
+#ASSERT `a house fire is covered at` (`a house partly used as an office, approved` TRUE)
+#ASSERT NOT `a house fire is covered at` (`a house partly used as an office, approved` FALSE)
+#ASSERT NOT `the premises are the Insured Location` (`a house partly used as an office, approved` FALSE)
+
+-- Exclusions (d)-(g) of the Home definition, one at a time.
+#ASSERT `the Home definition's exclusions (c) to (g) apply to` (`The insured premises` WITH `the kind of building` IS `a house`, `at the address in the Policy Summary` IS TRUE, `the Insured's principal personal residence` IS TRUE, `used wholly or mainly as the Insured's private residence` IS TRUE, `part used as an office` IS FALSE, `office use approved by the authorities` IS FALSE, `used for a trade or business other than an office` IS TRUE, `walls of concrete, brick or stone` IS TRUE, `roof of concrete, tiles, slate or incombustible metal sheet` IS TRUE, `under construction` IS FALSE, `being demolished or vacant pending demolition` IS FALSE, `a temporary building or structure` IS FALSE, `enclosed by walls or fences` IS TRUE, `some part is lent, let or sublet` IS FALSE, `some part is used to manufacture, deposit or store goods` IS FALSE)
+#ASSERT `the Home definition's exclusions (c) to (g) apply to` (`The insured premises` WITH `the kind of building` IS `a house`, `at the address in the Policy Summary` IS TRUE, `the Insured's principal personal residence` IS TRUE, `used wholly or mainly as the Insured's private residence` IS TRUE, `part used as an office` IS FALSE, `office use approved by the authorities` IS FALSE, `used for a trade or business other than an office` IS FALSE, `walls of concrete, brick or stone` IS TRUE, `roof of concrete, tiles, slate or incombustible metal sheet` IS TRUE, `under construction` IS TRUE, `being demolished or vacant pending demolition` IS FALSE, `a temporary building or structure` IS FALSE, `enclosed by walls or fences` IS TRUE, `some part is lent, let or sublet` IS FALSE, `some part is used to manufacture, deposit or store goods` IS FALSE)
+#ASSERT `the Home definition's exclusions (c) to (g) apply to` (`The insured premises` WITH `the kind of building` IS `a house`, `at the address in the Policy Summary` IS TRUE, `the Insured's principal personal residence` IS TRUE, `used wholly or mainly as the Insured's private residence` IS TRUE, `part used as an office` IS FALSE, `office use approved by the authorities` IS FALSE, `used for a trade or business other than an office` IS FALSE, `walls of concrete, brick or stone` IS TRUE, `roof of concrete, tiles, slate or incombustible metal sheet` IS TRUE, `under construction` IS FALSE, `being demolished or vacant pending demolition` IS TRUE, `a temporary building or structure` IS FALSE, `enclosed by walls or fences` IS TRUE, `some part is lent, let or sublet` IS FALSE, `some part is used to manufacture, deposit or store goods` IS FALSE)
+#ASSERT `the Home definition's exclusions (c) to (g) apply to` (`The insured premises` WITH `the kind of building` IS `a house`, `at the address in the Policy Summary` IS TRUE, `the Insured's principal personal residence` IS TRUE, `used wholly or mainly as the Insured's private residence` IS TRUE, `part used as an office` IS FALSE, `office use approved by the authorities` IS FALSE, `used for a trade or business other than an office` IS FALSE, `walls of concrete, brick or stone` IS TRUE, `roof of concrete, tiles, slate or incombustible metal sheet` IS TRUE, `under construction` IS FALSE, `being demolished or vacant pending demolition` IS FALSE, `a temporary building or structure` IS TRUE, `enclosed by walls or fences` IS TRUE, `some part is lent, let or sublet` IS FALSE, `some part is used to manufacture, deposit or store goods` IS FALSE)
+#ASSERT NOT `the Home definition's exclusions (c) to (g) apply to` `a brick house`
+
+§§ `What the Home includes (src:81-92, 104-105)`
+
+#ASSERT `the property is part of the Home` (LIST `the house or apartment itself`)
+#ASSERT `the property is part of the Home` (LIST `an outbuilding, garage, fixture or improvement`, `used for domestic purposes`)
+#ASSERT NOT `the property is part of the Home` (LIST `an outbuilding, garage, fixture or improvement`)
+#ASSERT `the property is part of the Home` (LIST `an in-ground pool, tennis court, in-ground spa, sauna, jetty or pontoon`, `used for domestic purposes`)
+#ASSERT `the property is part of the Home` (LIST `fixed lighting, wall, ceiling or fixed floor covering`)
+#ASSERT `the property is part of the Home` (LIST `a service above or below ground`, `owned by the Insured or the Insured must repair, replace or pay for it`)
+#ASSERT NOT `the property is part of the Home` (LIST `a service above or below ground`)
+#ASSERT `the property is part of the Home` (LIST `a fence or gate`, `on the land of the Home`)
+#ASSERT NOT `the property is part of the Home` (LIST `a fence or gate`)
+#ASSERT `the property is part of the Home` (LIST `a paved path or paved driveway`, `on the land of the Home`)
+#ASSERT NOT `the property is part of the Home` (LIST `an unpaved path or driveway of earth or gravel`, `on the land of the Home`)
+#ASSERT NOT `the property is part of the Home` (LIST `a carpet, curtain or internal blind`, `fixed lighting, wall, ceiling or fixed floor covering`)
+#ASSERT NOT `the property is part of the Home` (LIST `landscaping`, `trees, shrubs, grass or other living plants`, `on the land of the Home`)
+#ASSERT `the property is part of the Home` (LIST `landscaping`, `on the land of the Home`)
+
+-- A fitted carpet claimed under the Home is outside it; claimed as Contents it is inside.
+#ASSERT `the ground` `the property is not within the definition of the item claimed` `defeats` (`a loss to` `the Home` `of` (LIST `a carpet, curtain or internal blind`, `fixed lighting, wall, ceiling or fixed floor covering`) `by` `fire` `with` EMPTY)
+#ASSERT `covered:` (`a loss to` `the Contents` `of` (LIST `a carpet, laid or not`) `by` `fire` `with` EMPTY)
+
+§§ `Renovation Costs (src:106-110)`
+
+#ASSERT `the property is Renovation Costs under` `the tenant's policy` `:` (LIST `a built-in cabinet, cupboard or air-conditioning system installed by the Insured`)
+#ASSERT `the property is Renovation Costs under` `the tenant's policy` `:` (LIST `an improvement, fitting or decoration made by the Insured as tenant`)
+#ASSERT NOT `the property is Renovation Costs under` `the owner's policy` `:` (LIST `a built-in cabinet, cupboard or air-conditioning system installed by the Insured`)
+#ASSERT `Part 1 covers the loss, under` `the tenant's policy` `with` `good conduct` `for` (`a loss to` `the Renovation Costs` `of` (LIST `a built-in cabinet, cupboard or air-conditioning system installed by the Insured`) `by` `fire` `with` EMPTY) `, as at` `1 April 2026`
+-- The owner's policy insures no Renovation Costs.
+#ASSERT `the ground` `the item claimed is not insured under Part 1` `defeats` (`a loss to` `the Renovation Costs` `of` (LIST `a built-in cabinet, cupboard or air-conditioning system installed by the Insured`) `by` `fire` `with` EMPTY)
+
+§§ `Contents (src:111-159), fork F-contents-j`
+
+GIVEN property IS A LIST OF `A description of property`
+GIVETH A BOOLEAN
+`Contents:` property MEANS `the property is Contents` (`a loss to` `the Contents` `of` property `by` `fire` `with` EMPTY)
+
+#ASSERT `Contents:` (LIST `furniture, a refrigerator, washing machine or similar household good`)
+#ASSERT `Contents:` (LIST `audio-visual equipment`)
+#ASSERT `Contents:` (LIST `a musical instrument`)
+#ASSERT `Contents:` (LIST `a TV or radio antenna, antenna fitting or mast, or a satellite dish`)
+#ASSERT `Contents:` (LIST `a golf buggy, garden appliance or motorised wheelchair`)
+#ASSERT NOT `Contents:` (LIST `a golf buggy, garden appliance or motorised wheelchair`, `required to be registered`)
+#ASSERT `Contents:` (LIST `office furniture or equipment used for the Insured's own business in the Home`)
+#ASSERT `Contents:` (LIST `tools or equipment used to earn income`)
+-- Not listed in (a)-(e): not Contents.
+#ASSERT NOT `Contents:` (LIST `a boiler, economiser or other pressure vessel or apparatus, or its contents`)
+-- Exclusions (a)-(l), each against an item (a)-(e) would otherwise admit.
+#ASSERT NOT `Contents:` (LIST `furniture, a refrigerator, washing machine or similar household good`, `a fish, bird or other animal`)
+#ASSERT NOT `Contents:` (LIST `furniture, a refrigerator, washing machine or similar household good`, `trees, shrubs, grass or other living plants`)
+#ASSERT `Contents:` (LIST `furniture, a refrigerator, washing machine or similar household good`, `trees, shrubs, grass or other living plants`, `a pot plant`)
+#ASSERT NOT `Contents:` (LIST `a golf buggy, garden appliance or motorised wheelchair`, `a motor vehicle licensed for road use, a caravan or a trailer`)
+#ASSERT NOT `Contents:` (LIST `tools or equipment used to earn income`, `a watercraft`)
+#ASSERT NOT `Contents:` (LIST `photographic, video or sports equipment`, `an aircraft or aircraft accessory`)
+#ASSERT `Contents:` (LIST `photographic, video or sports equipment`, `an aircraft or aircraft accessory`, `an aircraft that cannot be piloted`)
+#ASSERT NOT `Contents:` (LIST `tools or equipment used to earn income`, `a part, key, lock or alarm of a vehicle, caravan, trailer, aircraft or watercraft`)
+#ASSERT NOT `Contents:` (LIST `audio-visual equipment`, `held unlawfully by the Insured`)
+#ASSERT NOT `Contents:` (LIST `tools or equipment used to earn income`, `equipment for developing or producing an illegal substance`)
+#ASSERT NOT `Contents:` (LIST `personal effects, normally carried or worn on the person`, `cash or coins`)
+#ASSERT NOT `Contents:` (LIST `personal effects, normally carried or worn on the person`, `a negotiable instrument`)
+#ASSERT NOT `Contents:` (LIST `personal effects, normally carried or worn on the person`, `jewellery, gold, silver or other precious metal, or a precious stone`)
+#ASSERT NOT `Contents:` (LIST `furniture, a refrigerator, washing machine or similar household good`, `an antique or an item of special value`)
+#ASSERT NOT `Contents:` (LIST `audio-visual equipment`, `a laptop computer, mobile phone or camera`)
+#ASSERT NOT `Contents:` (LIST `office furniture or equipment used for the Insured's own business in the Home`, `business or retail stock`)
+-- F-contents-j: a treadmill (sports equipment that stays at home) is Contents; the same
+-- equipment normally carried away is not.
+#ASSERT `Contents:` (LIST `photographic, video or sports equipment`)
+#ASSERT NOT `Contents:` (LIST `photographic, video or sports equipment`, `an item normally carried away from the Insured Location`)
+-- (l): the Home or any part of it.
+#ASSERT NOT `Contents:` (LIST `furniture, a refrigerator, washing machine or similar household good`, `the house or apartment itself`)
+
+-- Whose property, and where it was.
+GIVEN owner IS AN `An owner of property`
+      place IS A `A place where property was`
+GIVETH A BOOLEAN
+`a sofa is Contents, owned by` owner `at` place MEANS
+    `the property is Contents`
+        (`a loss to` `the Contents` `of` (LIST `furniture, a refrigerator, washing machine or similar household good`) `owned by` owner `at` place
+             `on` (YMD 2026 3 10) `by` `fire` `with` EMPTY `, unattended for` 0 `days`)
+
+#ASSERT `a sofa is Contents, owned by` `the Insured` `at` `inside a lockable part of the Home`
+#ASSERT `a sofa is Contents, owned by` (`a relative of the Insured` `a spouse` TRUE) `at` `inside a lockable part of the Home`
+#ASSERT NOT `a sofa is Contents, owned by` (`a relative of the Insured` `a spouse` FALSE) `at` `inside a lockable part of the Home`
+#ASSERT `a sofa is Contents, owned by` `another person, for whose loss the Insured or Family is legally responsible` `at` `inside a lockable part of the Home`
+#ASSERT NOT `a sofa is Contents, owned by` `a domestic helper` `at` `inside a lockable part of the Home`
+#ASSERT NOT `a sofa is Contents, owned by` `another person` `at` `inside a lockable part of the Home`
+#ASSERT `a sofa is Contents, owned by` `the Insured` `at` `outdoors at the Insured Location`
+#ASSERT NOT `a sofa is Contents, owned by` `the Insured` `at` `away from the Insured Location`
+#ASSERT NOT `a sofa is Contents, owned by` `the Insured` `at` `in transit`
+
+-- F-family: a spouse who does not live at the Insured Location is not Family on reading (i);
+-- on reading (ii), not taken, the spouse would be.
+#ASSERT NOT `a relative is in the Insured's Family, being` `a spouse` `, living with the Insured` FALSE
+#ASSERT `on reading (ii), a relative is in the Insured's Family, being` `a spouse` `, living with the Insured` FALSE
+#ASSERT NOT `on reading (ii), a relative is in the Insured's Family, being` `another relative` `, living with the Insured` FALSE
+
+§§ `Peril 1: fire (src:166-173)`
+
+#ASSERT `the peril ground` `Peril 1(a): fermentation, natural heating or spontaneous combustion` `defeats` (`a house fire with` `fermentation, natural heating or spontaneous combustion`)
+#ASSERT `the peril ground` `Peril 1(b): a process involving heat` `defeats` (`a house fire with` `the property underwent a process involving heat`)
+#ASSERT `the peril ground` `Peril 1(c): burning by order of a public authority` `defeats` (`a house fire with` `burning by order of a public authority`)
+#ASSERT `the peril ground` `Peril 1(d): forest, bush or grass fire, or clearing land by fire` `defeats` (`a house fire with` `forest, bush, grass or jungle fire, or clearing land by fire`)
+#ASSERT `the peril ground` `Peril 1(e): scorching, melting or charring without flame` `defeats` (`a house fire with` `scorching, melting or charring without flame`)
+-- Near misses: the fire exclusions bite only within Peril 1; an explosion with the same
+-- circumstance is not defeated by them.
+#ASSERT `covered:` (`the house damaged by` `explosion` `with` (LIST `fermentation, natural heating or spontaneous combustion`))
+#ASSERT `covered:` (`the house damaged by` `explosion` `with` (LIST `scorching, melting or charring without flame`))
+#ASSERT NOT `the peril ground` `Peril 1(c): burning by order of a public authority` `defeats` (`the house damaged by` `lightning` `with` (LIST `burning by order of a public authority`))
+
+§§ `Peril 2: explosion (src:174-176)`
+
+#ASSERT `the peril ground` `Peril 2: a boiler or other pressure vessel or apparatus, or its contents` `defeats` (`a loss to` `the Home` `of` (LIST `the house or apartment itself`, `a boiler, economiser or other pressure vessel or apparatus, or its contents`) `by` `explosion` `with` EMPTY)
+#ASSERT NOT `the peril ground` `Peril 2: a boiler or other pressure vessel or apparatus, or its contents` `defeats` (`a loss to` `the Home` `of` (LIST `the house or apartment itself`, `a boiler, economiser or other pressure vessel or apparatus, or its contents`) `by` `fire` `with` EMPTY)
+
+§§ `Peril 3: lightning (src:177-178)`
+
+#ASSERT `the peril ground` `Peril 3: power fluctuation, without evidence of lightning` `defeats` (`a sofa damaged by` `lightning` `with` (LIST `fluctuation of the electricity supply`))
+#ASSERT `covered:` (`a sofa damaged by` `lightning` `with` (LIST `fluctuation of the electricity supply`, `evidence shows the damage was caused by lightning`))
+
+§§ `Peril 4: riot, strike, malicious act (src:179-216)`
+
+#ASSERT `covered:` (`the house damaged by` `riot or civil disturbance` `with` EMPTY)
+#ASSERT `covered:` (`the house damaged by` `lawful authority suppressing a disturbance` `with` EMPTY)
+#ASSERT `covered:` (`the house damaged by` `wilful act of a striker or locked-out worker` `with` EMPTY)
+#ASSERT `covered:` (`the house damaged by` `lawful authority suppressing a striker's act` `with` EMPTY)
+#ASSERT `covered:` (`the house damaged by` `malicious act of any person` `with` EMPTY)
+#ASSERT `the peril ground` `Peril 4(e): the act furthered a riot or strike or resisted a lockout` `defeats` (`the house damaged by` `malicious act of any person` `with` (LIST `the act was intended to further a riot or strike or resist a lockout`))
+-- Near miss: the same act pleaded under limb (c), where it belongs.
+#ASSERT `covered:` (`the house damaged by` `wilful act of a striker or locked-out worker` `with` (LIST `the act was intended to further a riot or strike or resist a lockout`))
+#ASSERT `the peril ground` `Peril 4(i)(a): terrorism` `defeats` (`the house damaged by` `riot or civil disturbance` `with` (LIST `an act of terrorism`))
+#ASSERT `the peril ground` `Peril 4(i)(b): civil commotion amounting to a popular rising` `defeats` (`the house damaged by` `riot or civil disturbance` `with` (LIST `civil commotion amounting to a popular rising`))
+#ASSERT `the peril ground` `Peril 4(i)(c): wilful corruption of computer information` `defeats` (`the house damaged by` `malicious act of any person` `with` (LIST `wilful erasure, loss, distortion or corruption of computer information`))
+#ASSERT `the peril ground` `Peril 4(ii)(a): consequential or indirect loss` `defeats` (`the house damaged by` `riot or civil disturbance` `with` (LIST `the loss claimed is consequential or indirect`))
+#ASSERT `the peril ground` `Peril 4(ii)(b): cessation of work or interruption of a process` `defeats` (`the house damaged by` `wilful act of a striker or locked-out worker` `with` (LIST `cessation of work or interruption of a process or operation`))
+#ASSERT `the peril ground` `Peril 4(ii)(c): confiscation, commandeering or requisition` `defeats` (`the house damaged by` `lawful authority suppressing a disturbance` `with` (LIST `dispossession by confiscation, commandeering or requisition`))
+#ASSERT `the peril ground` `Peril 4(ii)(d): unlawful occupation of the Home` `defeats` (`the house damaged by` `riot or civil disturbance` `with` (LIST `dispossession of the Home by unlawful occupation`))
+#ASSERT `the peril ground` `Peril 4(iii)(a): intentional act of the Insured, the Family or their guests` `defeats` (`the house damaged by` `malicious act of any person` `with` (LIST `caused intentionally by the Insured, the Family or the Family's guests`))
+#ASSERT `the peril ground` `Peril 4(iii)(b): intentional act of tenants, guests or their families` `defeats` (`the house damaged by` `malicious act of any person` `with` (LIST `caused intentionally by tenants, guests or their families`))
+-- Near miss for (iii): the same circumstance on a fire is not a Peril 4 ground.
+#ASSERT NOT `the peril ground` `Peril 4(iii)(b): intentional act of tenants, guests or their families` `defeats` (`the house damaged by` `fire` `with` (LIST `caused intentionally by tenants, guests or their families`))
+
+§§ `Peril 5: earthquake, volcano, storm and flood (src:217-239), fork F-flood`
+
+#ASSERT `covered:` (`the house damaged by` `earthquake` `with` EMPTY)
+#ASSERT `covered:` (`the house damaged by` `volcanic eruption` `with` EMPTY)
+#ASSERT `covered:` (`the house damaged by` `storm` `with` EMPTY)
+#ASSERT `covered:` (`the house damaged by` `whirlwind` `with` EMPTY)
+#ASSERT `covered:` (`the house damaged by` `typhoon` `with` EMPTY)
+#ASSERT `covered:` (`the house damaged by` `flood` `with` EMPTY)
+-- (a) frost or hail
+#ASSERT `the peril ground` `Peril 5(a): frost or hail` `defeats` (`the house damaged by` `storm` `with` (LIST `hail`))
+#ASSERT `the peril ground` `Peril 5(a): frost or hail` `defeats` (`the house damaged by` `typhoon` `with` (LIST `frost`))
+-- (b) subsidence, with its carve-back
+#ASSERT `the peril ground` `Peril 5(b): subsidence or landslip not caused by earthquake or volcano` `defeats` (`the house damaged by` `flood` `with` (LIST `subsidence, landslip or landslide`))
+#ASSERT `covered:` (`the house damaged by` `earthquake` `with` (LIST `subsidence, landslip or landslide`, `the subsidence or landslip was caused by earthquake or volcanic eruption`))
+-- (c) walls, gates and fences; near miss: the same fence burnt
+#ASSERT `the peril ground` `Peril 5(c): a retaining wall, garden wall, gate or fence` `defeats` (`a loss to` `the Home` `of` (LIST `a fence or gate`, `on the land of the Home`) `by` `storm` `with` EMPTY)
+#ASSERT `covered:` (`a loss to` `the Home` `of` (LIST `a fence or gate`, `on the land of the Home`) `by` `fire` `with` EMPTY)
+-- (d) awnings and signs; movable property in the open, near miss indoors
+#ASSERT `the peril ground` `Peril 5(d): an awning, sign or external fixture, or movable property in the open` `defeats` (`a loss to` `the Home` `of` (LIST `an outbuilding, garage, fixture or improvement`, `used for domestic purposes`, `an awning, blind, sign or other external fixture`) `by` `typhoon` `with` EMPTY)
+#ASSERT `the peril ground` `Peril 5(d): an awning, sign or external fixture, or movable property in the open` `defeats` (`a loss to` `the Contents` `of` (LIST `furniture, a refrigerator, washing machine or similar household good`, `movable property`) `owned by` `the Insured` `at` `outdoors at the Insured Location` `on` (YMD 2026 3 10) `by` `typhoon` `with` EMPTY `, unattended for` 0 `days`)
+#ASSERT `covered:` (`a loss to` `the Contents` `of` (LIST `furniture, a refrigerator, washing machine or similar household good`, `movable property`) `owned by` `the Insured` `at` `inside a lockable part of the Home` `on` (YMD 2026 3 10) `by` `typhoon` `with` EMPTY `, unattended for` 0 `days`)
+-- (e) trees, shrubs, plants (a pot plant indoors is Contents; the storm still excludes it)
+#ASSERT `the peril ground` `Peril 5(e): trees, shrubs or plants` `defeats` (`a loss to` `the Contents` `of` (LIST `furniture, a refrigerator, washing machine or similar household good`, `trees, shrubs, grass or other living plants`, `a pot plant`) `by` `storm` `with` EMPTY)
+-- (f) premises under construction, with the storm-proof carve-back
+#ASSERT `the peril ground` `Peril 5(f): premises under construction, not complete and storm-proof` `defeats` (`the house damaged by` `storm` `with` (LIST `the premises were under construction, alteration or repair`))
+#ASSERT `covered:` (`the house damaged by` `storm` `with` (LIST `the premises were under construction, alteration or repair`, `all external doors, windows and openings were complete and storm-proof`))
+-- (g) water or rain, with the storm-opening carve-back, and F-flood
+#ASSERT `the peril ground` `Peril 5(g): water or rain` `defeats` (`the house damaged by` `storm` `with` (LIST `water or rain`))
+#ASSERT `covered:` (`the house damaged by` `storm` `with` (LIST `water or rain`, `rain or water entered through an opening made by the direct force of a storm`))
+#ASSERT `covered:` (`the house damaged by` `flood` `with` (LIST `water or rain`))
+-- (h) escape of water from a tank or pipe, and F-flood (the public main is in the flood definition)
+#ASSERT `the peril ground` `Peril 5(h): escape of water from a tank, apparatus or pipe` `defeats` (`the house damaged by` `earthquake` `with` (LIST `escape of water from a tank, apparatus or pipe as a contributing cause`))
+#ASSERT `covered:` (`the house damaged by` `flood` `with` (LIST `escape of water from a tank, apparatus or pipe as a contributing cause`))
+-- (i) atmospheric conditions: every Peril 5 event is excepted, so it never bites here.
+#ASSERT `covered:` (`the house damaged by` `storm` `with` (LIST `atmospheric or climatic conditions`))
+#ASSERT `in the open` `in a structure or part of the Home that cannot be locked`
+#ASSERT `in the open` `in or on a vehicle, trailer or caravan at the Insured Location`
+#ASSERT NOT `in the open` `inside a lockable part of the Home`
+
+§§ `Peril 6: escape of water (src:240-244)`
+
+#ASSERT `covered:` (`the house damaged by` `escape of water from a tank, apparatus or pipe` `with` EMPTY)
+#ASSERT `the peril ground` `Peril 6(a): leakage from an automatic sprinkler system` `defeats` (`the house damaged by` `escape of water from a tank, apparatus or pipe` `with` (LIST `discharge or leakage from an automatic sprinkler system`))
+#ASSERT `the peril ground` `Peril 6(b): the Home was vacant or unoccupied` `defeats` (`the house damaged by` `escape of water from a tank, apparatus or pipe` `with` (LIST `the Home was vacant or unoccupied when the loss occurred`))
+#ASSERT `the peril ground` `Peril 6(c): the loss occurred gradually` `defeats` (`the house damaged by` `escape of water from a tank, apparatus or pipe` `with` (LIST `the loss occurred gradually over time`))
+-- Near miss for 6(a): the sprinkler leak pleaded under Peril 7, sudden.
+#ASSERT `covered:` (`the house damaged by` `sprinkler leakage` `with` (LIST `discharge or leakage from an automatic sprinkler system`, `the leakage was sudden`))
+
+§§ `Peril 7: sprinkler leakage (src:245-259)`
+
+GIVEN cs IS A LIST OF `A circumstance of a loss`
+GIVETH A `A Part 1 loss`
+`a sudden sprinkler leak with` cs MEANS `the house damaged by` `sprinkler leakage` `with` (`the leakage was sudden` FOLLOWED BY cs)
+
+#ASSERT `covered:` (`a sudden sprinkler leak with` EMPTY)
+#ASSERT `the peril ground` `Peril 7: the leakage was not sudden` `defeats` (`the house damaged by` `sprinkler leakage` `with` EMPTY)
+#ASSERT `the peril ground` `Peril 7(a): repairs or alterations` `defeats` (`a sudden sprinkler leak with` (LIST `repairs or alterations to the Home or insured location`))
+#ASSERT `the peril ground` `Peril 7(b): the sprinkler system was under repair, removal or extension` `defeats` (`a sudden sprinkler leak with` (LIST `the sprinkler system was under repair, removal or extension`))
+#ASSERT `the peril ground` `Peril 7(c): freezing while vacant or through the Insured's neglect` `defeats` (`a sudden sprinkler leak with` (LIST `freezing`, `the Home was vacant or unoccupied when the loss occurred`))
+#ASSERT `the peril ground` `Peril 7(c): freezing while vacant or through the Insured's neglect` `defeats` (`a sudden sprinkler leak with` (LIST `freezing`, `the Insured's neglect`))
+#ASSERT `covered:` (`a sudden sprinkler leak with` (LIST `freezing`))
+#ASSERT `the peril ground` `Peril 7(d): an order of government or other authority` `defeats` (`a sudden sprinkler leak with` (LIST `an order of government or any municipal, local or other authority`))
+#ASSERT `the peril ground` `Peril 7(e): construction defects or conditions known beforehand` `defeats` (`a sudden sprinkler leak with` (LIST `construction defects or conditions known to the Insured beforehand`))
+
+§§ `Peril 8: impact (src:260-262)`
+
+#ASSERT `covered:` (`the house damaged by` `impact by aircraft or articles dropped from it` `with` EMPTY)
+#ASSERT `covered:` (`the house damaged by` `impact by a vehicle or animal` `with` EMPTY)
+
+§§ `Peril 9: theft (src:263-283), fork F-theft-c`
+
+GIVEN cs IS A LIST OF `A circumstance of a loss`
+GIVETH A `A Part 1 loss`
+`a forcible theft of a sofa with` cs MEANS `a sofa damaged by` `theft or attempted theft` `with` (`force or violence used to enter` FOLLOWED BY cs)
+
+GIVEN cs IS A LIST OF `A circumstance of a loss`
+      place IS A `A place where property was`
+      days  IS A NUMBER
+GIVETH A `A Part 1 loss`
+`a forcible theft with` cs `from` place `, the Home unattended for` days MEANS
+    `a loss to` `the Contents` `of` (LIST `furniture, a refrigerator, washing machine or similar household good`) `owned by` `the Insured` `at` place
+        `on` (YMD 2026 3 10) `by` `theft or attempted theft` `with` (`force or violence used to enter` FOLLOWED BY cs) `, unattended for` days `days`
+
+#ASSERT `covered:` (`a forcible theft of a sofa with` EMPTY)
+#ASSERT `the peril ground` `Peril 9: no force or violence to enter or leave` `defeats` (`a sofa damaged by` `theft or attempted theft` `with` EMPTY)
+-- Forcible entry excludes entry through an unlocked door (i) or with consent (ii) ...
+#ASSERT `the peril ground` `Peril 9: no force or violence to enter or leave` `defeats` (`a forcible theft of a sofa with` (LIST `entry through an open or unlocked door or window`))
+#ASSERT `the peril ground` `Peril 9: no force or violence to enter or leave` `defeats` (`a forcible theft of a sofa with` (LIST `entry with the consent of the owner or occupier`))
+-- ... but force used to LEAVE suffices whatever the entry was.
+#ASSERT `covered:` (`a sofa damaged by` `theft or attempted theft` `with` (LIST `entry through an open or unlocked door or window`, `force or violence used to leave`))
+-- A Home not enclosed by walls or fences has no theft cover.
+#ASSERT elem (`an Insured Peril ground` `Peril 9: the Home is not enclosed by walls or fences`) (`the grounds on which a Part 1 claim fails, under` (`the owner's policy, at` (`The insured premises` WITH `the kind of building` IS `a house`, `at the address in the Policy Summary` IS TRUE, `the Insured's principal personal residence` IS TRUE, `used wholly or mainly as the Insured's private residence` IS TRUE, `part used as an office` IS FALSE, `office use approved by the authorities` IS FALSE, `used for a trade or business other than an office` IS FALSE, `walls of concrete, brick or stone` IS TRUE, `roof of concrete, tiles, slate or incombustible metal sheet` IS TRUE, `under construction` IS FALSE, `being demolished or vacant pending demolition` IS FALSE, `a temporary building or structure` IS FALSE, `enclosed by walls or fences` IS FALSE, `some part is lent, let or sublet` IS FALSE, `some part is used to manufacture, deposit or store goods` IS FALSE)) `with` `good conduct` `for` (`a forcible theft of a sofa with` EMPTY) `, as at` `1 April 2026`)
+#ASSERT `the peril ground` `Peril 9(a): by deception` `defeats` (`a forcible theft of a sofa with` (LIST `by deception`))
+#ASSERT `the peril ground` `Peril 9(b): by a person lawfully on the premises or by connivance` `defeats` (`a forcible theft of a sofa with` (LIST `by a person lawfully on the premises`))
+#ASSERT `the peril ground` `Peril 9(b): by a person lawfully on the premises or by connivance` `defeats` (`a forcible theft of a sofa with` (LIST `with the connivance of the Insured, the Family, an employee or domestic helper`))
+#ASSERT `the peril ground` `Peril 9(c): from a part of the Home lent, let or sublet` `defeats` (`a forcible theft of a sofa with` (LIST `from a part of the Home that is lent, let or sublet`))
+-- (d): 30 consecutive days unattended is not "more than 30"; 31 is; written consent saves it.
+#ASSERT `covered:` (`a forcible theft with` EMPTY `from` `inside a lockable part of the Home` `, the Home unattended for` 30)
+#ASSERT `the peril ground` `Peril 9(d): the Home unattended for more than 30 consecutive days` `defeats` (`a forcible theft with` EMPTY `from` `inside a lockable part of the Home` `, the Home unattended for` 31)
+#ASSERT `covered:` (`a forcible theft with` (LIST `the Insurer consented in writing to the Home being left unattended`) `from` `inside a lockable part of the Home` `, the Home unattended for` 31)
+#ASSERT `the peril ground` `Peril 9(e): property already damaged or incomplete` `defeats` (`a forcible theft of a sofa with` (LIST `the property was already damaged or incomplete before the loss`))
+#ASSERT `the peril ground` `Peril 9(f): property in a part other tenants can enter without force` `defeats` (`a forcible theft of a sofa with` (LIST `in a part of the Home other tenants can enter without force`))
+#ASSERT `the peril ground` `Peril 9(g): property in the open outside the Home` `defeats` (`a forcible theft with` EMPTY `from` `outdoors at the Insured Location` `, the Home unattended for` 0)
+#ASSERT `the peril ground` `Peril 9(g): property in the open outside the Home` `defeats` (`a forcible theft with` EMPTY `from` `in or on a vehicle, trailer or caravan at the Insured Location` `, the Home unattended for` 0)
+#ASSERT `covered:` (`a forcible theft with` EMPTY `from` `in a structure or part of the Home that cannot be locked` `, the Home unattended for` 0)
+#ASSERT `the peril ground` `Peril 9(h): property in transit` `defeats` (`a forcible theft with` EMPTY `from` `in transit` `, the Home unattended for` 0)
+
+§§ `Not an Insured Peril`
+
+#ASSERT `the peril ground` `the cause is not one of the nine Insured Perils` `defeats` (`the house damaged by` `another cause` `with` EMPTY)
+#ASSERT `the peril ground` `the cause is not one of the nine Insured Perils` `defeats` (`the house damaged by` `seaquake, tidal wave or hail` `with` EMPTY)
+
+§§ `Scope: sudden, at the Insured Location (src:293-299)`
+
+#ASSERT `the ground` `no sudden and unforeseen physical loss, destruction or damage` `defeats` (`A Part 1 loss` WITH `the item claimed` IS `the Home`, `the property` IS (LIST `the house or apartment itself`), `whose property` IS `the Insured`, `where the property was` IS `inside a lockable part of the Home`, `the date of the loss` IS YMD 2026 3 10, `the cause` IS `fire`, `the circumstances` IS EMPTY, `the extent` IS `damaged`, `sudden and unforeseen` IS FALSE, `consecutive days the Home had been left unattended` IS 0)
+#ASSERT `the ground` `no sudden and unforeseen physical loss, destruction or damage` `defeats` (`A Part 1 loss` WITH `the item claimed` IS `the Home`, `the property` IS (LIST `the house or apartment itself`), `whose property` IS `the Insured`, `where the property was` IS `inside a lockable part of the Home`, `the date of the loss` IS YMD 2026 3 10, `the cause` IS `fire`, `the circumstances` IS EMPTY, `the extent` IS `no physical loss, destruction or damage`, `sudden and unforeseen` IS TRUE, `consecutive days the Home had been left unattended` IS 0)
+#ASSERT `the ground` `the loss was not at the Insured Location` `defeats` (`a loss to` `the Contents` `of` (LIST `furniture, a refrigerator, washing machine or similar household good`) `owned by` `the Insured` `at` `away from the Insured Location` `on` (YMD 2026 3 10) `by` `fire` `with` EMPTY `, unattended for` 0 `days`)
+
+§§ `Part 1 exclusions 1-8 (src:406-429)`
+
+#ASSERT `the ground` `Part 1 exclusion 1: scratching, denting, chipping or marring` `defeats` (`a house fire with` `scratching, denting, chipping or marring only`)
+#ASSERT `the ground` `Part 1 exclusion 2: wear and tear, gradual causes, light or atmosphere, pests` `defeats` (`a house fire with` `wear and tear or depreciation`)
+#ASSERT `the ground` `Part 1 exclusion 2: wear and tear, gradual causes, light or atmosphere, pests` `defeats` (`a house fire with` `cleaning, dyeing, alteration, repair or restoration`)
+#ASSERT `the ground` `Part 1 exclusion 2: wear and tear, gradual causes, light or atmosphere, pests` `defeats` (`a house fire with` `the action of light or atmospheric conditions`)
+#ASSERT `the ground` `Part 1 exclusion 2: wear and tear, gradual causes, light or atmosphere, pests` `defeats` (`a house fire with` `rot, mildew, rust, moths, insects or vermin`)
+#ASSERT `the ground` `Part 1 exclusion 2: wear and tear, gradual causes, light or atmosphere, pests` `defeats` (`a house fire with` `any other gradually operating cause`)
+#ASSERT `the ground` `Part 1 exclusion 3: electrical or electronic breakdown, or a manufacturing or design defect` `defeats` (`a sofa damaged by` `lightning` `with` (LIST `evidence shows the damage was caused by lightning`, `electrical or electronic breakdown or failure to operate`))
+#ASSERT `the ground` `Part 1 exclusion 3: electrical or electronic breakdown, or a manufacturing or design defect` `defeats` (`a house fire with` `a manufacturer's defect or design defect`)
+#ASSERT `the ground` `Part 1 exclusion 4: consequential loss` `defeats` (`a house fire with` `the loss claimed is consequential or indirect`)
+#ASSERT `the ground` `Part 1 exclusion 5: unexplained loss or mysterious disappearance` `defeats` (`a house fire with` `unexplained loss or mysterious disappearance`)
+#ASSERT `the ground` `Part 1 exclusion 6: programming, labelling or data errors` `defeats` (`a house fire with` `errors of programming, punching, labelling or insertion, or loss of data`)
+#ASSERT `the ground` `Part 1 exclusion 7: pollution or contamination` `defeats` (`a house fire with` `pollution or contamination`)
+#ASSERT `covered:` (`the house damaged by` `fire` `with` (LIST `pollution or contamination`, `the pollution or contamination was caused by an insured peril`))
+#ASSERT `covered:` (`the house damaged by` `fire` `with` (LIST `pollution or contamination`, `an insured peril was caused by pollution or contamination`))
+#ASSERT `the ground` `Part 1 exclusion 8: property more specifically insured` `defeats` (`a house fire with` `the property is more specifically insured by or for the Insured`)
+
+§§ `General Exclusions on a Part 1 loss (src:684-798), fork F-ge1`
+
+GIVEN g    IS A `A General Exclusion`
+      loss IS A `A Part 1 loss`
+GIVETH A BOOLEAN
+`the General Exclusion` g `defeats` loss MEANS elem (`a General Exclusion` g) (`the grounds against` loss)
+
+#ASSERT `the General Exclusion` `General Exclusion 1(a): war, invasion, hostilities or civil war` `defeats` (`a house fire with` `war, invasion, foreign enemy, hostilities or civil war`)
+#ASSERT `the General Exclusion` `General Exclusion 1(b): an act of terrorism` `defeats` (`a house fire with` `an act of terrorism`)
+#ASSERT `the General Exclusion` `General Exclusion 1(c): mutiny, rising, rebellion, usurped power, martial law or siege` `defeats` (`a house fire with` `mutiny, popular rising, insurrection, rebellion, usurped power, martial law or siege`)
+#ASSERT `the General Exclusion` `General Exclusion 1: action taken to control, prevent or suppress (a) to (c)` `defeats` (`a house fire with` `action taken to control, prevent or suppress war, terrorism or rebellion`)
+#ASSERT `the General Exclusion` `General Exclusion 2: confiscation, requisition or destruction by order of an authority` `defeats` (`a house fire with` `confiscation, requisition or destruction by order of government or local authority`)
+#ASSERT `the General Exclusion` `General Exclusion 3(a): nuclear weapons material` `defeats` (`a house fire with` `nuclear weapons material`)
+#ASSERT `the General Exclusion` `General Exclusion 3(b)(i): ionising radiation or contamination from nuclear fuel or waste` `defeats` (`a house fire with` `ionising radiation or radioactive contamination from nuclear fuel or waste`)
+#ASSERT `the General Exclusion` `General Exclusion 3(b)(ii): a nuclear explosive assembly` `defeats` (`the house damaged by` `explosion` `with` (LIST `radioactive, toxic, explosive or hazardous properties of a nuclear explosive assembly`))
+#ASSERT `the General Exclusion` `General Exclusion 4: asbestos` `defeats` (`a house fire with` `asbestos`)
+#ASSERT `the General Exclusion` `General Exclusion 5: DES, dioxin, urea formaldehyde, SARS, AIDS, ARC or similar` `defeats` (`a house fire with` `DES, dioxin, urea formaldehyde, SARS, AIDS, ARC or a similar syndrome`)
+#ASSERT `the General Exclusion` `General Exclusion 6: wilful act or wilful negligence of the Insured` `defeats` (`a house fire with` `a wilful act or wilful negligence of the Insured or a person acting for the Insured`)
+-- 7(a): loss of data is excluded; physical loss from a resulting fire is written back.
+#ASSERT `the General Exclusion` `General Exclusion 7(a): loss of or damage to Electronic Data` `defeats` (`the house damaged by` `malicious act of any person` `with` (LIST `loss, distortion, erasure or alteration of Electronic Data`, `a Defined Peril (fire or explosion) resulting from it caused physical loss`))
+#ASSERT `covered:` (`the house damaged by` `fire` `with` (LIST `loss, distortion, erasure or alteration of Electronic Data`, `a Defined Peril (fire or explosion) resulting from it caused physical loss`))
+#ASSERT `the General Exclusion` `General Exclusion 9: sanctions` `defeats` (`a house fire with` `cover or payment would breach a sanction of the UN, EU, UK or USA`)
+-- 8: any part of the Insured Location used to make, deposit or store goods.
+#ASSERT elem (`a General Exclusion` `General Exclusion 8: part of the Insured Location used to make, deposit or store goods`) (`the grounds on which a Part 1 claim fails, under` (`the owner's policy, at` (`The insured premises` WITH `the kind of building` IS `a house`, `at the address in the Policy Summary` IS TRUE, `the Insured's principal personal residence` IS TRUE, `used wholly or mainly as the Insured's private residence` IS TRUE, `part used as an office` IS FALSE, `office use approved by the authorities` IS FALSE, `used for a trade or business other than an office` IS FALSE, `walls of concrete, brick or stone` IS TRUE, `roof of concrete, tiles, slate or incombustible metal sheet` IS TRUE, `under construction` IS FALSE, `being demolished or vacant pending demolition` IS FALSE, `a temporary building or structure` IS FALSE, `enclosed by walls or fences` IS TRUE, `some part is lent, let or sublet` IS FALSE, `some part is used to manufacture, deposit or store goods` IS TRUE)) `with` `good conduct` `for` (`the house damaged by` `fire` `with` EMPTY) `, as at` `1 April 2026`)
+-- 7(b): a data medium is valued at blank cost plus copying, or blank cost if not replaced.
+#ASSERT `General Exclusion 7(b): the value of a data medium, blank at` 500_000 `, copying at` 2_000_000 `, replaced` TRUE EQUALS 2_500_000
+#ASSERT `General Exclusion 7(b): the value of a data medium, blank at` 500_000 `, copying at` 2_000_000 `, replaced` FALSE EQUALS 500_000
+
+§§ `Settlement: the basis, Provisions 1-3 (src:301-323)`
+
+-- A Home loss of 300,000,000 to reinstate, Actual Value 200,000,000, Summary Deductible
+-- 2,000,000 (hypothetical). Reinstated with dispatch and the cost incurred: 300,000,000 less
+-- the Deductible = 298,000,000.
+GIVEN f IS A `The figures for a Part 1 loss`
+GIVETH A NUMBER
+`a house fire, settled on` f MEANS
+    `Part 1: the amount payable, under` `the owner's policy` `with` `good conduct` `for` (`the house damaged by` `fire` `with` EMPTY) `on` f `, as at` `1 April 2026`
+
+#ASSERT `a house fire, settled on` (`figures: reinstatement` 300_000_000 `, Actual Value` 200_000_000 `, reinstated and incurred` TRUE `, cost if wholly lost` (JUST 2_500_000_000)) EQUALS 298_000_000
+-- Provisions 1 and 3: not reinstated, or not yet incurred: Actual Value, 200,000,000 - 2,000,000.
+#ASSERT `a house fire, settled on` (`figures: reinstatement` 300_000_000 `, Actual Value` 200_000_000 `, reinstated and incurred` FALSE `, cost if wholly lost` (JUST 2_500_000_000)) EQUALS 198_000_000
+-- Provision 2: a partial loss costs no more than a total one would (250,000,000 - 2,000,000).
+#ASSERT `a house fire, settled on` (`figures: reinstatement` 300_000_000 `, Actual Value` 280_000_000 `, reinstated and incurred` TRUE `, cost if wholly lost` (JUST 250_000_000)) EQUALS 248_000_000
+-- Provision 2 needs that comparator; with none, the encoding refuses.
+#ASSERT REFUSED `a house fire, settled on` (`figures: reinstatement` 300_000_000 `, Actual Value` 200_000_000 `, reinstated and incurred` TRUE `, cost if wholly lost` NOTHING) BECAUSE "Provision 2 needs the cost of reinstatement had the property been wholly lost"
+-- A destroyed sofa needs no Provision 2 comparator: 40,000,000 - 2,000,000.
+#ASSERT `Part 1: the amount payable, under` `the owner's policy` `with` `good conduct` `for` (`A Part 1 loss` WITH `the item claimed` IS `the Contents`, `the property` IS (LIST `furniture, a refrigerator, washing machine or similar household good`), `whose property` IS `the Insured`, `where the property was` IS `inside a lockable part of the Home`, `the date of the loss` IS YMD 2026 3 10, `the cause` IS `fire`, `the circumstances` IS EMPTY, `the extent` IS `lost or destroyed`, `sudden and unforeseen` IS TRUE, `consecutive days the Home had been left unattended` IS 0) `on` (`figures: reinstatement` 40_000_000 `, Actual Value` 25_000_000 `, reinstated and incurred` TRUE `, cost if wholly lost` NOTHING) `, as at` `1 April 2026` EQUALS 38_000_000
+-- Not covered: nothing is payable (an excluded fire, 1(a)).
+#ASSERT `Part 1: the amount payable, under` `the owner's policy` `with` `good conduct` `for` (`a house fire with` `fermentation, natural heating or spontaneous combustion`) `on` (`figures: reinstatement` 300_000_000 `, Actual Value` 200_000_000 `, reinstated and incurred` TRUE `, cost if wholly lost` (JUST 2_500_000_000)) `, as at` `1 April 2026` EQUALS 0
+
+§§ `Settlement: limits, GC6, Pairs and Sets, GC9, Deductible`
+
+-- The sum insured caps it (General Limit (a)): 2,000,000,000 - 2,000,000.
+#ASSERT `a house fire, settled on` (`figures: reinstatement` 2_600_000_000 `, Actual Value` 2_400_000_000 `, reinstated and incurred` TRUE `, cost if wholly lost` (JUST 2_600_000_000)) EQUALS 1_998_000_000
+
+-- General Limit (b): 1,900,000,000 already paid this Period leaves 100,000,000; reinstated
+-- by agreement, the full sum insured is available again.
+GIVEN `paid` IS A NUMBER
+      `reinstated` IS A BOOLEAN
+GIVETH A `The figures for a Part 1 loss`
+`figures for 300,000,000 with` `paid` `already paid, sum insured reinstated` `reinstated` MEANS
+    `The figures for a Part 1 loss` WITH
+        `the cost of reinstatement`                                      IS 300_000_000
+        `the Actual Value`                                               IS 200_000_000
+        `reinstatement was begun and carried out with reasonable dispatch` IS TRUE
+        `the cost of reinstatement has actually been incurred`           IS TRUE
+        `the cost of reinstatement had the property been wholly lost`    IS JUST 2_500_000_000
+        `the cost had reinstatement been lawfully possible`              IS NOTHING
+        `the pair or set`                                                IS NOTHING
+        `the amount already paid on this item in the Period`             IS `paid`
+        `the Insurer agreed to reinstate the sum insured`                IS `reinstated`
+        `the sums insured by other insurances of the same loss`          IS EMPTY
+
+#ASSERT `a house fire, settled on` (`figures for 300,000,000 with` 1_900_000_000 `already paid, sum insured reinstated` FALSE) EQUALS 98_000_000
+#ASSERT `a house fire, settled on` (`figures for 300,000,000 with` 1_900_000_000 `already paid, sum insured reinstated` TRUE) EQUALS 298_000_000
+#ASSERT `a house fire, settled on` (`figures for 300,000,000 with` 2_000_000_000 `already paid, sum insured reinstated` FALSE) EQUALS 0
+
+-- GC6: regulation prevents reinstatement; the lawful cost, 280,000,000, caps it.
+#ASSERT `a house fire, settled on` (`The figures for a Part 1 loss` WITH `the cost of reinstatement` IS 300_000_000, `the Actual Value` IS 290_000_000, `reinstatement was begun and carried out with reasonable dispatch` IS TRUE, `the cost of reinstatement has actually been incurred` IS TRUE, `the cost of reinstatement had the property been wholly lost` IS JUST 2_500_000_000, `the cost had reinstatement been lawfully possible` IS JUST 280_000_000, `the pair or set` IS NOTHING, `the amount already paid on this item in the Period` IS 0, `the Insurer agreed to reinstate the sum insured` IS FALSE, `the sums insured by other insurances of the same loss` IS EMPTY) EQUALS 278_000_000
+
+-- GC9: another policy insures the same Home for 2,000,000,000 as well; the rateable share
+-- of 300,000,000 is half, 150,000,000, less the Deductible.
+#ASSERT `a house fire, settled on` (`The figures for a Part 1 loss` WITH `the cost of reinstatement` IS 300_000_000, `the Actual Value` IS 290_000_000, `reinstatement was begun and carried out with reasonable dispatch` IS TRUE, `the cost of reinstatement has actually been incurred` IS TRUE, `the cost of reinstatement had the property been wholly lost` IS JUST 2_500_000_000, `the cost had reinstatement been lawfully possible` IS NOTHING, `the pair or set` IS NOTHING, `the amount already paid on this item in the Period` IS 0, `the Insurer agreed to reinstate the sum insured` IS FALSE, `the sums insured by other insurances of the same loss` IS (LIST 2_000_000_000)) EQUALS 148_000_000
+#ASSERT `GC9: the rateable proportion of` 90 `, insured here for` 100 `and elsewhere for` (LIST 50, 50) EQUALS 45
+#ASSERT `GC9: the rateable proportion of` 90 `, insured here for` 100 `and elsewhere for` EMPTY EQUALS 90
+
+-- Pairs and Sets: one earring of a pair lost. Value of the part 12,000,000; the pair insured
+-- for 20,000,000, so half is 10,000,000; reinstatement of the earring 15,000,000. Cap 10,000,000.
+#ASSERT `Pairs and Sets: the cap on` 15_000_000 `for` (JUST (`A pair or set` WITH `the value of the parts lost, without special value as a pair or set` IS 12_000_000, `the number of parts lost or damaged` IS 1, `the number of parts in the pair or set` IS 2, `the sum insured on the pair or set` IS JUST 20_000_000)) EQUALS 10_000_000
+-- Not separately insured: only the part's own value caps it.
+#ASSERT `Pairs and Sets: the cap on` 15_000_000 `for` (JUST (`A pair or set` WITH `the value of the parts lost, without special value as a pair or set` IS 12_000_000, `the number of parts lost or damaged` IS 1, `the number of parts in the pair or set` IS 2, `the sum insured on the pair or set` IS NOTHING)) EQUALS 12_000_000
+#ASSERT `Pairs and Sets: the cap on` 15_000_000 `for` NOTHING EQUALS 15_000_000
+
+-- The Deductible comes off last and never below nothing: a 1,500,000 repair pays 0.
+#ASSERT `a house fire, settled on` (`figures: reinstatement` 1_500_000 `, Actual Value` 1_000_000 `, reinstated and incurred` TRUE `, cost if wholly lost` (JUST 2_500_000_000)) EQUALS 0
+#ASSERT `a house fire, settled on` (`figures: reinstatement` 2_000_000 `, Actual Value` 1_000_000 `, reinstated and incurred` TRUE `, cost if wholly lost` (JUST 2_500_000_000)) EQUALS 0
+#ASSERT `a house fire, settled on` (`figures: reinstatement` 2_000_001 `, Actual Value` 1_000_000 `, reinstated and incurred` TRUE `, cost if wholly lost` (JUST 2_500_000_000)) EQUALS 1
+
+-- The layered scenario: covered, then Provisions (not reinstated: Actual Value 1,200,000,000
+-- of a 2,600,000,000 cost), then General Limit (b) (1,000,000,000 already paid, so 1,000,000,000
+-- remains), then GC9 (another 2,000,000,000 policy: half), then the Deductible:
+-- min(1,200,000,000, 1,000,000,000) = 1,000,000,000; half = 500,000,000; less 2,000,000.
+#ASSERT `a house fire, settled on` (`The figures for a Part 1 loss` WITH `the cost of reinstatement` IS 2_600_000_000, `the Actual Value` IS 1_200_000_000, `reinstatement was begun and carried out with reasonable dispatch` IS FALSE, `the cost of reinstatement has actually been incurred` IS FALSE, `the cost of reinstatement had the property been wholly lost` IS JUST 2_600_000_000, `the cost had reinstatement been lawfully possible` IS NOTHING, `the pair or set` IS NOTHING, `the amount already paid on this item in the Period` IS 1_000_000_000, `the Insurer agreed to reinstate the sum insured` IS FALSE, `the sums insured by other insurances of the same loss` IS (LIST 2_000_000_000)) EQUALS 498_000_000
+
+§§ `Extensions 1-7 (src:343-404)`
+
+#ASSERT `Extension 1: workmen doing repairs, minor alterations or decoration do not prejudice the policy`
+
+-- Extension 2: the lesser of 40,000,000 and 5% of the item's sum insured, inclusive.
+-- On 1,000,000,000 the 5% is 50,000,000, so 40,000,000 binds; on 600,000,000 the 5% is
+-- 30,000,000, which binds.
+#ASSERT `Extension 2: no inventory of undamaged property is needed for a claim of` 40_000_000 `on an item insured for` 1_000_000_000
+#ASSERT NOT `Extension 2: no inventory of undamaged property is needed for a claim of` 40_000_001 `on an item insured for` 1_000_000_000
+#ASSERT `Extension 2: no inventory of undamaged property is needed for a claim of` 30_000_000 `on an item insured for` 600_000_000
+#ASSERT NOT `Extension 2: no inventory of undamaged property is needed for a claim of` 30_000_001 `on an item insured for` 600_000_000
+#ASSERT `Extension 2: no inventory of undamaged property is needed for a claim of` 40_000_000 `on an item insured for` 800_000_000
+#ASSERT NOT `Extension 2: no inventory of undamaged property is needed for a claim of` 40_000_001 `on an item insured for` 800_000_000
+
+GIVEN c1 IS A NUMBER
+      c2 IS A NUMBER
+      c3 IS A NUMBER
+      c4 IS A NUMBER
+      c5 IS A NUMBER
+      c6 IS A NUMBER
+      c7 IS A NUMBER
+GIVETH A `The costs claimed under the Part 1 Extensions`
+`costs: fees` c1 `scale` c2 `fire fighting` c3 `debris` c4 `demolition` c5 `shoring` c6 `protection` c7 MEANS
+    `The costs claimed under the Part 1 Extensions` WITH
+        `the claim for this loss`                                   IS 0
+        `architects', surveyors' and engineers' fees incurred`      IS c1
+        `the fees allowed by the scales of the professional bodies` IS c2
+        `fire fighting costs incurred`                              IS c3
+        `costs of removing debris`                                  IS c4
+        `costs of dismantling or demolishing`                       IS c5
+        `costs of shoring or propping up`                           IS c6
+        `costs of temporary protection`                             IS c7
+
+-- Extension 3: the scale binds (120,000,000), or 10% of the Home's 2,000,000,000 (200,000,000).
+#ASSERT `Extension 3: architects' and engineers' fees payable under` `the 2026 Summary` `on` (`costs: fees` 150_000_000 `scale` 120_000_000 `fire fighting` 0 `debris` 0 `demolition` 0 `shoring` 0 `protection` 0) EQUALS 120_000_000
+#ASSERT `Extension 3: architects' and engineers' fees payable under` `the 2026 Summary` `on` (`costs: fees` 250_000_000 `scale` 230_000_000 `fire fighting` 0 `debris` 0 `demolition` 0 `shoring` 0 `protection` 0) EQUALS 200_000_000
+-- Extensions 4 and 6: 10% of the Part 1 total of 2,500,000,000 is 250,000,000.
+#ASSERT `Extension 4: fire fighting costs payable under` `the 2026 Summary` `on` (`costs: fees` 0 `scale` 0 `fire fighting` 300_000_000 `debris` 0 `demolition` 0 `shoring` 0 `protection` 0) EQUALS 250_000_000
+#ASSERT `Extension 4: fire fighting costs payable under` `the 2026 Summary` `on` (`costs: fees` 0 `scale` 0 `fire fighting` 100_000_000 `debris` 0 `demolition` 0 `shoring` 0 `protection` 0) EQUALS 100_000_000
+#ASSERT `Extension 6: temporary protection payable under` `the 2026 Summary` `on` (`costs: fees` 0 `scale` 0 `fire fighting` 0 `debris` 0 `demolition` 0 `shoring` 0 `protection` 260_000_000) EQUALS 250_000_000
+-- Extension 5: the owner insures no Renovation Costs, so (b) and (c) are deleted: of
+-- 30,000,000 debris + 50,000,000 demolition + 20,000,000 shoring only the 30,000,000 counts.
+#ASSERT `Extension 5: limbs (b) and (c) are deleted under` `the 2026 Summary`
+#ASSERT `Extension 5: debris removal payable under` `the 2026 Summary` `for` `the Home` `on` (`costs: fees` 0 `scale` 0 `fire fighting` 0 `debris` 30_000_000 `demolition` 50_000_000 `shoring` 20_000_000 `protection` 0) EQUALS 30_000_000
+-- With all three items insured, all three count, capped at 10% of the item's sum insured.
+#ASSERT NOT `Extension 5: limbs (b) and (c) are deleted under` (`The Policy Summary` WITH `the Period of Insurance begins` IS YMD 2026 1 1, `the Period of Insurance ends` IS YMD 2026 12 31, `the sum insured on the Home` IS JUST 2_000_000_000, `the sum insured on the Renovation Costs` IS JUST 100_000_000, `the sum insured on the Contents` IS JUST 500_000_000, `the Part 1 Limit of Liability` IS NOTHING, `the Part 2 Limit of Liability for any one Occurrence` IS NOTHING, `the Part 2 Limit of Liability for the Period` IS NOTHING, `the Part 2 limit for food and drink` IS NOTHING, `the Part 1 Deductible` IS NOTHING, `the Part 2 Deductible` IS NOTHING, `the Part 3 Deductible` IS NOTHING, `the Insured is named under Part 3` IS FALSE, `the domestic helper benefit is named` IS FALSE, `the construction of the Home is specially provided for` IS FALSE, `the annual premium` IS 0)
+#ASSERT `Extension 5: debris removal payable under` (`The Policy Summary` WITH `the Period of Insurance begins` IS YMD 2026 1 1, `the Period of Insurance ends` IS YMD 2026 12 31, `the sum insured on the Home` IS JUST 2_000_000_000, `the sum insured on the Renovation Costs` IS JUST 100_000_000, `the sum insured on the Contents` IS JUST 500_000_000, `the Part 1 Limit of Liability` IS NOTHING, `the Part 2 Limit of Liability for any one Occurrence` IS NOTHING, `the Part 2 Limit of Liability for the Period` IS NOTHING, `the Part 2 limit for food and drink` IS NOTHING, `the Part 1 Deductible` IS NOTHING, `the Part 2 Deductible` IS NOTHING, `the Part 3 Deductible` IS NOTHING, `the Insured is named under Part 3` IS FALSE, `the domestic helper benefit is named` IS FALSE, `the construction of the Home is specially provided for` IS FALSE, `the annual premium` IS 0) `for` `the Contents` `on` (`costs: fees` 0 `scale` 0 `fire fighting` 0 `debris` 30_000_000 `demolition` 50_000_000 `shoring` 20_000_000 `protection` 0) EQUALS 50_000_000
+
+-- A loss with its Extension costs, within the General Limit: a Home fire of 300,000,000,
+-- fees 50,000,000 (scale 60,000,000), debris 30,000,000, fire fighting 10,000,000:
+-- 300 + 50 + 30 + 10 = 390,000,000, less 2,000,000.
+#ASSERT `Part 1: the amount payable with Extension costs, under` `the owner's policy` `with` `good conduct` `for` (`the house damaged by` `fire` `with` EMPTY) `on` (`figures: reinstatement` 300_000_000 `, Actual Value` 200_000_000 `, reinstated and incurred` TRUE `, cost if wholly lost` (JUST 2_500_000_000)) `and` (`costs: fees` 50_000_000 `scale` 60_000_000 `fire fighting` 10_000_000 `debris` 30_000_000 `demolition` 0 `shoring` 0 `protection` 0) `, as at` `1 April 2026` EQUALS 388_000_000
+-- The same with the loss near the sum insured: the item's share stops at 2,000,000,000;
+-- fire fighting (Part-wide) still adds 10,000,000: 2,010,000,000 less 2,000,000.
+#ASSERT `Part 1: the amount payable with Extension costs, under` `the owner's policy` `with` `good conduct` `for` (`the house damaged by` `fire` `with` EMPTY) `on` (`figures: reinstatement` 1_990_000_000 `, Actual Value` 1_500_000_000 `, reinstated and incurred` TRUE `, cost if wholly lost` (JUST 2_500_000_000)) `and` (`costs: fees` 50_000_000 `scale` 60_000_000 `fire fighting` 10_000_000 `debris` 30_000_000 `demolition` 0 `shoring` 0 `protection` 0) `, as at` `1 April 2026` EQUALS 2_008_000_000
+
+-- Extension 7: losses at hours 0, 10 and 72 are one event (the period 0-72, closed, F-72h);
+-- 73 opens a second (73-145); 150 opens a third. So three Deductibles.
+#ASSERT `Extension 7: the hours in one event` EQUALS 72
+#ASSERT `Extension 7: the number of events, for losses at hours` (LIST 0, 10, 72, 73, 150) EQUALS 3
+#ASSERT `Extension 7: the number of events, for losses at hours` (LIST 150, 73, 72, 10, 0) EQUALS 3
+#ASSERT `Extension 7: the number of events, for losses at hours` (LIST 0, 72) EQUALS 1
+#ASSERT `Extension 7: the number of events, for losses at hours` (LIST 0, 72.5) EQUALS 2
+#ASSERT `Extension 7: the number of events, for losses at hours` EMPTY EQUALS 0
+#ASSERT `Extension 7: the Deductibles borne under` `the 2026 Summary` `for losses at hours` (LIST 0, 10, 72, 73, 150) EQUALS 6_000_000
+#ASSERT `Extension 7 groups losses caused by` `flood`
+#ASSERT NOT `Extension 7 groups losses caused by` `fire`

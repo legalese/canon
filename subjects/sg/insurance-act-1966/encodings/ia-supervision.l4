@@ -1,0 +1,265 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `ia-types`
+
+-- Insurance Act 1966 — GOAL 5: SUPERVISION, APPEALS, TRANSFERS AND WINDING UP
+-- (Parts 2-3B: ss 11-14, 42-45, 59, 80, 94-130).
+--
+--   "When does a cancellation take effect, and by when must an appeal be
+--    made; what must be done, and by when, on returns, inspections and
+--    transfers; and how are an insolvent insurer's assets shared out?"
+--
+-- The Authority's powers (to direct, inspect, investigate, assume control,
+-- assist foreign regulators) turn on its opinion, which is an input; what the
+-- Act fixes — periods, thresholds, priorities — is computed here.
+-- Source: ../source/IA1966.txt, the sections cited.
+
+§ `Goal 5 — supervision and winding up`
+
+§§ `Cancellation and appeals`
+
+-- ss 13(6), 44(5), 59(3): an order "other than at the request of the insurer
+-- does not take effect until the expiration of a period of 30 days after the
+-- Authority has informed the insurer"; ss 13(8), 44(7), 59(5): if an appeal is
+-- given within that period, not "unless the order is confirmed by the Minister
+-- or the appeal is for any reason dismissed". FORK F4: "the expiration of 30
+-- days after" day D is the end of D + 30, so the order takes effect on D + 31.
+@ref ss 13(6)-(8), 44(5)-(7), 59(3)-(5)
+GIVEN informed IS A DATE, `at the request of the insurer` IS A BOOLEAN, appealed IS A BOOLEAN
+GIVETH A MAYBE DATE
+`a cancellation takes effect, informed on` informed `, at its request:` `at the request of the insurer` `, appealed in time:` appealed MEANS
+    BRANCH IF `at the request of the insurer` THEN JUST informed
+           IF appealed                        THEN NOTHING    -- awaits the Minister's decision
+           OTHERWISE                          JUST (informed PLUS 31)
+
+-- ss 11(7), 13(7), 31, 35(14), 42(6), 44(6), 59(4), 76(6), 80(5), 88(7),
+-- 92(8): an appeal to the Minister "within 30 days after being informed of
+-- the decision".
+@ref ss 11(7), 13(7), 31, 35(14), 42(6), 44(6), 59(4), 76(6), 80(5), 88(7), 92(8)
+GIVEN informed IS A DATE
+GIVETH A DATE
+`the last day to appeal to the Minister, informed on` informed MEANS informed PLUS 30
+
+-- s 127(2): for an appeal other than under ss 11(7), 42(6) and 76(6), the
+-- Minister "must, within 28 days of his or her receipt of the appeal,
+-- constitute an Appeal Advisory Committee comprising at least 3 members".
+@ref s 127(2)
+GIVEN received IS A DATE, `a refusal of a licence, authorisation or registration` IS A BOOLEAN
+GIVETH A MAYBE DATE
+`the Appeal Advisory Committee must be constituted by, appeal received` received `, a refusal under s 11(7), 42(6) or 76(6):` `a refusal of a licence, authorisation or registration` MEANS
+    IF `a refusal of a licence, authorisation or registration` THEN NOTHING ELSE JUST (received PLUS 28)
+
+-- ss 13(3)(a), 44(2)(a), 80(2)(a): a ground of cancellation that the insurer
+-- (or reinsurer) "has not commenced business within 12 months after being
+-- licensed", or the broker "within 6 months after being registered".
+DECLARE `Licence kind` IS ONE OF
+    `an insurer's licence`
+    `a reinsurer's authorisation`
+    `a broker's registration`
+
+@ref ss 13(3)(a), 44(2)(a), 80(2)(a)
+GIVEN k IS A `Licence kind`, granted IS A DATE, commenced IS A MAYBE DATE, `as at` IS A DATE
+GIVETH A BOOLEAN
+DECIDE `not commencing business is a ground for cancelling` k `, granted` granted `, commenced` commenced `, as at` `as at` IF
+    CONSIDER commenced
+    WHEN JUST c  THEN c GREATER THAN `deadline`
+    WHEN NOTHING THEN `as at` GREATER THAN `deadline`
+    WHERE
+        `deadline` MEANS `add months` granted (IF k EQUALS `a broker's registration` THEN 6 ELSE 12)
+
+-- s 13(10)(a): control of an insurer, for s 13(3)(g), at "20% or more" of the
+-- issued shares or voting power; s 44(9)(a): of a reinsurer, "50% or more".
+@ref ss 13(10)(a), 44(9)(a)
+GIVEN k IS A `Licence kind`, shares IS A NUMBER, votes IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `has control for a change-of-control ground, licence` k `, shares` shares `, votes` votes IF
+    shares AT LEAST `threshold` OR votes AT LEAST `threshold`
+    WHERE
+        `threshold` MEANS IF k EQUALS `a reinsurer's authorisation` THEN 50 ELSE 20
+
+§§ `Returns, inspection and information (ss 19, 30, 96, 97)`
+
+-- s 97(1): copies of returns "despatched not later than 14 days after the
+-- insurer receives the application"; (4): the public right of inspection does
+-- not extend to documents "lodged more than 10 years previously".
+@ref s 97(1)
+GIVEN applied IS A DATE
+GIVETH A DATE
+`copies of returns must be despatched by, applied on` applied MEANS applied PLUS 14
+
+@ref s 97(3)-(4)
+GIVEN lodged IS A DATE, on IS A DATE
+GIVETH A BOOLEAN
+DECIDE `a lodged document may be inspected by the public, lodged` lodged `, on` on IF
+    on AT MOST `add years` lodged 10
+
+-- s 96(1): explanations within a time "being at least 14 days"; (2): directions
+-- for variation within a time "being at least one month".
+@ref s 96(1)-(2)
+GIVEN notice IS A DATE, `explanation due` IS A DATE
+GIVETH A BOOLEAN
+DECIDE `the time for explanations is long enough, notice` notice `, due` `explanation due` IF
+    `explanation due` AT LEAST notice PLUS 14
+
+@ref s 96(2)
+GIVEN directed IS A DATE, due IS A DATE
+GIVETH A BOOLEAN
+DECIDE `the time for varying a return is long enough, directed` directed `, due` due IF
+    due AT LEAST `add months` directed 1
+
+-- s 30(1)-(2): the defence to a s 26/27 charge needs the Authority notified
+-- "within 14 days after becoming aware" (or after the contravention).
+@ref s 30(1)(b), (2)(c)
+GIVEN aware IS A DATE, notified IS A DATE
+GIVETH A BOOLEAN
+DECIDE `notified in time for the s 30 defence, aware` aware `, notified` notified IF
+    notified AT MOST aware PLUS 14
+
+-- s 19(3): documents of title produced "on the Authority giving at least 14
+-- days' notice".
+@ref s 19(3)
+GIVEN given IS A DATE, production IS A DATE
+GIVETH A BOOLEAN
+DECIDE `enough notice to produce documents of title, given` given `, for` production IF
+    production AT LEAST given PLUS 14
+
+§§ `Moratorium and statutory management (ss 102-107)`
+
+-- s 107(3): "Any order made under subsection (1) is valid for a period not
+-- exceeding 6 months."
+@ref s 107(1)-(3)
+GIVEN made IS A DATE
+GIVETH A DATE
+`a moratorium order lapses at the latest on, made` made MEANS `add months` made 6
+
+-- s 102(1): the grounds on which the Authority may act. The Authority's
+-- satisfaction is an input; any one ground suffices.
+DECLARE `Section 102 ground` IS ONE OF
+    `affairs conducted detrimentally to the public or policy owners`
+    `insolvent or likely to be, or unable to meet obligations`
+    `a contravention of the Act`
+    `a breach of licence or registration conditions`
+    `the person has informed the Authority it is or may become insolvent`
+    `in the public interest`
+    `no ground`
+
+@ref s 102(1)-(2)
+GIVEN g IS A `Section 102 ground`
+GIVETH A BOOLEAN
+DECIDE `the Authority may direct or assume control on` g IF NOT g EQUALS `no ground`
+
+§§ `Transfer of business (ss 117-119)`
+
+-- s 118(1)(b): notice of the application "not earlier than one month after the
+-- copy is so lodged"; (c): the scheme open to inspection "for a period of
+-- 15 days after the publication"; (3): copies to policy owners "at least
+-- 15 days before application is made".
+@ref s 118(1)(b)-(c), (3)
+GIVEN lodged IS A DATE
+GIVETH A DATE
+`the earliest date to publish notice of a transfer scheme, lodged` lodged MEANS `add months` lodged 1
+
+@ref s 118(3)
+GIVEN application IS A DATE
+GIVETH A DATE
+`copies of the scheme must reach policy owners by, application on` application MEANS application MINUS 15
+
+-- s 119(1): the transferee lodges the statements "within one month after the
+-- scheme takes effect".
+@ref s 119(1)
+GIVEN effective IS A DATE
+GIVETH A DATE
+`the transferee must lodge the documents by, scheme effective` effective MEANS `add months` effective 1
+
+-- s 117(4)-(5): the s 117 scheme is needed except for a foreign insurer's
+-- business not relating to Singapore or offshore policies, and (unless the
+-- insurer opts in under (7)) reinsurance business and captive insurers.
+@ref s 117(1), (4), (5), (7)
+GIVEN `foreign, not Singapore or offshore policies` IS A BOOLEAN, `reinsurance business or a captive insurer` IS A BOOLEAN, `opted in under s 117(7)` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a transfer must be by a confirmed s 117 scheme, foreign business:` `foreign, not Singapore or offshore policies` `, reinsurance or captive:` `reinsurance business or a captive insurer` `, opted in:` `opted in under s 117(7)` IF
+        NOT `foreign, not Singapore or offshore policies`
+    AND ((NOT `reinsurance business or a captive insurer`) OR `opted in under s 117(7)`)
+
+§§ `Winding up: the priority of claims (s 123)`
+
+-- s 123(3): "(a) firstly, any levy due ... under the Deposit Insurance and
+-- Policy Owners' Protection Schemes Act 2011; (b) secondly, protected
+-- liabilities ... up to the amount paid or payable out of any of the PPF
+-- Funds ...; (c) thirdly, any liabilities ... in respect of direct policies
+-- which are not protected ...; (d) fourthly, ... reinsurance policies; (e)
+-- fifthly, any sum claimed by the trustee of a resolution fund". (2): these rank
+-- after the preferential debts of s 203(1) of the Insolvency, Restructuring
+-- and Dissolution Act 2018 (so the caller gives the assets left after them).
+-- (4): "rank in the order specified ... but as between liabilities of the same
+-- class rank equally ... and ... abate in equal proportions".
+@ref s 123(2)-(4)
+GIVEN assets IS A NUMBER, classes IS A LIST OF NUMBER
+GIVETH A LIST OF NUMBER
+`what each s 123 class receives from assets` assets `, class claims` classes MEANS
+    CONSIDER classes
+    WHEN EMPTY THEN EMPTY
+    WHEN c FOLLOWED BY rest THEN
+        `paid` FOLLOWED BY `what each s 123 class receives from assets` (assets MINUS `paid`) `, class claims` rest
+        WHERE
+            `paid` MEANS IF assets AT LEAST c THEN c ELSE (IF assets LESS THAN 0 THEN 0 ELSE assets)
+
+-- Within a class, claims "abate in equal proportions": each claim receives
+-- its share of what the class receives.
+@ref s 123(4)(b)
+GIVEN claim IS A NUMBER, `class total` IS A NUMBER, `class receives` IS A NUMBER
+GIVETH A NUMBER
+`a claim's payment, claim` claim `, of a class totalling` `class total` `, which receives` `class receives` MEANS
+    IF `class total` EQUALS 0 THEN 0 ELSE claim TIMES `class receives` DIVIDED BY `class total`
+
+-- s 121(2): on a s 102(2)(a)(v) direction, the Court may wind up only the
+-- fund concerned if satisfied the insurer "will be able to pay its debts in
+-- full within 12 months or any longer period that the Court thinks
+-- reasonable".
+@ref s 121(1)-(2)
+GIVEN `able to pay in full within 12 months or a longer reasonable period` IS A BOOLEAN
+GIVETH A STRING
+`the winding up the Court may order, able to pay in time:` `able to pay in full within 12 months or a longer reasonable period` MEANS
+    IF `able to pay in full within 12 months or a longer reasonable period`
+    THEN "a winding up limited to the insurance fund for the class concerned (s 121(2)), or a general winding up"
+    ELSE "a general winding up, as if the insurer had suspended its business for a whole year (s 121(1))"
+
+§§ `Assistance to foreign regulators (ss 111-113)`
+
+-- s 111(1): the Authority may assist only if all of (a)-(i) are met: the
+-- request and the contravention on or after 8 January 2002; for supervision,
+-- investigation or enforcement; the three undertakings; the material
+-- important and not otherwise obtainable; the matter grave; not contrary to
+-- the public interest or policy owners' interest (the last four are the
+-- Authority's assessment, an input).
+@ref s 111(1)
+GIVEN `request received` IS A DATE, `contravention on` IS A DATE, undertakings IS A BOOLEAN, `the Authority's assessment` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Authority may assist a foreign regulator, request` `request received` `, contravention` `contravention on` `, undertakings given:` undertakings `, assessment favourable:` `the Authority's assessment` IF
+        `request received` AT LEAST YMD 2002 1 8
+    AND `contravention on` AT LEAST YMD 2002 1 8
+    AND undertakings
+    AND `the Authority's assessment`
+
+§§ `Provisions carried as text`
+
+@ref ss 10, 12, 14, 15, 18, 21, 23, 25, 32, 33, 38, 40, 46, 47, 49-53, 55-57, 60, 61, 63, 65, 72-74, 79, 81, 82, 93-95, 98-101U, 103-106, 108-110, 112, 113, 115, 116, 120, 122, 124-130, 137-141, 153-155
+GIVETH A LIST OF STRING
+`supervision provisions carried as text` MEANS
+    LIST "ss 12, 43, 79, 40: annual and web-aggregator fees as prescribed; the Authority may waive or remit"
+         "ss 14, 45, 60, 61: after cancellation, withdrawal, prohibition or revocation, business ceases but claims survive and existing premiums may be collected"
+         "s 15: registers of Singapore and offshore policies"
+         "ss 18, 21, 46, 47, 49: investment and custody of assets, reinsurance deposits and bank covenants, by directions"
+         "s 23: the Authority may require and prohibit proposal forms and brochures; every proposal form must warn the proposer that incomplete disclosure may forfeit the policy"
+         "ss 32, 33, 38, 50, 73, 124: the Authority may require information"
+         "ss 53, 55-57, 63: foreign insurer schemes by regulations, through an administrator"
+         "ss 72, 81, 82: business conduct, net asset value, and premium accounts for brokers"
+         "ss 93, 139: registers and statistics"
+         "ss 94, 95: annual accounts, audit and actuarial investigations"
+         "ss 98-101U: inspection, investigation powers, confidentiality of reports, and transfer of evidence"
+         "ss 103-106: the effect, duration and costs of the Authority's control or a statutory manager"
+         "s 120: a liquidator must try to transfer the insurance business and continue it meanwhile"
+         "s 122: co-operative society insurers are wound up as unregistered companies"
+         "ss 127-130: appeals to the Minister, final; Appeal Advisory Committees"
+         "ss 137-141: assistants, exemptions, statistics, service of notices, electronic service"
+         "ss 153-155: amendment of Schedules, regulations (offences up to $50,000 / 2 years for individuals, $100,000 otherwise, 10% a day continuing), Lloyd's saving"

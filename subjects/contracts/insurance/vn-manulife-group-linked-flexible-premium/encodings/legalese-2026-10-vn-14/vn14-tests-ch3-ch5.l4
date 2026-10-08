@@ -1,0 +1,501 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `vn14-nouns`
+IMPORT `vn14-ch1-definitions`
+IMPORT `vn14-ch3-premium-and-account`
+IMPORT `vn14-ch4-fund-and-charges`
+IMPORT `vn14-ch5-claims-and-termination`
+
+-- Tests for Chapters 3 to 5 (Articles 16 to 29). Every expected value was worked by hand from
+-- what the SOURCE states, before the assertion was run; the working is beside each group. A
+-- failing assertion is a finding, never a value to edit. The tables of 24.2(e) and 25.2 are
+-- tested row by row in the generated vn14-tests-tables.l4.
+
+§ `Tests — Chapters 3 to 5`
+
+§§ `Fixtures`
+
+`the usual accounts` MEANS
+    `The accounts` WITH
+        `the Policyholder's account value`   IS 60_000_000
+        `the Insured Member's account value` IS 40_000_000
+        `the vesting ratio`                  IS 30%
+
+GIVEN `designated` IS A BOOLEAN
+      `all basic paid` IS A BOOLEAN
+      `amount` IS A NUMBER
+      `due` IS A NUMBER
+      `paid on` IS A DATE
+      `directed otherwise` IS A BOOLEAN
+GIVETH A `A premium payment`
+`a payment: rider premium designated` `designated` `, all basic paid` `all basic paid` `, amount` `amount` `, instalments due` `due` `, paid on` `paid on` `, directed otherwise` `directed otherwise` MEANS
+    `A premium payment` WITH
+        `amount`                                                    IS `amount`
+        `date paid`                                                 IS `paid on`
+        `Premium Due Date`                                          IS YMD 2026 6 30
+        `insurance year`                                            IS 2
+        `the Policyholder has designated payment of rider premiums` IS `designated`
+        `all basic premium instalments due have been paid`          IS `all basic paid`
+        `instalment`                                                IS 10_000_000
+        `instalments due and unpaid`                                IS `due`
+        `the Policyholder directed otherwise`                       IS `directed otherwise`
+
+GIVEN `amount` IS A NUMBER
+      `due` IS A NUMBER
+GIVETH A `A premium payment`
+`a designated payment of` `amount` `against instalments due` `due` MEANS
+    `a payment: rider premium designated` TRUE `, all basic paid` FALSE `, amount` `amount` `, instalments due` `due` `, paid on` (YMD 2026 7 10) `, directed otherwise` FALSE
+
+GIVEN `paid on` IS A DATE
+      `directed otherwise` IS A BOOLEAN
+GIVETH A `A premium payment`
+`a payment on` `paid on` `, directed otherwise` `directed otherwise` MEANS
+    `a payment: rider premium designated` TRUE `, all basic paid` TRUE `, amount` 25_000_000 `, instalments due` 0 `, paid on` `paid on` `, directed otherwise` `directed otherwise`
+
+§§ `Article 16.2.1 — allocation among the instalments due`
+
+GIVEN `instalments paid` IS A NUMBER
+      `applied` IS A NUMBER
+      `suspense` IS A NUMBER
+      `the top-up` IS A NUMBER
+GIVETH AN `An allocation of a payment`
+`an allocation:` `instalments paid` `paid,` `applied` `applied,` `suspense` `held in suspense,` `the top-up` `top-up` MEANS
+    `An allocation of a payment` WITH
+        `instalments paid`       IS `instalments paid`
+        `applied to instalments` IS `applied`
+        `suspense premium`       IS `suspense`
+        `top-up premium`         IS `the top-up`
+
+-- Instalment 10,000,000, three due. 35,000,000 pays all three; 5,000,000 is Top-up Premium.
+-- 25,000,000 pays two; 5,000,000 is too little for the third and is held as suspense.
+-- 5,000,000 pays none; all of it is suspense.
+#ASSERT `16.2.1 — the allocation of` (`a designated payment of` 35_000_000 `against instalments due` 3) EQUALS `an allocation:` 3 `paid,` 30_000_000 `applied,` 0 `held in suspense,` 5_000_000 `top-up`
+#ASSERT `16.2.1 — the allocation of` (`a designated payment of` 25_000_000 `against instalments due` 3) EQUALS `an allocation:` 2 `paid,` 20_000_000 `applied,` 5_000_000 `held in suspense,` 0 `top-up`
+#ASSERT `16.2.1 — the allocation of` (`a designated payment of` 5_000_000 `against instalments due` 3) EQUALS `an allocation:` 0 `paid,` 0 `applied,` 5_000_000 `held in suspense,` 0 `top-up`
+-- Exactly 30,000,000: all three, nothing left.
+#ASSERT `16.2.1 — the allocation of` (`a designated payment of` 30_000_000 `against instalments due` 3) EQUALS `an allocation:` 3 `paid,` 30_000_000 `applied,` 0 `held in suspense,` 0 `top-up`
+-- No rider designation, every basic instalment paid: 7,000,000 is all Top-up Premium.
+#ASSERT `16.2.1 — the allocation of` (`a payment: rider premium designated` FALSE `, all basic paid` TRUE `, amount` 7_000_000 `, instalments due` 0 `, paid on` (YMD 2026 7 10) `, directed otherwise` FALSE) EQUALS `an allocation:` 0 `paid,` 0 `applied,` 0 `held in suspense,` 7_000_000 `top-up`
+#ASSERT REFUSED `16.2.1 — the allocation of` (`a payment: rider premium designated` FALSE `, all basic paid` FALSE `, amount` 7_000_000 `, instalments due` 1 `, paid on` (YMD 2026 7 10) `, directed otherwise` FALSE)
+
+§§ `Article 16.2.1(a)(ii) and (b)(ii) — the end of the grace period`
+
+GIVEN `year` IS A NUMBER
+      `suspense` IS A NUMBER
+      `supplementary` IS A NUMBER
+      `account value` IS A NUMBER
+      `basic due` IS A NUMBER
+      `rider due` IS A NUMBER
+      `riders from the account value` IS A BOOLEAN
+GIVETH A `The position at the end of the grace period`
+`at the end of the grace period in year` `year` `: suspense` `suspense` `, supplementary` `supplementary` `, account value` `account value` `, basic due` `basic due` `, rider due` `rider due` `, riders from the account value` `riders from the account value` MEANS
+    `The position at the end of the grace period` WITH
+        `insurance year`                          IS `year`
+        `suspense premium`                        IS `suspense`
+        `supplementary premium`                   IS `supplementary`
+        `account value available for withdrawal`  IS `account value`
+        `basic premium due and unpaid`            IS `basic due`
+        `basic premium instalment`                IS 10_000_000
+        `rider premium due and unpaid`            IS `rider due`
+        `the Policyholder registered to pay rider premiums from the account value` IS `riders from the account value`
+
+GIVEN `cancelled` IS A BOOLEAN
+      `rider paid` IS A NUMBER
+      `basic paid` IS A NUMBER
+      `withdrawn` IS A NUMBER
+      `top-up` IS A NUMBER
+      `left` IS A NUMBER
+      `lapses` IS A BOOLEAN
+GIVETH A `What happens at the end of the grace period`
+`riders cancelled` `cancelled` `, rider paid` `rider paid` `, basic paid` `basic paid` `, withdrawn` `withdrawn` `, top-up` `top-up` `, left over` `left` `, lapses` `lapses` MEANS
+    `What happens at the end of the grace period` WITH
+        `all rider products cancelled`     IS `cancelled`
+        `rider premium paid`               IS `rider paid`
+        `basic premium paid`               IS `basic paid`
+        `withdrawn from the account value` IS `withdrawn`
+        `top-up premium`                   IS `top-up`
+        `left over, its use not stated`    IS `left`
+        `the part lapses`                  IS `lapses`
+
+-- Year 2: suspense 5,000,000 + supplementary 2,000,000, Basic due 10,000,000, Account Value
+-- 20,000,000: the Account Value supplies 3,000,000; riders cancelled; no lapse.
+#ASSERT `16.2.1(a)(ii) — at the end of the grace period in insurance years 1 to 3` (`at the end of the grace period in year` 2 `: suspense` 5_000_000 `, supplementary` 2_000_000 `, account value` 20_000_000 `, basic due` 10_000_000 `, rider due` 1_000_000 `, riders from the account value` FALSE) EQUALS `riders cancelled` TRUE `, rider paid` 0 `, basic paid` 10_000_000 `, withdrawn` 3_000_000 `, top-up` 0 `, left over` 0 `, lapses` FALSE
+-- The same with an Account Value of 2,000,000: 9,000,000 in all, short of 10,000,000: lapse.
+#ASSERT `16.2.1(a)(ii) — at the end of the grace period in insurance years 1 to 3` (`at the end of the grace period in year` 2 `: suspense` 5_000_000 `, supplementary` 2_000_000 `, account value` 2_000_000 `, basic due` 10_000_000 `, rider due` 1_000_000 `, riders from the account value` FALSE) EQUALS `riders cancelled` TRUE `, rider paid` 0 `, basic paid` 0 `, withdrawn` 0 `, top-up` 0 `, left over` 7_000_000 `, lapses` TRUE
+-- Exactly 10,000,000 on hand (5 + 2 + 3): paid, no lapse.
+#ASSERT `16.2.1(a)(ii) — at the end of the grace period in insurance years 1 to 3` (`at the end of the grace period in year` 2 `: suspense` 5_000_000 `, supplementary` 2_000_000 `, account value` 3_000_000 `, basic due` 10_000_000 `, rider due` 1_000_000 `, riders from the account value` FALSE) EQUALS `riders cancelled` TRUE `, rider paid` 0 `, basic paid` 10_000_000 `, withdrawn` 3_000_000 `, top-up` 0 `, left over` 0 `, lapses` FALSE
+-- Year 5: suspense 25,000,000, rider due 2,000,000 (not from the Account Value), Basic due
+-- 20,000,000: riders paid; 23,000,000 left pays both Basic instalments; 3,000,000 Top-up.
+#ASSERT `16.2.1(b)(ii) — at the end of the grace period from insurance year 4` (`at the end of the grace period in year` 5 `: suspense` 25_000_000 `, supplementary` 0 `, account value` 50_000_000 `, basic due` 20_000_000 `, rider due` 2_000_000 `, riders from the account value` FALSE) EQUALS `riders cancelled` FALSE `, rider paid` 2_000_000 `, basic paid` 20_000_000 `, withdrawn` 0 `, top-up` 3_000_000 `, left over` 0 `, lapses` FALSE
+-- Year 5: suspense 1,000,000, rider due 2,000,000 not from the Account Value: riders cancelled;
+-- 1,000,000 cannot pay a 10,000,000 instalment: left over; no lapse from year 4.
+#ASSERT `16.2.1(b)(ii) — at the end of the grace period from insurance year 4` (`at the end of the grace period in year` 5 `: suspense` 1_000_000 `, supplementary` 0 `, account value` 50_000_000 `, basic due` 10_000_000 `, rider due` 2_000_000 `, riders from the account value` FALSE) EQUALS `riders cancelled` TRUE `, rider paid` 0 `, basic paid` 0 `, withdrawn` 0 `, top-up` 0 `, left over` 1_000_000 `, lapses` FALSE
+-- The same, registered to pay riders from the Account Value: 1,000,000 cash + 1,000,000 withdrawn.
+#ASSERT `16.2.1(b)(ii) — at the end of the grace period from insurance year 4` (`at the end of the grace period in year` 5 `: suspense` 1_000_000 `, supplementary` 0 `, account value` 50_000_000 `, basic due` 10_000_000 `, rider due` 2_000_000 `, riders from the account value` TRUE) EQUALS `riders cancelled` FALSE `, rider paid` 2_000_000 `, basic paid` 0 `, withdrawn` 1_000_000 `, top-up` 0 `, left over` 0 `, lapses` FALSE
+
+§§ `Articles 16.2.2 and 16.2.3 — both sides of 15 days`
+
+-- Due 30 June 2026. 14 June is 16 days before; 15 June, 15 days; 29 June, 1 day; 30 June, 0.
+#ASSERT `16.2.2 and 16.2.3 — when the payment was made` (`a payment on` (YMD 2026 6 14) `, directed otherwise` FALSE) EQUALS `more than 15 days before the Premium Due Date`
+#ASSERT `16.2.2 and 16.2.3 — when the payment was made` (`a payment on` (YMD 2026 6 15) `, directed otherwise` FALSE) EQUALS `within 15 days before the Premium Due Date`
+#ASSERT `16.2.2 and 16.2.3 — when the payment was made` (`a payment on` (YMD 2026 6 29) `, directed otherwise` FALSE) EQUALS `within 15 days before the Premium Due Date`
+#ASSERT `16.2.2 and 16.2.3 — when the payment was made` (`a payment on` (YMD 2026 6 30) `, directed otherwise` FALSE) EQUALS `on or after the Premium Due Date`
+#ASSERT `16.2.2 and 16.2.3 — the order of application of` (`a payment on` (YMD 2026 6 14) `, directed otherwise` FALSE) EQUALS LIST `the instalments due and unpaid`, `the Top-up Premium`
+#ASSERT `16.2.2 and 16.2.3 — the order of application of` (`a payment on` (YMD 2026 6 20) `, directed otherwise` FALSE) EQUALS LIST `the instalments due and unpaid`, `the next instalment`, `the Top-up Premium`
+#ASSERT `16.2.2 and 16.2.3 — the order of application of` (`a payment on` (YMD 2026 6 20) `, directed otherwise` TRUE) EQUALS LIST `the instalments due and unpaid`, `as the Policyholder directs`
+#ASSERT REFUSED `16.2.2 and 16.2.3 — the order of application of` (`a payment on` (YMD 2026 7 1) `, directed otherwise` FALSE)
+#ASSERT `16.3 — the Company may limit or refuse Top-up Premium`
+
+§§ `Articles 16.4 and 18 — the duty to pay, as a trace`
+
+-- Due in 10 days. Paid on day 10: fulfilled. Paid on day 70 (inside the 60-day grace period
+-- that opened at day 10): fulfilled. Nothing by day 71: breached, with the 18.2(a) reason.
+#TRACE `16.4 and 18 — the duty to pay a Basic Premium in insurance years 1 to 3, due in` 10 AT 0 WITH
+    PARTY `the Policyholder` DOES `pay the basic premium due` AT 10
+#TRACE `16.4 and 18 — the duty to pay a Basic Premium in insurance years 1 to 3, due in` 10 AT 0 WITH
+    (`WAIT UNTIL` 11)
+    PARTY `the Policyholder` DOES `pay the premium due within the grace period` AT 70
+#TRACE `16.4 and 18 — the duty to pay a Basic Premium in insurance years 1 to 3, due in` 10 AT 0 WITH
+    (`WAIT UNTIL` 71)
+
+§§ `Article 17.3`
+
+#ASSERT `17.3 — a change of the vesting ratio has effect, where` TRUE `and` TRUE
+#ASSERT NOT `17.3 — a change of the vesting ratio has effect, where` FALSE `and` TRUE
+
+§§ `Article 18 — grace and lapse`
+
+GIVEN `year` IS A NUMBER
+      `premium unpaid on` IS A MAYBE DATE
+      `deduction short on` IS A MAYBE DATE
+GIVETH A `The facts that start or end a grace period`
+`grace facts in year` `year` `: premium unpaid on` `premium unpaid on` `, deduction short on` `deduction short on` MEANS
+    `The facts that start or end a grace period` WITH
+        `insurance year`                                                            IS `year`
+        `first date the basic premium was not paid in full on its due date`         IS `premium unpaid on`
+        `first date the account value less Debt could not pay the Monthly Deduction` IS `deduction short on`
+
+-- Year 2: the earlier trigger, 15 February 2026; plus 60 days = 16 April 2026.
+#ASSERT `18.1 — the grace period starts on` (`grace facts in year` 2 `: premium unpaid on` (JUST (YMD 2026 3 1)) `, deduction short on` (JUST (YMD 2026 2 15))) EQUALS JUST (YMD 2026 2 15)
+#ASSERT `18.1 — the last day of the grace period` (`grace facts in year` 2 `: premium unpaid on` (JUST (YMD 2026 3 1)) `, deduction short on` (JUST (YMD 2026 2 15))) EQUALS JUST (YMD 2026 4 16)
+#ASSERT `18.1 — the grace period starts on` (`grace facts in year` 2 `: premium unpaid on` (JUST (YMD 2026 3 1)) `, deduction short on` NOTHING) EQUALS JUST (YMD 2026 3 1)
+-- Year 5: an unpaid premium starts nothing; only the Monthly Deduction trigger counts.
+#ASSERT `18.1 — the grace period starts on` (`grace facts in year` 5 `: premium unpaid on` (JUST (YMD 2026 3 1)) `, deduction short on` NOTHING) EQUALS NOTHING
+#ASSERT `18.1 — the grace period starts on` (`grace facts in year` 4 `: premium unpaid on` (JUST (YMD 2026 3 1)) `, deduction short on` (JUST (YMD 2026 5 1))) EQUALS JUST (YMD 2026 5 1)
+
+GIVEN `year` IS A NUMBER
+      `basic unpaid` IS A BOOLEAN
+      `account value pays basic` IS A BOOLEAN
+      `account value pays deduction` IS A BOOLEAN
+GIVETH A `The position after the grace period`
+`after grace in year` `year` `: basic unpaid` `basic unpaid` `, account value pays basic` `account value pays basic` `, account value pays deduction` `account value pays deduction` MEANS
+    `The position after the grace period` WITH
+        `insurance year`                                              IS `year`
+        `basic premium still unpaid`                                  IS `basic unpaid`
+        `account value enough to pay the basic premium`               IS `account value pays basic`
+        `account value less Debt enough to pay the Monthly Deduction` IS `account value pays deduction`
+
+#ASSERT `18.2 — the part lapses` (`after grace in year` 3 `: basic unpaid` TRUE `, account value pays basic` FALSE `, account value pays deduction` TRUE)
+#ASSERT NOT `18.2 — the part lapses` (`after grace in year` 3 `: basic unpaid` TRUE `, account value pays basic` TRUE `, account value pays deduction` TRUE)
+#ASSERT `18.2 — the part lapses` (`after grace in year` 3 `: basic unpaid` FALSE `, account value pays basic` TRUE `, account value pays deduction` FALSE)
+#ASSERT NOT `18.2 — the part lapses` (`after grace in year` 4 `: basic unpaid` TRUE `, account value pays basic` FALSE `, account value pays deduction` TRUE)
+#ASSERT `18.2 — the part lapses` (`after grace in year` 4 `: basic unpaid` FALSE `, account value pays basic` TRUE `, account value pays deduction` FALSE)
+
+§§ `Article 19 — reinstatement`
+
+GIVEN `maturity` IS A DATE
+      `requested on` IS A DATE
+      `paid` IS A NUMBER
+GIVETH A `A request for reinstatement`
+`a reinstatement request after a lapse on 10 March 2025, maturity` `maturity` `, requested` `requested on` `, paying` `paid` MEANS
+    `A request for reinstatement` WITH
+        `date the part lapsed`                                     IS YMD 2025 3 10
+        `date of the request`                                      IS `requested on`
+        `maturity date`                                            IS `maturity`
+        `requested in writing by the Policyholder and the Insured Member` IS TRUE
+        `evidence of insurability accepted by the Company`         IS TRUE
+        `one basic premium instalment`                             IS 10_000_000
+        `Monthly Deductions in the grace period`                   IS 1_500_000
+        `basic premium unpaid in the first three insurance years`  IS 4_000_000
+        `debt`                                                     IS 500_000
+        `amount paid with the request`                             IS `paid`
+
+-- Two years from 10 March 2025: 10 March 2027, unless the Maturity Date is earlier.
+#ASSERT `19 — the last day to request reinstatement` (`a reinstatement request after a lapse on 10 March 2025, maturity` (YMD 2040 1 1) `, requested` (YMD 2026 1 1) `, paying` 0) EQUALS YMD 2027 3 10
+#ASSERT `19 — the last day to request reinstatement` (`a reinstatement request after a lapse on 10 March 2025, maturity` (YMD 2026 12 31) `, requested` (YMD 2026 1 1) `, paying` 0) EQUALS YMD 2026 12 31
+-- 10,000,000 + 1,500,000 + 4,000,000 + 500,000 = 16,000,000.
+#ASSERT `19(c) — the amount to pay for reinstatement` (`a reinstatement request after a lapse on 10 March 2025, maturity` (YMD 2040 1 1) `, requested` (YMD 2026 1 1) `, paying` 0) EQUALS 16_000_000
+#ASSERT `19 — the request meets the conditions for the Company to consider reinstatement` (`a reinstatement request after a lapse on 10 March 2025, maturity` (YMD 2040 1 1) `, requested` (YMD 2027 3 10) `, paying` 16_000_000)
+#ASSERT NOT `19 — the request meets the conditions for the Company to consider reinstatement` (`a reinstatement request after a lapse on 10 March 2025, maturity` (YMD 2040 1 1) `, requested` (YMD 2027 3 11) `, paying` 16_000_000)
+#ASSERT NOT `19 — the request meets the conditions for the Company to consider reinstatement` (`a reinstatement request after a lapse on 10 March 2025, maturity` (YMD 2040 1 1) `, requested` (YMD 2026 1 1) `, paying` 15_999_999)
+
+§§ `Article 20 — account suspension`
+
+GIVEN `year` IS A NUMBER
+      `taken` IS A NUMBER
+      `months` IS A NUMBER
+GIVETH A `A request for account suspension`
+`a suspension request in year` `year` `, after` `taken` `, for months` `months` MEANS
+    `A request for account suspension` WITH
+        `insurance year`                                       IS `year`
+        `requested by the Policyholder and the Insured Member` IS TRUE
+        `suspensions already taken in the policy term`         IS `taken`
+        `requested start`                                      IS YMD 2026 1 1
+        `requested months`                                     IS `months`
+        `maturity date`                                        IS YMD 2026 12 31
+
+-- Year 4, one taken before, 11 months to 1 December 2026 (before maturity): considered.
+#ASSERT `20 — the request may be considered` (`a suspension request in year` 4 `, after` 1 `, for months` 11)
+-- 12 months would end 1 January 2027, past the 31 December 2026 maturity: not.
+#ASSERT NOT `20 — the request may be considered` (`a suspension request in year` 4 `, after` 1 `, for months` 12)
+#ASSERT NOT `20 — the request may be considered` (`a suspension request in year` 3 `, after` 0 `, for months` 6)
+#ASSERT NOT `20 — the request may be considered` (`a suspension request in year` 6 `, after` 2 `, for months` 6)
+#ASSERT `20.2 — the Monthly Deduction while suspended` EQUALS 0
+#ASSERT NOT `20.2 — the death benefit is performed while suspended`
+
+§§ `Article 21 — withdrawals`
+
+GIVEN `year` IS A NUMBER
+      `amount` IS A NUMBER
+      `minimum remaining` IS A NUMBER
+      `plan` IS A `A Plan`
+      `account value after` IS A NUMBER
+GIVETH A `A withdrawal request`
+`a withdrawal in year` `year` `of` `amount` `, minimum remaining` `minimum remaining` `, plan` `plan` `, account value after` `account value after` MEANS
+    `A withdrawal request` WITH
+        `insurance year`                                           IS `year`
+        `the part is in force`                                     IS TRUE
+        `amount requested`                                         IS `amount`
+        `withdrawal charge`                                        IS 1_000_000
+        `debt`                                                     IS 4_000_000
+        `the Insured Member's account value, excluding the vested account value` IS 100_000_000
+        `the Company's minimum withdrawal at the time`             IS 1_000_000
+        `the Company's minimum remaining balance at the time`      IS `minimum remaining`
+        `plan`                                                     IS `plan`
+        `sum insured`                                              IS 500_000_000
+        `account value after the withdrawal`                       IS `account value after`
+        `the Company's minimum sum insured`                        IS 100_000_000
+
+-- 80% of (100,000,000 - 1,000,000 - 4,000,000) = 76,000,000.
+#ASSERT `21.1(a) — the most that may be withdrawn at once` (`a withdrawal in year` 2 `of` 76_000_000 `, minimum remaining` 20_000_000 `, plan` `the Basic Plan` `, account value after` 30_000_000) EQUALS 76_000_000
+#ASSERT `21.1 — the withdrawal may be made` (`a withdrawal in year` 2 `of` 76_000_000 `, minimum remaining` 20_000_000 `, plan` `the Basic Plan` `, account value after` 30_000_000)
+#ASSERT NOT `21.1 — the withdrawal may be made` (`a withdrawal in year` 2 `of` 76_000_001 `, minimum remaining` 20_000_000 `, plan` `the Basic Plan` `, account value after` 30_000_000)
+#ASSERT NOT `21.1 — the withdrawal may be made` (`a withdrawal in year` 1 `of` 10_000_000 `, minimum remaining` 20_000_000 `, plan` `the Basic Plan` `, account value after` 30_000_000)
+-- 100,000,000 - 76,000,000 leaves 24,000,000: below a 30,000,000 minimum balance.
+#ASSERT NOT `21.1 — the withdrawal may be made` (`a withdrawal in year` 2 `of` 76_000_000 `, minimum remaining` 30_000_000 `, plan` `the Basic Plan` `, account value after` 30_000_000)
+#ASSERT `21.1 — paid to the Insured Member for` (`a withdrawal in year` 2 `of` 76_000_000 `, minimum remaining` 20_000_000 `, plan` `the Basic Plan` `, account value after` 30_000_000) EQUALS 75_000_000
+-- 21.2: Basic Plan, Account Value after 30,000,000 < 500,000,000: 500 - 76 = 424,000,000.
+#ASSERT `21.2 — the Sum Insured after` (`a withdrawal in year` 2 `of` 76_000_000 `, minimum remaining` 20_000_000 `, plan` `the Basic Plan` `, account value after` 30_000_000) EQUALS 424_000_000
+#ASSERT `21.2 — the Sum Insured after` (`a withdrawal in year` 2 `of` 76_000_000 `, minimum remaining` 20_000_000 `, plan` `the Enhanced Plan` `, account value after` 30_000_000) EQUALS 500_000_000
+#ASSERT `21.2 — the Sum Insured after` (`a withdrawal in year` 2 `of` 76_000_000 `, minimum remaining` 20_000_000 `, plan` `the Basic Plan` `, account value after` 500_000_000) EQUALS 500_000_000
+#ASSERT `21.2 — the reduced Sum Insured meets the Company's minimum, for` (`a withdrawal in year` 2 `of` 76_000_000 `, minimum remaining` 20_000_000 `, plan` `the Basic Plan` `, account value after` 30_000_000)
+
+§§ `Article 22 — early termination`
+
+#ASSERT `22 — the total paid on early termination, for accounts` `the usual accounts` `, Debt` 3_000_000 `and a termination charge of` 5_000_000 EQUALS 92_000_000
+#ASSERT (`22 — the split on early termination, before deductions, of` `the usual accounts`) EQUALS (`A split between the Policyholder and the Insured Member` WITH `to the Policyholder` IS 42_000_000, `to the Insured Member` IS 58_000_000)
+
+§§ `Article 23 — changing the Sum Insured or the Plan`
+
+GIVEN `kind` IS A `A kind of change of cover`
+      `year` IS A NUMBER
+      `evidence` IS A BOOLEAN
+      `new sum insured` IS A NUMBER
+      `approved on` IS A DATE
+GIVETH A `A request to change cover`
+`a change of cover:` `kind` `, year` `year` `, evidence` `evidence` `, new sum insured` `new sum insured` `, approved` `approved on` MEANS
+    `A request to change cover` WITH
+        `kind`                                             IS `kind`
+        `insurance year`                                   IS `year`
+        `the part is in force`                             IS TRUE
+        `the Insured Member consented`                     IS TRUE
+        `requested in writing on the Company's form`       IS TRUE
+        `evidence of insurability provided`                IS `evidence`
+        `sum insured after the change`                     IS `new sum insured`
+        `the product's minimum sum insured`                IS 100_000_000
+        `the product's maximum sum insured`                IS 5_000_000_000
+        `basic premium now`                                IS 10_000_000
+        `basic premium after the change`                   IS 10_000_000
+        `the Policyholder pays the premium for the change` IS FALSE
+        `sum insured before the change`                    IS 500_000_000
+        `account value at the request`                     IS 120_000_000
+        `coverage start date`                              IS YMD 2020 1 31
+        `date the Company approved the change`             IS `approved on`
+
+#ASSERT NOT `23.1(a) — the request meets the conditions` (`a change of cover:` `an increase in the Sum Insured` `, year` 1 `, evidence` TRUE `, new sum insured` 600_000_000 `, approved` (YMD 2026 2 10))
+#ASSERT `23.1(a) — the request meets the conditions` (`a change of cover:` `an increase in the Sum Insured` `, year` 2 `, evidence` TRUE `, new sum insured` 600_000_000 `, approved` (YMD 2026 2 10))
+#ASSERT NOT `23.1(a) — the request meets the conditions` (`a change of cover:` `an increase in the Sum Insured` `, year` 2 `, evidence` FALSE `, new sum insured` 600_000_000 `, approved` (YMD 2026 2 10))
+#ASSERT `23.1(a) — the request meets the conditions` (`a change of cover:` `a decrease in the Sum Insured` `, year` 1 `, evidence` FALSE `, new sum insured` 400_000_000 `, approved` (YMD 2026 2 10))
+#ASSERT NOT `23.1(a) — the request meets the conditions` (`a change of cover:` `a decrease in the Sum Insured` `, year` 1 `, evidence` FALSE `, new sum insured` 99_999_999 `, approved` (YMD 2026 2 10))
+#ASSERT NOT `23.1(a) — the request meets the conditions` (`a change of cover:` `a change from the Enhanced Plan to the Basic Plan` `, year` 1 `, evidence` FALSE `, new sum insured` 620_000_000 `, approved` (YMD 2026 2 10))
+-- 23.1(b): 500,000,000 + 120,000,000 = 620,000,000.
+#ASSERT `23.1(b) — the Sum Insured after a change from the Enhanced Plan to the Basic Plan` (`a change of cover:` `a change from the Enhanced Plan to the Basic Plan` `, year` 3 `, evidence` FALSE `, new sum insured` 620_000_000 `, approved` (YMD 2026 2 10)) EQUALS 620_000_000
+-- 23.1(d): cover from 31 January 2020; approved 10 February 2026 -> 28 February 2026; approved
+-- on 28 February 2026, a Monthly Anniversary -> the next, 31 March 2026; approved 1 March -> 31 March.
+#ASSERT `23.1(d) — the change takes effect on` (`a change of cover:` `an increase in the Sum Insured` `, year` 7 `, evidence` TRUE `, new sum insured` 600_000_000 `, approved` (YMD 2026 2 10)) EQUALS YMD 2026 2 28
+#ASSERT `23.1(d) — the change takes effect on` (`a change of cover:` `an increase in the Sum Insured` `, year` 7 `, evidence` TRUE `, new sum insured` 600_000_000 `, approved` (YMD 2026 2 28)) EQUALS YMD 2026 3 31
+#ASSERT `23.1(d) — the change takes effect on` (`a change of cover:` `an increase in the Sum Insured` `, year` 7 `, evidence` TRUE `, new sum insured` 600_000_000 `, approved` (YMD 2026 3 1)) EQUALS YMD 2026 3 31
+
+§§ `Article 24 — interest and the Account Value`
+
+-- The declared rate is credited, never below the guarantee: 2.5% in year 3 -> 3.0%; 4% -> 4%.
+#ASSERT `24.2 — the annual rate credited in insurance year` 3 `at a declared rate of` (2.5%) EQUALS 3.0%
+#ASSERT `24.2 — the annual rate credited in insurance year` 3 `at a declared rate of` (4%) EQUALS 4%
+#ASSERT `24.2 — the annual rate credited in insurance year` 12 `at a declared rate of` (0.5%) EQUALS 1.0%
+-- (c)/(d): the fund earned 6% against a declared 5%: 1% more next year; earned 4%: nothing back.
+#ASSERT `24.2(c) and (d) — the rate difference credited in the next financial year, for a declared rate of` (5%) `and an actual rate of` (6%) EQUALS 1%
+#ASSERT `24.2(c) and (d) — the rate difference credited in the next financial year, for a declared rate of` (5%) `and an actual rate of` (4%) EQUALS 0
+-- (f): 3,000,000 of interest shared 60:40.
+#ASSERT (`24.2(f) — interest of` 3_000_000 `shared between the accounts` `the usual accounts`) EQUALS (`A split between the Policyholder and the Insured Member` WITH `to the Policyholder` IS 1_800_000, `to the Insured Member` IS 1_200_000)
+
+GIVEN `suspended` IS A BOOLEAN
+GIVETH A `A month of the account`
+`a month of the account, suspended` `suspended` MEANS
+    `A month of the account` WITH
+        `account value of the previous month`        IS 100_000_000
+        `premium allocated in the month`             IS 6_000_000
+        `Monthly Deduction`                          IS 500_000
+        `withdrawals in the month`                   IS 5_000_000
+        `interest credited in the month`             IS 400_000
+        `loyalty bonus in the month`                 IS 0
+        `the account is suspended under Article 20`  IS `suspended`
+
+-- Start: 100,000,000 + 6,000,000 - 500,000 = 105,500,000. End: - 5,000,000 + 400,000 = 100,900,000.
+#ASSERT `24.3 — the Account Value at the start of the month` (`a month of the account, suspended` FALSE) EQUALS 105_500_000
+#ASSERT `24.3 — the Account Value at the end of the month` (`a month of the account, suspended` FALSE) EQUALS 100_900_000
+#ASSERT REFUSED `24.3 — the Account Value at the end of the month` (`a month of the account, suspended` TRUE)
+
+§§ `Article 25 — the charges`
+
+-- 25.1: 10,000,000 at 50% = 5,000,000.
+#ASSERT `25.1 — the Initial Charge on` 10_000_000 `at a rate of` (50%) EQUALS 5_000_000
+-- 25.2/25.3: 500,000 from a Policyholder account of 300,000 and an Insured Member account of
+-- 1,000,000: 300,000 then 200,000. From 0 and 100,000: 0, 100,000, and 400,000 uncovered.
+#ASSERT (`25.2 and 25.3 — a charge of` 500_000 `taken from` (`The accounts` WITH `the Policyholder's account value` IS 300_000, `the Insured Member's account value` IS 1_000_000, `the vesting ratio` IS 0)) EQUALS (`A charge taken from the accounts` WITH `from the Policyholder's account value` IS 300_000, `from the Insured Member's account value` IS 200_000, `not covered by either account` IS 0)
+#ASSERT (`25.2 and 25.3 — a charge of` 500_000 `taken from` (`The accounts` WITH `the Policyholder's account value` IS 0, `the Insured Member's account value` IS 100_000, `the vesting ratio` IS 0)) EQUALS (`A charge taken from the accounts` WITH `from the Policyholder's account value` IS 0, `from the Insured Member's account value` IS 100_000, `not covered by either account` IS 400_000)
+-- 25.2 with an approved maximum of 70,000: in 2034, 29,000 + 17 x 2,000 = 63,000.
+#ASSERT `25.2 — the Policy Administration Charge per month in calendar year` 2034 `with an approved maximum of` (JUST 70_000) EQUALS 63_000
+#ASSERT `25.2 — the Policy Administration Charge per month in calendar year` 2034 `with an approved maximum of` NOTHING EQUALS 60_000
+-- 25.4 and 25.5: 20,000,000 annualised at 80% and at 5%.
+#ASSERT `25.4 — the Termination Charge, on an annualised first-year Basic Premium of` 20_000_000 `at a rate of` (80%) EQUALS 16_000_000
+#ASSERT `25.5 — the Withdrawal Charge, on an annualised first-year Basic Premium of` 20_000_000 `at a rate of` (5%) EQUALS 1_000_000
+-- 25.6(b): 2.5% exactly needs no approval; 2.6% does.
+#ASSERT NOT `25.6(b) — the new Fund Management Charge needs Ministry of Finance approval, at a rate of` (2.5%)
+#ASSERT `25.6(b) — the new Fund Management Charge needs Ministry of Finance approval, at a rate of` (2.6%)
+-- Three months' notice from 31 January 2026: 30 April 2026.
+#ASSERT `25 — the earliest date a new charge may apply, after written notice on` (YMD 2026 1 31) EQUALS YMD 2026 4 30
+
+§§ `Article 26 — claims`
+
+GIVEN `submitted` IS A DATE
+      `force majeure` IS A BOOLEAN
+GIVETH A `A claim submission`
+`a claim for an event on 15 January 2026, submitted` `submitted` `, force majeure` `force majeure` MEANS
+    `A claim submission` WITH
+        `date of the insured event`                   IS YMD 2026 1 15
+        `date the notice and evidence were submitted` IS `submitted`
+        `the delay was the result of force majeure`   IS `force majeure`
+
+#ASSERT `26.1 — the last day to submit` (`a claim for an event on 15 January 2026, submitted` (YMD 2027 1 15) `, force majeure` FALSE) EQUALS YMD 2027 1 15
+#ASSERT NOT `26.1 — the Company may refuse the claim as late` (`a claim for an event on 15 January 2026, submitted` (YMD 2027 1 15) `, force majeure` FALSE)
+#ASSERT `26.1 — the Company may refuse the claim as late` (`a claim for an event on 15 January 2026, submitted` (YMD 2027 1 16) `, force majeure` FALSE)
+#ASSERT NOT `26.1 — the Company may refuse the claim as late` (`a claim for an event on 15 January 2026, submitted` (YMD 2027 6 1) `, force majeure` TRUE)
+-- The time-bar as a trace: 365 days from 15 January 2026. Day 365 is in time; day 366 is not.
+#TRACE `26.1 — the duty to submit a claim for` (`a claim for an event on 15 January 2026, submitted` (YMD 2027 1 15) `, force majeure` FALSE) AT 0 WITH
+    PARTY `the claimant` DOES `submit notice of the insured event and its evidence` AT 365
+#TRACE `26.1 — the duty to submit a claim for` (`a claim for an event on 15 January 2026, submitted` (YMD 2027 1 15) `, force majeure` FALSE) AT 0 WITH
+    (`WAIT UNTIL` 366)
+
+GIVEN `medical records` IS A BOOLEAN
+      `website documents` IS A BOOLEAN
+GIVETH A `The documents lodged with a death claim`
+`claim documents: medical records` `medical records` `, website documents` `website documents` MEANS
+    `The documents lodged with a death claim` WITH
+        `completed claim form and authorisation`                    IS TRUE
+        `certified copy of the death certificate`                   IS TRUE
+        `medical records, if any`                                   IS `medical records`
+        `police accident record, for a death by accident, if any`   IS FALSE
+        `the Certificate of Insurance`                              IS TRUE
+        `other documents the Company's website lists for the case`  IS `website documents`
+
+#ASSERT `26.2 — the claim documents are complete` (`claim documents: medical records` FALSE `, website documents` TRUE)
+#ASSERT NOT `26.2 — the claim documents are complete` (`claim documents: medical records` TRUE `, website documents` FALSE)
+
+GIVEN `paid on` IS A MAYBE DATE
+GIVETH A `A claim payment`
+`a claim complete on 1 March 2026, paid` `paid on` MEANS
+    `A claim payment` WITH
+        `date the Company received all the required documents` IS YMD 2026 3 1
+        `the Company approved the claim`                       IS TRUE
+        `date the Company paid`                                IS `paid on`
+
+-- 1 March + 30 days = 31 March 2026; paid 5 April: 5 days late; the rate: refused.
+#ASSERT `26.3 — the last day to pay` (`a claim complete on 1 March 2026, paid` NOTHING) EQUALS YMD 2026 3 31
+#ASSERT `26.3(ii) — days of late payment` (`a claim complete on 1 March 2026, paid` (JUST (YMD 2026 4 5))) EQUALS 5
+#ASSERT `26.3(ii) — days of late payment` (`a claim complete on 1 March 2026, paid` (JUST (YMD 2026 3 31))) EQUALS 0
+#ASSERT REFUSED `26.3(ii) — the interest rate for late payment` (`a claim complete on 1 March 2026, paid` (JUST (YMD 2026 4 5)))
+#TRACE `26.3 — the duty to pay an approved death claim` AT 0 WITH
+    PARTY `the Company` DOES `pay the death benefit` AT 30
+#TRACE `26.3 — the duty to pay an approved death claim` AT 0 WITH
+    (`WAIT UNTIL` 31)
+    PARTY `the Company` DOES `pay the death benefit with interest for the delay` AT 40
+
+§§ `Article 27 — disputes`
+
+#ASSERT `27.2 — the court is one the dispute may be brought before, where` TRUE `or` FALSE
+#ASSERT NOT `27.2 — the court is one the dispute may be brought before, where` FALSE `or` FALSE
+#ASSERT `27.3 — the last day to sue, for a dispute that arose on` (YMD 2026 5 1) `with a period under the law of` NOTHING EQUALS YMD 2029 5 1
+#ASSERT `27.3 — the last day to sue, for a dispute that arose on` (YMD 2026 5 1) `with a period under the law of` (JUST 2) EQUALS YMD 2028 5 1
+
+§§ `Articles 28 and 29 — termination`
+
+#ASSERT `28 — the part ends on` `the death of the Insured Member`
+#ASSERT `28 — the part ends on` `the Maturity Date of the part`
+#ASSERT `29.1 — the Contract ends on` `the number of Insured Members falls below the agreed minimum`
+
+GIVEN `evidence` IS A BOOLEAN
+      `contacted` IS A MAYBE DATE
+GIVETH A `The New Organisation's position`
+`a New Organisation established 1 April 2026: evidence` `evidence` `, contacted` `contacted` MEANS
+    `The New Organisation's position` WITH
+        `evidence that it took over all the Policyholder's rights and obligations` IS `evidence`
+        `date on its establishment certificate or decision`                         IS YMD 2026 4 1
+        `date it contacted the Company to become the Policyholder`                  IS `contacted`
+
+-- 29.2(a) dissolution: "will consider". 29.2(b) merger: 1 April + 30 = 1 May 2026.
+#ASSERT `29.2 — what becomes of a part when the Contract ends on` `the Policyholder is dissolved, bankrupt or closed by a state decision` `, with the New Organisation's position` (`a New Organisation established 1 April 2026: evidence` FALSE `, contacted` NOTHING) `, as at` (YMD 2026 6 1) EQUALS `the Company will consider converting the part to an individual policy or ending it under Article 22`
+#ASSERT `29.2 — what becomes of a part when the Contract ends on` `the Policyholder ceases by division, merger or consolidation` `, with the New Organisation's position` (`a New Organisation established 1 April 2026: evidence` TRUE `, contacted` (JUST (YMD 2026 5 1))) `, as at` (YMD 2026 6 1) EQUALS `the New Organisation becomes the Policyholder`
+#ASSERT `29.2 — what becomes of a part when the Contract ends on` `the Policyholder ceases by division, merger or consolidation` `, with the New Organisation's position` (`a New Organisation established 1 April 2026: evidence` TRUE `, contacted` (JUST (YMD 2026 5 2))) `, as at` (YMD 2026 6 1) EQUALS `the Company will consider converting the part to an individual policy or ending it under Article 22`
+#ASSERT `29.2 — what becomes of a part when the Contract ends on` `the Policyholder ceases by division, merger or consolidation` `, with the New Organisation's position` (`a New Organisation established 1 April 2026: evidence` TRUE `, contacted` NOTHING) `, as at` (YMD 2026 4 20) EQUALS `the New Organisation is still within its 30 days`
+#ASSERT `29.2 — what becomes of a part when the Contract ends on` `the Policyholder ceases by division, merger or consolidation` `, with the New Organisation's position` (`a New Organisation established 1 April 2026: evidence` FALSE `, contacted` (JUST (YMD 2026 4 2))) `, as at` (YMD 2026 6 1) EQUALS `the Company will consider converting the part to an individual policy or ending it under Article 22`
+#ASSERT `29.2 — what becomes of a part when the Contract ends on` `the Contract term ends, the Policyholder asks to end it, or every part has ended` `, with the New Organisation's position` (`a New Organisation established 1 April 2026: evidence` FALSE `, contacted` NOTHING) `, as at` (YMD 2026 6 1) EQUALS `the Company may consider converting the part to an individual policy or ending it under Article 22`
+#TRACE `29.2(b) — the New Organisation's duty to contact the Company` AT 0 WITH
+    (`WAIT UNTIL` 31)
+
+GIVEN `born` IS A DATE
+      `years` IS A MAYBE NUMBER
+GIVETH A `The person's particulars`
+`an Insured Member at termination on 1 June 2026, born` `born` `, years worked` `years` MEANS
+    `The person's particulars` WITH
+        `as at`                                          IS YMD 2026 6 1
+        `date of birth`                                  IS `born`
+        `recorded in the List of Insured Members`        IS TRUE
+        `present in Vietnam`                             IS TRUE
+        `holds a valid Enrolment Form`                   IS TRUE
+        `premium for this person paid to the Company`    IS TRUE
+        `resident in Vietnam`                            IS TRUE
+        `of full civil capacity under the Civil Code`    IS TRUE
+        `full years of employment with the Policyholder` IS `years`
+
+#ASSERT `29.3 — applies to a part when the Contract ends on` `the Policyholder ceases by division, merger or consolidation`
+#ASSERT NOT `29.3 — applies to a part when the Contract ends on` `the Policyholder breaches the law or the Contract`
+-- Policyholder's account 60,000,000, current vesting 30% (18,000,000).
+-- 10 years worked: 100% = 60,000,000.
+#ASSERT `29.3 — the Vested Account Value at termination, for` (`an Insured Member at termination on 1 June 2026, born` (YMD 1990 1 1) `, years worked` (JUST 10)) `with accounts` `the usual accounts` EQUALS 60_000_000
+-- 9 years, aged 44 (born 2 June 1981): the greater of 18,000,000 and 90% = 54,000,000.
+#ASSERT `29.3 — the Vested Account Value at termination, for` (`an Insured Member at termination on 1 June 2026, born` (YMD 1981 6 2) `, years worked` (JUST 9)) `with accounts` `the usual accounts` EQUALS 54_000_000
+-- 9 years, aged 45 that day (born 1 June 1981): 100%.
+#ASSERT `29.3 — the Vested Account Value at termination, for` (`an Insured Member at termination on 1 June 2026, born` (YMD 1981 6 1) `, years worked` (JUST 9)) `with accounts` `the usual accounts` EQUALS 60_000_000
+-- 2 years: the greater of 18,000,000 and 20% (12,000,000) = 18,000,000.
+#ASSERT `29.3 — the Vested Account Value at termination, for` (`an Insured Member at termination on 1 June 2026, born` (YMD 1990 1 1) `, years worked` (JUST 2)) `with accounts` `the usual accounts` EQUALS 18_000_000

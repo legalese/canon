@@ -12,7 +12,7 @@ One assertion failed on the first run - `offence under s 354(2)` on the lift fix
 | s | heading | disposition | module | functions / reason |
 | --- | --- | --- | --- | --- |
 | 299 | Culpable homicide | encoded | pc-body-a-life.l4 | `commits culpable homicide` (defining; no charge of its own - punished under s 304) |
-| 300 | Murder | encoded | pc-body-a-life.l4 | `murder within the meaning of section 300(a)`..`(d)`, `commits murder`, `Exception 1 to section 300 applies`..`Exception 7 ...`, `an Exception to section 300 applies`, `commits culpable homicide not amounting to murder`, helpers `above 18 years of age`, `below 12 months of age` (defining; punished under s 302) |
+| 300 | Murder | encoded | pc-body-a-life.l4 | `murder within the meaning of section 300(a)`..`(d)`, `commits murder`, `Exception 1 to section 300 applies`..`Exception 7 ...`, `an Exception to section 300 applies`, `commits culpable homicide not amounting to murder`; Exception 2 reads `the right of private defence was exceeded` from pc-exceptions-private-defence.l4 (F-20, FORK E-17); helpers `above 18 years of age`, `below 12 months of age` (defining; punished under s 302) |
 | 301 | Culpable homicide by causing the death of a person other than the person whose death was intended | deferred | pc-body-a-life.l4 | Deeming rule with no charge of its own (F-9). Already encoded in the reference row's `culpable-homicide-301.l4`; not re-encoded for time. s 26G(5)/301(2) wiring is the exceptions group's (PLAN §5). |
 | 302 | Punishment for murder | encoded | pc-body-a-life.l4 | `offence under s 302(1)`, `charge under s 302(1)`, `offence under s 302(2)`, `charge under s 302(2)` |
 | 303 | [There is no section 303] | n/a | - | The Code prints "[There is no section 303.]" |
@@ -36,7 +36,7 @@ One assertion failed on the first run - `offence under s 354(2)` on the lift fix
 | 316 | Causing death of a quick unborn child by an act amounting to culpable homicide | deferred | - | Time. |
 | 317 | Exposure and abandonment of a child below 12 years of age | encoded | pc-body-a-life.l4 | `offence under s 317`, `charge under s 317`, helper `below 12 years of age` |
 | 318 | Concealment of birth by secret disposal of dead body | encoded | pc-body-a-life.l4 | `offence under s 318`, `charge under s 318` |
-| 319 | Hurt | encoded | pc-body-a-hurt.l4 | `causes hurt` (defining, with its Explanation) |
+| 319 | Hurt | encoded | pc-body-a-hurt.l4 | `causes hurt` (defining, with its Explanation; also reads s 320, a grievous hurt being a kind of hurt - F-20) |
 | 320 | Grievous hurt | encoded | pc-body-a-hurt.l4 | `grievous hurt within section 320`, helper `lasts the space of 20 days` (defining) |
 | 321 | Voluntarily causing hurt | encoded | pc-body-a-hurt.l4 | `voluntarily causes hurt` (defining) |
 | 322 | Voluntarily causing grievous hurt | encoded | pc-body-a-hurt.l4 | `voluntarily causes grievous hurt` (defining, with its Explanation) |

@@ -1,0 +1,490 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `vn13-nouns`
+IMPORT `vn13-fixtures`
+IMPORT `vn13-art01-02-definitions`
+IMPORT `vn13-art09-10-premiums`
+IMPORT `vn13-art11-12-funds`
+IMPORT `vn13-art13-charges`
+IMPORT `vn13-annex1-funds`
+IMPORT `vn13-annex2-procedures`
+
+-- Tests for the mechanics: premiums and units (Article 9), the funds (11, 12), the charges
+-- (13) and the Annexes. Every expected value was worked by hand from the text, the working
+-- beside it; the two tables' row tests are generated from the source by tools/gen_tables.py.
+-- A failing assertion is a finding, never a value to edit.
+
+§ `Tests — mechanics`
+
+§§ `Article 9.1 and 9.2 — premiums buy units`
+
+-- 9.1: after the first premium, unpaid on or before the due date counts as not paid.
+#ASSERT NOT (`Article 9.1 —` (`the half-yearly premium due on 10 July 2026, paid` (JUST (YMD 2026 7 10))) `counts as not paid, a premium holiday applying:` FALSE)
+#ASSERT `Article 9.1 —` (`the half-yearly premium due on 10 July 2026, paid` (JUST (YMD 2026 7 11))) `counts as not paid, a premium holiday applying:` FALSE
+#ASSERT `Article 9.1 —` (`the half-yearly premium due on 10 July 2026, paid` NOTHING) `counts as not paid, a premium holiday applying:` FALSE
+#ASSERT NOT (`Article 9.1 —` (`the half-yearly premium due on 10 July 2026, paid` NOTHING) `counts as not paid, a premium holiday applying:` TRUE)
+
+-- The first annual instalment of 20,000,000 at the 90% initial charge leaves 2,000,000;
+-- half to each fund. Offer prices: Growth 9,500 / 0.95 = 10,000; Balanced 19,000 / 0.95
+-- = 20,000. Units: 1,000,000 / 10,000 = 100 and 1,000,000 / 20,000 = 50.
+GIVEN n IS A NUMBER
+      a IS A NUMBER
+      r IS A NUMBER
+GIVETH A `A regular basic premium instalment`
+`annual instalment` n `of` a `at an initial charge of` r MEANS
+    `A regular basic premium instalment` WITH
+        `instalment number`   IS n
+        `frequency`           IS `annual premiums`
+        `amount`              IS a
+        `initial charge rate` IS r
+
+#ASSERT map (GIVEN c YIELD c's `units added`) (`Article 9.1 — the units bought with` (`annual instalment` 1 `of` 20_000_000 `at an initial charge of` 0.9) `allocated by` `half Growth, half Balanced` `at the offer prices of` `the funds on 13 March 2030` `with a spread of` (5%)) EQUALS LIST 100, 50
+-- The fourth instalment at 0%: 20,000,000, so 1,000 and 500 units.
+#ASSERT map (GIVEN c YIELD c's `units added`) (`Article 9.1 — the units bought with` (`annual instalment` 4 `of` 20_000_000 `at an initial charge of` 0) `allocated by` `half Growth, half Balanced` `at the offer prices of` `the funds on 13 March 2030` `with a spread of` (5%)) EQUALS LIST 1_000, 500
+-- A top-up of 10,000,000, no initial charge: 500 and 250 units.
+#ASSERT map (GIVEN c YIELD c's `units added`) (`Article 9.2 — the units bought with` (`A top-up premium` WITH `date paid` IS YMD 2030 3 12, `amount` IS 10_000_000, `initial charge rate` IS 0) `allocated by` `half Growth, half Balanced` `at the offer prices of` `the funds on 13 March 2030` `with a spread of` (5%)) EQUALS LIST 500, 250
+-- A fund with no valuation that day: refused.
+#ASSERT REFUSED `the bid price of` (`a fund established later under Article 11.4` "Fund X") `among` `the funds on 13 March 2030` BECAUSE "no valuation of that fund on the Valuation Date was supplied"
+
+§§ `Article 9.3 — premium holiday`
+
+-- From the second policy year (10 January 2027), while in force.
+#ASSERT NOT (`Article 9.3 — a premium holiday may be asked for on` (YMD 2027 1 9) `, the contract being effective from` (YMD 2026 1 10) `and in force:` TRUE)
+#ASSERT `Article 9.3 — a premium holiday may be asked for on` (YMD 2027 1 10) `, the contract being effective from` (YMD 2026 1 10) `and in force:` TRUE
+#ASSERT NOT (`Article 9.3 — a premium holiday may be asked for on` (YMD 2027 1 10) `, the contract being effective from` (YMD 2026 1 10) `and in force:` FALSE)
+-- Delay without notice: a premium due 10 July 2026 (first year): the riders end on
+-- 9 September 2026, the day after the 60 days. A premium due in the second year: no rule.
+#ASSERT `Article 9.3 — the day the riders end, a premium due on` (YMD 2026 7 10) `being delayed without notice, for a contract effective on` (YMD 2026 1 10) EQUALS YMD 2026 9 9
+#ASSERT REFUSED `Article 9.3 — the day the riders end, a premium due on` (YMD 2027 7 10) `being delayed without notice, for a contract effective on` (YMD 2026 1 10) BECAUSE "from the second policy year a delay in premiums opens no grace period, so Article 9.3 does not say when the riders end"
+-- A notified holiday, risk premium 100,000, policy fee 50,000, riders 80,000 (230,000):
+#ASSERT `Article 9.3 — the contract at a monthly deduction during a notified premium holiday, given` (`an account with a surrender value of` 1_000_000) EQUALS `the deductions are met, riders included`
+#ASSERT `Article 9.3 — the contract at a monthly deduction during a notified premium holiday, given` (`an account with a surrender value of` 230_000) EQUALS `the deductions are met, riders included`
+#ASSERT `Article 9.3 — the contract at a monthly deduction during a notified premium holiday, given` (`an account with a surrender value of` 229_999) EQUALS `the riders end, and the surrender value meets only the risk premium and policy fee`
+#ASSERT `Article 9.3 — the contract at a monthly deduction during a notified premium holiday, given` (`an account with a surrender value of` 150_000) EQUALS `the riders end, and the surrender value meets only the risk premium and policy fee`
+#ASSERT `Article 9.3 — the contract at a monthly deduction during a notified premium holiday, given` (`an account with a surrender value of` 149_999) EQUALS `the grace period of Article 9.4 begins`
+#ASSERT REFUSED `Article 9.3 does not say how the premium after a holiday is calculated` BECAUSE "Article 9.3 does not say how the premium after a holiday is calculated"
+
+§§ `Article 9.4 — grace and lapse`
+
+-- First policy year, half-yearly premium due 10 July 2026. 60 days later is 8 September.
+#ASSERT `the last day of the grace period of a premium due on` (YMD 2026 7 10) EQUALS YMD 2026 9 8
+#ASSERT `Article 9.4 — what follows from` (`the half-yearly premium due on 10 July 2026, paid` (JUST (YMD 2026 7 10))) `, for a contract effective on` (YMD 2026 1 10) EQUALS `paid on or before the due date`
+#ASSERT `Article 9.4 — what follows from` (`the half-yearly premium due on 10 July 2026, paid` (JUST (YMD 2026 9 8))) `, for a contract effective on` (YMD 2026 1 10) EQUALS `paid within the grace period`
+#ASSERT `Article 9.4 — what follows from` (`the half-yearly premium due on 10 July 2026, paid` (JUST (YMD 2026 9 9))) `, for a contract effective on` (YMD 2026 1 10) EQUALS `the contract lapses on` (YMD 2026 9 9)
+#ASSERT `Article 9.4 — what follows from` (`the half-yearly premium due on 10 July 2026, paid` NOTHING) `, for a contract effective on` (YMD 2026 1 10) EQUALS `the contract lapses on` (YMD 2026 9 9)
+-- Due in the second policy year: no grace period from the missed premium itself.
+#ASSERT `Article 9.4 — what follows from` (`A regular premium falling due` WITH `due date` IS YMD 2027 1 10, `date paid` IS NOTHING) `, for a contract effective on` (YMD 2026 1 10) EQUALS `no grace period, the premium falling due after the first policy year`
+-- The surrender value on a first-year lapse on 9 September 2026: the next valuation.
+#ASSERT `Article 9.4 — the surrender value paid on a first-year lapse on` (YMD 2026 9 9) `, among` (LIST (`a valuation on` (YMD 2026 9 9) `: Growth` 100 `at` 9_000 `, Balanced` 50 `at` 10_000 `, premium debt` 0), (`a valuation on` (YMD 2026 9 16) `: Growth` 100 `at` 9_500 `, Balanced` 50 `at` 10_000 `, premium debt` 0)) EQUALS 1_450_000
+-- As a duty: paid on day 60, fulfilled; nothing by day 61, the Company must pay the
+-- surrender value; it does, fulfilled.
+#TRACE `Article 9.4 — the first-year premium and its grace period` AT 0 WITH
+    PARTY `the Policyholder` DOES `pay the regular basic premium` AT 60
+#TRACE `Article 9.4 — the first-year premium and its grace period` AT 0 WITH
+    (`WAIT UNTIL` 61)
+#TRACE `Article 9.4 — the first-year premium and its grace period` AT 0 WITH
+    (`WAIT UNTIL` 61)
+    PARTY `the Company` DOES `pay the surrender value` AT 70
+-- From the second policy year: risk premium 100,000 + policy fee 50,000.
+#ASSERT `Article 9.4 — a grace period begins at a monthly deduction on` (YMD 2028 3 10) `, for a contract effective on` (YMD 2026 1 10) `, given` (`an account with a surrender value of` 149_999)
+#ASSERT NOT (`Article 9.4 — a grace period begins at a monthly deduction on` (YMD 2028 3 10) `, for a contract effective on` (YMD 2026 1 10) `, given` (`an account with a surrender value of` 150_000))
+-- In the first policy year a shortfall is not provided for; no shortfall, no grace period.
+#ASSERT REFUSED `Article 9.4 — a grace period begins at a monthly deduction on` (YMD 2026 6 10) `, for a contract effective on` (YMD 2026 1 10) `, given` (`an account with a surrender value of` 149_999) BECAUSE "Article 9.4 does not say what follows when the surrender value cannot meet a monthly deduction in the first policy year"
+#ASSERT NOT (`Article 9.4 — a grace period begins at a monthly deduction on` (YMD 2026 6 10) `, for a contract effective on` (YMD 2026 1 10) `, given` (`an account with a surrender value of` 150_000))
+-- A grace period that began 10 March 2028 ends the contract on 10 May 2028 (61 days on).
+#ASSERT `Article 9.4 — the end of a grace period that began on` (YMD 2028 3 10) `, a sufficient payment being received:` FALSE EQUALS `the contract ends without surrender value on` (YMD 2028 5 10)
+#ASSERT `Article 9.4 — the end of a grace period that began on` (YMD 2028 3 10) `, a sufficient payment being received:` TRUE EQUALS `the contract continues, a sufficient payment having been received`
+#ASSERT `Article 9.4 — a benefit of` 757_300_000 `paid in a grace period, less unpaid charges of` 150_000 EQUALS 757_150_000
+
+§§ `Article 9.5 — reinstatement`
+
+GIVEN `the request date` IS A DATE
+      `alive`            IS A BOOLEAN
+      `surrendered`      IS A BOOLEAN
+GIVETH A `A reinstatement request`
+`a reinstatement request on` `the request date` `, alive` `alive` `, surrendered` `surrendered` MEANS
+    `A reinstatement request` WITH
+        `lapse date`                                       IS YMD 2026 9 9
+        `request date`                                     IS `the request date`
+        `the Life Insured alive on the request date`       IS `alive`
+        `surrendered for its surrender value`              IS `surrendered`
+        `request in writing`                               IS TRUE
+        `evidence of insurability accepted by the Company` IS TRUE
+        `the amount the Company set has been paid`         IS TRUE
+
+-- Lapsed 9 September 2026: two years end on 9 September 2028.
+#ASSERT `Article 9.5 — the contract may be reinstated on` (`a reinstatement request on` (YMD 2028 9 9) `, alive` TRUE `, surrendered` FALSE)
+#ASSERT NOT (`Article 9.5 — the contract may be reinstated on` (`a reinstatement request on` (YMD 2028 9 10) `, alive` TRUE `, surrendered` FALSE))
+#ASSERT NOT (`Article 9.5 — the contract may be reinstated on` (`a reinstatement request on` (YMD 2027 1 1) `, alive` FALSE `, surrendered` FALSE))
+#ASSERT NOT (`Article 9.5 — the contract may be reinstated on` (`a reinstatement request on` (YMD 2027 1 1) `, alive` TRUE `, surrendered` TRUE))
+
+§§ `Article 10`
+
+#ASSERT `Article 10 — a payment complies, being in` `Vietnamese dong`
+#ASSERT NOT (`Article 10 — a payment complies, being in` `another currency`)
+
+§§ `Article 11.2 — prices and valuation`
+
+-- Bid: 1,000,000,000 / 100,000 units = 10,000. Offer at 5%: 10,000 / 0.95 = 200,000 / 19,
+-- about 10,526.32; times 0.95 it is the bid again.
+#ASSERT `Article 11.2 — the bid price of a unit of` (`A fund on a valuation date` WITH `fund` IS `the Growth Fund`, `valuation date` IS YMD 2030 3 6, `net asset value` IS 1_000_000_000, `units in issue` IS 100_000) EQUALS 10_000
+#ASSERT `Article 11.2 — the offer price for a bid price of` 10_000 `and a spread of` (5%) EQUALS 200_000 DIVIDED BY 19
+#ASSERT `Article 11.2 — the offer price for a bid price of` 10_000 `and a spread of` (5%) TIMES 0.95 EQUALS 10_000
+-- At least weekly: 7 days apart is enough, 8 is not.
+#ASSERT `Article 11.2 — the funds are valued at least once a week, on` (LIST (YMD 2030 3 6), (YMD 2030 3 13), (YMD 2030 3 20))
+#ASSERT NOT (`Article 11.2 — the funds are valued at least once a week, on` (LIST (YMD 2030 3 6), (YMD 2030 3 14)))
+
+§§ `Article 11.3 — units`
+
+-- 1,000 units, plus 100 bought, less 50 switched out, less 10 for charges: 1,040.
+#ASSERT `Article 11.3 — the units after` 1_000 `and` (LIST (`A change in units` WITH `fund` IS `the Growth Fund`, `reason` IS `allocation of a regular basic premium or a top-up premium`, `units added` IS 100), (`A change in units` WITH `fund` IS `the Growth Fund`, `reason` IS `a fund switch`, `units added` IS 0 MINUS 50), (`A change in units` WITH `fund` IS `the Growth Fund`, `reason` IS `the risk premium, the monthly policy fee or another fund charge`, `units added` IS 0 MINUS 10)) EQUALS 1_040
+#ASSERT REFUSED `Article 11.3 — the units after` 1_000 `and` (LIST (`A change in units` WITH `fund` IS `the Growth Fund`, `reason` IS `a reason Article 11.3 does not list`, `units added` IS 0 MINUS 10)) BECAUSE "Article 11.3 does not allow a change in units for that reason"
+
+§§ `Article 11.4 and 11.7 — notice before a measure`
+
+-- Notice on 1 March 2030: a closure may apply on 4 March, not on 3 March.
+#ASSERT `Article 11.4 and 11.7 —` `closing or renaming a fund under Article 11.4` `may be applied, with notice given on` (JUST (YMD 2030 3 1)) `, on` (YMD 2030 3 4)
+#ASSERT NOT (`Article 11.4 and 11.7 —` `closing or renaming a fund under Article 11.4` `may be applied, with notice given on` (JUST (YMD 2030 3 1)) `, on` (YMD 2030 3 3))
+#ASSERT NOT (`Article 11.4 and 11.7 —` `renaming a fund` `may be applied, with notice given on` NOTHING `, on` (YMD 2030 3 3))
+-- Suspending valuation (11.7 d) needs no notice.
+#ASSERT `Article 11.4 and 11.7 —` `suspending valuation and transactions while the exchange is suspended` `may be applied, with notice given on` NOTHING `, on` (YMD 2030 3 3)
+-- A closed fund's units: as asked; failing a request, Annex 2 has no procedure.
+#ASSERT `Article 11.4 — what becomes of the units of a closed fund, given` TRUE EQUALS "bought back, or moved to the fund the Company names, as the Policyholder asked"
+#ASSERT REFUSED `Article 11.4 — what becomes of the units of a closed fund, given` FALSE BECAUSE "Article 11.4 points to an Annex 2 procedure for a closed fund's units, and Annex 2 has none"
+
+§§ `Article 11.5, 11.6, 11.8, 11.9 and Article 12`
+
+-- Redeeming 100 Growth units on a transaction effective Sunday 10 March 2030: the bid on
+-- 13 March is 16,000, so 1,600,000.
+#ASSERT `Article 11.5 — the amount withdrawn by redeeming` 100 `units of` `the Growth Fund` `on a transaction effective` (YMD 2030 3 10) `, among` `the valuations of March 2030` EQUALS 1_600_000
+-- Switching 1,020,000 into a fund whose bid is 10,200 buys 100 units.
+#ASSERT `Article 11.6 — the units bought by switching in` 1_020_000 `at a bid price of` 10_200 EQUALS 100
+-- 11.8: received 19,000,000 of 20,000,000: may be refused; in full: not.
+#ASSERT `Article 11.8 — the Company may refuse a premium of` 20_000_000 `when it has received` 19_000_000
+#ASSERT NOT (`Article 11.8 — the Company may refuse a premium of` 20_000_000 `when it has received` 20_000_000)
+#ASSERT `Article 11.8 — a refund of` 1 `of a refused premium of` 19_000_000 `is one the Article allows`
+#ASSERT NOT (`Article 11.8 — a refund of` 19_000_001 `of a refused premium of` 19_000_000 `is one the Article allows`)
+-- 11.9: net assets 1,000,000,000, so the daily cap is 100,000,000. Requests of 50,000,000
+-- and of exactly 100,000,000 are met in full; of 200,000,000, half each, and a request of
+-- 40,000,000 carries 20,000,000 to the next Valuation Date.
+#ASSERT `Article 11.9 — the share of each request met, for a fund with net assets of` 1_000_000_000 `and requests of` 50_000_000 EQUALS 1
+#ASSERT `Article 11.9 — the share of each request met, for a fund with net assets of` 1_000_000_000 `and requests of` 100_000_000 EQUALS 1
+#ASSERT `Article 11.9 — the share of each request met, for a fund with net assets of` 1_000_000_000 `and requests of` 200_000_000 EQUALS 0.5
+#ASSERT `Article 11.9 — the part of a request of` 40_000_000 `carried to the next Valuation Date, for a fund with net assets of` 1_000_000_000 `and requests of` 200_000_000 EQUALS 20_000_000
+-- Article 12: a surrender received Sunday 10 March 2030 is paid at 13 March, 209,000,000;
+-- one received on Wednesday 13 March (itself a Valuation Date) at 20 March, 220,000,000.
+#ASSERT `Article 12 — the surrender payment for a request received on` (YMD 2030 3 10) `, among` `the valuations of March 2030` EQUALS 209_000_000
+#ASSERT `Article 12 — the surrender payment for a request received on` (YMD 2030 3 13) `, among` `the valuations of March 2030` EQUALS 220_000_000
+#ASSERT `Article 12 — the Policyholder may surrender the contract, it being in force:` TRUE `; requested in writing on the form:` TRUE
+#ASSERT NOT (`Article 12 — the Policyholder may surrender the contract, it being in force:` TRUE `; requested in writing on the form:` FALSE)
+
+§§ `Article 13 — charges`
+
+-- A change notified 1 January 2026 may apply from 1 April 2026, not 31 March; only if
+-- agreed in writing and not above the maximum.
+GIVEN `the date applied` IS A DATE
+      `agreed`           IS A BOOLEAN
+      `the new level`    IS A NUMBER
+GIVETH A `A change in a charge`
+`a charge change applied on` `the date applied` `, agreed` `agreed` `, to` `the new level` MEANS
+    `A change in a charge` WITH
+        `date of the written notice`            IS YMD 2026 1 1
+        `date the new charge applies`           IS `the date applied`
+        `agreed in writing by the Policyholder` IS `agreed`
+        `new level`                             IS `the new level`
+        `guaranteed maximum`                    IS 57_500
+
+#ASSERT `Article 13 — the changed charge may apply` (`a charge change applied on` (YMD 2026 4 1) `, agreed` TRUE `, to` 57_500)
+#ASSERT NOT (`Article 13 — the changed charge may apply` (`a charge change applied on` (YMD 2026 3 31) `, agreed` TRUE `, to` 57_500))
+#ASSERT NOT (`Article 13 — the changed charge may apply` (`a charge change applied on` (YMD 2026 4 1) `, agreed` FALSE `, to` 57_500))
+#ASSERT NOT (`Article 13 — the changed charge may apply` (`a charge change applied on` (YMD 2026 4 1) `, agreed` TRUE `, to` 57_501))
+
+-- 13.1: 90% of 20,000,000 is 18,000,000; the allocated premium is 2,000,000.
+#ASSERT `Article 13.1 — the initial charge on a premium of` 20_000_000 `at a rate of` (90%) EQUALS 18_000_000
+#ASSERT `the allocated basic premium of` (`annual instalment` 1 `of` 20_000_000 `at an initial charge of` 0.9) EQUALS 2_000_000
+#ASSERT `the allocated top-up premium of` (`A top-up premium` WITH `date paid` IS YMD 2030 3 12, `amount` IS 10_000_000, `initial charge rate` IS 0) EQUALS 10_000_000
+-- 13.3: 500,000,000 at 0.0002 a month is 100,000. 13.6: plus the 50,000 fee, 150,000.
+#ASSERT `Article 13.3 — the risk premium on a sum assured of` 500_000_000 `at a rate of` 0.0002 EQUALS 100_000
+#ASSERT `Article 13.6 — the monthly deduction on a sum assured of` 500_000_000 `under` `the charges` EQUALS 150_000
+-- 13.6 sharing: Growth 150,000,000 of 200,000,000 bears 112,500, at 15,000 = 7.5 units;
+-- Balanced 37,500 at 10,000 = 3.75 units. The account falls by exactly 150,000.
+GIVETH A LIST OF `A holding in a fund`
+`the holdings of 6 March 2030` MEANS
+    LIST (`A holding in a fund` WITH `fund` IS `the Growth Fund`,   `units held` IS 10_000, `bid price` IS 15_000),
+         (`A holding in a fund` WITH `fund` IS `the Balanced Fund`, `units held` IS 5_000,  `bid price` IS 10_000)
+
+#ASSERT map (GIVEN h YIELD h's `units held`) (`Article 13.6 — the holdings after a deduction of` 150_000 `from` `the holdings of 6 March 2030`) EQUALS LIST 9_992.5, 4_996.25
+#ASSERT `the total account value of` (`Article 13.6 — the holdings after a deduction of` 150_000 `from` `the holdings of 6 March 2030`) EQUALS 199_850_000
+#ASSERT REFUSED `Article 13.6 — the units cancelled from` (`A holding in a fund` WITH `fund` IS `the Growth Fund`, `units held` IS 0, `bid price` IS 15_000) `for a deduction of` 150_000 `shared across` (LIST (`A holding in a fund` WITH `fund` IS `the Growth Fund`, `units held` IS 0, `bid price` IS 15_000)) BECAUSE "an account with no value cannot share a monthly deduction; Article 9.3 and 9.4 govern"
+-- 13.5: 10,000,000 withdrawn, fee 200,000, 9,800,000 paid out.
+#ASSERT `Article 13.5 — what is paid out of a withdrawal of` 10_000_000 `with a fee of` 200_000 EQUALS 9_800_000
+-- 13.8 and 13.9 h: 2.5% a year of 200,000,000 is 5,000,000. "2.5%" is 0.025, not 25%.
+#ASSERT 2.5% EQUALS 0.025
+#ASSERT `Article 13.8 — the fund management fee for a year on an account value of` 200_000_000 `at a rate of` (2.5%) EQUALS 5_000_000
+
+-- 13.9 a: the rate on an instalment against the table. The same 90/70/40/0 by policy year
+-- whatever the frequency: annual 1 = half-yearly 2 = quarterly 4 = monthly 12.
+GIVEN n IS A NUMBER
+      f IS A `A premium frequency`
+      r IS A NUMBER
+GIVETH A `A regular basic premium instalment`
+`instalment` n `paid as` f `charged at` r MEANS
+    `A regular basic premium instalment` WITH
+        `instalment number`   IS n
+        `frequency`           IS f
+        `amount`              IS 1_000_000
+        `initial charge rate` IS r
+
+#ASSERT `Article 13.9(a) — the guaranteed maximum is kept by the initial charge rate on` (`instalment` 2 `paid as` `annual premiums` `charged at` 0.7)
+#ASSERT NOT (`Article 13.9(a) — the guaranteed maximum is kept by the initial charge rate on` (`instalment` 2 `paid as` `annual premiums` `charged at` 0.71))
+#ASSERT `Article 13.9(a) — the guaranteed maximum is kept by the initial charge rate on` (`instalment` 12 `paid as` `monthly premiums` `charged at` 0.9)
+#ASSERT NOT (`Article 13.9(a) — the guaranteed maximum is kept by the initial charge rate on` (`instalment` 13 `paid as` `monthly premiums` `charged at` 0.9))
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 1 `paid as` `annual premiums` EQUALS `the guaranteed maximum initial charge rate for instalment` 2 `paid as` `half-yearly premiums`
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 4 `paid as` `quarterly premiums` EQUALS `the guaranteed maximum initial charge rate for instalment` 12 `paid as` `monthly premiums`
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 2 `paid as` `annual premiums` EQUALS `the guaranteed maximum initial charge rate for instalment` 13 `paid as` `monthly premiums`
+#ASSERT REFUSED `the guaranteed maximum initial charge rate for instalment` 0 `paid as` `annual premiums` BECAUSE "the Article 13.9(a) table has no row for that instalment number"
+-- 13.9 b: a top-up's initial charge must be nil.
+#ASSERT `Article 13.9(b) — the guaranteed maximum is kept by the initial charge rate on` (`A top-up premium` WITH `date paid` IS YMD 2030 3 12, `amount` IS 1, `initial charge rate` IS 0)
+#ASSERT NOT (`Article 13.9(b) — the guaranteed maximum is kept by the initial charge rate on` (`A top-up premium` WITH `date paid` IS YMD 2030 3 12, `amount` IS 1, `initial charge rate` IS 0.01))
+-- 13.9 c and e: 100,000 may go to 115,000 in a year, not 115,001.
+#ASSERT `Article 13.9(c) and (e) — a fee of` 115_000 `is within the guaranteed maximum, against` 100_000 `a year before`
+#ASSERT NOT (`Article 13.9(c) and (e) — a fee of` 115_001 `is within the guaranteed maximum, against` 100_000 `a year before`)
+-- 13.9 d: at most twice the standard mortality rate.
+#ASSERT `Article 13.9(d) — a risk premium rate of` 0.002 `is within the guaranteed maximum, against a standard mortality rate of` 0.001
+#ASSERT NOT (`Article 13.9(d) — a risk premium rate of` 0.0021 `is within the guaranteed maximum, against a standard mortality rate of` 0.001)
+-- 13.9 f: the partial withdrawal fee at most the switching fee that year.
+#ASSERT `Article 13.9(f) — a partial withdrawal fee of` 200_000 `is within the guaranteed maximum, against a switching fee that year of` 200_000
+#ASSERT NOT (`Article 13.9(f) — a partial withdrawal fee of` 200_001 `is within the guaranteed maximum, against a switching fee that year of` 200_000)
+-- 13.9 g and h: spread 5%, fee 2.5%; 5.1% or 2.6% is over.
+#ASSERT `Article 13.9(g) and (h) — the guaranteed maxima are kept by the spread and the fund management fee in` `the charges`
+#ASSERT NOT (`Article 13.9(g) and (h) — the guaranteed maxima are kept by the spread and the fund management fee in` (`The charges in the Policy Schedule` WITH `monthly policy fee` IS 50_000, `risk premium rate` IS 0.0002, `switching fee` IS 100_000, `partial withdrawal fee` IS 200_000, `bid-offer spread` IS 0.051, `fund management fee rate per year` IS 0.025))
+#ASSERT NOT (`Article 13.9(g) and (h) — the guaranteed maxima are kept by the spread and the fund management fee in` (`The charges in the Policy Schedule` WITH `monthly policy fee` IS 50_000, `risk premium rate` IS 0.0002, `switching fee` IS 100_000, `partial withdrawal fee` IS 200_000, `bid-offer spread` IS 0.05, `fund management fee rate per year` IS 0.026))
+
+-- The table, every row at both edges (an open row at its first instalment and twelve on),
+-- generated from source lines 619-662 by tools/gen_tables.py charge-tests.
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 1 `paid as` `annual premiums` EQUALS 90%   -- src:622-623
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 2 `paid as` `annual premiums` EQUALS 70%   -- src:624-625
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 3 `paid as` `annual premiums` EQUALS 40%   -- src:626-627
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 4 `paid as` `annual premiums` EQUALS 0%   -- src:628-629
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 16 `paid as` `annual premiums` EQUALS 0%   -- src:628-629
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 1 `paid as` `half-yearly premiums` EQUALS 90%   -- src:633-634
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 2 `paid as` `half-yearly premiums` EQUALS 90%   -- src:633-634
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 3 `paid as` `half-yearly premiums` EQUALS 70%   -- src:635-636
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 4 `paid as` `half-yearly premiums` EQUALS 70%   -- src:635-636
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 5 `paid as` `half-yearly premiums` EQUALS 40%   -- src:637-638
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 6 `paid as` `half-yearly premiums` EQUALS 40%   -- src:637-638
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 7 `paid as` `half-yearly premiums` EQUALS 0%   -- src:639-640
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 19 `paid as` `half-yearly premiums` EQUALS 0%   -- src:639-640
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 1 `paid as` `quarterly premiums` EQUALS 90%   -- src:644-645
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 4 `paid as` `quarterly premiums` EQUALS 90%   -- src:644-645
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 5 `paid as` `quarterly premiums` EQUALS 70%   -- src:646-647
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 8 `paid as` `quarterly premiums` EQUALS 70%   -- src:646-647
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 9 `paid as` `quarterly premiums` EQUALS 40%   -- src:648-649
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 12 `paid as` `quarterly premiums` EQUALS 40%   -- src:648-649
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 13 `paid as` `quarterly premiums` EQUALS 0%   -- src:650-651
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 25 `paid as` `quarterly premiums` EQUALS 0%   -- src:650-651
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 1 `paid as` `monthly premiums` EQUALS 90%   -- src:655-656
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 12 `paid as` `monthly premiums` EQUALS 90%   -- src:655-656
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 13 `paid as` `monthly premiums` EQUALS 70%   -- src:657-658
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 24 `paid as` `monthly premiums` EQUALS 70%   -- src:657-658
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 25 `paid as` `monthly premiums` EQUALS 40%   -- src:659-660
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 36 `paid as` `monthly premiums` EQUALS 40%   -- src:659-660
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 37 `paid as` `monthly premiums` EQUALS 0%   -- src:661-662
+#ASSERT `the guaranteed maximum initial charge rate for instalment` 49 `paid as` `monthly premiums` EQUALS 0%   -- src:661-662
+
+§§ `Annex 1 — the funds`
+
+-- The equity bands, both edges and one point outside each, generated from source lines
+-- 850, 868 and 893 by tools/gen_tables.py equity-tests.
+#ASSERT `Annex 1 — the equity share is within the band for` `the Growth Fund` `:` (70%)   -- src:850
+#ASSERT `Annex 1 — the equity share is within the band for` `the Growth Fund` `:` (100%)   -- src:850
+#ASSERT NOT (`Annex 1 — the equity share is within the band for` `the Growth Fund` `:` (69%))   -- src:850
+#ASSERT `Annex 1 — the equity share is within the band for` `the Development Fund` `:` (50%)   -- src:868
+#ASSERT `Annex 1 — the equity share is within the band for` `the Development Fund` `:` (80%)   -- src:868
+#ASSERT NOT (`Annex 1 — the equity share is within the band for` `the Development Fund` `:` (49%))   -- src:868
+#ASSERT NOT (`Annex 1 — the equity share is within the band for` `the Development Fund` `:` (81%))   -- src:868
+#ASSERT `Annex 1 — the equity share is within the band for` `the Balanced Fund` `:` (40%)   -- src:893
+#ASSERT `Annex 1 — the equity share is within the band for` `the Balanced Fund` `:` (60%)   -- src:893
+#ASSERT NOT (`Annex 1 — the equity share is within the band for` `the Balanced Fund` `:` (39%))   -- src:893
+#ASSERT NOT (`Annex 1 — the equity share is within the band for` `the Balanced Fund` `:` (61%))   -- src:893
+#ASSERT REFUSED `Annex 1 — the equity band of` (`a fund established later under Article 11.4` "Fund X") BECAUSE "Annex 1 gives no equity band for a fund established later"
+
+GIVEN `issuer share` IS A NUMBER
+      `market`       IS A BOOLEAN
+      `real estate`  IS A BOOLEAN
+GIVETH A `A fund's portfolio`
+`a Growth portfolio with an issuer share of` `issuer share` `, market-caused` `market` `, real estate` `real estate` MEANS
+    `A fund's portfolio` WITH
+        `fund`                                                       IS `the Growth Fund`
+        `equity share`                                               IS 85%
+        `largest share of one issuer's outstanding securities`       IS `issuer share`
+        `largest share of net assets in one issuer's security`       IS 20%
+        `largest share of net assets with one domestic credit institution` IS 10%
+        `largest share of net assets with one foreign credit institution`  IS 20%
+        `largest share of net assets in one group of related companies`    IS 30%
+        `direct investment in real estate`                           IS `real estate`
+        `any excess caused by market movements or lawful payments of the fund` IS `market`
+
+-- Every limit met exactly: within. 3.1 at 10.5%: over the limit; with a market cause,
+-- within the 15% tolerance (11.5%); at 11.6%, over even so. Real estate: never.
+#ASSERT `Annex 1 — the portfolio keeps the investment restrictions:` (`a Growth portfolio with an issuer share of` (10%) `, market-caused` FALSE `, real estate` FALSE)
+#ASSERT `Annex 1 — the portfolio is within every limit, without any deviation:` (`a Growth portfolio with an issuer share of` (10%) `, market-caused` FALSE `, real estate` FALSE)
+#ASSERT NOT (`Annex 1 — the portfolio keeps the investment restrictions:` (`a Growth portfolio with an issuer share of` (10.5%) `, market-caused` FALSE `, real estate` FALSE))
+#ASSERT `Annex 1 — the portfolio keeps the investment restrictions:` (`a Growth portfolio with an issuer share of` (11.5%) `, market-caused` TRUE `, real estate` FALSE)
+#ASSERT NOT (`Annex 1 — the portfolio keeps the investment restrictions:` (`a Growth portfolio with an issuer share of` (11.6%) `, market-caused` TRUE `, real estate` FALSE))
+#ASSERT NOT (`Annex 1 — the portfolio keeps the investment restrictions:` (`a Growth portfolio with an issuer share of` (10%) `, market-caused` TRUE `, real estate` TRUE))
+
+§§ `Annex 2 A — the transaction receipt date`
+
+GIVEN d IS A DATE
+      h IS A NUMBER
+      m IS A NUMBER
+      w IS A BOOLEAN
+      c IS A BOOLEAN
+      p IS A BOOLEAN
+GIVETH A `A submission at the counter`
+`a submission on` d `at` h `:` m `, working day` w `, complete` c `, pending` p MEANS
+    `A submission at the counter` WITH
+        `date`              IS d
+        `hour`              IS h
+        `minute`            IS m
+        `on a working day`  IS w
+        `next working day`  IS YMD 2030 3 4
+        `complete and valid` IS c
+        `a transaction of the contract awaiting a price` IS p
+
+-- Friday 1 March 2030 (next working day Monday 4 March): 8:30 and 15:00 count that day,
+-- 15:01 the next working day; 8:29 is not provided for. Saturday 2 March: 16:00 counts on
+-- Monday; 10:00 is not provided for.
+#ASSERT `Annex 2 A — the transaction receipt date of` (`a submission on` (YMD 2030 3 1) `at` 8 `:` 30 `, working day` TRUE `, complete` TRUE `, pending` FALSE) EQUALS JUST (YMD 2030 3 1)
+#ASSERT `Annex 2 A — the transaction receipt date of` (`a submission on` (YMD 2030 3 1) `at` 15 `:` 0 `, working day` TRUE `, complete` TRUE `, pending` FALSE) EQUALS JUST (YMD 2030 3 1)
+#ASSERT `Annex 2 A — the transaction receipt date of` (`a submission on` (YMD 2030 3 1) `at` 15 `:` 1 `, working day` TRUE `, complete` TRUE `, pending` FALSE) EQUALS JUST (YMD 2030 3 4)
+#ASSERT REFUSED `Annex 2 A — the transaction receipt date of` (`a submission on` (YMD 2030 3 1) `at` 8 `:` 29 `, working day` TRUE `, complete` TRUE `, pending` FALSE) BECAUSE "Annex 2 A does not say when a submission before 8:30, or on a day that is not a working day, is received"
+#ASSERT `Annex 2 A — the transaction receipt date of` (`a submission on` (YMD 2030 3 2) `at` 16 `:` 0 `, working day` FALSE `, complete` TRUE `, pending` FALSE) EQUALS JUST (YMD 2030 3 4)
+#ASSERT REFUSED `Annex 2 A — the transaction receipt date of` (`a submission on` (YMD 2030 3 2) `at` 10 `:` 0 `, working day` FALSE `, complete` TRUE `, pending` FALSE) BECAUSE "Annex 2 A does not say when a submission before 8:30, or on a day that is not a working day, is received"
+#ASSERT `Annex 2 A — the transaction receipt date of` (`a submission on` (YMD 2030 3 1) `at` 10 `:` 0 `, working day` TRUE `, complete` FALSE `, pending` FALSE) EQUALS NOTHING
+#ASSERT REFUSED `Annex 2 A — the transaction receipt date of` (`a submission on` (YMD 2030 3 1) `at` 10 `:` 0 `, working day` TRUE `, complete` TRUE `, pending` TRUE) BECAUSE "Annex 2 A does not say what follows when a transaction of the contract is awaiting a price"
+
+§§ `Annex 2 B — top-ups`
+
+GIVEN `the amount`        IS A NUMBER
+      `already paid`      IS A NUMBER
+      `premiums paid up`  IS A BOOLEAN
+      `on holiday`        IS A BOOLEAN
+GIVETH A `A top-up request`
+`a top-up of` `the amount` `, already` `already paid` `, premiums paid up` `premiums paid up` `, on holiday` `on holiday` MEANS
+    `A top-up request` WITH
+        `amount`                                        IS `the amount`
+        `top-ups already paid in the policy year`       IS `already paid`
+        `annualised regular basic premium at issue`     IS 20_000_000
+        `minimum top-up`                                IS 1_000_000
+        `in writing on the Company's form`              IS TRUE
+        `every regular basic premium due has been paid` IS `premiums paid up`
+        `every premium debt has been paid`              IS TRUE
+        `approved by the Company`                       IS TRUE
+        `during a premium holiday`                      IS `on holiday`
+
+-- The cap: 10 x 20,000,000 = 200,000,000 a policy year.
+#ASSERT `Annex 2 B — the most that may be topped up in a policy year, the annualised premium at issue being` 20_000_000 EQUALS 200_000_000
+#ASSERT `Annex 2 B — the top-up is accepted:` (`a top-up of` 50_000_000 `, already` 150_000_000 `, premiums paid up` TRUE `, on holiday` FALSE)
+#ASSERT NOT (`Annex 2 B — the top-up is accepted:` (`a top-up of` 50_000_001 `, already` 150_000_000 `, premiums paid up` TRUE `, on holiday` FALSE))
+#ASSERT NOT (`Annex 2 B — the top-up is accepted:` (`a top-up of` 999_999 `, already` 0 `, premiums paid up` TRUE `, on holiday` FALSE))
+#ASSERT NOT (`Annex 2 B — the top-up is accepted:` (`a top-up of` 5_000_000 `, already` 0 `, premiums paid up` FALSE `, on holiday` FALSE))
+#ASSERT NOT (`Annex 2 B — the top-up is accepted:` (`a top-up of` 5_000_000 `, already` 0 `, premiums paid up` TRUE `, on holiday` TRUE))
+#ASSERT `Annex 2 B — the allocation of a top-up, designated` NOTHING `, the latest regular allocation being` `half Growth, half Balanced` EQUALS `half Growth, half Balanced`
+
+§§ `Annex 2 C — premium holiday`
+
+#ASSERT NOT (`Annex 2 C — a premium holiday may start, requested in writing on the form:` FALSE)
+#ASSERT REFUSED `Annex 2 C — a premium holiday may start, requested in writing on the form:` TRUE BECAUSE "Annex 2 C turns on a minimum payment period that the document does not state"
+#ASSERT `Annex 2 C — barred during a premium holiday: a request that adds a rider` FALSE `, increases the sum assured` FALSE `, changes the frequency` FALSE `, or pays a top-up` TRUE
+#ASSERT NOT (`Annex 2 C — barred during a premium holiday: a request that adds a rider` FALSE `, increases the sum assured` FALSE `, changes the frequency` FALSE `, or pays a top-up` FALSE)
+
+§§ `Annex 2 D — partial withdrawal`
+
+GIVEN `the amount`  IS A NUMBER
+      `done`        IS A NUMBER
+      `written`     IS A BOOLEAN
+GIVETH A `A withdrawal request in a fund`
+`a withdrawal of` `the amount` `, done already` `done` `, written` `written` MEANS
+    `A withdrawal request in a fund` WITH
+        `amount requested`                            IS `the amount`
+        `account value of the fund`                   IS 50_000_000
+        `minimum withdrawal`                          IS 1_000_000
+        `minimum balance`                             IS 5_000_000
+        `withdrawals already made in the policy year` IS `done`
+        `maximum withdrawals in a policy year`        IS 4
+        `in writing on the Company's form`            IS `written`
+
+-- Fund worth 50,000,000; minimum 1,000,000; minimum balance 5,000,000; four a year.
+#ASSERT `Annex 2 D — the effect of` (`a withdrawal of` 10_000_000 `, done already` 1 `, written` TRUE) EQUALS `the amount requested is withdrawn` 10_000_000
+#ASSERT `Annex 2 D — the effect of` (`a withdrawal of` 45_000_000 `, done already` 1 `, written` TRUE) EQUALS `the amount requested is withdrawn` 45_000_000
+#ASSERT `Annex 2 D — the effect of` (`a withdrawal of` 45_000_001 `, done already` 1 `, written` TRUE) EQUALS `every unit of the fund is withdrawn` 50_000_000
+#ASSERT `Annex 2 D — the effect of` (`a withdrawal of` 60_000_000 `, done already` 1 `, written` TRUE) EQUALS `every unit of the fund is withdrawn` 50_000_000
+#ASSERT `Annex 2 D — the effect of` (`a withdrawal of` 999_999 `, done already` 1 `, written` TRUE) EQUALS `refused: below the minimum withdrawal`
+#ASSERT `Annex 2 D — the effect of` (`a withdrawal of` 10_000_000 `, done already` 4 `, written` TRUE) EQUALS `refused: the maximum number of withdrawals in the policy year is reached`
+#ASSERT `Annex 2 D — the effect of` (`a withdrawal of` 10_000_000 `, done already` 3 `, written` TRUE) EQUALS `the amount requested is withdrawn` 10_000_000
+#ASSERT `Annex 2 D — the effect of` (`a withdrawal of` 10_000_000 `, done already` 1 `, written` FALSE) EQUALS `refused: not requested in writing on the Company's form`
+
+§§ `Annex 2 E — switches`
+
+GIVEN `the amount` IS A NUMBER
+GIVETH A `A switch request out of a fund`
+`a switch of` `the amount` MEANS
+    `A switch request out of a fund` WITH
+        `amount requested`                 IS `the amount`
+        `switching fee`                    IS 100_000
+        `account value of the fund`        IS 50_000_000
+        `minimum switch`                   IS 1_000_000
+        `minimum balance`                  IS 5_000_000
+        `in writing on the Company's form` IS TRUE
+
+-- Fund 50,000,000, fee 100,000: switching 44,900,000 leaves exactly 5,000,000; one dong
+-- more leaves too little, so every unit goes, 49,900,000 after the fee.
+#ASSERT `Annex 2 E — the effect of` (`a switch of` 10_000_000) EQUALS `the amount requested is switched` 10_000_000
+#ASSERT `Annex 2 E — the effect of` (`a switch of` 44_900_000) EQUALS `the amount requested is switched` 44_900_000
+#ASSERT `Annex 2 E — the effect of` (`a switch of` 44_900_001) EQUALS `every unit of the fund is switched` 49_900_000
+#ASSERT `Annex 2 E — the effect of` (`a switch of` 60_000_000) EQUALS `refused: below the minimum switch or above the fund's account value`
+#ASSERT `Annex 2 E — the effect of` (`a switch of` 999_999) EQUALS `refused: below the minimum switch or above the fund's account value`
+-- iii: 10,000,000 plus the 100,000 fee at a bid of 16,000: 631.25 units out.
+#ASSERT `Annex 2 E iii — the units cancelled in the fund switched out of, for` 10_000_000 `and a fee of` 100_000 `at a bid price of` 16_000 EQUALS 631.25
+#ASSERT REFUSED `Annex 2 E v — the split of the switch, the request stating` NOTHING BECAUSE "Annex 2 E v leaves the split of an unsplit switch to rules in force that the document does not contain"
+#ASSERT `Annex 2 E v — the split of the switch, the request stating` (JUST `half Growth, half Balanced`) EQUALS `half Growth, half Balanced`
+#ASSERT REFUSED `Annex 2 E vii — the day a switch takes effect` BECAUSE "Annex 2 E vii refers to a time stated in the contract, and the contract states none"
+#ASSERT NOT `Annex 2 E vii — interest runs while a switch is pending`
+-- viii: three requests, each touching several funds, are three switches.
+#ASSERT `Annex 2 E viii — the switches counted for` (LIST (LIST `the Growth Fund`, `the Balanced Fund`), (LIST `the Growth Fund`), (LIST `the Balanced Fund`, `the Development Fund`, `the Growth Fund`)) EQUALS 3
+
+§§ `Annex 2 F — changing the sum assured`
+
+GIVEN `the request date`   IS A DATE
+      `an increase`        IS A BOOLEAN
+      `evidence`           IS A BOOLEAN
+      `the difference`     IS A NUMBER
+      `the approval date`  IS A DATE
+GIVETH A `A sum assured change request`
+`a sum assured change asked on` `the request date` `, increase` `an increase` `, evidence` `evidence` `, by` `the difference` `, approved on` `the approval date` MEANS
+    `A sum assured change request` WITH
+        `request date`                      IS `the request date`
+        `end of the free-look period`       IS YMD 2026 2 10
+        `an increase`                       IS `an increase`
+        `difference`                        IS `the difference`
+        `minimum difference`                IS 50_000_000
+        `in writing on the Company's form`  IS TRUE
+        `evidence of insurability supplied` IS `evidence`
+        `additional premium paid`           IS TRUE
+        `approved by the Company`           IS TRUE
+        `date the Company approved`         IS `the approval date`
+        `paid-to date`                      IS YMD 2026 7 10
+
+#ASSERT `Annex 2 F — the sum assured may change on` (`a sum assured change asked on` (YMD 2026 3 1) `, increase` TRUE `, evidence` TRUE `, by` 100_000_000 `, approved on` (YMD 2026 3 5))
+#ASSERT NOT (`Annex 2 F — the sum assured may change on` (`a sum assured change asked on` (YMD 2026 2 10) `, increase` TRUE `, evidence` TRUE `, by` 100_000_000 `, approved on` (YMD 2026 3 5)))
+#ASSERT NOT (`Annex 2 F — the sum assured may change on` (`a sum assured change asked on` (YMD 2026 3 1) `, increase` TRUE `, evidence` FALSE `, by` 100_000_000 `, approved on` (YMD 2026 3 5)))
+#ASSERT `Annex 2 F — the sum assured may change on` (`a sum assured change asked on` (YMD 2026 3 1) `, increase` FALSE `, evidence` FALSE `, by` 100_000_000 `, approved on` (YMD 2026 3 5))
+#ASSERT NOT (`Annex 2 F — the sum assured may change on` (`a sum assured change asked on` (YMD 2026 3 1) `, increase` FALSE `, evidence` FALSE `, by` 49_999_999 `, approved on` (YMD 2026 3 5)))
+-- Approved before the paid-to date (10 July 2026): effective that day. After it, or on it,
+-- the Annex does not answer.
+#ASSERT `Annex 2 F — the day the change of sum assured takes effect, on` (`a sum assured change asked on` (YMD 2026 3 1) `, increase` FALSE `, evidence` FALSE `, by` 100_000_000 `, approved on` (YMD 2026 3 5)) EQUALS YMD 2026 7 10
+#ASSERT REFUSED `Annex 2 F — the day the change of sum assured takes effect, on` (`a sum assured change asked on` (YMD 2026 3 1) `, increase` FALSE `, evidence` FALSE `, by` 100_000_000 `, approved on` (YMD 2026 7 11)) BECAUSE "Annex 2 F does not define the next contract effective date"
+#ASSERT REFUSED `Annex 2 F — the day the change of sum assured takes effect, on` (`a sum assured change asked on` (YMD 2026 3 1) `, increase` FALSE `, evidence` FALSE `, by` 100_000_000 `, approved on` (YMD 2026 7 10)) BECAUSE "Annex 2 F says nothing of an approval on the paid-to date itself"

@@ -1,0 +1,288 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `bmfire-nouns`
+IMPORT `bmfire-insuring-clause`
+IMPORT `bmfire-perils`
+IMPORT `bmfire-exclusions`
+IMPORT `bmfire-indemnity`
+IMPORT `bmfire-conditions`
+IMPORT `bmfire-claim`
+IMPORT `bmfire-fixtures`
+
+-- LAYER 1 TESTS: is the event covered? Every expected value was decided from the Rules'
+-- text before the assertion was run: for the insuring clause and each definition, one case
+-- in and one out; for every exclusion, one fact pattern that triggers it and a near miss
+-- that does not. A failing assertion is a finding, never a value to edit.
+--
+-- THE STANDARD CASE. Policy for 2026 (1 January to 31 December), every risk A to J stated,
+-- total sum insured 1,500,000,000 VND, no deductible; the warehouse building, sum insured
+-- and actual value 1,000,000,000; DAMAGE on 1 June 2026 of 200,000,000 at the insured
+-- location "Hanoi"; premium paid 10 January; every condition met.
+
+§ `Tests — is the event covered`
+
+§§ `Preamble — the insuring clause`
+
+`an ordinary fire` MEANS `a building claim` `risk A` `fire` EMPTY EMPTY
+#ASSERT `the reasons` `an ordinary fire` EQUALS EMPTY
+#ASSERT `the amount payable` `an ordinary fire` EQUALS 200000000
+
+-- The period of insurance, both ends inside it (fork F21).
+GIVEN d IS A DATE
+GIVETH A `The claim`
+`an ordinary fire on` d MEANS
+    `a claim` `the Summary` `risk A` d (`the facts` `fire`)
+        (LIST (`at the insured location` "Hanoi" (LIST (`physical damage to` `the building` `of` 200000000 `with` EMPTY))))
+#ASSERT `the reasons` (`an ordinary fire on` (YMD 2026 1 1)) EQUALS EMPTY
+#ASSERT `the reasons` (`an ordinary fire on` (YMD 2026 12 31)) EQUALS EMPTY
+#ASSERT `the reasons the whole claim fails` (`an ordinary fire on` (YMD 2025 12 31)) EQUALS LIST `preamble — the DAMAGE did not occur during the period of insurance`
+#ASSERT `the reasons the whole claim fails` (`an ordinary fire on` (YMD 2027 1 1)) EQUALS LIST `preamble — the DAMAGE did not occur during the period of insurance`
+#ASSERT `the amount payable` (`an ordinary fire on` (YMD 2027 1 1)) EQUALS 0
+
+-- The risk claimed under must be stated in the Summary.
+`a fire under a storm-only policy` MEANS `a building claim in` (`a 2026 Summary` (LIST `risk G`) 1500000000 EMPTY) `risk A` `fire` EMPTY EMPTY
+#ASSERT `the reasons` `a fire under a storm-only policy` EQUALS LIST `preamble — the risk claimed under is not stated in the Policy Summary`
+
+-- The property must be stated in the Summary, and be at an insured location.
+#ASSERT `the reasons` (`a building claim` `risk A` `fire` EMPTY (LIST `item — not stated in the Policy Summary`)) EQUALS LIST `preamble — the property is not stated in the Policy Summary`
+`a fire at an uninsured location` MEANS
+    `a claim` `the Summary` `risk A` `the day` (`the facts` `fire`)
+        (LIST (`The loss at one location` WITH `location` IS "Haiphong", `an insured location stated in the Policy Summary` IS FALSE, `claimed losses` IS LIST (`physical damage to` `the building` `of` 200000000 `with` EMPTY)))
+#ASSERT `the reasons` `a fire at an uninsured location` EQUALS LIST `I — the loss was not at an insured location`
+
+-- Heads of loss: the clause promises physical loss; rent only where the Summary insures it.
+#ASSERT `the reasons` (`a claim for the loss` `the Summary` `risk A` `fire` (`a loss in full` `the building` `loss of income, delay, loss of market, or other consequential or indirect loss` 50000000 EMPTY `no other figures`)) EQUALS LIST `preamble — a head of loss the policy does not insure`, `III.3 — consequential loss`
+#ASSERT `the reasons` (`a claim for the loss` `the Summary` `risk A` `fire` (`a loss in full` `the building` `loss of rent` 30000000 EMPTY `no other figures`)) EQUALS LIST `preamble — a head of loss the policy does not insure`, `III.3 — consequential loss`
+#ASSERT `the reasons` (`a claim for the loss` (`a 2026 Summary in full` `every risk` 1500000000 EMPTY TRUE FALSE FALSE) `risk A` `fire` (`a loss in full` `the building` `loss of rent` 30000000 EMPTY `no other figures`)) EQUALS EMPTY
+
+§§ `I — definitions`
+
+-- Fire: a fire source meant for everyday living is not Fire; without abnormal conditions,
+-- not Fire either. No other limb of A then applies.
+#ASSERT `I — Fire` (`the facts` `fire`)
+#ASSERT NOT `I — Fire` (`the facts` (`fact — the flame was a fire source meant for everyday living` FOLLOWED BY `fire`))
+#ASSERT NOT `I — Fire` (`the facts` (LIST `fact — an actual flame`, `fact — the flame was out of control`))
+#ASSERT `the reasons` (`a building claim` `risk A` (`fact — the flame was a fire source meant for everyday living` FOLLOWED BY `fire`) EMPTY EMPTY) EQUALS LIST `II — the incident is not of the kind the risk claimed under describes`
+
+-- DAMAGE: physical, an insured item, an insured location.
+#ASSERT `I — the loss is DAMAGE` (`at the insured location` "Hanoi" EMPTY) (`physical damage to` `the building` `of` 1 `with` EMPTY)
+#ASSERT NOT `I — the loss is DAMAGE` (`at the insured location` "Hanoi" EMPTY) (`a loss in full` `the building` `loss of rent` 1 EMPTY `no other figures`)
+
+-- Terrorism: violence or force, for a political, religious, ideological or similar purpose.
+#ASSERT `I — Terrorism` (`the facts` (LIST `fact — violence or force was used or threatened`, `fact — for a political, religious, ideological or similar purpose`))
+#ASSERT NOT `I — Terrorism` (`the facts` (LIST `fact — violence or force was used or threatened`))
+
+§§ `II.A — fire, lightning, domestic explosion`
+
+GIVEN f IS A `A fact in a test`
+GIVETH A LIST OF `A reason a claim or a loss is not covered`
+`the reasons for a fire with` f MEANS `the reasons` (`a building claim` `risk A` (f FOLLOWED BY `fire`) EMPTY EMPTY)
+
+#ASSERT `the reasons for a fire with` `fact — an earthquake or volcanic eruption` EQUALS LIST `II.A(a) — earthquake, volcano or another convulsion of nature`
+#ASSERT `the reasons for a fire with` `fact — another convulsion of nature` EQUALS LIST `II.A(a) — earthquake, volcano or another convulsion of nature`
+#ASSERT `the reasons for a fire with` `fact — an underground fire` EQUALS LIST `II.A(b)(iv) — fire from an underground fire`
+#ASSERT `the reasons for a fire with` `fact — a forest, bush, grassland, wilderness or jungle fire, or the burning of land to clear it` EQUALS LIST `II.A(c) — forest, bush, grassland, wilderness or jungle fire, or burning land to clear it`
+-- near miss for (a), (b)(iv), (c): the ordinary fire above, no such fact: EMPTY.
+
+-- (b)(i)-(iii), item by item: the stock that heated of itself is out; the building it set
+-- alight is in (fork F5).
+GIVEN lf IS A `A loss feature in a test`
+GIVETH A `The claim`
+`a fire started in the stock by` lf MEANS
+    `a claim` `the Summary` `risk A` `the day` (`the facts` `fire`)
+        (LIST (`at the insured location` "Hanoi" (LIST (`physical damage to` `the stock` `of` 100000000 `with` (LIST lf)),
+                                                        (`physical damage to` `the building` `of` 200000000 `with` EMPTY))))
+#ASSERT `the reasons` (`a fire started in the stock by` `loss — the item fermented, heated or burned of itself`) EQUALS LIST `II.A(b)(i) — the property's own fermentation, heating or spontaneous burning`
+#ASSERT `the amount payable` (`a fire started in the stock by` `loss — the item fermented, heated or burned of itself`) EQUALS 200000000
+#ASSERT `the reasons` (`a fire started in the stock by` `loss — the item was undergoing a drying process or a process using heat`) EQUALS LIST `II.A(b)(ii) — the property undergoing a drying process or a process using heat`
+#ASSERT `the reasons` (`a fire started in the stock by` `loss — the item was burned by order of a public authority`) EQUALS LIST `II.A(b)(iii) — the property burned by order of a public authority`
+#ASSERT `the amount payable` (`a fire started in the stock by` `loss — caused by fire`) EQUALS 300000000
+
+-- Lightning: direct, and changing the shape or setting alight. Near misses: direct but no
+-- change; a change without a direct strike.
+`lightning` MEANS LIST `fact — a direct lightning strike`, `fact — the lightning changed the shape of the property or set it alight`
+#ASSERT `the reasons` (`a building claim` `risk A` `lightning` EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk A` (LIST `fact — a direct lightning strike`) EMPTY EMPTY) EQUALS LIST `II — the incident is not of the kind the risk claimed under describes`
+#ASSERT `the reasons` (`a building claim` `risk A` (LIST `fact — the lightning changed the shape of the property or set it alight`) EMPTY EMPTY) EQUALS LIST `II — the incident is not of the kind the risk claimed under describes`
+-- Lightning has no earthquake exclusion of its own.
+#ASSERT `the reasons` (`a building claim` `risk A` (`fact — an earthquake or volcanic eruption` FOLLOWED BY `lightning`) EMPTY EMPTY) EQUALS EMPTY
+
+-- Explosion of a domestic boiler or gas.
+`a domestic gas explosion` MEANS LIST `fact — an explosion`, `fact — the explosion was of a boiler or of gas`, `fact — the boiler or gas was used for domestic purposes`
+#ASSERT `the reasons` (`a building claim` `risk A` `a domestic gas explosion` EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk A` (`fact — at a place whose function includes producing gas` FOLLOWED BY `a domestic gas explosion`) EMPTY EMPTY) EQUALS LIST `II — the incident is not of the kind the risk claimed under describes`
+#ASSERT `the reasons` (`a building claim` `risk A` (LIST `fact — an explosion`, `fact — the explosion was of a boiler or of gas`) EMPTY EMPTY) EQUALS LIST `II — the incident is not of the kind the risk claimed under describes`
+#ASSERT `the reasons` (`a building claim` `risk A` (`fact — an earthquake or volcanic eruption` FOLLOWED BY `a domestic gas explosion`) EMPTY EMPTY) EQUALS LIST `II.A — explosion of a domestic boiler or gas, from an earthquake, volcano or convulsion of nature`
+
+§§ `II.B — explosion`
+
+`an explosion` MEANS LIST `fact — an explosion`
+#ASSERT `the reasons` (`a building claim` `risk B` `an explosion` EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk B` `fire` EMPTY EMPTY) EQUALS LIST `II — the incident is not of the kind the risk claimed under describes`
+#ASSERT `the reasons` (`a building claim` `risk B` `an explosion` EMPTY (LIST `item — the boiler, economiser, vessel, machine or apparatus under pressure that exploded, or an internal part of it`)) EQUALS LIST `II.B(a) — the pressure vessel that exploded, or its internal parts`
+`terrorism for an organisation` MEANS LIST `fact — violence or force was used or threatened`, `fact — for a political, religious, ideological or similar purpose`, `fact — by persons acting on behalf of or in connection with an organisation`
+#ASSERT `the reasons` (`a building claim` `risk B` (append `an explosion` `terrorism for an organisation`) EMPTY EMPTY) EQUALS LIST `II.B(b) — Terrorism by persons acting for an organisation`
+-- near miss: the same bomb, set by a person acting alone (finding X2).
+#ASSERT `the reasons` (`a building claim` `risk B` (LIST `fact — an explosion`, `fact — violence or force was used or threatened`, `fact — for a political, religious, ideological or similar purpose`) EMPTY EMPTY) EQUALS EMPTY
+
+§§ `II.C — aircraft`
+
+#ASSERT `the reasons` (`a building claim` `risk C` (LIST `fact — an aircraft or other aerial device, or something from one, fell on the property`) EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk C` `an explosion` EMPTY EMPTY) EQUALS LIST `II — the incident is not of the kind the risk claimed under describes`
+
+§§ `II.D — riot, strike, lockout`
+
+`rioters` MEANS LIST `fact — an act of a person taking part with others in disturbing public order`
+#ASSERT `the reasons` (`a building claim` `risk D` `rioters` EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk D` (LIST `fact — action of a lawful authority suppressing or limiting such a disturbance`) EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk D` (LIST `fact — a wilful act of a striker or locked-out worker, to further a strike or resist a lockout`) EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk D` (LIST `fact — action of a lawful authority preventing or limiting the consequences of such acts`) EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk D` `fire` EMPTY EMPTY) EQUALS LIST `II — the incident is not of the kind the risk claimed under describes`
+
+GIVEN f IS A `A fact in a test`
+GIVETH A LIST OF `A reason a claim or a loss is not covered`
+`the reasons for a riot with` f MEANS `the reasons` (`a building claim` `risk D` (f FOLLOWED BY `rioters`) EMPTY EMPTY)
+
+#ASSERT `the reasons` (`a building claim` `risk D` (append `rioters` `terrorism for an organisation`) EMPTY EMPTY) EQUALS LIST `II.D.1(a) — Terrorism by persons acting for an organisation`
+#ASSERT `the reasons for a riot with` `fact — a civil commotion that is part of, or grows into, a popular uprising` EQUALS LIST `II.D.1(b) — civil commotion that is part of, or grows into, a popular uprising`
+#ASSERT `the reasons for a riot with` `fact — a malicious act of any person` EQUALS LIST `II.D.1(c) — a malicious act, other than a wilful act of strikers, demonstrators or locked-out workers`
+-- near miss for 1(c): the malicious act was strikers' wilful act in furtherance of the strike.
+#ASSERT `the reasons` (`a building claim` `risk D` (LIST `fact — a malicious act of any person`, `fact — the malicious act was a wilful act of strikers, demonstrators or locked-out workers, to further a strike or resist a lockout`, `fact — a wilful act of a striker or locked-out worker, to further a strike or resist a lockout`) EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons for a riot with` `fact — malicious erasure, loss, distortion or corruption of information on a computer system or in software, programs or stored data` EQUALS LIST `II.D.1(d) — malicious erasure or corruption of information on a computer system`
+
+-- Exclusion 2: heads of loss, and dispossession with its proviso.
+#ASSERT `the reasons` (`a claim for the loss` `the Summary` `risk D` `rioters` (`a loss in full` `the building` `loss of income, delay, loss of market, or other consequential or indirect loss` 50000000 EMPTY `no other figures`)) EQUALS LIST `preamble — a head of loss the policy does not insure`, `II.D.2(a) — consequential or indirect loss`, `III.3 — consequential loss`
+#ASSERT `the reasons` (`a claim for the loss` `the Summary` `risk D` `rioters` (`a loss in full` `the building` `loss from stopping or interrupting work, a process or an operation` 50000000 EMPTY `no other figures`)) EQUALS LIST `preamble — a head of loss the policy does not insure`, `II.D.2(b) — stopping or interrupting work, a process or an operation`, `III.3 — consequential loss`
+#ASSERT `the reasons` (`a claim for the loss` `the Summary` `risk D` `rioters` (`a loss in full` `the building` `loss of possession by confiscation or requisition by order of a lawful authority` 50000000 EMPTY `no other figures`)) EQUALS LIST `preamble — a head of loss the policy does not insure`, `II.D.2(c) — dispossession by confiscation or requisition`
+#ASSERT `the reasons` (`a claim for the loss` `the Summary` `risk D` `rioters` (`a loss in full` `the building` `loss of possession of a building by unlawful occupation` 50000000 EMPTY `no other figures`)) EQUALS LIST `preamble — a head of loss the policy does not insure`, `II.D.2(d) — dispossession of a building by unlawful occupation`
+-- Physical damage while permanently dispossessed is out; before dispossession, or during a
+-- temporary one, it is in (the proviso; the standard riot case above is the near miss).
+#ASSERT `the reasons for a riot with` `fact — the damage occurred while the Insured was permanently dispossessed by confiscation or requisition` EQUALS LIST `II.D.2(c) — dispossession by confiscation or requisition`
+#ASSERT `the reasons for a riot with` `fact — the damage occurred while the Insured was permanently dispossessed of a building by unlawful occupation` EQUALS LIST `II.D.2(d) — dispossession of a building by unlawful occupation`
+
+-- III.1(a)(i): a strike, a commotion, with D insured, is given back; without D, out.
+`the Summary without D` MEANS `a 2026 Summary` (LIST `risk A`, `risk G`) 1500000000 EMPTY
+#ASSERT `the reasons` (`a building claim in` `the Summary without D` `risk A` (`fact — a strike or lockout` FOLLOWED BY `fire`) EMPTY EMPTY) EQUALS LIST `III.1(a)(i) — riot, civil commotion, strike or lockout, risk D not insured`
+#ASSERT `the reasons` (`a building claim in` `the Summary without D` `risk A` (`fact — a civil commotion` FOLLOWED BY `fire`) EMPTY EMPTY) EQUALS LIST `III.1(a)(i) — riot, civil commotion, strike or lockout, risk D not insured`
+#ASSERT `the reasons` (`a building claim` `risk A` (`fact — a strike or lockout` FOLLOWED BY `fire`) EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk D` (append (LIST `fact — a civil commotion`, `fact — a strike or lockout`) `rioters`) EMPTY EMPTY) EQUALS EMPTY
+
+§§ `II.E — malicious damage`
+
+`vandals` MEANS LIST `fact — a malicious act of any person`
+#ASSERT `the reasons` (`a building claim` `risk E` `vandals` EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk E` `rioters` EMPTY EMPTY) EQUALS LIST `II — the incident is not of the kind the risk claimed under describes`
+#ASSERT `the reasons` (`a building claim` `risk E` `vandals` (LIST `loss — caused by theft, robbery or attempted theft`) EMPTY) EQUALS LIST `II.E — DAMAGE caused by theft or attempted theft`
+-- E only with D: a Summary with E and not D.
+#ASSERT `the reasons` (`a building claim in` (`a 2026 Summary` (LIST `risk A`, `risk E`) 1500000000 EMPTY) `risk E` `vandals` EMPTY EMPTY) EQUALS LIST `II.E — risk E is stated without risk D`
+-- D's exclusions apply to E, except 1(c).
+#ASSERT `the reasons` (`a building claim` `risk E` (append `vandals` `terrorism for an organisation`) EMPTY EMPTY) EQUALS LIST `II.D.1(a) — Terrorism by persons acting for an organisation`
+#ASSERT `the reasons` (`a building claim` `risk E` (`fact — the damage occurred while the Insured was permanently dispossessed of a building by unlawful occupation` FOLLOWED BY `vandals`) EMPTY EMPTY) EQUALS LIST `II.D.2(d) — dispossession of a building by unlawful occupation`
+
+§§ `II.F — earthquake`
+
+#ASSERT `the reasons` (`a building claim` `risk F` (LIST `fact — an earthquake or volcanic eruption`) EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk F` (LIST `fact — a flood of sea water resulting from an earthquake or volcanic eruption`) EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk F` (LIST `fact — a flood from the sea`) EMPTY EMPTY) EQUALS LIST `II — the incident is not of the kind the risk claimed under describes`
+
+§§ `II.G — storm and tempest`
+
+`storm` MEANS LIST `fact — a storm or tempest`
+#ASSERT `the reasons` (`a building claim` `risk G` `storm` EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk G` (LIST `fact — a flood`) EMPTY EMPTY) EQUALS LIST `II — the incident is not of the kind the risk claimed under describes`
+
+GIVEN f IS A `A fact in a test`
+GIVETH A LIST OF `A reason a claim or a loss is not covered`
+`the reasons for a storm with` f MEANS `the reasons` (`a building claim` `risk G` (f FOLLOWED BY `storm`) EMPTY EMPTY)
+
+#ASSERT `the reasons for a storm with` `fact — water overflowing from a natural or artificial water source, reservoir, canal, dam, or water apparatus or pipe` EQUALS LIST `II.G(i)(a) — water overflowing from a water source, reservoir, canal, dam, apparatus or pipe`
+#ASSERT `the reasons for a storm with` `fact — a flood from the sea` EQUALS LIST `II.G(i)(b) — a flood from the sea`
+#ASSERT `the reasons for a storm with` `fact — frost, subsidence or landslip` EQUALS LIST `II.G(ii) and II.H(i) — frost, subsidence or landslip`
+#ASSERT `the reasons` (`a building claim` `risk G` `storm` EMPTY (LIST `item — an awning, blind, signboard, outside fixture, gate, fence, or movable property in the open`)) EQUALS LIST `II.G(iii) and II.H(ii) — awnings, signboards, outside fixtures, gates, fences, property in the open`
+#ASSERT `the reasons` (`a building claim` `risk G` `storm` EMPTY (LIST `item — a building under construction, renovation or repair`)) EQUALS LIST `II.G(iv) and II.H(iii) — a building under works, its openings not completed against storm`
+#ASSERT `the reasons` (`a building claim` `risk G` `storm` EMPTY (LIST `item — a building under construction, renovation or repair`, `item — every door, window and other opening completed against storm`)) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk G` `storm` (LIST `loss — caused by rain`) EMPTY) EQUALS LIST `II.G(v) — water or rain, unless it came in through an opening the storm made`
+#ASSERT `the reasons` (`a building claim` `risk G` `storm` (LIST `loss — caused by water other than rain`) EMPTY) EQUALS LIST `II.G(v) — water or rain, unless it came in through an opening the storm made`
+#ASSERT `the reasons` (`a building claim` `risk G` `storm` (LIST `loss — caused by rain`, `loss — the rain or water came in through an opening in the structure made by the direct force of the storm`) EMPTY) EQUALS EMPTY
+
+§§ `II.H — storm, tempest and flood`
+
+`flood` MEANS LIST `fact — a flood`
+#ASSERT `the reasons` (`a building claim` `risk H` `flood` EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk H` `storm` EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk H` `lightning` EMPTY EMPTY) EQUALS LIST `II — the incident is not of the kind the risk claimed under describes`
+-- A flood from the sea, out of G, is not excluded from H.
+#ASSERT `the reasons` (`a building claim` `risk H` (LIST `fact — a flood`, `fact — a flood from the sea`) EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk H` (`fact — frost, subsidence or landslip` FOLLOWED BY `flood`) EMPTY EMPTY) EQUALS LIST `II.G(ii) and II.H(i) — frost, subsidence or landslip`
+#ASSERT `the reasons` (`a building claim` `risk H` `flood` EMPTY (LIST `item — an awning, blind, signboard, outside fixture, gate, fence, or movable property in the open`)) EQUALS LIST `II.G(iii) and II.H(ii) — awnings, signboards, outside fixtures, gates, fences, property in the open`
+#ASSERT `the reasons` (`a building claim` `risk H` `flood` EMPTY (LIST `item — a building under construction, renovation or repair`)) EQUALS LIST `II.G(iv) and II.H(iii) — a building under works, its openings not completed against storm`
+#ASSERT `the reasons` (`a building claim` `risk H` `storm` (LIST `loss — caused by rain`) EMPTY) EQUALS LIST `II.H(iv) — rain, unless it came in through an opening the storm made`
+-- near miss for H(iv): water that is not rain (flood water) is not within H(iv).
+#ASSERT `the reasons` (`a building claim` `risk H` `flood` (LIST `loss — caused by water other than rain`) EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk H` (`fact — water overflowing from a water tank, water apparatus or water pipe` FOLLOWED BY `storm`) EMPTY EMPTY) EQUALS LIST `II.H(v) — water overflowing from a water tank, apparatus or pipe`
+
+§§ `II.I — water from tanks, apparatus or pipes`
+
+`a burst pipe` MEANS LIST `fact — water overflowing from a water tank, water apparatus or water pipe`
+#ASSERT `the reasons` (`a building claim` `risk I` `a burst pipe` EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk I` `flood` EMPTY EMPTY) EQUALS LIST `II — the incident is not of the kind the risk claimed under describes`
+#ASSERT `the reasons` (`a building claim` `risk I` (`fact — leakage or discharge from an automatic sprinkler installation` FOLLOWED BY `a burst pipe`) EMPTY EMPTY) EQUALS LIST `II.I(i) — leakage or discharge from an automatic sprinkler installation`
+#ASSERT `the reasons` (`a building claim` `risk I` `a burst pipe` EMPTY (LIST `item — a building left empty or not in use`)) EQUALS LIST `II.I(ii) — DAMAGE to a building left empty or not in use`
+-- near miss for I(ii): the stock inside the empty building is not "the building" (fork F7).
+#ASSERT `the reasons` (`a claim for the loss` `the Summary` `risk I` `a burst pipe` (`physical damage to` `the stock` `of` 10000000 `with` EMPTY)) EQUALS EMPTY
+
+§§ `II.J — impact by vehicles or animals`
+
+#ASSERT `the reasons` (`a building claim` `risk J` (LIST `fact — impact by a vehicle`) EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk J` (LIST `fact — impact by an animal`) EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk J` (LIST `fact — impact by a vehicle`, `fact — the vehicle or animal was owned or controlled by the Insured, the occupier of the insured premises, or their employees`) EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk J` `storm` EMPTY EMPTY) EQUALS LIST `II — the incident is not of the kind the risk claimed under describes`
+
+§§ `III — general exclusions`
+
+#ASSERT `the reasons for a fire with` `fact — war, invasion, act of a foreign enemy, hostilities or warlike operations, or civil war` EQUALS LIST `III.1(a)(ii) — war, invasion, foreign enemy, hostilities, civil war`
+#ASSERT `the reasons for a fire with` `fact — mutiny, popular rising, insurrection, revolution, coup, martial law, or events leading to martial law or curfew` EQUALS LIST `III.1(a)(iii) — rebellion, mutiny, rising, insurrection, revolution, riot, coup, martial law`
+#ASSERT `the reasons for a fire with` `fact — a violent disturbance, the further event III.1(a)(iii) names` EQUALS LIST `III.1(a)(iii) — rebellion, mutiny, rising, insurrection, revolution, riot, coup, martial law`
+#ASSERT `the reasons for a fire with` `fact — nuclear weapons material` EQUALS LIST `III.1(b)(i) — nuclear weapons material`
+#ASSERT `the reasons for a fire with` `fact — ionising radiation or radioactive contamination from nuclear fuel or nuclear waste` EQUALS LIST `III.1(b)(ii) — ionising radiation or radioactive contamination from nuclear fuel or waste`
+#ASSERT `the reasons for a fire with` `fact — pollution or contamination` EQUALS LIST `III.1(d) — pollution or contamination`
+-- near misses for (d): pollution from an insured risk; an insured risk from pollution.
+#ASSERT `the reasons` (`a building claim` `risk A` (append (LIST `fact — pollution or contamination`, `fact — the pollution or contamination itself resulted from an insured risk`) `fire`) EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk A` (append (LIST `fact — pollution or contamination`, `fact — an insured risk itself resulted from the pollution or contamination`) `fire`) EMPTY EMPTY) EQUALS EMPTY
+
+-- III.1(c): the electrical machine that itself short-circuited is out; another machine
+-- burned by the fire that started in it is in.
+`the switchboard` MEANS `an item` "main switchboard" 100000000 100000000 (LIST `item — electrical machinery, apparatus or installation`)
+`the press` MEANS `an item` "printing press" 400000000 400000000 (LIST `item — electrical machinery, apparatus or installation`)
+`a fire from a short circuit` MEANS
+    `a claim` `the Summary` `risk A` `the day` (`the facts` `fire`)
+        (LIST (`at the insured location` "Hanoi" (LIST (`physical damage to` `the switchboard` `of` 20000000 `with` (LIST `loss — the item itself suffered over-running, excessive pressure, short-circuiting, self-heating, arcing or leakage of electricity`)),
+                                                        (`physical damage to` `the press` `of` 150000000 `with` (LIST `loss — caused by fire`)))))
+#ASSERT `the reasons` `a fire from a short circuit` EQUALS LIST `III.1(c) — electrical machinery damaged by its own electrical fault`
+#ASSERT `the amount payable` `a fire from a short circuit` EQUALS 150000000
+
+-- III.2(a): cash, unless specifically recorded as insured.
+`the cash` MEANS `an item in full` "cash in the safe" `money, in notes or coins` 50000000 50000000 0 EMPTY
+`the recorded cash` MEANS `an item in full` "cash in the safe" `money, in notes or coins` 50000000 50000000 0 (LIST `item — specifically recorded as insured in this policy`)
+#ASSERT `the reasons` (`a claim for the loss` `the Summary` `risk A` `fire` (`physical damage to` `the cash` `of` 50000000 `with` EMPTY)) EQUALS LIST `III.2(a) — property of a named category, not recorded as insured`
+#ASSERT `the reasons` (`a claim for the loss` `the Summary` `risk A` `fire` (`physical damage to` `the recorded cash` `of` 50000000 `with` EMPTY)) EQUALS EMPTY
+
+-- III.4: theft during or after a fire.
+#ASSERT `the reasons` (`a building claim` `risk A` `fire` (LIST `loss — caused by theft, robbery or attempted theft`) EMPTY) EQUALS LIST `III.4 — theft or robbery during or after a fire`
+-- Theft after a storm: not caused by the storm, and no risk names theft (fork F32).
+#ASSERT `the reasons` (`a building claim` `risk G` `storm` (LIST `loss — caused by theft, robbery or attempted theft`) EMPTY) EQUALS LIST `preamble — theft is not a risk in Section II`
+
+§§ `VIII.1 and VIII.2`
+
+-- VIII.1(a)(i): electronic data is out; (ii) fire damage from a virus is in.
+#ASSERT `the reasons` (`a claim for the loss` `the Summary` `risk A` `fire` (`a loss in full` `the building` `loss of or damage to electronic data, or loss of use or cost resulting from it` 5000000 EMPTY `no other figures`)) EQUALS LIST `preamble — a head of loss the policy does not insure`, `VIII.1(a)(i) — electronic data, or loss of use or cost from it`
+#ASSERT `the reasons` (`a building claim` `risk A` (`fact — malicious erasure, loss, distortion or corruption of information on a computer system or in software, programs or stored data` FOLLOWED BY `fire`) EMPTY EMPTY) EQUALS EMPTY
+
+-- VIII.2 Part 1: a date change that bursts a pipe is out; one that starts a fire is in.
+`a date fault` MEANS `fact — a computer or chip's handling of a date change, including year 2000 or a leap year, contributed`
+#ASSERT `the reasons` (`a building claim` `risk I` (`a date fault` FOLLOWED BY `a burst pipe`) EMPTY EMPTY) EQUALS LIST `VIII.2 Part 1 — a date change contributed`
+#ASSERT `the reasons` (`a building claim` `risk A` (`a date fault` FOLLOWED BY `fire`) EMPTY EMPTY) EQUALS EMPTY
+#ASSERT `the reasons` (`a building claim` `risk I` (`fact — a change or modification relating to a date change contributed` FOLLOWED BY `a burst pipe`) EMPTY EMPTY) EQUALS LIST `VIII.2 Part 1 — a date change contributed`
+-- Part 2: the cost of altering a system is out even where a fire is in.
+#ASSERT `the reasons` (`a claim for the loss` `the Summary` `risk A` (`a date fault` FOLLOWED BY `fire`) (`a loss in full` `the building` `cost of altering or modifying a computer system, program or chip` 5000000 EMPTY `no other figures`)) EQUALS LIST `preamble — a head of loss the policy does not insure`, `VIII.2 Part 1 — a date change contributed`, `VIII.2 Part 2 — cost of altering or modifying a computer system`

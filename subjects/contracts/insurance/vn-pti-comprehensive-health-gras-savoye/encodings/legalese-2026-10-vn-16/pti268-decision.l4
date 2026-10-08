@@ -1,0 +1,114 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `pti268-nouns`
+IMPORT `pti268-definitions`
+IMPORT `pti268-injury-table`
+IMPORT `pti268-extensions`
+IMPORT `pti268-exclusions`
+IMPORT `pti268-conditions`
+IMPORT `pti268-benefits`
+IMPORT `pti268-claims`
+IMPORT `pti268-annex-transport`
+
+-- The three questions a reader asks of a claim, put together from the Parts:
+--   1. Is the event covered?           `the claim is covered`
+--   2. How much is payable?            `the amount payable on`
+--   3. Has the claim been made in time, so that PTI must pay?
+--                                       `the amount PTI must pay on`
+-- Each limb cites the Part that supplies it. The limbs are ordered so that the facts the
+-- encoding can always decide come first: evaluation stops at the first FALSE, and a limb
+-- that declines (REFUSE) further down is then never reached (phrasebook entry 11.8).
+
+§ `Putting the Parts together`
+
+§§ `1. Is the event covered?`
+
+-- VI.2, the premium payment warranty: unpaid premium ends cover after the warranty period,
+-- without prejudice to liability arising before (fork F26).
+GIVEN claim IS A `A claim`
+GIVETH A BOOLEAN
+DECIDE `the premium payment warranty ended cover before the loss in` claim IF
+    CONSIDER `the day cover ends under the warranty, for` (claim's `the contract`) `paid on` (claim's `date the premium was paid in full`)
+    WHEN JUST d  THEN claim's `date of the loss` GREATER THAN d
+    WHEN NOTHING THEN FALSE
+
+-- Benefit 7's own conditions (the Annex); every other benefit has none beyond Part II.
+GIVEN claim IS A `A claim`
+GIVETH A BOOLEAN
+DECIDE `the Annex's conditions are met in` claim IF
+    CONSIDER claim's `the outcome`
+    WHEN `emergency transport` t THEN `Benefit 7 responds to` t
+    OTHERWISE TRUE
+
+@export Decide whether a claim under PTI's comprehensive health care rules through Gras Savoye (Decision 268/QĐ-PTI-BHCN) is covered: eligibility, schedule, period, territory, benefit, waiting periods, exclusions and special cases
+GIVEN claim IS A `A claim` @desc the claim: the contract and its schedule, the insured person, the event, the benefit claimed, the outcome and the claim file
+GIVETH A BOOLEAN
+DECIDE `the claim is covered` claim IF
+        `insurable under III.1` (claim's `the insured person`)                                -- III.1, defs 39-41
+    AND `the benefit claimed is in the schedule, with what it requires, in` claim             -- II, schedule
+    AND `the benefit claimed answers the event and outcome in` claim                         -- II
+    AND `the claim is within the time of cover` claim                                        -- III.3, III.6
+    AND NOT `the premium payment warranty ended cover before the loss in` claim              -- VI.2
+    AND NOT `fraud bars` claim                                                               -- III.10
+    AND NOT `III.8 bars a condition that existed before cover in` claim                      -- III.8, def 58
+    AND NOT `a general exclusion applies to` claim                                           -- IV
+    AND `within the territory` (claim's `the contract`) (claim's `the event`)                -- def 43
+    AND `the Annex's conditions are met in` claim                                            -- Annex
+    AND NOT `the special cases clause bars` claim                                            -- III.12
+    AND NOT `a waiting period bars` claim                                                    -- III.8
+
+§§ `2. How much is payable?`
+
+-- The amount the benefit claimed pays, by benefit. For Benefits 3 and 4 a maternity event
+-- in the waiting period of a contract of more than 50 employees is paid in proportion
+-- (III.8).
+GIVEN claim IS A `A claim`
+GIVETH A NUMBER
+`the amount the benefit pays in` claim MEANS
+    CONSIDER claim's `the benefit claimed`
+    WHEN `Benefit 1` THEN `the amount Benefit 1 pays in` claim
+    WHEN `Benefit 2` THEN `the medical costs Benefit 2 pays in` claim
+    WHEN `Benefit 3` THEN `the amount Benefit 3 pays in` claim TIMES `the share paid under the maternity proviso in` claim
+    WHEN `Benefit 4` THEN `the medical costs Benefit 4 pays in` claim TIMES `the share paid under the maternity proviso in` claim
+    WHEN `Benefit 5` THEN `the amount Benefit 5 pays in` claim
+    WHEN `Benefit 6` THEN `the medical costs Benefit 6 pays in` claim
+    WHEN `Benefit 7` THEN
+        CONSIDER claim's `the outcome`
+        WHEN `emergency transport` t THEN `the transport cost Benefit 7 pays, in VND, under` (claim's `the contract`) `for` t
+        OTHERWISE 0
+
+@export The amount payable, in VND, on a claim under PTI's comprehensive health care rules through Gras Savoye: 0 where the claim is not covered
+GIVEN claim IS A `A claim` @desc the claim: the contract and its schedule, the insured person, the event, the benefit claimed, the outcome and the claim file
+GIVETH A NUMBER
+`the amount payable on` claim MEANS
+    IF   `the claim is covered` claim
+    THEN `the amount the benefit pays in` claim
+    ELSE 0
+
+§§ `3. Has the claim been made in time?`
+
+-- Part VII: a file outside the network that is late is refused (save force majeure); an
+-- accident not notified in writing within 120 days is refused; accident documents sent
+-- after 12 months are refused in part or in whole, by an amount the document does not state.
+-- Fork F49: all three limits sit under the heading for treatment outside the direct
+-- billing network; a claim through the network is not held to them.
+GIVEN claim IS A `A claim`
+GIVETH A BOOLEAN
+DECIDE `an accident claim held to Part VII's limits in` claim IF
+        `counts as an accident under` (claim's `the contract`) (claim's `the event`)
+    AND NOT claim's `the file`'s `through the direct billing network`
+
+@export The amount PTI must pay on a claim, in VND, once Part VII's time limits for the claim file, the accident notice and the accident documents are applied
+GIVEN claim IS A `A claim` @desc the claim: the contract and its schedule, the insured person, the event, the benefit claimed, the outcome and the claim file
+GIVETH A NUMBER
+`the amount PTI must pay on` claim MEANS
+    BRANCH IF NOT `the claim file is in time in` claim                                    THEN 0
+           IF     `an accident claim held to Part VII's limits in` claim
+              AND NOT `the accident was notified in time in` claim                           THEN 0
+           IF     `an accident claim held to Part VII's limits in` claim
+              AND NOT `the accident documents were sent in time in` claim                    THEN
+               IF   `the amount payable on` claim EQUALS 0
+               THEN 0
+               ELSE `late accident documents are refused in part or in whole, and the document does not say how much`
+           OTHERWISE `the amount payable on` claim

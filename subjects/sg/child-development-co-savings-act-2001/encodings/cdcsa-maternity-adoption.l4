@@ -1,0 +1,439 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `cdcsa-types`
+IMPORT `cdcsa-common`
+
+-- Child Development Co-Savings Act 2001 — GOALS 3 AND 4: MOTHERS
+-- (maternity: ss 9, 9A, 10, 12; adoption: ss 12A, 12AA-12AD).
+--
+--   "Is she eligible; how many weeks of paid leave; how much must the
+--    employer pay, and how much of it may the employer claim back; what may
+--    a self-employed mother claim; and, if she has neither, what Government-
+--    paid benefit?"
+--
+-- Amounts are computed from the parent's gross pay (or lost income) per week
+-- of work days. A "block" is a period of 4 times the weekly index or 24 days,
+-- whichever is lower, which is 4 weeks of work days.
+-- Source: ../source/CDCSA2001.txt lines 568-1922.
+
+§ `Goals 3-4 — mothers`
+
+DECLARE `Leave payments` HAS
+    `weeks of paid leave`                IS A NUMBER
+    `employer pays at most`              IS A NUMBER
+    `Government reimburses the employer at most` IS A NUMBER
+
+§§ `Eligibility for maternity leave and benefits (s 9A)`
+
+-- s 9A(1): "(a) her confinement ... occurs, or the estimated delivery date ...
+-- is, on or after 1 January 2017, or (in the case of a stillborn child) on or
+-- after 1 November 2021; (b) a child delivered ... is a citizen of Singapore at
+-- the time of the child's birth, or (in the case of a stillborn child) would
+-- have been ...; (c) in the case of a female employee, she has served her
+-- employer for a period of at least 3 months before the day of her
+-- confinement; and (d) in the case of a self-employed woman, she has been
+-- carrying on her trade ... for a continuous period of at least 3 months".
+@ref s 9A(1)
+GIVEN months IS A NUMBER, b IS A Birth
+GIVETH A BOOLEAN
+DECIDE `eligible under s 9A(1), with months of service` months `, for` b IF
+        `the confinement date gate` b
+    AND b's `a citizen at birth (or would have been, if stillborn)`
+    AND months AT LEAST 3
+
+GIVEN b IS A Birth
+GIVETH A BOOLEAN
+DECIDE `the confinement date gate` b IF
+        b's `confinement on` AT LEAST `gate`
+    OR  b's `estimated delivery date` AT LEAST `gate`
+    WHERE
+        `gate` MEANS IF b's `stillborn` THEN YMD 2021 11 1 ELSE YMD 2017 1 1
+
+-- s 9A(1A): (a) on or after 1 January 2017; "(b) a child delivered ... (i) is
+-- not a citizen of Singapore at the time of the child's birth; but (ii)
+-- becomes a citizen of Singapore within the period of 12 months commencing on
+-- the date of the child's birth"; (c)-(d) 3 months.
+@ref s 9A(1A)
+GIVEN months IS A NUMBER, b IS A Birth
+GIVETH A BOOLEAN
+DECIDE `eligible under s 9A(1A), with months of service` months `, for` b IF
+        (b's `confinement on` AT LEAST YMD 2017 1 1 OR b's `estimated delivery date` AT LEAST YMD 2017 1 1)
+    AND NOT b's `a citizen at birth (or would have been, if stillborn)`
+    AND `becomes a citizen within 12 months of birth` b
+    AND months AT LEAST 3
+
+GIVEN b IS A Birth
+GIVETH A BOOLEAN
+DECIDE `becomes a citizen within 12 months of birth` b IF
+    CONSIDER b's `became a citizen on`
+    WHEN JUST d  THEN d LESS THAN `add years` (b's `confinement on`) 1
+    WHEN NOTHING THEN FALSE
+
+-- s 9A(2): Government-paid maternity benefit: (a) the date gate as (1)(a);
+-- (b) a citizen at birth or within 12 months; "(c) for at least 90 days in the
+-- aggregate during the period of 12 months immediately before the day of her
+-- confinement, she has been employed by one or more employers, self-employed
+-- or both (whether in Singapore or outside Singapore)"; (d) the overseas
+-- conditions. Days are counted under s 9A(2A) by the caller.
+@ref s 9A(2), (2A)
+GIVEN b IS A Birth, w IS A `Work facts`
+GIVETH A BOOLEAN
+DECIDE `eligible for the Government-paid maternity benefit under s 9A(2)` b w IF
+        `the confinement date gate` b
+    AND (b's `a citizen at birth (or would have been, if stillborn)` OR `becomes a citizen within 12 months of birth` b)
+    AND w's `days employed or self-employed in the 12 months before` AT LEAST 90
+    AND w's `the 90-day overseas conditions are met, if any days were outside Singapore`
+
+§§ `Maternity leave and its payment (ss 9(1), 9A(4), 10)`
+
+-- s 9(1): "absent herself from work — (a) during — (i) the period of 4 weeks
+-- immediately before her confinement; and (ii) the period of 12 weeks
+-- immediately after ...; (b) during a period of 16 weeks, as agreed ...; or
+-- (c) during — (i) a period of 8 weeks ...; and (ii) one or more than one later
+-- period ... in aggregate ... equal in duration to 8 times the employee's
+-- weekly index or 48 days (whichever is the lower) ... within the period of 12
+-- months commencing on the day of her confinement" — each at "her gross rate
+-- of pay". Sixteen weeks in every arrangement.
+-- s 9A(4): the payment "is subject to the following amounts": (a) first or
+-- second specified event: "$10,000 for every period ... equal in duration to 4
+-- times the employee's weekly index or every 24 days, whichever is the lower,
+-- of her absence ... after the first 8 weeks", "in any case ... a total of
+-- $20,000"; (b) third or subsequent: $10,000 for every such period of her
+-- absence, "a total of $40,000".
+-- s 10(1)-(2): the employer may claim back (a) for a first or second event,
+-- the amount paid "for the period of her absence ... after the first 8 weeks";
+-- (b) for a third or later, "the whole period", with the CPF contributions on
+-- it, up to $10,000 a period and $20,000 or $40,000 in all.
+-- s 12E(7): a mother who elects N weeks to the father has her entitlement
+-- "reduced by N weeks, taken from the last N weeks of that entitlement", so
+-- the weeks given up come off the capped weeks first.
+@ref ss 9(1), 9A(4), 10(1)-(2), 12E(7)
+GIVEN event IS A NUMBER, `weeks given up` IS A NUMBER, `gross per week` IS A NUMBER
+GIVETH A `Leave payments`
+`maternity leave payments, specified event` event `, weeks given up under s 12E` `weeks given up` `, gross pay per week` `gross per week` MEANS
+    `leave payments of` 16 (IF `a first or second specified event` event THEN 8 ELSE 0) (IF `a first or second specified event` event THEN 20000 ELSE 40000) `weeks given up` `gross per week`
+
+-- The shape the maternity and adoption caps share: of `weeks` of leave, the
+-- first `uncapped weeks` are paid at gross and not reimbursed; the rest are
+-- paid at gross up to $10,000 a 4-week block and `total` in all, and that part
+-- is reimbursed. Weeks given up under s 12E(7) come off the end.
+GIVEN weeks IS A NUMBER, `uncapped weeks` IS A NUMBER, total IS A NUMBER, `given up` IS A NUMBER, `gross per week` IS A NUMBER
+GIVETH A `Leave payments`
+`leave payments of` weeks `uncapped weeks` total `given up` `gross per week` MEANS
+    `Leave payments` WITH
+        `weeks of paid leave`                        IS `remaining`
+        `employer pays at most`                      IS `uncapped part` TIMES `gross per week` PLUS `capped`
+        `Government reimburses the employer at most` IS `capped`
+    WHERE
+        `remaining`     MEANS IF weeks MINUS `given up` LESS THAN 0 THEN 0 ELSE weeks MINUS `given up`
+        `uncapped part` MEANS IF `remaining` LESS THAN `uncapped weeks` THEN `remaining` ELSE `uncapped weeks`
+        `capped weeks`  MEANS `remaining` MINUS `uncapped part`
+        `capped`        MEANS `at most` 10000 `per block and` total `in all, for` (`capped weeks` DIVIDED BY 4) `blocks paid at` (4 TIMES `gross per week`)
+
+-- s 9(1)(c)(ii): the later periods total "8 times the employee's weekly index
+-- or 48 days (whichever is the lower)".
+@ref s 9(1)(c)(ii); First Schedule note 5
+GIVEN wi IS A NUMBER
+GIVETH A NUMBER
+`the flexible maternity days for weekly index` wi MEANS `the lower of` 8 `times the weekly index` wi `or` 48
+
+-- s 9(4)-(5), 9A(5): a self-employed mother claims lost income from the
+-- Government: (5)(a) first or second event, "for the period of her cessation
+-- ... which is after the first 8 weeks"; (b) third or later, "the whole
+-- period"; capped as for an employee ($10,000 a period; $20,000 or $40,000).
+@ref ss 9(4)-(5), 9A(5)
+GIVEN event IS A NUMBER, `lost income per week` IS A NUMBER
+GIVETH A NUMBER
+`the Government pays a self-employed mother at most, specified event` event `, lost income per week` `lost income per week` MEANS
+    IF `a first or second specified event` event
+    THEN `at most` 10000 `per block and` 20000 `in all, for` 2 `blocks paid at` (4 TIMES `lost income per week`)
+    ELSE `at most` 10000 `per block and` 40000 `in all, for` 4 `blocks paid at` (4 TIMES `lost income per week`)
+
+-- s 9(2): a female employee who "has worked in her employment for any day
+-- during the benefit period before her confinement" is entitled "(a) to
+-- receive, in addition to her gross rate of pay for that day, an amount that
+-- is equivalent to a day's pay ...; or (b) to absent herself from work on
+-- another day at the end of the benefit period".
+@ref s 9(2)
+GIVEN `days worked` IS A NUMBER
+GIVETH A NUMBER
+`extra days' pay (or days off at the end) for days worked before confinement in the benefit period` `days worked` MEANS `days worked`
+
+§§ `A child who becomes a citizen later (s 9(1A), (1B))`
+
+-- s 9(1A): where the mother is absent under s 76(1) of the Employment Act 1968
+-- (which is not in the source: its "specified period" is an input), what this
+-- Act adds turns on the limb of s 76(1), the event number, and when the child
+-- becomes a citizen.
+DECLARE `EA s 76(1) limb` IS ONE OF
+    `(a)`
+    `(b)`
+    `(c)`
+
+DECLARE `s 9(1A) outcome` IS ONE OF
+    `pay for the last 4 weeks of the specified period, and a further 4 weeks or the agreed flexible period`
+    `pay from citizenship to the end of the specified period, and a further 4 weeks or the agreed flexible period`
+    `a further 4 weeks or the agreed flexible period, from citizenship`
+    `pay for every s 76(1)(c)(ii) period, and later periods totalling 4 times the weekly index or 24 days`
+    `pay from citizenship to the end of the eight-week period and for every s 76(1)(c)(ii) period, and later periods totalling 4 times the weekly index or 24 days`
+    `pay for every s 76(1)(c)(ii) period from citizenship, and later periods from citizenship totalling 4 times the weekly index or 24 days`
+    `nothing under s 9(1A)`
+
+-- (i), (iii): first or second event, limb (a) or (b). "(A) if the child
+-- becomes a citizen ... within the first 4 weeks [(b): 8 weeks] of the
+-- [specified period] — ... the last 4 weeks of the specified period; and ... a
+-- further period of 4 weeks ...; (B) ... after the first 4 [8] weeks of, but
+-- within, the specified period — ... the day the child becomes a citizen ...
+-- [to] the last day of the specified period; and ... a further period of 4
+-- weeks ...; or (C) ... within a period of 4 weeks commencing immediately
+-- after the specified period ends, ... a further period of 4 weeks commencing
+-- on the day the child becomes a citizen".
+-- (ii), (iv): third or later event: (A) within the specified period — pay
+-- from citizenship to its end, and a further 4 weeks; (B) within the 4 weeks
+-- after — a further 4 weeks from citizenship.
+-- (iva): limb (a) or (b), citizenship "after the period of 16 weeks, which
+-- commences on the first day on which she exercised her entitlement under
+-- section 76(1)(a) or (b) ..., but within the period of 12 months commencing
+-- on the day of her confinement" — a further 4 weeks from citizenship.
+-- (v)-(vi): limb (c), against "the period of 8 weeks referred to in
+-- section 76(1)(c)(i)".
+@ref s 9(1A)(i)-(vi), (1AA)
+GIVEN limb IS AN `EA s 76(1) limb`, event IS A NUMBER, `period starts` IS A DATE, `period ends` IS A DATE, `first day of absence` IS A DATE, confinement IS A DATE, citizen IS A DATE
+GIVETH AN `s 9(1A) outcome`
+`the s 9(1A) outcome under s 76(1)` limb `, specified event` event `, the specified period from` `period starts` `to` `period ends` `, absence from` `first day of absence` `, confinement` confinement `, citizen on` citizen MEANS
+    CONSIDER limb
+    WHEN `(c)` THEN
+        BRANCH IF citizen AT MOST `period ends` AND `a first or second specified event` event
+                  THEN `pay for every s 76(1)(c)(ii) period, and later periods totalling 4 times the weekly index or 24 days`
+               IF citizen AT MOST `period ends`
+                  THEN `pay from citizenship to the end of the eight-week period and for every s 76(1)(c)(ii) period, and later periods totalling 4 times the weekly index or 24 days`
+               IF `within 12 months`
+                  THEN `pay for every s 76(1)(c)(ii) period from citizenship, and later periods from citizenship totalling 4 times the weekly index or 24 days`
+               OTHERWISE `nothing under s 9(1A)`
+    OTHERWISE
+        BRANCH IF `a first or second specified event` event AND citizen LESS THAN `period starts` PLUS `first weeks` TIMES 7
+                  THEN `pay for the last 4 weeks of the specified period, and a further 4 weeks or the agreed flexible period`
+               IF citizen AT MOST `period ends`
+                  THEN `pay from citizenship to the end of the specified period, and a further 4 weeks or the agreed flexible period`
+               IF citizen LESS THAN `period ends` PLUS 1 PLUS 28
+                  THEN `a further 4 weeks or the agreed flexible period, from citizenship`
+               IF citizen AT LEAST `first day of absence` PLUS 112 AND `within 12 months`
+                  THEN `a further 4 weeks or the agreed flexible period, from citizenship`
+               OTHERWISE `nothing under s 9(1A)`
+    WHERE
+        `first weeks` MEANS IF limb EQUALS `(a)` THEN 4 ELSE 8
+        `within 12 months` MEANS citizen LESS THAN `add years` confinement 1
+
+-- s 9(1B): a mother not entitled under s 76(1) of the Employment Act: "(i)
+-- the period commencing on the day the child becomes a citizen ... and ending
+-- on the last day of the period of 16 weeks commencing on the day of her
+-- confinement; (ii) if the child becomes a citizen ... within the period of
+-- 8 weeks ... — (A) [citizenship to the end of the 8 weeks] and (B) ... later
+-- periods ... 8 times the employee's weekly index or 48 days ...; or (iii) if
+-- ... after the period of 8 weeks ..., ... periods ... in aggregate equal ...
+-- to 8 times the employee's weekly index or 48 days ..., ... on or after the
+-- day the child becomes a citizen".
+@ref s 9(1B)
+GIVEN confinement IS A DATE, citizen IS A DATE
+GIVETH A LIST OF STRING
+`the s 9(1B) options, confinement` confinement `, citizen on` citizen MEANS
+    IF citizen LESS THAN confinement PLUS 56
+    THEN LIST "(i) from citizenship to the end of the 16 weeks from confinement"
+              "(ii) from citizenship to the end of the 8 weeks from confinement, and later periods totalling 8 times the weekly index or 48 days within 12 months"
+    ELSE LIST "(i) from citizenship to the end of the 16 weeks from confinement"
+              "(iii) periods from citizenship totalling 8 times the weekly index or 48 days within 12 months"
+
+§§ `Forfeiture on leaving (s 9(2A), (3), (3A))`
+
+DECLARE `Termination` IS ONE OF
+    `by resignation`
+    `by dismissal, completion of contract or another reason`
+
+-- s 9(2A): if she resigns before exercising her entitlement, she forfeits the
+-- unexercised leave and its pay. s 9(3)-(3A): on any other termination she
+-- forfeits only the flexible later periods (s 9(1)(c)(ii), (1A)(v)-(vi),
+-- (1B)(ii)(B), (iii), the agreed flexible period) and pay for the s 76(1)(c)(ii)
+-- periods.
+@ref s 9(2A), (3), (3A)
+GIVEN t IS A `Termination`
+GIVETH A STRING
+`what is forfeited on termination` t MEANS
+    CONSIDER t
+    WHEN `by resignation` THEN "the whole unexercised entitlement to leave under s 9(1), (1A) or (1B), and its pay"
+    WHEN `by dismissal, completion of contract or another reason` THEN "only the unexercised flexible later periods (s 9(1)(c)(ii), (1A)(v)-(vi), (1B)(ii)(B), (iii), the agreed flexible period) and their pay"
+
+§§ `The Government-paid maternity benefit (s 9(5A)-(8), 9A(5A))`
+
+-- s 9(5A): "(a) an amount equivalent to 56 days of her total income during
+-- such period before delivery as may be prescribed, where her confinement ...
+-- is her first or second specified event; or (b) ... 112 days ..., where ...
+-- third or subsequent". s 9A(5A)(a): "an amount that does not exceed $10,000
+-- for every 28 days". The prescribed period is for regulations; the caller
+-- gives total income per day in it (s 9(7)-(8)).
+@ref s 9(5A), 9A(5A)(a)
+GIVEN event IS A NUMBER, `income per day` IS A NUMBER
+GIVETH A NUMBER
+`the Government-paid maternity benefit at most, specified event` event `, total income per day` `income per day` MEANS
+    `at most` 10000 `per block and` (`blocks` TIMES 10000) `in all, for` `blocks` `blocks paid at` (28 TIMES `income per day`)
+    WHERE
+        `blocks` MEANS IF `a first or second specified event` event THEN 2 ELSE 4
+
+-- s 9(6): she may not claim under (5A) if she is also entitled to leave or pay
+-- under s 9(1), (1A), (1B), (4) or (4A), or s 76 of the Employment Act, for the
+-- same confinement, forfeited or not — "except as provided in subsections (6A)
+-- and (6B)": (6A) leave without pay for a continuous period ending at least 12
+-- months after delivery; (6B) she would have been entitled but for her
+-- employment ending on completion of contract, redundancy or reorganisation.
+@ref s 9(6), (6A), (6B)
+GIVEN `entitled to leave or lost income` IS A BOOLEAN, `unpaid leave of 12 months` IS A BOOLEAN, `lost it by contract end or redundancy` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `disqualified from the Government-paid maternity benefit, entitled:` `entitled to leave or lost income` `, on 12 months' unpaid leave:` `unpaid leave of 12 months` `, contract ended or redundant:` `lost it by contract end or redundancy` IF
+        `entitled to leave or lost income`
+    AND NOT `unpaid leave of 12 months`
+    AND NOT `lost it by contract end or redundancy`
+
+§§ `Discretionary reimbursement and directions (s 10(2A)-(3))`
+
+-- s 10(2A)-(2B): the Government "may reimburse" an employer who pays a female
+-- employee who lacks 3 months' service (s 10(2B)(e)) where "(a) the ...
+-- confinement occurs, or the estimated delivery date ... is, on or after
+-- 1 November 2021; (b) the child ... is a citizen ... at birth, or ... becomes
+-- a citizen ... within the period of 12 months ...; (c)-(d) [the absence falls
+-- within the window]".
+@ref s 10(2A)-(2C)
+GIVEN months IS A NUMBER, b IS A Birth, `absence within the window` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Government may reimburse under s 10(2A), months of service` months `, birth` b `, absence in window:` `absence within the window` IF
+        (b's `confinement on` AT LEAST YMD 2021 11 1 OR b's `estimated delivery date` AT LEAST YMD 2021 11 1)
+    AND (b's `a citizen at birth (or would have been, if stillborn)` OR `becomes a citizen within 12 months of birth` b)
+    AND `absence within the window`
+    AND months LESS THAN 3
+
+-- s 10(3): no reimbursement for an amount the employer "is directed, on or
+-- after 1 January 2017," to pay by the Minister for manpower, the
+-- Commissioner for Labour or a court, "unless the direction has been
+-- withdrawn or reversed".
+@ref s 10(3)
+GIVEN `directed on` IS A MAYBE DATE, `withdrawn or reversed` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a directed amount is barred from reimbursement, directed on` `directed on` `, withdrawn:` `withdrawn or reversed` IF
+    CONSIDER `directed on`
+    WHEN JUST d  THEN d AT LEAST YMD 2017 1 1 AND NOT `withdrawn or reversed`
+    WHEN NOTHING THEN FALSE
+
+§§ `Adoption (ss 12A, 12AA-12AD)`
+
+-- s 12AC(1): "(a) the eligibility date ... is on or after 1 January 2017;
+-- (b) ... served her employer for ... at least 3 months preceding the
+-- eligibility date ...; (c) [self-employed: 3 months continuous]; (d) the
+-- child is below 12 months of age on the eligibility date ...; (da) [a
+-- permanent-resident child: she, or her joint-applicant husband, a citizen on
+-- the application date]; (e) [a foreign child with a dependant's pass: a
+-- citizen on the date the pass is issued]; and (f) [she] is not the natural
+-- mother of the child".
+@ref s 12AC(1)
+GIVEN months IS A NUMBER, a IS AN Adoption
+GIVETH A BOOLEAN
+DECIDE `eligible for adoption leave under s 12AC(1), months of service` months `, adoption` a IF
+        `the eligibility date of` a AT LEAST YMD 2017 1 1
+    AND months AT LEAST 3
+    AND `the adoption conditions` a
+
+-- s 12AC(1)(d)-(f) and (2)(d)-(f), which s 12I(2) repeats for fathers.
+@ref s 12AC(1)(d)-(f), (2)(d)-(f)
+GIVEN a IS AN Adoption
+GIVETH A BOOLEAN
+DECIDE `the adoption conditions` a IF
+        `below 12 months of age, born` (a's `child born on`) `, on` (`the eligibility date of` a)
+    AND (   NOT `a citizenship condition applies` a
+         OR a's `an applicant (or the joint applicant spouse) is a citizen on the relevant date`)
+    AND NOT a's `the applicant is the natural parent`
+
+-- (da) applies to a permanent-resident child; (e) to a child neither citizen
+-- nor permanent resident. A citizen child needs neither.
+GIVEN a IS AN Adoption
+GIVETH A BOOLEAN
+DECIDE `a citizenship condition applies` a IF
+        a's `the child is a permanent resident (not a citizen) then`
+    OR  NOT a's `the child is a citizen or permanent resident when the application is made`
+
+-- s 12AC(2): the Government-paid adoption benefit: "(a) the eligibility date
+-- ... on or after 1 January 2021; (b) for at least 90 days in total during the
+-- period of 12 months immediately before the eligibility date ..." employed or
+-- self-employed; (c) the overseas conditions; (d)-(f) as s 12AC(1).
+@ref s 12AC(2)-(3)
+GIVEN a IS AN Adoption, w IS A `Work facts`
+GIVETH A BOOLEAN
+DECIDE `eligible for the Government-paid adoption benefit under s 12AC(2)` a w IF
+        `the eligibility date of` a AT LEAST YMD 2021 1 1
+    AND w's `days employed or self-employed in the 12 months before` AT LEAST 90
+    AND w's `the 90-day overseas conditions are met, if any days were outside Singapore`
+    AND `the adoption conditions` a
+
+-- s 12AA(1): 12 weeks of adoption leave, within 12 months of the child's
+-- birth: "(a) ... 12 weeks commencing on the eligibility date ...; (b) ... 12
+-- weeks, as agreed ...; or (c) ... 8 weeks ... and ... later periods ... equal
+-- ... to 4 times the employee's weekly index or 24 days".
+-- s 12AA(4)-(5): gross rate of pay for every day, up to (a) first or second
+-- event: "$10,000 for every period ... of the adoption leave ... after the
+-- first 4 weeks" and "a total of $20,000"; (b) third or later: $10,000 a period
+-- of all the leave, "a total of $30,000".
+-- s 12AD(1)-(2): the employer claims back (a) the pay "for the period after the
+-- first 4 weeks", (b) for a third or later event "the whole period", within the
+-- same limits.
+@ref ss 12AA(1), (4)-(6); 12AD(1)-(2); 12E(7)
+GIVEN event IS A NUMBER, `weeks given up` IS A NUMBER, `gross per week` IS A NUMBER
+GIVETH A `Leave payments`
+`adoption leave payments, specified event` event `, weeks given up under s 12E` `weeks given up` `, gross pay per week` `gross per week` MEANS
+    `leave payments of` 12 (IF `a first or second specified event` event THEN 4 ELSE 0) (IF `a first or second specified event` event THEN 20000 ELSE 30000) `weeks given up` `gross per week`
+
+-- s 12AB(2): a self-employed woman: first or second event, $10,000 a period
+-- "after the first 4 weeks of that cessation", $20,000 in all; third or later,
+-- the whole cessation, $30,000.
+@ref s 12AB(1)-(2)
+GIVEN event IS A NUMBER, `lost income per week` IS A NUMBER
+GIVETH A NUMBER
+`the Government pays a self-employed adoptive mother at most, specified event` event `, lost income per week` `lost income per week` MEANS
+    IF `a first or second specified event` event
+    THEN `at most` 10000 `per block and` 20000 `in all, for` 2 `blocks paid at` (4 TIMES `lost income per week`)
+    ELSE `at most` 10000 `per block and` 30000 `in all, for` 3 `blocks paid at` (4 TIMES `lost income per week`)
+
+-- s 12A(2)-(3): "(a) ... first or second specified event — an amount
+-- equivalent to 56 days of her total income ...; or (b) ... third or
+-- subsequent ... 84 days", "an amount that does not exceed $10,000 for every
+-- 28 days".
+@ref s 12A(2)-(3)
+GIVEN event IS A NUMBER, `income per day` IS A NUMBER
+GIVETH A NUMBER
+`the Government-paid adoption benefit at most, specified event` event `, total income per day` `income per day` MEANS
+    `at most` 10000 `per block and` (`blocks` TIMES 10000) `in all, for` `blocks` `blocks paid at` (28 TIMES `income per day`)
+    WHERE
+        `blocks` MEANS IF `a first or second specified event` event THEN 2 ELSE 3
+
+-- s 12AA(2): unused adoption leave lapses, without pay in lieu, if her
+-- employment ends or she does not take it within 12 months of the child's
+-- birth.
+@ref s 12AA(2)
+GIVEN `leave taken on` IS A DATE, `child born on` IS A DATE, `still employed` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `adoption leave on` `leave taken on` `may still be taken, child born` `child born on` `, still employed:` `still employed` IF
+        `still employed`
+    AND `leave taken on` LESS THAN `add years` `child born on` 1
+
+§§ `Provisions carried as text`
+
+-- s 12: ss 77-82, 84, 84A and 86 of the Employment Act 1968 apply to s 9 (with
+-- s 80's notice modified by s 12(1A) from 1 April 2025); Parts 13 and 16 and
+-- ss 124-126 of that Act apply to disputes and offences under ss 9, 12AA, 12B,
+-- 12D, 12DA, 12E, 12H and 17 (s 12(2)); ss 115-123 to claims before 1 April
+-- 2017 (s 12(3)). s 12AA(1A): notice before adoption leave for an April 2025
+-- Scheme child. s 12A(4)-(10), 12AD(3)-(4): reductions by regulation and
+-- discretionary reimbursement, as for maternity.
+@ref ss 12, 12AA(1A), 12A(4)-(10), 12AD(3)-(4)
+GIVETH A LIST OF STRING
+`mothers' provisions carried as text` MEANS
+    LIST "s 12(1)-(1A): Employment Act 1968 ss 77-82, 84, 84A and 86 apply to s 9 leave; s 80's notice is modified for confinements from 1 April 2025 (no notice for agreed-duration periods; otherwise the prescribed period)"
+         "s 12(2)-(3): Employment Act 1968 Parts 13 and 16 and ss 124-126 (and ss 115-123 for claims lodged before 1 April 2017) apply to disputes and offences under Part 3"
+         "s 12AA(1A): an employee adopting an April 2025 Scheme child must give the prescribed notice before s 12AA(1)(a) leave"
+         "ss 9A(5A)(b), 12A(3)(b)-(4), 12DC(4)(b): the Government-paid benefits are reduced by regulations where the employer is paid back, a father takes elected leave, or the contract ends unused"
+         "s 12AD(3)-(4): discretionary reimbursement for an adoptive mother who lacks 3 months' service, eligibility date from 1 November 2021"

@@ -1,0 +1,234 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `tasco-nouns`
+IMPORT `tasco-decision`
+IMPORT `tasco-ch1-general`
+IMPORT `tasco-ch2-own-damage`
+IMPORT `tasco-ch3-accident`
+IMPORT `tasco-ch4-goods`
+IMPORT `tasco-ch5-third-party`
+IMPORT `tasco-ch6-additional`
+IMPORT `tasco-injury-table`
+IMPORT `tasco-fixtures`
+
+-- Tests for Chapter III (driver and passenger accident), Chapter IV (goods) and Chapter V
+-- (voluntary third-party liability). Expected values are worked by hand from the figures the
+-- rules print; the working is beside each group. A failing assertion is a finding.
+
+§ `Tests — accident, goods and third-party liability`
+
+§§ `Chapter III — accident`
+
+GIVEN `the outcome` IS AN `An outcome for the person`
+      `under 7`     IS A BOOLEAN
+GIVETH AN `An accident to a person on board`
+`an accident with` `the outcome` `, a child under 7:` `under 7` MEANS
+    `An accident to a person on board` WITH
+        `role`                                    IS `a person carried`
+        `on the vehicle, or getting on or off it` IS TRUE
+        `under 7`                                 IS `under 7`
+        `fighting, not in self-defence`           IS FALSE
+        `sudden illness, stroke or disease`       IS FALSE
+        `outcome`                                 IS `the outcome`
+
+GIVEN `the section` IS A STRING
+      `the item`    IS A STRING
+      `the rate`    IS A NUMBER
+      `permanent`   IS A BOOLEAN
+GIVETH AN `An injury`
+`an injury at row` `the section` `the item` `assessed at` `the rate` `, permanent:` `permanent` MEANS
+    `An injury` WITH
+        `table section` IS `the section`
+        `table item`    IS `the item`
+        `assessed rate` IS `the rate`
+        `permanent`     IS `permanent`
+
+GIVEN `the injuries` IS A LIST OF `An injury`
+      `costs`        IS A NUMBER
+      `the days`     IS A NUMBER
+GIVETH AN `An accident to a person on board`
+`injuries` `the injuries` `with costs` `costs` `over` `the days` `days` MEANS
+    `an accident with` (`bodily injury` `the injuries` `costs` `the days`) `, a child under 7:` FALSE
+
+GIVEN `the answer` IS AN `An accident answer`
+GIVETH A NUMBER
+`the benefit in` `the answer` MEANS
+    CONSIDER `the answer`
+    WHEN `accident benefit payable` b  THEN b
+    WHEN `accident not covered` r e    THEN 0
+
+GIVEN `the policy`   IS A `A policy`
+      `the circumstances` IS A `The circumstances`
+      `the accident` IS AN `An accident to a person on board`
+GIVETH A NUMBER
+`pays` `the policy` `the circumstances` `the accident` MEANS
+    `the benefit in` (`Chapter III — the accident answer under` `the policy` `in` `the circumstances` `for` `the accident`)
+
+GIVEN `the sum` IS A NUMBER
+GIVETH A `A policy`
+`an accident policy of` `the sum` MEANS `a policy on` `a private car` `, own damage` 600000000 `, accident` `the sum` `, clauses` EMPTY
+
+-- 20.1: death, the whole 100 million; a victim unidentified or without an heir, the burial costs
+-- of 30 million (special case 6, finding X-16).
+#ASSERT `pays` `the standard policy` `clean circumstances` (`an accident with` (`death` TRUE 30000000) `, a child under 7:` FALSE) EQUALS 100000000
+#ASSERT `pays` `the standard policy` `clean circumstances` (`an accident with` (`death` FALSE 30000000) `, a child under 7:` FALSE) EQUALS 30000000
+
+-- 20.2.1: at 100 million ("đến 100 triệu", inclusive) the table alone: item B.I 1.1 (6-10%)
+-- assessed at 8% pays 8 million, whatever the medical costs; 6% and 10% are the range's edges;
+-- 12% is outside it and declined.
+#ASSERT `pays` `the standard policy` `clean circumstances` (`injuries` (LIST `an injury at row` "B.I" "1.1" `assessed at` 0.08 `, permanent:` FALSE) `with costs` 1000000 `over` 3 `days`) EQUALS 8000000
+#ASSERT `pays` `the standard policy` `clean circumstances` (`injuries` (LIST `an injury at row` "B.I" "1.1" `assessed at` 0.06 `, permanent:` TRUE) `with costs` 0 `over` 0 `days`) EQUALS 6000000
+#ASSERT `pays` `the standard policy` `clean circumstances` (`injuries` (LIST `an injury at row` "B.I" "1.1" `assessed at` 0.10 `, permanent:` TRUE) `with costs` 0 `over` 0 `days`) EQUALS 10000000
+#ASSERT REFUSED `pays` `the standard policy` `clean circumstances` (`injuries` (LIST `an injury at row` "B.I" "1.1" `assessed at` 0.12 `, permanent:` TRUE) `with costs` 0 `over` 0 `days`) BECAUSE "the assessed rate is not one the table row allows"
+-- A row with one figure (B.I 4.2.4, 99%): exactly that figure.
+#ASSERT `pays` `the standard policy` `clean circumstances` (`injuries` (LIST `an injury at row` "B.I" "4.2.4" `assessed at` 0.99 `, permanent:` TRUE) `with costs` 0 `over` 0 `days`) EQUALS 99000000
+#ASSERT REFUSED `pays` `the standard policy` `clean circumstances` (`injuries` (LIST `an injury at row` "B.I" "4.2.4" `assessed at` 0.98 `, permanent:` TRUE) `with costs` 0 `over` 0 `days`)
+-- A heading row prints no figure and allows no rate.
+#ASSERT REFUSED `pays` `the standard policy` `clean circumstances` (`injuries` (LIST `an injury at row` "B.I" "4.2" `assessed at` 0.5 `, permanent:` TRUE) `with costs` 0 `over` 0 `days`)
+-- Special case 5, an injury the table does not list, at the rate the assessment fixed: 15%.
+#ASSERT `pays` `the standard policy` `clean circumstances` (`injuries` (LIST `an injury at row` "unlisted" "" `assessed at` 0.15 `, permanent:` TRUE) `with costs` 0 `over` 0 `days`) EQUALS 15000000
+-- Special case 4: several injuries add up (10% + 99% = 109 million) but never past the limit.
+#ASSERT `pays` `the standard policy` `clean circumstances` (`injuries` (LIST `an injury at row` "B.I" "1.1" `assessed at` 0.10 `, permanent:` TRUE, `an injury at row` "B.I" "4.2.4" `assessed at` 0.99 `, permanent:` TRUE) `with costs` 0 `over` 0 `days`) EQUALS 100000000
+
+-- 20.2.2 at 200 million: a temporary injury (B.I 1.1 at 8%, table ceiling 16 million) with
+-- medical costs over 10 days: at most 0.3% x 200 million x 10 = 6 million. Costs of 5 million
+-- are paid in full; costs of 7 million stop at 6 million. A permanent one pays 8% x 200 million.
+#ASSERT `pays` (`an accident policy of` 200000000) `clean circumstances` (`injuries` (LIST `an injury at row` "B.I" "1.1" `assessed at` 0.08 `, permanent:` FALSE) `with costs` 5000000 `over` 10 `days`) EQUALS 5000000
+#ASSERT `pays` (`an accident policy of` 200000000) `clean circumstances` (`injuries` (LIST `an injury at row` "B.I" "1.1" `assessed at` 0.08 `, permanent:` FALSE) `with costs` 7000000 `over` 10 `days`) EQUALS 6000000
+#ASSERT `pays` (`an accident policy of` 200000000) `clean circumstances` (`injuries` (LIST `an injury at row` "B.I" "1.1" `assessed at` 0.08 `, permanent:` TRUE) `with costs` 7000000 `over` 10 `days`) EQUALS 16000000
+
+-- 20.3: 6 persons on board (children under 7 not counted) against 5 insured: a death on a 120
+-- million policy pays 120 x 5/6 = 100 million; a child under 7 is paid in full.
+#ASSERT `pays` (`an accident policy of` 120000000) `circumstances with 6 persons` (`an accident with` (`death` TRUE 0) `, a child under 7:` FALSE) EQUALS 100000000
+#ASSERT `pays` (`an accident policy of` 120000000) `circumstances with 6 persons` (`an accident with` (`death` TRUE 0) `, a child under 7:` TRUE) EQUALS 120000000
+
+-- Article 19: a passenger hurt while fighting, not in self-defence: not covered.
+GIVETH AN `An accident to a person on board`
+`a passenger hurt in a fight` MEANS
+    `An accident to a person on board` WITH
+        `role`                                    IS `a person carried`
+        `on the vehicle, or getting on or off it` IS TRUE
+        `under 7`                                 IS FALSE
+        `fighting, not in self-defence`           IS TRUE
+        `sudden illness, stroke or disease`       IS FALSE
+        `outcome`                                 IS `death` TRUE 0
+
+#ASSERT `Chapter III — the accident answer under` `the standard policy` `in` `clean circumstances` `for` `a passenger hurt in a fight` EQUALS `accident not covered` EMPTY (LIST `19.3 fighting, not in self-defence`)
+-- Article 18: on board, but the vehicle was not in traffic.
+#ASSERT `Chapter III — the accident answer under` `the standard policy` `in` `circumstances not in traffic` `for` (`an accident with` (`death` TRUE 0) `, a child under 7:` FALSE) EQUALS `accident not covered` EMPTY (LIST `19.1 outside the cover of Article 18`)
+
+§§ `Chapter IV — goods`
+
+GIVEN `actual damage`       IS A NUMBER
+      `owned by the owner`  IS A BOOLEAN
+      `owner is the driver and the cargo owner` IS A BOOLEAN
+GIVETH A `A loss of goods`
+`goods damaged in a collision, worth` `actual damage` `, the owner's:` `owned by the owner` `, owner both driver and cargo owner:` `owner is the driver and the cargo owner` MEANS
+    `A loss of goods` WITH
+        `cause`                                                         IS `collision, overturning, falling or sinking of the vehicle`
+        `carried under a contract of carriage between owner and cargo owner` IS TRUE
+        `actual damage`                                                 IS `actual damage`
+        `tonnes of goods damaged`                                       IS 2
+        `cost of preventing or reducing the loss`                       IS 3000000
+        `cost of storing, handling and warehousing after the accident`  IS 2000000
+        `goods left unguarded or not preserved`                         IS FALSE
+        `goods stolen or robbed without the whole vehicle`              IS FALSE
+        `seizure or requisition by the State`                           IS FALSE
+        `shifting or knocking in transit, not from an accident`         IS FALSE
+        `natural deterioration, poor quality, packing or stowage`       IS FALSE
+        `late, misdirected, short or wrong delivery`                    IS FALSE
+        `consequential or indirect loss`                                IS FALSE
+        `special property`                                              IS FALSE
+        `goods owned by the owner or driver`                            IS `owned by the owner`
+        `the owner is both driver and cargo owner`                      IS `owner is the driver and the cargo owner`
+
+GIVEN `the answer` IS A `A goods answer`
+GIVETH A NUMBER
+`the goods payment in` `the answer` MEANS
+    CONSIDER `the answer`
+    WHEN `goods payable` s       THEN s's `payable`
+    WHEN `goods not covered` r e THEN 0
+
+GIVEN `the policy` IS A `A policy`
+      `the loss`   IS A `A loss of goods`
+GIVETH A NUMBER
+`goods paid under` `the policy` `for` `the loss` MEANS
+    `the goods payment in` (`the goods answer under` `the policy` `in` `clean circumstances` `good conduct` `nothing decided` `of` `the loss` `with the clauses`)
+
+-- 50 million a tonne, 2 tonnes damaged: at most 100 million; damage of 120 million is paid at 100
+-- million (Article 25); costs 3 + 2 = 5 million (at most 10% of 500 million); deductible the
+-- larger of 0.5% x 500 million = 2.5 million and 1 million (Article 26): 102,500,000. Damage of 80
+-- million is below the per-tonne figure and is paid as it is: 80 + 5 - 2.5 = 82,500,000.
+#ASSERT `goods paid under` `the standard policy` `for` (`goods damaged in a collision, worth` 120000000 `, the owner's:` FALSE `, owner both driver and cargo owner:` FALSE) EQUALS 102500000
+#ASSERT `goods paid under` `the standard policy` `for` (`goods damaged in a collision, worth` 80000000 `, the owner's:` FALSE `, owner both driver and cargo owner:` FALSE) EQUALS 82500000
+-- Article 26 both sides: on a 100 million limit 0.5% is 500,000, so the 1,000,000 minimum governs.
+#ASSERT `Article 26 — the deductible under` (`A goods section` WITH `sum insured per tonne` IS 50000000, `total limit of liability` IS 100000000) EQUALS 1000000
+#ASSERT `Article 26 — the deductible under` (`A goods section` WITH `sum insured per tonne` IS 50000000, `total limit of liability` IS 500000000) EQUALS 2500000
+-- 23.11: the owner's own goods are excluded; BS14 lifts that, unless the owner was both driver and
+-- cargo owner.
+#ASSERT `goods paid under` `the standard policy` `for` (`goods damaged in a collision, worth` 120000000 `, the owner's:` TRUE `, owner both driver and cargo owner:` FALSE) EQUALS 0
+#ASSERT `goods paid under` (`a policy on` `a private car` `, own damage` 600000000 `, accident` 100000000 `, clauses` (LIST `the clause` `BS14 the owner's own goods`)) `for` (`goods damaged in a collision, worth` 120000000 `, the owner's:` TRUE `, owner both driver and cargo owner:` FALSE) EQUALS 102500000
+#ASSERT `goods paid under` (`a policy on` `a private car` `, own damage` 600000000 `, accident` 100000000 `, clauses` (LIST `the clause` `BS14 the owner's own goods`)) `for` (`goods damaged in a collision, worth` 120000000 `, the owner's:` TRUE `, owner both driver and cargo owner:` TRUE) EQUALS 0
+-- 24.1.4 counts the overload by load only: 7 persons in a 5-seat car is a ground under Article 14
+-- but not under Article 24; a 12.5-tonne load on a 10-tonne truck (25%) is a ground under both.
+#ASSERT `Article 14.1 — the reduction grounds met by` `circumstances with 7 persons` `good conduct` `a private car` EQUALS LIST `1.4 overloaded by more than 20% and up to 50%`
+#ASSERT null (`Article 24.1 — the reduction grounds met by` `circumstances with 7 persons` `good conduct` `a private car`)
+#ASSERT `Article 24.1 — the reduction grounds met by` `circumstances with a load of 12.5 tonnes` `good conduct` `a truck` EQUALS LIST `1.4 overloaded by more than 20% and up to 50%`
+
+§§ `Chapter V — voluntary third-party liability`
+
+GIVEN `the head`       IS A `A head of third-party loss`
+      `paid`           IS A NUMBER
+      `the compulsory limit` IS A NUMBER
+      `insured`        IS A BOOLEAN
+GIVETH A `A third-party claim`
+`a third-party claim for` `the head` `, the owner paid` `paid` `, compulsory limit` `the compulsory limit` `, compulsory insurance:` `insured` MEANS
+    `A third-party claim` WITH
+        `head`                            IS `the head`
+        `amount the owner actually paid`  IS `paid`
+        `compulsory limit for this head`  IS `the compulsory limit`
+        `compulsory insurance in force`   IS `insured`
+        `excluded under the compulsory scheme` IS FALSE
+
+GIVEN `the answer` IS A `A third-party answer`
+GIVETH A NUMBER
+`the third-party payment in` `the answer` MEANS
+    CONSIDER `the answer`
+    WHEN `third-party claim payable` p       THEN p
+    WHEN `third-party claim not covered` r e THEN 0
+
+GIVEN `the fault` IS A MAYBE NUMBER
+      `the claim` IS A `A third-party claim`
+GIVETH A NUMBER
+`at fault` `the fault` `, Tasco pays on` `the claim` MEANS
+    `the third-party payment in` (`Chapter V — the third-party answer under` `the standard policy` `in` `clean circumstances` (`Tasco decided` NOTHING `,` NOTHING `, fault` `the fault`) `for` `the claim`)
+
+-- The compulsory limit (150 million here, 100 million for property) is the compulsory scheme's
+-- figure, an input; the voluntary limits are 100 million each.
+-- A death (rate 100%), the owner fully at fault, paid 250 million: Article 29 gives 100% x 100
+-- million x 100% = 100 million; the part above the compulsory limit is 100 million: 100,000,000.
+#ASSERT `at fault` (JUST 1) `, Tasco pays on` (`a third-party claim for` (`bodily injury to a person` 1) `, the owner paid` 250000000 `, compulsory limit` 150000000 `, compulsory insurance:` TRUE) EQUALS 100000000
+-- Paid 200 million: Article 29 still gives 100 million, but only 50 million lies above the
+-- compulsory limit (Article 28): 50,000,000 (finding X-15).
+#ASSERT `at fault` (JUST 1) `, Tasco pays on` (`a third-party claim for` (`bodily injury to a person` 1) `, the owner paid` 200000000 `, compulsory limit` 150000000 `, compulsory insurance:` TRUE) EQUALS 50000000
+-- Half at fault, paid 250 million: 100% x 100 million x 50% = 50,000,000.
+#ASSERT `at fault` (JUST 0.5) `, Tasco pays on` (`a third-party claim for` (`bodily injury to a person` 1) `, the owner paid` 250000000 `, compulsory limit` 150000000 `, compulsory insurance:` TRUE) EQUALS 50000000
+-- Property damage 300 million, half at fault, owner paid 120 million: Article 29 gives the least of
+-- 150, 100 and 120 million = 100 million; above the 100-million compulsory limit lie 20 million.
+#ASSERT `at fault` (JUST 0.5) `, Tasco pays on` (`a third-party claim for` (`damage to property` 300000000) `, the owner paid` 120000000 `, compulsory limit` 100000000 `, compulsory insurance:` TRUE) EQUALS 20000000
+-- No compulsory insurance: excluded (27, 30.1). Paid no more than the compulsory limit: nothing
+-- for this cover (28, 30.2). The share of fault not yet fixed: declined.
+#ASSERT `Chapter V — the third-party answer under` `the standard policy` `in` `clean circumstances` `nothing decided` `for` (`a third-party claim for` (`bodily injury to a person` 1) `, the owner paid` 250000000 `, compulsory limit` 150000000 `, compulsory insurance:` FALSE) EQUALS `third-party claim not covered` EMPTY (LIST `30.1 no compulsory insurance`)
+#ASSERT `Chapter V — the third-party answer under` `the standard policy` `in` `clean circumstances` `nothing decided` `for` (`a third-party claim for` (`bodily injury to a person` 1) `, the owner paid` 150000000 `, compulsory limit` 150000000 `, compulsory insurance:` TRUE) EQUALS `third-party claim not covered` EMPTY (LIST `30.2 outside the cover of Article 28`)
+#ASSERT REFUSED `at fault` NOTHING `, Tasco pays on` (`a third-party claim for` (`bodily injury to a person` 1) `, the owner paid` 250000000 `, compulsory limit` 150000000 `, compulsory insurance:` TRUE) BECAUSE "the share of fault of the owner or driver has not been determined"
+-- Article 10 reaches this cover too: a driver over the alcohol limit.
+#ASSERT `Chapter V — the third-party answer under` `the standard policy` `in` `circumstances with blood alcohol of 51` (`Tasco decided` NOTHING `,` NOTHING `, fault` (JUST 1)) `for` (`a third-party claim for` (`bodily injury to a person` 1) `, the owner paid` 250000000 `, compulsory limit` 150000000 `, compulsory insurance:` TRUE) EQUALS `third-party claim not covered` (LIST (`Article 10:` `10.7 alcohol or drugs`)) EMPTY
+
+§§ `Findings shown as answers`
+
+-- X-19: Article 10 applies to the accident cover of a passenger, who controls none of it. The car's
+-- inspection certificate had expired: a passenger killed in a collision is not paid.
+#ASSERT `Chapter III — the accident answer under` `the standard policy` `in` `circumstances with an expired inspection certificate` `for` (`an accident with` (`death` TRUE 0) `, a child under 7:` FALSE) EQUALS `accident not covered` (LIST (`Article 10:` `10.4 no valid inspection certificate`)) EMPTY
+-- The same when the driver ran a red light.
+#ASSERT `Chapter III — the accident answer under` `the standard policy` `in` `circumstances with a red light run` `for` (`an accident with` (`death` TRUE 0) `, a child under 7:` FALSE) EQUALS `accident not covered` (LIST (`Article 10:` `10.8 traffic offences`)) EMPTY

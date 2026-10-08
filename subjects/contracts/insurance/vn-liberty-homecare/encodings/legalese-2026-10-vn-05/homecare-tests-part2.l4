@@ -1,0 +1,264 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `homecare-nouns`
+IMPORT `homecare-definitions`
+IMPORT `homecare-general-exclusions`
+IMPORT `homecare-general-conditions`
+IMPORT `homecare-part2`
+IMPORT `homecare-test-fixtures`
+
+-- Tests for Part 2, Personal and Family Liability. Expected values were worked from the
+-- source text (clauses cited) before the assertions were run. The Summary figures are the
+-- HYPOTHETICAL ones of homecare-test-fixtures.l4: limits of 1,000,000,000 per Occurrence and
+-- 2,000,000,000 for the Period, 100,000,000 for food and drink, a Part 2 Deductible of 1,000,000.
+
+§ `Tests: Part 2`
+
+§§ `Helpers`
+
+GIVEN claim IS A `A Part 2 claim`
+GIVETH A LIST OF `A ground under Part 2`
+`the grounds against` claim MEANS
+    `the grounds on which a Part 2 claim fails, under` `the owner's policy` `with` `good conduct` `for` claim `, as at` `1 April 2026`
+
+GIVEN g     IS A `A ground under Part 2`
+      claim IS A `A Part 2 claim`
+GIVETH A BOOLEAN
+`the ground` g `defeats` claim MEANS elem g (`the grounds against` claim)
+
+GIVEN c IS A `A circumstance of a liability`
+GIVETH A `A Part 2 claim`
+`a visitor injured, with` c MEANS `a visitor injured with` (LIST c)
+
+-- A claim with every scope fact as given.
+GIVEN date      IS A DATE
+      `at or near` IS A BOOLEAN
+      connected IS A BOOLEAN
+      unexpected IS A BOOLEAN
+      liable    IS A BOOLEAN
+      harm      IS A LIST OF `A kind of harm`
+GIVETH A `A Part 2 claim`
+`a claim on` date `, at or near` `at or near` `, connected` connected `, unexpected` unexpected `, liable` liable `, for` harm MEANS
+    `A Part 2 claim` WITH
+        `the person held liable`                          IS `the Insured named in the Policy Summary`
+        `the date of the Occurrence`                      IS date
+        `at or near the Insured Location`                 IS `at or near`
+        `connected with the ownership or use of the Home` IS connected
+        `unexpected and unintended by the Insured`        IS unexpected
+        `legally liable`                                  IS liable
+        `the harm`                                        IS harm
+        `the person injured`                              IS JUST `a visitor`
+        `the property damaged`                            IS NOTHING
+        `the circumstances`                               IS EMPTY
+        `the general circumstances`                       IS EMPTY
+        `the forum`                                       IS `a first-instance judgment of a competent Vietnamese court`
+
+-- A person injured, described by the facts exclusion 3 turns on.
+GIVEN relation  IS A MAYBE `A relation`
+      `lives at the Location` IS A BOOLEAN
+      `used as a place to live` IS A BOOLEAN
+      `lives with` IS A BOOLEAN
+      intends   IS A NUMBER
+      days      IS A NUMBER
+GIVETH A `A person injured`
+`a person: relation` relation `, regularly lives there` `lives at the Location` `, lived there` `used as a place to live` `, lives with the Insured` `lives with` `, intends` intends `, consecutive days` days MEANS
+    `A person injured` WITH
+        `relation to the Insured`                                           IS relation
+        `regularly lives with the Insured at the Insured Location`          IS `lives at the Location`
+        `has used the Home`                                                 IS TRUE
+        `has used the Home as a place to live`                              IS `used as a place to live`
+        `lives with the Insured`                                            IS `lives with`
+        `days the person intends or intended to make the Home the main residence` IS intends
+        `consecutive days the person used the Home or lived with the Insured` IS days
+        `employed by the Insured or a resident and injured in that work`    IS FALSE
+
+GIVEN p IS A `A person injured`
+GIVETH A `A Part 2 claim`
+`an injury to` p MEANS
+    `a liability of` `the Insured named in the Policy Summary` `for` (LIST `bodily injury, illness or disability`)
+        `to` (JUST p) `and` NOTHING `with` EMPTY `, decided by` `a first-instance judgment of a competent Vietnamese court`
+
+§§ `The base case, and the scope (src:433-442, 475-489)`
+
+#ASSERT `the grounds against` `a visitor bitten by the Insured's dog` EQUALS EMPTY
+#ASSERT `Part 2 covers the claim, under` `the owner's policy` `with` `good conduct` `for` `a visitor bitten by the Insured's dog` `, as at` `1 April 2026`
+#ASSERT `the ground` `there is no personal legal liability` `defeats` (`a claim on` (YMD 2026 3 10) `, at or near` TRUE `, connected` TRUE `, unexpected` TRUE `, liable` FALSE `, for` (LIST `bodily injury, illness or disability`))
+#ASSERT `the ground` `the liability is not for death, bodily injury or property damage` `defeats` (`a claim on` (YMD 2026 3 10) `, at or near` TRUE `, connected` TRUE `, unexpected` TRUE `, liable` TRUE `, for` EMPTY)
+#ASSERT `the ground` `the event was not an Occurrence: expected or intended by the Insured` `defeats` (`a claim on` (YMD 2026 3 10) `, at or near` TRUE `, connected` TRUE `, unexpected` FALSE `, liable` TRUE `, for` (LIST `death`))
+#ASSERT `the ground` `the Occurrence was not at or near the Insured Location` `defeats` (`a claim on` (YMD 2026 3 10) `, at or near` FALSE `, connected` TRUE `, unexpected` TRUE `, liable` TRUE `, for` (LIST `death`))
+#ASSERT `the ground` `not connected with the ownership or use of the Home` `defeats` (`a claim on` (YMD 2026 3 10) `, at or near` TRUE `, connected` FALSE `, unexpected` TRUE `, liable` TRUE `, for` (LIST `physical damage to or destruction of tangible property`))
+#ASSERT `the ground` `the Occurrence was not in the Period of Insurance` `defeats` (`a claim on` (YMD 2025 12 31) `, at or near` TRUE `, connected` TRUE `, unexpected` TRUE `, liable` TRUE `, for` (LIST `death`))
+#ASSERT `Part 2 covers the claim, under` `the owner's policy` `with` `good conduct` `for` (`a claim on` (YMD 2026 3 10) `, at or near` TRUE `, connected` TRUE `, unexpected` TRUE `, liable` TRUE `, for` (LIST `loss of use of tangible property that is not physically damaged`)) `, as at` `1 April 2026`
+#ASSERT `Part 2 covers the claim, under` `the owner's policy` `with` `good conduct` `for` (`a claim on` (YMD 2026 3 10) `, at or near` TRUE `, connected` TRUE `, unexpected` TRUE `, liable` TRUE `, for` (LIST `fright, shock, mental anguish or nervous injury`)) `, as at` `1 April 2026`
+
+-- Part 2 is not insured where the Summary states no limit.
+#ASSERT elem `Part 2 is not insured: the Summary states no Limit of Liability` (`the grounds on which a Part 2 claim fails, under` (`a policy with` (`The Policy Summary` WITH `the Period of Insurance begins` IS YMD 2026 1 1, `the Period of Insurance ends` IS YMD 2026 12 31, `the sum insured on the Home` IS JUST 2_000_000_000, `the sum insured on the Renovation Costs` IS NOTHING, `the sum insured on the Contents` IS NOTHING, `the Part 1 Limit of Liability` IS NOTHING, `the Part 2 Limit of Liability for any one Occurrence` IS NOTHING, `the Part 2 Limit of Liability for the Period` IS NOTHING, `the Part 2 limit for food and drink` IS NOTHING, `the Part 1 Deductible` IS NOTHING, `the Part 2 Deductible` IS NOTHING, `the Part 3 Deductible` IS NOTHING, `the Insured is named under Part 3` IS FALSE, `the domestic helper benefit is named` IS FALSE, `the construction of the Home is specially provided for` IS FALSE, `the annual premium` IS 1_000_000) `, insured` (`an Insured born 15 June 1980, a tenant` FALSE) `, premises` `a brick house`) `with` `good conduct` `for` `a visitor bitten by the Insured's dog` `, as at` `1 April 2026`)
+
+§§ `Who is an Insured under Part 2 (src:490-497), fork F-p2-relative`
+
+#ASSERT `an Insured under Part 2` `the Insured named in the Policy Summary`
+#ASSERT `an Insured under Part 2` `a relative of the Insured`
+#ASSERT `an Insured under Part 2` (`a domestic employee of the Insured` TRUE)
+#ASSERT NOT `an Insured under Part 2` (`a domestic employee of the Insured` FALSE)
+#ASSERT NOT `an Insured under Part 2` `another person`
+#ASSERT `the ground` `the person held liable is not an Insured under Part 2` `defeats` (`a liability of` `another person` `for` (LIST `bodily injury, illness or disability`) `to` (JUST `a visitor`) `and` NOTHING `with` EMPTY `, decided by` `a first-instance judgment of a competent Vietnamese court`)
+#ASSERT `the grounds against` (`a liability of` `a relative of the Insured` `for` (LIST `bodily injury, illness or disability`) `to` (JUST `a visitor`) `and` NOTHING `with` EMPTY `, decided by` `a first-instance judgment of a competent Vietnamese court`) EQUALS EMPTY
+
+-- Waiver of subrogation (src:501-509).
+#ASSERT `the Insurer has waived subrogation against` (`a domestic employee of the Insured` TRUE) `, the act being serious or intentional` FALSE
+#ASSERT NOT `the Insurer has waived subrogation against` (`a domestic employee of the Insured` TRUE) `, the act being serious or intentional` TRUE
+#ASSERT NOT `the Insurer has waived subrogation against` `another person` `, the act being serious or intentional` FALSE
+
+§§ `Jurisdiction (src:464-469), fork F-jurisdiction`
+
+GIVEN forum IS A `A forum`
+GIVETH A `A Part 2 claim`
+`the dog bite decided by` forum MEANS
+    `a liability of` `the Insured named in the Policy Summary` `for` (LIST `bodily injury, illness or disability`)
+        `to` (JUST `a visitor`) `and` NOTHING `with` EMPTY `, decided by` forum
+
+#ASSERT `the grounds against` (`the dog bite decided by` `a first-instance judgment of a competent Vietnamese court`) EQUALS EMPTY
+#ASSERT `the grounds against` (`the dog bite decided by` `a claim settled without judgment`) EQUALS EMPTY
+#ASSERT `the ground` `Jurisdiction: not a first-instance judgment of a competent Vietnamese court` `defeats` (`the dog bite decided by` `a judgment of a foreign court`)
+#ASSERT `the ground` `Jurisdiction: not a first-instance judgment of a competent Vietnamese court` `defeats` (`the dog bite decided by` `a Vietnamese order enforcing a foreign judgment`)
+#ASSERT `the ground` `Jurisdiction: not a first-instance judgment of a competent Vietnamese court` `defeats` (`the dog bite decided by` `an appellate judgment of a Vietnamese court`)
+
+§§ `Exclusions 1-17 (src:525-606)`
+
+-- 1. Intentional or negligent act, with foreseeable consequences. Each limb alone is a near miss.
+#ASSERT `the ground` `Part 2 exclusion 1: intentional or negligent act, with foreseeable consequences` `defeats` (`a visitor injured with` (LIST `an intentional act of the Insured or a Family member`, `the consequences were reasonably foreseeable from the act`))
+#ASSERT `the ground` `Part 2 exclusion 1: intentional or negligent act, with foreseeable consequences` `defeats` (`a visitor injured with` (LIST `a negligent act of the Insured or a Family member`, `the consequences were reasonably foreseeable from the act`))
+#ASSERT `the grounds against` (`a visitor injured, with` `an intentional act of the Insured or a Family member`) EQUALS EMPTY
+#ASSERT `the grounds against` (`a visitor injured, with` `a negligent act of the Insured or a Family member`) EQUALS EMPTY
+#ASSERT `the grounds against` (`a visitor injured, with` `the consequences were reasonably foreseeable from the act`) EQUALS EMPTY
+
+-- 2. Liability assumed by agreement; near miss below (tenancy agreement, tenant's Extension).
+#ASSERT `the ground` `Part 2 exclusion 2: liability assumed by agreement` `defeats` (`a visitor injured, with` `liability assumed by agreement that would not otherwise attach`)
+
+-- 3. Injury to a Family member or a person usually residing with the Insured.
+#ASSERT `the ground` `Part 2 exclusion 3: injury to a Family member or a person usually residing with the Insured` `defeats` (`an injury to` (`a person: relation` (JUST `a spouse`) `, regularly lives there` TRUE `, lived there` TRUE `, lives with the Insured` TRUE `, intends` 0 `, consecutive days` 0))
+-- F-family: a spouse who does not live there is not Family, and has not lived there.
+#ASSERT `the grounds against` (`an injury to` (`a person: relation` (JUST `a spouse`) `, regularly lives there` FALSE `, lived there` FALSE `, lives with the Insured` FALSE `, intends` 0 `, consecutive days` 0)) EQUALS EMPTY
+-- More than 90 consecutive days: 91 is, 90 is not.
+#ASSERT `the ground` `Part 2 exclusion 3: injury to a Family member or a person usually residing with the Insured` `defeats` (`an injury to` (`a person: relation` NOTHING `, regularly lives there` FALSE `, lived there` FALSE `, lives with the Insured` FALSE `, intends` 0 `, consecutive days` 91))
+#ASSERT `the grounds against` (`an injury to` (`a person: relation` NOTHING `, regularly lives there` FALSE `, lived there` FALSE `, lives with the Insured` FALSE `, intends` 0 `, consecutive days` 90)) EQUALS EMPTY
+-- Lives with the Insured and intends the Home as main residence for 60 days: 60 is, 59 is not;
+-- the intention without living with the Insured is not.
+#ASSERT `the ground` `Part 2 exclusion 3: injury to a Family member or a person usually residing with the Insured` `defeats` (`an injury to` (`a person: relation` NOTHING `, regularly lives there` FALSE `, lived there` FALSE `, lives with the Insured` TRUE `, intends` 60 `, consecutive days` 10))
+#ASSERT `the grounds against` (`an injury to` (`a person: relation` NOTHING `, regularly lives there` FALSE `, lived there` FALSE `, lives with the Insured` TRUE `, intends` 59 `, consecutive days` 10)) EQUALS EMPTY
+#ASSERT `the grounds against` (`an injury to` (`a person: relation` NOTHING `, regularly lives there` FALSE `, lived there` FALSE `, lives with the Insured` FALSE `, intends` 60 `, consecutive days` 10)) EQUALS EMPTY
+-- F-excl3: has used the Home as a place to live (taken) reaches; a visit does not.
+#ASSERT `the ground` `Part 2 exclusion 3: injury to a Family member or a person usually residing with the Insured` `defeats` (`an injury to` (`a person: relation` NOTHING `, regularly lives there` FALSE `, lived there` TRUE `, lives with the Insured` FALSE `, intends` 0 `, consecutive days` 0))
+#ASSERT `the grounds against` `a visitor bitten by the Insured's dog` EQUALS EMPTY
+-- Exclusion 3 is about bodily injury: damage to a Family member's property is not reached by it.
+#ASSERT NOT `the ground` `Part 2 exclusion 3: injury to a Family member or a person usually residing with the Insured` `defeats` (`a liability of` `the Insured named in the Policy Summary` `for` (LIST `physical damage to or destruction of tangible property`) `to` (JUST (`a person: relation` (JUST `a spouse`) `, regularly lives there` TRUE `, lived there` TRUE `, lives with the Insured` TRUE `, intends` 0 `, consecutive days` 0)) `and` NOTHING `with` EMPTY `, decided by` `a first-instance judgment of a competent Vietnamese court`)
+
+-- 4. Injury to an employee in the course of work; the same person injured off work is a near miss.
+#ASSERT `the ground` `Part 2 exclusion 4: injury to an employee in the course of work` `defeats` (`an injury to` (`A person injured` WITH `relation to the Insured` IS NOTHING, `regularly lives with the Insured at the Insured Location` IS FALSE, `has used the Home` IS TRUE, `has used the Home as a place to live` IS FALSE, `lives with the Insured` IS FALSE, `days the person intends or intended to make the Home the main residence` IS 0, `consecutive days the person used the Home or lived with the Insured` IS 0, `employed by the Insured or a resident and injured in that work` IS TRUE))
+#ASSERT NOT `the ground` `Part 2 exclusion 4: injury to an employee in the course of work` `defeats` `a visitor bitten by the Insured's dog`
+
+-- 5-17, each triggered by its circumstance; the base case is the near miss for each.
+#ASSERT `the ground` `Part 2 exclusion 5: workers' compensation` `defeats` (`a visitor injured, with` `a workers' compensation law, judgment, agreement or scheme`)
+#ASSERT `the ground` `Part 2 exclusion 7: business, trade or profession` `defeats` (`a visitor injured, with` `business, trade or profession of the Insured, Family or a resident`)
+#ASSERT `the ground` `Part 2 exclusion 8: construction, alteration or repair` `defeats` (`a visitor injured, with` `construction, alteration, repair or decoration of the Home`)
+#ASSERT `the ground` `Part 2 exclusion 9: aircraft, vessels, vehicles or internet communication` `defeats` (`a visitor injured, with` `aircraft or aerial device (other than a model or toy kite) or airfield`)
+#ASSERT `the ground` `Part 2 exclusion 9: aircraft, vessels, vehicles or internet communication` `defeats` (`a visitor injured, with` `motor boat or vessel, jetty or mooring`)
+#ASSERT `the ground` `Part 2 exclusion 9: aircraft, vessels, vehicles or internet communication` `defeats` (`a visitor injured, with` `a road-licensed or compulsorily insured vehicle, or its loading`)
+#ASSERT `the ground` `Part 2 exclusion 9: aircraft, vessels, vehicles or internet communication` `defeats` (`a visitor injured, with` `email, advertising or internet communication`)
+#ASSERT `the ground` `Part 2 exclusion 10: communicable disease` `defeats` (`a visitor injured, with` `transmission of a communicable disease`)
+#ASSERT `the ground` `Part 2 exclusion 11: use other than as a private residence` `defeats` (`a visitor injured, with` `use of an Insured Location or land other than as a private residence`)
+#ASSERT `the ground` `Part 2 exclusion 12: the cost of the Insured's own work` `defeats` (`a visitor injured, with` `the cost of performing, completing, correcting or improving work`)
+#ASSERT `the ground` `Part 2 exclusion 14: professional advice or services` `defeats` (`a visitor injured, with` `giving or failing to give professional advice or service`)
+#ASSERT `the ground` `Part 2 exclusion 15: pollution or contamination` `defeats` (`a visitor injured, with` `pollution or contamination`)
+#ASSERT `the ground` `Part 2 exclusion 16: fines, penalties or liquidated damages` `defeats` (`a visitor injured, with` `fines, penalties or liquidated damages`)
+#ASSERT `the ground` `Part 2 exclusion 17: punitive, exemplary or multiplied damages` `defeats` (`a visitor injured, with` `punitive, exemplary or multiplied damages`)
+
+-- 13. Products no longer in the Insured's control: excluded; food or drink poisoning at the
+-- Insured Location is carved back, but only where every possible precaution was taken.
+#ASSERT `the ground` `Part 2 exclusion 13: products no longer in the Insured's control` `defeats` (`a visitor injured, with` `goods made, sold or supplied by the Insured and no longer in its control`)
+#ASSERT `the grounds against` (`a visitor injured with` (LIST `goods made, sold or supplied by the Insured and no longer in its control`, `food or drink poisoning at the Insured Location`, `the Insured took every possible precaution with food and drink`)) EQUALS EMPTY
+#ASSERT `the grounds against` (`a visitor injured with` (LIST `goods made, sold or supplied by the Insured and no longer in its control`, `food or drink poisoning at the Insured Location`)) EQUALS (LIST `Part 2 exclusion 13 proviso: every possible precaution with food and drink not taken`)
+
+-- 6. Property owned or controlled by the Insured, the Family, a resident or an employee.
+GIVEN `controlled` IS A BOOLEAN
+      `employee's` IS A BOOLEAN
+      `rented`     IS A BOOLEAN
+GIVETH A `A Part 2 claim`
+`damage to property controlled` `controlled` `, an employee's` `employee's` `, the rented Location` `rented` MEANS
+    `a liability of` `the Insured named in the Policy Summary` `for` (LIST `physical damage to or destruction of tangible property`)
+        `to` NOTHING `and` (JUST (`A third party's property` WITH `owned or controlled by the Insured, the Family or a resident` IS `controlled`, `belonging to an employee of the Insured` IS `employee's`, `the Insured Location or its fixtures, rented by the Insured` IS `rented`))
+        `with` EMPTY `, decided by` `a first-instance judgment of a competent Vietnamese court`
+
+#ASSERT `the ground` `Part 2 exclusion 6: property owned or controlled by the Insured, Family, residents or employees` `defeats` (`damage to property controlled` TRUE `, an employee's` FALSE `, the rented Location` FALSE)
+#ASSERT `the ground` `Part 2 exclusion 6: property owned or controlled by the Insured, Family, residents or employees` `defeats` (`damage to property controlled` FALSE `, an employee's` TRUE `, the rented Location` FALSE)
+#ASSERT `the grounds against` (`damage to property controlled` FALSE `, an employee's` FALSE `, the rented Location` FALSE) EQUALS EMPTY
+
+§§ `The tenant's liability Extension (src:513-523), fork F-tenant`
+
+GIVEN claim IS A `A Part 2 claim`
+GIVETH A LIST OF `A ground under Part 2`
+`the grounds against the tenant's` claim MEANS
+    `the grounds on which a Part 2 claim fails, under` `the tenant's policy` `with` `good conduct` `for` claim `, as at` `1 April 2026`
+
+GIVEN cs IS A LIST OF `A circumstance of a liability`
+GIVETH A `A Part 2 claim`
+`the tenant damages the rented flat, with` cs MEANS
+    `a liability of` `the Insured named in the Policy Summary` `for` (LIST `physical damage to or destruction of tangible property`)
+        `to` NOTHING `and` (JUST (`A third party's property` WITH `owned or controlled by the Insured, the Family or a resident` IS TRUE, `belonging to an employee of the Insured` IS FALSE, `the Insured Location or its fixtures, rented by the Insured` IS TRUE))
+        `with` cs `, decided by` `a first-instance judgment of a competent Vietnamese court`
+
+-- The tenant (Home not insured under Part 1): exclusion 6 is suspended for the rented flat.
+#ASSERT `the tenant's liability Extension applies to` (`the tenant damages the rented flat, with` EMPTY) `under` `the tenant's policy`
+#ASSERT `the grounds against the tenant's` (`the tenant damages the rented flat, with` EMPTY) EQUALS EMPTY
+-- The owner (Home insured under Part 1): the Extension does not apply, and exclusion 6 does.
+#ASSERT NOT `the tenant's liability Extension applies to` (`the tenant damages the rented flat, with` EMPTY) `under` `the owner's policy`
+#ASSERT `the ground` `Part 2 exclusion 6: property owned or controlled by the Insured, Family, residents or employees` `defeats` (`the tenant damages the rented flat, with` EMPTY)
+-- Liability under the tenancy agreement, sent to the Insurer: neither exclusion 2 nor 6.
+#ASSERT `the grounds against the tenant's` (`the tenant damages the rented flat, with` (LIST `liability assumed by agreement that would not otherwise attach`, `the agreement is the tenancy agreement`, `the tenancy agreement was sent to the Insurer`)) EQUALS EMPTY
+-- Not sent: the Extension's proviso fails, so both exclusions bite.
+#ASSERT `the grounds against the tenant's` (`the tenant damages the rented flat, with` (LIST `liability assumed by agreement that would not otherwise attach`, `the agreement is the tenancy agreement`)) EQUALS (LIST `Part 2 exclusion 2: liability assumed by agreement`, `Part 2 exclusion 6: property owned or controlled by the Insured, Family, residents or employees`)
+-- Another agreement: both bite.
+#ASSERT `the grounds against the tenant's` (`the tenant damages the rented flat, with` (LIST `liability assumed by agreement that would not otherwise attach`)) EQUALS (LIST `Part 2 exclusion 2: liability assumed by agreement`, `Part 2 exclusion 6: property owned or controlled by the Insured, Family, residents or employees`)
+#ASSERT `the tenant's liability limit for each Occurrence, in dong` EQUALS 160_000_000
+
+§§ `Limits and costs (src:443-462, 510-511), forks F-p2-costs, F-p2-limit`
+
+GIVEN claim   IS A `A Part 2 claim`
+      figures IS A `The figures for a Part 2 claim`
+GIVETH A NUMBER
+`the owner is paid for` claim `on` figures MEANS
+    `Part 2: the amount payable, under` `the owner's policy` `with` `good conduct` `for` claim `on` figures `, as at` `1 April 2026`
+
+-- Within the limit: damages 300,000,000 plus costs 50,000,000 and 20,000,000, all paid, less
+-- the 1,000,000 Deductible.
+#ASSERT `the owner is paid for` `a visitor bitten by the Insured's dog` `on` (`Part 2 figures: damages` 300_000_000 `, costs recovered` 50_000_000 `, consented costs` 20_000_000 `, paid earlier` 0) EQUALS 369_000_000
+-- Above the 1,000,000,000 limit: damages 1,400,000,000 pay 1,000,000,000; costs 70,000,000
+-- are cut to 1,000/1,400 of themselves, 50,000,000; less 1,000,000.
+#ASSERT `the owner is paid for` `a visitor bitten by the Insured's dog` `on` (`Part 2 figures: damages` 1_400_000_000 `, costs recovered` 50_000_000 `, consented costs` 20_000_000 `, paid earlier` 0) EQUALS 1_049_000_000
+-- At the limit exactly, the proviso does not cut the costs: 1,000,000,000 + 70,000,000 - 1,000,000.
+#ASSERT `the owner is paid for` `a visitor bitten by the Insured's dog` `on` (`Part 2 figures: damages` 1_000_000_000 `, costs recovered` 50_000_000 `, consented costs` 20_000_000 `, paid earlier` 0) EQUALS 1_069_000_000
+-- The Period limit of 2,000,000,000, 1,800,000,000 used: 200,000,000 remains; damages
+-- 300,000,000 pay 200,000,000; costs 60,000,000 are cut to 200/300, 40,000,000; less 1,000,000.
+#ASSERT `the owner is paid for` `a visitor bitten by the Insured's dog` `on` (`Part 2 figures: damages` 300_000_000 `, costs recovered` 60_000_000 `, consented costs` 0 `, paid earlier` 1_800_000_000) EQUALS 239_000_000
+-- Exhausted: nothing remains, the costs are cut to nothing, and the Deductible leaves 0.
+#ASSERT `the owner is paid for` `a visitor bitten by the Insured's dog` `on` (`Part 2 figures: damages` 300_000_000 `, costs recovered` 60_000_000 `, consented costs` 0 `, paid earlier` 2_000_000_000) EQUALS 0
+-- Food and drink: the 100,000,000 food limit binds; damages 150,000,000 pay 100,000,000;
+-- costs 30,000,000 cut to 100/150, 20,000,000; less 1,000,000.
+#ASSERT `the owner is paid for` (`a visitor injured with` (LIST `goods made, sold or supplied by the Insured and no longer in its control`, `food or drink poisoning at the Insured Location`, `the Insured took every possible precaution with food and drink`)) `on` (`Part 2 figures: damages` 150_000_000 `, costs recovered` 30_000_000 `, consented costs` 0 `, paid earlier` 0) EQUALS 119_000_000
+-- Not covered: 0.
+#ASSERT `the owner is paid for` (`the dog bite decided by` `a judgment of a foreign court`) `on` (`Part 2 figures: damages` 300_000_000 `, costs recovered` 0 `, consented costs` 0 `, paid earlier` 0) EQUALS 0
+-- The tenant's Extension caps the rented flat at 160,000,000 (no Part 2 Deductible stated).
+#ASSERT `Part 2: the amount payable, under` `the tenant's policy` `with` `good conduct` `for` (`the tenant damages the rented flat, with` EMPTY) `on` (`Part 2 figures: damages` 200_000_000 `, costs recovered` 0 `, consented costs` 0 `, paid earlier` 0) `, as at` `1 April 2026` EQUALS 160_000_000
+-- Where the Summary states no Period limit, limit (b) cannot be applied: refused.
+#ASSERT REFUSED `Part 2: the amount payable, under` (`a policy with` (`The Policy Summary` WITH `the Period of Insurance begins` IS YMD 2026 1 1, `the Period of Insurance ends` IS YMD 2026 12 31, `the sum insured on the Home` IS JUST 2_000_000_000, `the sum insured on the Renovation Costs` IS NOTHING, `the sum insured on the Contents` IS NOTHING, `the Part 1 Limit of Liability` IS NOTHING, `the Part 2 Limit of Liability for any one Occurrence` IS JUST 1_000_000_000, `the Part 2 Limit of Liability for the Period` IS NOTHING, `the Part 2 limit for food and drink` IS NOTHING, `the Part 1 Deductible` IS NOTHING, `the Part 2 Deductible` IS NOTHING, `the Part 3 Deductible` IS NOTHING, `the Insured is named under Part 3` IS FALSE, `the domestic helper benefit is named` IS FALSE, `the construction of the Home is specially provided for` IS FALSE, `the annual premium` IS 1_000_000) `, insured` (`an Insured born 15 June 1980, a tenant` FALSE) `, premises` `a brick house`) `with` `good conduct` `for` `a visitor bitten by the Insured's dog` `on` (`Part 2 figures: damages` 300_000_000 `, costs recovered` 0 `, consented costs` 0 `, paid earlier` 0) `, as at` `1 April 2026`
+    BECAUSE "Part 2 needs the Summary's Limit of Liability for the Period"
+-- A food claim where the Summary states no food and drink limit: refused.
+#ASSERT REFUSED `Part 2: the amount payable, under` (`a policy with` (`The Policy Summary` WITH `the Period of Insurance begins` IS YMD 2026 1 1, `the Period of Insurance ends` IS YMD 2026 12 31, `the sum insured on the Home` IS JUST 2_000_000_000, `the sum insured on the Renovation Costs` IS NOTHING, `the sum insured on the Contents` IS NOTHING, `the Part 1 Limit of Liability` IS NOTHING, `the Part 2 Limit of Liability for any one Occurrence` IS JUST 1_000_000_000, `the Part 2 Limit of Liability for the Period` IS JUST 2_000_000_000, `the Part 2 limit for food and drink` IS NOTHING, `the Part 1 Deductible` IS NOTHING, `the Part 2 Deductible` IS NOTHING, `the Part 3 Deductible` IS NOTHING, `the Insured is named under Part 3` IS FALSE, `the domestic helper benefit is named` IS FALSE, `the construction of the Home is specially provided for` IS FALSE, `the annual premium` IS 1_000_000) `, insured` (`an Insured born 15 June 1980, a tenant` FALSE) `, premises` `a brick house`) `with` `good conduct` `for` (`a visitor injured with` (LIST `goods made, sold or supplied by the Insured and no longer in its control`, `food or drink poisoning at the Insured Location`, `the Insured took every possible precaution with food and drink`)) `on` (`Part 2 figures: damages` 50_000_000 `, costs recovered` 0 `, consented costs` 0 `, paid earlier` 0) `, as at` `1 April 2026`
+    BECAUSE "Part 2 exclusion 13 needs the Summary's limit for food and drink"
+
+§§ `Conditions 2-3 (src:613-626): the Insurer's powers`
+
+-- Exercising either power fulfils; leaving both unused is no breach (they are MAYs).
+#TRACE `Part 2: the Insurer may take over the claim, or pay the limit or less and be discharged` AT 0 WITH
+    PARTY `the Insurer` DOES `take over the defence or settlement of the claim` AT 5

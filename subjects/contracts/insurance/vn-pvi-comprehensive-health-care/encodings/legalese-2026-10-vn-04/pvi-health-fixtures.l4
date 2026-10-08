@@ -1,0 +1,488 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `pvi-health-nouns`
+
+-- Fixtures for the tests of the PVI comprehensive health care rules: named people, certificates,
+-- facilities, treatments and claims. No directives here; every test module imports this one.
+--
+-- Every amount below is a HYPOTHETICAL scenario value (the document states no premium, sum
+-- insured or limit; those are in the schedule, outside it). Where a test turns on a figure the
+-- document DOES state (an age, a period, a percentage), the figure is in the test, not here.
+
+§ `Fixtures`
+
+§§ `People`
+
+`a healthy status` MEANS `A health status` WITH
+    `suffering from a mental illness`            IS FALSE
+    `suffering from leprosy`                     IS FALSE
+    `suffering from cancer`                      IS FALSE
+    `rate of disability or permanent injury`     IS 0
+    `under treatment for an illness or injury`   IS FALSE
+
+GIVEN `the date of birth` IS A DATE
+      `a woman` IS A BOOLEAN
+      `continuously insured since 60` IS A BOOLEAN
+GIVETH AN `An insured person`
+`a healthy citizen born on` `the date of birth` `, a woman:` `a woman` `, continuously insured since 60:` `continuously insured since 60` MEANS
+    `An insured person` WITH
+        `date of birth`                              IS `the date of birth`
+        `a woman`                                    IS `a woman`
+        `residence status`                           IS `a Vietnamese citizen`
+        `health status when the insurance was taken out` IS `a healthy status`
+        `continuously insured with PVI since age 60` IS `continuously insured since 60`
+
+-- A woman of 35 in 2026 (born 15 May 1990).
+`the adult woman` MEANS `a healthy citizen born on` (YMD 1990 5 15) `, a woman:` TRUE `, continuously insured since 60:` FALSE
+-- A man of 40 in 2026.
+`the adult man` MEANS `a healthy citizen born on` (YMD 1986 2 1) `, a woman:` FALSE `, continuously insured since 60:` FALSE
+-- A child of 5 in mid-2026 (born 1 March 2021): 4 on 1 January 2026, 5 from 1 March 2026.
+`the child of five` MEANS `a healthy citizen born on` (YMD 2021 3 1) `, a woman:` FALSE `, continuously insured since 60:` FALSE
+-- A child of 7 in 2026 (born 1 March 2019).
+`the child of seven` MEANS `a healthy citizen born on` (YMD 2019 3 1) `, a woman:` FALSE `, continuously insured since 60:` FALSE
+
+§§ `The schedule (hypothetical amounts)`
+
+`the schedule` MEANS `The schedule of benefits` WITH
+    `the sum insured`                            IS 200_000_000
+    `sum insured for personal accident`          IS 100_000_000
+    `limit for hospitalisation`                  IS  60_000_000
+    `limit for surgery`                          IS  40_000_000
+    `limit for outpatient treatment`             IS  10_000_000
+    `sum insured for dental care`                IS   5_000_000
+    `limit for maternity`                        IS  20_000_000
+    `sum insured for death from illness`         IS  50_000_000
+
+-- Large limits, so the 60-day cap of A.2.3(a) is the binding one.
+`a schedule with large limits` MEANS `The schedule of benefits` WITH
+    `the sum insured`                            IS 900_000_000
+    `sum insured for personal accident`          IS 100_000_000
+    `limit for hospitalisation`                  IS 500_000_000
+    `limit for surgery`                          IS 100_000_000
+    `limit for outpatient treatment`             IS  10_000_000
+    `sum insured for dental care`                IS   5_000_000
+    `limit for maternity`                        IS  20_000_000
+    `sum insured for death from illness`         IS  50_000_000
+
+-- A limit of 6,000,000 for hospitalisation, for the scenario where several layers interact.
+`a schedule with a small hospital limit` MEANS `The schedule of benefits` WITH
+    `the sum insured`                            IS 200_000_000
+    `sum insured for personal accident`          IS 100_000_000
+    `limit for hospitalisation`                  IS   6_000_000
+    `limit for surgery`                          IS  40_000_000
+    `limit for outpatient treatment`             IS  10_000_000
+    `sum insured for dental care`                IS   5_000_000
+    `limit for maternity`                        IS  20_000_000
+    `sum insured for death from illness`         IS  50_000_000
+
+§§ `Certificate periods`
+
+GIVEN `the start` IS A DATE
+      `the end` IS A DATE
+      `the riders` IS A BOOLEAN
+      `no higher` IS A BOOLEAN
+      `paid` IS A BOOLEAN
+GIVETH A `A certificate period`
+`a period from` `the start` `to` `the end` `, all riders:` `the riders` `, no higher:` `no higher` `, premium paid:` `paid` MEANS
+    `A certificate period` WITH
+        `start date`                             IS `the start`
+        `end date`                               IS `the end`
+        `includes outpatient treatment`          IS `the riders`
+        `includes dental care`                   IS `the riders`
+        `includes maternity`                     IS `the riders`
+        `includes death from illness`            IS `the riders`
+        `benefits no higher than the previous certificate` IS `no higher`
+        `premium paid in full and on time`       IS `paid`
+
+`2026, every rider` MEANS `a period from` (YMD 2026 1 1) `to` (YMD 2026 12 31) `, all riders:` TRUE `, no higher:` TRUE `, premium paid:` TRUE
+`2025, every rider` MEANS `a period from` (YMD 2025 1 1) `to` (YMD 2025 12 31) `, all riders:` TRUE `, no higher:` TRUE `, premium paid:` TRUE
+`2024, every rider` MEANS `a period from` (YMD 2024 1 1) `to` (YMD 2024 12 31) `, all riders:` TRUE `, no higher:` TRUE `, premium paid:` TRUE
+`2026, no rider` MEANS `a period from` (YMD 2026 1 1) `to` (YMD 2026 12 31) `, all riders:` FALSE `, no higher:` TRUE `, premium paid:` TRUE
+`2025, no rider` MEANS `a period from` (YMD 2025 1 1) `to` (YMD 2025 12 31) `, all riders:` FALSE `, no higher:` TRUE `, premium paid:` TRUE
+-- 2026 with every rider after a 2025 certificate with none: the benefits went UP.
+`2026, every rider, an upgrade` MEANS `a period from` (YMD 2026 1 1) `to` (YMD 2026 12 31) `, all riders:` TRUE `, no higher:` FALSE `, premium paid:` TRUE
+`2026, every rider, premium unpaid` MEANS `a period from` (YMD 2026 1 1) `to` (YMD 2026 12 31) `, all riders:` TRUE `, no higher:` TRUE `, premium paid:` FALSE
+
+-- One supplementary benefit at a time, on 2026.
+GIVEN `outpatient` IS A BOOLEAN
+      `dental` IS A BOOLEAN
+      `maternity` IS A BOOLEAN
+      `death` IS A BOOLEAN
+GIVETH A `A certificate period`
+`2026 with outpatient:` `outpatient` `, dental:` `dental` `, maternity:` `maternity` `, death:` `death` MEANS
+    `A certificate period` WITH
+        `start date`                             IS YMD 2026 1 1
+        `end date`                               IS YMD 2026 12 31
+        `includes outpatient treatment`          IS `outpatient`
+        `includes dental care`                   IS `dental`
+        `includes maternity`                     IS `maternity`
+        `includes death from illness`            IS `death`
+        `benefits no higher than the previous certificate` IS TRUE
+        `premium paid in full and on time`       IS TRUE
+
+§§ `Certificates`
+
+GIVEN `this period` IS A `A certificate period`
+      `earlier periods` IS A LIST OF `A certificate period`
+      `the schedule used` IS A `The schedule of benefits`
+      `the programme` IS A NUMBER
+      `shows the waiting periods` IS A BOOLEAN
+      `with a parent` IS A BOOLEAN
+      `parents' sums insured` IS A LIST OF NUMBER
+      `early termination` IS A MAYBE DATE
+GIVETH A `A certificate`
+`a certificate for` `this period` `after` `earlier periods` `, schedule` `the schedule used` `, programme` `the programme` `, waiting periods shown:` `shows the waiting periods` `, with a parent:` `with a parent` `, parents' sums insured` `parents' sums insured` `, terminated early on` `early termination` MEANS
+    `A certificate` WITH
+        `this period`                            IS `this period`
+        `earlier periods at PVI`                 IS `earlier periods`
+        `programme`                              IS `the programme`
+        `schedule`                               IS `the schedule used`
+        `premium`                                IS 3_650_000
+        `shows the waiting periods of its benefits` IS `shows the waiting periods`
+        `on the same contract as the father or mother` IS `with a parent`
+        `sums insured of the father or mother on that contract` IS `parents' sums insured`
+        `date of early termination`              IS `early termination`
+
+-- First year with PVI: waiting periods run from 1 January 2026.
+`the first-year certificate` MEANS
+    `a certificate for` `2026, every rider` `after` EMPTY `, schedule` `the schedule` `, programme` 1 `, waiting periods shown:` TRUE `, with a parent:` FALSE `, parents' sums insured` EMPTY `, terminated early on` NOTHING
+-- Third year, renewed continuously: waiting periods run from 1 January 2024.
+`the renewed certificate` MEANS
+    `a certificate for` `2026, every rider` `after` (LIST `2025, every rider`, `2024, every rider`) `, schedule` `the schedule` `, programme` 1 `, waiting periods shown:` TRUE `, with a parent:` FALSE `, parents' sums insured` EMPTY `, terminated early on` NOTHING
+-- The same history, but the 2026 certificate raised the benefits (riders added).
+`the upgraded certificate` MEANS
+    `a certificate for` `2026, every rider, an upgrade` `after` (LIST `2025, no rider`, `2024, every rider`) `, schedule` `the schedule` `, programme` 1 `, waiting periods shown:` TRUE `, with a parent:` FALSE `, parents' sums insured` EMPTY `, terminated early on` NOTHING
+-- Renewed, but 2025 had no rider: the riders' waiting periods run from 2026.
+`the certificate renewed without riders in 2025` MEANS
+    `a certificate for` `2026, every rider` `after` (LIST `2025, no rider`, `2024, every rider`) `, schedule` `the schedule` `, programme` 1 `, waiting periods shown:` TRUE `, with a parent:` FALSE `, parents' sums insured` EMPTY `, terminated early on` NOTHING
+`the renewed certificate with no rider` MEANS
+    `a certificate for` `2026, no rider` `after` (LIST `2025, every rider`, `2024, every rider`) `, schedule` `the schedule` `, programme` 1 `, waiting periods shown:` TRUE `, with a parent:` FALSE `, parents' sums insured` EMPTY `, terminated early on` NOTHING
+`the renewed certificate, premium unpaid` MEANS
+    `a certificate for` `2026, every rider, premium unpaid` `after` (LIST `2025, every rider`, `2024, every rider`) `, schedule` `the schedule` `, programme` 1 `, waiting periods shown:` TRUE `, with a parent:` FALSE `, parents' sums insured` EMPTY `, terminated early on` NOTHING
+`the first-year certificate not showing waiting periods` MEANS
+    `a certificate for` `2026, every rider` `after` EMPTY `, schedule` `the schedule` `, programme` 1 `, waiting periods shown:` FALSE `, with a parent:` FALSE `, parents' sums insured` EMPTY `, terminated early on` NOTHING
+`the renewed certificate with large limits` MEANS
+    `a certificate for` `2026, every rider` `after` (LIST `2025, every rider`, `2024, every rider`) `, schedule` `a schedule with large limits` `, programme` 1 `, waiting periods shown:` TRUE `, with a parent:` FALSE `, parents' sums insured` EMPTY `, terminated early on` NOTHING
+-- A child's renewed certificate, on a parent's contract whose sum insured is at least the child's.
+`the child's renewed certificate` MEANS
+    `a certificate for` `2026, every rider` `after` (LIST `2025, every rider`, `2024, every rider`) `, schedule` `a schedule with a small hospital limit` `, programme` 1 `, waiting periods shown:` TRUE `, with a parent:` TRUE `, parents' sums insured` (LIST 300_000_000, 200_000_000) `, terminated early on` NOTHING
+`the child's first-year certificate` MEANS
+    `a certificate for` `2026, every rider` `after` EMPTY `, schedule` `the schedule` `, programme` 1 `, waiting periods shown:` TRUE `, with a parent:` TRUE `, parents' sums insured` (LIST 300_000_000) `, terminated early on` NOTHING
+-- Renewed, and terminated early by PVI with effect from 1 July 2026.
+`the renewed certificate terminated on 1 July 2026` MEANS
+    `a certificate for` `2026, every rider` `after` (LIST `2025, every rider`, `2024, every rider`) `, schedule` `the schedule` `, programme` 1 `, waiting periods shown:` TRUE `, with a parent:` FALSE `, parents' sums insured` EMPTY `, terminated early on` (JUST (YMD 2026 7 1))
+-- Renewed, on programme 3.
+`the renewed certificate on programme 3` MEANS
+    `a certificate for` `2026, every rider` `after` (LIST `2025, every rider`, `2024, every rider`) `, schedule` `the schedule` `, programme` 3 `, waiting periods shown:` TRUE `, with a parent:` FALSE `, parents' sums insured` EMPTY `, terminated early on` NOTHING
+-- Renewed, with one rider at a time.
+GIVEN `outpatient` IS A BOOLEAN
+      `dental` IS A BOOLEAN
+      `maternity` IS A BOOLEAN
+GIVETH A `A certificate`
+`the renewed certificate with outpatient:` `outpatient` `, dental:` `dental` `, maternity:` `maternity` MEANS
+    `a certificate for` (`2026 with outpatient:` `outpatient` `, dental:` `dental` `, maternity:` `maternity` `, death:` TRUE) `after` (LIST `2025, every rider`, `2024, every rider`) `, schedule` `the schedule` `, programme` 1 `, waiting periods shown:` TRUE `, with a parent:` FALSE `, parents' sums insured` EMPTY `, terminated early on` NOTHING
+
+§§ `Facilities`
+
+GIVEN `the kind` IS A `A kind of medical facility`
+      `international department` IS A BOOLEAN
+      `in Vietnam` IS A BOOLEAN
+      `in Hanoi or HCMC` IS A BOOLEAN
+      `licensed` IS A BOOLEAN
+      `a hospital` IS A BOOLEAN
+      `a proper clinic` IS A BOOLEAN
+      `documents` IS A BOOLEAN
+      `agreement` IS A BOOLEAN
+      `refused` IS A BOOLEAN
+GIVETH A `A medical facility`
+`a facility:` `the kind` `, international department` `international department` `, in Vietnam` `in Vietnam` `, in Hanoi or HCMC` `in Hanoi or HCMC` `, licensed` `licensed` `, equipped as a hospital` `a hospital` `, equipped as a clinic` `a proper clinic` `, documents` `documents` `, PVI agreement` `agreement` `, refused` `refused` MEANS
+    `A medical facility` WITH
+        `kind`                                   IS `the kind`
+        `the treatment was in its international department` IS `international department`
+        `in Vietnam`                             IS `in Vietnam`
+        `in Hanoi or Ho Chi Minh City`           IS `in Hanoi or HCMC`
+        `licensed to operate lawfully`           IS `licensed`
+        `able to diagnose, treat and operate`    IS `a hospital`
+        `equipped for inpatient treatment with daily monitoring` IS `a hospital`
+        `solely for convalescence, the elderly, addiction, mental disorders or leprosy` IS FALSE
+        `holds a valid business licence and its own seal` IS `a proper clinic`
+        `able to examine, diagnose and treat`    IS `a proper clinic`
+        `issues documents and invoices as the Ministry of Finance requires` IS `documents`
+        `has a cooperation agreement with PVI`   IS `agreement`
+        `on PVI's list of facilities refused for claims` IS `refused`
+        `daily price of its cheapest single room` IS 1_000_000
+
+`a public hospital in Hanoi` MEANS
+    `a facility:` `a public hospital` `, international department` FALSE `, in Vietnam` TRUE `, in Hanoi or HCMC` TRUE `, licensed` TRUE `, equipped as a hospital` TRUE `, equipped as a clinic` TRUE `, documents` TRUE `, PVI agreement` FALSE `, refused` FALSE
+`the international department of a public hospital in Hanoi` MEANS
+    `a facility:` `a public hospital` `, international department` TRUE `, in Vietnam` TRUE `, in Hanoi or HCMC` TRUE `, licensed` TRUE `, equipped as a hospital` TRUE `, equipped as a clinic` TRUE `, documents` TRUE `, PVI agreement` FALSE `, refused` FALSE
+`a private hospital in Ho Chi Minh City` MEANS
+    `a facility:` `a private or international hospital` `, international department` FALSE `, in Vietnam` TRUE `, in Hanoi or HCMC` TRUE `, licensed` TRUE `, equipped as a hospital` TRUE `, equipped as a clinic` TRUE `, documents` TRUE `, PVI agreement` FALSE `, refused` FALSE
+`a hospital in Singapore` MEANS
+    `a facility:` `a private or international hospital` `, international department` FALSE `, in Vietnam` FALSE `, in Hanoi or HCMC` FALSE `, licensed` TRUE `, equipped as a hospital` TRUE `, equipped as a clinic` TRUE `, documents` TRUE `, PVI agreement` FALSE `, refused` FALSE
+`a clinic in Da Nang` MEANS
+    `a facility:` `a clinic` `, international department` FALSE `, in Vietnam` TRUE `, in Hanoi or HCMC` FALSE `, licensed` TRUE `, equipped as a hospital` FALSE `, equipped as a clinic` TRUE `, documents` TRUE `, PVI agreement` FALSE `, refused` FALSE
+`a clinic in Da Nang on PVI's refused list` MEANS
+    `a facility:` `a clinic` `, international department` FALSE `, in Vietnam` TRUE `, in Hanoi or HCMC` FALSE `, licensed` TRUE `, equipped as a hospital` FALSE `, equipped as a clinic` TRUE `, documents` TRUE `, PVI agreement` FALSE `, refused` TRUE
+-- A licensed private dental clinic in Hanoi with no PVI agreement.
+`a private clinic in Hanoi` MEANS
+    `a facility:` `a clinic` `, international department` FALSE `, in Vietnam` TRUE `, in Hanoi or HCMC` TRUE `, licensed` TRUE `, equipped as a hospital` FALSE `, equipped as a clinic` TRUE `, documents` TRUE `, PVI agreement` FALSE `, refused` FALSE
+-- A clinic without a business licence or seal: not a clinic as the Rules define one.
+`a clinic without a business licence` MEANS
+    `a facility:` `a clinic` `, international department` FALSE `, in Vietnam` TRUE `, in Hanoi or HCMC` FALSE `, licensed` TRUE `, equipped as a hospital` FALSE `, equipped as a clinic` FALSE `, documents` TRUE `, PVI agreement` FALSE `, refused` FALSE
+`an unlicensed facility issuing no invoices` MEANS
+    `a facility:` `another medical facility` `, international department` FALSE `, in Vietnam` TRUE `, in Hanoi or HCMC` FALSE `, licensed` FALSE `, equipped as a hospital` FALSE `, equipped as a clinic` FALSE `, documents` FALSE `, PVI agreement` FALSE `, refused` FALSE
+`an unlicensed facility issuing invoices` MEANS
+    `a facility:` `another medical facility` `, international department` FALSE `, in Vietnam` TRUE `, in Hanoi or HCMC` FALSE `, licensed` FALSE `, equipped as a hospital` FALSE `, equipped as a clinic` FALSE `, documents` TRUE `, PVI agreement` FALSE `, refused` FALSE
+
+§§ `Treatments`
+
+GIVEN `bed` IS A NUMBER
+      `other` IS A NUMBER
+GIVETH A `A day in hospital`
+`a day costing` `bed` `for the bed and` `other` `otherwise` MEANS
+    `A day in hospital` WITH
+        `bed charge`                             IS `bed`
+        `other medical costs`                    IS `other`
+        `non-medical costs`                      IS 100_000
+
+GIVEN n IS A NUMBER
+      d IS A `A day in hospital`
+GIVETH A LIST OF `A day in hospital`
+n `days of` d MEANS
+    IF n AT MOST 0 THEN EMPTY ELSE d FOLLOWED BY ((n MINUS 1) `days of` d)
+
+GIVEN `admitted` IS A BOOLEAN
+      `overnight` IS A BOOLEAN
+      `hours` IS A NUMBER
+      `surgery` IS A BOOLEAN
+      `dental` IS A BOOLEAN
+      `conclusion` IS A BOOLEAN
+      `protocol` IS A BOOLEAN
+      `chronic` IS A BOOLEAN
+      `the room used` IS A `A room`
+      `the days` IS A LIST OF `A day in hospital`
+GIVETH A `The treatment`
+`a treatment: admitted` `admitted` `, overnight` `overnight` `, hours` `hours` `, surgery` `surgery` `, dental` `dental` `, diagnosis` `conclusion` `, protocol` `protocol` `, chronic` `chronic` `, room` `the room used` `, days` `the days` MEANS
+    `The treatment` WITH
+        `admitted with the facility's admission procedure` IS `admitted`
+        `an admission or discharge paper issued by a hospital` IS `admitted`
+        `stayed overnight in a hospital bed`     IS `overnight`
+        `continuous hours at the facility`       IS `hours`
+        `bed charges incurred`                   IS `admitted`
+        `for a diagnosed disease under a treatment protocol` IS `protocol`
+        `a surgery`                              IS `surgery`
+        `the surgery is on the Ministry of Health's list` IS `surgery`
+        `the surgeon holds a lawful practising certificate` IS `surgery`
+        `dental treatment`                       IS `dental`
+        `indicated by the treating doctor`       IS TRUE
+        `the doctor is the insured person, or a spouse, parent, child or sibling of the insured person` IS FALSE
+        `a doctor's conclusion of a disease`     IS `conclusion`
+        `a specific treatment protocol`          IS `protocol`
+        `the treating doctor concluded the disease is chronic` IS `chronic`
+        `the room`                               IS `the room used`
+        `the days in hospital`                   IS `the days`
+        `date of the last discharge from hospital` IS NOTHING
+        `days of the hospital stay before home care` IS 0
+
+`a standard day` MEANS `a day costing` 1_000_000 `for the bed and` 2_000_000 `otherwise`
+
+-- Three nights, 72 hours, a standard room at 1,000,000 a day plus 2,000,000 of other medical costs.
+`a three-night stay` MEANS
+    `a treatment: admitted` TRUE `, overnight` TRUE `, hours` 72 `, surgery` FALSE `, dental` FALSE `, diagnosis` TRUE `, protocol` TRUE `, chronic` FALSE `, room` `a standard room` `, days` (3 `days of` `a standard day`)
+`a three-night stay for a chronic disease` MEANS
+    `a treatment: admitted` TRUE `, overnight` TRUE `, hours` 72 `, surgery` FALSE `, dental` FALSE `, diagnosis` TRUE `, protocol` TRUE `, chronic` TRUE `, room` `a standard room` `, days` (3 `days of` `a standard day`)
+`a three-night stay with surgery` MEANS
+    `a treatment: admitted` TRUE `, overnight` TRUE `, hours` 72 `, surgery` TRUE `, dental` FALSE `, diagnosis` TRUE `, protocol` TRUE `, chronic` FALSE `, room` `a standard room` `, days` (3 `days of` `a standard day`)
+`a four-night stay` MEANS
+    `a treatment: admitted` TRUE `, overnight` TRUE `, hours` 96 `, surgery` FALSE `, dental` FALSE `, diagnosis` TRUE `, protocol` TRUE `, chronic` FALSE `, room` `a standard room` `, days` (4 `days of` `a standard day`)
+`a three-night stay in a VIP room` MEANS
+    `a treatment: admitted` TRUE `, overnight` TRUE `, hours` 72 `, surgery` FALSE `, dental` FALSE `, diagnosis` TRUE `, protocol` TRUE `, chronic` FALSE `, room` `a room on request, a VIP room or a whole room booked` `, days` (3 `days of` (`a day costing` 5_000_000 `for the bed and` 2_000_000 `otherwise`))
+`a three-night stay in intensive care` MEANS
+    `a treatment: admitted` TRUE `, overnight` TRUE `, hours` 72 `, surgery` FALSE `, dental` FALSE `, diagnosis` TRUE `, protocol` TRUE `, chronic` FALSE `, room` `an intensive care unit` `, days` (3 `days of` (`a day costing` 8_000_000 `for the bed and` 2_000_000 `otherwise`))
+-- 61 days at 1,000,000 of other medical costs a day, no bed charge.
+`a 61-day stay` MEANS
+    `a treatment: admitted` TRUE `, overnight` TRUE `, hours` 1464 `, surgery` FALSE `, dental` FALSE `, diagnosis` TRUE `, protocol` TRUE `, chronic` FALSE `, room` `a standard room` `, days` (61 `days of` (`a day costing` 0 `for the bed and` 1_000_000 `otherwise`))
+-- Admitted at 18:00, discharged at 10:00 the next morning: overnight, 16 hours.
+`a 16-hour overnight stay` MEANS
+    `a treatment: admitted` TRUE `, overnight` TRUE `, hours` 16 `, surgery` FALSE `, dental` FALSE `, diagnosis` TRUE `, protocol` TRUE `, chronic` FALSE `, room` `a standard room` `, days` (1 `days of` `a standard day`)
+`a 24-hour overnight stay` MEANS
+    `a treatment: admitted` TRUE `, overnight` TRUE `, hours` 24 `, surgery` FALSE `, dental` FALSE `, diagnosis` TRUE `, protocol` TRUE `, chronic` FALSE `, room` `a standard room` `, days` (1 `days of` `a standard day`)
+-- Admitted for the day under a protocol, with a bed charge, home the same evening.
+`a day treatment` MEANS
+    `a treatment: admitted` TRUE `, overnight` FALSE `, hours` 8 `, surgery` FALSE `, dental` FALSE `, diagnosis` TRUE `, protocol` TRUE `, chronic` FALSE `, room` `a standard room` `, days` (1 `days of` `a standard day`)
+`a day surgery` MEANS
+    `a treatment: admitted` TRUE `, overnight` FALSE `, hours` 8 `, surgery` TRUE `, dental` FALSE `, diagnosis` TRUE `, protocol` TRUE `, chronic` FALSE `, room` `a standard room` `, days` EMPTY
+`an outpatient visit` MEANS
+    `a treatment: admitted` FALSE `, overnight` FALSE `, hours` 2 `, surgery` FALSE `, dental` FALSE `, diagnosis` TRUE `, protocol` TRUE `, chronic` FALSE `, room` `a standard room` `, days` EMPTY
+`an outpatient visit with no diagnosis` MEANS
+    `a treatment: admitted` FALSE `, overnight` FALSE `, hours` 2 `, surgery` FALSE `, dental` FALSE `, diagnosis` FALSE `, protocol` FALSE `, chronic` FALSE `, room` `a standard room` `, days` EMPTY
+`an outpatient visit with a diagnosis and no protocol` MEANS
+    `a treatment: admitted` FALSE `, overnight` FALSE `, hours` 2 `, surgery` FALSE `, dental` FALSE `, diagnosis` TRUE `, protocol` FALSE `, chronic` FALSE `, room` `a standard room` `, days` EMPTY
+`a dental visit` MEANS
+    `a treatment: admitted` FALSE `, overnight` FALSE `, hours` 1 `, surgery` FALSE `, dental` TRUE `, diagnosis` TRUE `, protocol` TRUE `, chronic` FALSE `, room` `a standard room` `, days` EMPTY
+`a dental stay` MEANS
+    `a treatment: admitted` TRUE `, overnight` TRUE `, hours` 48 `, surgery` FALSE `, dental` TRUE `, diagnosis` TRUE `, protocol` TRUE `, chronic` FALSE `, room` `a standard room` `, days` (2 `days of` `a standard day`)
+
+-- A follow-up visit with the date of the last discharge recorded.
+GIVEN `the discharge` IS A DATE
+GIVETH A `The treatment`
+`a follow-up visit after a discharge on` `the discharge` MEANS
+    `The treatment` WITH
+        `admitted with the facility's admission procedure` IS FALSE
+        `an admission or discharge paper issued by a hospital` IS FALSE
+        `stayed overnight in a hospital bed`     IS FALSE
+        `continuous hours at the facility`       IS 1
+        `bed charges incurred`                   IS FALSE
+        `for a diagnosed disease under a treatment protocol` IS TRUE
+        `a surgery`                              IS FALSE
+        `the surgery is on the Ministry of Health's list` IS FALSE
+        `the surgeon holds a lawful practising certificate` IS FALSE
+        `dental treatment`                       IS FALSE
+        `indicated by the treating doctor`       IS TRUE
+        `the doctor is the insured person, or a spouse, parent, child or sibling of the insured person` IS FALSE
+        `a doctor's conclusion of a disease`     IS TRUE
+        `a specific treatment protocol`          IS TRUE
+        `the treating doctor concluded the disease is chronic` IS FALSE
+        `the room`                               IS `a standard room`
+        `the days in hospital`                   IS EMPTY
+        `date of the last discharge from hospital` IS JUST `the discharge`
+        `days of the hospital stay before home care` IS 0
+
+-- Home nursing after a hospital stay of the given number of days.
+GIVEN `days in hospital before` IS A NUMBER
+GIVETH A `The treatment`
+`home care, after a hospital stay in days of` `days in hospital before` MEANS
+    `The treatment` WITH
+        `admitted with the facility's admission procedure` IS FALSE
+        `an admission or discharge paper issued by a hospital` IS FALSE
+        `stayed overnight in a hospital bed`     IS FALSE
+        `continuous hours at the facility`       IS 0
+        `bed charges incurred`                   IS FALSE
+        `for a diagnosed disease under a treatment protocol` IS TRUE
+        `a surgery`                              IS FALSE
+        `the surgery is on the Ministry of Health's list` IS FALSE
+        `the surgeon holds a lawful practising certificate` IS FALSE
+        `dental treatment`                       IS FALSE
+        `indicated by the treating doctor`       IS TRUE
+        `the doctor is the insured person, or a spouse, parent, child or sibling of the insured person` IS FALSE
+        `a doctor's conclusion of a disease`     IS TRUE
+        `a specific treatment protocol`          IS TRUE
+        `the treating doctor concluded the disease is chronic` IS FALSE
+        `the room`                               IS `a standard room`
+        `the days in hospital`                   IS EMPTY
+        `date of the last discharge from hospital` IS NOTHING
+        `days of the hospital stay before home care` IS `days in hospital before`
+
+§§ `History, costs, outcomes`
+
+`no earlier history` MEANS `The history of the disease` WITH
+    `the disease existed before cover began`     IS FALSE
+    `date of the last treatment before cover began` IS NOTHING
+    `medical symptoms existed and originated before cover began` IS FALSE
+
+GIVEN `surgery` IS A NUMBER
+      `other` IS A NUMBER
+      `other insurer` IS A NUMBER
+      `vitamins` IS A NUMBER
+      `drugs` IS A NUMBER
+      `days used` IS A NUMBER
+      `paid this year` IS A NUMBER
+GIVETH A `The costs claimed`
+`costs: surgery` `surgery` `, other medical` `other` `, paid by another insurer` `other insurer` `, vitamins` `vitamins` `, drugs` `drugs` `, hospital days already paid` `days used` `, paid this year` `paid this year` MEANS
+    `The costs claimed` WITH
+        `costs of the surgery`                   IS `surgery`
+        `other medical costs`                    IS `other`
+        `paid under another insurance contract`  IS `other insurer`
+        `cost of the vitamins or minerals`       IS `vitamins`
+        `cost of the treatment drugs`            IS `drugs`
+        `days of hospitalisation already paid in this insurance year` IS `days used`
+        `already paid in this insurance year`    IS `paid this year`
+        `scalings already paid in this insurance year` IS 0
+
+`no other costs` MEANS
+    `costs: surgery` 0 `, other medical` 0 `, paid by another insurer` 0 `, vitamins` 0 `, drugs` 0 `, hospital days already paid` 0 `, paid this year` 0
+
+`nothing permanent` MEANS `The facts of death or permanent injury` WITH
+    `outcome`                                    IS `no death and no permanent injury`
+    `treatment of the injury has ended`          IS FALSE
+    `already paid under Benefit 2 for the same accident` IS 0
+
+GIVEN `the outcome` IS A `The outcome of the accident`
+      `ended` IS A BOOLEAN
+      `paid` IS A NUMBER
+GIVETH A `The facts of death or permanent injury`
+`an outcome:` `the outcome` `, treatment ended` `ended` `, already paid under Benefit 2` `paid` MEANS
+    `The facts of death or permanent injury` WITH
+        `outcome`                                IS `the outcome`
+        `treatment of the injury has ended`      IS `ended`
+        `already paid under Benefit 2 for the same accident` IS `paid`
+
+§§ `Claims`
+
+-- The full builder: every field of `A claim`, each behind its own label.
+GIVEN who IS AN `An insured person`
+      cert IS A `A certificate`
+      benefit IS A `A benefit`
+      claimant IS A `A party`
+      cause IS A `A cause`
+      arose IS A DATE
+      treated IS A DATE
+      fac IS A `A medical facility`
+      tr IS A `The treatment`
+      conds IS A LIST OF `A condition`
+      circs IS A LIST OF `A circumstance`
+      hist IS A `The history of the disease`
+      cost IS A `The costs claimed`
+      dentalItems IS A LIST OF `A dental item`
+      mat IS A MAYBE `A maternity event`
+      outcomeFacts IS A `The facts of death or permanent injury`
+      driving IS A BOOLEAN
+      authorised IS A BOOLEAN
+GIVETH A `A claim`
+`a claim by` who `under` cert `for` benefit `, claimant` claimant `, cause` cause `, arising` arose `, treated` treated `at` fac `:` tr `; conditions` conds `; circumstances` circs `; history` hist `; costs` cost `; dental items` dentalItems `; maternity` mat `; death or injury` outcomeFacts `; driving` driving `; authorised` authorised MEANS
+    `A claim` WITH
+        `the insured`                            IS who
+        `the certificate`                        IS cert
+        `the benefit claimed`                    IS benefit
+        `the claimant`                           IS claimant
+        `the cause`                              IS cause
+        `the date the event arose`               IS arose
+        `the date of treatment`                  IS treated
+        `the facility`                           IS fac
+        `the treatment`                          IS tr
+        `the conditions`                         IS conds
+        `the circumstances`                      IS circs
+        `the history of the disease`             IS hist
+        `the costs`                              IS cost
+        `the dental items`                       IS dentalItems
+        `the maternity event`                    IS mat
+        `the death or injury facts`              IS outcomeFacts
+        `an accident while driving a vehicle`    IS driving
+        `someone else is authorised to receive the money` IS authorised
+
+-- A claim for a benefit, for an illness or an accident, by the insured person, with no earlier
+-- history, no dental items, no maternity event, nothing permanent, not driving, not delegated.
+GIVEN cert IS A `A certificate`
+      who IS AN `An insured person`
+      benefit IS A `A benefit`
+      cause IS A `A cause`
+      arose IS A DATE
+      fac IS A `A medical facility`
+      tr IS A `The treatment`
+      conds IS A LIST OF `A condition`
+      circs IS A LIST OF `A circumstance`
+      cost IS A `The costs claimed`
+GIVETH A `A claim`
+`a plain claim under` cert `by` who `for` benefit `, cause` cause `, arising and treated` arose `at` fac `:` tr `; conditions` conds `; circumstances` circs `; costs` cost MEANS
+    `a claim by` who `under` cert `for` benefit `, claimant` `the insured person` `, cause` cause `, arising` arose `, treated` arose `at` fac `:` tr `; conditions` conds `; circumstances` circs `; history` `no earlier history` `; costs` cost `; dental items` EMPTY `; maternity` NOTHING `; death or injury` `nothing permanent` `; driving` FALSE `; authorised` FALSE
+
+-- The claim every Part IV test starts from: the adult woman, the renewed certificate (waiting
+-- periods long run), an illness, three nights at a public hospital in Hanoi on 1 June 2026.
+-- With no condition and no circumstance it engages no item of Part IV.
+GIVEN conds IS A LIST OF `A condition`
+      circs IS A LIST OF `A circumstance`
+GIVETH A `A claim`
+`the base claim with conditions` conds `and circumstances` circs MEANS
+    `a plain claim under` `the renewed certificate` `by` `the adult woman` `for` `inpatient treatment` `, cause` `an illness` `, arising and treated` (YMD 2026 6 1) `at` `a public hospital in Hanoi` `:` `a three-night stay` `; conditions` conds `; circumstances` circs `; costs` `no other costs`
