@@ -1,0 +1,175 @@
+IMPORT prelude
+
+-- Limitation Act 1959 (Singapore) -- the main limitation periods (ss 6, 6A, 9, 20, 21, 22, 23, 24A, 24B), disability
+-- (s 24), acknowledgment and part payment (ss 26 to 28), fraud and mistake (s 29), pleading (s 4), and the occupation
+-- years (s 35).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/LA1959.txt.
+--
+-- WHY THIS ACT. Cited by 20 of the 527 Singapore Acts deposited in this repository (ss 6 and 33 by 4 each), and it governs
+-- every civil claim that has no limitation period of its own. Nearly the whole Act is encoded; it is 44,000 characters.
+-- Not encoded: the detailed accrual rules for land and future interests (ss 10 to 14, 17), trusts of land (s 12), revenue
+-- sales (s 8), the transitional sections, and s 33 beyond its tax exclusion.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Limitation Act 1959 -- periods`
+
+§§ `3, 4 -- when the Act applies`
+
+-- s 3: the Act does not apply where another written law prescribes a period. s 4: "Nothing in this Act shall operate as a bar
+-- to an action unless this Act has been EXPRESSLY PLEADED as a defence". A defendant who does not plead limitation loses it.
+GIVEN `the claim is out of time` IS A BOOLEAN, `limitation was pleaded` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the claim is barred` IF
+    `the claim is out of time` AND `limitation was pleaded`
+
+§§ `6, 6A, 9, 20 to 23 -- the periods`
+
+-- s 6(1): contract, tort, recognizances, awards, sums recoverable under statute -- 6 YEARS from accrual. (2): account -- 6.
+-- (3): an action on a JUDGMENT -- 12 years; judgment interest -- 6. (4): a statutory PENALTY or forfeiture -- ONE year.
+-- s 6A: CONTRIBUTION between wrongdoers -- 2 years from the judgment, award, or agreed settlement fixing the payer's liability.
+-- s 9(1): recovery of LAND -- 12 years (but (2) not against a proprietor registered under the Land Titles Act 1993).
+-- s 20: arrears of rent -- 6. s 21(1): principal secured by mortgage, or sale proceeds -- 12; (6) mortgage interest -- 6.
+-- s 23: a share of a deceased person's personal estate -- 12; arrears of interest on a legacy -- 6.
+DECLARE ClaimType IS ONE OF
+    `contract`
+    `tort other than personal injury`
+    `personal injury`
+    `enforcing a judgment`
+    `a statutory penalty`
+    `contribution from a co-wrongdoer`
+    `recovering unregistered land`
+    `arrears of rent`
+    `mortgage principal`
+    `a share of a deceased's estate`
+    `breach of trust`
+
+-- In years.
+GIVEN `the claim` IS A ClaimType
+GIVETH A NUMBER
+`the primary period` MEANS
+    CONSIDER `the claim`
+    WHEN `contract` THEN 6
+    WHEN `tort other than personal injury` THEN 6
+    WHEN `personal injury` THEN 3
+    WHEN `enforcing a judgment` THEN 12
+    WHEN `a statutory penalty` THEN 1
+    WHEN `contribution from a co-wrongdoer` THEN 2
+    WHEN `recovering unregistered land` THEN 12
+    WHEN `arrears of rent` THEN 6
+    WHEN `mortgage principal` THEN 12
+    WHEN `a share of a deceased's estate` THEN 12
+    WHEN `breach of trust` THEN 6
+
+§§ `22 -- trusts`
+
+-- s 22(1): NO period applies to an action by a beneficiary "(a) in respect of any fraud or fraudulent breach of trust to which
+-- the trustee was a party or privy; or (b) to recover from the trustee trust property ... in the possession of the trustee, or
+-- previously received by the trustee and converted to his use". (2): otherwise 6 years.
+GIVEN `trustee party to fraud` IS A BOOLEAN, `trustee holds or converted the property` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `no limitation period applies against the trustee` IF
+    `trustee party to fraud` OR `trustee holds or converted the property`
+
+§§ `24A, 24B -- negligence and latent damage`
+
+-- s 24A(2): negligence, nuisance or breach of duty claims for PERSONAL INJURIES -- the later of (a) 3 years from accrual or (b)
+-- 3 years from the claimant's "knowledge". (3): other such claims -- the later of (a) 6 years from accrual or (b) 3 years from
+-- knowledge. (4): knowledge means of the attribution, the defendant's identity, and material facts making the injury serious
+-- enough to sue; (5) knowledge that it was legally negligent is irrelevant; (6) includes what reasonable inquiry and expert
+-- advice would reveal.
+-- s 24B(1): "shall not be brought after the expiration of 15 YEARS from the starting date" (the last negligent act), and (3)
+-- "notwithstanding that the cause of action has not yet accrued".
+--
+-- The 15-year longstop can bar a claim before damage has even occurred: a building defect that causes damage in year 16 never
+-- gives a claim.
+DECLARE Negligence HAS
+    `personal injury` IS A BOOLEAN
+    `years since accrual` IS A NUMBER
+    `years since knowledge` IS A NUMBER
+    `years since the negligent act` IS A NUMBER
+
+GIVEN `the claim` IS A Negligence
+GIVETH A BOOLEAN
+DECIDE `the negligence claim is in time` IF
+        `the claim`'s `years since the negligent act` AT MOST 15
+    AND (IF `the claim`'s `personal injury`
+         THEN `the claim`'s `years since accrual` AT MOST 3 OR `the claim`'s `years since knowledge` AT MOST 3
+         ELSE `the claim`'s `years since accrual` AT MOST 6 OR `the claim`'s `years since knowledge` AT MOST 3)
+
+§§ `24 -- disability`
+
+-- s 24(1): if the claimant was under a disability (a minor, or lacking capacity under the Mental Capacity Act -- s 2(2)) when
+-- the right accrued, the action may be brought within 6 years (3 for personal injury; 1 for penalties) "from the date when the
+-- person ceased to be under a disability or died". (6)(c): for land or money charged on land, never after 30 years from
+-- accrual. (s 2(2) is "subject to section 36(1)(b) of the Civil Law Act 1909", which bears on when a minor stops being under a
+-- disability; it is not followed here.)
+DECLARE Disability HAS
+    `under disability when the right accrued` IS A BOOLEAN
+    `years since disability ended` IS A NUMBER
+    `personal injury` IS A BOOLEAN
+
+GIVEN `the person` IS A Disability
+GIVETH A BOOLEAN
+DECIDE `the disability extension saves the claim` IF
+        `the person`'s `under disability when the right accrued`
+    AND (IF `the person`'s `personal injury`
+         THEN `the person`'s `years since disability ended` AT MOST 3
+         ELSE `the person`'s `years since disability ended` AT MOST 6)
+
+§§ `26 to 28 -- acknowledgment and part payment`
+
+-- s 26(2): where a right to recover a debt or liquidated claim "has accrued" and the debtor "acknowledges the claim or makes any
+-- payment in respect thereof, the right shall be deemed to have accrued on and not before the date of the acknowledgment or the
+-- last payment". s 27(1): an acknowledgment must be IN WRITING and SIGNED. s 28(4): it binds the acknowledgor and successors
+-- only; (6) a payment binds all persons liable; (5), (7) contemplate acknowledgments and payments made "after the expiration
+-- of the period of limitation".
+--
+-- Nothing confines s 26 to claims still in time, and ss 28(5) and (7) assume it reaches expired ones: a signed "I owe you" or a
+-- token payment in year 10 starts a fresh six years.
+DECLARE Debt HAS
+    `years since the last signed acknowledgment or payment` IS A NUMBER
+    `years since accrual` IS A NUMBER
+    `there has been a signed acknowledgment or payment` IS A BOOLEAN
+    `the acknowledgment was oral only` IS A BOOLEAN
+
+GIVEN `the debt` IS A Debt
+GIVETH A NUMBER
+`years running` MEANS
+    IF `the debt`'s `there has been a signed acknowledgment or payment` AND NOT `the debt`'s `the acknowledgment was oral only`
+    THEN `the debt`'s `years since the last signed acknowledgment or payment`
+    ELSE `the debt`'s `years since accrual`
+
+GIVEN `the debt` IS A Debt
+GIVETH A BOOLEAN
+DECIDE `the debt claim is in time` IF
+    `years running` `the debt` AT MOST 6
+
+§§ `29 -- fraud and mistake`
+
+-- s 29(1): for an action based on the defendant's fraud, where the right is concealed by fraud, or for relief from mistake,
+-- time "shall not begin to run until the claimant has discovered the fraud or the mistake ..., or could with reasonable
+-- diligence have discovered it". (2): no recovery of property from a bona fide purchaser for value.
+GIVEN `based on or concealed by fraud, or relief from mistake` IS A BOOLEAN, `years since discoverable` IS A NUMBER, `years since accrual` IS A NUMBER
+GIVETH A NUMBER
+`years counted` MEANS
+    IF `based on or concealed by fraud, or relief from mistake` THEN `years since discoverable` ELSE `years since accrual`
+
+§§ `35 -- the occupation years`
+
+-- s 35: "In computing the period of limitation ..., the period commencing on 15 February 1942 and ending on 30 September 1949
+-- shall be excluded." (The Japanese Occupation and the years after it.)
+GIVEN `date as yyyymmdd` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the date falls in the excluded period` IF
+    `date as yyyymmdd` AT LEAST 19420215 AND `date as yyyymmdd` AT MOST 19490930
+
+§§ `33 -- taxes`
+
+-- s 33(2): the Act does not apply to Government proceedings to recover any tax or duty, or to customs and excise forfeiture.
+GIVEN `a Government tax or duty recovery` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Limitation Act applies` IF
+    NOT `a Government tax or duty recovery`
