@@ -1,0 +1,129 @@
+IMPORT prelude
+
+-- State Courts Act 1970 (Singapore) -- which civil claims the District and Magistrates' Courts can hear (ss 19, 52), giving
+-- up the excess to stay in the cheaper court (s 22), extending jurisdiction by agreement (s 23), no splitting claims (s 35),
+-- and the costs penalty for suing in the High Court when a State Court would have done (s 39).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/SCA1970.txt.
+--
+-- WHY THIS ACT. Cited by 23 of the 527 Singapore Acts deposited in this repository (s 4 by 9, s 9 by 5). SCOPED to civil
+-- jurisdiction and its costs consequences. Not encoded: constitution and officers, bailiffs, criminal jurisdiction beyond
+-- its territorial reach, transfers between courts, appeals (see the supreme-court-of-judicature-act-1969 row), and
+-- administration.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `State Courts Act 1970 -- civil jurisdiction`
+
+§§ `2, 19, 52 -- the limits`
+
+-- s 2: "District Court limit" means $250,000; "Magistrate's Court limit" means $60,000 (each variable by order).
+-- s 19(4): a District Court cannot try an action where the amount claimed, or the value of the subject matter, exceeds its
+-- limit. (3): nor exercise supervisory or judicial review jurisdiction, exclusive jurisdiction of another court, or "(ca) any
+-- jurisdiction to hear and try an action in PASSING OFF".
+-- s 52(1A): a Magistrate's Court cannot try an action "(a) where there is NO CLAIM FOR ANY SUM OF MONEY; (aa) ... in passing
+-- off; (b) [over its limit]".
+--
+-- Passing off is excluded from both State Courts whatever its value. And a Magistrate's Court cannot hear a claim seeking
+-- only an injunction or a declaration, however small: it needs a money claim.
+GIVETH A NUMBER
+`the District Court limit` MEANS 250000
+
+GIVETH A NUMBER
+`the Magistrate's Court limit` MEANS 60000
+
+DECLARE Action HAS
+    `amount claimed` IS A NUMBER
+    `claims a sum of money` IS A BOOLEAN
+    `is passing off` IS A BOOLEAN
+    `is judicial review or supervisory` IS A BOOLEAN
+    `parties signed a memorandum agreeing to District Court jurisdiction` IS A BOOLEAN
+    `claimant abandons the excess` IS A BOOLEAN
+
+GIVEN `the action` IS AN Action
+GIVETH A BOOLEAN
+DECIDE `a District Court can hear the action` IF
+        NOT `the action`'s `is passing off`
+    AND NOT `the action`'s `is judicial review or supervisory`
+    AND (    `the action`'s `amount claimed` AT MOST `the District Court limit`
+         OR  `the action`'s `parties signed a memorandum agreeing to District Court jurisdiction`
+         OR  `the action`'s `claimant abandons the excess`)
+
+GIVEN `the action` IS AN Action
+GIVETH A BOOLEAN
+DECIDE `a Magistrate's Court can hear the action` IF
+        `the action`'s `claims a sum of money`
+    AND NOT `the action`'s `is passing off`
+    AND NOT `the action`'s `is judicial review or supervisory`
+    AND `the action`'s `amount claimed` AT MOST `the Magistrate's Court limit`
+
+§§ `22, 23 -- abandoning the excess, or agreeing`
+
+-- s 22(1): a claimant may abandon the excess over the District Court limit, and the District Court then has jurisdiction, but
+-- cannot recover more than the limit; (2) "the judgment ... is a FULL DISCHARGE of all demands in respect of the cause of
+-- action" -- the abandoned excess is gone for good.
+-- s 23: by "a memorandum signed by them or their respective solicitors", the parties may give the District Court jurisdiction
+-- with NO upper limit.
+GIVEN `the action` IS AN Action
+GIVETH A NUMBER
+`the most the claimant can recover in the District Court` MEANS
+    IF `the action`'s `parties signed a memorandum agreeing to District Court jurisdiction`
+    THEN `the action`'s `amount claimed`
+    ELSE IF `the action`'s `amount claimed` GREATER THAN `the District Court limit`
+         THEN `the District Court limit`
+         ELSE `the action`'s `amount claimed`
+
+GIVEN `abandoned the excess` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the excess can be sued for later` IF
+    NOT `abandoned the excess`
+
+§§ `35 -- no splitting`
+
+-- s 35: "A cause of action must not be divided for the purpose of bringing 2 or more actions." A $300,000 claim cannot be
+-- split into two $150,000 District Court actions.
+GIVEN `actions brought on one cause of action` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the claim has been impermissibly split` IF
+    `actions brought on one cause of action` GREATER THAN 1
+
+§§ `39 -- suing in the High Court when a State Court would do`
+
+-- s 39(1): where an action that "could have been commenced in a State Court" is brought in the High Court, a claimant who
+-- recovers no more than the District Court limit gets only District Court costs; no more than the Magistrate's Court limit,
+-- only Magistrate's Court costs. (2): the recovery is measured "without regard to any deduction made in respect of
+-- CONTRIBUTORY NEGLIGENCE".
+--
+-- A claimant who proves $300,000 of loss but recovers $200,000 after a one-third contributory-negligence deduction is treated
+-- as recovering $300,000 -- and keeps High Court costs.
+GIVEN `gross amount before contributory negligence` IS A NUMBER, `could have been brought in a State Court` IS A BOOLEAN
+GIVETH A STRING
+`the costs scale` MEANS
+    IF NOT `could have been brought in a State Court`
+    THEN "High Court"
+    ELSE IF `gross amount before contributory negligence` AT MOST `the Magistrate's Court limit`
+         THEN "Magistrate's Court"
+         ELSE IF `gross amount before contributory negligence` AT MOST `the District Court limit`
+              THEN "District Court"
+              ELSE "High Court"
+
+§§ `50, 51 -- where State Courts' criminal jurisdiction reaches`
+
+-- s 50(2), 51(2): an offence committed (a) within Singapore; (b) on a Singapore-registered ship or aircraft; (c) by a
+-- Singapore CITIZEN on the high seas or on any aircraft; or (d) anywhere a written law makes triable in Singapore.
+DECLARE Place IS ONE OF
+    `in Singapore`
+    `on a Singapore ship`
+    `by a citizen on the high seas`
+    `by a non-citizen on the high seas, foreign ship`
+    `abroad, made triable by a written law`
+    `abroad, with no such law`
+
+GIVEN `the place` IS A Place
+GIVETH A BOOLEAN
+DECIDE `a State Court has criminal jurisdiction` IF
+    CONSIDER `the place`
+    WHEN `by a non-citizen on the high seas, foreign ship` THEN FALSE
+    WHEN `abroad, with no such law` THEN FALSE
+    OTHERWISE TRUE
