@@ -1,0 +1,135 @@
+IMPORT prelude
+
+-- Planning Act 1998 (Singapore) -- appeals and finality (ss 21, 22, 29), enforcement notices (ss 28, 30), civil
+-- penalties in lieu of prosecution (s 34), and the tenant who pays the owner's planning debt (s 42(3)).
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Planning Act 1998 -- enforcement and appeals`
+
+§§ `21, 22 -- appeals and finality`
+
+-- s 22(1): an applicant may appeal to the Minister against a refusal, a grant subject to conditions, or a conditional
+-- provisional permission; (2) any person aggrieved by a cancellation. (3): "within 60 days of the date of the
+-- notification of the decision". (4): an appeal does not suspend conditions or enforcement unless the Minister directs.
+-- (7), (8): after the Minister decides, the competent authority may add conditions "not ... inconsistent with the
+-- decision", and those may be appealed in turn. (9): "The decision of the Minister is final and is not to be challenged
+-- or questioned in any court."
+-- s 21(1), (4): the Minister may call in applications; a called-in decision "is final, and is not subject to appeal
+-- under section 22 or to be challenged or questioned in any court".
+DECLARE PlanningDecision IS ONE OF
+    `a refusal`
+    `a grant with conditions`
+    `a conditional provisional permission`
+    `a cancellation`
+    `a called-in decision of the Minister`
+    `a grant without conditions`
+
+GIVEN `the decision` IS A PlanningDecision, `days since notification` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `an appeal to the Minister lies` IF
+        `days since notification` AT MOST 60
+    AND CONSIDER `the decision`
+        WHEN `a called-in decision of the Minister` THEN FALSE
+        WHEN `a grant without conditions` THEN FALSE
+        OTHERWISE TRUE
+
+GIVEN `the decision` IS A PlanningDecision
+GIVETH A BOOLEAN
+DECIDE `a court may question the Minister's decision` IF
+    FALSE
+
+GIVEN `the Minister directed otherwise` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `an appeal against a refusal or conditions suspends enforcement` IF
+    `the Minister directed otherwise`
+
+§§ `28, 29, 30 -- enforcement notices`
+
+-- s 28(5)(a): an enforcement notice must take effect not less than 14 DAYS after service. (6): it may be served on the
+-- owner, the occupier, or anyone who appears responsible.
+-- s 29(1): appeal to the Minister "at any time BEFORE the notice takes effect". (5): an appeal SUSPENDS the notice
+-- unless the Minister directs otherwise. (4): the Minister's decision is final.
+-- s 28(9): "Except by way of an appeal to the Minister under section 29, the validity of an enforcement notice is not to
+-- be questioned in any court or proceedings whatsoever."
+-- s 28(8): "Compliance with the requirements of an enforcement notice ... does not discharge the notice."
+-- s 30(1): failing to comply -- the person served is guilty. (2): resuming the use, or reinstating demolished works,
+-- after compliance is an offence "despite the earlier compliance". (3): $200,000 or 12 months, and $10,000 a day.
+--
+-- An enforcement-notice appeal suspends the notice (s 29(5)); a planning appeal does not suspend enforcement (s 22(4)).
+-- And because compliance does not discharge the notice, it binds the land's use indefinitely, until superseded by a
+-- permission or withdrawn (s 28(7)).
+DECLARE NoticeAppeal HAS
+    `days since service` IS A NUMBER
+    `days until the notice takes effect` IS A NUMBER
+
+GIVEN `the appeal` IS A NoticeAppeal
+GIVETH A BOOLEAN
+DECIDE `the enforcement notice appeal is in time` IF
+    `the appeal`'s `days since service` LESS THAN `the appeal`'s `days until the notice takes effect`
+
+GIVEN `days from service to effect` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the notice gives the minimum period` IF
+    `days from service to effect` AT LEAST 14
+
+DECLARE NoticeStatus HAS
+    `was served the notice` IS A BOOLEAN
+    `complied` IS A BOOLEAN
+    `later resumed the prohibited use or reinstated the works` IS A BOOLEAN
+    `superseded by a permission or withdrawn` IS A BOOLEAN
+
+GIVEN `the status` IS A NoticeStatus
+GIVETH A BOOLEAN
+DECIDE `the person commits an enforcement notice offence` IF
+        NOT `the status`'s `superseded by a permission or withdrawn`
+    AND (    (`the status`'s `was served the notice` AND NOT `the status`'s `complied`)
+         OR  `the status`'s `later resumed the prohibited use or reinstated the works`)
+
+GIVEN `the status` IS A NoticeStatus
+GIVETH A BOOLEAN
+DECIDE `compliance has discharged the notice` IF
+    FALSE
+
+DECLARE Forum IS ONE OF
+    `an appeal to the Minister under section 29`
+    `judicial review`
+    `a defence in the prosecution`
+
+GIVEN `the forum` IS A Forum
+GIVETH A BOOLEAN
+DECIDE `the notice's validity may be questioned in the forum` IF
+    CONSIDER `the forum`
+    WHEN `an appeal to the Minister under section 29` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `34 -- paying a civil penalty instead of being prosecuted`
+
+-- s 34(1): for granting a written permission in respect of development, works or subdivision for which an offence
+-- appears to have been committed, the competent authority may require a penalty, "whether or not proceedings have been
+-- instituted". (2): the penalty "must not exceed the lower of ... (a) 50 times the fee prescribed for an application ...;
+-- (b) $150,000." (3): the authority's certificate of the amount is "conclusive". (4): once paid, "No further proceedings
+-- are to be instituted or taken against any person for an offence under section 12".
+--
+-- The criminal maximum under s 12(4) is $200,000. The civil penalty to regularise is capped at $150,000, and paying it
+-- stops the prosecution of anyone -- the text says "any person", not only the payer.
+GIVEN `the application fee` IS A NUMBER
+GIVETH A NUMBER
+`the maximum civil penalty` MEANS
+    IF `the application fee` TIMES 50 LESS THAN 150000 THEN `the application fee` TIMES 50 ELSE 150000
+
+GIVEN `the penalty has been paid` IS A BOOLEAN, `the person prosecuted is the payer` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a section 12 prosecution may still proceed` IF
+    NOT `the penalty has been paid`
+
+§§ `42(3) -- a tenant who pays the owner's debt`
+
+-- s 42(3): a tenant, subtenant or occupier who pays a sum due from the owner to avoid seizure or sale of the land may,
+-- "in the absence of any written agreement to the contrary, deduct the amount so paid ... from the rent ... and may
+-- retain possession thereof until that amount has been fully reimbursed".
+GIVEN `paid the owner's debt to avoid sale` IS A BOOLEAN, `a written agreement says otherwise` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the tenant may deduct it from rent and keep possession` IF
+    `paid the owner's debt to avoid sale` AND NOT `a written agreement says otherwise`
