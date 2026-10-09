@@ -1,0 +1,294 @@
+IMPORT prelude
+
+-- Road Traffic Act 1961 (Singapore) -- the driving offences most drivers can commit: driving without a licence (s 35),
+-- dangerous and careless driving with their harm-tiered penalties and mandatory disqualifications (ss 64, 65), phone use
+-- (s 65B), drink-driving (s 67), and the enhanced-penalty list (s 67A).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/, incorporating
+-- the Road Traffic (Miscellaneous Amendments) Act 2025 (section 5 of which restructured ss 64 and 65).
+--
+-- WHY THIS ACT. Cited by 34 of the 527 Singapore Acts deposited in this repository. SCOPED from 447,000 characters to the
+-- offences a driver faces. Not encoded: registration and licensing of vehicles (Part 1), road-user charges (Part 1A),
+-- licensing and the Division 2 riding tests (Part 2) except s 35, driving schools (Part 3), speeding (s 63) except as it
+-- feeds the repeat-offender test, ss 68 to 83 except s 70(4) as used, public service vehicles, parking, and the rules.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Road Traffic Act 1961 -- driving offences`
+
+§§ `35 -- driving without a licence`
+
+-- s 35(1): no driving a motor vehicle of a class without a licence for that class. (2): no employing or permitting an
+-- unlicensed driver. (3): "(a) ... $10,000 or ... imprisonment for a term not exceeding 3 YEARS ...; (b) where the person is
+-- a repeat offender, ... $20,000 or ... 6 years".
+--
+-- Driving without a licence (3 years) carries three times the maximum for dangerous driving that harms no one (12 months,
+-- s 64(5)(a)), and six times careless driving (6 months, s 65(5)(a)).
+GIVEN `is a repeat offender` IS A BOOLEAN
+GIVETH A NUMBER
+`the maximum months for driving without a licence` MEANS
+    IF `is a repeat offender` THEN 72 ELSE 36
+
+§§ `64, 65 -- dangerous and careless driving`
+
+-- s 64(1): driving "(a) recklessly; or (b) at a speed or in a manner which is dangerous to the public". s 65(1): driving
+-- "(a) without due care and attention; or (b) without reasonable consideration for other persons".
+-- (2), (3), (4): the aggravated offences where death, grievous hurt or hurt "is caused to another person by the
+-- driving". (5): the base offence.
+-- Each subsection has four tiers: (a) a first offender; (b) a REPEAT offender -- convicted before of a driving offence
+-- under s 64, 65 or 116, the Penal Code driving offences, or twice within 5 years of speeding by more than 40 km/h (s 64(11));
+-- (c) a SERIOUS offender -- one also convicted of drink-driving (s 67) or refusing a breath specimen (s 70(4)) for the same
+-- driving; (d) a SERIOUS REPEAT offender -- a serious offender with at least one earlier "specified offence" (s 67, 68 or
+-- 70(4)). The (c) and (d) punishments are "in addition to any punishment under paragraph (a) or (b)".
+-- The tables below give, in MONTHS, the maximum term under (a) or (b), and the extra maximum and minimum under (c) or (d).
+DECLARE Harm IS ONE OF
+    `no harm`
+    `hurt`
+    `grievous hurt`
+    `death`
+
+DECLARE Manner IS ONE OF
+    `dangerous`
+    `careless`
+
+DECLARE Driver HAS
+    `manner` IS A Manner
+    `harm` IS A Harm
+    `is a repeat offender` IS A BOOLEAN
+    `was also convicted of drink-driving or refusing a breath test` IS A BOOLEAN
+    `earlier specified offences` IS A NUMBER
+
+GIVEN `the driver` IS A Driver
+GIVETH A BOOLEAN
+DECIDE `the driver is a serious offender` IF
+    `the driver`'s `was also convicted of drink-driving or refusing a breath test`
+
+GIVEN `the driver` IS A Driver
+GIVETH A BOOLEAN
+DECIDE `the driver is a serious repeat offender` IF
+        `the driver is a serious offender` `the driver`
+    AND `the driver`'s `earlier specified offences` AT LEAST 1
+
+-- The (a) or (b) maximum.
+GIVEN `the driver` IS A Driver
+GIVETH A NUMBER
+`the base maximum months` MEANS
+    CONSIDER `the driver`'s `manner`
+    WHEN `dangerous` THEN
+        CONSIDER `the driver`'s `harm`
+        WHEN `no harm` THEN IF `the driver`'s `is a repeat offender` THEN 24 ELSE 12
+        WHEN `hurt` THEN IF `the driver`'s `is a repeat offender` THEN 48 ELSE 24
+        WHEN `grievous hurt` THEN IF `the driver`'s `is a repeat offender` THEN 120 ELSE 60
+        WHEN `death` THEN IF `the driver`'s `is a repeat offender` THEN 180 ELSE 96
+    WHEN `careless` THEN
+        CONSIDER `the driver`'s `harm`
+        WHEN `no harm` THEN IF `the driver`'s `is a repeat offender` THEN 12 ELSE 6
+        WHEN `hurt` THEN IF `the driver`'s `is a repeat offender` THEN 24 ELSE 12
+        WHEN `grievous hurt` THEN IF `the driver`'s `is a repeat offender` THEN 48 ELSE 24
+        WHEN `death` THEN IF `the driver`'s `is a repeat offender` THEN 72 ELSE 36
+
+-- The (b) minimum: only for dangerous driving causing grievous hurt (1 year) or death (2 years) by a repeat offender.
+GIVEN `the driver` IS A Driver
+GIVETH A NUMBER
+`the base minimum months` MEANS
+    IF `the driver`'s `is a repeat offender`
+    THEN CONSIDER `the driver`'s `manner`
+         WHEN `dangerous` THEN
+             CONSIDER `the driver`'s `harm`
+             WHEN `grievous hurt` THEN 12
+             WHEN `death` THEN 24
+             OTHERWISE 0
+         WHEN `careless` THEN 0
+    ELSE 0
+
+-- The extra term under (c) or (d), maximum.
+GIVEN `the driver` IS A Driver
+GIVETH A NUMBER
+`the additional maximum months` MEANS
+    IF `the driver is a serious repeat offender` `the driver`
+    THEN (CONSIDER `the driver`'s `harm`
+          WHEN `death` THEN 48
+          OTHERWISE 24)
+    ELSE IF `the driver is a serious offender` `the driver`
+         THEN (CONSIDER `the driver`'s `harm`
+               WHEN `death` THEN 24
+               OTHERWISE 12)
+         ELSE 0
+
+-- The extra term under (c) or (d), minimum: s 64 only, for grievous hurt and death.
+GIVEN `the driver` IS A Driver
+GIVETH A NUMBER
+`the additional minimum months` MEANS
+    CONSIDER `the driver`'s `manner`
+    WHEN `careless` THEN 0
+    WHEN `dangerous` THEN
+        IF `the driver is a serious repeat offender` `the driver`
+        THEN (CONSIDER `the driver`'s `harm`
+              WHEN `grievous hurt` THEN 12
+              WHEN `death` THEN 24
+              OTHERWISE 0)
+        ELSE IF `the driver is a serious offender` `the driver`
+             THEN (CONSIDER `the driver`'s `harm`
+                   WHEN `grievous hurt` THEN 6
+                   WHEN `death` THEN 12
+                   OTHERWISE 0)
+             ELSE 0
+
+GIVEN `the driver` IS A Driver
+GIVETH A NUMBER
+`the overall maximum months` MEANS
+    `the base maximum months` `the driver` PLUS `the additional maximum months` `the driver`
+
+GIVEN `the driver` IS A Driver
+GIVETH A NUMBER
+`the overall minimum months` MEANS
+    `the base minimum months` `the driver` PLUS `the additional minimum months` `the driver`
+
+§§ `64(9), (10), 65(9), (10) -- mandatory disqualification`
+
+-- (9): the court must disqualify for at least the specified period, "unless the court for special reasons thinks fit" --
+-- s 64: serious (no harm) 2 years; serious repeat with one earlier specified offence (no harm) 5; repeat causing death 10;
+-- serious causing death 12; serious repeat causing death 15; repeat causing grievous hurt 8; serious causing grievous hurt
+-- 10; serious repeat causing grievous hurt 13; serious causing hurt 2; serious repeat causing hurt 5.
+-- s 65: the same structure with 2, 5, 8, 10, 13, 5, 7, 10, 2, 5.
+-- (10): a serious repeat offender with TWO OR MORE earlier specified offences -- disqualification FOR LIFE.
+--
+-- (9) lists no period for a FIRST, non-serious offender, whatever the harm. A sober first offender who kills by dangerous
+-- driving faces no minimum disqualification under s 64(9). (The general power to disqualify in s 42 is not encoded.)
+-- And where a driver is both a repeat and a serious offender, (9) does not say which period applies; the encoding takes the
+-- longer.
+GIVEN `p` IS A NUMBER, `q` IS A NUMBER
+GIVETH A NUMBER
+`the larger of` MEANS
+    IF `p` GREATER THAN `q` THEN `p` ELSE `q`
+
+-- In years; 999 stands for life; 0 for none specified.
+GIVEN `the driver` IS A Driver
+GIVETH A NUMBER
+`the minimum disqualification years` MEANS
+    IF `the driver is a serious repeat offender` `the driver` AND `the driver`'s `earlier specified offences` AT LEAST 2
+    THEN 999
+    ELSE `the larger of` (`the repeat-offender period` `the driver`) (`the serious-offender period` `the driver`)
+
+GIVEN `the driver` IS A Driver
+GIVETH A NUMBER
+`the repeat-offender period` MEANS
+    IF NOT `the driver`'s `is a repeat offender`
+    THEN 0
+    ELSE CONSIDER `the driver`'s `manner`
+         WHEN `dangerous` THEN
+             CONSIDER `the driver`'s `harm`
+             WHEN `death` THEN 10
+             WHEN `grievous hurt` THEN 8
+             OTHERWISE 0
+         WHEN `careless` THEN
+             CONSIDER `the driver`'s `harm`
+             WHEN `death` THEN 8
+             WHEN `grievous hurt` THEN 5
+             OTHERWISE 0
+
+GIVEN `the driver` IS A Driver
+GIVETH A NUMBER
+`the serious-offender period` MEANS
+    IF `the driver is a serious repeat offender` `the driver`
+    THEN CONSIDER `the driver`'s `manner`
+         WHEN `dangerous` THEN
+             CONSIDER `the driver`'s `harm`
+             WHEN `death` THEN 15
+             WHEN `grievous hurt` THEN 13
+             OTHERWISE 5
+         WHEN `careless` THEN
+             CONSIDER `the driver`'s `harm`
+             WHEN `death` THEN 13
+             WHEN `grievous hurt` THEN 10
+             OTHERWISE 5
+    ELSE IF `the driver is a serious offender` `the driver`
+         THEN CONSIDER `the driver`'s `manner`
+              WHEN `dangerous` THEN
+                  CONSIDER `the driver`'s `harm`
+                  WHEN `death` THEN 12
+                  WHEN `grievous hurt` THEN 10
+                  OTHERWISE 2
+              WHEN `careless` THEN
+                  CONSIDER `the driver`'s `harm`
+                  WHEN `death` THEN 10
+                  WHEN `grievous hurt` THEN 7
+                  OTHERWISE 2
+         ELSE 0
+
+§§ `65B -- phones`
+
+-- s 65B(1): a driver "who HOLDS IN HIS OR HER HAND a mobile communication device and OPERATES any of its communicative or
+-- other functions, while the vehicle is IN MOTION" -- $1,000 or 6 months; repeat, $2,000 or 12 months. (1A): not a
+-- wearable device worn as intended.
+--
+-- All three elements are needed: a phone in a cradle, operated, is outside it; a phone held at a red light, not in
+-- motion, is outside it.
+DECLARE PhoneUse HAS
+    `held in the hand` IS A BOOLEAN
+    `operated a function` IS A BOOLEAN
+    `the vehicle was in motion` IS A BOOLEAN
+    `a wearable worn as intended` IS A BOOLEAN
+
+GIVEN `the use` IS A PhoneUse
+GIVETH A BOOLEAN
+DECIDE `the driver commits the phone offence` IF
+        `the use`'s `held in the hand`
+    AND `the use`'s `operated a function`
+    AND `the use`'s `the vehicle was in motion`
+    AND NOT `the use`'s `a wearable worn as intended`
+
+§§ `67 -- drink-driving`
+
+-- s 67(1): driving or attempting to drive while unfit through drink or drugs, or over the prescribed limit -- "a fine of
+-- NOT LESS THAN $2,000 and not more than $10,000 or ... 12 months or ... both"; a second conviction: "a fine of not less than
+-- $5,000 and not more than $20,000 AND ... imprisonment ... not exceeding 2 years" (imprisonment mandatory).
+-- (2): disqualification of at least 2 years (first) or 5 years (repeat); (2A): life on a third conviction.
+DECLARE DrinkRecord HAS
+    `earlier drink-driving convictions` IS A NUMBER
+
+GIVEN `the record` IS A DrinkRecord
+GIVETH A NUMBER
+`the minimum fine for drink-driving` MEANS
+    IF `the record`'s `earlier drink-driving convictions` AT LEAST 1 THEN 5000 ELSE 2000
+
+GIVEN `the record` IS A DrinkRecord
+GIVETH A BOOLEAN
+DECIDE `imprisonment is mandatory for the drink-driving` IF
+    `the record`'s `earlier drink-driving convictions` AT LEAST 1
+
+GIVEN `the record` IS A DrinkRecord
+GIVETH A NUMBER
+`the minimum disqualification years for drink-driving` MEANS
+    IF `the record`'s `earlier drink-driving convictions` AT LEAST 2 THEN 999
+    ELSE IF `the record`'s `earlier drink-driving convictions` AT LEAST 1
+         THEN 5
+         ELSE 2
+
+§§ `67A -- enhanced penalties, and what is missing from the list`
+
+-- s 67A(1): on a third conviction of a "specified offence", the court may impose up to three times the punishment (prison
+-- capped at 10 years). (3): "specified offence" means, among others, (a) s 64(1) "as in force immediately before" the 2025
+-- amendments, s 67(1), s 70(4); (b) s 65(1) "as in force immediately before" those amendments; (ba) "section 64(2), (3) or
+-- (4) or 65(2), (3) or (4) that is committed on or after the date of commencement" of those amendments.
+--
+-- After the 2025 restructuring, the base offences of dangerous and careless driving with no harm are s 64(5) and s 65(5)
+-- -- and neither appears in (3). A pre-amendment dangerous-driving conviction counts as a specified offence; the same
+-- driving committed after the amendment does not, unless it hurt someone. The deposited text cites "64(5)" nowhere.
+DECLARE Conviction IS ONE OF
+    `drink-driving`
+    `refusing a breath test`
+    `dangerous driving with no harm, before the 2025 amendments`
+    `dangerous driving with no harm, after the 2025 amendments`
+    `careless driving with no harm, after the 2025 amendments`
+    `dangerous driving causing hurt, after the 2025 amendments`
+    `careless driving causing death, after the 2025 amendments`
+
+GIVEN `the conviction` IS A Conviction
+GIVETH A BOOLEAN
+DECIDE `the conviction is a specified offence for section 67A` IF
+    CONSIDER `the conviction`
+    WHEN `dangerous driving with no harm, after the 2025 amendments` THEN FALSE
+    WHEN `careless driving with no harm, after the 2025 amendments` THEN FALSE
+    OTHERWISE TRUE
