@@ -1,6 +1,6 @@
 # Notes: Income Tax Ordinance special rates and other regimes, and the Rounding Order 5746-1986 (row IL-30)
 
-Run `IL-30-20261008`, encoder `enc-il-30`, one session, 2026-10-08 to 2026-10-09, version 0.1.0, status `draft`.
+Run `IL-30-20261008`, encoder `enc-il-30`, one session, 2026-10-08 to 2026-10-09, version 0.1.1 (the repair after the independent pass; section 11 says what changed), status `draft`.
 This file is what a reviewer reads first.
 It was written after the modules and their tests were green, and every number in it is copied from the `check.sh` output in section 6 or from a test named here.
 Claims about the sources cite the source line in the deposited file; a line number with no file name is a line of the Ordinance file, and the Order and RE Tax Law files are named where they are meant.
@@ -205,7 +205,9 @@ No row is left `deferred`.
 | s 7 the action in a land association | inert | the imposition; the rate is s 48A |
 | s 9(a) rates fixed by the Minister | out-of-scope | the regulations are not deposited |
 | s 9(b) an action in a land association | out-of-scope | the proportional part, no rate |
-| s 9(c), (c1), (c1a), (c1b) the windows from 1995 to July 2013 | out-of-scope | the printed amounts are indexed from base months and the indices are not supplied |
+| s 9(c), (c1), (c1a) the windows from 1995 to 5 May 2013 | out-of-scope | the printed amounts were indexed on every 16 January while the windows ran and the indices are not supplied (the independent tester's PT54, PT60) |
+| s 9(c1b)(1), (2) the sales of 6 May to 31 July 2013 | encoded (0.1.1) | the bands as printed |
+| s 9(c1c)(3) the table: the 2013, 2022, 2023 and 2024 columns | encoded (0.1.1) | for a buyer under (c1c)(2); 2014 to 2021 are not printed; a buyer outside (c1c)(2) before 16 January 2025 is declined, since the amounts of (c1c)(1) are printed for 2025 only |
 | s 9(c1c)(1) bands | encoded | as printed for 2025 |
 | s 9(c1c)(2), (3), (4) | encoded | the conditions are inputs |
 | s 9(c1f) 8% and 10% | encoded | fork P1 |
@@ -217,7 +219,7 @@ No row is left `deferred`.
 | s 48A(b1) | encoded | forks S2, T1, T2 |
 | s 48A(b2) | encoded | |
 | s 48A(b3) | encoded as a refusal | needs the amounts of s 49Z |
-| s 48A(b4) | encoded | A14 |
+| s 48A(b4) | encoded | fork 30-F20 (0.1.1) |
 | s 48A(c) | encoded | |
 | s 48A(d) | encoded | forks L1, V1, V2 |
 | s 48A(e) spreading | not finished | the same machinery as ITO s 91(e) with the Law's periods |
@@ -235,11 +237,11 @@ Each is tested in the module named, with the default, each reading by name, and 
 | --- | --- | --- | --- | --- |
 | 30-F1 (R1) | s 120B(d), an amount the Order names no rule for (the donation amounts of s 46(a) and several of the social deductions) | declined; stays as adjusted | declined | `tests-rounding-order.l4` |
 | 30-F2 (S1) | s 88 "alone or together with another" | any number of others added; one other only | declined where they differ | `tests-88-definitions.l4`, `tests-125b-dividends.l4` |
-| 30-F3 (S2) | s 88 how the days of "the period from A to B" are counted | both ends; the days between | declined where they differ | `tests-88-definitions.l4`, `tests-91-capital-gains.l4` |
+| 30-F3 (S2) | s 88 and RE Tax Law s 47 how the days of "the period from A to B" are counted, and where a boundary day (the commencement day, the transition day) falls (0.1.1) | both ends with the boundary day in the part after it; the days between; both ends with the boundary day in the part before it | declined where they differ | `tests-88-definitions.l4`, `tests-91-capital-gains.l4` |
 | 30-F4 (S3) | s 88 half of the holding expenses, which the adjusted price leaves out | lost; added back unindexed | declined where there are holding expenses | `tests-88-definitions.l4` |
 | 30-F5 (S4) | s 88 and ss 91, 125B, 125C the twelve months before a day | from the day twelve months before; from the day after | declined where they differ | `tests-88-definitions.l4`, `tests-125b-dividends.l4`, `tests-125c-interest.l4` |
-| 30-F6 (D1) | s 125B(3) names no time for the shareholding | at receipt only; at receipt or in the twelve months | declined where they differ | `tests-125b-dividends.l4` |
-| 30-F7 (D2) | s 91(b)(3) names no time for the shareholding | at the sale only; at the sale or in the twelve months | declined where they differ | `tests-91-capital-gains.l4` |
+| 30-F6 (D1) | s 125B(3) names no time for the shareholding | at receipt only; at receipt or in the twelve months; at any time up to receipt (0.1.1) | declined where they differ | `tests-125b-dividends.l4` |
+| 30-F7 (D2) | s 91(b)(3) names no time for the shareholding | at the sale only; at the sale or in the twelve months; at any time up to the sale (0.1.1) | declined where they differ | `tests-91-capital-gains.l4` |
 | 30-F8 (T1) | a cap "not exceeding 25%" where the gain stands in several bands | each band's rate capped; the average rate capped | declined where they differ | `tests-top-layer.l4` and every module that uses it |
 | 30-F9 (T2) | where the three parts of a gain stand in the top layer | each alone on the other income; earliest lowest; earliest highest | declined where they differ | `tests-top-layer.l4` (three parts); the RE Tax Law's flat-part-and-two-parts variant is tested only on a flat scale, where the places do not matter |
 | 30-F10 (V1) | s 91(f)(1) and RE Tax Law s 48A(d)(1): "1% for each year from 1949 until the year of acquisition" | both ends counted; the year of acquisition not counted | declined where they differ | `tests-91-capital-gains.l4` (the RE Tax Law's s 48A(d) uses the same fork; its tests acquire in 1940, before the 1949 years begin, so only V2 is exercised there) |
@@ -250,17 +252,20 @@ Each is tested in the module named, with the default, each reading by name, and 
 | 30-F15 (Q1) | s 64A2 "exceptional income" (2): "whose total rate exceeds 5%" | all the other income once it is more than 5%; only the part above 5% | declined where they differ | `tests-64a2-fund-definitions.l4` |
 | 30-F16 (L1) | RE Tax Law s 47 "tax year" begins on 1 April; which calendar year names it | the year it begins in; the year it ends in | declined where they differ | `tests-retl-48a-betterment-tax.l4` |
 | 30-F17 (P1) | RE Tax Law s 9(c1f): printed to end on 31 December 2024, the consolidation's note says extended to 31 December 2026 | ends 2024; ends 2026 | declined where they differ | `tests-retl-9-purchase-tax.l4` |
-| 30-F18 (R2) | RE Tax Law s 9(c2): "the nearest multiple of 5 shillings", where a half goes | up; down | declined where they differ | `tests-retl-9-purchase-tax.l4` |
+| 30-F19 (T3) | s 91(e)(1) a right bought and sold in the same tax year: the period of ownership is empty (0.1.1) | an empty period gives no tax year (spreading not open); it gives one tax year | declined | `tests-91-capital-gains.l4` |
+| 30-F20 (B4) | RE Tax Law s 48A(b4) against s 48A(b1) for a qualifying apartment bought before the change date with the (b4) conditions (0.1.1) | (b4) restores plain (b)(1); (b1) still applies | declined where the amounts differ | `tests-retl-48a-betterment-tax.l4` |
+| 30-F18 (R2) | RE Tax Law s 9(c2): "the nearest multiple of 5 shekels", where a half goes | up; down | declined where they differ | `tests-retl-9-purchase-tax.l4` |
 
 Not forks, with the argument (so a reviewer can disagree):
 
 - **Limb (a) "nearest" and limb (b) of the Order.**
   If the round amount is the multiple not above the adjusted amount, limb (b) does all the work; if it is the nearest multiple, the excess is negative whenever the nearest multiple is above and limb (b) adds nothing, and at the tie (an excess of exactly half a step) limb (b) says to go up either way.
   Every reading therefore gives the same figure for every amount; `tests-rounding-order.l4` asserts that the floor reading and both nearest readings agree on a grid of ten amounts including every tie.
-- **(b4) and (b1).**
-  Section 48A(b4) disapplies (b2) and (b3) only; (b1) opens "notwithstanding (b)(1)".
-  So a qualifying apartment bought before the change date, with the (b4) conditions, is taxed under (b1).
-  The other reading (that (b4) restores plain (b)(1) for it) is purposive, not textual; it is recorded as assumption A14.
+- **The commencement day in two parts (0.1.1).**
+  At 0.1.0 the reading "both the first and the last day are counted" put the commencement day (7 November 2001) in the first part and in the second, so the parts overlapped by a day (the independent tester's BT09, BT11, BT12).
+  That is not arguable as a partition of the period, so it is gone: under every reading the parts now add to the whole.
+  The text says the second part runs "from the commencement day" and the first "until" it; the only reading in which no day is counted twice puts the commencement day in the second part (the default "both" reading) or, as a named alternative, in the first part with the second beginning the day after.
+  The transition day (the exempt part of (b2) runs "until" it; the rest is "after" it) can lie in either part without any overlap, because the rest is the whole less the exempt part; both readings are named (fork 30-F3), and the tester's (the transition day in the rest) is the default "both" reading.
 - **"Part of the capital gain" in the inflationary amount.**
   A part cannot exceed the whole, so the inflationary amount is capped at the gain (A4).
 
@@ -281,8 +286,8 @@ Not forks, with the argument (so a reviewer can disagree):
 | A11 | In s 64A2 "land held for a short period", a sale on the fourth anniversary is not within "less than four years". | "less than four years passed" (line 2184); "before four years passed" (line 2185) |
 | A12 | "Left out of the member's assessment" in ss 55(b) and 60A(b)(2) is a Boolean that is TRUE for income not transferred (or not reported). Where that income stands on the scale is not decided. | lines 1864 and 1916 say what is not counted, not what is |
 | A13 | Section 91(b)(2) and (b)(3), which say "at a rate not exceeding", share the layering sentence of (b)(1) ("regarded as the highest layer"). | (b)(2) and (b)(3) are exceptions to (b)(1) and a rate "as in s 121" needs a place on the scale |
-| A14 | See section 3: (b4) does not oust (b1). | lines 624 and 641 of the RE Tax Law file |
-| A15 | The purchase-tax bands printed for 2025 hold for sales from 16 January 2025 to 15 January 2028. | the table note after (c1c)(3) (line 219) gives the tax year as 16 January to 15 January; (c2) skips the tax years 2025 to 2027 |
+| A14 | Withdrawn at 0.1.1: the collision of s 48A(b4) with (b1) is fork 30-F20, declined by default where the amounts differ. | lines 624 and 641 of the RE Tax Law file |
+| A15 | (0.1.1: the 2022 to 2024 and 2013 columns of the table are encoded too, for a buyer under (c1c)(2).) The purchase-tax bands printed for 2025 hold for sales from 16 January 2025 to 15 January 2028. | the table note after (c1c)(3) (line 219) gives the tax year as 16 January to 15 January; (c2) skips the tax years 2025 to 2027 |
 | A16 | A kibbutz member's family composition gives his credit points and s 47 deductions as inputs, and his tax on an equal share is the scale applied to the share less the s 47 deductions, less the credit points, not below nought. | s 57(a), lines 1870 |
 | A17 | A tax year of the Ordinance is the calendar year. | s 1 "tax year" (line 202) |
 | A18 | The fine of s 188, which the Order's s 13 covers, is not an amount that s 120B(a) adjusts, and s 9A(b), which the Order's s 9 covers, is not in the s 120A list of social deductions. The Order's thirteen rules are encoded as it states them. | line 4332 (the list); the Order's ss 9 and 13 |
@@ -327,9 +332,11 @@ The scales in these tests are fixtures (the s 121 bands as printed, or one flat 
 
 ## 6. What `check.sh` prints
 
-The l4 binary is `jl4-0.1-6df1397b`, sha256 `f0759b2ef2f1d1b2a577c68f059c54f487de9d913553fc9f0d9bf0f7f5dab0d8`, the same before the run (2026-10-09T00:17:23Z) and after it (00:17:57Z).
-Exit code 0, 34 modules, 0 errors, 579 assertions satisfied, 0 failed, 0 refused.
-No module is expected to fail or to refuse: every refusal this encoding makes is asserted with `#ASSERT REFUSED … BECAUSE "…"` and counts as satisfied.
+The l4 binary is `jl4-0.1-6df1397b`, sha256 `f0759b2ef2f1d1b2a577c68f059c54f487de9d913553fc9f0d9bf0f7f5dab0d8`, the same before and after the 0.1.1 run (the 0.1.0 run is in section 11).
+Exit code 0, 35 modules, 1 error (the one declared failure of the independent module), 1040 assertions satisfied, 1 failed, 10 refused.
+This encoding's own test modules have no failure and no refusal: every refusal they make is asserted with `#ASSERT REFUSED … BECAUSE "…"` and counts as satisfied.
+The independent module `tests-independent.l4` (fid-il-30, frozen, sha256 `2778d70caca08dcfbebfec37a691124af8a201b2e79fb5f33009928d8f9967e2`) has 422 satisfied, 1 failed and 10 refused, all declared line by line in `check.sh`:
+the failure is BT10 (TESTER-WRONG, section 11); the refusals are CG20, CG22 (3 assertions), T30, BT16, BT17 (a date before 2012), T49 and BT27 (forks 30-F19 and 30-F20, new), DV21 and PT54.
 
 | module | satisfied |
 | --- | ---: |
@@ -337,19 +344,21 @@ No module is expected to fail or to refuse: every refusal this encoding makes is
 | `tests-120b-d.l4` | 13 |
 | `tests-88-definitions.l4` | 119 |
 | `tests-top-layer.l4` | 23 |
-| `tests-125b-dividends.l4` | 28 |
+| `tests-125b-dividends.l4` | 31 |
 | `tests-125c-interest.l4` | 24 |
 | `tests-122-residential-rent.l4` | 29 |
-| `tests-91-capital-gains.l4` | 71 |
+| `tests-91-capital-gains.l4` | 80 |
 | `tests-8c-spreading.l4` | 21 |
 | `tests-64a1-transparent-company.l4` | 35 |
 | `tests-64a2-fund-definitions.l4` | 19 |
 | `tests-55b-kibbutz-member.l4` | 8 |
 | `tests-60a2-renewed-kibbutz-member.l4` | 8 |
 | `tests-57-kibbutz-tax.l4` | 11 |
-| `tests-retl-48a-betterment-tax.l4` | 33 |
-| `tests-retl-9-purchase-tax.l4` | 28 |
-| total | 579 |
+| `tests-retl-48a-betterment-tax.l4` | 46 |
+| `tests-retl-9-purchase-tax.l4` | 42 |
+| own tests, total | 618 |
+| `tests-independent.l4` | 422 |
+| all | 1040 |
 
 The Hebrew check (`tools/hebcheck.py`) passes: every run of Hebrew outside a `-- src:N |` quotation occurs verbatim in the source file the module names.
 The quotations are generated by `tools/srcquote.py`, never typed.
@@ -424,7 +433,43 @@ Needed and not deposited, so declined by name or taken as an input:
 3. **Q3.** Has the Minister changed the 15% of s 125C(c)(1) by an order under (c)(2)? (none is deposited)
 4. **Q4.** Are the regulations under s 64A1 in force? (the note at the head of the section makes the section depend on them)
 5. **Q5.** In ss 55(b) and 60A(b)(2), when "the rates counted in the kibbutz's assessment are not counted", does the member's own income stand on the scale above the share the kibbutz's assessment gave him?
-6. **Q6.** Does RE Tax Law s 48A(b4) restore plain (b)(1) for a pre-2012 purchase, or does (b1) still apply? (A14)
+6. **Q6.** Does RE Tax Law s 48A(b4) restore plain (b)(1) for a pre-2012 purchase, or does (b1) still apply? (fork 30-F20)
 7. **Q7.** How does s 91(e) combine with (f), (g) and (b2)? (declined by name)
 8. **Q8.** What were the rates in ss 91, 125B, 125C and 48A for a sale between 2012 and the later amendments? (A6)
 9. **Q9.** For RE Tax Law s 48A(b1)(1)(a), is "the highest rate in s 121" the 47% marginal rate, or includes the 3% and 2% additional tax of s 121B? (taken as an input)
+
+## 11. Version 0.1.1: the repair after the independent pass
+
+The independent pass (fid-il-30; `INDEPENDENT-FINDINGS.md`, `tests-independent.l4`, `DECIDED-ANSWERS.md`, all frozen) decided 500 cases; none was OURS-WRONG and all 435 quotations matched.
+At 0.1.0 `check.sh` printed, for the 35 modules, 984 satisfied, 11 failed, 17 refused; l4 `jl4-0.1-6df1397b`, sha256 `f0759b2e…dab0d8`, unchanged.
+At 0.1.1: 1040 satisfied, 1 failed, 10 refused, exit 0, the same binary before and after.
+What changed, in the order the lead set:
+
+1. **DV12 (forks D1 and D2).**
+   The tester's third reading, that "was" has no limit of time, is added to both forks (`at any time up to the receiving of the dividend`, `at any time up to the sale`), named and tested; the default declines where it differs from the other two, so a holding 18 months before a family company's dividend is now declined (the tester's expectation) and gives 25%, 25%, 30% under the three named readings.
+2. **BT09, BT11, BT12, BT19, BT20, BT22, BT23 (the day counts, fork 30-F3).**
+   I re-read s 47.
+   The reading "both the first and the last day are counted" did double count the commencement day (once as the end of the first part, once as the start of the second), so it was not an arguable reading and is replaced: the parts now partition the days under every reading (section 3).
+   The transition day is arguable either way and is a named reading.
+   The partition is tested: the first two parts add to the days from the purchase day to 31 December 2011 for purchases on 6, 7 and 8 November 2001, under each reading.
+   The tester's seven assertions now pass as written, with their expected values unchanged.
+3. **T49 (fork 30-F19).**
+   I re-read s 91(e): "the shorter of four tax years or the period of ownership", the period beginning after the year the right reached the seller and ending in the year it left his hands.
+   The text does not say what that is when the period is empty, so it is a switch with no default answer: the number of tax years, and the tax, are declined unless a reading is named.
+   The tester's assertion (1 year) is now a declared refusal, and the one-year reading is tested (200,000 over scale (a), tax 50,000).
+4. **BT27 (fork 30-F20).**
+   The collision of (b4) with (b1) is a named switch (assumption A14 is withdrawn); the default declines where the readings give different amounts.
+   For a 2010 purchase with the (b4) conditions the readings give 3,252,037.15 and 3,385,189 (flat scale, days between).
+   The tester's assertion is now a declared refusal.
+   For a 2013 purchase the clauses do not collide and every reading gives 3,385,189.
+5. **Cosmetic.**
+   "5 shillings" is now "5 shekels" in the modules, the fork register and `encoding.json` (the Hebrew is `5 ש״ח`); no value moved.
+6. **The records the lead asked for.**
+   - BT10 is TESTER-WRONG: the 25% middle-part rate for a material shareholder is in ITO s 91(b1)(1)(a)(2), not in the RE Tax Law's s 48A(b1)(1)(b), which prints "up to 20%" with no proviso; the assertion stays failing, its expected value unchanged, and is the one declared failure.
+   - DV21 (a dividend on 29 February 2024 with a holding on 28 February 2023): the encoding is right to decline, because the first day of "the twelve months before" is either a day that does not exist (29 February 2023) or 1 March 2023; the tester's 25% assumed the later reading.
+   - The 16 SCOPE refusals at 0.1.0: PT37, PT43, PT44, PT45, PT47 were answerable from the table in the text (the 2022, 2023 and 2024 columns), and PT48, PT49, PT51, PT53 from the 2013 column and the (c1b) scales; all nine are now encoded and pass (`retl-9-purchase-tax.l4`).
+     PT54 stays declined: the (c1a)(1) amounts were indexed on every 16 January while that window ran, so the single printed figure cannot be applied to a given date in the 14 years without the indices.
+     CG20, CG22 (three assertions): the s 88 parts for a sale before the fixed date or the change date are declined by the guards of `ito-88-definitions.l4`; the definitions have no date limit but a ratio over a period that has not ended has no meaning, and the rate sections decline those dates anyway (A6).
+     T30, BT16, BT17: a sale before 1 January 2012 (A6).
+   - Thin coverage the tester lists, taken as true: the day-count apportionments rest on one pairing of end days (the fork now covers three); the kibbutz tax is tested with a fixture scale; ss 8(c)(d), 48A(e) and 91(d) have no entry point; s 120B(a), (b) and (e) belong to IL-03; the surtax of s 121B is out.
+   - Unfinished, as before: ITO s 8(c)(d) (death or winding-up before the period ends) and RE Tax Law s 48A(e) (spreading of land betterment).
