@@ -1,0 +1,78 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `il07-nouns`
+IMPORT `nhi-il25-nouns`
+IMPORT `nhi-il25-published-figures`
+IMPORT `nhi-s14-income`
+IMPORT `nhi-s14-fixed-and-benefits`
+IMPORT `nhi-s14-month`
+
+-- ===========================================================================
+-- IL-07 adapter for row IL-25: the National Health Insurance Law 5754-1994, s 14.
+--
+-- VERSION 0.6.0 (2026-10-09, BACKLOG IL-55). Imports this row's nouns and row
+-- IL-25's modules (vendored copies, VENDORED.sha256), and no other row. FOR A
+-- CROSS-CHECK ONLY: the household's health insurance contribution stays the input
+-- the caller gives (NOTES.md section 1, GAPS.md item 4), and the net reads that
+-- input as before. This adapter computes what row IL-25 says the contribution is,
+-- so that a caller can compare the two (the pipeline's `IL-07: the health
+-- insurance contribution the caller gives agrees with row IL-25, in`).
+--
+-- INPUT CONVENTIONS (assumed, not ruled: the lead's direction for IL-55): the
+-- earner is an employee for whom the employer is liable for National Insurance
+-- contributions; the income is the month's salary; no income exempt under NII
+-- s 350A(a); no minimum income passed (row IL-25 then takes the salary paid); no
+-- old-age pension, so no spouse's supplement; the exemptions of s 14(g) and (g1):
+-- the earner's age in whole years on the first day of the month, from the date of
+-- birth, and none of the others (the earner works, so is not a housewife; not a
+-- student, recruit or donor). The readings: row IL-25's own switches, each
+-- declining where its readings part (its fork F1: a salary above 51,910).
+-- ===========================================================================
+
+§ `IL-07 adapter — row IL-25`
+
+@ref National Health Insurance Law s 14(b)(1), (g), (g1) (row IL-25, nhi-il25-nouns.l4, `A person's month under section 14`); the input conventions above
+GIVEN h IS AN `IL-07 household in a month`
+GIVETH A `A person's month under section 14`
+`IL-25: the earner's month, in` h MEANS
+    `A person's month under section 14` WITH
+        `year`                                                   IS h's `the year of the month`
+        `month`                                                  IS h's `the month of the year`
+        `kind`                                                   IS `an employee for whom the employer is liable for National Insurance contributions`
+        `income`                                                 IS e's `the earner's monthly salary`
+        `income exempt under section 350A(a) of the National Insurance Law` IS 0
+        `minimum income for the person under Schedule K`         IS NOTHING
+        `old-age pension`                                        IS `no old-age pension`
+        `the pension is raised by a spouse's supplement or a spouse's pension` IS FALSE
+        `exemptions`                                             IS `The facts that decide the exemptions of section 14(g) and (g1)` WITH
+            `age in whole years at the start of the month`                         IS `the age`
+            `a housewife within section 238 of the National Insurance Law`          IS FALSE
+            `a student or recruit exempt under section 351(11)(2a) or (2b) of the National Insurance Law` IS FALSE
+            `exempt under section 351(7a) or (11)(2c) of the National Insurance Law` IS FALSE
+            `a living organ donor in a month the Minister of Health has set for the donor` IS FALSE
+    WHERE
+        e MEANS h's `the earner`
+        b MEANS e's `the earner's date of birth`
+        `the age` MEANS
+            IF   h's `the month of the year` LESS THAN DATE_MONTH b
+                 OR (h's `the month of the year` EQUALS DATE_MONTH b AND DATE_DAY b GREATER THAN 1)
+            THEN h's `the year of the month` MINUS DATE_YEAR b MINUS 1
+            ELSE h's `the year of the month` MINUS DATE_YEAR b
+
+@ref Meng's ruling SHRUG, 2026-10-08 (row IL-25, its forks F1 to F6 at their defaults)
+GIVETH A `The readings section 14 is applied under`
+`IL-25: its own readings` MEANS
+    `The readings section 14 is applied under` WITH
+        `income ceiling`                IS `decline where the readings differ`
+        `minimum income`                IS `decline where the readings differ`
+        `reduced rate for a benefit`    IS `decline where the readings differ`
+        `old-age pensioner with income` IS `decline where the readings differ`
+        `computed amount of nothing`    IS `decline where the readings differ`
+        `benefit and income together`   IS `decline where the readings differ`
+
+@ref National Health Insurance Law s 14 (row IL-25, nhi-s14-month.l4, `the health insurance contribution for`; nhi-il25-published-figures.l4, `the figures for 2026`)
+GIVEN h IS AN `IL-07 household in a month`
+GIVETH A NUMBER
+`IL-25: the health insurance contribution for the earner's month, in` h MEANS
+    `the health insurance contribution for` (`IL-25: the earner's month, in` h) `with` `the figures for 2026` `under` `IL-25: its own readings`

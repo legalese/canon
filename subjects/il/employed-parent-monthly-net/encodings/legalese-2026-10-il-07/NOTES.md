@@ -7,6 +7,7 @@ No domain expert has read it; HG1 has not been sought.
 
 Read with it: `RECONCILE.md` (how the rows' nouns were reconciled, and the changes proposed to the rows) and `GAPS.md` (the provisions no row encodes, in IL-08's work order).
 
+**Version 0.6.0 (2026-10-09)** follows the rows for the new Laws into the capstone, under the lead's rule that a row is wired in only where it removes a refusal or a stated input convention and moves no answer for the existing households (backlog row IL-55, agent `capstone-il-55`): section 15.
 **Version 0.5.0 (2026-10-08)** follows Meng's SHRUG ruling on the remaining ambiguities, carried out in the rows by IL-46 to IL-53, into the capstone (backlog row IL-54, agent `capstone-il-54`): section 14.
 **Version 0.4.0 (2026-10-08)** follows Meng's SHRUG, TAKEAWAY and DESSERT rulings, carried out in the rows by IL-37 to IL-42 and IL-45, into the capstone (backlog row IL-44, agent `capstone-il-44`): section 13.
 **Version 0.3.0 (2026-10-08)** follows the rows' repairs of that day into the capstone, and takes up three findings of the second independent pass (backlog row IL-22, agent `rep-il-22`): section 12.
@@ -162,11 +163,11 @@ None of these has been settled by a court or a regulator to my knowledge.
 
 | # | where | the question | readings | taken, and why |
 | --- | --- | --- | --- | --- |
-| K1 (0.5.0: SHRUG class (c), and (d) for withholding; section 14.5) | the year's tax against a month | How does tax for a year become a month's figure? | (i) one twelfth of the year's tax, for a salary the same every month; (ii) the withholding the Income Tax (Deduction from Salary and Wages) Regulations 5753-1993 prescribe; (iii) decline | **(i), and decline otherwise.** The Ordinance charges tax for a year: s 121(a) "המס על הכנסתו החייבת של יחיד בשנת המס" (ITO line 4350); a credit point is an amount "לשנת מס" (s 33A, line 1563). Withholding is s 164 (line 5323), "באופן ובשיעורים שנקבעו", by Regulations not in the source bundle (noted at line 5338), so (ii) is not available. The answer is named "one twelfth of the income tax for the tax year", not "the tax withheld". A salary that varies is declined, because the year's income is then not twelve times the month's. Consistent with it: the Tax Authority's booklet prints the credit point at 242 a month for 2026 (IL-01), which is 2,904 / 12. |
+| K1 (0.5.0: SHRUG class (c), and (d) for withholding; section 14.5) (0.6.0: reading (ii), the withholding, is offered beside the answer by name, from row IL-26; section 15.6) | the year's tax against a month | How does tax for a year become a month's figure? | (i) one twelfth of the year's tax, for a salary the same every month; (ii) the withholding the Income Tax (Deduction from Salary and Wages) Regulations 5753-1993 prescribe; (iii) decline | **(i), and decline otherwise.** The Ordinance charges tax for a year: s 121(a) "המס על הכנסתו החייבת של יחיד בשנת המס" (ITO line 4350); a credit point is an amount "לשנת מס" (s 33A, line 1563). Withholding is s 164 (line 5323), "באופן ובשיעורים שנקבעו", by Regulations not in the source bundle (noted at line 5338), so (ii) is not available. The answer is named "one twelfth of the income tax for the tax year", not "the tax withheld". A salary that varies is declined, because the year's income is then not twelve times the month's. Consistent with it: the Tax Authority's booklet prints the credit point at 242 a month for 2026 (IL-01), which is 2,904 / 12. |
 | K2 | the credit-point value for 2026 | Where does the capstone get it? | (i) IL-03's s 120B for 2026, from the 1 January 2024 amount after rounding, which is IL-01's published 2025 value; (ii) twelve times the booklet's monthly 242 | **(i)**: s 120B(e)(1) (line 4344) fixes the amounts of 2025, 2026 and 2027 at their 1 January 2024 figure after rounding, so the Tax Authority's 2025 value (2,904, [itc135-2025] p. 4, IL-01) is that figure, and IL-03's rule gives 2026 the same. (ii) agrees and is asserted. |
 | K3 (0.5.0: SHRUG class (b), already declined where the readings part; section 14.5) | the set-off, and s 121B | Are credit points set off against the s 121B additional tax? In what order are several credits set off? | (i) against the s 121 tax only, never below nil, the additional tax added after; (ii) against the total | **(i), and declined where it matters.** s 33A sets a credit point off "כנגד המס לאותה שנה"; s 121B is a further tax computed separately (IL-03 A6: the s 121 result is the tax before credit points). Where the credits exceed the s 121 tax and there is additional tax, the two readings part, and the capstone declines; no household of the brief's shape reaches it (at the s 121B threshold the s 121 tax is about 224,000). The order of several credits does not matter here: all the earner's income is from personal exertion, so IL-02's cap on the children's credit (the tax on that income, its F13) is the whole s 121 tax, and every order gives max(0, tax − credits). |
 | K4 (0.2.0: revised, section 11.4: a couple with no separate calculation is now assessed under s 65) (0.5.0: SHRUG class (b); the registered spouse's request under (c)(1A) is now row IL-02's switch F18; section 14.5) | the couple's income | Whose income is in the earner's calculation? | — | **The year's salary, in every case answered.** The spouse has no income (a household with two earners is declined: s 66(a)(2) would move income between them). Where the earner is the spouse who is not registered and claims under s 66(a)(1), IL-02 places the salary in the separate calculation (asserted, H3b: 180,000). Where the earner is the registered spouse and requests under s 66(c)(1A), IL-02 says (1A) moves no income and s 65 governs (its A3); under s 65 the couple's income is "כהכנסת בן הזוג הרשום" (line 2448), which, with the spouse at nil, is the earner's salary. Where no separate calculation governs at all, s 66(c)'s points do not apply and the capstone declines, naming s 65. |
-| K5 | IL-06's additional-tax input | Which tax year's "income chargeable to additional tax" excludes a parent from the allowance for a month? (IL-06 F5) | (i) the tax year in which the month falls; (ii) the last assessed year | **(i)**: the capstone has the 2026 liability and no other; the parent is excluded iff IL-03's s 121B tax for 2026 is above nil. |
+| K5 (0.6.0: on the income after row IL-36's exemption where the capstone composes it; section 15.3) | IL-06's additional-tax input | Which tax year's "income chargeable to additional tax" excludes a parent from the allowance for a month? (IL-06 F5) | (i) the tax year in which the month falls; (ii) the last assessed year | **(i)**: the capstone has the 2026 liability and no other; the parent is excluded iff IL-03's s 121B tax for 2026 is above nil. |
 | K6 (0.2.0: **superseded** by K15, section 11.4) | the day IL-06 is asked about | IL-06 answers a day; s 72 (months paid) is not encoded. | (i) the first day of the month, declining a month in which a child is born or turns 18 after it; (ii) the last day; (iii) any day | **(i)**: for a household of the brief's shape nothing IL-06 reads changes within a month except a birth or an 18th birthday (the basic amounts change on 1 January), so (i) answers every other month exactly and declines, naming s 72, the months where a choice of day would decide the answer. A child born after the day is not yet in the family. |
 | K7 | s 36A, twice | IL-01 encodes s 36A; IL-02 restates its half point in s 66(c)(4). Count it once or twice? | — | **Once, from IL-01**: s 66(c)(4) gives the half point "לפי סעיף 36א", s 36A's own. IL-01's is preferred because it carries s 48A's reach (red finding R2 shows IL-02's does not). (0.3.0: IL-02's now does too, its 02-R2; R2 is resolved, section 12.5. Still counted once, from IL-01.) |
 | K8 (0.5.0: SHRUG class (b), only one reading arguable on the words; section 14.5) | the base of the employee's deduction | Is the s 342(c) deduction a percentage of the wage paid, or of the s 348 income? | (i) the s 348 income (maximum and minimum applied); (ii) the wage | **(i)**: s 342(c)(1) "ינכה המעביד משכרו של העובד אחוזים מההכנסה שלפיה משתלמים דמי הביטוח" (NII line 3661), percentages of the income on which contributions are paid. So a salary of 5,000 in February is deducted on 6,247.67 (H9) and one of 70,000 on 51,910 (H7). |
@@ -254,7 +255,7 @@ Internet Archive availability queries for the 5786 Law and the 5785 freezing Law
 
 ## 8. Open questions for a domain expert
 
-1. K1: for a salary that is the same every month, does the withholding under the 5753-1993 Regulations equal one twelfth of the year's tax, credit points and all? (0.5.0: K1 is SHRUG class (c), and (d) for withholding; the question stands.)
+1. K1: for a salary that is the same every month, does the withholding under the 5753-1993 Regulations equal one twelfth of the year's tax, credit points and all? (0.5.0: K1 is SHRUG class (c), and (d) for withholding; the question stands.) (0.6.0: row IL-26 answers it from the Regulations: the same, up to Schedule A's rounding to the whole shekel; H1 575 against 575.1, H3 483 against 482.5; section 15.6.)
 2. K3: are credit points ever set off against the s 121B additional tax? (0.5.0: K3 is SHRUG class (b); the question stands.)
 3. K5 (IL-06 F5): which tax year's additional-tax liability excludes a parent from the allowance for a given month?
 4. K8: is the employee's deduction under s 342(c) taken on the s 348 income (the minimum wage for a low earner, the maximum for a high one), as the capstone reads it? (0.5.0: K8 is SHRUG class (b), one reading on the words; the question to the Institute stands.)
@@ -940,8 +941,8 @@ Each is recorded in `encoding.json` `forks` under the id given here; none has be
 | --- | --- | --- |
 | K15 | (0.2.0's day put to row IL-06) | **Superseded**: row IL-06 answers the month (12.3). |
 | K19 | ITO s 3A(f): row IL-01 now takes an Israeli citizen's residence in, or operation in, the Area; the household holds neither fact. | **An input convention** (assumed, not ruled: the lead's direction): both facts are given to IL-01 as FALSE, and the household's ITO residence fact is read as residence as the Ordinance treats it, s 3A(f) included. A new field on `IL-07 earner` would have broken both testers' household builders. |
-| K20 | The Encouragement of Aliyah and Return (Temporary Provision) Law 5786-2026 is not encoded: which earners does the capstone decline? | **Those whose immigration record puts in its period (5 November 2025 to the end of 2026) the first immigration, on any ground but a returning resident's, or a returning resident's return after six years abroad** (assumed, not ruled: the lead's direction to decline by name; the conditions are this agent's reading of ss 1, 2(a) of that Law and ITO s 14(a)). The day of immigration stands for the day of first residence, so the capstone may decline an earner the Law does not reach and never answers one it does. |
-| K21 | Schedule K's minimum for an earner to whom the full adult minimum wage does not apply. | **Answered on the salary where the salary is at least the full adult monthly figure of the quarter's first month; declined below it** (assumed, not ruled: the lead's direction, from the second tester's F3). The premise: a minimum that applies to a monthly-salaried employee (partial, or a young worker's) is at most the full adult figure. |
+| K20 (0.6.0: row IL-36 now encodes the Law; the capstone composes it for the earners fork K24 names and declines only the rest; section 15.3) | The Encouragement of Aliyah and Return (Temporary Provision) Law 5786-2026 is not encoded: which earners does the capstone decline? | **Those whose immigration record puts in its period (5 November 2025 to the end of 2026) the first immigration, on any ground but a returning resident's, or a returning resident's return after six years abroad** (assumed, not ruled: the lead's direction to decline by name; the conditions are this agent's reading of ss 1, 2(a) of that Law and ITO s 14(a)). The day of immigration stands for the day of first residence, so the capstone may decline an earner the Law does not reach and never answers one it does. |
+| K21 (0.6.0: the same rule, its figures now row IL-32's, the same numbers; section 15.2) | Schedule K's minimum for an earner to whom the full adult minimum wage does not apply. | **Answered on the salary where the salary is at least the full adult monthly figure of the quarter's first month; declined below it** (assumed, not ruled: the lead's direction, from the second tester's F3). The premise: a minimum that applies to a monthly-salaried employee (partial, or a young worker's) is at most the full adult figure. |
 
 ## 13. Version 0.4.0 (2026-10-08): IL-37 to IL-42 and IL-45 followed through (BACKLOG IL-44)
 
@@ -1290,6 +1291,207 @@ Still failing (7) and still refused (14): the lines and classes of 13.5, unchang
 - **K16 and age**: a call without s 335 statuses is answered on the convention whatever the earner's age; the second tester's older earners (H41 to H43) give their statuses.
 - **The rows' other readings** (row IL-08's F15; row IL-06's F3, F7, F14, F18 beside F6; row IL-02's F1, F6, F7, F8, F14) are not nameable through the capstone; none parts on a household of the brief's shape (14.4).
 - **The first tester's stale strings** (07-T15) and its H43, H45; the second tester's F5 lines: the testers' own, as before.
+- **HG1** not sought; **not committed**.
+
+## 15. Version 0.6.0 (2026-10-09): the new-law rows followed through (BACKLOG IL-55)
+
+Agent `capstone-il-55`, run `IL-55-20261008`, one session, no sub-agents, from the lead's brief for BACKLOG IL-55 and each new row's NOTES (its list of the inputs the capstone does not supply and of what the capstone would need), read before its modules were vendored.
+THE RULE FOR THIS JOB (assumed, not ruled: the lead's, to protect the common households): a new row is wired in only where it removes a refusal or a stated input convention of the capstone and leaves every answer the capstone gave at version 0.5.0 unchanged for the existing households; where wiring it would turn an answered household into a refusal, the capstone's convention stays the default and the row is offered by name.
+Nothing in the sections above was deleted; entries this version changes are marked "(0.6.0: …)" in place.
+The section "Comparison with Axiom's RuleSpec" was neither read nor edited (byte-identical to commons HEAD, checked by sha256 of the section).
+Neither tester's file was edited: no interface they use changed.
+
+### 15.1 What `check.sh` prints
+
+Run from 2026-10-09T01:51:02Z to 01:52:25Z as `L4=/Users/mengwong/.local/bin/l4 ./check.sh`, `JL4_LIBRARY_PATH` unset, after the last edit to any module.
+The binary is `~/.local/bin/l4` → `~/.cabal/bin/l4` → cabal store `jl4-0.1-6df1397b`, sha256 `f0759b2ef2f1d1b2a577c68f059c54f487de9d913553fc9f0d9bf0f7f5dab0d8`, the same before and after; no module, vendored copy, `VENDORED.sha256` or `check.sh` changed during the run (sha256 of each, before and after).
+Before any edit the same binary printed version 0.5.0's counts module by module (`il07-tests.l4` 140, `il07-tests-il08.l4` 135, `tests-independent.l4` 260/18/0, `tests-independent-2.l4` 304/7/14), so every difference below comes from this version.
+
+```
+vendor.sh: 73 vendored modules match their sources and VENDORED.sha256
+module                                    errors satisfied  failed  refused  expected
+il07-adapter-il01.l4                           0         0       0        0         0
+il07-adapter-il02.l4                           0         0       0        0         0
+il07-adapter-il03.l4                           0         0       0        0         0
+il07-adapter-il04.l4                           0         0       0        0         0
+il07-adapter-il05.l4                           0         0       0        0         0
+il07-adapter-il06.l4                           0         0       0        0         0
+il07-adapter-il08-ito.l4                       0         0       0        0         0
+il07-adapter-il08-nii.l4                       0         0       0        0         0
+il07-adapter-il25.l4                           0         0       0        0         0
+il07-adapter-il26.l4                           0         0       0        0         0
+il07-adapter-il28.l4                           0         0       0        0         0
+il07-adapter-il32.l4                           0         0       0        0         0
+il07-adapter-il36.l4                           0         0       0        0         0
+il07-nouns.l4                                  0         0       0        0         0
+il07-pipeline.l4                               0         0       0        0         0
+il07-published-figures.l4                      0         0       0        0         0
+il07-refusals.l4                               0         0       0        0         0
+il07-tests-expected-red.l4                     0         0       0        0         0
+il07-tests-il08.l4                             0       146       0        0         0
+il07-tests.l4                                  0       158       0        0         0
+tests-independent-2.l4                         7       307       7       11      7/11
+tests-independent.l4                          18       260      18        0        18
+TOTAL (22 modules)                            25       871      25       11
+(a failed assertion is also an error; any other error, or a refused assertion a module is not expected to have, makes the run red; "expected" is failed/refused where a module may refuse)
+```
+
+`check.sh` exit 0; it now expects 11 refusals, not 14, from `tests-independent-2.l4` (H33's three, 15.7).
+
+### 15.2 What was wired, row by row
+
+| row | wired | how | answers moved |
+| --- | --- | --- | --- |
+| IL-36, the Encouragement of Aliyah and Return (Temporary Provision) Law 5786-2026 | **yes, by default** (priority 1) | in place of the capstone's by-name decline (fork K20, the second tester's F1), for the earners fork K24 names; the rest declined by name, in narrower words | refusals only: N28's tax and net (`il07-tests-il08.l4` 475, 476) and the second tester's H33 (514, 516, 518) are answered |
+| IL-32, the Minimum Wage Law 5747-1987 | **yes, by default** (priority 2) | the full adult monthly minimum wage on the first day of each quarter, which Schedule K item 1 reads and fork K21 takes as its bound, comes from row IL-32's dated rule (s 1 with s 5 and the published figures) instead of row IL-05's copy of the Institute's table | none: the four figures are the same (6,247.67; 6,443.85 three times) |
+| IL-28, ITO ss 48 and 48A, the Area order of 5755-1995 and the foreign worker Regulations of 5775-2014 | **by name only** (priority 3) | the household holds two of the facts row IL-28 reads; a caller who adds the rest, for an earner with no spouse, has row IL-28 composed in place of rows IL-01 and IL-08 (fork K25) | none: without the added facts every such earner is refused as before |
+| IL-29, ITO residence and sources | **no** (priority 4) | the household holds none of the facts row IL-29 derives residence from (days in Israel in three years, the centre of life, the residence regulations' facts); the one Boolean stays, a stated convention (14.3; K19) | none |
+| IL-33, National Insurance statuses, ss 69, 69A, 71, rounding, the updating clause | **no** (priority 5) | the household holds none of the person facts row IL-33 reads (15.5) | none |
+| IL-26, ITO s 164 and the 5753-1993 Regulations | **beside the pipeline** (priority 6) | a new entry point, the tax withheld from the month's salary under Schedule A (fork K1's reading (ii)); the capstone's answer and net stay one twelfth of the year's tax (K1 (i)) | none |
+| IL-25, the National Health Insurance Law 5754-1994, s 14 | **beside the pipeline** (priority 6) | a cross-check: what row IL-25 computes for the earner's month, and whether the caller's health figure is that (15.6); the net still reads the caller's figure | none |
+| IL-27, IL-30, IL-31, IL-34, IL-35 | **no** (priority 6) | GAPS.md, "Status after the new-law rows (version 0.6.0)" | none |
+
+Vendored: 23 modules of six rows, each from its own subject's directory (`vendor.sh` names them; `VENDORED.sha256` pins 73 modules, the 50 of 0.5.0 unchanged): IL-36 (7, commit `2a8f912e`), IL-32 (3: `mw-il32-nouns.l4`, `mw-s1-definitions.l4` at `600143ff`, `mw-il32-published-figures.l4` at `247dcff7`), IL-28 (4, `0660f931`), IL-26 (4, `c6bcd8cf`; its copies of row IL-03's four modules are byte-identical to the ones row IL-03's line already vendors), IL-25 (5, `1b4b55d3`).
+New adapters, one per row: `il07-adapter-il36.l4`, `il07-adapter-il32.l4`, `il07-adapter-il28.l4`, `il07-adapter-il26.l4`, `il07-adapter-il25.l4`.
+`.gitignore` lists the new vendored copies.
+
+### 15.3 Row IL-36 in place of the decline (fork K24)
+
+**Whom the capstone composes it for.** An earner whose immigration record (the further facts, s 35's record) says the earner first immigrated, on the ground of an immigrant's visa or certificate under the Law of Return, on a day from 5 November 2025 to 1 January 2026, and does not say that the earner's citizenship was cancelled.
+Such an earner is an Israeli resident on every day of tax year 2026, so every month's salary is produced while resident (the Law's s 2(a), "בעת שהיו תושבי ישראל") and the ceiling of s 2(a)(1), 600,000, is not prorated (s 2(d)): row IL-36's forks F4, F5 and F6 do not part on such an earner, and its defaults answer.
+**How.** The adapter gives row IL-36 the earner as `An individual` and the year's twelve monthly salaries as items of income (the conventions below), and asks `the exempt amount of the person's qualifying income` at row IL-36's defaults.
+The pipeline takes off the year's taxable income the lesser of that amount and the income before it (the salary, less any s 47 deduction), records it in the worked record's new field `the income exempt under the Encouragement of Aliyah and Return (Temporary Provision) Law 5786-2026`, and computes the tax on the rest as before.
+**The monthly spread.** The exemption is annual; the capstone's month is one twelfth of the year's tax after it (fork K1), so the exempt amount is spread evenly over the twelve months, as the year's tax is.
+**Input conventions** (assumed, not ruled: the lead's direction, that the household's existing immigration facts show which earners): the oleh visa or certificate is the record's ground; not in a basket class (not read); citizenship not cancelled under s 11 of the Citizenship Law (the record holds s 10(d)'s fact, which must be FALSE; it holds none under s 11); not a veteran returning resident; the day of first residence is the day of immigration (as fork K20 took it); not ceased to be a resident and no adaptation year elected under ITO s 14(b)(1); the days in Israel in 2028 and 2029 not read (365); each salary produced on the 28th of its month, of the kind ITO s 2(2), chargeable, income from personal exertion, produced in Israel, not other income, attributed from no corporation, not from a relative, nothing asked to be left taxable.
+**Declined by name** (`il07-refusals.l4`): an earner the Law's period reaches on another ground (a returning resident, whose veteran status needs ten years abroad and the Ministry's certificate; an immigrant on another ground of s 35(d), who may or may not be in a basket class) or whose citizenship the record says was cancelled: "the Encouragement of Aliyah and Return (Temporary Provision) Law 5786-2026 may exempt the earner's income from personal exertion, and the household's immigration facts do not say whether the earner is an immigrant or a veteran returning resident within it"; and one who first immigrated after 1 January 2026: "the earner first became an Israeli resident during tax year 2026, and the household's facts are those of a resident of the whole year; the exemption of the Encouragement of Aliyah and Return (Temporary Provision) Law 5786-2026 for part of the year is not composed".
+Version 0.3.0's refusal, which said no composed row encodes the Law, is no longer reached.
+**The allowance (fork K5).** Where the capstone composes the exemption, the s 66 test of income chargeable to additional tax is taken on the income after it, as the tax is; elsewhere as before.
+This moves no existing household's allowance; it would move one of an immigrant composed here whose salary bears additional tax only without the exemption (above 60,130 a month).
+
+### 15.4 Row IL-28 by name (fork K25)
+
+Rows IL-01 and IL-08 decline a foreign worker within ITO s 48A, and a resident of the Area who is not an Israeli citizen, in their own words ("section 48A and the regulations made under it are not encoded in this model"; "section 48 and the order made under it are not encoded in this model").
+Row IL-28 answers for both, but reads facts the household does not hold: for the Order, Israeli citizenship and entitlement under the Law of Return (ITO s 3A(a)) and the months of residence in the Area; for the Regulations, residence within the Foreign Workers Law, the Entry into Israel Law visa, lawful stay and work, an expert or guest lecturer, a B/1 visa and licence, a caring-sector permit and its extension, and the months in Israel or the Area.
+Wiring it by default would need those facts for every such earner, so it is offered by name: the caller adds them (`IL-07 the earner's facts under sections 48 and 48A of the Income Tax Ordinance`, in the readings record's new last field `the facts a caller adds (version 0.6.0)`; `IL-07: the readings` r `, with the earner's facts under sections 48 and 48A` x).
+For such an earner with no spouse, the capstone then takes row IL-28's points in place of ss 34, 36, 36A and 37, and asks it, for each other credit or deduction the tax rule composes (ss 35, 40(b), 45A, 47), whether the instrument that reaches the earner takes it away (reg 3(d) for a foreign worker: 0) or leaves it to its own section (the Order: the ordinary row's answer).
+The s 47 deduction is asked of row IL-28 only where the household gives a pension payment or premium, since at its default (fork FW3) row IL-28 declines the question.
+Row IL-28's fork F1 (s 36A and residence) is asked at the capstone's reading of s 36A, one question for rows IL-01, IL-02 and IL-28; its other forks are at its own switches.
+**Not composed**: an earner with a spouse, declined by name ("IL-07: row IL-28 is composed only for an earner with no spouse; …"): row IL-02's s 66(c) still declines a foreign worker's half point in row IL-01's words, s 66 is not in Chapter Three (row IL-28's open question 4), and the household holds no s 37 facts for the Order.
+**Input conventions** (assumed, not ruled): an individual; a woman, an Israeli resident, a resident of the Area and a worker as the household says; income from personal exertion as for row IL-01 (14.3); the three facts of s 37 FALSE (no spouse); the income taxed is under s 2(2).
+**Which existing households would change.** None: no existing household adds the facts.
+H18 (`il07-tests.l4`, a resident foreign woman, 10,000) is refused at the default as before; with facts added it would be answered: 5,449.2 a year (a legal foreign worker in the caring sector, 2.75 points), 9,079.2 (a legal one outside it, 1.5 points), 13,435.2 (one whose stay is not lawful, no point); the tests at the end of `il07-tests.l4` assert these on a household like H18.
+
+### 15.5 Rows IL-29 and IL-33: not wired, and why
+
+**Row IL-29** derives ITO residence from the days in Israel of three tax years, the centre of life and the facts of the residence regulations; the household holds none of them, and its one Boolean, `the earner was an Israeli resident in the tax year, under the Income Tax Ordinance`, stays a stated convention (residence as the Ordinance treats it, s 3A(f) included; NOTES.md section 12.10, K19).
+Row IL-29's s 2(2)(b) values (a vehicle, a telephone) reach no household of the brief's shape.
+**Row IL-33** derives the National Insurance statuses (s 335's branches, the s 238 housewife, Chapter 11, residence under s 2A) from a person record the household does not hold: residence permission, the day of first residence, the work facts, a woman's marriage facts, the spouse's date of birth.
+So fork K16 (statuses taken for a resident employee insured under Chapter 11 where none are given) and the spouse's housewife fact stay the household's.
+The lead's two examples, worked from the rows' NOTES and not run:
+- **s 238 and Chapter 11 (row IL-06's fork F18).**
+  Row IL-33 derives a resident housewife as insured under Chapter 11 (NII s 240(a); the lead's brief for IL-55, not re-derived here), where the household gives the s 238 housewife as not insured.
+  Only an H7-type household (a father excluded by s 66 for income chargeable to additional tax, a mother at home) could move: at the capstone's default its allowance is declined by row IL-06's F6 on either fact; at F6's first reading (the children stay in his count) it is 0 on either; only at F6's second reading would it move, from declined (row IL-06's F18 parting) to the mother's 392.
+  Every other household with a housewife spouse (the own tests' H3, H5, H10, H11, H16, section 13.3's list, and the testers' married men with a wife at home whom s 66 does not exclude) counts its children with the insured father on every reading (s 67(b)), and would not move.
+- **s 69's payee.** The capstone answers the household's total allowance, not who is paid; row IL-33's payee question would add a decline where it finds none, so it is not wired.
+Neither is offered by name in this version: row IL-33's person record is large, and no existing household would move (above).
+**Row IL-33's age facts** (the Retirement Age Law, Schedule A1's ages) would narrow fork K16 for an earner past retirement age who gives no statuses; the only such own household, N27 (born 1950), pays no deduction either way (s 342(c)(2)), and the testers' older earners give their statuses.
+
+### 15.6 Beside the pipeline: rows IL-26 and IL-25
+
+**Row IL-26** (fork K1's reading (ii)): `IL-07: the tax withheld from the month's salary under the Deduction from Salary and Wages Regulations 5753-1993, in` h (with and without further facts and readings) gives Schedule A's tax on twelve times the month's salary less the points claimed, a twelfth of it, rounded to the whole shekel (item (5)).
+The points claimed are the points the capstone composes for the year (ss 34, 36, 36A; s 37's half under s 66(c)(2); s 66(c)'s children's points; s 35; ss 37-39 under s 65; s 40(b)).
+Composed only for a year with no s 45A credit, no s 47 deduction and no exempt income (row IL-26's declarations do not take them), and only for an earner to whom the household says the full adult minimum wage applies, whom the adapter takes to hold a full-time position (22 days, 8 hours a day, 40 a week, row IL-26's own standard payment; regulation 5 deducts at the maximal rate from a partial salary); each other earner is declined by name.
+Input conventions: the employee's card given with its section on other income filled (none declared), no additional position, no form 0130; the whole month's salary paid in its own tax year; row IL-26's published figures and default readings; no direction of the assessing officer.
+Values (worked by hand; tests at the end of `il07-tests.l4`): H1, 575 (575.1 a twelfth); H2, 454 (454.1); H3 at the readings of versions 0.1.0 to 0.4.0, 483 (482.5).
+**Row IL-25** (the health contribution, GAPS.md item 4): `IL-07: the health insurance contribution row IL-25 computes for the month, in` h and `IL-07: the health insurance contribution the caller gives agrees with row IL-25, in` h.
+Input conventions: an employee for whom the employer is liable for National Insurance contributions; the income is the salary; no s 350A(a) exempt income; no minimum income passed; no old-age pension; the age on the month's first day from the date of birth, and no other exemption; row IL-25's default readings.
+An earner not resident in Israel under the National Insurance Law is declined by name (the NHI Law's resident is the NII's, its s 2, NHI source line 75).
+**The cross-check, every household of the four test modules** (155; run in a scratch copy, not in `check.sh`): 127 agree exactly.
+The 28 that do not:
+- 15 earn above 51,910 (H7, H8; N33; the first tester's H15, H16, H17, H30 to H34; the second's H07, H08, H09, H13), where row IL-25's fork F1 (does Schedule K's maximum cap the income?) declines, and the households give the capped 2,534.3088 (N33, this version's tax-only household, gives 0);
+- 9 are months outside 2026 (H13, H14, H3 in 2025 and in 2027; the first tester's H38, H39; the second's H47, H48) or a spouse with income (H17), which the capstone itself declines;
+- 3 are non-residents whose figure the household gives as 0 (N25; the second tester's H39, H40), where row IL-25, read as for an employee, would give 470.9618, 367.5618 and 193.8; the capstone now declines them by name;
+- 1 is N32, this version's tax-only household, which gives 0 as a placeholder.
+No difference is unexplained.
+
+### 15.7 Every expected value changed or added
+
+Worked by hand from the rows' rules and the source before the run; none was changed to match a run.
+**Changed** (`il07-tests-il08.l4`, in place):
+
+| line | assertion | 0.5.0 | 0.6.0 | why |
+| ---: | --- | --- | --- | --- |
+| 475 | N28 (Galit, 20,000, first immigrated under the Law of Return on 1 December 2025), the tax | REFUSED, the Law not encoded | 0 | row IL-36: 240,000 exempt within 600,000; no taxable income |
+| 476 | N28, the net | REFUSED, the same | 18,174.537 | 20,000 - 0 - 940.9012 - 884.5618 |
+
+**Added** (each section "Version 0.6.0" at the end of its module; all satisfied on their first run but the three withholding values, whose first run met two input conventions of the adapter (the card's section on other income, the hours of a full position) that were then corrected, not the values):
+
+| module, line | case | expected | why |
+| --- | --- | --- | --- |
+| `il07-tests-il08.l4` 753 | N28, the exempt income | 240,000 | the whole year's salary |
+| 754 | N28, the taxable income | 0 | 240,000 - 240,000 |
+| 759 | N33 (N28's woman paid 60,000), the exempt income | 600,000 | the ceiling of s 2(a)(1) binds |
+| 760 | N33, the taxable income | 120,000 | 720,000 - 600,000 |
+| 761 | N33, s 121 | 13,435.2 | 8,412 + 14% of 35,880 |
+| 764 | N12, first immigrated 1 January 2026, the tax | 0 | resident all 2026: 240,000 exempt |
+| 772 | first immigrated 2 January 2026 | REFUSED, part of the year | 15.3 |
+| 773 | a returning resident with six years abroad, returned 1 December 2025 | REFUSED, the facts | 15.3 |
+| 774 | a Law of Return immigrant whose citizenship the record says was cancelled | REFUSED, the facts | 15.3 |
+| 775 | a returning resident with fewer than six years (outside the period) | 30,726 | 38,712 - 2.75 points |
+| 779 | N2, the withholding (a s 45A credit) | REFUSED, row IL-26 not composed | 15.6 |
+| `il07-tests.l4` 723 | a resident foreign woman, no facts added | REFUSED, row IL-01's s 48A words | as version 0.5.0 |
+| 727, 728 | the same, a legal caring-sector worker: tax, net | 5,449.2; 8,937.437 | 2.75 points; 10,000 - 454.1 - 240.9012 - 367.5618 |
+| 730 | the same, legal, not caring | 9,079.2 | 1.5 points |
+| 732 | a foreign man, legal, not caring | 10,531.2 | 1 point |
+| 735 | the woman, stay not lawful | 13,435.2 | reg 3(d): no point |
+| 737 | the woman, not an Israeli resident | REFUSED, row IL-28's FW1 | 15.4 |
+| 740 | a resident of the Area, a man | 6,901.2 | the Order: 2.25 points |
+| 744 | the same, a woman | REFUSED, s 36A's F1 | 15.4 |
+| 745 | the same, s 36A without a residence condition | 5,449.2 | 2.75 points |
+| 753, 754 | H1: row IL-25's figure; it agrees | 367.5618; TRUE | 7,703 x 3.23% + 2,297 x 5.17% |
+| 755, 756 | H9 (5,000): the same | 161.5; TRUE | 5,000 x 3.23% |
+| 757 | H7 (70,000): row IL-25 | REFUSED, its F1 | above 51,910 |
+| 766 | H1, the withholding | 575 | (13,435.2 - 6,534) / 12 = 575.1 |
+| 767 | H2, the withholding | 454 | (13,435.2 - 7,986) / 12 = 454.1 |
+| 768 | H3 at the readings of 0.1.0 to 0.4.0, the withholding | 483 | (25,392 - 19,602) / 12 = 482.5, rounded up |
+
+`il07-tests-expected-red.l4`: no assertion, as before.
+
+### 15.8 The independent tests, line by line (BACKLOG IL-55's record)
+
+Neither file was edited.
+Both were run on the binary above with version 0.5.0 (before) and 0.6.0 (after) and compared assertion by assertion, messages included.
+**`tests-independent.l4`** (fid-il-07): 260 satisfied, 18 failed, 0 refused → **260, 18, 0**; no assertion changed.
+**`tests-independent-2.l4`** (fid-il-13): 304 satisfied, 7 failed, 14 refused → **307, 7, 11**.
+
+| line | household, figure | 0.5.0 | 0.6.0 | class |
+| ---: | --- | --- | --- | --- |
+| 514 | H33 (first immigrated 1 December 2025), the tax, 0 | refused (the Law not encoded) | **satisfied** | its F1 (CAPSTONE WRONG at 0.2.2, declined by name from 0.3.0), resolved by row IL-36 (fork K24) |
+| 516 | H33, health read through the household's month, 884.5618 | refused | **satisfied** | the same |
+| 518 | H33, the net, 18,347.537 | refused | **satisfied** | the same |
+
+No previously satisfied assertion changed, and nothing new fails or is refused.
+Still failing (7): 215, 218 (H01), 524, 527 (H34), 584, 587, 589 (H40): its F5, the tester's own error on the Schedule K minimum (TESTER-WRONG).
+Still refused (11): 573, 574, 576 (H39, a non-resident: row IL-04's F21); 308, 309, 311 (H10), 640, 641, 643 (H46): its F3, a part-time minimum below the full adult figure, which row IL-32 would answer from the hours of work, which the household does not hold (15.9); 668, 677 (H49, H50 health): its F6, propagation.
+
+### 15.9 Forks and conventions, added or revised
+
+| # | the question | taken, and why |
+| --- | --- | --- |
+| K24 (new; assumed, not ruled: the lead's direction for IL-55) | For which earners does the capstone compose row IL-36, and how is its annual exemption spread over the months? | 15.3: a first immigration under the Law of Return from 5 November 2025 to 1 January 2026, citizenship not cancelled; the exempt amount comes off the year's taxable income, and the month is a twelfth of the year's tax (K1). Every other earner the period reaches is declined by name. |
+| K25 (new; assumed, not ruled) | When does the capstone compose row IL-28? | 15.4: only where the caller adds the facts, for an earner with no spouse; otherwise as version 0.5.0. |
+| K1 (revised) | The year's tax against a month | Unchanged as the answer; reading (ii), the withholding, is now offered beside it by name (row IL-26, 15.6). |
+| K20 (revised) | Which earners does the Aliyah Law's period decline? | Now only those K24 does not compose. |
+| K21 (revised) | The bound for an earner to whom the full adult minimum wage may not apply | The same rule; its figures are row IL-32's (the same numbers). A part-time earner below the bound stays declined: row IL-32's part-time minimum needs the hours worked and the hours of a full position, which the household does not hold. |
+| K5 (revised) | The s 66 additional-tax test | On the income after row IL-36's exemption where the capstone composes it (15.3). |
+
+### 15.10 Not done, and left
+
+- **Row IL-32's part-time minimum by name** (the hours of work as facts a caller adds), which would answer the second tester's H10 and H46 if their hours were given: not built; the household and the testers give no hours.
+- **Row IL-27's credits** (ss 39A, 39B, 40A-40E, 44-46, 47A, s 35(e)'s rules, s 47(d)'s regulations) by name, in place of the capstone's decline of a credit no row encodes: not built; each section reads facts the household does not hold (GAPS.md).
+- **Row IL-33 by name** (15.5) and **row IL-29 by name** (the residence facts): not built.
+- **Row IL-36 for a first residence after 1 January 2026, and for a veteran returning resident**: declined; the first needs a year of part residence (row IL-01's F4 and row IL-36's F5 together), the second the ten years and the certificate.
+- **Row IL-28 for a couple**: declined (15.4).
 - **HG1** not sought; **not committed**.
 
 ## Comparison with Axiom's RuleSpec (2026-10-07)
