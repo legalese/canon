@@ -1,0 +1,139 @@
+IMPORT prelude
+
+-- Goods and Services Tax Act 1993 (Singapore) -- what is charged (ss 7, 8), the rate (s 16), tax-inclusive pricing (s 17(2)),
+-- contracts spanning a rate change (s 40), liability to register (First Schedule paragraphs 1, 1A, 4), and the exempt supplies
+-- (Fourth Schedule Part 1).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/GSTA1993.txt (amendments to
+-- Act 35 of 2022 and S 109/2023 shown in force).
+--
+-- WHY THIS ACT. Cited by 20 of the 527 Singapore Acts deposited in this repository. SCOPED to the charge, the rate, registration
+-- and exemption. Not encoded: time and place of supply (ss 11 to 15), the reverse charge, input tax (Part 4), zero-rating
+-- (Part 5), special cases (Part 6), accounting and assessment, review and appeal, and offences.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Goods and Services Tax Act 1993 -- the charge`
+
+§§ `7, 8 -- what is charged`
+
+-- s 8(1): tax is charged on a supply made in Singapore "where it is a taxable supply made by a taxable person in the course or
+-- furtherance of any business". (2): a taxable person is one who "is or is required to be registered". (2A): a taxable supply is
+-- one other than an exempt supply. s 10(2)(a): "supply" excludes anything "done otherwise than for a consideration".
+DECLARE Supply HAS
+    `made in Singapore` IS A BOOLEAN
+    `by a person registered or required to be` IS A BOOLEAN
+    `in the course of business` IS A BOOLEAN
+    `for a consideration` IS A BOOLEAN
+    `exempt` IS A BOOLEAN
+
+GIVEN `the supply` IS A Supply
+GIVETH A BOOLEAN
+DECIDE `GST is charged on the supply` IF
+        `the supply`'s `made in Singapore`
+    AND `the supply`'s `by a person registered or required to be`
+    AND `the supply`'s `in the course of business`
+    AND `the supply`'s `for a consideration`
+    AND (NOT `the supply`'s `exempt`)
+
+§§ `16 -- the rate`
+
+-- s 16: 4% from 1 January 2003 to 31 December 2003; 5% to 30 June 2007; 7% to 31 December 2022; 8% for 2023; 9% "from and
+-- including 1 January 2024". Earlier rates (3% from 1994) are no longer in the section. Dates are written YYYYMMDD.
+GIVEN `the date` IS A NUMBER
+GIVETH A NUMBER
+`the GST rate in percent` MEANS
+    IF `the date` AT LEAST 20240101 THEN 9
+    ELSE IF `the date` AT LEAST 20230101 THEN 8
+         ELSE IF `the date` AT LEAST 20070701 THEN 7
+              ELSE IF `the date` AT LEAST 20040101 THEN 5
+                   ELSE IF `the date` AT LEAST 20030101 THEN 4
+                        ELSE 0
+
+§§ `17(2), 40 -- prices and contracts`
+
+-- s 17(2): "If the supply is for a consideration in money, its value is taken to be such amount as, WITH THE ADDITION OF THE TAX
+-- CHARGEABLE, IS EQUAL TO THE CONSIDERATION." The tax is inside the price: a registered supplier who agrees $109 at 9% receives
+-- $100 and owes $9.
+-- s 40(1): where the tax changes after the contract but before the supply, "unless express provision for the exclusion of any
+-- such change ... is contained in the contract or where the change in the tax has been taken into account", the supplier MAY
+-- ADD the increase to the agreed price (or must deduct a reduction).
+--
+-- The two defaults pull against each other. The price includes the GST at the time of the contract, but a later increase can be
+-- added on top unless the contract says otherwise.
+GIVEN `the price` IS A NUMBER, `the rate` IS A NUMBER
+GIVETH A NUMBER
+`the GST contained in the price` MEANS
+    `the price` TIMES `the rate` DIVIDED BY (100 PLUS `the rate`)
+
+GIVEN `the price` IS A NUMBER, `rate when contracted` IS A NUMBER, `rate when supplied` IS A NUMBER, `contract excludes adjustment` IS A BOOLEAN
+GIVETH A NUMBER
+`the price the supplier may charge` MEANS
+    IF `contract excludes adjustment` THEN `the price`
+    ELSE `the price` TIMES (100 PLUS `rate when supplied`) DIVIDED BY (100 PLUS `rate when contracted`)
+
+§§ `First Schedule -- registration`
+
+-- Para 1(1)(a)(ii): a person is liable to register at the end of a calendar year if the value of their taxable supplies in that
+-- year "has EXCEEDED $1 million"; (b) at any time if there are reasonable grounds for believing the next 12 months "will exceed
+-- $1 million". (3)(b): not liable on the retrospective test if the Comptroller is satisfied next year will not exceed $1 million.
+-- (4): reverse charge supplies are left out of the count.
+-- Para 1A(1): an overseas supplier of Seventh Schedule (remote digital and low-value) supplies is liable if its WORLDWIDE supplies
+-- exceeded $1 million AND its Seventh Schedule supplies to Singapore exceeded $100,000.
+-- Para 4(1A): notify within 30 days after the end of the year; (2) the Comptroller registers the person "whether or not the
+-- person so notifies" from the day after the end of the month following the month of the 30th day -- for a calendar-year
+-- liability, 1 March.
+DECLARE Turnover HAS
+    `taxable supplies last year` IS A NUMBER
+    `expected taxable supplies next 12 months` IS A NUMBER
+    `Comptroller satisfied next year stays under` IS A BOOLEAN
+
+GIVEN `the turnover` IS A Turnover
+GIVETH A BOOLEAN
+DECIDE `the person is liable to register` IF
+        (`the turnover`'s `taxable supplies last year` GREATER THAN 1000000 AND (NOT `the turnover`'s `Comptroller satisfied next year stays under`))
+    OR  `the turnover`'s `expected taxable supplies next 12 months` GREATER THAN 1000000
+
+GIVEN `worldwide supplies` IS A NUMBER, `digital supplies to Singapore` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the overseas digital supplier is liable to register` IF
+    `worldwide supplies` GREATER THAN 1000000 AND `digital supplies to Singapore` GREATER THAN 100000
+
+GIVEN `the year of liability` IS A NUMBER
+GIVETH A NUMBER
+`the date registration takes effect` MEANS
+    (`the year of liability` PLUS 1) TIMES 10000 PLUS 301
+
+§§ `Fourth Schedule -- exempt supplies`
+
+-- Part 1 para 1: financial services, including (a) operating a deposit account, (b) currency exchange (but not a coin sold as a
+-- collector's item), (g) loans, and (l) "a LIFE insurance contract". General insurance is not in the list.
+-- Para 1A: investment precious metals. Para 1B: exchanging digital payment tokens.
+-- Para 2: land -- (a) vacant residential land, and (c) land with a building "used or to be used principally for RESIDENTIAL
+-- purposes". Commercial property is not in the list.
+--
+-- A life insurance premium carries no GST; a motor insurance premium does. Renting out a flat is exempt; renting out a shop is
+-- taxable.
+DECLARE Item IS ONE OF
+    `renting out a flat`
+    `selling a flat`
+    `renting out a shop`
+    `a bank account fee`
+    `a personal loan`
+    `a life insurance premium`
+    `a motor insurance premium`
+    `investment-grade gold`
+    `a collector's coin`
+    `exchanging bitcoin for dollars`
+    `a haircut`
+
+GIVEN `the item` IS AN Item
+GIVETH A BOOLEAN
+DECIDE `the supply is exempt` IF
+    CONSIDER `the item`
+    WHEN `renting out a shop` THEN FALSE
+    WHEN `a motor insurance premium` THEN FALSE
+    WHEN `a collector's coin` THEN FALSE
+    WHEN `a haircut` THEN FALSE
+    OTHERWISE TRUE
