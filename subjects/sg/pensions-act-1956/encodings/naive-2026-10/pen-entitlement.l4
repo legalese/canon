@@ -1,0 +1,203 @@
+IMPORT prelude
+
+-- Pensions Act 1956 (Singapore) -- who the Act covers (s 3), when a pension may be granted (s 11), the two-thirds cap (s 14),
+-- protection from creditors (s 15), call-back (s 16), bankruptcy and conviction (ss 17, 18), post-retirement employment (s 19),
+-- death gratuities (s 20), and the First Schedule Pensions Regulations on the rate (regs 4, 18, 26) and the options
+-- (regs 15, 16).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/PA1956.txt (amendments to
+-- Act 33 of 2021).
+--
+-- WHY THIS ACT. Cited by 29 of the 527 Singapore Acts deposited in this repository (other service Acts borrow its scheme).
+-- Nearly the whole Act; the Pension Authority machinery (ss 4, 5), the injury and killed-on-duty regulations (regs 20 to
+-- 23), the Gurkha regulation (14), Table A and Table B are not encoded. The President's discretions (ss 8, 11(2)(i), 12) are
+-- inputs.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Pensions Act 1956 -- entitlement`
+
+§§ `3 -- who is covered`
+
+-- s 3(4): unless expressly provided, the Act does not apply "(a) to all officers appointed on or after 1 April 1986 to the
+-- public service ... except officers who are appointed to such schemes of service as may be designated by the President".
+-- Since 1986 most civil servants are on the CPF, not a pension. (Section 20, the death gratuity, is expressly applied to all
+-- officers whenever appointed -- s 20(5).)
+GIVEN `appointed after 31 March 1986` IS A BOOLEAN, `in a designated scheme` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Act covers the officer` IF
+    (NOT `appointed after 31 March 1986`) OR `in a designated scheme`
+
+§§ `11 -- when a pension may be granted`
+
+-- s 11(1): only on retirement. (2)(a): "on or after attaining the age of 55 years if a man, or of 45 years if a woman" (the
+-- woman's age applying to a female officer in service before 1 March 1962 who has opted for it), or 50 for men in service on
+-- 1 July 1956 with consent; (b) 45 for junior police and prison officers; (c) permanent ill health; (d) abolition of office;
+-- (e) public interest; (f) reorganisation; (h) a woman appointed on or after 1 July 1956, 50 with consent; (i) 15 years'
+-- service in special circumstances with consent.
+DECLARE Ground IS ONE OF
+    `reaching the retirement age`
+    `permanent ill health`
+    `abolition of office`
+    `retirement in the public interest`
+    `reorganisation`
+    `special circumstances after 15 years with consent`
+    `resignation`
+    `dismissal`
+
+GIVEN `the ground` IS A Ground
+GIVETH A BOOLEAN
+DECIDE `the ground permits a pension` IF
+    CONSIDER `the ground`
+    WHEN `resignation` THEN FALSE
+    WHEN `dismissal` THEN FALSE
+    OTHERWISE TRUE
+
+-- The age limb, s 11(2)(a): 55 for a man; 45 for a woman in service before 1 March 1962 who opted for it. Junior police and
+-- prison officers (2)(b): 45 regardless of sex.
+GIVEN `is a man` IS A BOOLEAN, `woman in service before March 1962 who opted` IS A BOOLEAN, `junior police or prison officer` IS A BOOLEAN
+GIVETH A NUMBER
+`the pension age` MEANS
+    IF `junior police or prison officer` THEN 45
+    ELSE IF `is a man` THEN 55
+         ELSE IF `woman in service before March 1962 who opted` THEN 45 ELSE 55
+
+§§ `Regulations 4, 18, 26 -- the rate`
+
+-- Reg 4(1): an officer in a pensionable office "who has been in the service of the Government for not less than 10 YEARS"
+-- may be granted a pension of 1/600 of annual pensionable emoluments for each complete month of pensionable service, "subject
+-- to the limit prescribed in section 14". s 14(1): not more than TWO-THIRDS of the highest pensionable emoluments.
+-- 400 months (33 years 4 months) reaches the cap; service beyond that adds nothing.
+-- Reg 26: under 10 years, a gratuity "not exceeding" 5/600 of annual emoluments per complete month instead.
+-- Reg 18: on abolition or reorganisation, 1/500 per month up to 240/500, then 1/600 per month -- capped by s 14 and by what
+-- reg 4 would have given at the compulsory retirement age (18(2), not modelled).
+GIVEN a IS A NUMBER, b IS A NUMBER
+GIVETH A NUMBER
+`the lesser of` MEANS IF a LESS THAN b THEN a ELSE b
+
+GIVEN `months of service` IS A NUMBER, `annual emoluments` IS A NUMBER
+GIVETH A NUMBER
+`the annual pension` MEANS
+    IF `months of service` LESS THAN 120 THEN 0
+    ELSE `the lesser of` (`months of service` TIMES `annual emoluments` DIVIDED BY 600) (`annual emoluments` TIMES 2 DIVIDED BY 3)
+
+GIVEN `months of service` IS A NUMBER, `annual emoluments` IS A NUMBER
+GIVETH A NUMBER
+`the maximum short-service gratuity` MEANS
+    IF `months of service` AT LEAST 120 THEN 0
+    ELSE `months of service` TIMES `annual emoluments` TIMES 5 DIVIDED BY 600
+
+GIVEN `months of service` IS A NUMBER, `annual emoluments` IS A NUMBER
+GIVETH A NUMBER
+`the abolition pension` MEANS
+    `the lesser of`
+        (IF `months of service` AT MOST 240
+         THEN `months of service` TIMES `annual emoluments` DIVIDED BY 500
+         ELSE (240 TIMES `annual emoluments` DIVIDED BY 500) PLUS ((`months of service` MINUS 240) TIMES `annual emoluments` DIVIDED BY 600))
+        (`annual emoluments` TIMES 2 DIVIDED BY 3)
+
+§§ `Regulations 15, 16 -- the options`
+
+-- Reg 15(1)(b): an officer appointed on or after 1 January 1995 may take (i) a full pension, or (ii) a commuted pension
+-- gratuity with NO pension. (a): one appointed earlier may also take (ii) a reduced pension plus a gratuity.
+-- Reg 15(4): "An officer who has not exercised an option ... is DEEMED TO HAVE OPTED to receive a commuted pension gratuity
+-- ... WITHOUT ANY PENSION." Silence trades the pension for a lump sum.
+-- Reg 16(1): the reduced-pension gratuity is 1/120 of a year's emoluments per complete month, at most 3 years' emoluments;
+-- the pension is reduced by 2/25 of that gratuity (and restored in full after 12 years 6 months -- reg 15(5)).
+-- Reg 16(2), s 20(4): the commuted pension gratuity is "the commutation factor" (175.14) multiplied by "the amount of such
+-- pension". The text does not say annual or monthly. 175.14 times the annual pension would be 175 years' pension; the encoding
+-- takes the MONTHLY pension (about 14.6 years' worth), an inference the text does not state.
+DECLARE Option IS ONE OF
+    `full pension`
+    `reduced pension and gratuity`
+    `commuted gratuity only`
+    `no option exercised`
+
+GIVEN `the option` IS AN Option, `appointed before 1995` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the option is available` IF
+    CONSIDER `the option`
+    WHEN `reduced pension and gratuity` THEN `appointed before 1995`
+    OTHERWISE TRUE
+
+GIVEN `the option` IS AN Option
+GIVETH A BOOLEAN
+DECIDE `the officer receives a continuing pension` IF
+    CONSIDER `the option`
+    WHEN `full pension` THEN TRUE
+    WHEN `reduced pension and gratuity` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN `months of service` IS A NUMBER, `annual emoluments` IS A NUMBER
+GIVETH A NUMBER
+`the reduced-pension gratuity` MEANS
+    `the lesser of` (`months of service` TIMES `annual emoluments` DIVIDED BY 120) (`annual emoluments` TIMES 3)
+
+GIVEN `months of service` IS A NUMBER, `annual emoluments` IS A NUMBER
+GIVETH A NUMBER
+`the reduced annual pension` MEANS
+    `the annual pension` `months of service` `annual emoluments`
+    MINUS (`the reduced-pension gratuity` `months of service` `annual emoluments` TIMES 2 DIVIDED BY 25)
+
+GIVEN `months of service` IS A NUMBER, `annual emoluments` IS A NUMBER
+GIVETH A NUMBER
+`the commuted pension gratuity` MEANS
+    175.14 TIMES (`the annual pension` `months of service` `annual emoluments` DIVIDED BY 12)
+
+§§ `15 to 19 -- protection and loss of the pension`
+
+-- s 15: a pension is not assignable and cannot be attached, except for a debt to the Government or a court order for periodic
+-- maintenance "of the WIFE OR FORMER WIFE or minor child ... of the officer". A husband's maintenance order cannot reach a
+-- female officer's pension.
+-- s 17(2): bankruptcy ends the pension at once; (3) the Authority may apply it for the pensioner or "any WIFE, child or
+-- children"; (5) restored on discharge.
+-- s 18(1): on a sentence of imprisonment, the Authority MAY direct that the pension cease.
+-- s 19: becoming a director or employee of a company doing business in Singapore or Malaysia, or engaging in any occupation for
+-- gain there, without the President's written permission, MAY end the pension -- but (3) only within 5 years of retirement.
+-- s 16: until 50 (a man) or 45 (a woman), a fit pensioner may be called back to an office of no less value; refusal may
+-- suspend the pension until that age.
+DECLARE Creditor IS ONE OF
+    `the Government`
+    `a wife or former wife under a maintenance order`
+    `a minor child under a maintenance order`
+    `a husband under a maintenance order`
+    `a bank`
+
+GIVEN `the creditor` IS A Creditor
+GIVETH A BOOLEAN
+DECIDE `the creditor can reach the pension` IF
+    CONSIDER `the creditor`
+    WHEN `a husband under a maintenance order` THEN FALSE
+    WHEN `a bank` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `took private work without permission` IS A BOOLEAN, `years since retirement` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the President may stop the pension for private work` IF
+    `took private work without permission` AND `years since retirement` AT MOST 5
+
+GIVEN `is a man` IS A BOOLEAN, `age` IS A NUMBER, `fit for service` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the pensioner may be called back` IF
+        `fit for service`
+    AND (IF `is a man` THEN `age` LESS THAN 50 ELSE `age` LESS THAN 45)
+
+§§ `20 -- death`
+
+-- s 20(1)(a): an officer who dies in service leaves a gratuity of the commuted value of the ill-health pension they would have
+-- had (discounted at 5% a year if under the minimum age) -- "but that gratuity must in no case be LESS THAN ONE YEAR'S
+-- pensionable emoluments".
+-- s 20(2): a retired officer who dies within one year of retiring leaves one year's pensionable emoluments, less whatever
+-- gratuity and pension have already been paid.
+GIVEN `commuted value` IS A NUMBER, `annual emoluments` IS A NUMBER
+GIVETH A NUMBER
+`the death-in-service gratuity` MEANS
+    IF `commuted value` GREATER THAN `annual emoluments` THEN `commuted value` ELSE `annual emoluments`
+
+GIVEN `annual emoluments` IS A NUMBER, `already paid` IS A NUMBER, `months since retirement` IS A NUMBER
+GIVETH A NUMBER
+`the early-death top-up` MEANS
+    IF `months since retirement` GREATER THAN 12 THEN 0
+    ELSE IF `already paid` GREATER THAN `annual emoluments` THEN 0
+         ELSE `annual emoluments` MINUS `already paid`
