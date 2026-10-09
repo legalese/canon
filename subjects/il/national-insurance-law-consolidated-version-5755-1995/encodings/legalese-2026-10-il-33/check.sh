@@ -28,11 +28,20 @@ L4="${L4:-l4}"
 # counts as satisfied; expected_refused counts the others (tests-independent.l4 only, once it exists).
 expected_failed() {
   case "$1" in
+    # Version 0.1.2: tests-independent.l4's two failures (lines 388, 389, ids ST-37 and ST-38, s 223 (4), where the absorption basket attaches) are gone:
+    # the encoding now has a named switch (fork L1) whose default declines where the readings differ, so both assertions REFUSE (see expected_refused).
     *) echo 0 ;;
   esac
 }
 expected_refused() {
   case "$1" in
+    # tests-independent.l4 (fid-il-33, IL-56): three assertions REFUSE where the tester decided a value.
+    #   lines 388 and 389, ids ST-37 and ST-38 (a Law-of-Return immigrant not insured under Chapter 11, no absorption basket, s 223 (4)): fork L1, the text does not say whether
+    #     the basket qualifies the immigrant too; the default declines where the two readings differ. Class: AMBIGUITY, registered as fork L1 in 0.1.2. Named, they pass:
+    #     with `the absorption basket qualifies only the visa holder` the tester's value holds.
+    #   line 837, id ML-18 (a creditor exempt under ML s 9A(c)(1)): the encoding refuses by name
+    # because s 9A(c)(2) pays such a creditor by rules the Minister of Justice fixes and they are not deposited. Class: TESTER-WRONG (I read (c)(1) and forgot (c)(2)).
+    tests-independent.l4) echo 3 ;;
     *) echo 0 ;;
   esac
 }

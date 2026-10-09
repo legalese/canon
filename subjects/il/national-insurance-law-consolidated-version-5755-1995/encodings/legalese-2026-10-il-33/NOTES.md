@@ -1,6 +1,6 @@
 # Notes: National Insurance Law statuses and the surroundings of the child allowance (row IL-33)
 
-Status: **draft, version 0.1.1** (0.1.0 plus the Retirement Age Law, section 13).
+Status: **draft, version 0.1.2** (0.1.1 plus the repairs from the independent pass, section 14; 0.1.1 added the Retirement Age Law, section 13).
 Row IL-33, run id `IL-33-20261008`, encoder `enc-il-33`, one session, no sub-agents.
 No domain expert has read this against the source, and no independent test pass has been run yet (BACKLOG chain: encode, independent tests, lead re-run).
 Every expected value in the tests was worked by hand from the Hebrew before the run; a failing assertion would have been a finding.
@@ -125,7 +125,8 @@ Every row is **ruled by Meng 2026-10-08 (SHRUG)**: where the text is silent or t
 | W2 | s 238 "אלמנה" (1), 2404: the age of 55 is at the death, at the marriage, or now | at the death ("בשעת פטירתו" opens the definition and the condition is in the present tense) | at the death | (b) |
 | P1 | s 69(a), 837: a child whose two parents are of one sex | none | refused by name | (d) no arguable reading |
 | P2 | s 69(b) "ישלם" (shall pay) and (d) "רשאי" (may) both in the case | (i) the request prevails; (ii) the decision prevails | declined where they differ | (a), `a request under section 69(b) and a decision under section 69(d)` |
-| P3 | s 69(a): is the mother paid only if she is herself entitled? | no: that would leave an entitled father and a mother who is not entitled with nobody to pay but a guardian | the mother is paid whether or not she is entitled | (b) |
+| P3 | s 69(a), 837: is the mother paid when she is not herself entitled (the father being the insured parent)? | (i) she is paid whether or not she is entitled; (ii) she is paid only if entitled, otherwise an entitled father (the independent pass, CH-31) | declined where they differ, through the new entry point that takes the mother's entitlement; the old entry point answers on reading (i)'s premise | (a), `the payee where the mother is not entitled` (revised in 0.1.2; was class (b)) |
+| L1 | s 223 "מבוטח" (4), 2178: "שניתן לו סל קליטה" (who was given an absorption basket) | (i) qualifies both the immigrant and the visa holder; (ii) qualifies only the visa holder | declined where they differ (a resident immigrant not insured under Chapter 11 with no basket) | (a), `the absorption basket in section 223 "insured" (4)` (new in 0.1.2) |
 | A1 | s 69A(1), 844: "a child as in s 68(b)", the fourth or later in the count of the parent's children, born before 1 June 2003: whose count | (i) all the man's children; (ii) each woman's | declined where they differ | (a), `a child as in section 68(b), for section 69A(1)` |
 | A2 | s 68(b), s 69A(1): how the count is ordered | eldest first by date of birth (IL-06's F4); one of the children born before 1 June 2003 is the fourth or later exactly when four or more were born before that day | eldest first | (d) |
 | S1 | s 71, 851: both parents died or ceased to be insured | (i) the parent s 67(b) would choose if both were alive and insured; (ii) the parent who died or ceased first | declined where they differ | (a), `section 71 where both parents died or ceased to be insured` |
@@ -200,7 +201,7 @@ By default every year after 2015 is declined, because the readings differ from 2
 ## 5. `check.sh`
 
 `L4=/Users/mengwong/.local/bin/l4 ./check.sh`, `JL4_LIBRARY_PATH` unset.
-Run from 2026-10-08T23:32:32Z to 23:33:09Z, after the last edit to any module.
+Run from 2026-10-09T00:04:50Z to 00:05:35Z (version 0.1.2), after the last edit to any module.
 Binary: `~/.local/bin/l4` resolving to the cabal store's `jl4-0.1-6df1397b/bin/l4`, sha256 `f0759b2ef2f1d1b2a577c68f059c54f487de9d913553fc9f0d9bf0f7f5dab0d8`, the same before and after the run.
 
 ```
@@ -220,11 +221,11 @@ nii-il33-tests-fa-regs.l4                      0        14       0        0     
 nii-il33-tests-isl.l4                          0        35       0        0         0
 nii-il33-tests-ml.l4                           0        38       0        0         0
 nii-il33-tests-residence.l4                    0        41       0        0         0
-nii-il33-tests-rounding.l4                     0        40       0        0         0
+nii-il33-tests-rounding.l4                     0        41       0        0         0
 nii-il33-tests-s238.l4                         0        37       0        0         0
 nii-il33-tests-s335.l4                         0        21       0        0         0
-nii-il33-tests-ss69-71.l4                      0        43       0        0         0
-nii-il33-tests-statuses.l4                     0        96       0        0         0
+nii-il33-tests-ss69-71.l4                      0        52       0        0         0
+nii-il33-tests-statuses.l4                     0       100       0        0         0
 nii-il33-tests-updating.l4                     0       117       0        0         0
 nii-rounding-regulations.l4                    0         0       0        0         0
 nii-s1-retirement-age-law.l4                   0         0       0        0         0
@@ -238,11 +239,13 @@ nii-schedule-a1-ages.l4                        0         0       0        0     
 nii-ss69-69a-71.l4                             0         0       0        0         0
 nii-statuses-chapters.l4                       0         0       0        0         0
 retirement-age-law.l4                          0         0       0        0         0
-TOTAL (33 modules)                             0       611       0        0
+tests-independent.l4                           0       318       0        3       0/3
+TOTAL (34 modules)                             0       943       0        3
 ```
 
 Exit 0.
-Many of the 611 assertions are `#ASSERT REFUSED` (declining by name is the expected answer there); `check.sh` counts them as satisfied, and no assertion fails or refuses unexpectedly.
+Many assertions are `#ASSERT REFUSED` (declining by name is the expected answer there); `check.sh` counts them as satisfied.
+The only refusals the table shows are the independent tester's three, declared in `check.sh` (section 14).
 A deliberately wrong assertion in a scratch copy failed (`assertion failed`), so the harness can fail.
 
 `tools/hebcheck.py` (copied unchanged from IL-06) found every Hebrew run in the modules, outside the `src:` quotations, in the source file that module cites: the Law, or the regulations, or the Income Support Law, or the Maintenance Law.
@@ -368,3 +371,45 @@ The difference touches no one under 87.
 Removed: the assertions that Batya's statuses were declined by default, that a supplied age was used, and the floor-reading assertions; the s 335 assertion that her branches decline.
 The Income Support Law test for a woman born in 1990 now answers 2000 (it declined by default in 0.1.0).
 Counts: 598 assertions in 0.1.0, 611 in 0.1.1.
+
+## 14. Version 0.1.2: repairs from the independent pass (fid-il-33, BACKLOG IL-56)
+
+`INDEPENDENT-FINDINGS.md`, `tests-independent.l4` and `DECIDED-ANSWERS.md` are the tester's and are not edited (sha256 of the last, `61c59b65...`, unchanged).
+The pass found no misreading and one unregistered fork; the lead asked for the repairs below.
+
+1. **ST-37 and ST-38, s 223 "מבוטח" (4): a new fork L1.**
+   My 0.1.1 code read "שניתן לו סל קליטה" as qualifying both limbs, `(immigrated OR visa) AND basket`, and registered nothing.
+   Both attachments are grammatical, so it is now a named switch (`the absorption basket in section 223 "insured" (4)`), default declined where the readings differ.
+   They differ only for a resident immigrant, not insured under Chapter 11, who has no recorded basket.
+   My own tests that rested on the old reading were re-pointed by name, values unchanged: the immigrant-without-basket assertion is now three (declined by default; not insured on `qualifies both`; insured on `qualifies only the visa holder`).
+   The tester's two assertions (lines 388, 389) are kept as they are; they now REFUSE by default and `check.sh` declares them as expected refusals (expected failed 0, expected refused 3, with a comment).
+   Named, the tester's reading holds: with `qualifies only the visa holder`, the facts of its line 388 give insured.
+2. **CH-31, s 69: fork P3 revised from class (b) to a switch.**
+   I had held that (a) pays the mother whether or not she is entitled, because the other reading seemed to leave an entitled father unpaid.
+   The tester decided the father, with confidence L, through (b) or (d).
+   Re-reading s 69: (a) says "to the mother" and the allowance is the insured parent's by ss 66-67, so both are arguable, and the text does not decide.
+   Readings: (i) the mother is paid whether or not she is entitled; (ii) she is paid only if entitled, and otherwise an entitled father (then (c)).
+   Default: declined where they differ (mother not entitled, father entitled, child with both: mother or father; neither entitled: the mother or (c)).
+   `The facts of section 69` has no field for the mother's entitlement and the frozen tester's file builds that record, so I kept its shape and added an entry point that takes the entitlement as an argument: `s 69 — the person to whom the child allowance is paid, in` f `, the mother being entitled:` e (and `, reading` rd).
+   The old entry point still answers on reading (i)'s premise, and says so in its comments; IL-55 should use the new one.
+   This matters for the capstone's ordinary household (the father works, the mother is a housewife, so she is not an entitled insured parent): the default now declines who is paid there.
+3. **RR-12, regulation 3 and Chapter 8.**
+   Regulation 3 rounds a cash benefit "except a benefit under Chapter 6C of the Law", the old number of today's Chapter 8 (insolvency proceedings; the Law's text marks Chapter 8 with it).
+   A new kind of amount, `a benefit under Chapter 8 of the Law (...), which regulation 3 leaves out`, is refused by name: no other rule of the Regulations rounds it.
+   The caller still chooses the kind, so the rule cannot stop a caller from labelling a Chapter 8 benefit "cash benefit"; that is recorded as a limitation, as the tester's RR-16 and RR-28 observations also are (RR-16: where regs 2 and 3 both fit a daily benefit on income, the code takes the kind the caller names, the tester took reg 2).
+4. **ML-18: TESTER-WRONG.**
+   The Maintenance Law s 9A(c)(2) pays an exempt creditor by rules the Minister of Justice fixes; they are not deposited, and the refusal by name is right.
+   The tester agrees (its own note); the assertion stays declared in `check.sh` as an expected refusal.
+5. **ST-78, the flag in `A completed service`.**
+   The flag "served at least six months and married within 30 days" was trusted without checking it against `the months served`.
+   A flag TRUE with fewer than six months now refuses by name ("the facts contradict each other").
+   The marriage date is not held, so the 30 days stay an input.
+6. **Counts.**
+   611 assertions in 0.1.1; 625 in this row's own tests in 0.1.2, and the tester's file is 318 satisfied, 0 failed, 3 refused (declared).
+   The check table is the one in `check.sh`'s run below.
+
+Run from 2026-10-09T00:04:50Z to 00:05:35Z, `L4=/Users/mengwong/.local/bin/l4 ./check.sh`, exit 0; l4 sha256 `f0759b2ef2f1d1b2a577c68f059c54f487de9d913553fc9f0d9bf0f7f5dab0d8` before and after.
+TOTAL (34 modules): 0 errors, 943 satisfied, 0 failed, 3 refused (the tester's, declared).
+
+**For IL-55.**
+Two additions to the inputs list: the mother's entitlement to the child allowance (from IL-06's s 66, for the new s 69 entry point), and nothing else new.
