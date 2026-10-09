@@ -1,0 +1,156 @@
+IMPORT prelude
+
+-- Property Tax Act 1960 (Singapore) -- the charge and its exemptions (s 6), the statutory rate (s 9), owners' notices
+-- (s 19), objections and appeals (ss 20A, 29), paying despite an objection (s 35A), the late-payment penalty (s 36), the
+-- seller who gives no notice (s 47), and the owner's deduction from rent (s 6(10), (11)).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/ (amendments to
+-- Act 33 of 2022).
+--
+-- WHY THIS ACT. Cited by 36 of the 527 Singapore Acts deposited in this repository, 24 of them for s 10 (the Valuation
+-- List): other Acts measure their own charges by annual value. SCOPED to the owner's obligations and remedies. Not
+-- encoded: administration, valuation by gross receipts, the Valuation Review Board's constitution and procedure, recovery
+-- by attachment and sale, street and building names (Part 6), offences, and the rate orders under s 9(2), which set the
+-- rates actually paid by most owners and were not retrieved.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Property Tax Act 1960 -- the owner`
+
+§§ `6, 9 -- the charge`
+
+-- s 2: "annual value" of a building or land is "the gross amount at which the same can reasonably be expected to be let
+-- from year to year, the landlord paying the expenses of repair, insurance, maintenance or upkeep and all taxes (other
+-- than goods and services tax)".
+-- s 6(1), (2): tax on the annual value of everything in the Valuation List, payable by the OWNER "yearly in advance
+-- without demand, in the month of January". (4): "a first charge on the property". (5): "No tax is payable on any [property]
+-- the annual value of which is $18 or less."
+-- s 9(1): "at the rate of 36% upon the annual value". (2): the Minister may set lower rates by order for prescribed
+-- properties. (The owner-occupier and other progressive rates are in such orders; none was retrieved, so the rate is a
+-- parameter, defaulting to the statutory 36%.)
+-- s 6(6): a building or part "used EXCLUSIVELY" (a) for public religious worship, (b) for a grant-aided public school,
+-- (c) for charitable purposes, or (d) for purposes conducive to social development, is exempt.
+GIVETH A NUMBER
+`the statutory rate` MEANS 0.36
+
+GIVEN `annual value` IS A NUMBER, `rate` IS A NUMBER, `exempt` IS A BOOLEAN
+GIVETH A NUMBER
+`the tax for the year` MEANS
+    IF `exempt` OR `annual value` AT MOST 18
+    THEN 0
+    ELSE `annual value` TIMES `rate`
+
+DECLARE Use HAS
+    `used exclusively for worship, a grant-aided school, charity or social development` IS A BOOLEAN
+    `also used partly for commercial letting` IS A BOOLEAN
+
+GIVEN `the use` IS A Use
+GIVETH A BOOLEAN
+DECIDE `the building or part is exempt under section 6(6)` IF
+        `the use`'s `used exclusively for worship, a grant-aided school, charity or social development`
+    AND NOT `the use`'s `also used partly for commercial letting`
+
+§§ `6(10), (11) -- deducting the tax from rent the owner pays`
+
+-- s 6(10): where premises are held subject to the owner's payment of "any rent, rentcharge, annuity or other like
+-- payment", the owner who has paid the tax may, "DESPITE ANY STIPULATION TO THE CONTRARY", deduct from that payment a sum
+-- bearing "the same proportion to the tax so paid ... as the amount of that rent ... bears to the annual value". (11):
+-- not from rent payable to the Government or a public authority.
+--
+-- An owner holding under a private ground lease passes part of the property tax up to the ground landlord, and no clause
+-- in the lease can stop it.
+GIVEN `tax paid` IS A NUMBER, `rent paid by the owner` IS A NUMBER, `annual value` IS A NUMBER, `rent is to the Government or a public authority` IS A BOOLEAN
+GIVETH A NUMBER
+`the deduction the owner may make` MEANS
+    IF `rent is to the Government or a public authority` OR `annual value` EQUALS 0
+    THEN 0
+    ELSE `tax paid` TIMES `rent paid by the owner` DIVIDED BY `annual value`
+
+§§ `19, 47 -- the seller's notice`
+
+-- s 19(1): on a sale or transfer the vendor "must, within ONE MONTH after the sale or transfer ... give notice thereof to
+-- the Chief Assessor". s 47(1): every seller "continues to be liable for the payment of all taxes payable in respect of
+-- the property ... which become payable ... at any time before the notice of transfer ... has been given". (2): the buyer's
+-- liability is unaffected. And s 6(4): the tax is a first charge on the property.
+--
+-- A seller who never gives notice remains liable for tax falling due after completion -- next January's tax included --
+-- jointly with the buyer, whose property carries the charge.
+GIVEN `tax fell due before the seller's notice` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the seller remains liable for the tax` IF
+    `tax fell due before the seller's notice`
+
+GIVEN `days since completion` IS A NUMBER, `notice given` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the seller is late with the notice` IF
+    `days since completion` GREATER THAN 30 AND NOT `notice given`
+
+-- s 19(3): notice of demolition within 15 days. (4): where a building is demolished "and no action has been taken to
+-- amend the Valuation List in respect thereof FOR ANY REASON", the owner must, "at the option of the Comptroller", either
+-- (a) continue to pay "as if the building had not been demolished", or (b) pay from the demolition date on any revised
+-- annual value later ascribed.
+--
+-- "For any reason" includes the Chief Assessor's own inaction after a timely notice. Limb (a) is at the Comptroller's
+-- option, not the owner's.
+GIVEN `the building was demolished` IS A BOOLEAN, `the Valuation List was amended` IS A BOOLEAN, `the owner gave timely notice` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Comptroller may tax the demolished building as standing` IF
+    `the building was demolished` AND NOT `the Valuation List was amended`
+
+§§ `20A, 29 -- objections and appeals`
+
+-- s 20A(1): an owner may object to the inclusion of a property or its annual value "at any time in that year". (2): an
+-- objection to an AMENDMENT made under s 20 must be within 30 days of the notice. (5): if allowed, the Chief Assessor may
+-- specify "any date in the year in which the objection is made" from which it takes effect. (7): appeal to the Valuation
+-- Review Board within 30 days, but only against a decision that DISALLOWED the objection or allowed it IN PART.
+-- s 29(4): a late appeal may be allowed for absence from Singapore, sickness or other reasonable cause, without
+-- unreasonable delay.
+DECLARE Objection HAS
+    `against an amendment under section 20` IS A BOOLEAN
+    `days since the amendment notice` IS A NUMBER
+    `made in the year the value applies` IS A BOOLEAN
+
+GIVEN `the objection` IS AN Objection
+GIVETH A BOOLEAN
+DECIDE `the objection is in time` IF
+    IF `the objection`'s `against an amendment under section 20`
+    THEN `the objection`'s `days since the amendment notice` AT MOST 30
+    ELSE `the objection`'s `made in the year the value applies`
+
+DECLARE Outcome IS ONE OF
+    `disallowed`
+    `allowed in whole`
+    `allowed in part`
+    `allowed as agreed`
+
+GIVEN `the outcome` IS AN Outcome, `days since the decision notice` IS A NUMBER, `late for reasonable cause without unreasonable delay` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `an appeal to the Valuation Review Board lies` IF
+        (CONSIDER `the outcome`
+            WHEN `disallowed` THEN TRUE
+            WHEN `allowed in part` THEN TRUE
+            OTHERWISE FALSE)
+    AND (`days since the decision notice` AT MOST 30 OR `late for reasonable cause without unreasonable delay`)
+
+§§ `35A, 36 -- pay first, and the penalty`
+
+-- s 35A(1): tax on the annual value in the List is payable "even if" a remission application, a claim, or "an objection
+-- or appeal" is pending.
+-- s 36(1): unpaid at the prescribed time, "a sum not exceeding 5% of the amount of outstanding tax is to be added". (2):
+-- remissible for good cause.
+GIVEN `an objection or appeal is pending` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the tax must still be paid on time` IF
+    TRUE
+
+GIVEN `outstanding tax` IS A NUMBER
+GIVETH A NUMBER
+`the maximum late-payment penalty` MEANS
+    `outstanding tax` TIMES 0.05
+
+-- s 6(14), (15): a refund of tax overpaid must be claimed "within 5 years of such excess payment".
+GIVEN `years since the excess payment` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the refund claim is in time` IF
+    `years since the excess payment` AT MOST 5
