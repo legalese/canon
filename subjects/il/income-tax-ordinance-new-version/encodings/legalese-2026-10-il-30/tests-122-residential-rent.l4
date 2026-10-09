@@ -1,0 +1,107 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `ito-il30-nouns`
+IMPORT `ito-88-definitions`
+IMPORT `ito-122-residential-rent`
+
+-- Tests for s 122 (rent of a residential apartment). Expected values were worked by hand from the section (10% of the rent less the
+-- (f) deduction, the deduction being the least of the qualifying rent, the rental income and 90,000) before they were run.
+-- All amounts are HYPOTHETICAL.
+
+§ `Tests of section 122`
+
+§§ `Fixtures`
+
+GIVEN amt IS A NUMBER
+      rent IS A BOOLEAN
+      care IS A BOOLEAN
+      tie  IS A `A tie between two persons, for the definition of "relative"`
+      payer IS A BOOLEAN
+      claimed IS A BOOLEAN
+GIVETH A `A payment of rent or of care fees`
+`a payment of` amt `, rent` rent `, care fees` care `, to` tie `, payer within the household` payer `, claimed elsewhere` claimed MEANS
+    `A payment of rent or of care fees` WITH
+        `the amount` IS amt
+        `rent for an apartment in Israel the payer rented to live in` IS rent
+        `the annual payment for keeping the payer or the payer's cohabiting spouse in an old people's home or a geriatric hospital` IS care
+        `the person paid` IS tie
+        `the payer is the individual, their cohabiting spouse, or a child under 18 living with them` IS payer
+        `the payment, or part of it, was claimed in computing the taxable income of the individual or of another` IS claimed
+
+GIVEN amt IS A NUMBER
+GIVETH A `A payment of rent or of care fees`
+`an ordinary rent payment of` amt MEANS
+    `a payment of` amt `, rent` TRUE `, care fees` FALSE `, to` `no tie` `, payer within the household` TRUE `, claimed elsewhere` FALSE
+
+GIVEN inisr IS A BOOLEAN
+      biz   IS A BOOLEAN
+      income IS A NUMBER
+      only  IS A BOOLEAN
+      pays  IS A LIST OF `A payment of rent or of care fees`
+GIVETH A `The letting of a residential apartment, for section 122`
+`a letting in Israel` inisr `, business income` biz `, rental income` income `, only apartment` only `, payments` pays MEANS
+    `The letting of a residential apartment, for section 122` WITH
+        `the apartment is used for living and is in Israel` IS inisr
+        `the rental income is income from a business under section 2(1)` IS biz
+        `the rental income of the individual, their cohabiting spouse and children under 18` IS income
+        `the apartment is the only apartment of the individual, within the meaning of section 9(c1c)(4) of the Real Estate Taxation Law` IS only
+        `the payments of rent and care fees in the year` IS pays
+        `the maximum depreciation or other write-down that could have been deducted for the years of the election, but for section 122(c)` IS 150_000
+
+GIVETH A LIST OF `A payment of rent or of care fees`
+`no payments` MEANS EMPTY
+
+§§ `Paragraph (a): the election and the 10%`
+-- Eligible, not the only apartment, no payments: 60,000 x 10% = 6,000.
+#ASSERT `s 122(a) — the election is open for` (`a letting in Israel` TRUE `, business income` FALSE `, rental income` 60_000 `, only apartment` FALSE `, payments` `no payments`)
+#ASSERT `s 122 — the tax at 10% on` (`a letting in Israel` TRUE `, business income` FALSE `, rental income` 60_000 `, only apartment` FALSE `, payments` `no payments`) EQUALS 6_000
+-- Business income: not open.  Not in Israel (or not used for living): not open.
+#ASSERT NOT `s 122(a) — the election is open for` (`a letting in Israel` TRUE `, business income` TRUE `, rental income` 60_000 `, only apartment` FALSE `, payments` `no payments`)
+#ASSERT NOT `s 122(a) — the election is open for` (`a letting in Israel` FALSE `, business income` FALSE `, rental income` 60_000 `, only apartment` FALSE `, payments` `no payments`)
+#ASSERT REFUSED `s 122 — the tax at 10% on` (`a letting in Israel` TRUE `, business income` TRUE `, rental income` 60_000 `, only apartment` FALSE `, payments` `no payments`) BECAUSE "section 122(a) is open only to rent from an apartment used for living in Israel that is not business income under section 2(1); otherwise the tax is that of section 121"
+#ASSERT REFUSED `s 122 — the tax at 10% on` (`a letting in Israel` FALSE `, business income` FALSE `, rental income` 60_000 `, only apartment` FALSE `, payments` `no payments`) BECAUSE "section 122(a) is open only to rent from an apartment used for living in Israel that is not business income under section 2(1); otherwise the tax is that of section 121"
+
+§§ `Paragraph (f): qualifying rent for the only apartment`
+-- Only apartment, income 120,000, rent paid 100,000: the deduction is the least of 100,000, 120,000 and 90,000 = 90,000; the tax (120,000 - 90,000) x 10% = 3,000.
+#ASSERT `s 122(f) — the deduction for qualifying rent, of` (`a letting in Israel` TRUE `, business income` FALSE `, rental income` 120_000 `, only apartment` TRUE `, payments` (LIST `an ordinary rent payment of` 100_000)) EQUALS 90_000
+#ASSERT `s 122 — the tax at 10% on` (`a letting in Israel` TRUE `, business income` FALSE `, rental income` 120_000 `, only apartment` TRUE `, payments` (LIST `an ordinary rent payment of` 100_000)) EQUALS 3_000
+-- Rent 89,999 is below 90,000: deduction 89,999; tax (120,000 - 89,999) x 10% = 3,000.1.
+#ASSERT `s 122(f) — the deduction for qualifying rent, of` (`a letting in Israel` TRUE `, business income` FALSE `, rental income` 120_000 `, only apartment` TRUE `, payments` (LIST `an ordinary rent payment of` 89_999)) EQUALS 89_999
+#ASSERT `s 122 — the tax at 10% on` (`a letting in Israel` TRUE `, business income` FALSE `, rental income` 120_000 `, only apartment` TRUE `, payments` (LIST `an ordinary rent payment of` 89_999)) EQUALS 3_000.1
+-- The income is the lower: income 50,000, rent 80,000: deduction 50,000; tax 0.
+#ASSERT `s 122(f) — the deduction for qualifying rent, of` (`a letting in Israel` TRUE `, business income` FALSE `, rental income` 50_000 `, only apartment` TRUE `, payments` (LIST `an ordinary rent payment of` 80_000)) EQUALS 50_000
+#ASSERT `s 122 — the tax at 10% on` (`a letting in Israel` TRUE `, business income` FALSE `, rental income` 50_000 `, only apartment` TRUE `, payments` (LIST `an ordinary rent payment of` 80_000)) EQUALS 0
+-- Two payments of 40,000 and 30,000 = 70,000, income 200,000: deduction 70,000; tax 13,000.
+#ASSERT `s 122 — the tax at 10% on` (`a letting in Israel` TRUE `, business income` FALSE `, rental income` 200_000 `, only apartment` TRUE `, payments` (LIST `an ordinary rent payment of` 40_000, `an ordinary rent payment of` 30_000)) EQUALS 13_000
+-- Two payments of 60,000 = 120,000 over the 90,000 cap, income 300,000: deduction 90,000; tax 21,000.
+#ASSERT `s 122 — the tax at 10% on` (`a letting in Israel` TRUE `, business income` FALSE `, rental income` 300_000 `, only apartment` TRUE `, payments` (LIST `an ordinary rent payment of` 60_000, `an ordinary rent payment of` 60_000)) EQUALS 21_000
+-- Not the only apartment: no deduction though rent was paid: 120,000 x 10% = 12,000.
+#ASSERT `s 122(f) — the deduction for qualifying rent, of` (`a letting in Israel` TRUE `, business income` FALSE `, rental income` 120_000 `, only apartment` FALSE `, payments` (LIST `an ordinary rent payment of` 100_000)) EQUALS 0
+#ASSERT `s 122 — the tax at 10% on` (`a letting in Israel` TRUE `, business income` FALSE `, rental income` 120_000 `, only apartment` FALSE `, payments` (LIST `an ordinary rent payment of` 100_000)) EQUALS 12_000
+
+§§ `What is qualifying rent (f)(1)`
+-- Care fees for a nursing or geriatric home qualify: 30,000 of care fees, income 100,000: deduction 30,000, tax 7,000.
+#ASSERT `s 122(f)(1) — the payment is qualifying rent` (`a payment of` 30_000 `, rent` FALSE `, care fees` TRUE `, to` `no tie` `, payer within the household` TRUE `, claimed elsewhere` FALSE)
+#ASSERT `s 122 — the tax at 10% on` (`a letting in Israel` TRUE `, business income` FALSE `, rental income` 100_000 `, only apartment` TRUE `, payments` (LIST `a payment of` 30_000 `, rent` FALSE `, care fees` TRUE `, to` `no tie` `, payer within the household` TRUE `, claimed elsewhere` FALSE)) EQUALS 7_000
+-- Neither rent nor care fees: not qualifying.
+#ASSERT NOT `s 122(f)(1) — the payment is qualifying rent` (`a payment of` 30_000 `, rent` FALSE `, care fees` FALSE `, to` `no tie` `, payer within the household` TRUE `, claimed elsewhere` FALSE)
+-- Paid to a sibling or a descendant of a sibling (paragraphs (1) and (2)): not qualifying. Paid to a person with a paragraph (3) or (4) tie: qualifying.
+#ASSERT NOT `s 122(f)(1) — the payment is qualifying rent` (`a payment of` 30_000 `, rent` TRUE `, care fees` FALSE `, to` (`a tie of paragraph (1)` `sibling`) `, payer within the household` TRUE `, claimed elsewhere` FALSE)
+#ASSERT NOT `s 122(f)(1) — the payment is qualifying rent` (`a payment of` 30_000 `, rent` TRUE `, care fees` FALSE `, to` (`a tie of paragraph (2)` `descendant of a sibling`) `, payer within the household` TRUE `, claimed elsewhere` FALSE)
+#ASSERT `s 122(f)(1) — the payment is qualifying rent` (`a payment of` 30_000 `, rent` TRUE `, care fees` FALSE `, to` (`a body of persons held by the person or by a relative of the person` (50%)) `, payer within the household` TRUE `, claimed elsewhere` FALSE)
+#ASSERT `s 122(f)(1) — the payment is qualifying rent` (`a payment of` 30_000 `, rent` TRUE `, care fees` FALSE `, to` `a trustee as paragraph (4) describes` `, payer within the household` TRUE `, claimed elsewhere` FALSE)
+-- The payer is not the individual, a cohabiting spouse or a child under 18 living with them: not qualifying.
+#ASSERT NOT `s 122(f)(1) — the payment is qualifying rent` (`a payment of` 30_000 `, rent` TRUE `, care fees` FALSE `, to` `no tie` `, payer within the household` FALSE `, claimed elsewhere` FALSE)
+-- Claimed in computing the taxable income of anyone: not qualifying.
+#ASSERT NOT `s 122(f)(1) — the payment is qualifying rent` (`a payment of` 30_000 `, rent` TRUE `, care fees` FALSE `, to` `no tie` `, payer within the household` TRUE `, claimed elsewhere` TRUE)
+-- A mixed list: a sibling payment of 50,000 does not count, a stranger's 20,000 does: income 100,000, only apartment: deduction 20,000, tax 8,000.
+#ASSERT `s 122 — the tax at 10% on` (`a letting in Israel` TRUE `, business income` FALSE `, rental income` 100_000 `, only apartment` TRUE `, payments` (LIST `a payment of` 50_000 `, rent` TRUE `, care fees` FALSE `, to` (`a tie of paragraph (1)` `sibling`) `, payer within the household` TRUE `, claimed elsewhere` FALSE, `an ordinary rent payment of` 20_000)) EQUALS 8_000
+
+§§ `Paragraph (a1) and the second limb of (c)`
+-- The tax year 2026 ends on 31 December 2026; 30 days later is 30 January 2027.
+#ASSERT `s 122(a1) — the last day for payment for the tax year` 2026 EQUALS YMD 2027 1 30
+-- A leap year: tax year 2027 ends 31 December 2027; 30 days later is 30 January 2028.
+#ASSERT `s 122(a1) — the last day for payment for the tax year` 2027 EQUALS YMD 2028 1 30
+-- Betterment tax: the sale value 2,000,000 plus the 150,000 maximum write-down the letting forwent = 2,150,000.
+#ASSERT `s 122(c) — the sale value for betterment tax, being` 2_000_000 `for an apartment let under the election,` (`a letting in Israel` TRUE `, business income` FALSE `, rental income` 60_000 `, only apartment` FALSE `, payments` `no payments`) EQUALS 2_150_000
