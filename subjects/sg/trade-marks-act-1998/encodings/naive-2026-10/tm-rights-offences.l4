@@ -1,0 +1,190 @@
+IMPORT prelude
+
+-- Trade Marks Act 1998 (Singapore) -- what a trader meets: how long registration lasts (s 18), revocation for non-use
+-- (s 22), infringement (s 27) and its exceptions (s 28), exhaustion and parallel imports (s 29), groundless threats (s 35),
+-- and the counterfeiting offences (ss 46, 47, 49, 51).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/TMA1998.txt.
+--
+-- WHY THIS ACT. Cited by 23 of the 527 Singapore Acts deposited in this repository, thinly. SCOPED to the rights a
+-- registration gives and the offences. Not encoded: application and examination, the absolute and relative grounds for
+-- refusal (ss 7 to 9), priority, invalidity, trade marks as property and licensing, the Madrid Protocol and well-known marks
+-- beyond s 27(3), collective and certification marks, border enforcement, and the Registry.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Trade Marks Act 1998 -- rights and offences`
+
+§§ `18, 22 -- duration, and losing the mark for non-use`
+
+-- s 18: registered "for a period of 10 years", renewable for further periods of 10 years.
+-- s 22(1)(a), (b): revocable if not put to genuine use in Singapore within 5 years after registration, or if use is
+-- suspended for an uninterrupted 5 years, "and there are no proper reasons for non-use". (c): if it has become the common
+-- name for the product through the proprietor's acts or inactivity. (d): if the proprietor's use makes it misleading.
+-- (3): not revoked if use began or resumed after the 5 years but before the application -- but (4) use begun in the 3
+-- months before the application is disregarded unless preparations began before the proprietor knew an application might
+-- be made.
+DECLARE Use HAS
+    `years without genuine use` IS A NUMBER
+    `proper reasons for non-use` IS A BOOLEAN
+    `use resumed before the application` IS A BOOLEAN
+    `resumption was within 3 months before the application` IS A BOOLEAN
+    `preparations began before the proprietor knew of a likely application` IS A BOOLEAN
+
+GIVEN `the use` IS A Use
+GIVETH A BOOLEAN
+DECIDE `the resumption counts` IF
+        `the use`'s `use resumed before the application`
+    AND (    NOT `the use`'s `resumption was within 3 months before the application`
+         OR  `the use`'s `preparations began before the proprietor knew of a likely application`)
+
+GIVEN `the use` IS A Use
+GIVETH A BOOLEAN
+DECIDE `the mark is liable to revocation for non-use` IF
+        `the use`'s `years without genuine use` AT LEAST 5
+    AND NOT `the use`'s `proper reasons for non-use`
+    AND NOT `the resumption counts` `the use`
+
+§§ `27, 28 -- infringement and its exceptions`
+
+-- s 27(1): using in the course of trade, without consent, an IDENTICAL sign on IDENTICAL goods -- infringement, no confusion
+-- needed. (2): identical sign on similar goods, or similar sign on identical or similar goods -- infringement only with "a
+-- likelihood of confusion". (3): for a mark well known in Singapore, a similar sign on DISSIMILAR goods if it indicates a
+-- connection, is likely to confuse, and is likely to damage the proprietor.
+-- s 28(1): no infringement by honest use of one's own name, of descriptive indications, or to indicate intended purpose
+-- (spare parts). (2): continuous prior use of an unregistered mark from before the registration or the proprietor's first use.
+-- (4): "(a) fair use in comparative commercial advertising ...; (b) ... a NON-COMMERCIAL purpose; or (c) ... news reporting
+-- or news commentary".
+DECLARE Similarity IS ONE OF
+    `identical`
+    `similar`
+    `dissimilar`
+
+DECLARE UseFacts HAS
+    `sign` IS A Similarity
+    `goods` IS A Similarity
+    `in the course of trade` IS A BOOLEAN
+    `with consent` IS A BOOLEAN
+    `likelihood of confusion` IS A BOOLEAN
+    `the mark is well known and the use damages and indicates a connection` IS A BOOLEAN
+    `a section 28 exception applies` IS A BOOLEAN
+
+GIVEN `the facts` IS A UseFacts
+GIVETH A BOOLEAN
+DECIDE `the use infringes` IF
+        `the facts`'s `in the course of trade`
+    AND NOT `the facts`'s `with consent`
+    AND NOT `the facts`'s `a section 28 exception applies`
+    AND CONSIDER `the facts`'s `sign`
+        WHEN `dissimilar` THEN FALSE
+        WHEN `identical` THEN
+            CONSIDER `the facts`'s `goods`
+            WHEN `identical` THEN TRUE
+            WHEN `similar` THEN `the facts`'s `likelihood of confusion`
+            WHEN `dissimilar` THEN `the facts`'s `likelihood of confusion` AND `the facts`'s `the mark is well known and the use damages and indicates a connection`
+        WHEN `similar` THEN
+            CONSIDER `the facts`'s `goods`
+            WHEN `dissimilar` THEN `the facts`'s `likelihood of confusion` AND `the facts`'s `the mark is well known and the use damages and indicates a connection`
+            OTHERWISE `the facts`'s `likelihood of confusion`
+
+DECLARE Exception IS ONE OF
+    `honest use of one's own name`
+    `honest descriptive use`
+    `spare parts compatibility`
+    `earlier continuous unregistered use`
+    `fair comparative advertising`
+    `non-commercial use`
+    `news reporting`
+    `a parody t-shirt sold for profit`
+
+GIVEN `the exception` IS AN Exception
+GIVETH A BOOLEAN
+DECIDE `the exception is in section 28` IF
+    CONSIDER `the exception`
+    WHEN `a parody t-shirt sold for profit` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `29 -- parallel imports`
+
+-- s 29(1): no infringement by use "in relation to goods which have been put on the market, whether in Singapore OR OUTSIDE
+-- SINGAPORE, under that trade mark by the proprietor ... or with the proprietor's express or implied consent". (2): unless
+-- "(a) the condition of the goods has been changed or impaired ... AND (b) the use ... has caused dilution in an unfair manner".
+--
+-- Singapore has international exhaustion: genuine goods bought cheaply abroad may be imported and sold here. The exception
+-- needs BOTH changed condition AND unfair dilution; repackaged goods that cause no dilution remain lawful.
+DECLARE Import HAS
+    `genuine goods put on the market abroad by or with the proprietor's consent` IS A BOOLEAN
+    `condition changed or impaired` IS A BOOLEAN
+    `causes unfair dilution` IS A BOOLEAN
+
+GIVEN `the import` IS AN Import
+GIVETH A BOOLEAN
+DECIDE `the parallel import is lawful` IF
+        `the import`'s `genuine goods put on the market abroad by or with the proprietor's consent`
+    AND NOT (`the import`'s `condition changed or impaired` AND `the import`'s `causes unfair dilution`)
+
+§§ `35 -- groundless threats`
+
+-- s 35(1): a person threatened with infringement proceedings may sue for a declaration, injunction or damages -- EXCEPT
+-- where the threat concerns "(a) the application of the mark to goods or ... packaging; (b) the importation of goods ...;
+-- or (c) the supply of services under the mark". (3): relief unless the threatener proves infringement; (4) even then, if
+-- the claimant shows the registration invalid or revocable. (5): mere notice of registration is not a threat. (6): an
+-- advocate and solicitor acting for a client is not liable.
+--
+-- A proprietor can threaten a manufacturer or importer with impunity. Threatening a retailer who only sells is actionable
+-- unless the threat is justified.
+DECLARE Threatened IS ONE OF
+    `a manufacturer applying the mark`
+    `an importer`
+    `a service provider using the mark`
+    `a retailer who only sells`
+
+GIVEN `the target` IS A Threatened, `the threatener proves infringement` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the threatened person has a remedy` IF
+        NOT `the threatener proves infringement`
+    AND CONSIDER `the target`
+        WHEN `a retailer who only sells` THEN TRUE
+        OTHERWISE FALSE
+
+§§ `46, 47, 49, 51 -- offences`
+
+-- s 46: counterfeiting a registered mark -- $100,000 or 5 years; (3) the ACCUSED must prove the proprietor's consent.
+-- s 47: falsely applying a mark, "unless the person proves that the person acted innocently" -- $100,000 or 5 years.
+-- s 49: importing for trade, selling, or possessing for trade goods with a falsely applied mark, unless the person proves
+-- reasonable precautions plus no reason to suspect plus full disclosure of suppliers, or innocence -- "$10,000 for EACH goods
+-- or thing ... (but not exceeding in the aggregate $100,000) or ... 5 years".
+-- s 51(1): falsely representing a mark as registered, knowing -- $10,000. (2): the word "registered", or ANY SYMBOL importing
+-- registration (such as an R in a circle), is deemed a representation of SINGAPORE registration unless shown to refer to
+-- registration elsewhere where the mark is in fact registered.
+GIVEN `items` IS A NUMBER
+GIVETH A NUMBER
+`the maximum fine for selling counterfeits` MEANS
+    IF `items` TIMES 10000 GREATER THAN 100000 THEN 100000 ELSE `items` TIMES 10000
+
+DECLARE Seller HAS
+    `took all reasonable precautions` IS A BOOLEAN
+    `had no reason to suspect` IS A BOOLEAN
+    `disclosed all suppliers on demand` IS A BOOLEAN
+    `acted innocently` IS A BOOLEAN
+
+GIVEN `the seller` IS A Seller
+GIVETH A BOOLEAN
+DECIDE `the seller has a section 49 defence` IF
+        (    `the seller`'s `took all reasonable precautions`
+         AND `the seller`'s `had no reason to suspect`
+         AND `the seller`'s `disclosed all suppliers on demand`)
+    OR  `the seller`'s `acted innocently`
+
+DECLARE RSymbol HAS
+    `registered in Singapore` IS A BOOLEAN
+    `shown to refer to a foreign registration that exists` IS A BOOLEAN
+    `knew or had reason to believe it was false` IS A BOOLEAN
+
+GIVEN `the symbol` IS AN RSymbol
+GIVETH A BOOLEAN
+DECIDE `using the registered symbol is an offence` IF
+        NOT `the symbol`'s `registered in Singapore`
+    AND NOT `the symbol`'s `shown to refer to a foreign registration that exists`
+    AND `the symbol`'s `knew or had reason to believe it was false`
