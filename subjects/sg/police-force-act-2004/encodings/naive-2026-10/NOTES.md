@@ -110,6 +110,13 @@ them detain and search a person interfering with a crime scene. Asserted.
 - **s 110:** cash up to $1,000, perishables and things costly to keep may be disposed
   of at once.
 
+## Relation to other rows
+
+The Road Traffic Act 1961, s 65AA(2), orders forfeiture of a vehicle on conviction
+under "section 26(2) of the Police Force Act 2004". In this Act as deposited,
+s 26(2) is the officer's power to order a driver to stop; the offence is s 26(5)
+(penalty s 26(8)). See the `road-traffic-act-1961` row, finding 1.
+
 ## What would need doing before this is worth anything
 
 - **No case law was searched**, and finding 4 most needs it.
