@@ -1,0 +1,187 @@
+IMPORT prelude
+
+-- Police Force Act 2004 (Singapore) -- lost property and small intestate estates (ss 108 to 110A), unlicensed
+-- security activity (s 86A), impersonating the police (s 120A), the general penalty (s 111), composition (s 112A)
+-- and the disciplinary limitation period (s 115).
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Police Force Act 2004 -- property and offences`
+
+§§ `108 -- lost property handed to the police`
+
+-- s 108(1)(b): if a person appears to the Commissioner to be the owner, the property "MUST be returned" unless they
+-- cannot be located after reasonable inquiry or do not exercise their right to recover it.
+-- (2): property becomes "unclaimed property" if, "at the end of 30 DAYS after the day on which the property was so
+-- deposited", there is no apparent owner, or the owner has not been located or has not claimed.
+-- (1)(c): unclaimed property may be sold, forfeited (cash) or destroyed.
+-- (5): if the apparent owner claims "before the end of ONE YEAR starting from the day on which the property was
+-- deposited", the Commissioner "MAY" return it, or refund the cash or sale proceeds.
+-- (4): a buyer at a sale "obtains good title".
+-- (6): "A finder of any lost property deposited ... has NO RIGHTS in relation to that property by reason of being the
+-- finder".
+--
+-- Three tiers: inside 30 days the owner MUST get it back; from 30 days to a year the Commissioner MAY give it back;
+-- after a year, nothing. The honest finder gets nothing at any stage.
+DECLARE LostProperty HAS
+    `days since deposit` IS A NUMBER
+    `an apparent owner has been identified` IS A BOOLEAN
+    `the owner was located and claimed within 30 days` IS A BOOLEAN
+    `the owner is claiming now` IS A BOOLEAN
+
+GIVEN `the property` IS A LostProperty
+GIVETH A BOOLEAN
+DECIDE `the property is unclaimed property` IF
+        `the property`'s `days since deposit` AT LEAST 30
+    AND NOT (    `the property`'s `an apparent owner has been identified`
+             AND `the property`'s `the owner was located and claimed within 30 days`)
+
+GIVEN `the property` IS A LostProperty
+GIVETH A BOOLEAN
+DECIDE `the property must be returned to the owner` IF
+        `the property`'s `an apparent owner has been identified`
+    AND `the property`'s `the owner is claiming now`
+    AND NOT `the property is unclaimed property` `the property`
+
+GIVEN `the property` IS A LostProperty
+GIVETH A BOOLEAN
+DECIDE `the Commissioner may return or refund on a late claim` IF
+        `the property is unclaimed property` `the property`
+    AND `the property`'s `an apparent owner has been identified`
+    AND `the property`'s `the owner is claiming now`
+    AND `the property`'s `days since deposit` LESS THAN 365
+
+GIVEN `the property` IS A LostProperty
+GIVETH A BOOLEAN
+DECIDE `the finder has rights in the property` IF
+    FALSE
+
+-- s 108(3): sale proceeds go first to the expenses of sale, then storage, then the Consolidated Fund.
+GIVEN `proceeds` IS A NUMBER, `sale expenses` IS A NUMBER, `storage expenses` IS A NUMBER
+GIVETH A NUMBER
+`the balance paid into the Consolidated Fund` MEANS
+    IF `proceeds` GREATER THAN `sale expenses` PLUS `storage expenses`
+    THEN `proceeds` MINUS `sale expenses` MINUS `storage expenses`
+    ELSE 0
+
+§§ `109 -- small intestate estates`
+
+-- s 109(1): movable property of a deceased person "under $1,000 in value" taken into police custody may be delivered
+-- "without letters of administration" to a claimant who satisfies the Commissioner. (4): unclaimed after ONE MONTH,
+-- non-cash property may be sold. (5): "where the owner ... appears after it has been disposed ... and claims the same,
+-- restitution MUST be made, on the claim being established".
+--
+-- Contrast s 108(5): an owner of LOST property who comes back after a year has no claim, and one inside the year gets
+-- only the Commissioner's discretion. An owner of a dead person's property (s 109(5)) is entitled to restitution with no
+-- time limit at all.
+GIVEN `value` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the estate may be handed over without letters of administration` IF
+    `value` LESS THAN 1000
+
+DECLARE LateOwner IS ONE OF
+    `the owner of lost property`
+    `the owner of a deceased person's property`
+
+GIVEN `who` IS A LateOwner, `days since deposit` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `a late owner is entitled to restitution` IF
+    CONSIDER `who`
+    WHEN `the owner of a deceased person's property` THEN TRUE
+    WHEN `the owner of lost property` THEN FALSE
+
+-- s 110(1): cash of not more than $1,000, perishable property, rapidly depreciating property, or property dangerous or
+-- costly to keep, may be paid in, sold or destroyed AT ONCE.
+DECLARE Item HAS
+    `is cash` IS A BOOLEAN
+    `amount` IS A NUMBER
+    `is perishable` IS A BOOLEAN
+    `may rapidly depreciate` IS A BOOLEAN
+    `is dangerous or costly to keep` IS A BOOLEAN
+
+GIVEN `the item` IS AN Item
+GIVETH A BOOLEAN
+DECIDE `the item may be disposed of at once` IF
+        (`the item`'s `is cash` AND `the item`'s `amount` AT MOST 1000)
+    OR  `the item`'s `is perishable`
+    OR  `the item`'s `may rapidly depreciate`
+    OR  `the item`'s `is dangerous or costly to keep`
+
+§§ `86A -- carrying on security activity`
+
+-- s 2(1): "security activity" includes (a) using or bearing ARMS as a bodyguard or crowd controller; (b) using or
+-- bearing arms while guarding property (including cash in transit); (c) other prescribed armed security activity;
+-- (d) "the detention or arrest of individuals that police officers or law enforcement officers are authorised under
+-- written law to apprehend"; (e) employing or providing persons for (a) to (c).
+-- s 86A(1): a person who is not an authorised employer of an Auxiliary Police Force and who in the course of business
+-- carries on, or advertises, security activity commits an offence; (2): an individual, $500,000 or 3 years, and
+-- $50,000 a day; anyone else, $1 million and $100,000 a day.
+--
+-- Limb (d) needs no arms. A business whose staff detain people the police could arrest -- shoplifters, for example --
+-- is carrying on "security activity" within the text of (d). Whether a store detective's detention is what (d) means is
+-- a question this row cannot answer.
+DECLARE Activity IS ONE OF
+    `an armed bodyguard`
+    `armed guarding of cash in transit`
+    `unarmed guarding of a building`
+    `detaining shoplifters for the police`
+    `supplying armed guards`
+    `supplying unarmed guards`
+
+GIVEN `the activity` IS AN Activity
+GIVETH A BOOLEAN
+DECIDE `the activity is security activity` IF
+    CONSIDER `the activity`
+    WHEN `unarmed guarding of a building` THEN FALSE
+    WHEN `supplying unarmed guards` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the activity` IS AN Activity, `in the course of business` IS A BOOLEAN, `an authorised Auxiliary Police Force employer` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the person commits the section 86A offence` IF
+        `the activity is security activity` `the activity`
+    AND `in the course of business`
+    AND NOT `an authorised Auxiliary Police Force employer`
+
+§§ `120A -- impersonating the police`
+
+-- s 120A(1): a non-officer who wears or possesses a police uniform or uses insignia to personate an officer, or knowing
+-- it likely to make the public think they are one; uses a police rank in business for the same; represents themselves
+-- as an officer to personate one; or uses uniform or insignia in business to falsely claim police permission,
+-- sponsorship or custom -- $2,500 or 6 MONTHS.
+--
+-- Impersonating a police officer under this Act carries six months. Failing to stop at a police roadblock (s 26)
+-- carries seven years. (Personating a public servant is also a Penal Code offence, which this row does not read.)
+GIVEN `wore a police uniform` IS A BOOLEAN, `to personate an officer or knowing the public would likely be misled` IS A BOOLEAN, `is a police officer` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the person commits the uniform offence` IF
+        `wore a police uniform`
+    AND `to personate an officer or knowing the public would likely be misled`
+    AND NOT `is a police officer`
+
+GIVETH A NUMBER
+`the maximum imprisonment for impersonation, in months` MEANS 6
+
+§§ `111, 112A, 115 -- penalties, composition, limitation`
+
+-- s 111: the general penalty is $1,000 or 3 months. s 112A(2): composition up to the lower of half the maximum fine or
+-- $5,000; service and disciplinary offences cannot be compounded (112A(1)).
+-- s 115(1): disciplinary proceedings against a special police officer who is a national serviceman must begin within
+-- 3 years of the later of the offence and its discovery. (2): desertion and absence without leave "at any time".
+GIVEN `maximum fine` IS A NUMBER
+GIVETH A NUMBER
+`the most that can be collected on composition` MEANS
+    IF `maximum fine` DIVIDED BY 2 LESS THAN 5000 THEN `maximum fine` DIVIDED BY 2 ELSE 5000
+
+DECLARE NSOffence IS ONE OF
+    `desertion`
+    `absence without leave`
+    `another disciplinary offence`
+
+GIVEN `the offence` IS AN NSOffence, `years since the later of offence and discovery` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `disciplinary proceedings may still begin` IF
+    CONSIDER `the offence`
+    WHEN `another disciplinary offence` THEN `years since the later of offence and discovery` LESS THAN 3
+    OTHERWISE TRUE
