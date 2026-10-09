@@ -1,0 +1,143 @@
+IMPORT prelude
+
+-- Family Justice Act 2014 (Singapore) -- privacy of family proceedings (s 10), controls on repeat applications (s 11A),
+-- orders without application (s 11B), restricted cross-examination (s 11C), where family applications start (s 26(3A)),
+-- appeals from the Family Courts (s 23 and the Second Schedule), agreements not to appeal (s 33), and no automatic stay
+-- (s 34).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/FJA2014.txt
+-- (incorporating the Family Justice Reform Act 2023).
+--
+-- WHY THIS ACT. Cited by 24 of the 527 Singapore Acts deposited in this repository, 16 of them for s 46 (Family Justice
+-- Rules). SCOPED to what a family litigant meets. Not encoded: the courts' constitution and officers (Parts 2 and 3
+-- otherwise), the Family Division's original and criminal jurisdiction, Youth Courts, the Registrar, and Part 5 otherwise.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Family Justice Act 2014 -- family proceedings`
+
+§§ `10 -- privacy`
+
+-- s 10(1): "all matters and proceedings in a Family Justice Court MUST be heard in private", unless (2) the court is
+-- satisfied an open hearing is expedient in the interests of justice or for other sufficient reason.
+-- (4): the court may order that no one publish a witness's name, address or photograph, or anything likely to identify
+-- them, or prejudicial national-interest information. (5): breach of an order under (3) or (4) -- $5,000 or 3 YEARS.
+GIVEN `the court found an open hearing expedient` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the hearing is in private` IF
+    NOT `the court found an open hearing expedient`
+
+GIVEN `a non-publication order was made` IS A BOOLEAN, `published identifying details` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the publisher commits the section 10 offence` IF
+    `a non-publication order was made` AND `published identifying details`
+
+GIVETH A NUMBER
+`the maximum imprisonment in months for breaching a publication order` MEANS 36
+
+§§ `11A -- repeat and obstructive applications`
+
+-- s 11A(2): after an order, if a further application to vary or set it aside "will or is likely to -- (a) be without merit,
+-- having regard to the party's past conduct ...; or (b) ... have an adverse effect on the welfare of the child", the court may
+-- forbid filing without permission. (5): likewise in pending proceedings for applications that would impede resolution or
+-- harm the child's welfare. (8): an application filed contrary to such an order "is to be treated as DISMISSED or expunged
+-- (a) WITHOUT the Court having to make any further order; and (b) without the need for any other party to be heard".
+-- (9): an application for the permission itself is never barred.
+DECLARE Filing HAS
+    `a filing restriction order is in force` IS A BOOLEAN
+    `permission was obtained` IS A BOOLEAN
+    `is itself an application for permission` IS A BOOLEAN
+
+GIVEN `the filing` IS A Filing
+GIVETH A BOOLEAN
+DECIDE `the filing is treated as dismissed automatically` IF
+        `the filing`'s `a filing restriction order is in force`
+    AND NOT `the filing`'s `permission was obtained`
+    AND NOT `the filing`'s `is itself an application for permission`
+
+DECLARE Ground IS ONE OF
+    `likely without merit given past conduct`
+    `likely to harm the child's welfare`
+    `likely to impede resolution of pending proceedings`
+    `inconvenient to the other party`
+
+GIVEN `the ground` IS A Ground
+GIVETH A BOOLEAN
+DECIDE `the ground supports a filing restriction` IF
+    CONSIDER `the ground`
+    WHEN `inconvenient to the other party` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `11B -- orders the court makes on its own motion`
+
+-- s 11B(1): the court may on its own motion make any order, "including an order of a SUBSTANTIVE nature", it could make on
+-- application. (2): a substantive order only if (a) every person likely to be affected has had an opportunity to be heard and
+-- (b) it is in the interests of justice.
+GIVEN `substantive` IS A BOOLEAN, `everyone affected was heard` IS A BOOLEAN, `in the interests of justice` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may make the order of its own motion` IF
+    IF `substantive` THEN `everyone affected was heard` AND `in the interests of justice` ELSE TRUE
+
+§§ `26(3A) -- where to start`
+
+-- s 26(3A): "Where an application may be made to either a Family Court or the Family Division of the High Court, the
+-- application MUST be made in the first instance to a Family Court."
+GIVEN `either court has jurisdiction` IS A BOOLEAN
+GIVETH A STRING
+`the court to apply to first` MEANS
+    IF `either court has jurisdiction` THEN "a Family Court" ELSE "the court with jurisdiction"
+
+§§ `23 and the Second Schedule -- appeals from a Family Court`
+
+-- s 23(2): "an appeal LIES to the General Division of the High Court from ANY decision of a Family Court exercising
+-- jurisdiction of a quasi-criminal or civil nature", subject to (2A): permission is needed for the Second Schedule cases --
+-- unconditional permission to defend; conditional permission to defend (unless the appellant is the party made to pay);
+-- setting aside a default judgment unconditionally; or conditionally (same exception). (2B): permission is needed for
+-- protection-order proceedings under Part 3 of the Protection from Harassment Act 2014. (2C): the permission decision is final.
+--
+-- There is no money threshold. A $10,000 maintenance order can be appealed from a Family Court as of right; a $10,000 civil
+-- judgment from a District Court needs permission (Supreme Court of Judicature Act s 21(1)(a), threshold $60,000).
+DECLARE FamilyOrder IS ONE OF
+    `a maintenance order`
+    `a custody order`
+    `a division of matrimonial assets`
+    `unconditional permission to defend`
+    `an unconditional setting aside of a default judgment`
+    `a Protection from Harassment Act protection order`
+
+GIVEN `the order` IS A FamilyOrder
+GIVETH A BOOLEAN
+DECIDE `permission is needed to appeal from the Family Court` IF
+    CONSIDER `the order`
+    WHEN `unconditional permission to defend` THEN TRUE
+    WHEN `an unconditional setting aside of a default judgment` THEN TRUE
+    WHEN `a Protection from Harassment Act protection order` THEN TRUE
+    OTHERWISE FALSE
+
+DECLARE LowerCourt IS ONE OF
+    `a Family Court`
+    `a District Court in a civil case`
+
+GIVEN `the court` IS A LowerCourt, `amount in dispute` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `an ordinary money judgment needs permission to appeal` IF
+    CONSIDER `the court`
+    WHEN `a Family Court` THEN FALSE
+    WHEN `a District Court in a civil case` THEN `amount in dispute` AT MOST 60000
+
+§§ `33, 34 -- agreeing not to appeal, and stays`
+
+-- s 33(1): no appeal from a Family Court in civil matters where the parties agreed IN WRITING, signed, that the decision is
+-- final, unless the appellant proves fraud, illegality or a fundamental breach of natural justice. (2): the agreement may be
+-- made before or after the decision.
+-- s 34(1): an appeal is no stay of execution unless the Family Court or High Court orders it.
+GIVEN `signed written agreement that the decision is final` IS A BOOLEAN, `fraud, illegality or fundamental breach of natural justice proved` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `an appeal can be brought despite the agreement` IF
+    (NOT `signed written agreement that the decision is final`) OR `fraud, illegality or fundamental breach of natural justice proved`
+
+GIVEN `a stay was ordered` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the order may be enforced pending appeal` IF
+    NOT `a stay was ordered`
