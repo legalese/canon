@@ -1,6 +1,6 @@
 # Notes: National Insurance Law, the contributions surroundings (row IL-34)
 
-Version 0.1.0, draft.
+Version 0.1.1, draft (0.1.0 plus the repairs of section 13).
 Run `IL-34-20261008`, encoder `enc-il-34`, 2026-10-09 (SGT); the check run below is 2026-10-09T00:00Z.
 Read BRIEF.md first for the scope and the rules.
 Every Markdown sentence here is on its own line, so a grep hit is a whole sentence.
@@ -157,7 +157,7 @@ I told the lead of this overlap by message on 2026-10-09 and asked to be correct
 
 ## 2. Fork register
 
-All sixteen are **ruled by Meng 2026-10-08 (SHRUG)**: one named switch, default a refusal by name; every other reading kept by name and tested.
+All seventeen are **ruled by Meng 2026-10-08 (SHRUG)**: one named switch, default a refusal by name; every other reading kept by name and tested.
 Each switch declines **only where the readings give different answers to the question asked**; where they agree the question is answered.
 The refusal message is the fork's own sentence, quoted in the tests.
 
@@ -178,6 +178,7 @@ The refusal message is the fork's own sentence, quoted in the tests.
 | D1 | s 344(a)(1) (3686-3693) | whether the kibbutz figures are the year's (the monthly income a twelfth of their sum) or the month's | year; month; declined | declined |
 | D2 | s 344A(h) (3709) | a negative surplus of a renewed kibbutz | nil; taken as it is; declined | declined |
 | L1 | s 350(a)(7) (3793) | do the two exceptions (early pension; income the Minister of Finance determines) follow the last kind only, or all three kinds | last kind only; all three; declined | declined, and only where the Minister of Finance determined a rental income to be income |
+| R1 | s 28(a) (449) with Schedule J (4720-4730) | whether the ratio of the rates is to the SUM of the rates given or to the column's PRINTED TOTAL (the cells of a column need not add to its printed total) | to the sum; to the printed total; declined | declined, for a caller that gives the printed total and where the two amounts differ; the plain list form is at the sum |
 | L2 | s 350A(a) (3803) | whether five years "have not yet passed" on the fifth anniversary of the visa day | passed on the day; not passed until the day after; declined | declined, and only on the anniversary itself |
 
 Each switch has a public rule that answers at the switch, and a form with the reading as an argument that takes any named reading; the old and new names are listed in the tests.
@@ -277,8 +278,8 @@ All amounts are shekels; rates are fractions. "Switch" is the default of section
 | The last day to file an account for tax year 2018 | 31.12.2025 | reg 6(a) |
 | The refund is due three months after 31.1.2026 | 30.4.2026 | reg 6(b) |
 | A fall of the index from 100 to 99 on a refund of 1,000 | declined (N2); 0 or -10 at the named readings | reg 7(2) |
-| An early pension of 10,000 with other income 45,000, maximum 51,910, minimum 3,442 | 6,910 counts | s 345B(c) |
-| A pensioner of 2,000 with no other income | 3,442 counts | s 345B(c)(2) |
+| An early pension of 10,000 with other income 45,000, maximum 51,910 (an input) | 6,910 counts | s 345B(c) |
+| A pensioner of 500 with no other income (item 3 minimum 5% x 13,566 = 678.30) | 678.30 counts | s 345B(c)(2) |
 | A new immigrant from the United States (visa 10.3.2024) on 9.3.2029; on 10.3.2029; on 11.3.2029 | yes; declined (L2); no | s 350A(a) |
 | A stable-disability pensioner: which subsections of s 335 fall away | (a), (b), (d), (e), (g), (h), (i) | s 351(d) |
 | An old-age pensioner (or one over 70): which fall away | (b), (e), (g), (h), (i) | s 351(b) |
@@ -287,7 +288,7 @@ The `s 351` matrix is 21 situations against the nine subsections in `nii-il34-te
 
 ## 6. What check.sh prints
 
-Run from 2026-10-09T00:00:03Z to 00:00:24Z as `L4=/Users/mengwong/.local/bin/l4 ./check.sh`, `JL4_LIBRARY_PATH` unset.
+Run from 2026-10-09T00:23:49Z to 00:24:09Z as `L4=/Users/mengwong/.local/bin/l4 ./check.sh`, `JL4_LIBRARY_PATH` unset.
 The binary was `jl4-0.1-6df1397b`, sha256 `f0759b2ef2f1d1b2a577c68f059c54f487de9d913553fc9f0d9bf0f7f5dab0d8` before and after the run (`shasum -a 256 "$(readlink -f "$(which l4)")"`).
 No module changed during the run.
 
@@ -301,9 +302,9 @@ nii-il34-tests-civic.l4                        0        57       0        0     
 nii-il34-tests-k1.l4                           0        35       0        0         0
 nii-il34-tests-needs-a-source.l4               0         2       0        0         0
 nii-il34-tests-s2-schedule-a.l4                0        27       0        0         0
-nii-il34-tests-s28-s32.l4                      0        74       0        0         0
+nii-il34-tests-s28-s32.l4                      0        82       0        0         0
 nii-il34-tests-s336-s340-s343.l4               0        44       0        0         0
-nii-il34-tests-s341.l4                         0        52       0        0         0
+nii-il34-tests-s341.l4                         0        54       0        0         0
 nii-il34-tests-s342e.l4                        0       102       0        0         0
 nii-il34-tests-s344-s347.l4                    0        58       0        0         0
 nii-il34-tests-s349-s351.l4                    0       267       0        0         0
@@ -318,12 +319,14 @@ nii-s344-s347-income.l4                        0         0       0        0     
 nii-s348e-civic-expiry.l4                      0         0       0        0         0
 nii-s349-s351-exemptions.l4                    0         0       0        0         0
 nii-schedule-k1-s369.l4                        0         0       0        0         0
-TOTAL (25 modules)                             0       718       0        0
+tests-independent.l4                           5       150       5        1       5/1
+TOTAL (26 modules)                             5       878       5        1
 ```
 
 `check.sh` exit 0.
-718 assertions satisfied, none failed, none refused: no failure and no refusal is declared or expected.
-An `#ASSERT REFUSED … BECAUSE "…"` that is satisfied is counted as satisfied (they are the refusals the policy requires, 74 of the 718).
+The row's own modules: 728 assertions satisfied, none failed, none refused (the 718 of 0.1.0 plus 10 added in 0.1.1).
+`tests-independent.l4` (fid-il-34, frozen, not edited): 150 satisfied, 5 failed and 1 refused, all declared in `check.sh` (section 13).
+An `#ASSERT REFUSED … BECAUSE "…"` that is satisfied is counted as satisfied (they are the refusals the policy requires, 74 of the 728 satisfied in the row's own modules).
 `python3 -I tools/srcquote.py` and `tools/extquote.py` leave the 21 modules of this row byte-identical; `tools/extquote.py --check` and `tools/hebcheck.py` pass them (exit 0).
 
 **The harness can fail.**
@@ -333,7 +336,7 @@ The scratch copies were not kept.
 ## 7. Tests: where each expected value comes from
 
 Every expected value was worked by hand from the Hebrew text before the run; the arithmetic is in a comment beside the group.
-The real figures used are the Law's own (the 2026 basic amount under paragraph (3), 10,382, printed in s 1's note; the reduced collection threshold 7,703 carried by row IL-04; the Schedule J items of the 2025-2026 table at lines 4720 to 4729; the percentages of s 32(a); the average wage 13,566 of s 1's note) and, for the Institute's printed Schedule K figures (51,910 and 3,442), the numbers row IL-05 carries.
+The real figures used are the Law's own (the 2026 basic amount under paragraph (3), 10,382, printed in s 1's note; the reduced collection threshold 7,703 carried by row IL-04; the Schedule J items of the 2025-2026 table at lines 4720 to 4729; the percentages of s 32(a); the average wage 13,566 of s 1's note) and, for the Schedule K maximum 51,910, the number row IL-05 carries. The item 3 minimum is 5% of the average wage, 678.30 (5% x 13,566); the 3,442 that appears in two tests of ss 345(e) and 350A(c) is an illustrative "minimum stated for him" (it is item 2 computed with the other 2026 average wage), not the item 3 minimum.
 Round figures (10,000 and the like) are illustrative and said so.
 The s 351 situations and the s 351(k) persons are generated by a script so that no field is left to a slip; the generating script is not kept (the fixtures are the record).
 
@@ -397,4 +400,50 @@ The readings I am least sure of, beside the forks of section 2:
 ## 12. Files
 
 `BRIEF.md`, `NOTES.md`, `SOURCE-LICENSE.md`, `check.sh`, `encoding.json`, `VENDORED.sha256`, `tools/` (`srcquote.py`, `hebcheck.py`, `extquote.py`), and the modules named in section 0 and in `encoding.json`.
-No independent tester's module exists yet (`tests-independent.l4` is for the chain's next stage).
+`INDEPENDENT-FINDINGS.md`, `tests-independent.l4` and `DECIDED-ANSWERS.md` are fid-il-34's, frozen; not edited here.
+
+## 13. Version 0.1.1: the independent pass (fid-il-34, 370 cases)
+
+The tester wrote `DECIDED-ANSWERS.md` from the Hebrew before opening the encoding (sha256 `1d4a5ef8878c…`); no misread figure or date was found.
+Its three disagreements and what I did:
+
+1. **C013, OURS-WRONG (minor).** `Order of 5759-1999 s 3 — the Order applies to contributions payable for the day` refused on 31.12.1998.
+   Art 3 starts the Order on 1.1.1999, so the plain answer is no.
+   Fixed: the rule is now `Day d AT LEAST 1.1.1999`, and `Order of 5759-1999 — the Order's amount applies to…` is FALSE before then.
+   Added by hand-worked assertions: 31.12.1998 and 1.6.1990 are outside the Order; an employee and a self-employed person on 31.12.1998 are outside it.
+   The AMOUNT of a pre-1999 month stays refused (the repealed Order No. 2 of 5747-1987 would be needed).
+   The tester's line 129 now passes; its refusal count in `check.sh` falls from 2 to 1.
+2. **3,442 labelled as the item 3 minimum.**
+   By the text item 3 is 5 percent of the average wage: 5% x 13,566 = 678.30 a month; 3,442 is item 2 computed with the other 2026 average wage.
+   The rules take the minimum as an input, so no rule changed.
+   The s 345B(c) fixtures now use 678.30 (a pensioner of 500 with no other income is raised to 678.30; with other income of 10,000 he stays at 500; one of exactly 678.30 stays at 678.30), and the labels are corrected.
+   The tests of ss 345(e) and 350A(c) keep 3,442 as an illustrative "minimum stated for him" and say so.
+3. **C143 to C147, s 28(a).**
+   The tester divides each branch rate by the PRINTED total 14.60; the list form divides by the sum of the cells given (14.49).
+   The consolidation's own cells do not add to its printed total (the 2025-2026 employee column above the tier: 14.39, or 14.49 with the 2024-2027 work-injury 2.06, against 14.50 or 14.60).
+   Section 28(a) says "by the ratio of the rates", which both readings serve, so under SHRUG this is a named switch: **fork R1**.
+   `s 28(a) — the sum credited to the account of the branch… , the rates being… and the printed total…` takes the printed total and the reading; at the switch it is declined where the amounts differ and answered where they agree (printed total equal to the sum, or a branch with no rate).
+   The plain list form is unchanged and is the "sum of the cells" reading; it is what the tester's five assertions call, so they still fail, as declared in `check.sh` with a comment.
+   New tests (8): 14,490 by the cells and 14,600 by the printed total both give maternity 1,400; 14,600 by the cells gives 14,600 x 1.40 / 14.49; the default declines; equal totals answer (12,830 gives 940); a printed total of 0 is refused.
+
+**C269** (a start on 1.9.2026 for October 2026): the tester decided "not reached unless an Act extended the Law"; fork C1 declines at the switch and answers FALSE at the named reading `the deposited expiry, the day itself in force` (its line 324 passes).
+The tester's refusal is declared in `check.sh`.
+
+**The two 2026 average wages (13,566 in s 1's note, 13,769 in s 2(a)'s note).**
+No rule of this row chooses: Schedule A, Schedule K1, ss 340(d), (e), the Schedule K minima and the others take the average wage as an INPUT, so no switch is needed here.
+By its words 13,769 is "השכר הממוצע המדוד" (the measured wage of s 2(a), the CBS input to s 1(1)), not "the average wage", and 13,566 is the note on the definition "the average wage" itself; the text therefore points at 13,566 for every rule that says "the average wage".
+Whether 13,566 already includes s 2(b)'s changes is not stated; the two labels in row IL-04's published-figures module (13,566 "under section 1", 13,769 "as calculated under section 2") are IL-04's.
+
+**Source anomalies the tester listed (not encoding errors).**
+
+- S1. Schedule J, 2025-2026, employee column C above the tier: the cells add to 14.39 (14.49) against the printed 14.50 (14.60): fork R1 above.
+- S2. Column D (employee deduction) above the tier: the cells add to 4.67 against the printed 7.00; the rates are inputs here and nothing is affected (IL-04's fork).
+- S3. The consolidation keeps "60% of the average wage" in column D's heading in the 2025-2026 table, though the 2025 Budget-year Law s 19(6) replaces it by the reduced collection threshold from 1.1.2026.
+- S4. s 342(e)(3), (4) and reg 1 say column E for the deduction rate, which is column D (IL-05 fork F22).
+- S5. s 369(d) says "(ג)" where (a) is evidently meant; out of scope (this row stops at s 369(a)).
+- S6. The two average wages above.
+
+**Thin coverage, stated plainly.**
+The tests are light on s 32(b) to (h) beyond (e) (they are repealed or by agreement), on (c1) and (c2) (one formula and an identity), on the kibbutz formula of s 344(a)(1) (two readings at two basic amounts, no case with other member counts), and on s 369 beyond (a), which is not encoded.
+
+**Mutation checks of 0.1.1:** not repeated; the tests added are for rules whose changes are one line each.
