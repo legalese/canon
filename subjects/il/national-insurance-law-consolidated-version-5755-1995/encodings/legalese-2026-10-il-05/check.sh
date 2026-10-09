@@ -47,7 +47,10 @@ expected_failed() {
 expected_refused() {
   case "$1" in
     # tests-independent.l4: lines 387 and 389 (H2, H3: s 348(d) for a quarter, refused by this row): 05-RC4,
-    # AMBIGUITY (fork F5, deeming or floor; waits on a ruling). Unchanged at 0.4.0.
+    # AMBIGUITY (fork F5, deeming or floor), class (b) under SHRUG (0.6.0): already declined where the readings differ.
+    # Version 0.6.0 (BACKLOG IL-50, SHRUG): still 2. Lines 367 and 371 (G3, G5; 05-X1) and 395 and 396 (H6;
+    # 05-F6), declined at the new switch, were re-pointed by the lead to the readings the tester decided, by
+    # name, values unchanged (the note at the end of tests-independent.l4), and pass.
     tests-independent.l4) echo 2 ;;
     *) echo 0 ;;
   esac

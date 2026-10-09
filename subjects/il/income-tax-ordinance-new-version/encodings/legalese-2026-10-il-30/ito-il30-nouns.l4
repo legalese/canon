@@ -1,0 +1,517 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+
+-- Income Tax Ordinance [New Version] and the Income Tax (Rules for
+-- Rounding Amounts) Order 5746-1986: special rates and other regimes (row IL-30).
+-- THE NOUNS: DECLARE and nothing else. Every rules module imports this one.
+--
+-- Sources, all deposited, none fetched by this row (hashes in encoding.json):
+--   the Ordinance   ../../registers/source-bundle/income-tax-ordinance-new-version.he.wiki.txt
+--   the Order       ../../registers/source-bundle/regulations/income-tax-rules-for-rounding-amounts-order-5746-1986.he.wiki.txt
+--   the RE Tax Law  ../../../real-estate-taxation-law-5723-1963/registers/source-bundle/real-estate-taxation-law-5723-1963.he.wiki.txt
+-- Hebrew Wikisource raw MediaWiki: unofficial consolidations. A `src:N` comment quotes line N of
+-- the one source file its module names, copied mechanically; nothing in Hebrew here is typed by hand.
+--
+-- Money is new Israeli shekels (NIS), as a bare NUMBER. Rates are percent literals as printed.
+-- Membership test for this module: a witness of ordinary competence could testify to the fact,
+-- or a return or register records it. Whether the fact makes tax payable is a rule, and belongs
+-- in the module of the section that says so.
+
+§ `Nouns for the special rates and other regimes (row IL-30)`
+
+§§ `Section 88 — who holds what, and the facts of a sale`
+
+-- Section 88 defines "means of control" in a body of persons by five rights. A person's holding is the
+-- fraction (a percent literal such as 10%) he holds of each kind, directly or indirectly. Whether he
+-- holds indirectly through another body is a computation outside this row, so each fraction is an input.
+-- The five kinds, in the order of paragraphs (1) to (5) of the definition (source lines 3250-3254):
+DECLARE `Holdings of means of control in one body of persons` HAS
+    `fraction of the right to profits`                                              IS A NUMBER  -- (1)
+    `fraction of the right to appoint a director or general manager`                IS A NUMBER  -- (2)
+    `fraction of the voting rights in the general meeting`                          IS A NUMBER  -- (3)
+    `fraction of the right to a share of the surplus assets on winding up`          IS A NUMBER  -- (4)
+    `fraction of the right to direct the holder of a right in (1) to (4) on how to use it` IS A NUMBER  -- (5)
+
+-- "Relative", s 88: four paragraphs (source lines 3296-3301). The tie of one person to the person asked about.
+DECLARE `A family tie of paragraph (1) of the definition of "relative"` IS ONE OF
+    `spouse`
+    `sibling`
+    `parent`
+    `parent of a parent`
+    `descendant`
+    `descendant of a spouse`
+    `the spouse of a spouse, sibling, parent, parent of a parent, descendant, or descendant of a spouse`
+
+DECLARE `A family tie of paragraph (2) of the definition of "relative"` IS ONE OF
+    `descendant of a sibling`
+    `sibling of a parent`
+
+-- Paragraph (3): a body of persons in the holding of a person or his relative, a person holding it, and a
+-- body held by a person holding it. "Holding" there is 25% or more of at least one kind of means of control.
+-- Paragraph (4): a trustee as defined in s 75C, as to the settlor of a trust of Israeli residents or of a trust
+-- of the kind the paragraph names, and as to the beneficiary of a trust whose beneficiary is a non-resident
+-- or of a trust under a will. Whether a trustee stands in that tie is a fact the caller supplies.
+DECLARE `A tie between two persons, for the definition of "relative"` IS ONE OF
+    `a tie of paragraph (1)`  HAS `which tie of paragraph (1)` IS A `A family tie of paragraph (1) of the definition of "relative"`
+    `a tie of paragraph (2)`  HAS `which tie of paragraph (2)` IS A `A family tie of paragraph (2) of the definition of "relative"`
+    `a body of persons held by the person or by a relative of the person` HAS `largest fraction held of any kind of means of control` IS A NUMBER
+    `a person who holds the person`                                        HAS `largest fraction held of any kind of means of control` IS A NUMBER
+    `a body of persons held by one who holds the person`                   HAS `largest fraction held of any kind of means of control` IS A NUMBER
+    `a trustee as paragraph (4) describes`
+    `no tie`
+
+-- A person who might hold "together with" the person asked about.
+DECLARE `A person who may hold together with the person` HAS
+    `holdings`                                                                 IS A `Holdings of means of control in one body of persons`
+    `tie to the person`                                                        IS A `A tie between two persons, for the definition of "relative"`
+    `regularly cooperates with the person by agreement on material matters of the body` IS A BOOLEAN
+
+-- "At the time of sale, or at any time in the 12 months before it": the holdings of the person on each day recorded.
+DECLARE `The holdings of a person on one day` HAS
+    `the day`                                      IS A DATE
+    `the person's own holdings that day`           IS A `Holdings of means of control in one body of persons`
+    `the others who may hold together with the person that day` IS A LIST OF `A person who may hold together with the person`
+
+-- Fork S1. "Alone or together with another" in "material shareholder": one other person
+-- or any number of them. Three relatives holding 4% each give 12% with two others and at most 8% with one.
+DECLARE `A reading of "together with another"` IS ONE OF
+    `together with any number of others, their holdings added`
+    `together with one other person only`
+    `declined where the number of others changes the answer`   -- the default
+
+-- Fork S2. S 88 "real capital gain until the fixed date" is the real gain times the ratio of two periods, "from the
+-- purchase day to the day before the fixed date" over "from the purchase day to the sale day". The text does not say
+-- how the days of a period "from A to B" are counted. (0.1.1) The Real Estate Taxation Law's periods meet at a boundary day (the commencement day, the
+-- transition day) that the text gives to no part in so many words, so there are three explicit readings: the days of the whole period counted at both ends
+-- with the boundary day in the part AFTER it (the reading of 0.1.0 that put the commencement day in two parts is gone: parts must partition the period);
+-- the same with the boundary day in the part BEFORE it; and the days between. For the Ordinance's s 88, whose first part ends on the day before the fixed
+-- date, the first two coincide.
+DECLARE `A reading of how the days of a period are counted` IS ONE OF
+    `both the first and the last day are counted`
+    `the days between the first day and the last day, the first not counted`
+    `both ends counted, a boundary day belonging to the part before it`
+    `declined where the way of counting changes the answer`    -- the default
+
+-- Fork S3. "Adjusted remaining original price" leaves out the remaining improvement expenses and half of the remaining
+-- holding expenses from the part indexed from the purchase day, and adds back the improvement expenses only.
+DECLARE `A reading of half the holding expenses in the adjusted price` IS ONE OF
+    `the half of the holding expenses that is left out is lost from the adjusted price`
+    `the half of the holding expenses that is left out is added back, not indexed`
+    `declined where half the holding expenses changes the answer`   -- the default
+
+-- How an asset came to the taxpayer, for "original price" (six cases, three of them with sub-cases) and for "purchase day".
+DECLARE `How the asset came to the taxpayer` IS ONE OF
+    `bought`                                                                HAS `the amount the taxpayer spent buying it` IS A NUMBER
+    `received in exchange`                                                  HAS `the consideration at the time of the exchange` IS A NUMBER
+    `received as a gift before 3 December 1951`                             HAS `the value of the asset when the taxpayer received it` IS A NUMBER
+    `received as a gift from 3 December 1951 to 31 March 1968`              HAS `the remaining original price when the last acquirer other than by gift gave it` IS A NUMBER
+    `received as a gift from 1 April 1968, not from a relative`             HAS `the consideration on the sale day` IS A NUMBER
+    `received as a gift from 1 April 1968 that is exempt under section 97(a)(4) or (5)` HAS `the remaining original price when the last acquirer other than by an exempt gift gave it` IS A NUMBER
+    `received as a gift from 1 April 1968 from a relative, not exempt`      HAS `the consideration on the sale day` IS A NUMBER
+    `inherited`                                                             HAS `the value of the asset on the day the decedent died` IS A NUMBER
+    `created by the taxpayer`                                               HAS `the amount the taxpayer spent creating it` IS A NUMBER
+    `arrived in some other way`                                             HAS `the amount the taxpayer spent acquiring it` IS A NUMBER
+
+-- One improvement of the asset: the remaining expense on it and the index on the day it was finished.
+DECLARE `An improvement of the asset` HAS
+    `remaining expense of the improvement` IS A NUMBER
+    `index on the day the improvement was finished` IS A NUMBER
+
+-- A sale of an asset: the figures section 88 computes from.
+-- * `consideration`: already net of the expenses of the sale (the s 88 definition of consideration deducts them).
+-- * `remaining original price`: the original price, with the improvement and holding expenses not deducted before,
+--   less depreciation (the s 88 definition of the remaining original price).
+-- * the improvements are listed apart because they are indexed from the day they were finished.
+-- * `remaining holding expenses`: part of the remaining original price.
+-- The three index readings are the consumer price index as last published before the day (the s 88 definition of the index).
+DECLARE `A sale of an asset` HAS
+    `consideration`                                                      IS A NUMBER
+    `remaining original price`                                           IS A NUMBER
+    `improvements`                                                       IS A LIST OF `An improvement of the asset`
+    `remaining holding expenses`                                         IS A NUMBER
+    `index on the sale day`                                              IS A NUMBER
+    `index on the purchase day`                                          IS A NUMBER
+    `index on 31 December 1993`                                          IS A NUMBER
+    `purchase day`                                                       IS A DATE
+    `sale day`                                                           IS A DATE
+
+-- Fork S4. "Material shareholder ... at the time of sale or at any time in the 12 months before it": from which day the
+-- twelve months run. For a sale on 15 March 2026: from 15 March 2025, or from 16 March 2025.
+DECLARE `A reading of the twelve months before a day` IS ONE OF
+    `the twelve months begin on the day twelve months before`
+    `the twelve months begin on the day after the day twelve months before`
+    `declined where the first day of the twelve months changes the answer`    -- the default
+
+-- Fork V1. Section 91(f)(1) adds "1% for each year from tax year 1949 until the year of acquisition".
+DECLARE `A reading of the years counted from 1949 in section 91(f)(1)` IS ONE OF
+    `1949 and the year of acquisition are both counted`
+    `1949 is counted and the year of acquisition is not`
+    `declined where the number of years changes the answer`                  -- the default
+
+-- Fork V2. Section 91(f)(2): "from tax year 2005, 1% is added for each tax year or part of one".
+DECLARE `A reading of the years counted from 2005 in section 91(f)(2)` IS ONE OF
+    `2005 and the tax year of the sale are both counted`
+    `2005 is not counted: the years after it up to the tax year of the sale`
+    `declined where the number of years changes the answer`                  -- the default
+
+-- Fork T1. "A rate not exceeding 25%" and "regard the gain as the highest layer of the taxable income" (s 91(b)(1), (b1)(2); s 125C(b)):
+-- the section does not say how a cap applies when the gain stands in more than one band of the scale of s 121, some below the cap
+-- and some above it.
+DECLARE `A reading of a cap on the rate where the gain stands in several bands` IS ONE OF
+    `the rate of each band is capped`            -- each shekel is taxed at the lesser of its band's rate and the cap
+    `the average rate over the whole gain is capped`   -- the tax is the lesser of the tax at the bands' rates and the cap times the gain
+    `declined where the way of applying the cap changes the answer`   -- the default
+
+-- Fork T2. Section 91(b1)(1) taxes three parts of one real gain at different rates, and (b1)(2) regards "the gain" as the highest layer of
+-- the taxable income. It does not say where each part stands within that layer, and the bands of the scale differ in rate.
+DECLARE `A reading of where each part of a gain stands in the top layer` IS ONE OF
+    `each part stands alone on top of the other income`
+    `the parts stand one above another, the earliest period lowest`
+    `the parts stand one above another, the earliest period highest`
+    `declined where the order of the parts changes the answer`        -- the default
+
+-- A band of the marginal scale of section 121: the top of the band (NOTHING for the last band, which has none) and its rate.
+-- The caller lists the bands from the lowest, as section 121 prints them for the individual.
+DECLARE `A band of a marginal scale` HAS
+    `upper limit of the band` IS A MAYBE NUMBER
+    `rate of the band`        IS A NUMBER
+
+-- Fork D1. Section 125B(3): a family company's dividend is taxed at 30% "if the assessee, as meant in s 64A, was a material
+-- shareholder, directly or indirectly, in the company that paid". Paragraphs (2) and (5) say "at the time of receiving the dividend or
+-- at some time in the twelve months before it"; paragraph (3) says only "was", and names no time.
+DECLARE `A reading of the time at which section 125B(3) tests the shareholding` IS ONE OF
+    `at the time of receiving the dividend only`
+    `at the time of receiving the dividend or at some time in the twelve months before it`
+    `at any time up to the receiving of the dividend`            -- (0.1.1) the third reading: "was" with no limit of time
+    `declined where the time of the test changes the answer`    -- the default
+
+-- Fork D2. Section 91(b)(3): "20% for a material shareholder". Paragraph (2) names the time (at the sale or at some time in the twelve
+-- months before it); paragraph (3) names none.
+DECLARE `A reading of the time at which section 91(b)(3) tests the shareholding` IS ONE OF
+    `at the time of the sale only`
+    `at the time of the sale or at some time in the twelve months before it`
+    `at any time up to the sale`                                             -- (0.1.1) the third reading: no limit of time
+    `declined where the time of the sale test changes the answer`            -- the default
+
+-- Fork V3. Section 91(b1)(1A): for a security bought before the fixed date, "for computing the real capital gain up to the fixed date and the
+-- remainder of the real capital gain" the real gain is regarded as reduced by the distributable profits of s 94B. It does not say whether the
+-- real gain from the fixed date to the change date, the middle part, is the reduced one too.
+DECLARE `A reading of the real gain used for the middle part of a security bought before the fixed date` IS ONE OF
+    `the gain reduced by the distributable profits is used for all three parts`
+    `the gain before the reduction is used for the middle part`
+    `declined where the real gain used for the middle part changes the answer`   -- the default
+
+-- Fork L1. The Real Estate Taxation Law (s 47) defines its "tax year" as twelve months beginning on 1 April, and its s 48A(d) counts by "tax year 1948",
+-- "1949 to 1960", "2005", "2011", "2012", "2013 onward". It does not say whether a year beginning on 1 April 2012 is "tax year 2012" or "tax year 2013".
+DECLARE `A reading of how a tax year of the Real Estate Taxation Law is named` IS ONE OF
+    `named by the calendar year in which it begins`
+    `named by the calendar year in which it ends`
+    `declined where the naming of the tax year changes the answer`        -- the default
+
+-- The readings of every fork of this row's sections 88, 91, 125B and 125C, as one argument.
+DECLARE `The readings of the forks in sections 88, 91, 125B and 125C` HAS
+    `together with another`                  IS A `A reading of "together with another"`
+    `counting the days of a period`          IS A `A reading of how the days of a period are counted`
+    `half the holding expenses`              IS A `A reading of half the holding expenses in the adjusted price`
+    `the twelve months before a day`         IS A `A reading of the twelve months before a day`
+    `the years from 1949 in section 91(f)(1)` IS A `A reading of the years counted from 1949 in section 91(f)(1)`
+    `the years from 2005 in section 91(f)(2)` IS A `A reading of the years counted from 2005 in section 91(f)(2)`
+    `a cap where the gain stands in several bands` IS A `A reading of a cap on the rate where the gain stands in several bands`
+    `where each part stands in the top layer` IS A `A reading of where each part of a gain stands in the top layer`
+    `the time of the test in section 125B(3)` IS A `A reading of the time at which section 125B(3) tests the shareholding`
+    `the time of the test in section 91(b)(3)` IS A `A reading of the time at which section 91(b)(3) tests the shareholding`
+    `the real gain for the middle part` IS A `A reading of the real gain used for the middle part of a security bought before the fixed date`
+    `the naming of a tax year of the Real Estate Taxation Law` IS A `A reading of how a tax year of the Real Estate Taxation Law is named`
+
+§§ `Section 125B — who receives the dividend`
+
+-- The recipient of a dividend, in the five kinds paragraphs (1) to (5) of s 125B name, and any other.
+-- * the records are the recipient's holdings in the body that paid the dividend, one record per day on which the holdings are known;
+--   a day with no record is a day on which nothing is known (the caller records every day the holdings changed).
+-- * for a family company, paragraph (3) tests "the assessee as meant in s 64A", the person who stands behind it, so the records are his.
+DECLARE `The recipient of a dividend, for section 125B` IS ONE OF
+    `an individual`                                                         HAS `the individual's holdings in the paying body` IS A LIST OF `The holdings of a person on one day`
+    `a family company`                                                      HAS `the holdings in the paying company of the person meant in section 64A` IS A LIST OF `The holdings of a person on one day`
+    `a public institution or a provident fund as defined in section 9(2)`   HAS `the dividend is exempt from tax in its hands` IS A BOOLEAN
+    `a non-resident body of persons`                                        HAS `the body's holdings in the paying body` IS A LIST OF `The holdings of a person on one day`
+    `any other recipient`
+
+§§ `Section 125C — interest received by an individual`
+
+-- Section 125C(c)(1): the property on which the interest is paid "is not linked to the index, or is linked in part to the rate of rise
+-- of the index, in whole or in part, or is not linked to the index until redemption or repayment".
+DECLARE `How the property carrying the interest is linked to the index` IS ONE OF
+    `fully linked to the index`
+    `linked to the index in part of the rate of rise`
+    `not linked to the index`
+    `not linked to the index until redemption or repayment`
+
+-- The facts of one receipt of interest by an individual that s 125C(b) to (e) turn on. Each condition of (d) is a fact the caller records.
+DECLARE `Interest received by an individual, for section 125C` HAS
+    `the interest`                                                                 IS A NUMBER
+    `how the property carrying the interest is linked`                             IS A `How the property carrying the interest is linked to the index`
+    `the interest is income under section 2(1), or is recorded or must be recorded in the individual's books` IS A BOOLEAN   -- (d)(1)
+    `the individual claimed a deduction of interest expenses and linkage differences on the property`          IS A BOOLEAN   -- (d)(2)
+    `the individual's holdings in the paying body`                                 IS A LIST OF `The holdings of a person on one day`  -- (d)(3)
+    `the individual is an employee of the paying body, supplies it services, sells it goods, or has other special relations with it` IS A BOOLEAN  -- (d)(4)
+    `the individual proved to the assessing officer that the rate of interest was fixed in good faith and not influenced by those relations` IS A BOOLEAN -- (d)(4)
+    `paid from a study fund before the periods of section 9(16A) or (16B) passed, or from a provident fund for benefits to which section 3(d) applies` IS A BOOLEAN -- (d)(5)
+    `another condition set by the Minister of Finance with the approval of the Finance Committee holds`         IS A BOOLEAN   -- (d)(6)
+    `paid from a provident fund that is neither a fund for benefits nor a study fund, or from a fund for benefits taxed under section 87`  IS A BOOLEAN   -- (e), first limb
+    `the interest is treated as interest income under section 3(h4)(3)`            IS A BOOLEAN   -- (e), the exception
+
+-- What section 125C makes of the interest.
+-- * `taxed at the rates of section 121 with the rest of the income`: (d) puts the interest on the scale of s 121 with the rest of the
+--   income. The tax then depends on where the interest stands among the other income, which (d) does not say, so no figure is given
+--   here: the tax is that of section 121 on the total (row IL-03).
+-- * `taxed apart, the tax being`: (b) or (c) gives the tax.
+-- * `outside section 125C`: (e) takes the payment out of the section.
+DECLARE `What section 125C makes of the interest` IS ONE OF
+    `taxed at the rates of section 121 with the rest of the income`
+    `taxed apart, the tax being` HAS `the tax` IS A NUMBER
+    `outside section 125C`
+
+§§ `Section 122 — the rental of a residential apartment`
+
+-- One payment that may be "qualifying rent" under s 122(f)(1): rent for an apartment in Israel the payer rented to live in, or the annual
+-- payment for keeping the payer or the payer's cohabiting spouse in an old people's home (RE Tax Law s 49YG) or a geriatric hospital
+-- (s 29C of the Public Health Ordinance 1940), in the tax year, not paid to a relative of paragraph (1) or (2) of the definition in s 88.
+DECLARE `A payment of rent or of care fees` HAS
+    `the amount`                                                                          IS A NUMBER
+    `rent for an apartment in Israel the payer rented to live in`                         IS A BOOLEAN
+    `the annual payment for keeping the payer or the payer's cohabiting spouse in an old people's home or a geriatric hospital` IS A BOOLEAN
+    `the person paid`                                                                     IS A `A tie between two persons, for the definition of "relative"`
+    `the payer is the individual, their cohabiting spouse, or a child under 18 living with them` IS A BOOLEAN
+    `the payment, or part of it, was claimed in computing the taxable income of the individual or of another` IS A BOOLEAN
+
+-- The facts of one year of letting a residential apartment in Israel by an individual (with their cohabiting spouse and children under 18
+-- treated as one owner, s 122(f)(3)).
+DECLARE `The letting of a residential apartment, for section 122` HAS
+    `the apartment is used for living and is in Israel`                                    IS A BOOLEAN
+    `the rental income is income from a business under section 2(1)`                       IS A BOOLEAN
+    `the rental income of the individual, their cohabiting spouse and children under 18`   IS A NUMBER
+    `the apartment is the only apartment of the individual, within the meaning of section 9(c1c)(4) of the Real Estate Taxation Law` IS A BOOLEAN
+    `the payments of rent and care fees in the year`                                       IS A LIST OF `A payment of rent or of care fees`
+    `the maximum depreciation or other write-down that could have been deducted for the years of the election, but for section 122(c)` IS A NUMBER
+
+§§ `Section 91 — the seller, what was sold, and the sale`
+
+-- The seller: an individual (b), with the holdings in the body whose security is sold or that issued the bond, for the material shareholder
+-- tests of (b)(2) and (b)(3); or a body of persons (a), taxed at the rate of s 126(a), an input here (s 126 is not encoded by this row).
+DECLARE `The seller, for section 91` IS ONE OF
+    `an individual`      HAS `the individual's holdings in the body whose security is sold, or that issued the bond` IS A LIST OF `The holdings of a person on one day`
+    `a body of persons`  HAS `the rate of tax on a body of persons under section 126(a)` IS A NUMBER
+
+-- The kinds of asset s 91 distinguishes.
+DECLARE `The kind of asset sold, for section 91` IS ONE OF
+    `a security in a body of persons`
+    `a bond, commercial security, loan note or loan that is not linked to the index`   -- (b)(3); "not linked" is defined in (b)(3)(c)
+    `goodwill that was not paid for`                                                    -- outside (b1)
+    `any other asset`
+
+-- A sale of an asset, with the figures s 88 computes (the real capital gain, the capital gain, the chargeable inflationary amount), which
+-- ito-88-definitions.l4 computes from a sale record and which a caller may take from it or from the assessment.
+DECLARE `A sale for section 91` HAS
+    `the seller`                                                         IS A `The seller, for section 91`
+    `the kind of asset sold`                                             IS A `The kind of asset sold, for section 91`
+    `registered for trading on a stock exchange`                         IS A BOOLEAN
+    `registered for trading on a stock exchange before the change date`  IS A BOOLEAN
+    `a unit in an exempt mutual fund`                                    IS A BOOLEAN
+    `the real capital gain`                                              IS A NUMBER
+    `the capital gain`                                                   IS A NUMBER
+    `the chargeable inflationary amount`                                 IS A NUMBER
+    `the purchase day`                                                   IS A DATE
+    `the sale day`                                                       IS A DATE
+    `the asset is a security`                                            IS A BOOLEAN
+    `the distributable profits of section 94B deducted for a security bought before the fixed date` IS A NUMBER
+    `the asset was expropriated`                                         IS A BOOLEAN
+    `the tax year in which the asset reached the seller`                 IS A NUMBER
+    `the part of the real gain equal to depletion, exploration and development deductions or film production expenses on a unit in an oil or film partnership` IS A NUMBER
+
+-- One tax year of the period over which a gain is spread under s 91(e): the other taxable income of that year, the scale of s 121 for it,
+-- and the value of the credit points not used against that income.
+DECLARE `A tax year in the period of spreading` HAS
+    `the other taxable income that year`                  IS A NUMBER
+    `the scale of section 121 for that year`              IS A LIST OF `A band of a marginal scale`
+    `the value of the credit points left unused that year` IS A NUMBER
+
+§§ `Section 8(c) — income spread over several tax years`
+
+-- One share of an amount, placed in a tax year.
+DECLARE `A share of an amount placed in one tax year` HAS
+    `the tax year` IS A NUMBER
+    `the amount`   IS A NUMBER
+
+-- A wage difference or an annuity difference, with the tax year it relates to (s 8(c)(1)).
+DECLARE `A difference of wages or of an annuity` HAS
+    `the tax year the difference relates to` IS A NUMBER
+    `the amount of the difference`           IS A NUMBER
+
+-- The income s 8(c) lets the taxpayer or the heirs ask to have placed in other years, with the facts each paragraph turns on.
+DECLARE `Income to be spread under section 8(c)` IS ONE OF
+    `wage differences or annuity differences`
+        HAS `the differences` IS A LIST OF `A difference of wages or of an annuity`                          -- (1)
+    `vacation redemption pay received by an employee`
+        HAS `the amount of the vacation pay`              IS A NUMBER                                         -- (2)
+            `the number of tax years the requester chose` IS A NUMBER
+            `the number of years of the employee's work`  IS A NUMBER
+    `a grant or a commutation of an annuity of paragraph (5) or (6) of the definition of income from personal exertion`
+        HAS `the amount of the grant or commutation`      IS A NUMBER                                         -- (3)
+            `the working years the grant is paid for, or the years in which the annuity right arose` IS A LIST OF NUMBER
+            `the years the Director allowed instead`      IS A MAYBE (LIST OF NUMBER)
+
+-- Fork E1. (1): differences are placed "in the years to which they relate, but no more than six tax years ending in the year in which they were
+-- received". A difference that relates to an earlier year than the six is not placed by the text.
+DECLARE `A reading of differences that relate to years before the six tax years` IS ONE OF
+    `an older difference is placed in the year of receipt`
+    `an older difference is placed in the earliest of the six tax years`
+    `declined where the place of an older difference changes the answer`      -- the default
+
+-- Fork E2. (3): equal annual parts "in the working years for which the grant is paid ... but no more than the six tax years ending in the year
+-- of receipt". Where the working years end before the year of receipt the six years and the working years part company.
+DECLARE `A reading of working years outside the six tax years` IS ONE OF
+    `only the working years inside the six tax years count`
+    `the last six working years count, wherever they fall`
+    `declined where the working years outside the six tax years change the answer`    -- the default
+
+§§ `Section 64A1 — the transparent company`
+
+-- The facts that make a company a transparent company (s 64A1(a), the definition of "חברה שקופה", paragraphs (1) to (8)).
+DECLARE `A company that may be transparent` HAS
+    `the company is resident in Israel`                                                                                  IS A BOOLEAN
+    `the company is a public company as defined in section 1 of the Companies Law, or its articles allow it to become one` IS A BOOLEAN  -- (1)
+    `the number of shareholders, counting spouses and their children, heirs of a shareholder, and buyers from a shareholder in an involuntary sale, as one` IS A NUMBER  -- (2)
+    `the Director approved a higher number of shareholders, up to`                                                       IS A MAYBE NUMBER  -- (2)
+    `every shareholder is an individual resident in Israel`                                                              IS A BOOLEAN  -- (3)
+    `the shares are all of one type except for voting rights, and the shareholders cannot change the rights the shares carry except voting rights` IS A BOOLEAN  -- (4)
+    `the right to the company's profits comes from the shares alone`                                                     IS A BOOLEAN  -- (5)
+    `each shareholder's right to profits is the same as his right to the company's assets on winding up`                IS A BOOLEAN  -- (6)
+    `the company is a financial institution as defined in the Value Added Tax Law`                                       IS A BOOLEAN  -- (7)
+    `the company asked to be a transparent company by a notice signed by all its shareholders and delivered to the assessing officer within 60 days of its incorporation` IS A BOOLEAN  -- (8)
+    `regulations under section 64A1 are in force`                                                                        IS A BOOLEAN
+
+-- A shareholder of a transparent company, with the figures the attribution of (b) needs.
+DECLARE `A shareholder of a transparent company` HAS
+    `the fraction of the right to profits`                      IS A NUMBER
+    `the company's income of the year that is exempt from tax`  IS A NUMBER
+
+§§ `Section 64A2 — definitions for the real-estate investment fund`
+
+-- The facts about a parcel of land that decide whether it is "yielding land" (מקרקעין מניבים), s 64A2(a).
+DECLARE `A parcel of land held by a real-estate investment fund` HAS
+    `income under section 2(1) or 2(6) arises from letting it and from activity ancillary to the letting, apart from a passing break` IS A BOOLEAN
+    `the total area of the buildings on it`                                       IS A NUMBER
+    `the area that may be built under the plan that applies to it`                IS A NUMBER
+    `it is for a use the Minister of Finance fixed, and the fund or a relative of it provides the management services` IS A BOOLEAN
+    `it is the fund's business inventory`                                         IS A BOOLEAN
+
+-- The kinds of income of a fund in a tax year, for "exceptional income" (הכנסות חריגות), s 64A2(a).
+DECLARE `The kind of income of a real-estate investment fund` IS ONE OF
+    `income from the sale of business inventory`                                                           -- (1)
+    `income from yielding land, land under construction, land for rental housing, or from the sale of building rights in land that was yielding when bought` -- (2)(a)
+    `income from securities traded on the stock exchange, from state bonds or from deposits`               -- (2)(b)
+    `income that section 7 of the Inflation Adjustments Law treats as business income`                     -- (2)(c)
+    `income from the sale of land for rental housing sold before 20 years of letting it as housing, other than a sale to a landlord` -- (3)
+    `income from the sale of land that was under construction when bought, sold within four years of its first being used for letting` -- (4)
+    `other income`                                                                                         -- (2), the rest
+
+DECLARE `An item of income of a real-estate investment fund` HAS
+    `the kind`   IS A `The kind of income of a real-estate investment fund`
+    `the amount` IS A NUMBER   -- with land betterment, and without betterment on a sale under s 49KB, 49LG or 49LG1 of the Real Estate Taxation Law
+
+-- Fork Q1. Section 64A2, "exceptional income" (2): "income other than that in (a) to (c) whose total rate exceeds 5% of all the fund's income
+-- in the tax year". Is it the whole of that other income that is exceptional once it exceeds 5%, or only the part above 5%?
+DECLARE `A reading of the 5% test for other income` IS ONE OF
+    `all the other income is exceptional once it is more than 5%`
+    `only the part of the other income above 5% is exceptional`
+    `declined where the 5% test changes the answer`      -- the default
+
+-- The facts for "land held for a short period" (מקרקעין המוחזקים לתקופה קצרה), s 64A2(a).
+DECLARE `A sale of land by a real-estate investment fund` HAS
+    `it is land for rental housing`                                                         IS A BOOLEAN
+    `it is land of paragraph (4) of the definition of land for rental housing`              IS A BOOLEAN
+    `the day the fund bought it`                                                            IS A DATE
+    `the day it became yielding land for rental housing`                                    IS A MAYBE DATE
+    `the day it was sold, or sold in an exempt sale`                                        IS A DATE
+
+§§ `Sections 55, 57 and 60A — the kibbutz and its members`
+
+-- How the income of a member of a collective kibbutz or of a renewed kibbutz is assessed.
+DECLARE `How the income of a kibbutz member is assessed` IS ONE OF
+    `under the sub-chapter on the kibbutz and its members`
+    `apart from that sub-chapter, the rates and credit points counted in the kibbutz's assessment and the kibbutz's losses not being counted`
+
+-- A member of a collective kibbutz, for the tax of s 57(a): the figures that decide his tax on an equal share of the kibbutz's income, as if it were his only
+-- taxable income. Which credit points and deductions the member's family composition gives (ss 34 to 46A, 47, and Chapter 3 of Part D other than s 66)
+-- is for rows IL-01 and IL-02; here they are inputs.
+DECLARE `A member of a collective kibbutz` HAS
+    `the value of the credit points the member's family is entitled to` IS A NUMBER
+    `the deductions allowed under section 47 for the member's family`  IS A NUMBER
+
+§§ `Section 48A of the Real Estate Taxation Law — the tax on betterment`
+
+-- A sale of a right in land, or an action in a land association, with the figures s 48A turns on. The betterment (שבח) is the sale value less the
+-- remaining purchase value (s 6(b), s 47); the real betterment is the betterment less the inflationary amount; the chargeable inflationary amount is
+-- s 47's. They are computed under ss 39 and 47 of that Law, which this row does not encode (the Law's rates only), and are inputs.
+DECLARE `A sale of a right in land, for section 48A` HAS
+    `the seller`                                                             IS A `The seller, for section 91`
+    `it is an action in a land association`                                  IS A BOOLEAN
+    `the betterment`                                                         IS A NUMBER
+    `the real betterment`                                                    IS A NUMBER
+    `the chargeable inflationary amount`                                     IS A NUMBER
+    `the purchase day`                                                       IS A DATE
+    `the sale day`                                                           IS A DATE
+    `it is a qualifying residential apartment that section 48A(b2) governs`  IS A BOOLEAN
+    `the conditions of section 48A(b4) hold`                                 IS A BOOLEAN
+    `the consideration was influenced by additional building rights, section 48A(b3)` IS A BOOLEAN
+    `the Director allowed in writing a rate lower than the cap, of`          IS A MAYBE NUMBER
+    `section 48A(d)(4) excludes the sale`                                    IS A BOOLEAN
+    `the seller is a company with business income, or an individual who received the right when a company was wound up` IS A BOOLEAN
+
+§§ `Section 9 of the Real Estate Taxation Law — the purchase tax on a dwelling`
+
+-- The facts of a purchase of a right in a residential apartment that the bands of s 9(c1c), (c1f) turn on.
+DECLARE `A purchase of a right in a residential apartment` HAS
+    `the day of the sale`                                                                         IS A DATE
+    `the value of the right sold`                                                                 IS A NUMBER
+    `the buyer is an individual resident in Israel`                                               IS A BOOLEAN   -- (c1c)(2), (4)(b)
+    `the apartment is the buyer's only apartment`                                                 IS A BOOLEAN   -- (c1c)(2)(a)
+    `the buyer sold the other apartment that was his only one within the period`                  IS A BOOLEAN   -- (c1c)(2)(b)
+    `the buyer bought the apartment after a purchase-group apartment was delayed, as (c1c)(2)(b1) says` IS A BOOLEAN   -- (c1c)(2)(b1)
+    `the apartment is a replacement apartment as section 49E(a) means`                            IS A BOOLEAN   -- (c1c)(2)(c)
+
+-- Fork P1. Section 9(c1f)(1) taxes a purchase of a dwelling that is not the buyer's only or replacement one at 8% and 10%, for a sale from 28 November 2021 "until
+-- 31 December 2024". The consolidation's note after it says the period was extended to 31 December 2026 by an order (Kovetz HaTakanot 5785, 626), which is not deposited.
+DECLARE `A reading of the end of the period of section 9(c1f)` IS ONE OF
+    `the period ends on 31 December 2024, as the paragraph prints it`
+    `the period ends on 31 December 2026, as the consolidation's note on the extension says`
+    `declined where the end of the period changes the answer`      -- the default
+
+-- Fork R2. Section 9(c2) rounds an adjusted amount "to the nearest sum that is a multiple of 5 shekels" and does not say where a half goes.
+DECLARE `A reading of rounding to a multiple of 5 shekels` IS ONE OF
+    `a half goes up`
+    `a half goes down`
+    `declined where the rounding of a half changes the answer`     -- the default
+
+-- The housing-services index readings that adjust the amounts from 16 January 2028 (s 9(c2)): the index last published before the update day, and the base
+-- index published on 15 January 2027.
+DECLARE `Index readings for the amounts of section 9(c1c)` HAS
+    `the new index, last published before the update day`  IS A NUMBER
+    `the base index, published on 15 January 2027`          IS A NUMBER
+
+-- Fork T3 (0.1.1). Section 91(e)(1): the spreading runs over "four tax years or the period of ownership, whichever is shorter", and the period of ownership
+-- "begins at the start of the tax year after the year the right reached the seller and ends at the end of the tax year in which it left his hands". For a right
+-- bought and sold in the same tax year the period would begin after it ends. The text does not say what the shorter of four years and an empty period is.
+DECLARE `A reading of a period of ownership that is empty` IS ONE OF
+    `an empty period gives no tax year`           -- spreading is not open
+    `an empty period gives one tax year`          -- the gain is taxed in that year, as if not spread
+    `declined where an empty period changes the answer`   -- the default
+
+-- Fork B4 (0.1.1). RE Tax Law s 48A(b4) says that for a qualifying apartment bought before the transition day and meeting two conditions "the provisions of (b)(1)
+-- apply and those of (b2) and (b3) do not". Section 48A(b1) opens "notwithstanding (b)(1)" and excepts only an apartment to which (b2) and (b3) apply. For such an
+-- apartment bought before the change date the two clauses collide and the text does not rank them.
+DECLARE `A reading of the collision of section 48A(b4) with section 48A(b1)` IS ONE OF
+    `(b4) restores plain (b)(1): the layered rates of (b1) do not apply`
+    `(b1) still applies, since it opens "notwithstanding (b)(1)"`
+    `declined where the collision changes the answer`    -- the default

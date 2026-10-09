@@ -30,22 +30,25 @@ L4="${L4:-l4}"
 expected_failed() {
   case "$1" in
     # tests-red.l4) echo 3 ;;
-    # Version 0.2.0 (CHK-06): the independent tester's remaining failures, each a recorded fork
-    # (inventory class AMBIGUITY), none an encoding error. Version 0.3.0 (BACKLOG IL-40): forks F2
-    # and F18 were ruled by Meng on 2026-10-08 (SHRUG), declined by default, so the tester's two
-    # refusals for them (line 608, F8, DATE; line 619, F10, 06-HW) now pass. Three remain:
-    #   line 594        F4,  06-F7  (s 67(b), one insured parent, child with the uninsured mother; fork F7)
-    #   lines 613, 615  F9,  06-F3  (a six-month trip, with and without the return day; fork F3)
-    # Finding 5 (line 638, 06-F5) passes from 0.2.0: a finished absence is reported, not read.
-    tests-independent.l4) echo 3 ;;
+    # Version 0.2.0 (CHK-06) declared the independent tester's remaining failures, each a recorded
+    # fork; 0.3.0 (IL-40) passed two of them (forks F2, F18, SHRUG); version 0.4.0 (BACKLOG IL-51)
+    # passes the last three (line 594, fork F7; lines 613, 615, fork F3), which expected refusals
+    # and now get them. None fails; seven are refused instead (expected_refused, below).
     *) echo 0 ;;
   esac
 }
 
 # Version 0.2.0: a module that is MEANT to refuse some assertions is listed with its exact count.
-# None is: the tester's module refuses none.
+# Version 0.4.0 (BACKLOG IL-51): Meng's ruling of 2026-10-08 (SHRUG) makes forks F6, F7 and F14
+# switches declined by default where their readings differ; the independent tester had decided
+# the reading this row took before, and seven of its assertions are now declined by name, each in
+# the words of the fork it turns on (inventory class AMBIGUITY, ruled; not an encoding error):
+#   lines 346, 347       B6, B7: only the mother insured, the child with both / with the father only (fork F7, 06-F7)
+#   lines 385, 386, 387  B15: the father excluded by s 66, the child with both (fork F6, 06-F6)
+#   lines 490, 491       C26: the mother paid Income Support, the children in the father's count (fork F14, 06-F14)
 expected_refused() {
   case "$1" in
+    tests-independent.l4) echo 7 ;;
     *) echo 0 ;;
   esac
 }

@@ -1,10 +1,120 @@
 # NOTES — Income Tax Ordinance s 66 (separate calculation), row IL-02
 
 Encoder: one Claude session (Opus 5.5), run IL-02-20261006, 2026-10-06, working alone from `BRIEF.md`.
-Status: **draft**, version 0.3.0 (fork F19 ruled and made a switch, 2026-10-08, BACKLOG IL-38; see the next section). (0.3.0; version 0.2.0 was the repairs of BACKLOG IL-15, in the section after it.)
+Status: **draft**, version 0.4.0 (SHRUG on the remaining ambiguities, 2026-10-08, BACKLOG IL-47; see the next section). (0.4.0; version 0.3.0 was fork F19, BACKLOG IL-38, and 0.2.0 the repairs of BACKLOG IL-15, in the sections after it.)
 No domain expert has read this against the source; HG1 has not been sought.
 No independent test pass was run (the run was instructed to work alone, without sub-agents); see section 8.
 (0.2.0, 02-W1: true of the encoding run, stale since. An independent test pass was run after deposit by fid-il-02, commit 240a478: `DECIDED-ANSWERS.md`, `tests-independent.l4`, `INDEPENDENT-FINDINGS.md`. Its V-4 is repaired in 0.2.0 and its E-4 is recorded as fork F19; from 0.3.0, with F19 ruled, all 103 of its assertions hold.)
+
+## Version 0.4.0 (2026-10-08): SHRUG on the remaining ambiguities (BACKLOG IL-47)
+
+Agent shrug-il-47 (the session of IL-15 and IL-38; one Claude session, Opus 5.5), 2026-10-08 UTC, under the lead's SHRUG-2 brief and the repair brief with its addendum.
+Meng ruled on 2026-10-08 (SHRUG, extended to every remaining ambiguity): where the text is silent, one named switch per ambiguity, default DECLINE where its readings give different answers to the question asked, every other reading kept by name and tested.
+Semi-cleanroom: nothing of Axiom's was read for this version, and the "Comparison with Axiom's RuleSpec" section at the end of this file was not reread.
+
+### How a reading is asked for
+
+Each fork that is a switch has a reading type, a switch rule named `… — the reading this row takes …` in the module of its provision, and a refusal by name that says the text does not decide.
+Six of the forks (F1, F6, F7, F8, F14, F18) and F20 are reached only through rules that take the couple, several of them through the same rules (the (a)(1) claim, the (b) proviso, the assembly, whether (c) governs).
+So the couple carries the readings a caller asks for: `Spouses in a tax year` has a new last field, `the readings of section 66 to take, if not this row's`, a MAYBE `Readings of section 66 for a couple`, and NOTHING means this row's switches.
+Every rule that takes the couple sees the same readings, and none changes its signature.
+The alternative, a reading argument on each rule, as IL-04's F6 and this row's own F19 have on one to three rules, would have meant fourteen rules with two forms each, which the brief calls a refactor.
+That choice is **assumed, not ruled** (this agent's; the lead accepted it as such on 2026-10-08); it breaks the nouns module's membership test, and that module says so.
+F13 takes no couple, so it takes its reading as an argument, as F19 does; F19 keeps its own argument and is not in the record.
+The test builders `the couple … , read as` and `this row's readings, but F… read as` (in `ito66-fixtures.l4`) ask a reading by name.
+
+### Items
+
+| id | class | what changed | tests added (`ito66-tests.l4`) | own tests re-pointed to the old reading by name, values unchanged |
+| --- | --- | --- | --- | --- |
+| 02-F1 | (a) | fork F1 a switch (`ito66-d-common-source.l4`); the (d) gate, the (a)(1) claim and the assembly ask it; reading (ii) reads a new fact on `A common source of income`, `the income from personal exertion it gives the spouse who is not the registered spouse, if known` (MAYBE NUMBER), and declines by name where the facts do not give it | 14, lines 704-734 | 60-64, 66, 264, 425 |
+| 02-F3 | (b) | none. (a)(2) already declines equal non-zero incomes by name ("s 66(a)(2) does not say …"). The other reading the inventory names, "a practice rule", is not in the text, and which rule the Tax Authority applies is not known here (that reading would need a source, class (d)) | — | — |
+| 02-F6 | (a), two forks | fork F6 (s 65's exception under (a)(3)) a switch, with a new fact on the couple, `of the children's income within (a)(3), the part from assets received by inheritance or from compensation or insurance for bodily injury` (0 where none); fork F14 (the children's income when (a)(2) sends the pool to the other spouse) a switch, asked by the assembly | 7, lines 749-761; 5, lines 778-787 | none |
+| 02-F7 | (a) | fork F7 a switch (`ito66-b-property-income.l4`); under reading (ii) the registered spouse's (b) income joins his own assessment, a new term of the assembly | 6, lines 791-805 | 224, 278, 541 |
+| 02-F8 | (a), two forks | forks F18 (the registered spouse under (c)(1A)) and F8 ((c)(1A) where a common source fails) switches in the (1A) request; whether (c) governs asks its two limbs in an order set by the common source, so that the limb that can settle it is asked first | 12, lines 809-833 | 419, 420 (F18); 426 (F8) |
+| 02-F9 | (b) | none. A couple of the same sex is already declined by name; the readings the inventory names (the caller says who is "האשה", or each spouse by sex) are not taken | — | — |
+| 02-F10 | (b) | none. A provision (c) does not name is already declined by name | — | — |
+| 02-F13 | (a) | fork F13 a switch, as a reading argument on the set-off rule (`ito66-c-credit-points.l4`) | 4, lines 837-843 | 462, 464 |
+| 01-F1 (IL-02's side) | (a) | new fork F20: the half point under s 36A in (c)(4), mirroring row IL-01 v0.3.0's F1 (commit b64a3efb), declined by default for a woman who is not an Israeli resident in IL-01's words, before s 48A as IL-01 does; a new fact on `A spouse`, `an Israeli resident in the tax year, for section 36A` | 14, lines 872-897 | none |
+| 02-E4 | done in 0.3.0 (F19) | — | — | — |
+
+None of the items is class (c) or (d).
+
+**The readings, by fork** (each default declines only where its readings differ):
+
+- **F1**, a common source failing (d)(1): (i) `subsection (a) does not apply to the spouses at all`; (ii) `subsection (a) does not apply to the income from the common source alone`.
+  They differ wherever the spouse who is not the registered spouse has income within (a)(1) not all from the source, or the facts do not say how much is; where she has none, or all of it comes from the source, both say no claim.
+  The (d) gate itself declines wherever the source fails, (i) saying (a) does not apply and (ii) that it does, save the source's income.
+- **F6**: (i) `section 65's exception does not apply under (a)(3)`; (ii) `section 65's exception applies under (a)(3)`; they differ where the new part is above 0 and the children have (a)(3) income.
+- **F14**: (i) `the children's income stays with the registered spouse`; (ii) `the children's income goes with the pooled income`; they differ where (a)(2) sends the pool to the spouse who is not the registered spouse and the children have (a)(3) income.
+- **F7**: (i) `only the separate calculation under (a)(1) is other income for which a separate calculation is made`; (ii) `the registered spouse's own calculation counts once (a)(1) or (c)(1A) makes a separate calculation`; they differ for the registered spouse where (ii) finds such a calculation.
+- **F18**: (i) `the registered spouse may request under (c)(1A)`; (ii) `only the spouse who is not the registered spouse may request under (c)(1A)`; they differ where the registered spouse requests.
+- **F8**: (i) `a request under (c)(1A) is not shut by subsection (d)`; (ii) `a request under (c)(1A) is shut by subsection (d)`; they differ where a common source fails and a request is made.
+- **F13**: (i) `the children's credit is capped at the tax on income from personal exertion`; (ii) `the children's credit is set first against the tax on income from personal exertion`; they differ where the points' value exceeds that tax.
+- **F20**: (i) `the half point under section 36A without a residence condition`; (ii) `the half point under section 36A only for an Israeli resident`; they differ for a woman who is not an Israeli resident.
+
+**Answers changed.**
+Every changed answer is a decline where the encoding of 0.1.0-0.3.0 answered under reading (i); none moved to another value.
+For inputs that existed before 0.4.0, the declines are: a couple with a common source failing (d)(1) where the spouse who is not the registered spouse has income within (a)(1) (F1: the (d) gate, the (a)(1) claim and calculation, the (b) proviso for her, the assembly, and whether (c) governs where (1A) does not settle it); a registered spouse's (b) income where (a)(1) makes a separate calculation or he requests one under (1A) (F7); a registered spouse's request under (1A) (F18); a request under (1A) where a common source fails (F8); the assembly where the pool goes to the spouse who is not the registered spouse and the children have (a)(3) income (F14); the children's credit above the tax on income from personal exertion (F13).
+F6 and F20 decline only on facts that could not be stated before 0.4.0 (an inherited part, a spouse who is not resident); the fixtures set them as every earlier scenario was, 0 and resident.
+
+**Assertions re-pointed** (`ito66-tests.l4`, in place, values unchanged): lines 60-64 and 66 (the (d) gate and the (a)(1) claim, failing source) and 264 (S5) and 425 to F1 (i); 224, 278 (S6) and 541 to F7 (i); 419 and 420 (C5) to F18 (i); 426 to F8 (i); 462 and 464 to F13 (i).
+
+**Assertions added** (`ito66-tests.l4`; none existed before; every value worked out from the source in the comment beside it before the module was run, and all passed on their first run; a control copy with five of them made wrong reported five failures):
+
+| lines | fork | values |
+| --- | --- | --- |
+| 704-734 | F1 | the switch; default: claim declined with no share given (707), (d) gate declined (709), claim declined with 50,000 from the source (712), no claim with all 120,000 from it (715) or no income (717), assembly declined (734); (i): no claim (719), s 65 arm 0, 0 (732); (ii): (d) gate TRUE (721), claim with 50,000 from the source (722), no claim with all of it (723), declined where the facts do not say (725), assembly 250,000, 70,000, 0 (730) |
+| 749-761 | F6 | the switch; default declined with 1,000 inherited (751), 4,000 with none (754); (i) 4,000 (756); (ii) 3,000 (757); the child still within (a)(3) (759); assembly under (ii) 203,000, 120,000, 0 (761) |
+| 778-787 | F14 | the switch; default declined (780); (i) 160,000, 300,000, 0 (783); (ii) 150,000, 310,000, 0 (785); no (a)(3) income 150,000, 300,000, 0 (787) |
+| 791-805 | F7 | the switch; default declined (795); (ii) `it is added to …` (797), assembly 269,000, 160,000, 0 (801); not reached: S1 `it is not calculated separately` (803), C4 FALSE (805) |
+| 809-833 | F18, F8 | the switches; F18: default declined (813), (ii) FALSE (815) and (c) does not govern (816), governs where (a)(1) is made, TRUE (819), the other spouse not reached, TRUE (821); F8: default declined (824), (i) TRUE (826), (ii) FALSE (827), with (1A) shut governs turns on F1 and declines (830), a passing source TRUE (833) |
+| 837-843 | F13 | the switch; default declined at 450 against 300 (839); (ii) 450 (841); 450 against 1,000 under (ii) (843) |
+| 872-897 | F20 | the switch; the half point: default declined for a non-resident woman (874), (i) 0.5 (876), (ii) 0 (877), resident woman 0.5 (879), non-resident man 0 (880), a non-resident foreign worker declined on residence first (883), under (i) on s 48A (885), under (ii) 0 (887); (c) for the non-resident woman: declined (890), (i) 0.5, 0, 2 (892), (ii) 0, 0, 2 (893), s 36A entitlement declined (894); the resident man 0, 0, 1 (897) |
+
+**The independent tests.**
+Their interface needs no change: the new facts reach them through the fixture builders, at the values every earlier scenario had (0 inherited, resident, the source's share not given, this row's readings).
+Eleven of their plain assertions would refuse under the new defaults, each resting on a reading that is now a named alternative.
+The lead authorised, on 2026-10-08, re-pointing those whose reading the tester had decided, by name, in place, on the terms of the repair brief's addendum.
+Five were re-pointed and pass with their values unchanged, each cited in the dated NOTE BY THE LEAD at the end of `tests-independent.l4`:
+line 256 (D-8) to F1 (i), DECIDED-ANSWERS.md line 62; line 300 (A3-10) to F14 (i), line 93; line 409 (C-CAP) to F13 (i), line 191; lines 416 (R1A-2) and 420 (R1A-4) to F18 (i), lines 198 and 200.
+Six were not: lines 241, 243, 244, 248, 250 (D-2, D-3, D-5, D-6) and 259 (D-9), on F1.
+Their decided answers (DECIDED-ANSWERS.md lines 56-60, 63) settle whether the (d)(1) conditions fail and that (b) survives them, not which of F1's readings holds: on their scenario, where the income is the common source's, the readings agree.
+The interface's mapping gives the woman a salary the source is not tied to, so no decided reading can be named, and they are declared in `check.sh` as `expected_refused 6`.
+They would hold under the default if the share of her salary from the source were given as all of it; that is a fact the tester's scenarios imply but did not state, and adding it needs the lead's yes.
+
+**Names for IL-54 (capstone).**
+New fields: on `Spouses in a tax year`, `of the children's income within (a)(3), the part from assets received by inheritance or from compensation or insurance for bodily injury` (NUMBER) and `the readings of section 66 to take, if not this row's` (MAYBE); on `A spouse`, `an Israeli resident in the tax year, for section 36A` (BOOLEAN); on `A common source of income`, `the income from personal exertion it gives the spouse who is not the registered spouse, if known` (MAYBE NUMBER).
+New types: `Readings of section 66 for a couple` and the eight reading types named above (F13's is in `ito66-c-credit-points.l4`, the others in `ito66-nouns.l4`).
+New rules: the eight switches, the accessors `the reading of … taken for` couple, the refusals, `s 66(d)(1) — the spouses have no common source of income, or one that meets every condition:`, `s 66(a)(1) with (d)(1) — the income from a failing common source kept out of the separate calculation, for`, `s 66(a)(2)-(3) — the children's income that goes with the pool to the spouse who is not the registered spouse, for`, and two rules with a reading argument: `s 66(c)(4)-(5) — the credit for children, … , reading the set-off as` and `s 66(c)(4) — the half point under section 36A, for … , reading section 36A on residence as`.
+No rule was renamed and no signature changed; every rule of the old names answers at this row's switches.
+
+### What `check.sh` prints, version 0.4.0
+
+Run from 2026-10-08T22:36:59Z to 22:37:07Z as `./check.sh`, with `l4` on PATH: `/Users/mengwong/.local/bin/l4` -> `~/.cabal/bin/l4` -> the cabal-store build `jl4-0.1-6df1397b`, sha256 `f0759b2ef2f1d1b2a577c68f059c54f487de9d913553fc9f0d9bf0f7f5dab0d8`, the same before and after the run.
+That binary is not the one of version 0.3.0's run (`jl4-0.1-d4290e25`, `f4f2bd25…`): `~/.cabal/bin/l4` was relinked at 2026-10-08T18:46Z, by another session, before this job's first run, so every run of this job used it.
+`JL4_LIBRARY_PATH` unset.
+
+```
+module                                    errors satisfied  failed  refused  expected
+ito66-a-separate-calculation.l4                0         0       0        0         0
+ito66-ab-taxable-income.l4                     0         0       0        0         0
+ito66-b-property-income.l4                     0         0       0        0         0
+ito66-c-credit-points.l4                       0         0       0        0         0
+ito66-d-common-source.l4                       0         0       0        0         0
+ito66-fixtures.l4                              0         0       0        0         0
+ito66-nouns.l4                                 0         0       0        0         0
+ito66-tax-years.l4                             0         3       0        0         0
+ito66-tests-ita.l4                             0        23       0        0         0
+ito66-tests.l4                                 0       255       0        0         0
+tests-independent.l4                           0        97       0        6       0/6
+TOTAL (11 modules)                             0       378       0        6
+```
+
+Exit 0.
+`ito66-tests.l4` grew from 193 to 255 satisfied, the 62 assertions above; its 16 re-pointed assertions hold.
+`tests-independent.l4` is 97 satisfied; it refuses the 6 declared above and fails nothing; its 5 re-pointed assertions hold with their values.
+A run at 22:34:16Z, before the five were re-pointed, gave 92 satisfied and 11 refused there, the rest the same.
 
 ## Version 0.3.0 (2026-10-08): fork F19 as a switch (BACKLOG IL-38, SHRUG)
 
@@ -340,25 +450,26 @@ None has been settled by a court or the Tax Authority to my knowledge; I did not
 
 | id | where | readings | taken | why |
 | --- | --- | --- | --- | --- |
-| F1 | (d)(1), line 2479 | (i) the gate is on the COUPLE: where conditions fail, (a) does not apply to them at all; (ii) it is on the INCOME from the common source only | (i) | "הוראות סעיף קטן (א) יחולו לגבי בני זוג שיש להם מקור הכנסה משותף, רק אם …" names spouses, not income. For (ii): s 64B(b), line 2441, speaks of "הכנסה ממקור הכנסה משותף לפי סעיף 66(ד) שלא מתקיימות לגביה הוראות אותו סעיף", and s 67(a) applies (d) to farm income. |
+| F1 | (d)(1), line 2479 | (i) the gate is on the COUPLE: where conditions fail, (a) does not apply to them at all; (ii) it is on the INCOME from the common source only | (i) to 0.3.0; **(0.4.0) RULED by Meng on 2026-10-08 (SHRUG): one named switch, default DECLINE where the readings differ, every reading kept by name and tested** (BACKLOG IL-47; switch `section 66(d)(1) — the reading this row takes where a common source of income fails its conditions`); reading (ii) needs the new fact on `A common source of income` | "הוראות סעיף קטן (א) יחולו לגבי בני זוג שיש להם מקור הכנסה משותף, רק אם …" names spouses, not income. For (ii): s 64B(b), line 2441, speaks of "הכנסה ממקור הכנסה משותף לפי סעיף 66(ד) שלא מתקיימות לגביה הוראות אותו סעיף", and s 67(a) applies (d) to farm income. |
 | F2 | (a)(1) proviso, line 2456 | is a sum received on commuting a pension (s 1 def. para (6)) a "קיצבה" for the proviso? | no | para (6) calls it "סכום המתקבל עקב היוון קיצבה", distinguishing it from the pensions of paras (1)-(4); (5) and (7) are a grant and rent. |
-| F3 | (a)(2), line 2457 | spouses with EQUAL non-zero income from personal exertion: neither sentence answers | refuse | "גבוהה יותר" presupposes one is higher; the second sentence covers only "no income". Not filled with a guess. |
+| F3 | (a)(2), line 2457 | spouses with EQUAL non-zero income from personal exertion: neither sentence answers | refuse; (0.4.0, 02-F3) class (b): already declined by name, and the other reading the inventory names, a practice rule, is not in the text; left | "גבוהה יותר" presupposes one is higher; the second sentence covers only "no income". Not filled with a guess. |
 | F4 | (a)(2) | is the comparison on the spouse's whole personal-exertion income, or only what is calculated separately? | whole | "הכנסתו החייבת מיגיעה אישית" is not qualified. The other reading would exclude a pension the (a)(1) proviso keeps on the registered spouse. |
 | F5 | (a)(3), line 2458 | "ילדו": the registered spouse's own child only, or any child of the couple? | own child | the possessive is singular and attached to "בן הזוג הרשום". A child of the other spouse alone is not reached. |
-| F6 | (a)(3) | does s 65's exception (assets from inheritance, or compensation or insurance for bodily injury) apply? | no | (a)(3) restates s 65's child rule without the exception and imports only s 65's meaning of "ריבית". The opposite reading: (a)(3) is s 65's rule under s 66, and the exception travels with it. |
-| F7 | (b) proviso, line 2459 | "הכנסה אחרת לגביה נערך חישוב מס נפרד": only the (a)(1) calculation of the other spouse; or also the registered spouse's income once (a) applies, or a (1A) request | (a)(1) only | the registered spouse's income is assessed on him under s 65 as modified, and s 66 calls only the other spouse's calculation "חישוב נפרד". So a registered spouse's claimed (b) income is always calculated on its own. |
-| F8 | (c)(1A), line 2462 | is a (1A) request shut by the (d) gate? | no | (d) gates "סעיף קטן (א)"; (1A) is in (c). The opposite reading: (c) states provisions for "the separate calculation", which (a) creates, so (d) reaches it indirectly. |
-| F9 | (c)(4)-(6) | a couple of the same sex: who is "האשה", who is "הגבר"? | refuse | the definite articles presuppose one of each; the text does not say. (c)(3), which does not turn on sex, still answers. |
-| F10 | (c)(1)-(4) | a provision (c) does not name (ss 39A, 39B, 40A-40D, 44, 45, 46, …) | refuse | s 66 is silent; the provision's own wording decides, outside this slice. |
+| F6 | (a)(3) | does s 65's exception (assets from inheritance, or compensation or insurance for bodily injury) apply? | no, to 0.3.0; **(0.4.0) RULED by Meng on 2026-10-08 (SHRUG): one named switch, default DECLINE where the readings differ, every reading kept by name and tested** (BACKLOG IL-47; switch `section 66(a)(3) — the reading this row takes of the exception in section 65`); the part from such assets is a new fact on the couple | (a)(3) restates s 65's child rule without the exception and imports only s 65's meaning of "ריבית". The opposite reading: (a)(3) is s 65's rule under s 66, and the exception travels with it. |
+| F7 | (b) proviso, line 2459 | "הכנסה אחרת לגביה נערך חישוב מס נפרד": only the (a)(1) calculation of the other spouse; or also the registered spouse's income once (a) applies, or a (1A) request | (a)(1) only, to 0.3.0; **(0.4.0) RULED by Meng on 2026-10-08 (SHRUG): one named switch, default DECLINE where the readings differ, every reading kept by name and tested** (BACKLOG IL-47; switch `section 66(b) — the reading this row takes of the proviso as to the registered spouse`) | the registered spouse's income is assessed on him under s 65 as modified, and s 66 calls only the other spouse's calculation "חישוב נפרד". So a registered spouse's claimed (b) income is always calculated on its own. |
+| F8 | (c)(1A), line 2462 | is a (1A) request shut by the (d) gate? | no, to 0.3.0; **(0.4.0) RULED by Meng on 2026-10-08 (SHRUG): one named switch, default DECLINE where the readings differ, every reading kept by name and tested** (BACKLOG IL-47; switch `section 66(c)(1A) — the reading this row takes where a common source of income fails subsection (d)(1)`) | (d) gates "סעיף קטן (א)"; (1A) is in (c). The opposite reading: (c) states provisions for "the separate calculation", which (a) creates, so (d) reaches it indirectly. |
+| F9 | (c)(4)-(6) | a couple of the same sex: who is "האשה", who is "הגבר"? | refuse; (0.4.0, 02-F9) class (b): already declined by name; left | the definite articles presuppose one of each; the text does not say. (c)(3), which does not turn on sex, still answers. |
+| F10 | (c)(1)-(4) | a provision (c) does not name (ss 39A, 39B, 40A-40D, 44, 45, 46, …) | refuse; (0.4.0, 02-F10) class (b): already declined by name; left | s 66 is silent; the provision's own wording decides, outside this slice. |
 | F11 | (c)(4)(a1), line 2467 | does the election reach a step-mother's points under (4A)? | no | "אמו של ילד": the child's mother. |
 | F12 | (c)(4A), (6), lines 2472, 2478 | a partner's children from an earlier marriage that ended other than by death | not counted | the paragraphs say "לאלמן" / "לאלמנה". |
-| F13 | (c)(1A), (4), (5) | "כנגד המס החל על הכנסתה מיגיעה אישית": a cap on the children's credit, or only an ordering? | a cap: the credit is the lesser of points × value and that tax | a credit point is "המקוזז כנגד המס" (s 33A); naming one tax confines the set-off to it. The ½ under s 36A precedes "ובנוסף" and is not confined. |
-| F14 | (a)(2) with (a)(3) | does the children's (a)(3) income, once deemed the registered spouse's, join the (a)(2) pool and move with it? | no: it stays on the registered spouse | (a)(3) says whose income it is, specifically; reading it into the pool would let (a)(2) send it to the other spouse, contradicting "בן הזוג הרשום". |
+| F13 | (c)(1A), (4), (5) | "כנגד המס החל על הכנסתה מיגיעה אישית": a cap on the children's credit, or only an ordering? | a cap: the credit is the lesser of points × value and that tax, to 0.3.0; **(0.4.0) RULED by Meng on 2026-10-08 (SHRUG): one named switch, default DECLINE where the readings differ, every reading kept by name and tested** (BACKLOG IL-47; switch `section 66(c)(4)-(5) — the reading this row takes of the set-off of the children's credit`) | a credit point is "המקוזז כנגד המס" (s 33A); naming one tax confines the set-off to it. The ½ under s 36A precedes "ובנוסף" and is not confined. |
+| F14 | (a)(2) with (a)(3) | does the children's (a)(3) income, once deemed the registered spouse's, join the (a)(2) pool and move with it? | no: it stays on the registered spouse, to 0.3.0; **(0.4.0) RULED by Meng on 2026-10-08 (SHRUG): one named switch, default DECLINE where the readings differ, every reading kept by name and tested** (BACKLOG IL-47; switch `section 66(a)(2)-(3) — the reading this row takes of the children's income when the pool goes to the spouse who is not the registered spouse`) (inventory 02-F6) | (a)(3) says whose income it is, specifically; reading it into the pool would let (a)(2) send it to the other spouse, contradicting "בן הזוג הרשום". |
 | F15 | (a)(3) | "שטרם מלאו לו בשנת המס 18 שנים": a child who turns 18 during the year | excluded | read as "has not turned 18 by the end of the tax year"; age in the year at most 17. |
 | F16 | (c) chapeau with (c)(4), (5) | once (a)(1) gives a separate calculation, does (c) govern the registered spouse's calculation too? | yes | (c)(1) says "לכל אחד מבני הזוג", and (c)(4)/(5) speak of the woman and the man, one of whom is the registered spouse. |
 | F17 | (c)(4), (5) | must the child be maintained by, or live with, the spouse (as s 40(b)(1) requires)? | no condition | (c)(4) and (5) say only "ילדיה" / "ילדיו". |
-| F18 | (c)(1A) | does "בן זוג" include the registered spouse? | yes | the paragraph says "בן זוג", not "בן זוג שאיננו בן זוג רשום" as (a)(1) does, and it would otherwise add nothing to (a)(1). |
+| F18 | (c)(1A) | does "בן זוג" include the registered spouse? | yes, to 0.3.0; **(0.4.0) RULED by Meng on 2026-10-08 (SHRUG): one named switch, default DECLINE where the readings differ, every reading kept by name and tested** (BACKLOG IL-47; switch `section 66(c)(1A) — the reading this row takes as to the registered spouse`) (inventory 02-F8) | the paragraph says "בן זוג", not "בן זוג שאיננו בן זוג רשום" as (a)(1) does, and it would otherwise add nothing to (a)(1). |
 | F19 (0.2.0, 02-E4) | (c)(4)(a1), line 2467, at the vintage boundary of A1 | a child born in 2023, the mother's election set, asked of tax year 2024: (i) the 2024 text governs the 2024 calculation and says where the point lands, 4½ + 1 = 5½; (ii) the point moved is one "מתוך נקודות הזיכוי שלהן היא זכאית כאמור באותה פסקה, בשנת הלידה", the year of birth is 2023, and whether a 2023 mother could elect and had a point to move is 2023 law, which is not held: refuse | (i), kept as the default in 0.2.0; **(0.3.0) RULED by Meng on 2026-10-08 (SHRUG): one named switch, default (ii), a refusal by name; (i) kept by name and tested** (BACKLOG IL-38; switch `section 66(c)(4)(a1) — the reading this row takes for an election for a child born before 2024`) | (i) is the encoder's, taken by construction in 0.1.0 and unrecorded until 0.2.0. (ii) is the independent tester's (E-4, `tests-independent.l4:385`, confidence L; "on reflection I would not call the encoding wrong"), left failing and declared in `check.sh`. Axiom is silent: it does not apply (a1) (AX-14). The input `the mother elects to count one birth-year credit point in the following tax year` carries no year, so the encoding cannot tell an election of 2023 from one of 2024. Under the lead's recommendation for IL-24 (a named switch, default decline), (ii) would become the default. (0.3.0: it has; the tester's E-4 now holds.) |
+| F20 (0.4.0, 01-F1, shared with row IL-01's F1) | (c)(4), line 2465, with s 36A, line 1597 | does the half point (c)(4) gives "לפי סעיף 36א" need the woman to be an Israeli resident? (i) no: s 36A, "בחישוב המס של אשה תובא בחשבון ½ נקודת זיכוי", names none, where ss 34 and 36 beside it do; (ii) yes, by the context of ss 34 and 36 | (i) silently to 0.3.0 (this row had no residence input); **(0.4.0) RULED by Meng on 2026-10-08 (SHRUG): one named switch, default DECLINE where the readings differ, every reading kept by name and tested** (BACKLOG IL-47; switch `section 66(c)(4) — the reading this row takes of section 36A on residence`), mirroring IL-01 v0.3.0 (b64a3efb), whose refusal words it uses; residence is a new fact on `A spouse` | IL-01's encoder, tester and Axiom all read (i), which the inventory calls "agreement, not proof". s 66 itself does not test residence. |
 
 **A consolidation oddity, not a fork.**
 The definitions of "שנת לידה" and "שנת בגרות" appear twice: inside (c)(4)(a) at line 2466 ("לעניין זה ולעניין פסקה (5) …") and again as an unnumbered line after (c)(4)(d) at line 2471 ("לענין זה …").
@@ -438,6 +549,11 @@ Not fetched: the amending Acts at `fs.knesset.gov.il/24/law/24_lsr_624898.pdf`, 
 8. F10: which unnamed credit provisions (ss 39A, 39B, 40A-40D, 44, 45, 46) apply to each spouse in a separate calculation?
 9. The text before 2024: encoding the earlier vintages needs the amending Acts (ס״ח 3048 and 3184, and earlier), which this run could not fetch.
 
+(0.4.0) Meng ruled on 2026-10-08 (SHRUG) on questions 1, 3, 4, 5 and 7: each fork named there is a switch that declines by default where its readings differ, and every reading is kept by name.
+Questions 2, 6 and 8 are about forks this row already declines (F3, F9, F10), and were left.
+All eight remain questions for a domain expert: a ruling to decline is not an answer to what the Tax Authority does.
+11. (0.4.0) F20: does the half point (c)(4) gives under s 36A need the woman to be an Israeli resident? Shared with row IL-01's F1; ruled the same way.
+
 10. (0.2.0) F19: may a birth-year point elected in 2023 be carried into a 2024 calculation, when the 2023 text is not held? Waits on Meng (BACKLOG IL-24). (0.3.0: ruled by Meng on 2026-10-08, SHRUG: declined by default, the carrying reading kept by name. A domain expert could still say what the Tax Authority does.)
 
 Recommended next step: the independent test pass of the encoding skill (`references/second-pass.md`), in a fresh session given only `BRIEF.md` and the source, then a refuter on the (a)/(b) assembly, where the forks concentrate.
@@ -450,6 +566,8 @@ Read from the sibling directories on 2026-10-06, read-only; nothing imported.
 - **The person.** IL-01 declares `Individual` (`ito-credit-points-nouns.l4`) with `a woman` as a BOOLEAN; this row declares `A spouse` with `sex` IS A `Sex` (`a woman` | `a man`). Same person, two shapes; the constructor `a woman` here and IL-01's field `a woman` will also collide by name if both modules are imported together.
 - **Residence.** IL-01 declares `an Israeli resident in the tax year` on `Individual`; this row does not declare residence at all, because s 66 does not test it.
 - **The child** (0.2.0, 02-N3). This row's `A child` is now `A child, for section 66`, so it no longer shares a name with row IL-06's.
+- **Residence** (0.4.0, F20). This row now declares `an Israeli resident in the tax year, for section 36A` on `A spouse`, read only for the ½ under s 36A; IL-01's is `an Israeli resident in the tax year` on `Individual`. IL-07 must pass the same fact to both rows. (The bullet above on residence stays true of s 66 itself.)
+- **Readings** (0.4.0). `Spouses in a tax year` now carries `the readings of section 66 to take, if not this row's` (NOTHING for this row's switches) and `of the children's income within (a)(3), the part from assets received by inheritance or from compensation or insurance for bodily injury` (0 where none); `A common source of income` carries `the income from personal exertion it gives the spouse who is not the registered spouse, if known` (NOTHING where the facts do not say). IL-07 builds `Spouses in a tax year` itself and must set the first two.
 - **Foreign worker** (0.2.0, 02-R2). IL-01 declares `a foreign worker` on `Individual`; this row now declares `a foreign worker within the meaning of section 48A` on `A spouse`, named apart so the two fields cannot collide, and read only for the ½ under s 36A (A6). IL-07 must pass the same fact to both rows.
 - **Income items.** IL-03 declares `An item of income` (`amount`, `from personal exertion` BOOLEAN, …) inside `An individual in a tax year`; this row declares `An item of income from personal exertion` (`kind`, `taxable amount`) and keeps income not from personal exertion as one NUMBER on `A spouse`. Same items, different granularity: this row needs the s 1 paragraph of each item for the (a)(1) pension proviso.
 - **The tax year.** IL-03's `An individual in a tax year` and this row's `Spouses in a tax year` both have a field `tax year` (NUMBER); two record fields of one name in one import scope are ambiguous in L4.

@@ -1,0 +1,147 @@
+@lang en
+IMPORT prelude
+IMPORT `nii-il34-nouns`
+
+-- National Insurance Law s 2 (פריסת תשלומים חריגים, spreading exceptional payments) and Schedule A (לוח א׳). Row IL-34, priority 5.
+-- `src:N` is line N of the Law's deposited text (../../registers/source-bundle/national-insurance-law-consolidated-version-5755-1995.he.wiki.txt,
+-- sha256 78bf47ee...2a97).
+--
+-- WHAT IT SAYS. In computing the average wage for benefits and contributions, the measured wage (the CBS's average wage per employee post) of an
+-- "exceptional wage month" (the last month of a tax year, and a month in which clothing or recuperation allowances were paid to most employees) is
+-- replaced by the "corrected measured wage"; and the average wage so computed is raised by one-twelfth of the sum of the "monthly differences" of the
+-- last three exceptional months (s 2(b)). Schedule A fixes the minimum average monthly income of a self-employed person (s 1 "עובד עצמאי"): 15% of the
+-- average wage as it is on the 1st of the first month of each quarter, for each month of the quarter.
+--
+-- WHAT IS NOT HERE. The measured wages themselves are the Central Bureau of Statistics's, and are inputs; so is the average wage on the day Schedule A names.
+-- Row IL-04 encodes s 1 "the average wage" (the three-month average and the compensation rate) and takes Schedule A's sum as an argument; this module
+-- computes that sum. The consolidation's note gives 13,769 for the measured wage in 2026 (s 2(a)) and 13,566 for the average wage (s 1); neither is used in
+-- a rule, only in tests as the Institute's printed 2026 figure.
+
+§ `Section 2 and Schedule A`
+
+§§ `Section 2(a): the definitions`
+
+-- src:230 | סעיף 2 – פריסת תשלומים חריגים [תיקון: תשנ״ט־6]
+-- src:231 | (א) בסעיף זה –
+-- src:232 | ”שכר מדוד“ – שכר ממוצע למשרת שכיר שמפרסמת הלשכה המרכזית לסטטיסטיקה;
+-- src:233 | [note: נכון לשנת 2026, השכר הממוצע המדוד הוא 13,769 ש״ח.]
+-- src:234 | ”חודש שכר חריג“ – החודש האחרון של שנת מס וכן חודש שבו שולמו תוספות בעד ביגוד או בעד הבראה למרבית העובדים השכירים;
+-- src:235 | ”שכר מדוד מתוקן“ – השכר המדוד של החודש האחרון שקדם לחודש שכר חריג (להלן – החודש הקודם), בתוספת 0.5% ממנו ובתוספת פיצוי שחל בחודש השכר החריג; היה החודש הקודם חודש שכר חריג, יובא בחשבון, לענין זה, במקום השכר המדוד של החודש הקודם, השכר המדוד של החודש האחרון שקדם לחודש הקודם בתוספת 0.5% ממנו ובתוספת פיצוי שחל בחודש הקודם.
+-- src:236 | (ב) בחישוב השכר הממוצע, לצורך גמלאות ודמי ביטוח, יחולו שינויים אלה:
+-- src:237 | (1) לגבי חודש שכר חריג, במקום השכר המדוד יובא בחשבון השכר המדוד המתוקן;
+
+-- "Exceptional wage month": the last month of a tax year (December), or a month in which clothing or recuperation allowances were paid to most
+-- employed persons. The second limb is a fact the caller reports.
+@ref National Insurance Law s 2(a), "חודש שכר חריג" (source line 234)
+GIVEN `the month` IS A NUMBER
+      `clothing or recuperation allowances were paid to most employees in the month` IS A BOOLEAN
+GIVETH A BOOLEAN
+`s 2(a) — month` `the month` `is an exceptional wage month, allowances to most employees being` `clothing or recuperation allowances were paid to most employees in the month` MEANS
+    IF `the month` LESS THAN 1 OR `the month` GREATER THAN 12
+    THEN REFUSE "a month of the tax year is numbered from 1 to 12"
+    ELSE `the month` EQUALS 12 OR `clothing or recuperation allowances were paid to most employees in the month`
+
+@ref NOTES.md fork W1
+GIVEN a IS A TYPE
+GIVETH AN a
+`section 2(a) adds "compensation" and does not say whether as a rate of the earlier month's measured wage or as an amount in shekels` MEANS
+    REFUSE "section 2(a) adds \"compensation\" and does not say whether as a rate of the earlier month's measured wage or as an amount in shekels"
+
+-- The addition for compensation, to a base measured wage, at a reading. Nothing is added when no compensation applied (rate 0 and amount 0): the
+-- readings agree, and none is consulted.
+@ref National Insurance Law s 2(a), "שכר מדוד מתוקן" (source line 235); NOTES.md fork W1
+GIVEN c    IS A `The compensation that applied in a month`
+      base IS A NUMBER
+      r    IS A `A reading of the compensation added in section 2(a)`
+GIVETH A NUMBER
+`the addition for compensation` c `to the measured wage` base `, reading it as` r MEANS
+    IF c's `its rate` EQUALS 0 AND c's `its amount in shekels` EQUALS 0
+    THEN 0
+    ELSE
+        CONSIDER r
+        WHEN `the compensation is added as its rate of the earlier month's measured wage` THEN base TIMES (c's `its rate`)
+        WHEN `the compensation is added as its amount in shekels`                         THEN c's `its amount in shekels`
+        WHEN `how the compensation is added is declined`                                  THEN `section 2(a) adds "compensation" and does not say whether as a rate of the earlier month's measured wage or as an amount in shekels`
+
+-- "Corrected measured wage": the measured wage of the last month before the exceptional wage month, plus 0.5% of it, plus the compensation that
+-- applied in the exceptional month; and if that last month was itself an exceptional wage month, the measured wage of the last month before IT, plus
+-- 0.5% of it, plus the compensation that applied in IT.
+@ref National Insurance Law s 2(a), "שכר מדוד מתוקן" (source line 235); NOTES.md fork W1
+GIVEN `the measured wage of the last month before the exceptional month` IS A NUMBER
+      `that last month was itself an exceptional wage month` IS A BOOLEAN
+      `the measured wage of the last month before that one` IS A NUMBER
+      `the compensation in the exceptional month` IS A `The compensation that applied in a month`
+      `the compensation in the earlier exceptional month` IS A `The compensation that applied in a month`
+      r IS A `A reading of the compensation added in section 2(a)`
+GIVETH A NUMBER
+`s 2(a) — the corrected measured wage: the month before measured` `the measured wage of the last month before the exceptional month` `, that month being exceptional:` `that last month was itself an exceptional wage month` `, the month before it measured` `the measured wage of the last month before that one` `, compensation then` `the compensation in the exceptional month` `and in the earlier exceptional month` `the compensation in the earlier exceptional month` `, reading it as` r MEANS
+    IF `that last month was itself an exceptional wage month`
+    THEN `the measured wage of the last month before that one` TIMES 1.005
+         PLUS `the addition for compensation` `the compensation in the earlier exceptional month` `to the measured wage` `the measured wage of the last month before that one` `, reading it as` r
+    ELSE `the measured wage of the last month before the exceptional month` TIMES 1.005
+         PLUS `the addition for compensation` `the compensation in the exceptional month` `to the measured wage` `the measured wage of the last month before the exceptional month` `, reading it as` r
+
+@ref NOTES.md fork W1 (SHRUG, Meng 2026-10-08)
+GIVETH A `A reading of the compensation added in section 2(a)`
+`s 2(a) — the reading this row takes of the compensation added` MEANS `how the compensation is added is declined`
+
+@ref National Insurance Law s 2(a), "שכר מדוד מתוקן" (source line 235)
+GIVEN `the measured wage of the last month before the exceptional month` IS A NUMBER
+      `that last month was itself an exceptional wage month` IS A BOOLEAN
+      `the measured wage of the last month before that one` IS A NUMBER
+      `the compensation in the exceptional month` IS A `The compensation that applied in a month`
+      `the compensation in the earlier exceptional month` IS A `The compensation that applied in a month`
+GIVETH A NUMBER
+`s 2(a) — the corrected measured wage: the month before measured` `the measured wage of the last month before the exceptional month` `, that month being exceptional:` `that last month was itself an exceptional wage month` `, the month before it measured` `the measured wage of the last month before that one` `, compensation then` `the compensation in the exceptional month` `and in the earlier exceptional month` `the compensation in the earlier exceptional month` MEANS
+    `s 2(a) — the corrected measured wage: the month before measured` `the measured wage of the last month before the exceptional month` `, that month being exceptional:` `that last month was itself an exceptional wage month` `, the month before it measured` `the measured wage of the last month before that one` `, compensation then` `the compensation in the exceptional month` `and in the earlier exceptional month` `the compensation in the earlier exceptional month` `, reading it as` (`s 2(a) — the reading this row takes of the compensation added`)
+
+§§ `Section 2(b): the average wage for benefits and contributions`
+
+-- src:238 | (2) השכר הממוצע יחושב בכפוף להוראות פסקה (1) ויוגדל בשיעור השווה לחלק השנים עשר של סך ההפרשים החודשיים לגבי שלושת חודשי השכר החריג האחרונים, ששכרם המדוד ידוע ביום העדכון; לענין זה, ”הפרש חודשי“ – ההפרש שבין השכר המדוד של חודש שכר חריג לבין השכר המדוד המתוקן של אותו חודש, מחולק בשכר המדוד המתוקן של החודש האמור;
+-- src:239 | (3) [note: (פקעה).]
+
+-- "Monthly difference": the difference between the measured wage of an exceptional month and its corrected measured wage, divided by the corrected one.
+@ref National Insurance Law s 2(b)(2), "הפרש חודשי" (source line 238)
+GIVEN `the measured wage of the exceptional month` IS A NUMBER
+      `its corrected measured wage` IS A NUMBER
+GIVETH A NUMBER
+`s 2(b)(2) — the monthly difference: measured` `the measured wage of the exceptional month` `and corrected` `its corrected measured wage` MEANS
+    IF `its corrected measured wage` EQUALS 0
+    THEN REFUSE "a monthly difference is divided by the corrected measured wage, which is 0"
+    ELSE (`the measured wage of the exceptional month` MINUS `its corrected measured wage`) DIVIDED BY `its corrected measured wage`
+
+@ref National Insurance Law s 2(b)(2) (source line 238)
+GIVEN a IS A TYPE
+GIVETH AN a
+`section 2(b)(2) takes the last three exceptional wage months, and more than three monthly differences were given` MEANS
+    REFUSE "section 2(b)(2) takes the last three exceptional wage months, and more than three monthly differences were given"
+
+-- (b)(1): for an exceptional wage month the corrected measured wage is used in place of the measured wage (the caller computes the average wage
+-- from those). (b)(2): the average wage so computed is increased by a rate equal to one-twelfth of the sum of the monthly differences of the last
+-- three exceptional wage months whose measured wage is known on the update day. The caller gives those differences, at most three.
+@ref National Insurance Law s 2(b)(2) (source line 238)
+GIVEN `the average wage computed subject to (1)` IS A NUMBER
+      `the monthly differences of the last exceptional wage months known on the update day` IS A LIST OF NUMBER
+GIVETH A NUMBER
+`s 2(b)(2) — the average wage increased: computed` `the average wage computed subject to (1)` `with the monthly differences` `the monthly differences of the last exceptional wage months known on the update day` MEANS
+    IF count `the monthly differences of the last exceptional wage months known on the update day` GREATER THAN 3
+    THEN `section 2(b)(2) takes the last three exceptional wage months, and more than three monthly differences were given`
+    ELSE `the average wage computed subject to (1)` TIMES (1 PLUS (sum `the monthly differences of the last exceptional wage months known on the update day`) DIVIDED BY 12)
+
+§§ `Schedule A: the minimum average monthly income of a self-employed person`
+
+-- src:4360 | ⟦ח:קטע2|לוח א|לוח א׳|אחר=[לוח א׳]⟧
+-- src:4361 | ⟦ח:קטע4||[note: (סעיף 1, הגדרת ”עובד עצמאי“)]⟧
+-- src:4362 | ⟦ח:קטע4||הכנסה מזערית חודשית ממוצעת לעובד עצמאי⟧
+-- src:4365 | לגבי כל אחד מהחודשים שברבעון – סכום השווה ל־15% מהשכר הממוצע, כפי שהוא ב־1 בחודש שבתחילת כל רבעון; לענין זה, ”רבעון“ – תקופה רצופה של שלושה חודשים שתחילתה ב־1 בינואר, ב־1 באפריל, ב־1 ביולי או ב־1 באוקטובר של כל שנת מס.
+
+-- "For each of the months of the quarter, a sum equal to 15% of the average wage as it is on the 1st of the month at the start of each quarter."
+-- The average wage on that day is an input (it changes on 1 January and on the first day of a month with a compensation).
+@ref National Insurance Law Schedule A (source line 4365)
+GIVEN `the month` IS A NUMBER
+      `the average wage on the first day of the quarter's first month` IS A NUMBER
+GIVETH A NUMBER
+`Schedule A — the minimum average monthly income for month` `the month` `, the average wage on the first day of the quarter's first month being` `the average wage on the first day of the quarter's first month` MEANS
+    IF `the month` LESS THAN 1 OR `the month` GREATER THAN 12
+    THEN REFUSE "a month of the tax year is numbered from 1 to 12"
+    ELSE 15% TIMES `the average wage on the first day of the quarter's first month`

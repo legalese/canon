@@ -1,0 +1,330 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `ito-il03-nouns`
+IMPORT `ito-120b-indexation`
+IMPORT `ito-121-individual-rates`
+IMPORT `ito-121b-additional-tax`
+IMPORT `ito-il26-nouns`
+IMPORT `ito-il26-schedule-a`
+IMPORT `ito-il26-published-figures`
+
+-- Regulations 1 to 5 and 10 of the Income Tax (Deduction from Salary and Wages) Regulations 5753-1993: which
+-- payments of salary the employer deducts from, and how, as far as the deduction is from a monthly salary.
+--
+-- Source: ../../registers/source-bundle/regulations/income-tax-deduction-from-salary-and-wages-regulations-5753-1993.he.wiki.txt
+-- (sha256 e6fd6975...b7b20f). Regulation 1 is lines 14-43; 2: 45-52; 3: 54-60; 4: 62-65; 5: 67-74; 10: 132-133.
+-- References to the Ordinance below name a section, not a line, because `src:` comments in this file quote
+-- the Regulations only.
+
+§ `Regulations 1 to 5 and 10 — the deduction from a month's salary`
+
+§§ `Regulation 1 — the definitions the deduction turns on`
+
+-- src:19 | ”עובד יומי“ – יחיד המקבל שכר עבודה ממעביד אחד בעד עבודה של פחות משמונה עשר ימים בחודש, אולם לא פחות משמונה שעות בשבוע;
+-- src:28 | ”משכורת חודש“ – משכורת המשולמת לעובד בעד עבודת חודש: לענין זה, ”עבודת חודש“ – למעט עבודה של פחות מ־18 ימים בחודש:
+-- src:29 | ”משכורת חלקית“ – משכורת המשולמת לעובד בעד עבודה של חמש שעות ליום או פחות, או בעד עבודה של יותר מחמש שעות ליום, אולם פחות משמונה שעות בשבוע;
+-- src:32 | ”משכורת בעד משרה נוספת“ – משכורת המשולמת לעובד בעד עבודה של יותר מחמש שעות ביום, המועסק במקום עבודה אחר או המקבל ממעביד אחר קצבה חייבת במס;
+@ref Regulations 5753-1993, reg 1 "עובד יומי", "משכורת חלקית" (source lines 19, 29)
+GIVEN `the payment` IS A `A payment of salary`
+GIVETH A BOOLEAN
+`the payment is a partial salary or a pension` `the payment` MEANS
+        `the payment`'s `the payment is a pension`
+    OR  `the payment`'s `hours worked a day` AT MOST 5
+    OR  (`the payment`'s `hours worked a day` GREATER THAN 5 AND `the payment`'s `hours worked a week` LESS THAN 8)
+
+-- A day employee: wages from one employer for work of fewer than 18 days in the month, but not fewer than eight
+-- hours a week. (A person who is within the partial-salary definition is dealt with first, by regulation 5.)
+@ref Regulations 5753-1993, reg 1 "עובד יומי" (source line 19)
+GIVEN `the payment` IS A `A payment of salary`
+GIVETH A BOOLEAN
+`the payment is wages of a day employee` `the payment` MEANS
+        `the payment`'s `days worked in the month` LESS THAN 18
+    AND `the payment`'s `hours worked a week` AT LEAST 8
+
+-- A salary for an additional position: more than five hours a day, the employee employed elsewhere or
+-- receiving a taxable pension from another payer. Regulation 5(a) deducts at the maximal rate from one that
+-- the employee declared on the card.
+@ref Regulations 5753-1993, reg 1 "משכורת בעד משרה נוספת" (source line 32); reg 5(a) (source line 68)
+GIVEN `the payment`      IS A `A payment of salary`
+      `the declarations` IS AN `The employee's declarations`
+GIVETH A BOOLEAN
+`the payment is a salary for an additional position that the employee declared` `the payment` `given` `the declarations` MEANS
+        `the payment`'s `hours worked a day` GREATER THAN 5
+    AND `the payment`'s `the employee works elsewhere, or receives a taxable pension from another payer`
+    AND `the declarations`'s `declared on the card an additional position, or a taxable pension from another payer`
+
+§§ `The payments this row does not answer`
+
+@ref Regulations 5753-1993, reg 3(d), Schedule C (source lines 58-60, 215-237)
+GIVEN a IS A TYPE
+GIVETH AN a
+`a salary to a foreign worker is deducted under regulation 3(d) and Schedule C, which this row does not encode` MEANS
+    REFUSE "a salary to a foreign worker is deducted under regulation 3(d) and Schedule C (and regulation 11(d)), which this row does not encode"
+
+@ref Regulations 5753-1993, reg 3(c), Schedule B (source lines 57, 191-213)
+GIVEN a IS A TYPE
+GIVETH AN a
+`wages of a day employee are deducted under regulation 3(c) and Schedule B, which this row does not encode` MEANS
+    REFUSE "wages of a day employee are deducted under regulation 3(c) and Schedule B, which this row does not encode"
+
+§§ `Regulations 3(a) and 5 — which route a payment takes`
+
+-- Regulation 5(c): the declaration on form 0130 that there is no other taxable income, and 5(d): it stops
+-- applying once the employee has told the employer of other taxable income.
+-- src:70 | (ג) הגיש עובד למעבידו הצהרה, בטופס 0130 במקור והעתק, כי תוך פרק הזמן שלגביו משולמת המשכורת החלקית, הקיצבה או שכר העבודה (להלן – ההכנסה היחידה) אין לו הכנסה חייבת אחרת, ינכה המעביד מס מההכנסה היחידה לפי תוספת א׳ ויעביר מיד לפקיד השומה את המקור של ההצהרה האמורה.
+-- src:71 | (ד) עובד שחלה לגביו תקנת משנה (ג) והתחיל לקבל הכנסה חייבת אחרת לאחר מתן הצהרתו, חייב להודיע על כך למעבידו תוך שבוע ימים; הודיע עובד למעביד על קבלת הכנסה חייבת אחרת, ינכה המעביד מהמשכורת החלקית או מהקיצבה מס כאמור בתקנת משנה (א), (ב) או (ה), או לפי תוספת ב׳, לפי הענין.
+@ref Regulations 5753-1993, reg 5(c)-(d) (source lines 70-71)
+GIVEN `the declarations` IS AN `The employee's declarations`
+GIVETH A BOOLEAN
+`the sole-income declaration is in force` `the declarations` MEANS
+        `the declarations`'s `declared on form 0130 that there is no other taxable income`
+    AND NOT `the declarations`'s `told the employer of other taxable income after making that declaration`
+
+-- Order of the tests, from the text:
+--   1. a foreign worker: regulation 3(d) (declined);
+--   2. a partial salary or a pension: regulation 5(a)-(b) deduct at the maximal rate, unless the employee gave
+--      the 5(c) declaration (form 0130) and has not told the employer of other income since (5(d));
+--   3. a salary for an additional position that the employee declared: 5(a), maximal rate;
+--   4. no card, or no other-income section on it: 5(a), maximal rate;
+--   5. a month's work of 18 days or more: 3(a), Schedule A;
+--   6. otherwise, wages of a day employee: 3(c) (declined).
+-- src:55 | (א) מעביד המשלם לעובד משכורת, פרט למקרים המפורטים בתקנות 4, 5 ו־6, ינכה ממנה בעת התשלום לכל משכורת חודש, מס כמפורט בתוספת א׳.
+-- src:68 | (א) מעביד המשלם לעובד משכורת חלקית, או משכורת בעד משרה נוספת שעליה הצהיר העובד בטופס 0101, או משכורת כאשר העובד לא מילא טופס 0101 או שלא מילא את הסעיף העוסק בפרטים על הכנסות אחרות, ינכה ממנה בעת התשלום מס בשיעור המרבי.
+-- src:69 | (ב) מעביד המשלם לעובד קיצבה, ינכה ממנה בעת התשלום, בכפוף להוראות תקנה 9(ג), מס בשיעור המרבי.
+-- src:70 | (ג) הגיש עובד למעבידו הצהרה, בטופס 0130 במקור והעתק, כי תוך פרק הזמן שלגביו משולמת המשכורת החלקית, הקיצבה או שכר העבודה (להלן – ההכנסה היחידה) אין לו הכנסה חייבת אחרת, ינכה המעביד מס מההכנסה היחידה לפי תוספת א׳ ויעביר מיד לפקיד השומה את המקור של ההצהרה האמורה.
+-- src:71 | (ד) עובד שחלה לגביו תקנת משנה (ג) והתחיל לקבל הכנסה חייבת אחרת לאחר מתן הצהרתו, חייב להודיע על כך למעבידו תוך שבוע ימים; הודיע עובד למעביד על קבלת הכנסה חייבת אחרת, ינכה המעביד מהמשכורת החלקית או מהקיצבה מס כאמור בתקנת משנה (א), (ב) או (ה), או לפי תוספת ב׳, לפי הענין.
+@ref Regulations 5753-1993, regs 3(a), 5(a)-(d) (source lines 55, 68-72)
+GIVEN `the payment`      IS A `A payment of salary`
+      `the declarations` IS AN `The employee's declarations`
+GIVETH A `How regulations 3 and 5 treat a payment`
+`regulations 3 and 5 treat` `the payment` `given` `the declarations` MEANS
+    BRANCH IF `the payment`'s `the employee is a foreign worker`
+           THEN `a salary to a foreign worker is deducted under regulation 3(d) and Schedule C, which this row does not encode`
+           IF `the payment is a partial salary or a pension` `the payment`
+           THEN (IF   `the sole-income declaration is in force` `the declarations`
+                 THEN `a partial salary or a pension on the sole-income declaration: the tax of Schedule A`
+                 ELSE `deducted at the maximal rate`)
+           IF `the payment is a salary for an additional position that the employee declared` `the payment` `given` `the declarations`
+           THEN `deducted at the maximal rate`
+           IF   NOT `the declarations`'s `gave the employer an employee's card (form 0101)`
+             OR NOT `the declarations`'s `filled in the section of the card on other income`
+           THEN `deducted at the maximal rate`
+           IF `the payment`'s `days worked in the month` AT LEAST 18
+           THEN `a monthly salary: the tax of Schedule A`
+           OTHERWISE `wages of a day employee are deducted under regulation 3(c) and Schedule B, which this row does not encode`
+
+§§ `Regulation 1 "השיעור המרבי" — the maximal rate`
+
+-- "The highest rate of tax fixed in section 121". The text defines it by s 121 alone: it is not s 121 plus the
+-- additional tax of s 121B (regulation 6(k) adds s 121B to deductions under regulation 6 only). The rate is
+-- the (a)(3) rate, 47% (Ordinance s 121(a)(3)), and is as printed for the tax years IL-03 answers.
+-- src:37 | ”השיעור המרבי“ – שיעור המס הגבוה ביותר הקבוע בסעיף 121 לפקודה;
+@ref Regulations 5753-1993, reg 1 "השיעור המרבי" (source line 37); ITO s 121(a)(3)
+GIVEN `the tax year` IS A NUMBER
+GIVETH A NUMBER
+`the maximal rate in` `the tax year` MEANS
+    IF   `the text prints the section 121 ceilings for tax year` `the tax year`
+    THEN 47%
+    ELSE `section 121 does not answer in this model for tax year` `the tax year`
+
+§§ `Regulation 3(b) — a month's salary paid in parts`
+
+-- src:56 | (ב) מעביד המשלם משכורת חודש לא בפעם אחת, ינכה בעת תשלום כל חלק ממנה, חלק יחסי מהמס שיש לנכות ממשכורת החודש, כיחס החלק המשולם למשכורת החודש.
+@ref Regulations 5753-1993, reg 3(b) (source line 56); fork F3
+GIVEN a IS A TYPE
+GIVETH AN a
+`regulation 3(b) does not say whether the share of the tax on a part is rounded, and here that changes the tax` MEANS
+    REFUSE "regulation 3(b) deducts a proportionate part of the tax on the month's salary and does not say whether that share is rounded to the shekel; the two readings give different tax here"
+
+@ref Regulations 5753-1993, reg 3(b) (source line 56); fork F3; Meng's ruling of 2026-10-08 (SHRUG)
+GIVEN `the tax on the whole month` IS A NUMBER
+      `the part paid`              IS A NUMBER
+      `the month's salary`         IS A NUMBER
+      `the readings`               IS A `The readings of the withholding rules`
+GIVETH A NUMBER
+`the share of` `the tax on the whole month` `on a part` `the part paid` `of a month's salary of` `the month's salary` `reading` `the readings` MEANS
+    CONSIDER `the readings`'s `the share`
+    WHEN `the share is rounded as item (5) of Schedule A rounds a tax` THEN `item (5) — rounded to the whole shekel` `the exact share`
+    WHEN `the share is exact` THEN `the exact share`
+    WHEN `declined where rounding the share changes the tax`
+      THEN IF   `item (5) — rounded to the whole shekel` `the exact share` EQUALS `the exact share`
+           THEN `the exact share`
+           ELSE `regulation 3(b) does not say whether the share of the tax on a part is rounded, and here that changes the tax`
+    WHERE
+        `the exact share` MEANS
+            IF   `the month's salary` EQUALS 0
+            THEN 0
+            ELSE `the tax on the whole month` TIMES (`the part paid` DIVIDED BY `the month's salary`)
+
+§§ `The assessing officer's direction (regulations 4(c), 5(e)(1), 9(a), 10)`
+
+-- src:132 | סעיף 10 – תיאום ניכוי המס
+-- src:133 | פקיד השומה רשאי להורות שניכוי המס לפי תקנות אלה יוקטן או יוגדל, הכל לפי הענין, אם מסיבה כלשהי נוצר או עלול להיווצר עודף בתשלום המס או גרעון בתשלומו עקב ניכוי המס, בין כתוצאה מתשלום משכורת או שכר עבודה מאת מעביד אחד, בין כתוצאה מתשלום משכורת או שכר עבודה מאת יותר ממעביד אחד ובין כתוצאה מכך שלעובד יש הכנסה חייבת אחרת, או מכל סיבה אחרת, והמעביד חייב לקיים כל הוראה כאמור.
+@ref Regulations 5753-1993, reg 10 (source line 133); form of the direction ASSUMED, not read
+GIVEN d IS A `A direction of the assessing officer`
+      `the part of the month's salary paid`  IS A NUMBER
+GIVETH A MAYBE NUMBER
+`the amount the assessing officer's direction` d `fixes on a payment of` `the part of the month's salary paid` MEANS
+    CONSIDER d
+    WHEN `no direction`                    THEN NOTHING
+    WHEN `deduct nothing`                  THEN JUST 0
+    WHEN `deduct at the rate` `the rate`   THEN JUST (`the rate` TIMES `the part of the month's salary paid`)
+    WHEN `deduct the amount` `the amount to deduct` THEN JUST `the amount to deduct`
+
+§§ `Regulations 3 and 5 — the tax to deduct from a payment`
+
+-- Invalid input is rejected (LEFT), not answered. The tax is settled before it is put in a RIGHT, so that a
+-- refusal sits in return position (phrasebook 11.8).
+@ref Regulations 5753-1993, regs 3, 5 (source lines 55-74)
+GIVEN `the payment` IS A `A payment of salary`
+      `the declarations` IS AN `The employee's declarations`
+GIVETH A MAYBE `A problem with the payment, for the withholding rules`
+`a problem with the payment` `the payment` `declared as` `the declarations` MEANS
+    BRANCH IF `the payment`'s `the month's salary` LESS THAN 0 OR `the payment`'s `the part of the month's salary paid in this payment` LESS THAN 0
+           THEN JUST `an amount of salary is negative`
+           IF `the declarations`'s `credit points claimed on the card` LESS THAN 0
+           THEN JUST `the credit points claimed are negative`
+           IF `the payment`'s `the part of the month's salary paid in this payment` GREATER THAN `the payment`'s `the month's salary`
+           THEN JUST `the part of the month's salary paid exceeds the month's salary`
+           IF   `the payment`'s `days worked in the month` LESS THAN 0
+             OR `the payment`'s `hours worked a day` LESS THAN 0
+             OR `the payment`'s `hours worked a week` LESS THAN 0
+           THEN JUST `a number of days or hours is negative`
+           OTHERWISE NOTHING
+
+-- The tax for a payment, when the tax year whose amounts apply is already settled as `the year`.
+@ref Regulations 5753-1993, regs 3(a)-(b), 5(a)-(d), Schedule A, reg 10 (source lines 55-74, 132-133)
+GIVEN `the payment`      IS A `A payment of salary`
+      `the declarations` IS AN `The employee's declarations`
+      `the year`         IS A NUMBER
+      `the figures`      IS AN `The annual figures for the tax year`
+      `the readings`     IS A `The readings of the withholding rules`
+      `the direction`    IS A `A direction of the assessing officer`
+GIVETH A NUMBER
+`the tax to deduct from` `the payment` `given` `the declarations` `by the amounts of` `the year` `with` `the figures` `reading` `the readings` `under the direction` `the direction` MEANS
+    CONSIDER `the amount the assessing officer's direction` `the direction` `fixes on a payment of` `the part paid`
+    WHEN JUST `the amount fixed` THEN `the amount fixed`
+    WHEN NOTHING THEN
+        CONSIDER `regulations 3 and 5 treat` `the payment` `given` `the declarations`
+        WHEN `a monthly salary: the tax of Schedule A`  THEN `the share by Schedule A`
+        WHEN `a partial salary or a pension on the sole-income declaration: the tax of Schedule A` THEN `the share by Schedule A`
+        WHEN `deducted at the maximal rate` THEN `the maximal rate in` `the year` TIMES `the part paid`
+    WHERE
+        `the part paid` MEANS `the payment`'s `the part of the month's salary paid in this payment`
+        `the whole`     MEANS `the payment`'s `the month's salary`
+        `the share by Schedule A` MEANS
+            `the share of`
+                (`Schedule A — the tax on a month's salary of` `the whole` `in` `the year` `for` `the declarations` `with` `the figures` `reading` `the readings`)
+                `on a part` `the part paid` `of a month's salary of` `the whole` `reading` `the readings`
+
+-- Fork F4: which year's amounts. The figures supplied are those of the year of the payment; the amounts of
+-- another year come from ito-il26-published-figures.l4, which answers 2026 and 2027 only.
+@ref Regulations 5753-1993, Schedule A item (2) ("the necessary adjustments from section 120B"); fork F4; Meng's ruling of 2026-10-08 (SHRUG)
+GIVEN a IS A TYPE
+GIVETH AN a
+`Schedule A item (2) does not say whether a salary paid in one tax year for another is deducted by the amounts of the year of payment or of the year of the work, and here that changes the tax` MEANS
+    REFUSE "Schedule A item (2) takes the section 120B adjustments without saying whether a salary paid in one tax year for another is deducted by the amounts of the year in which it is paid or of the year for which it is paid; the two readings give different answers here"
+
+@ref Regulations 5753-1993, Schedule A item (2); fork F4
+GIVEN `the payment`      IS A `A payment of salary`
+      `the declarations` IS AN `The employee's declarations`
+      `the figures`      IS AN `The annual figures for the tax year`
+      `the readings`     IS A `The readings of the withholding rules`
+      `the direction`    IS A `A direction of the assessing officer`
+GIVETH A NUMBER
+`the tax to deduct from` `the payment` `given` `the declarations` `with` `the figures` `reading` `the readings` `under the direction` `the direction` MEANS
+    CONSIDER `the readings`'s `the amounts`
+    WHEN `the year in which the salary is paid` THEN `by the year of payment`
+    WHEN `the year for which the salary is paid` THEN `by the year of the work`
+    WHEN `declined where the year changes the tax`
+      THEN BRANCH IF `the year of payment` EQUALS `the year of the work`
+                  THEN `by the year of payment`
+                  IF NOT (`the text prints the section 121 ceilings for tax year` `the year of payment` AND `the text prints the section 121 ceilings for tax year` `the year of the work`)
+                  THEN `Schedule A item (2) does not say whether a salary paid in one tax year for another is deducted by the amounts of the year of payment or of the year of the work, and here that changes the tax`
+                  OTHERWISE
+                      (IF   `by the year of payment` EQUALS `by the year of the work`
+                       THEN `by the year of payment`
+                       ELSE `Schedule A item (2) does not say whether a salary paid in one tax year for another is deducted by the amounts of the year of payment or of the year of the work, and here that changes the tax`)
+    WHERE
+        `the year of payment` MEANS `the payment`'s `tax year`
+        `the year of the work` MEANS `the payment`'s `the tax year for which the salary is paid`
+        `by the year of payment` MEANS
+            `the tax to deduct from` `the payment` `given` `the declarations` `by the amounts of` `the year of payment` `with` `the figures` `reading` `the readings` `under the direction` `the direction`
+        `by the year of the work` MEANS
+            `the tax to deduct from` `the payment` `given` `the declarations` `by the amounts of` `the year of the work` `with`
+                (IF   `the year of the work` EQUALS `the year of payment`
+                 THEN `the figures`
+                 ELSE `the annual figures published for tax year` `the year of the work`)
+                `reading` `the readings` `under the direction` `the direction`
+
+-- The answer with the facts checked first.
+@ref Regulations 5753-1993, regs 3, 5 (source lines 55-74)
+GIVEN `the payment`      IS A `A payment of salary`
+      `the declarations` IS AN `The employee's declarations`
+      `the figures`      IS AN `The annual figures for the tax year`
+      `the readings`     IS A `The readings of the withholding rules`
+      `the direction`    IS A `A direction of the assessing officer`
+GIVETH AN EITHER `A problem with the payment, for the withholding rules` NUMBER
+`the withholding on` `the payment` `given` `the declarations` `with` `the figures` `reading` `the readings` `under the direction` `the direction` MEANS
+    CONSIDER `a problem with the payment` `the payment` `declared as` `the declarations`
+    WHEN JUST `the problem` THEN LEFT `the problem`
+    WHEN NOTHING THEN
+        IF   `the tax` AT LEAST 0
+        THEN RIGHT `the tax`
+        ELSE RIGHT `the tax`
+    WHERE
+        `the tax` MEANS `the tax to deduct from` `the payment` `given` `the declarations` `with` `the figures` `reading` `the readings` `under the direction` `the direction`
+
+§§ `Regulation 4(a) — a non-regular salary`
+
+-- The tax on a non-regular salary B paid in a month when the month's salary is S:
+--   "the tax difference" = the tax Schedule A gives for S plus a twelfth of B, less the tax it gives for S;
+--   the tax deducted = 12 times that difference.
+-- The text prints "the difference between the tax to be deducted from the month's salary for the month in which
+-- the non-regular salary was paid, and the tax to be deducted from the month's salary for that month, plus
+-- one-twelfth of the non-regular salary". The "plus" attaches to the second "month's salary" (it is the salary
+-- that gains a twelfth of B; adding a twelfth of B to a TAX is not a thing), and "difference between" is
+-- unsigned, so the larger less the smaller; the tax Schedule A gives for each is the rounded figure of item (5).
+-- For the employees of a bankrupt or a company in liquidation the rate is not to be below 25%.
+-- src:63 | (א) מעביד המשלם לעובד משכורת בלתי קבועה, ינכה ממנה, בעת התשלום, מס בסכום השווה להפרש המס המוכפל ב־12; לענין זה, ”הפרש המס“ – ההפרש בין המס שיש לנכות ממשכורת החודש לחודש שבו שולמה המשכורת הבלתי קבועה, לבין המס שיש לנכותו ממשכורת החודש לאותו חודש, בתוספת החלק השנים־עשר מהמשכורת הבלתי קבועה, ובלבד שאם המשכורת הבלתי קבועה שולמה לעובדי פושט רגל או חברה בפירוק ינוכה ממנה בעת התשלום מס בשיעור שלא יפחת מ־25%.
+@ref Regulations 5753-1993, reg 4(a) (source line 63)
+GIVEN `the non-regular salary` IS A `A non-regular salary`
+      `the month's salary`  IS A NUMBER
+      `the payment's tax year` IS A NUMBER
+      `the declarations`    IS AN `The employee's declarations`
+      `the figures`         IS AN `The annual figures for the tax year`
+      `the readings`        IS A `The readings of the withholding rules`
+GIVETH A NUMBER
+`regulation 4(a) — the tax on` `the non-regular salary` `paid with a month's salary of` `the month's salary` `in` `the payment's tax year` `for` `the declarations` `with` `the figures` `reading` `the readings` MEANS
+    IF   `the non-regular salary`'s `paid to the employees of a bankrupt or a company in liquidation`
+    THEN (IF `the tax by the difference` GREATER THAN `the floor` THEN `the tax by the difference` ELSE `the floor`)
+    ELSE `the tax by the difference`
+    WHERE
+        `the amount` MEANS `the non-regular salary`'s `amount`
+        `the tax with` MEANS `Schedule A — the tax on a month's salary of` (`the month's salary` PLUS (`the amount` DIVIDED BY 12)) `in` `the payment's tax year` `for` `the declarations` `with` `the figures` `reading` `the readings`
+        `the tax without` MEANS `Schedule A — the tax on a month's salary of` `the month's salary` `in` `the payment's tax year` `for` `the declarations` `with` `the figures` `reading` `the readings`
+        `the tax by the difference` MEANS 12 TIMES (`the tax with` MINUS `the tax without`)
+        `the floor` MEANS 25% TIMES `the amount`
+
+§§ `Schedule A item (6) — the Director's table`
+
+-- Item (6): the Director publishes a table, and the employer deducts by the table. The table is not in the
+-- deposited sources, so the figure in it is an input; with none, the encoding says what it needs.
+-- src:189 | המנהל יפרסם לוח המס לניכוי משכורת החודש כאמור, ומשעשה כן ינכה המעביד את המס של עובדיו לפי אותו לוח.
+@ref Regulations 5753-1993, Schedule A item (6) (source line 189)
+GIVEN `the figure in the Director's table` IS A MAYBE NUMBER
+GIVETH A NUMBER
+`the employer deducts, given the Director's table` `the figure in the Director's table` MEANS
+    CONSIDER `the figure in the Director's table`
+    WHEN JUST `the figure` THEN `the figure`
+    WHEN NOTHING
+      THEN REFUSE "needs a source: Schedule A item (6) has the employer deduct by the table the Director publishes (the Tax Authority's monthly deduction booklet), which is not among the deposited sources; this encoding computes the tax of items (1) to (5), not the table"
+
+-- The cumulative method. The Regulations print none: they compute each month on its own (items (1)-(5)), with
+-- regulation 4 for a non-regular salary and regulation 10 for the assessing officer's adjustment.
+@ref Regulations 5753-1993 (no provision); ITO s 164 ("in the manner and at the rates prescribed")
+GIVEN a IS A TYPE
+GIVETH AN a
+`a cumulative method of withholding` MEANS
+    REFUSE "needs a source: the text of the Regulations contains no cumulative method of withholding; the deposited sources do not say whether the Tax Authority prescribes one elsewhere"

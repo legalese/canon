@@ -1,0 +1,215 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `ito-il30-nouns`
+
+-- The "highest layer" sentence: "the gain shall be regarded as the highest layer in the scale of the taxable income", with a rate "not
+-- exceeding" a cap. It appears in the Income Tax Ordinance at s 91(b)(1) (source line 3347), s 91(b1)(2) (line 3360) and s 125C(b) (line 4530);
+-- this module is the one place that turns the sentence into arithmetic, so that the three sections share it.
+-- Quotations (`src:N`) are copied mechanically from line N of
+-- ../../registers/source-bundle/income-tax-ordinance-new-version.he.wiki.txt (sha256 b87f2cf4...6b81b6).
+--
+-- WHAT IT DOES. The seller's other taxable income fills the scale of s 121 from the bottom; the gain is a further layer of that income,
+-- above it. The tax on the gain is what the bands it falls in charge, each at its own rate, the rate being "not more than" the cap.
+-- Two things are not decided by the text and are forks (NOTES.md): T1, how the cap applies where the gain stands in several bands (each
+-- shekel at the lesser of its band's rate and the cap, or the whole at the lesser of the average rate and the cap); T2 (in
+-- ito-91-capital-gains.l4), where each part of a gain taxed in three parts stands within the layer.
+--
+-- THE SCALE IS AN INPUT. The caller lists the bands of s 121 that apply to the individual (the scale of (a), or the scale of (b)(1) for
+-- income from personal exertion or an individual of 60; which applies to a gain is s 121's business, row IL-03), lowest band first, the last
+-- band with no upper limit. Credit points and the additional tax of s 121B are not part of the layer's tax here.
+
+§ `The highest layer of the taxable income`
+
+-- src:3347 | (ב)(1) יחיד יהיה חייב במס על רווח הון ריאלי כאמור בסעיף 121, בשיעור שלא יעלה על 25%, ויראו את רווח ההון כשלב הגבוה ביותר בסולם הכנסתו החייבת.
+-- src:3360 | (2) לענין סעיף קטן זה, יראו את רווח ההון כשלב הגבוה ביותר בסולם ההכנסה החייבת.
+-- src:4530 | (ב) יחיד חייב במס על הכנסה מריבית בשיעור שלא יעלה על 25%, ויראו את הכנסתו זו כשלב הגבוה ביותר בסולם הכנסתו החייבת.
+
+§§ `The overlap of a layer with a band, and the tax of a layer through a list of bands`
+
+-- How much of the layer from a to b lies in the band from `lower` to `upper` (NOTHING: no upper limit).
+GIVEN a     IS A NUMBER
+      b     IS A NUMBER
+      lower IS A NUMBER
+      upper IS A MAYBE NUMBER
+GIVETH A NUMBER
+`the part of the layer from` a `to` b `lying in the band from` lower `up to` upper MEANS
+    CONSIDER upper
+    WHEN JUST u  THEN max 0 (min b u MINUS max a lower)
+    WHEN NOTHING THEN max 0 (b MINUS max a lower)
+
+-- Where the next band starts: at the top of this one, or nowhere (the last band).
+GIVEN lower IS A NUMBER
+      upper IS A MAYBE NUMBER
+GIVETH A NUMBER
+`the start of the band after one from` lower `up to` upper MEANS
+    CONSIDER upper
+    WHEN JUST u  THEN u
+    WHEN NOTHING THEN lower
+
+-- The tax of the layer from a to b through the bands, each band's rate taken at most at the cap.
+GIVEN bands IS A LIST OF `A band of a marginal scale`
+      lower IS A NUMBER
+      a     IS A NUMBER
+      b     IS A NUMBER
+      cap   IS A NUMBER
+GIVETH A NUMBER
+`the tax of the layer through` bands `from the lower limit` lower `for the layer from` a `to` b `with each rate at most` cap MEANS
+    CONSIDER bands
+    WHEN EMPTY THEN 0
+    WHEN band FOLLOWED BY rest THEN
+        min (band's `rate of the band`) cap TIMES `the part of the layer from` a `to` b `lying in the band from` lower `up to` (band's `upper limit of the band`)
+        PLUS `the tax of the layer through` rest `from the lower limit` (`the start of the band after one from` lower `up to` (band's `upper limit of the band`)) `for the layer from` a `to` b `with each rate at most` cap
+
+§§ `The tax of one layer, at one reading of the cap`
+
+GIVETH A NUMBER
+`these rates are percentages, and nothing in the scale exceeds a hundred percent` MEANS 1
+
+GIVETH A NUMBER
+`the way of applying the cap is not decided and here it changes the answer` MEANS
+    REFUSE "the way a cap on the rate applies where the gain stands in several bands is not decided by the text, and here it changes the answer"
+
+-- At an explicit reading of fork T1.
+@ref Income Tax Ordinance s 91(b)(1), (b1)(2); s 125C(b) (source lines 3347, 3360, 4530); fork T1
+GIVEN g     IS A NUMBER
+      a     IS A NUMBER
+      bands IS A LIST OF `A band of a marginal scale`
+      cap   IS A NUMBER
+      r     IS A `A reading of a cap on the rate where the gain stands in several bands`
+GIVETH A NUMBER
+`the tax on a layer of` g `standing on the other taxable income` a `under the scale` bands `with the rate capped at` cap `, applying the cap as` r MEANS
+    CONSIDER r
+    WHEN `the rate of each band is capped`                                         THEN `each`
+    WHEN `the average rate over the whole gain is capped`                          THEN `average`
+    WHEN `declined where the way of applying the cap changes the answer`
+      THEN IF   `each` EQUALS `average`
+           THEN `each`
+           ELSE `the way of applying the cap is not decided and here it changes the answer`
+    WHERE
+        `each` MEANS `the tax of the layer through` bands `from the lower limit` 0 `for the layer from` a `to` (a PLUS g) `with each rate at most` cap
+        `uncapped` MEANS `the tax of the layer through` bands `from the lower limit` 0 `for the layer from` a `to` (a PLUS g) `with each rate at most` `these rates are percentages, and nothing in the scale exceeds a hundred percent`
+        `average` MEANS min `uncapped` (cap TIMES g)
+
+-- The explicit readings of fork T1, the one named or both where it is declined.
+GIVEN r IS A `A reading of a cap on the rate where the gain stands in several bands`
+GIVETH A LIST OF `A reading of a cap on the rate where the gain stands in several bands`
+`the explicit readings of the cap in` r MEANS
+    CONSIDER r
+    WHEN `the rate of each band is capped`                                         THEN LIST `the rate of each band is capped`
+    WHEN `the average rate over the whole gain is capped`                          THEN LIST `the average rate over the whole gain is capped`
+    WHEN `declined where the way of applying the cap changes the answer`
+      THEN LIST `the rate of each band is capped`, `the average rate over the whole gain is capped`
+
+-- The explicit readings of fork T2.
+GIVEN r IS A `A reading of where each part of a gain stands in the top layer`
+GIVETH A LIST OF `A reading of where each part of a gain stands in the top layer`
+`the explicit readings of where the parts stand in` r MEANS
+    CONSIDER r
+    WHEN `each part stands alone on top of the other income`                       THEN LIST `each part stands alone on top of the other income`
+    WHEN `the parts stand one above another, the earliest period lowest`           THEN LIST `the parts stand one above another, the earliest period lowest`
+    WHEN `the parts stand one above another, the earliest period highest`          THEN LIST `the parts stand one above another, the earliest period highest`
+    WHEN `declined where the order of the parts changes the answer`
+      THEN LIST `each part stands alone on top of the other income`, `the parts stand one above another, the earliest period lowest`, `the parts stand one above another, the earliest period highest`
+
+-- The common value of a list of numbers: JUST it if they are all the same and there is at least one, NOTHING otherwise.
+GIVEN xs IS A LIST OF NUMBER
+GIVETH A MAYBE NUMBER
+`the common value of` xs MEANS
+    CONSIDER xs
+    WHEN EMPTY                  THEN NOTHING
+    WHEN x FOLLOWED BY rest     THEN IF all (GIVEN y YIELD y EQUALS x) rest THEN JUST x ELSE NOTHING
+
+-- The tax of one layer at the reading of fork T1 the caller names, the answer where the readings agree and a refusal where they part.
+@ref Income Tax Ordinance s 91(b)(1), (b1)(2); s 125C(b) (source lines 3347, 3360, 4530); fork T1; Meng's ruling of 2026-10-08 (SHRUG)
+GIVEN g     IS A NUMBER
+      a     IS A NUMBER
+      bands IS A LIST OF `A band of a marginal scale`
+      cap   IS A NUMBER
+      r     IS A `A reading of a cap on the rate where the gain stands in several bands`
+GIVETH A NUMBER
+`the tax on the top layer` g `above the other taxable income` a `under the scale` bands `with the rate capped at` cap `, reading the cap as` r MEANS
+    CONSIDER `the answers at every reading left open`
+    WHEN JUST v  THEN v
+    WHEN NOTHING THEN `the way of applying the cap is not decided and here it changes the answer`
+    WHERE
+        `the answers at every reading left open` MEANS
+            `the common value of` (map (GIVEN t YIELD `the tax on a layer of` g `standing on the other taxable income` a `under the scale` bands `with the rate capped at` cap `, applying the cap as` t) (`the explicit readings of the cap in` r))
+
+§§ `Three parts of one gain in the top layer (section 91(b1), (e)(2))`
+
+-- One part: its size, where it starts above the other income, its own cap.
+GIVEN g     IS A NUMBER
+      off   IS A NUMBER
+      c     IS A NUMBER
+      bands IS A LIST OF `A band of a marginal scale`
+      cap   IS A `A reading of a cap on the rate where the gain stands in several bands`
+GIVETH A NUMBER
+`the tax of the part` g `standing at` off `with the rate capped at` c `under the scale` bands `, applying the cap as` cap MEANS
+    `the tax on a layer of` g `standing on the other taxable income` off `under the scale` bands `with the rate capped at` c `, applying the cap as` cap
+
+-- The three parts of a gain, each with its own cap, stand in the top layer in the order fork T2 names. Part 1 is the earliest period.
+-- The offsets: alone, each above the other income; earliest lowest, part 1 above the other income, part 2 above that, part 3 above that;
+-- earliest highest, the reverse.
+@ref Income Tax Ordinance s 91(b1)(1)-(2) (source lines 3352-3360); forks T1, T2
+GIVEN g1 IS A NUMBER
+      g2 IS A NUMBER
+      g3 IS A NUMBER
+      c1 IS A NUMBER
+      c2 IS A NUMBER
+      c3 IS A NUMBER
+      a  IS A NUMBER
+      bands IS A LIST OF `A band of a marginal scale`
+      cap   IS A `A reading of a cap on the rate where the gain stands in several bands`
+      o     IS A `A reading of where each part of a gain stands in the top layer`
+GIVETH A NUMBER
+`the tax of three parts` g1 `and` g2 `and` g3 `capped at` c1 `and` c2 `and` c3 `above the other taxable income` a `under the scale` bands `, applying the cap as` cap `, with the parts placed as` o MEANS
+    CONSIDER o
+    WHEN `each part stands alone on top of the other income` THEN
+          `the tax of the part` g1 `standing at` a `with the rate capped at` c1 `under the scale` bands `, applying the cap as` cap
+        PLUS `the tax of the part` g2 `standing at` a `with the rate capped at` c2 `under the scale` bands `, applying the cap as` cap
+        PLUS `the tax of the part` g3 `standing at` a `with the rate capped at` c3 `under the scale` bands `, applying the cap as` cap
+    WHEN `the parts stand one above another, the earliest period lowest` THEN
+          `the tax of the part` g1 `standing at` a `with the rate capped at` c1 `under the scale` bands `, applying the cap as` cap
+        PLUS `the tax of the part` g2 `standing at` (a PLUS g1) `with the rate capped at` c2 `under the scale` bands `, applying the cap as` cap
+        PLUS `the tax of the part` g3 `standing at` (a PLUS g1 PLUS g2) `with the rate capped at` c3 `under the scale` bands `, applying the cap as` cap
+    WHEN `the parts stand one above another, the earliest period highest` THEN
+          `the tax of the part` g3 `standing at` a `with the rate capped at` c3 `under the scale` bands `, applying the cap as` cap
+        PLUS `the tax of the part` g2 `standing at` (a PLUS g3) `with the rate capped at` c2 `under the scale` bands `, applying the cap as` cap
+        PLUS `the tax of the part` g1 `standing at` (a PLUS g3 PLUS g2) `with the rate capped at` c1 `under the scale` bands `, applying the cap as` cap
+    WHEN `declined where the order of the parts changes the answer` THEN 0
+
+GIVETH A NUMBER
+`the place of each part in the top layer is not decided and here it changes the answer` MEANS
+    REFUSE "the place of each part of a gain within the top layer is not decided by the text, and here it changes the answer"
+
+-- The three parts at the readings the caller names: the answer where every reading left open gives the same one, a refusal where they part.
+@ref Income Tax Ordinance s 91(b1)(1)-(2) (source lines 3352-3360); forks T1, T2; Meng's ruling of 2026-10-08 (SHRUG)
+GIVEN g1 IS A NUMBER
+      g2 IS A NUMBER
+      g3 IS A NUMBER
+      c1 IS A NUMBER
+      c2 IS A NUMBER
+      c3 IS A NUMBER
+      a  IS A NUMBER
+      bands IS A LIST OF `A band of a marginal scale`
+      cap   IS A `A reading of a cap on the rate where the gain stands in several bands`
+      o     IS A `A reading of where each part of a gain stands in the top layer`
+GIVETH A NUMBER
+`the tax of three parts, at the readings,` g1 `and` g2 `and` g3 `capped at` c1 `and` c2 `and` c3 `above the other taxable income` a `under the scale` bands `, reading the cap as` cap `and the places of the parts as` o MEANS
+    CONSIDER `the answers at every reading left open`
+    WHEN JUST v  THEN v
+    WHEN NOTHING THEN
+        IF   `the caps split` THEN `the way of applying the cap is not decided and here it changes the answer`
+        ELSE `the place of each part in the top layer is not decided and here it changes the answer`
+    WHERE
+        `the answers at every reading left open` MEANS
+            `the common value of` (concat (map (GIVEN t YIELD
+                                                  map (GIVEN p YIELD `the tax of three parts` g1 `and` g2 `and` g3 `capped at` c1 `and` c2 `and` c3 `above the other taxable income` a `under the scale` bands `, applying the cap as` t `, with the parts placed as` p)
+                                                      (`the explicit readings of where the parts stand in` o))
+                                              (`the explicit readings of the cap in` cap)))
+        -- Which fork is to blame: the places are fixed and the answers still part, so it is the cap; else the places.
+        `the caps split` MEANS
+            CONSIDER `the common value of` (map (GIVEN t YIELD `the tax of three parts` g1 `and` g2 `and` g3 `capped at` c1 `and` c2 `and` c3 `above the other taxable income` a `under the scale` bands `, applying the cap as` t `, with the parts placed as` `each part stands alone on top of the other income`) (`the explicit readings of the cap in` cap))
+            WHEN JUST w  THEN FALSE
+            WHEN NOTHING THEN TRUE

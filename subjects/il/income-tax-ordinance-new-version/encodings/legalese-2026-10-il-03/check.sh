@@ -36,10 +36,15 @@ L4="${L4:-l4}"
 #   286            F03      03-T1  TESTER-WRONG (LEFT is the refusal meant; INDEPENDENT-FINDINGS.md:61-62)
 # The two AMBIGUITY items wait on rulings (BACKLOG IL-24); 03-T1 is the tester's own error,
 # left failing, its expected values unchanged.
+# Version 0.3.0 (BACKLOG IL-48): Meng ruled SHRUG on 2026-10-08, and forks F1 and F2 now decline
+# by default where their readings part, so lines 267-269 and 284 pass as the tester wrote them.
+# Two remain, both 03-T1 (285, 286). Line 327 (I04, a fall of the index, fork F4, now declined by
+# default) was re-pointed by the lead's leave to the reading the tester decided, by name, value
+# unchanged, and passes.
 expected_failed() {
   case "$1" in
     # tests-red.l4) echo 3 ;;
-    tests-independent.l4) echo 6 ;;   # lines 267-269 (03-F2), 284 (03-F1), 285-286 (03-T1); see above
+    tests-independent.l4) echo 2 ;;   # lines 285-286 (03-T1); see above. 0.2.0: 6
     *) echo 0 ;;
   esac
 }
@@ -51,6 +56,8 @@ expected_failed() {
 # Both wait on the deposit of amendment 276 (Sefer HaChukim 3342; BACKLOG IL-31). The repair of
 # 03-O1 (version 0.2.0) made the s 121B(e) helpers decline 2025 too, so S25 is refused by the
 # section's own refusal as before and no count moves.
+# Version 0.3.0: unchanged. 03-S13 is class (d): Sefer HaChukim 3342 is not deposited (it is being
+# fetched for BACKLOG IL-31).
 expected_refused() {
   case "$1" in
     tests-independent.l4) echo 2 ;;   # lines 371, 384 (03-S13); see above

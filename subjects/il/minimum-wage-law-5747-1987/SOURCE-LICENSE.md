@@ -22,4 +22,6 @@ Hebrew is authoritative; English translations are unofficial. The English titles
 
 ## Status of this deposit
 
-No statute text has been deposited yet.
+The Hebrew working text was deposited on 2026-10-08 at `registers/source-bundle/minimum-wage-law-5747-1987.he.wiki.txt`, as the raw MediaWiki source of the Wikisource page.
+Its sha256 and retrieval URL are in the `.meta.json` beside it.
+It is an unofficial consolidation as maintained at retrieval (page revision 3079167, last edited 2026-08-26T07:30:08Z), not a historical vintage.

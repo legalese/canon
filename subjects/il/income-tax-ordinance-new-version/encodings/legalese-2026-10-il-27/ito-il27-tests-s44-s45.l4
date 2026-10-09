@@ -1,0 +1,102 @@
+@lang en
+IMPORT prelude
+IMPORT `ito-il27-nouns`
+IMPORT `ito-il27-tax-years`
+IMPORT `ito-s44-relative-in-institution`
+IMPORT `ito-s45-disabled-child`
+IMPORT `ito-il27-published-figures`
+
+-- ===========================================================================
+-- Tests for ss 44 and 45. Row IL-27. Expected values worked by hand from lines 1704 and 1708-1711 before the rules were run; none edited.
+-- s 44: 35% of (sums paid less 12.5% of taxable income), floor nil. s 45: 2 points for each paralysed, blind or disabled child
+-- for whom no tax credit was received under s 44.
+-- ===========================================================================
+
+§ `Tests — sections 44 and 45`
+
+-- s 44 fields: tax year; resident; sums paid; taxable income; the regulations' conditions; foreign worker.
+GIVEN `the year`   IS A NUMBER
+      `resident`   IS A BOOLEAN
+      `paid`       IS A NUMBER
+      `income`     IS A NUMBER
+      `conditions` IS A `Whether the conditions of the regulations made under a section are met`
+GIVETH A `A taxpayer who paid to keep a relative in an institution, for section 44`
+`in` `the year` `, resident:` `resident` `, paid` `paid` `, taxable income` `income` `, the regulations' conditions being` `conditions` MEANS
+    `A taxpayer who paid to keep a relative in an institution, for section 44` OF `the year`, `resident`, `paid`, `income`, `conditions`, FALSE
+
+§§ `Section 44`
+
+-- Income 200,000: 12.5% is 25,000. Paid 60,000: the excess is 35,000; 35% of it is 12,250.
+#ASSERT `the credit under section 44 for` (`in` 2026 `, resident:` TRUE `, paid` 60000 `, taxable income` 200000 `, the regulations' conditions being` `met`) EQUALS 12250
+-- Both sides of the 12.5%: paid 25,000 is no excess (0); paid 25,001 is an excess of 1 (35% x 1 = 0.35 = 7/20); paid 24,999 is below (0).
+#ASSERT `the credit under section 44 for` (`in` 2026 `, resident:` TRUE `, paid` 25000 `, taxable income` 200000 `, the regulations' conditions being` `met`) EQUALS 0
+#ASSERT `the credit under section 44 for` (`in` 2026 `, resident:` TRUE `, paid` 25001 `, taxable income` 200000 `, the regulations' conditions being` `met`) EQUALS 7/20
+#ASSERT `the credit under section 44 for` (`in` 2026 `, resident:` TRUE `, paid` 24999 `, taxable income` 200000 `, the regulations' conditions being` `met`) EQUALS 0
+-- Income 100,000: 12.5% is 12,500. Paid 20,000: the excess 7,500; 35% is 2,625.
+#ASSERT `the credit under section 44 for` (`in` 2026 `, resident:` TRUE `, paid` 20000 `, taxable income` 100000 `, the regulations' conditions being` `met`) EQUALS 2625
+-- No taxable income: every shekel paid is above 12.5% of nothing: 35% of 1,000 = 350.
+#ASSERT `the credit under section 44 for` (`in` 2026 `, resident:` TRUE `, paid` 1000 `, taxable income` 0 `, the regulations' conditions being` `met`) EQUALS 350
+-- Not a resident: nothing (the section speaks of "יחיד תושב ישראל").
+#ASSERT `the credit under section 44 for` (`in` 2026 `, resident:` FALSE `, paid` 60000 `, taxable income` 200000 `, the regulations' conditions being` `met`) EQUALS 0
+-- The regulations' conditions: not met, nothing; not known, declined unless the credit is nil.
+#ASSERT `the credit under section 44 for` (`in` 2026 `, resident:` TRUE `, paid` 60000 `, taxable income` 200000 `, the regulations' conditions being` `not met`) EQUALS 0
+#ASSERT REFUSED `the credit under section 44 for` (`in` 2026 `, resident:` TRUE `, paid` 60000 `, taxable income` 200000 `, the regulations' conditions being` `not known`) BECAUSE "section 44 lets the Minister set conditions by regulations, the regulations of 5756-1996 are not in the source bundle, and here they may decide"
+#ASSERT `the credit under section 44 for` (`in` 2026 `, resident:` TRUE `, paid` 20000 `, taxable income` 200000 `, the regulations' conditions being` `not known`) EQUALS 0
+-- A foreign worker with a credit: refused (s 48A). Before 2024: refused.
+#ASSERT REFUSED `the credit under section 44 for` (`A taxpayer who paid to keep a relative in an institution, for section 44` OF 2026, TRUE, 60000, 200000, `met`, TRUE) BECAUSE "section 48A and the regulations made under it are not encoded in this model"
+#ASSERT REFUSED `the credit under section 44 for` (`in` 2023 `, resident:` TRUE `, paid` 60000 `, taxable income` 200000 `, the regulations' conditions being` `met`) BECAUSE "row IL-27 does not hold the text of these sections for a tax year before 2024"
+
+§§ `The figures the consolidation's note gives (recorded, used by no rule)`
+
+#ASSERT (`the income ceilings of the regulations of 5756-1996, as the consolidation's note gives them for tax year` 2024)'s `for an individual` EQUALS 188000
+#ASSERT (`the income ceilings of the regulations of 5756-1996, as the consolidation's note gives them for tax year` 2027)'s `for a couple` EQUALS 301000
+#ASSERT (`the income ceilings of the regulations of 5756-1996, as the consolidation's note gives them for tax year` 2023)'s `for an individual` EQUALS 182000
+#ASSERT REFUSED (`the income ceilings of the regulations of 5756-1996, as the consolidation's note gives them for tax year` 2028)'s `for an individual` BECAUSE "the consolidation's note gives no income ceilings for the regulations of 5756-1996 for this tax year"
+
+§§ `Section 45`
+
+GIVEN `paralyzed` IS A BOOLEAN
+      `blind`     IS A BOOLEAN
+      `disabled`  IS A BOOLEAN
+      `credited`  IS A BOOLEAN
+GIVETH A `A child, for section 45`
+`a child, paralysed:` `paralyzed` `, blind:` `blind` `, disabled:` `disabled` `, credited under s 44:` `credited` MEANS
+    `A child, for section 45` OF `paralyzed`, `blind`, `disabled`, `credited`
+
+-- s 45 fields: tax year; resident; the children; has a spouse; whose computation; conditions; foreign worker.
+GIVEN `resident` IS A BOOLEAN
+      `children` IS A LIST OF `A child, for section 45`
+      `spouse`   IS A BOOLEAN
+      `whose`    IS A `Whose computation takes the points of section 45`
+      `conditions` IS A `Whether the conditions of the regulations made under a section are met`
+GIVETH AN `An individual with children, for section 45`
+`in 2026, resident:` `resident` `; children` `children` `; a spouse:` `spouse` `; taken in` `whose` `; the regulations' conditions being` `conditions` MEANS
+    `An individual with children, for section 45` OF 2026, `resident`, `children`, `spouse`, `whose`, `conditions`, FALSE
+
+-- One child who is paralysed: 2 points. Blind: 2. Disabled: 2. None of the three: 0.
+#ASSERT `the credit points under section 45 for` (`in 2026, resident:` TRUE `; children` (LIST (`a child, paralysed:` TRUE `, blind:` FALSE `, disabled:` FALSE `, credited under s 44:` FALSE)) `; a spouse:` FALSE `; taken in` `the individual's` `; the regulations' conditions being` `met`) EQUALS 2
+#ASSERT `the credit points under section 45 for` (`in 2026, resident:` TRUE `; children` (LIST (`a child, paralysed:` FALSE `, blind:` TRUE `, disabled:` FALSE `, credited under s 44:` FALSE)) `; a spouse:` FALSE `; taken in` `the individual's` `; the regulations' conditions being` `met`) EQUALS 2
+#ASSERT `the credit points under section 45 for` (`in 2026, resident:` TRUE `; children` (LIST (`a child, paralysed:` FALSE `, blind:` FALSE `, disabled:` TRUE `, credited under s 44:` FALSE)) `; a spouse:` FALSE `; taken in` `the individual's` `; the regulations' conditions being` `met`) EQUALS 2
+#ASSERT `the credit points under section 45 for` (`in 2026, resident:` TRUE `; children` (LIST (`a child, paralysed:` FALSE `, blind:` FALSE `, disabled:` FALSE `, credited under s 44:` FALSE)) `; a spouse:` FALSE `; taken in` `the individual's` `; the regulations' conditions being` `met`) EQUALS 0
+-- A child who is both paralysed and blind is still one child: 2 points, not 4.
+#ASSERT `the credit points under section 45 for` (`in 2026, resident:` TRUE `; children` (LIST (`a child, paralysed:` TRUE `, blind:` TRUE `, disabled:` FALSE `, credited under s 44:` FALSE)) `; a spouse:` FALSE `; taken in` `the individual's` `; the regulations' conditions being` `met`) EQUALS 2
+-- Two qualifying children: 4. One qualifying and one for whom a credit was received under s 44: 2. The credited one alone: 0.
+#ASSERT `the credit points under section 45 for` (`in 2026, resident:` TRUE `; children` (LIST (`a child, paralysed:` TRUE `, blind:` FALSE `, disabled:` FALSE `, credited under s 44:` FALSE), (`a child, paralysed:` FALSE `, blind:` TRUE `, disabled:` FALSE `, credited under s 44:` FALSE)) `; a spouse:` FALSE `; taken in` `the individual's` `; the regulations' conditions being` `met`) EQUALS 4
+#ASSERT `the credit points under section 45 for` (`in 2026, resident:` TRUE `; children` (LIST (`a child, paralysed:` TRUE `, blind:` FALSE `, disabled:` FALSE `, credited under s 44:` FALSE), (`a child, paralysed:` FALSE `, blind:` TRUE `, disabled:` FALSE `, credited under s 44:` TRUE)) `; a spouse:` FALSE `; taken in` `the individual's` `; the regulations' conditions being` `met`) EQUALS 2
+#ASSERT `the credit points under section 45 for` (`in 2026, resident:` TRUE `; children` (LIST (`a child, paralysed:` FALSE `, blind:` TRUE `, disabled:` FALSE `, credited under s 44:` TRUE)) `; a spouse:` FALSE `; taken in` `the individual's` `; the regulations' conditions being` `met`) EQUALS 0
+-- No children: 0. Not a resident: 0.
+#ASSERT `the credit points under section 45 for` (`in 2026, resident:` TRUE `; children` (LIST ) `; a spouse:` FALSE `; taken in` `the individual's` `; the regulations' conditions being` `met`) EQUALS 0
+#ASSERT `the credit points under section 45 for` (`in 2026, resident:` FALSE `; children` (LIST (`a child, paralysed:` TRUE `, blind:` FALSE `, disabled:` FALSE `, credited under s 44:` FALSE)) `; a spouse:` FALSE `; taken in` `the individual's` `; the regulations' conditions being` `met`) EQUALS 0
+-- Whose computation (fork F15). The spouse's: 0 in his. Not stated: no spouse, his; with a spouse, declined.
+#ASSERT `the credit points under section 45 for` (`in 2026, resident:` TRUE `; children` (LIST (`a child, paralysed:` TRUE `, blind:` FALSE `, disabled:` FALSE `, credited under s 44:` FALSE)) `; a spouse:` TRUE `; taken in` `the spouse's` `; the regulations' conditions being` `met`) EQUALS 0
+#ASSERT `the credit points under section 45 for` (`in 2026, resident:` TRUE `; children` (LIST (`a child, paralysed:` TRUE `, blind:` FALSE `, disabled:` FALSE `, credited under s 44:` FALSE)) `; a spouse:` TRUE `; taken in` `the individual's` `; the regulations' conditions being` `met`) EQUALS 2
+#ASSERT `the credit points under section 45 for` (`in 2026, resident:` TRUE `; children` (LIST (`a child, paralysed:` TRUE `, blind:` FALSE `, disabled:` FALSE `, credited under s 44:` FALSE)) `; a spouse:` FALSE `; taken in` `not stated` `; the regulations' conditions being` `met`) EQUALS 2
+#ASSERT REFUSED `the credit points under section 45 for` (`in 2026, resident:` TRUE `; children` (LIST (`a child, paralysed:` TRUE `, blind:` FALSE `, disabled:` FALSE `, credited under s 44:` FALSE)) `; a spouse:` TRUE `; taken in` `not stated` `; the regulations' conditions being` `met`) BECAUSE "section 45 gives the points in the computation of the individual or of his spouse and does not say how they are divided, and here he has a spouse"
+#ASSERT `the credit points under section 45 for` (`in 2026, resident:` TRUE `; children` (LIST (`a child, paralysed:` FALSE `, blind:` FALSE `, disabled:` FALSE `, credited under s 44:` FALSE)) `; a spouse:` TRUE `; taken in` `not stated` `; the regulations' conditions being` `met`) EQUALS 0
+-- The regulations' conditions (s 45(d)): not met, 0; not known, declined where a point is at stake.
+#ASSERT `the credit points under section 45 for` (`in 2026, resident:` TRUE `; children` (LIST (`a child, paralysed:` TRUE `, blind:` FALSE `, disabled:` FALSE `, credited under s 44:` FALSE)) `; a spouse:` FALSE `; taken in` `the individual's` `; the regulations' conditions being` `not met`) EQUALS 0
+#ASSERT REFUSED `the credit points under section 45 for` (`in 2026, resident:` TRUE `; children` (LIST (`a child, paralysed:` TRUE `, blind:` FALSE `, disabled:` FALSE `, credited under s 44:` FALSE)) `; a spouse:` FALSE `; taken in` `the individual's` `; the regulations' conditions being` `not known`) BECAUSE "section 45 lets the Minister set conditions, the regulations of 5756-1996 are not in the source bundle, and here they may decide"
+#ASSERT `the credit points under section 45 for` (`in 2026, resident:` TRUE `; children` (LIST (`a child, paralysed:` FALSE `, blind:` FALSE `, disabled:` FALSE `, credited under s 44:` FALSE)) `; a spouse:` FALSE `; taken in` `the individual's` `; the regulations' conditions being` `not known`) EQUALS 0
+-- A foreign worker with a point (s 48A) and the general gate.
+#ASSERT REFUSED `the credit points under section 45 for` (`An individual with children, for section 45` OF 2026, TRUE, (LIST (`a child, paralysed:` TRUE `, blind:` FALSE `, disabled:` FALSE `, credited under s 44:` FALSE)), FALSE, `the individual's`, `met`, TRUE) BECAUSE "section 48A and the regulations made under it are not encoded in this model"
+#ASSERT REFUSED `the credit points under section 45 for` (`An individual with children, for section 45` OF 2023, TRUE, (LIST (`a child, paralysed:` TRUE `, blind:` FALSE `, disabled:` FALSE `, credited under s 44:` FALSE)), FALSE, `the individual's`, `met`, FALSE) BECAUSE "row IL-27 does not hold the text of these sections for a tax year before 2024"

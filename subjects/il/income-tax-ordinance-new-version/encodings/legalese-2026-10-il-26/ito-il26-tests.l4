@@ -1,0 +1,776 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `ito-il03-nouns`
+IMPORT `ito-120b-indexation`
+IMPORT `ito-121-individual-rates`
+IMPORT `ito-121b-additional-tax`
+IMPORT `ito-il26-nouns`
+IMPORT `ito-il26-schedule-a`
+IMPORT `ito-il26-regulations`
+IMPORT `ito-il26-s164`
+IMPORT `ito-il26-claims`
+IMPORT `ito-il26-published-figures`
+
+-- Tests for s 164 and the Deduction from Salary and Wages Regulations 5753-1993. Every expected value was worked
+-- out BY HAND from the rates and figures the sources print (the arithmetic is written beside each group) before
+-- the assertion was run. None was copied from an evaluation. A failing assertion here is a finding about the
+-- source or the encoding, never a value to edit.
+--
+-- THE FIGURES USED, and which of them is law:
+--   * the s 121 scale for 2026-2027, as the Ordinance prints it (ITO s 121(a), (b)(1)): 10% to 84,120; 14% to
+--     120,720; 20% to 228,000; 31% to 301,200; 35% to 560,280; 47% above. Cumulative tax at the tops of the bands:
+--       84,120 x 10%                                 =   8,412
+--       + (120,720 - 84,120) = 36,600 x 14% = 5,124  =  13,536
+--       + (228,000 - 120,720) = 107,280 x 20% = 21,456 = 34,992
+--       + (301,200 - 228,000) = 73,200 x 31% = 22,692  = 57,684
+--       + (560,280 - 301,200) = 259,080 x 35% = 90,678 = 148,362
+--     A salary is income from personal exertion, so the reduced rates of s 121(b)(1) apply to it up to 301,200.
+--   * s 121B(a): 3% of the part of the taxable income over 721,560 (the Tax Authority's figure for 2026, carried
+--     for 2027 by s 120B(e)(1)). NOT law in this file: the published figure.
+--   * the credit point, NIS 2,904 a year (the Tax Authority's figure for 2025, carried for 2026-2027 by
+--     s 120B(e)(1)); 2.25 credit points = 6,534. The 2.25 is a number a test employee declares, not a computed
+--     entitlement.
+
+§ `Tests`
+
+§§ `Fixtures`
+
+GIVEN p IS A NUMBER
+GIVETH AN `The employee's declarations`
+`an employee born in 1990 with a card, claiming credit points:` p MEANS
+    `The employee's declarations` WITH
+        `gave the employer an employee's card (form 0101)`                                    IS TRUE
+        `filled in the section of the card on other income`                                    IS TRUE
+        `declared on the card an additional position, or a taxable pension from another payer` IS FALSE
+        `declared on form 0130 that there is no other taxable income`                          IS FALSE
+        `told the employer of other taxable income after making that declaration`              IS FALSE
+        `credit points claimed on the card`                                                    IS p
+        `date of birth`                                                                        IS YMD 1990 1 1
+
+GIVEN s IS A NUMBER
+      y IS A NUMBER
+GIVETH A `A payment of salary`
+`a full-time monthly salary of` s `in` y MEANS
+    `A payment of salary` WITH
+        `tax year`                                                                       IS y
+        `the tax year for which the salary is paid`                                      IS y
+        `the month's salary`                                                             IS s
+        `the part of the month's salary paid in this payment`                            IS s
+        `days worked in the month`                                                       IS 22
+        `hours worked a day`                                                             IS 8
+        `hours worked a week`                                                            IS 40
+        `the payment is a pension`                                                       IS FALSE
+        `the employee is a foreign worker`                                               IS FALSE
+        `the employee works elsewhere, or receives a taxable pension from another payer` IS FALSE
+
+
+-- Variants of the standard employee and of the standard payment, one named constant each (a record is built
+-- whole; the language has no update of a field).
+
+`the standard employee` MEANS
+    `The employee's declarations` WITH
+        `gave the employer an employee's card (form 0101)`                                    IS TRUE
+        `filled in the section of the card on other income`                                    IS TRUE
+        `declared on the card an additional position, or a taxable pension from another payer` IS FALSE
+        `declared on form 0130 that there is no other taxable income`                          IS FALSE
+        `told the employer of other taxable income after making that declaration`              IS FALSE
+        `credit points claimed on the card`                                                    IS 2.25
+        `date of birth`                                                                        IS YMD 1990 1 1
+
+`the standard employee, born in 1960` MEANS
+    `The employee's declarations` WITH
+        `gave the employer an employee's card (form 0101)`                                    IS TRUE
+        `filled in the section of the card on other income`                                    IS TRUE
+        `declared on the card an additional position, or a taxable pension from another payer` IS FALSE
+        `declared on form 0130 that there is no other taxable income`                          IS FALSE
+        `told the employer of other taxable income after making that declaration`              IS FALSE
+        `credit points claimed on the card`                                                    IS 2.25
+        `date of birth`                                                                        IS YMD 1960 3 1
+
+`the standard employee with a form 0130 declaration` MEANS
+    `The employee's declarations` WITH
+        `gave the employer an employee's card (form 0101)`                                    IS TRUE
+        `filled in the section of the card on other income`                                    IS TRUE
+        `declared on the card an additional position, or a taxable pension from another payer` IS FALSE
+        `declared on form 0130 that there is no other taxable income`                          IS TRUE
+        `told the employer of other taxable income after making that declaration`              IS FALSE
+        `credit points claimed on the card`                                                    IS 2.25
+        `date of birth`                                                                        IS YMD 1990 1 1
+
+`the standard employee with a form 0130 declaration, later told of other income` MEANS
+    `The employee's declarations` WITH
+        `gave the employer an employee's card (form 0101)`                                    IS TRUE
+        `filled in the section of the card on other income`                                    IS TRUE
+        `declared on the card an additional position, or a taxable pension from another payer` IS FALSE
+        `declared on form 0130 that there is no other taxable income`                          IS TRUE
+        `told the employer of other taxable income after making that declaration`              IS TRUE
+        `credit points claimed on the card`                                                    IS 2.25
+        `date of birth`                                                                        IS YMD 1990 1 1
+
+`the standard employee who gave no card` MEANS
+    `The employee's declarations` WITH
+        `gave the employer an employee's card (form 0101)`                                    IS FALSE
+        `filled in the section of the card on other income`                                    IS TRUE
+        `declared on the card an additional position, or a taxable pension from another payer` IS FALSE
+        `declared on form 0130 that there is no other taxable income`                          IS FALSE
+        `told the employer of other taxable income after making that declaration`              IS FALSE
+        `credit points claimed on the card`                                                    IS 2.25
+        `date of birth`                                                                        IS YMD 1990 1 1
+
+`the standard employee whose card has no other-income section` MEANS
+    `The employee's declarations` WITH
+        `gave the employer an employee's card (form 0101)`                                    IS TRUE
+        `filled in the section of the card on other income`                                    IS FALSE
+        `declared on the card an additional position, or a taxable pension from another payer` IS FALSE
+        `declared on form 0130 that there is no other taxable income`                          IS FALSE
+        `told the employer of other taxable income after making that declaration`              IS FALSE
+        `credit points claimed on the card`                                                    IS 2.25
+        `date of birth`                                                                        IS YMD 1990 1 1
+
+`the standard employee who declared an additional position` MEANS
+    `The employee's declarations` WITH
+        `gave the employer an employee's card (form 0101)`                                    IS TRUE
+        `filled in the section of the card on other income`                                    IS TRUE
+        `declared on the card an additional position, or a taxable pension from another payer` IS TRUE
+        `declared on form 0130 that there is no other taxable income`                          IS FALSE
+        `told the employer of other taxable income after making that declaration`              IS FALSE
+        `credit points claimed on the card`                                                    IS 2.25
+        `date of birth`                                                                        IS YMD 1990 1 1
+
+`a monthly salary of 20,000` MEANS
+    `A payment of salary` WITH
+        `tax year`                                                                       IS 2026
+        `the tax year for which the salary is paid`                                      IS 2026
+        `the month's salary`                                                             IS 20_000
+        `the part of the month's salary paid in this payment`                            IS 20_000
+        `days worked in the month`                                                       IS 22
+        `hours worked a day`                                                             IS 8
+        `hours worked a week`                                                            IS 40
+        `the payment is a pension`                                                       IS FALSE
+        `the employee is a foreign worker`                                               IS FALSE
+        `the employee works elsewhere, or receives a taxable pension from another payer` IS FALSE
+
+`a monthly salary of 10,000` MEANS
+    `A payment of salary` WITH
+        `tax year`                                                                       IS 2026
+        `the tax year for which the salary is paid`                                      IS 2026
+        `the month's salary`                                                             IS 10_000
+        `the part of the month's salary paid in this payment`                            IS 10_000
+        `days worked in the month`                                                       IS 22
+        `hours worked a day`                                                             IS 8
+        `hours worked a week`                                                            IS 40
+        `the payment is a pension`                                                       IS FALSE
+        `the employee is a foreign worker`                                               IS FALSE
+        `the employee works elsewhere, or receives a taxable pension from another payer` IS FALSE
+
+`a monthly salary of 8,000` MEANS
+    `A payment of salary` WITH
+        `tax year`                                                                       IS 2026
+        `the tax year for which the salary is paid`                                      IS 2026
+        `the month's salary`                                                             IS 8_000
+        `the part of the month's salary paid in this payment`                            IS 8_000
+        `days worked in the month`                                                       IS 22
+        `hours worked a day`                                                             IS 8
+        `hours worked a week`                                                            IS 40
+        `the payment is a pension`                                                       IS FALSE
+        `the employee is a foreign worker`                                               IS FALSE
+        `the employee works elsewhere, or receives a taxable pension from another payer` IS FALSE
+
+`a monthly salary of 3,000` MEANS
+    `A payment of salary` WITH
+        `tax year`                                                                       IS 2026
+        `the tax year for which the salary is paid`                                      IS 2026
+        `the month's salary`                                                             IS 3_000
+        `the part of the month's salary paid in this payment`                            IS 3_000
+        `days worked in the month`                                                       IS 22
+        `hours worked a day`                                                             IS 8
+        `hours worked a week`                                                            IS 40
+        `the payment is a pension`                                                       IS FALSE
+        `the employee is a foreign worker`                                               IS FALSE
+        `the employee works elsewhere, or receives a taxable pension from another payer` IS FALSE
+
+`a salary of 20,000 for an additional position` MEANS
+    `A payment of salary` WITH
+        `tax year`                                                                       IS 2026
+        `the tax year for which the salary is paid`                                      IS 2026
+        `the month's salary`                                                             IS 20_000
+        `the part of the month's salary paid in this payment`                            IS 20_000
+        `days worked in the month`                                                       IS 22
+        `hours worked a day`                                                             IS 6
+        `hours worked a week`                                                            IS 40
+        `the payment is a pension`                                                       IS FALSE
+        `the employee is a foreign worker`                                               IS FALSE
+        `the employee works elsewhere, or receives a taxable pension from another payer` IS TRUE
+
+`a salary of 20,000 for 6 hours a day and 7 a week` MEANS
+    `A payment of salary` WITH
+        `tax year`                                                                       IS 2026
+        `the tax year for which the salary is paid`                                      IS 2026
+        `the month's salary`                                                             IS 20_000
+        `the part of the month's salary paid in this payment`                            IS 20_000
+        `days worked in the month`                                                       IS 22
+        `hours worked a day`                                                             IS 6
+        `hours worked a week`                                                            IS 7
+        `the payment is a pension`                                                       IS FALSE
+        `the employee is a foreign worker`                                               IS FALSE
+        `the employee works elsewhere, or receives a taxable pension from another payer` IS FALSE
+
+`a salary of 20,000 for 18 days` MEANS
+    `A payment of salary` WITH
+        `tax year`                                                                       IS 2026
+        `the tax year for which the salary is paid`                                      IS 2026
+        `the month's salary`                                                             IS 20_000
+        `the part of the month's salary paid in this payment`                            IS 20_000
+        `days worked in the month`                                                       IS 18
+        `hours worked a day`                                                             IS 8
+        `hours worked a week`                                                            IS 40
+        `the payment is a pension`                                                       IS FALSE
+        `the employee is a foreign worker`                                               IS FALSE
+        `the employee works elsewhere, or receives a taxable pension from another payer` IS FALSE
+
+`a salary of 20,000 for 17 days` MEANS
+    `A payment of salary` WITH
+        `tax year`                                                                       IS 2026
+        `the tax year for which the salary is paid`                                      IS 2026
+        `the month's salary`                                                             IS 20_000
+        `the part of the month's salary paid in this payment`                            IS 20_000
+        `days worked in the month`                                                       IS 17
+        `hours worked a day`                                                             IS 8
+        `hours worked a week`                                                            IS 40
+        `the payment is a pension`                                                       IS FALSE
+        `the employee is a foreign worker`                                               IS FALSE
+        `the employee works elsewhere, or receives a taxable pension from another payer` IS FALSE
+
+`a salary of 20,000 for 17 days and 5 hours a week` MEANS
+    `A payment of salary` WITH
+        `tax year`                                                                       IS 2026
+        `the tax year for which the salary is paid`                                      IS 2026
+        `the month's salary`                                                             IS 20_000
+        `the part of the month's salary paid in this payment`                            IS 20_000
+        `days worked in the month`                                                       IS 17
+        `hours worked a day`                                                             IS 8
+        `hours worked a week`                                                            IS 5
+        `the payment is a pension`                                                       IS FALSE
+        `the employee is a foreign worker`                                               IS FALSE
+        `the employee works elsewhere, or receives a taxable pension from another payer` IS FALSE
+
+`a salary of 20,000 to a foreign worker` MEANS
+    `A payment of salary` WITH
+        `tax year`                                                                       IS 2026
+        `the tax year for which the salary is paid`                                      IS 2026
+        `the month's salary`                                                             IS 20_000
+        `the part of the month's salary paid in this payment`                            IS 20_000
+        `days worked in the month`                                                       IS 22
+        `hours worked a day`                                                             IS 8
+        `hours worked a week`                                                            IS 40
+        `the payment is a pension`                                                       IS FALSE
+        `the employee is a foreign worker`                                               IS TRUE
+        `the employee works elsewhere, or receives a taxable pension from another payer` IS FALSE
+
+`a pension of 8,000` MEANS
+    `A payment of salary` WITH
+        `tax year`                                                                       IS 2026
+        `the tax year for which the salary is paid`                                      IS 2026
+        `the month's salary`                                                             IS 8_000
+        `the part of the month's salary paid in this payment`                            IS 8_000
+        `days worked in the month`                                                       IS 22
+        `hours worked a day`                                                             IS 8
+        `hours worked a week`                                                            IS 40
+        `the payment is a pension`                                                       IS TRUE
+        `the employee is a foreign worker`                                               IS FALSE
+        `the employee works elsewhere, or receives a taxable pension from another payer` IS FALSE
+
+`a salary of 10,000, of which 10,001 is paid` MEANS
+    `A payment of salary` WITH
+        `tax year`                                                                       IS 2026
+        `the tax year for which the salary is paid`                                      IS 2026
+        `the month's salary`                                                             IS 10_000
+        `the part of the month's salary paid in this payment`                            IS 10_001
+        `days worked in the month`                                                       IS 22
+        `hours worked a day`                                                             IS 8
+        `hours worked a week`                                                            IS 40
+        `the payment is a pension`                                                       IS FALSE
+        `the employee is a foreign worker`                                               IS FALSE
+        `the employee works elsewhere, or receives a taxable pension from another payer` IS FALSE
+
+`a salary of 10,000 for minus one hour a day` MEANS
+    `A payment of salary` WITH
+        `tax year`                                                                       IS 2026
+        `the tax year for which the salary is paid`                                      IS 2026
+        `the month's salary`                                                             IS 10_000
+        `the part of the month's salary paid in this payment`                            IS 10_000
+        `days worked in the month`                                                       IS 22
+        `hours worked a day`                                                             IS (0 MINUS 1)
+        `hours worked a week`                                                            IS 40
+        `the payment is a pension`                                                       IS FALSE
+        `the employee is a foreign worker`                                               IS FALSE
+        `the employee works elsewhere, or receives a taxable pension from another payer` IS FALSE
+
+`a salary of 10,000 for 10 days` MEANS
+    `A payment of salary` WITH
+        `tax year`                                                                       IS 2026
+        `the tax year for which the salary is paid`                                      IS 2026
+        `the month's salary`                                                             IS 10_000
+        `the part of the month's salary paid in this payment`                            IS 10_000
+        `days worked in the month`                                                       IS 10
+        `hours worked a day`                                                             IS 8
+        `hours worked a week`                                                            IS 40
+        `the payment is a pension`                                                       IS FALSE
+        `the employee is a foreign worker`                                               IS FALSE
+        `the employee works elsewhere, or receives a taxable pension from another payer` IS FALSE
+
+`a salary of 10,000 to a foreign worker` MEANS
+    `A payment of salary` WITH
+        `tax year`                                                                       IS 2026
+        `the tax year for which the salary is paid`                                      IS 2026
+        `the month's salary`                                                             IS 10_000
+        `the part of the month's salary paid in this payment`                            IS 10_000
+        `days worked in the month`                                                       IS 22
+        `hours worked a day`                                                             IS 8
+        `hours worked a week`                                                            IS 40
+        `the payment is a pension`                                                       IS FALSE
+        `the employee is a foreign worker`                                               IS TRUE
+        `the employee works elsewhere, or receives a taxable pension from another payer` IS FALSE
+
+`a partial salary of 3,000` MEANS
+    `A payment of salary` WITH
+        `tax year`                                                                       IS 2026
+        `the tax year for which the salary is paid`                                      IS 2026
+        `the month's salary`                                                             IS 3_000
+        `the part of the month's salary paid in this payment`                            IS 3_000
+        `days worked in the month`                                                       IS 15
+        `hours worked a day`                                                             IS 4
+        `hours worked a week`                                                            IS 20
+        `the payment is a pension`                                                       IS FALSE
+        `the employee is a foreign worker`                                               IS FALSE
+        `the employee works elsewhere, or receives a taxable pension from another payer` IS FALSE
+
+`the readings, salary rounded first` MEANS
+    `The readings of the withholding rules` WITH
+        `the set-off` IS `declined where the object of the set-off changes the tax`
+        `the salary`  IS `the salary is rounded before it is multiplied by 12`
+        `the share`   IS `declined where rounding the share changes the tax`
+        `the amounts` IS `declined where the year changes the tax`
+        `the placing` IS `section 121(b)(1) — the reading this row takes of where the eligible income sits on the scale`
+        `the age`     IS `section 121(b)(1) — the reading this row takes of when the age of 60 is tested`
+
+`the readings, only the tax rounded` MEANS
+    `The readings of the withholding rules` WITH
+        `the set-off` IS `declined where the object of the set-off changes the tax`
+        `the salary`  IS `the salary is multiplied by 12 as it stands and only the tax is rounded`
+        `the share`   IS `declined where rounding the share changes the tax`
+        `the amounts` IS `declined where the year changes the tax`
+        `the placing` IS `section 121(b)(1) — the reading this row takes of where the eligible income sits on the scale`
+        `the age`     IS `section 121(b)(1) — the reading this row takes of when the age of 60 is tested`
+
+`the readings, set off against the whole` MEANS
+    `The readings of the withholding rules` WITH
+        `the set-off` IS `against the whole of the tax computed under sections 121 and 121B`
+        `the salary`  IS `declined where the order of rounding changes the tax`
+        `the share`   IS `declined where rounding the share changes the tax`
+        `the amounts` IS `declined where the year changes the tax`
+        `the placing` IS `section 121(b)(1) — the reading this row takes of where the eligible income sits on the scale`
+        `the age`     IS `section 121(b)(1) — the reading this row takes of when the age of 60 is tested`
+
+`the readings, set off against the s 121 tax only` MEANS
+    `The readings of the withholding rules` WITH
+        `the set-off` IS `against the section 121 tax only, never below nil, the section 121B tax added after`
+        `the salary`  IS `declined where the order of rounding changes the tax`
+        `the share`   IS `declined where rounding the share changes the tax`
+        `the amounts` IS `declined where the year changes the tax`
+        `the placing` IS `section 121(b)(1) — the reading this row takes of where the eligible income sits on the scale`
+        `the age`     IS `section 121(b)(1) — the reading this row takes of when the age of 60 is tested`
+
+`the readings, share rounded` MEANS
+    `The readings of the withholding rules` WITH
+        `the set-off` IS `declined where the object of the set-off changes the tax`
+        `the salary`  IS `declined where the order of rounding changes the tax`
+        `the share`   IS `the share is rounded as item (5) of Schedule A rounds a tax`
+        `the amounts` IS `declined where the year changes the tax`
+        `the placing` IS `section 121(b)(1) — the reading this row takes of where the eligible income sits on the scale`
+        `the age`     IS `section 121(b)(1) — the reading this row takes of when the age of 60 is tested`
+
+`the readings, share exact` MEANS
+    `The readings of the withholding rules` WITH
+        `the set-off` IS `declined where the object of the set-off changes the tax`
+        `the salary`  IS `declined where the order of rounding changes the tax`
+        `the share`   IS `the share is exact`
+        `the amounts` IS `declined where the year changes the tax`
+        `the placing` IS `section 121(b)(1) — the reading this row takes of where the eligible income sits on the scale`
+        `the age`     IS `section 121(b)(1) — the reading this row takes of when the age of 60 is tested`
+
+`figures supplied by hand` MEANS
+    `The annual figures for the tax year` WITH
+        `the amount in section 121B(a) in force in the tax year` IS 721_560
+        `the value of one credit point` IS 2_904
+
+`the 2026 figures` MEANS `the annual figures published for tax year` 2026
+`the readings by default` MEANS `the readings of the withholding rules, by default`
+
+-- The withholding on a salary of s in 2026 for an employee born in 1990 claiming p points, readings by default.
+GIVEN s IS A NUMBER
+      p IS A NUMBER
+GIVETH AN EITHER `A problem with the payment, for the withholding rules` NUMBER
+`the 2026 withholding on` s `with credit points:` p MEANS
+    `the withholding on` (`a full-time monthly salary of` s `in` 2026) `given` (`an employee born in 1990 with a card, claiming credit points:` p) `with` `the 2026 figures` `reading` `the readings by default` `under the direction` `no direction`
+
+-- The same, with a given reading, so that a fork can be tested by name.
+GIVEN s IS A NUMBER
+      p IS A NUMBER
+      r IS A `The readings of the withholding rules`
+GIVETH AN EITHER `A problem with the payment, for the withholding rules` NUMBER
+`the 2026 withholding on` s `with credit points:` p `, reading` r MEANS
+    `the withholding on` (`a full-time monthly salary of` s `in` 2026) `given` (`an employee born in 1990 with a card, claiming credit points:` p) `with` `the 2026 figures` `reading` r `under the direction` `no direction`
+
+§§ `Schedule A — a monthly salary, 2.25 credit points (6,534 a year), readings by default`
+
+-- A1: 10,000 x 12 = 120,000. Tax = 8,412 + (120,000 - 84,120) x 14% = 8,412 + 35,880 x 14% = 8,412 + 5,023.20 = 13,435.20.
+--     Less 6,534 = 6,901.20. / 12 = 575.10. A fraction of 0.10 is not over 49 agorot: 575.
+#ASSERT `the 2026 withholding on` 10_000 `with credit points:` 2.25 EQUALS RIGHT 575
+
+-- A2: 20,000 x 12 = 240,000. Tax = 34,992 + (240,000 - 228,000) x 31% = 34,992 + 3,720 = 38,712.
+--     Less 6,534 = 32,178. / 12 = 2,681.50. A fraction of exactly 50 agorot is over 49: 2,682.
+#ASSERT `the 2026 withholding on` 20_000 `with credit points:` 2.25 EQUALS RIGHT 2_682
+
+-- A3: 4,000 x 12 = 48,000. Tax = 4,800 (10%). Less 6,534 = -1,734: the credit exceeds the tax, so nothing is
+--     deducted (a credit point is set off against the tax, never into a refund; assumption A1 in NOTES).
+#ASSERT `the 2026 withholding on` 4_000 `with credit points:` 2.25 EQUALS RIGHT 0
+
+-- A4-A6: the point where the tax equals the credits. 10% band: 12 x S x 10% = 6,534 at S = 5,445.
+--     S = 5,445: tax 6,534; less 6,534 = 0; 0.
+--     S = 5,449: 65,388 x 10% = 6,538.80; less 6,534 = 4.80; / 12 = 0.40; not over 49 agorot: 0.
+--     S = 5,450: 65,400 x 10% = 6,540; less 6,534 = 6; / 12 = 0.50; over 49 agorot: 1.
+#ASSERT `the 2026 withholding on` 5_445 `with credit points:` 2.25 EQUALS RIGHT 0
+#ASSERT `the 2026 withholding on` 5_449 `with credit points:` 2.25 EQUALS RIGHT 0
+#ASSERT `the 2026 withholding on` 5_450 `with credit points:` 2.25 EQUALS RIGHT 1
+
+-- A7: 50,000 x 12 = 600,000. Tax = 148,362 + (600,000 - 560,280) x 47% = 148,362 + 39,720 x 47% = 148,362 + 18,668.40
+--     = 167,030.40. Less 6,534 = 160,496.40. / 12 = 13,374.70. A fraction of 70 agorot: 13,375.
+#ASSERT `the 2026 withholding on` 50_000 `with credit points:` 2.25 EQUALS RIGHT 13_375
+
+-- A8: 60,130 x 12 = 721,560, the s 121B(a) amount: not exceeded, no additional tax.
+--     Tax = 148,362 + (721,560 - 560,280) x 47% = 148,362 + 161,280 x 47% = 148,362 + 75,801.60 = 224,163.60.
+--     Less 6,534 = 217,629.60. / 12 = 18,135.80: 18,136.
+#ASSERT `the 2026 withholding on` 60_130 `with credit points:` 2.25 EQUALS RIGHT 18_136
+
+-- A9: 61,000 x 12 = 732,000. Tax = 148,362 + (732,000 - 560,280) x 47% = 148,362 + 171,720 x 47% = 148,362 + 80,708.40
+--     = 229,070.40. Additional tax 3% x (732,000 - 721,560) = 3% x 10,440 = 313.20. Total 229,383.60.
+--     Less 6,534 = 222,849.60. / 12 = 18,570.80: 18,571. (Without s 121B it would be 222,536.40 / 12 = 18,544.70: 18,545.)
+#ASSERT `the 2026 withholding on` 61_000 `with credit points:` 2.25 EQUALS RIGHT 18_571
+
+-- A10: 70,000 x 12 = 840,000. Tax = 148,362 + (840,000 - 560,280) x 47% = 148,362 + 279,720 x 47% = 148,362 + 131,468.40
+--     = 279,830.40. Additional tax 3% x (840,000 - 721,560) = 3% x 118,440 = 3,553.20. Total 283,383.60.
+--     Less 6,534 = 276,849.60. / 12 = 23,070.80: 23,071.
+#ASSERT `the 2026 withholding on` 70_000 `with credit points:` 2.25 EQUALS RIGHT 23_071
+
+-- A11: no credit points. 10,000: 13,435.20 / 12 = 1,119.60: 1,120.
+#ASSERT `the 2026 withholding on` 10_000 `with credit points:` 0 EQUALS RIGHT 1_120
+
+-- A12: 2.75 points = 2.75 x 2,904 = 7,986. 10,000: 13,435.20 - 7,986 = 5,449.20. / 12 = 454.10: 454.
+#ASSERT `the 2026 withholding on` 10_000 `with credit points:` 2.75 EQUALS RIGHT 454
+
+§§ `Schedule A — both sides of each band of s 121, no credit points`
+
+-- 7,010 x 12 = 84,120: tax 8,412 / 12 = 701.            7,011 x 12 = 84,132: 8,412 + 12 x 14% = 8,413.68 / 12 = 701.14: 701.
+#ASSERT `the 2026 withholding on` 7_010 `with credit points:` 0 EQUALS RIGHT 701
+#ASSERT `the 2026 withholding on` 7_011 `with credit points:` 0 EQUALS RIGHT 701
+-- 7,100 x 12 = 85,200: 8,412 + 1,080 x 14% = 8,412 + 151.20 = 8,563.20 / 12 = 713.60: 714 (the 14% band is entered).
+#ASSERT `the 2026 withholding on` 7_100 `with credit points:` 0 EQUALS RIGHT 714
+-- 10,060 x 12 = 120,720: 13,536 / 12 = 1,128.         10,100 x 12 = 121,200: 13,536 + 480 x 20% = 13,632 / 12 = 1,136.
+#ASSERT `the 2026 withholding on` 10_060 `with credit points:` 0 EQUALS RIGHT 1_128
+#ASSERT `the 2026 withholding on` 10_100 `with credit points:` 0 EQUALS RIGHT 1_136
+-- 19,000 x 12 = 228,000: 34,992 / 12 = 2,916.         19,100 x 12 = 229,200: 34,992 + 1,200 x 31% = 35,364 / 12 = 2,947.
+#ASSERT `the 2026 withholding on` 19_000 `with credit points:` 0 EQUALS RIGHT 2_916
+#ASSERT `the 2026 withholding on` 19_100 `with credit points:` 0 EQUALS RIGHT 2_947
+-- 25,100 x 12 = 301,200: 57,684 / 12 = 4,807.         25,200 x 12 = 302,400: 57,684 + 1,200 x 35% = 58,104 / 12 = 4,842.
+#ASSERT `the 2026 withholding on` 25_100 `with credit points:` 0 EQUALS RIGHT 4_807
+#ASSERT `the 2026 withholding on` 25_200 `with credit points:` 0 EQUALS RIGHT 4_842
+-- 46,690 x 12 = 560,280: 148,362 / 12 = 12,363.50: 12,364.   46,790 x 12 = 561,480: 148,362 + 1,200 x 47% = 148,926 / 12 = 12,410.50: 12,411.
+#ASSERT `the 2026 withholding on` 46_690 `with credit points:` 0 EQUALS RIGHT 12_364
+#ASSERT `the 2026 withholding on` 46_790 `with credit points:` 0 EQUALS RIGHT 12_411
+
+§§ `Schedule A — the tax year, and the age of the employee`
+
+-- 2027 prints the same ceilings and the same credit point (s 120B(e)(1)): 10,000 with 2.25 points is 575 as in 2026.
+#ASSERT `the withholding on` (`a full-time monthly salary of` 10_000 `in` 2027) `given` `the standard employee` `with` (`the annual figures published for tax year` 2027) `reading` `the readings by default` `under the direction` `no direction` EQUALS RIGHT 575
+-- Born 1960 (66 in 2026): the salary is income from personal exertion, so the reduced rates apply under (b)(1) at any
+-- age, and the day on which the age of 60 is tested (IL-03 fork F2) does not change the tax. 575 again, by default.
+#ASSERT `the withholding on` (`a full-time monthly salary of` 10_000 `in` 2026) `given` `the standard employee, born in 1960` `with` `the 2026 figures` `reading` `the readings by default` `under the direction` `no direction` EQUALS RIGHT 575
+-- 2025 and 2028: section 121 is not answered by IL-03's text for them (2025: before the 2026 amendment; 2028: s 120B(e)(2)).
+-- The published-figures function refuses first; with the figures supplied by hand the refusal is IL-03's.
+#ASSERT REFUSED `the annual figures published for tax year` 2025 BECAUSE "no annual figures published by the Israel Tax Authority for this tax year have been sourced in this encoding"
+#ASSERT REFUSED `the annual figures published for tax year` 2028 BECAUSE "no annual figures published by the Israel Tax Authority for this tax year have been sourced in this encoding"
+#ASSERT REFUSED `the withholding on` (`a full-time monthly salary of` 10_000 `in` 2025) `given` `the standard employee` `with` `figures supplied by hand` `reading` `the readings by default` `under the direction` `no direction` BECAUSE "section 121 as it stood before tax year 2026 is not in the deposited text"
+#ASSERT REFUSED `the withholding on` (`a full-time monthly salary of` 10_000 `in` 2028) `given` `the standard employee` `with` `figures supplied by hand` `reading` `the readings by default` `under the direction` `no direction` BECAUSE "the section 121 ceilings from tax year 2028 are not determined by the deposited text"
+-- The figures module carries the Authority's numbers through s 120B(e)(1) to the two years.
+#ASSERT (`the annual figures published for tax year` 2026)'s `the value of one credit point` EQUALS 2_904
+#ASSERT (`the annual figures published for tax year` 2027)'s `the value of one credit point` EQUALS 2_904
+#ASSERT (`the annual figures published for tax year` 2026)'s `the amount in section 121B(a) in force in the tax year` EQUALS 721_560
+#ASSERT (`the annual figures published for tax year` 2027)'s `the amount in section 121B(a) in force in the tax year` EQUALS 721_560
+
+§§ `Schedule A item (5) — the rounding itself`
+
+-- "Every fraction of a new shekel ... over 49 agorot is regarded as a shekel; a fraction not over 49 agorot is not counted."
+#ASSERT `item (5) — rounded to the whole shekel` 123.49  EQUALS 123
+#ASSERT `item (5) — rounded to the whole shekel` 123.5   EQUALS 124
+#ASSERT `item (5) — rounded to the whole shekel` 123.495 EQUALS 124
+#ASSERT `item (5) — rounded to the whole shekel` 123     EQUALS 123
+#ASSERT `item (5) — rounded to the whole shekel` 0.4     EQUALS 0
+#ASSERT `item (5) — rounded to the whole shekel` 0.51    EQUALS 1
+
+§§ `Fork F2 — when the salary is rounded (item 5), no credit points, 10% band: tax = salary x 10%`
+
+-- Salary 1,234.90. Rounded first: 1,235 x 12 = 14,820; 10% = 1,482; / 12 = 123.50: 124.
+--                  As it stands:  1,234.90 x 12 = 14,818.80; 10% = 1,481.88; / 12 = 123.49: 123.   They part.
+-- Salary 1,234.40. Rounded first: 1,234 -> 123.40: 123.   As it stands: 123.44: 123.   They agree.
+-- Salary 1,234.95. Rounded first: 1,235 -> 123.50: 124.   As it stands: 123.495: 124.  They agree.
+-- Salary 1,234.50. Rounded first: 1,235 -> 123.50: 124.   As it stands: 123.45: 123.   They part.
+#ASSERT `the 2026 withholding on` 1_234.9 `with credit points:` 0 `, reading` `the readings, salary rounded first` EQUALS RIGHT 124
+#ASSERT `the 2026 withholding on` 1_234.9 `with credit points:` 0 `, reading` `the readings, only the tax rounded` EQUALS RIGHT 123
+#ASSERT REFUSED `the 2026 withholding on` 1_234.9 `with credit points:` 0 BECAUSE "Schedule A item (5) rounds a fraction of a shekel from the salary or from the tax and does not say whether the salary is rounded before it is multiplied by 12; the two readings give different tax here"
+#ASSERT `the 2026 withholding on` 1_234.4 `with credit points:` 0 EQUALS RIGHT 123
+#ASSERT `the 2026 withholding on` 1_234.95 `with credit points:` 0 EQUALS RIGHT 124
+#ASSERT `the 2026 withholding on` 1_234.5 `with credit points:` 0 `, reading` `the readings, salary rounded first` EQUALS RIGHT 124
+#ASSERT `the 2026 withholding on` 1_234.5 `with credit points:` 0 `, reading` `the readings, only the tax rounded` EQUALS RIGHT 123
+#ASSERT REFUSED `the 2026 withholding on` 1_234.5 `with credit points:` 0 BECAUSE "Schedule A item (5) rounds a fraction of a shekel from the salary or from the tax and does not say whether the salary is rounded before it is multiplied by 12; the two readings give different tax here"
+
+§§ `Fork F1 — what the credit points are set off against (item 3)`
+
+-- 70,000 a month with 100 points: credits 100 x 2,904 = 290,400. s 121 tax 279,830.40 (A10), s 121B tax 3,553.20.
+--   Against the whole: 279,830.40 + 3,553.20 - 290,400 = -7,016.40, not below nil: 0.        / 12 = 0.
+--   Against the s 121 tax only: 279,830.40 - 290,400 < 0 so 0; plus 3,553.20 = 3,553.20.      / 12 = 296.10: 296.
+-- They part, so the default refuses. With 2.25 points (A10) the credits are below the s 121 tax and the readings agree.
+#ASSERT `the 2026 withholding on` 70_000 `with credit points:` 100 `, reading` `the readings, set off against the whole` EQUALS RIGHT 0
+#ASSERT `the 2026 withholding on` 70_000 `with credit points:` 100 `, reading` `the readings, set off against the s 121 tax only` EQUALS RIGHT 296
+#ASSERT REFUSED `the 2026 withholding on` 70_000 `with credit points:` 100 BECAUSE "Schedule A item (3) takes the credit points into account against the tax computed under ss 121 and 121B, and the text does not say whether the s 121B additional tax is reduced by them; the two readings give different tax here"
+#ASSERT `the 2026 withholding on` 70_000 `with credit points:` 2.25 `, reading` `the readings, set off against the s 121 tax only` EQUALS RIGHT 23_071
+#ASSERT `the 2026 withholding on` 70_000 `with credit points:` 2.25 `, reading` `the readings, set off against the whole` EQUALS RIGHT 23_071
+
+
+§§ `Fork F4 — which year's amounts: a salary paid in one tax year for another`
+
+-- 10,000 a month with 2.25 points is 575 in 2026 and in 2027 (the amounts are the same: s 120B(e)(1)).
+--   Paid in 2027 for 2026: both years answer and agree: 575 by either reading and by default.
+--   Paid in 2026 for 2025: the year of payment gives 575; the year of the work is a year the sources do not
+--   answer (section 121 before 2026 is not in the deposited text); they part, so the default declines.
+`a salary of 10,000 paid in 2027 for 2026` MEANS
+    `A payment of salary` WITH
+        `tax year`                                                                       IS 2027
+        `the tax year for which the salary is paid`                                      IS 2026
+        `the month's salary`                                                             IS 10_000
+        `the part of the month's salary paid in this payment`                            IS 10_000
+        `days worked in the month`                                                       IS 22
+        `hours worked a day`                                                             IS 8
+        `hours worked a week`                                                            IS 40
+        `the payment is a pension`                                                       IS FALSE
+        `the employee is a foreign worker`                                               IS FALSE
+        `the employee works elsewhere, or receives a taxable pension from another payer` IS FALSE
+
+`a salary of 10,000 paid in 2026 for 2025` MEANS
+    `A payment of salary` WITH
+        `tax year`                                                                       IS 2026
+        `the tax year for which the salary is paid`                                      IS 2025
+        `the month's salary`                                                             IS 10_000
+        `the part of the month's salary paid in this payment`                            IS 10_000
+        `days worked in the month`                                                       IS 22
+        `hours worked a day`                                                             IS 8
+        `hours worked a week`                                                            IS 40
+        `the payment is a pension`                                                       IS FALSE
+        `the employee is a foreign worker`                                               IS FALSE
+        `the employee works elsewhere, or receives a taxable pension from another payer` IS FALSE
+
+`the readings, the year of payment` MEANS
+    `The readings of the withholding rules` WITH
+        `the set-off` IS `declined where the object of the set-off changes the tax`
+        `the salary`  IS `declined where the order of rounding changes the tax`
+        `the share`   IS `declined where rounding the share changes the tax`
+        `the placing` IS `section 121(b)(1) — the reading this row takes of where the eligible income sits on the scale`
+        `the age`     IS `section 121(b)(1) — the reading this row takes of when the age of 60 is tested`
+        `the amounts` IS `the year in which the salary is paid`
+
+`the readings, the year of the work` MEANS
+    `The readings of the withholding rules` WITH
+        `the set-off` IS `declined where the object of the set-off changes the tax`
+        `the salary`  IS `declined where the order of rounding changes the tax`
+        `the share`   IS `declined where rounding the share changes the tax`
+        `the placing` IS `section 121(b)(1) — the reading this row takes of where the eligible income sits on the scale`
+        `the age`     IS `section 121(b)(1) — the reading this row takes of when the age of 60 is tested`
+        `the amounts` IS `the year for which the salary is paid`
+
+`the 2027 figures` MEANS `the annual figures published for tax year` 2027
+
+#ASSERT `the withholding on` `a salary of 10,000 paid in 2027 for 2026` `given` `the standard employee` `with` `the 2027 figures` `reading` `the readings by default` `under the direction` `no direction` EQUALS RIGHT 575
+#ASSERT `the withholding on` `a salary of 10,000 paid in 2027 for 2026` `given` `the standard employee` `with` `the 2027 figures` `reading` `the readings, the year of payment` `under the direction` `no direction` EQUALS RIGHT 575
+#ASSERT `the withholding on` `a salary of 10,000 paid in 2027 for 2026` `given` `the standard employee` `with` `the 2027 figures` `reading` `the readings, the year of the work` `under the direction` `no direction` EQUALS RIGHT 575
+#ASSERT `the withholding on` `a salary of 10,000 paid in 2026 for 2025` `given` `the standard employee` `with` `the 2026 figures` `reading` `the readings, the year of payment` `under the direction` `no direction` EQUALS RIGHT 575
+#ASSERT REFUSED `the withholding on` `a salary of 10,000 paid in 2026 for 2025` `given` `the standard employee` `with` `the 2026 figures` `reading` `the readings, the year of the work` `under the direction` `no direction` BECAUSE "section 121 as it stood before tax year 2026 is not in the deposited text"
+-- (First written with the expectation that the refusal would be the figures module's, "no annual figures published ... for
+-- this tax year". It is section 121's, which Schedule A reaches first; the figures are read only by s 121B. The expected
+-- OUTCOME, a refusal for 2025, was right and is unchanged; only the name of the refusal was mis-predicted. NOTES.md, finding W1.)
+#ASSERT REFUSED `the withholding on` `a salary of 10,000 paid in 2026 for 2025` `given` `the standard employee` `with` `the 2026 figures` `reading` `the readings by default` `under the direction` `no direction` BECAUSE "Schedule A item (2) takes the section 120B adjustments without saying whether a salary paid in one tax year for another is deducted by the amounts of the year in which it is paid or of the year for which it is paid; the two readings give different answers here"
+
+§§ `Regulation 3(b) — a month's salary paid in parts (fork F3)`
+
+-- 20,000 a month, 2.25 points: the whole month's tax is 2,682 (A2).
+--   A part of 12,000 (0.6): 2,682 x 0.6 = 1,609.20; rounded 1,609.   They part.
+--   A part of  8,000 (0.4): 2,682 x 0.4 = 1,072.80; rounded 1,073.   They part.
+--   A part of 10,000 (0.5): 2,682 x 0.5 = 1,341 exactly.             They agree.
+--   The whole 20,000: 2,682.
+GIVEN part IS A NUMBER
+GIVETH A `A payment of salary`
+`a monthly salary of 20,000, the part paid being:` part MEANS
+    `A payment of salary` WITH
+        `tax year`                                                                       IS 2026
+        `the tax year for which the salary is paid`                                      IS 2026
+        `the month's salary`                                                             IS 20_000
+        `the part of the month's salary paid in this payment`                            IS part
+        `days worked in the month`                                                       IS 22
+        `hours worked a day`                                                             IS 8
+        `hours worked a week`                                                            IS 40
+        `the payment is a pension`                                                       IS FALSE
+        `the employee is a foreign worker`                                               IS FALSE
+        `the employee works elsewhere, or receives a taxable pension from another payer` IS FALSE
+
+GIVEN part IS A NUMBER
+      r IS A `The readings of the withholding rules`
+GIVETH AN EITHER `A problem with the payment, for the withholding rules` NUMBER
+`the withholding on a part of` part `reading` r MEANS
+    `the withholding on` (`a monthly salary of 20,000, the part paid being:` part) `given` `the standard employee` `with` `the 2026 figures` `reading` r `under the direction` `no direction`
+
+#ASSERT `the withholding on a part of` 12_000 `reading` `the readings, share exact` EQUALS RIGHT 1_609.2
+#ASSERT `the withholding on a part of` 12_000 `reading` `the readings, share rounded` EQUALS RIGHT 1_609
+#ASSERT REFUSED `the withholding on a part of` 12_000 `reading` `the readings by default` BECAUSE "regulation 3(b) deducts a proportionate part of the tax on the month's salary and does not say whether that share is rounded to the shekel; the two readings give different tax here"
+#ASSERT `the withholding on a part of` 8_000 `reading` `the readings, share exact` EQUALS RIGHT 1_072.8
+#ASSERT `the withholding on a part of` 8_000 `reading` `the readings, share rounded` EQUALS RIGHT 1_073
+#ASSERT `the withholding on a part of` 10_000 `reading` `the readings by default` EQUALS RIGHT 1_341
+#ASSERT `the withholding on a part of` 20_000 `reading` `the readings by default` EQUALS RIGHT 2_682
+
+§§ `Regulations 3(a) and 5 — which route a payment takes`
+
+-- The maximal rate is the top rate of s 121: 47% (ITO s 121(a)(3)); not rounded (assumption A2).
+GIVEN pay IS A `A payment of salary`
+      decl IS AN `The employee's declarations`
+GIVETH AN EITHER `A problem with the payment, for the withholding rules` NUMBER
+`the withholding, 2026, by default, on` pay `given` decl MEANS
+    `the withholding on` pay `given` decl `with` `the 2026 figures` `reading` `the readings by default` `under the direction` `no direction`
+
+-- M1: a partial salary (4 hours a day), no declaration on form 0130: 47% x 3,000 = 1,410.
+#ASSERT `the withholding, 2026, by default, on` `a partial salary of 3,000` `given` `the standard employee` EQUALS RIGHT 1_410
+-- M2: the same with the form 0130 declaration: Schedule A. 3,000 x 12 = 36,000; tax 3,600; less 6,534: nil. 0.
+#ASSERT `the withholding, 2026, by default, on` `a partial salary of 3,000` `given` `the standard employee with a form 0130 declaration` EQUALS RIGHT 0
+-- M3: the declaration, but the employee has since told the employer of other taxable income (5(d)): 1,410 again.
+#ASSERT `the withholding, 2026, by default, on` `a partial salary of 3,000` `given` `the standard employee with a form 0130 declaration, later told of other income` EQUALS RIGHT 1_410
+-- M4: a pension of 8,000 (5(b)), no declaration: 47% x 8,000 = 3,760.
+#ASSERT `the withholding, 2026, by default, on` `a pension of 8,000` `given` `the standard employee` EQUALS RIGHT 3_760
+-- M5: the same pension on the form 0130 declaration: Schedule A. 8,000 x 12 = 96,000; tax 8,412 + (96,000 - 84,120) x 14%
+--     = 8,412 + 11,880 x 14% = 8,412 + 1,663.20 = 10,075.20; less 6,534 = 3,541.20; / 12 = 295.10: 295.
+#ASSERT `the withholding, 2026, by default, on` `a pension of 8,000` `given` `the standard employee with a form 0130 declaration` EQUALS RIGHT 295
+-- M6: no card given: 47% x 20,000 = 9,400. A card whose other-income section is empty: 9,400.
+#ASSERT `the withholding, 2026, by default, on` `a monthly salary of 20,000` `given` `the standard employee who gave no card` EQUALS RIGHT 9_400
+#ASSERT `the withholding, 2026, by default, on` `a monthly salary of 20,000` `given` `the standard employee whose card has no other-income section` EQUALS RIGHT 9_400
+-- M7: a salary for an additional position (6 hours a day, employed elsewhere) that the employee declared: 9,400.
+--     Not declared: Schedule A, 2,682 (A2).
+#ASSERT `the withholding, 2026, by default, on` `a salary of 20,000 for an additional position` `given` `the standard employee who declared an additional position` EQUALS RIGHT 9_400
+#ASSERT `the withholding, 2026, by default, on` `a salary of 20,000 for an additional position` `given` `the standard employee` EQUALS RIGHT 2_682
+-- M8: more than 5 hours a day but fewer than 8 hours a week is a partial salary: 47% x 20,000 = 9,400.
+#ASSERT `the withholding, 2026, by default, on` `a salary of 20,000 for 6 hours a day and 7 a week` `given` `the standard employee` EQUALS RIGHT 9_400
+-- M9: 18 days a month is a month's work (Schedule A, 2,682); 17 days at 8 hours a day and 40 a week is a day employee (Schedule B).
+#ASSERT `the withholding, 2026, by default, on` `a salary of 20,000 for 18 days` `given` `the standard employee` EQUALS RIGHT 2_682
+#ASSERT REFUSED `the withholding, 2026, by default, on` `a salary of 20,000 for 17 days` `given` `the standard employee` BECAUSE "wages of a day employee are deducted under regulation 3(c) and Schedule B, which this row does not encode"
+-- M10: 17 days but only 5 hours a week at 8 hours a day: fewer than 8 hours a week with more than 5 hours a day is a partial salary: 9,400.
+#ASSERT `the withholding, 2026, by default, on` `a salary of 20,000 for 17 days and 5 hours a week` `given` `the standard employee` EQUALS RIGHT 9_400
+-- M11: a foreign worker is regulation 3(d): declined by name.
+#ASSERT REFUSED `the withholding, 2026, by default, on` `a salary of 20,000 to a foreign worker` `given` `the standard employee` BECAUSE "a salary to a foreign worker is deducted under regulation 3(d) and Schedule C (and regulation 11(d)), which this row does not encode"
+-- M12: the maximal rate is declined for the years section 121 is not answered.
+#ASSERT `the maximal rate in` 2026 EQUALS 47%
+#ASSERT REFUSED `the maximal rate in` 2028 BECAUSE "the section 121 ceilings from tax year 2028 are not determined by the deposited text"
+#ASSERT REFUSED `the maximal rate in` 2025 BECAUSE "section 121 as it stood before tax year 2026 is not in the deposited text"
+
+§§ `The assessing officer's direction (regulations 4(c), 5(e)(1), 9(a), 10)`
+
+GIVEN d IS A `A direction of the assessing officer`
+GIVETH AN EITHER `A problem with the payment, for the withholding rules` NUMBER
+`the withholding on 20,000 under the direction` d MEANS
+    `the withholding on` `a monthly salary of 20,000` `given` `the standard employee` `with` `the 2026 figures` `reading` `the readings by default` `under the direction` d
+
+#ASSERT `the withholding on 20,000 under the direction` `no direction` EQUALS RIGHT 2_682
+#ASSERT `the withholding on 20,000 under the direction` `deduct nothing` EQUALS RIGHT 0
+#ASSERT `the withholding on 20,000 under the direction` (`deduct at the rate` (20%)) EQUALS RIGHT 4_000
+#ASSERT `the withholding on 20,000 under the direction` (`deduct the amount` (100)) EQUALS RIGHT 100
+
+§§ `Invalid input is rejected, not answered`
+
+#ASSERT `the 2026 withholding on` (0 MINUS 1) `with credit points:` 2.25 EQUALS LEFT `an amount of salary is negative`
+#ASSERT `the 2026 withholding on` 10_000 `with credit points:` (0 MINUS 1) EQUALS LEFT `the credit points claimed are negative`
+#ASSERT `the withholding on` `a salary of 10,000, of which 10,001 is paid` `given` `the standard employee` `with` `the 2026 figures` `reading` `the readings by default` `under the direction` `no direction` EQUALS LEFT `the part of the month's salary paid exceeds the month's salary`
+#ASSERT `the withholding on` `a salary of 10,000 for minus one hour a day` `given` `the standard employee` `with` `the 2026 figures` `reading` `the readings by default` `under the direction` `no direction` EQUALS LEFT `a number of days or hours is negative`
+
+§§ `Regulation 4(a) — a non-regular salary`
+
+GIVEN b IS A NUMBER
+      bankrupt IS A BOOLEAN
+GIVETH A `A non-regular salary`
+`a non-regular salary of` b `, bankrupt:` bankrupt MEANS
+    `A non-regular salary` WITH
+        `amount` IS b
+        `paid to the employees of a bankrupt or a company in liquidation` IS bankrupt
+
+GIVEN b IS A NUMBER
+      s IS A NUMBER
+      bankrupt IS A BOOLEAN
+GIVETH A NUMBER
+`the tax on a non-regular salary of` b `paid with` s `, bankrupt:` bankrupt MEANS
+    `regulation 4(a) — the tax on` (`a non-regular salary of` b `, bankrupt:` bankrupt) `paid with a month's salary of` s `in` 2026 `for` `the standard employee` `with` `the 2026 figures` `reading` `the readings by default`
+
+-- B1: salary 20,000 (tax 2,682), non-regular 24,000: a twelfth is 2,000. Tax on 22,000: 264,000 -> 34,992 + (264,000 - 228,000) x 31%
+--     = 34,992 + 11,160 = 46,152; less 6,534 = 39,618; / 12 = 3,301.50: 3,302. Difference 3,302 - 2,682 = 620. x 12 = 7,440.
+--     (Which is 31% x 24,000: the bonus falls wholly in the 31% band.)
+#ASSERT `the tax on a non-regular salary of` 24_000 `paid with` 20_000 `, bankrupt:` FALSE EQUALS 7_440
+-- B2: non-regular 6,000: a twelfth 500. Tax on 20,500: 246,000 -> 34,992 + 18,000 x 31% = 40,572; less 6,534 = 34,038; / 12 = 2,836.50: 2,837.
+--     Difference 2,837 - 2,682 = 155. x 12 = 1,860 (= 31% x 6,000).
+#ASSERT `the tax on a non-regular salary of` 6_000 `paid with` 20_000 `, bankrupt:` FALSE EQUALS 1_860
+-- B3: nothing paid: no difference.
+#ASSERT `the tax on a non-regular salary of` 0 `paid with` 20_000 `, bankrupt:` FALSE EQUALS 0
+-- B4: salary 5,000 (tax 60,000 x ... 6,000 less 6,534: nil -> 0), non-regular 12,000: a twelfth 1,000. Tax on 6,000: 72,000 x 10% = 7,200;
+--     less 6,534 = 666; / 12 = 55.50: 56. Difference 56 - 0 = 56. x 12 = 672.
+--     For the employees of a bankrupt the rate is not to be below 25%: 25% x 12,000 = 3,000 > 672, so 3,000.
+#ASSERT `the tax on a non-regular salary of` 12_000 `paid with` 5_000 `, bankrupt:` FALSE EQUALS 672
+#ASSERT `the tax on a non-regular salary of` 12_000 `paid with` 5_000 `, bankrupt:` TRUE  EQUALS 3_000
+-- B5: for the bankrupt's employees where the tax is already above 25%: 7,440 (B1) against a floor of 25% x 24,000 = 6,000: 7,440.
+#ASSERT `the tax on a non-regular salary of` 24_000 `paid with` 20_000 `, bankrupt:` TRUE EQUALS 7_440
+
+§§ `Schedule A item (6) — the Director's table; and the cumulative method`
+
+#ASSERT `the employer deducts, given the Director's table` (JUST 700) EQUALS 700
+#ASSERT REFUSED `the employer deducts, given the Director's table` NOTHING BECAUSE "needs a source: Schedule A item (6) has the employer deduct by the table the Director publishes (the Tax Authority's monthly deduction booklet), which is not among the deposited sources; this encoding computes the tax of items (1) to (5), not the table"
+#ASSERT REFUSED `a cumulative method of withholding` BECAUSE "needs a source: the text of the Regulations contains no cumulative method of withholding; the deposited sources do not say whether the Tax Authority prescribes one elsewhere"
+
+§§ `The difference from the annual tax that row IL-03 computes`
+
+-- An employee on 20,000 a month all year, 2.25 points. The annual tax under s 121 on 240,000 is 38,712 (A2); less the
+-- credits 6,534 is 32,178. Twelve withholdings of 2,682 are 32,184, six shekels more: the difference is the rounding of
+-- item (5) alone (2,681.50 rounded up twelve times), since the Schedule's calculation is the annual one divided by twelve.
+#ASSERT `the tax under section 121 for` (`the individual earning` 240_000 `in` 2026 `born` (YMD 1990 1 1)) `, placing the eligible income as` `section 121(b)(1) — the reading this row takes of where the eligible income sits on the scale` `and testing the age of 60 as` `section 121(b)(1) — the reading this row takes of when the age of 60 is tested` EQUALS RIGHT 38_712
+#ASSERT 12 TIMES 2_682 MINUS (38_712 MINUS 6_534) EQUALS 6
+
+§§ `Section 164`
+
+#ASSERT `section 164 imposes a duty to deduct tax when paying` `employment income, including the part of a retirement or death grant not exempt under section 9(7A)`
+#ASSERT `section 164 imposes a duty to deduct tax when paying` `interest or dividend`
+#ASSERT `section 164 applies to the State as a payer`
+#ASSERT `the instrument prescribing the manner and rates of deduction from` `employment income, including the part of a retirement or death grant not exempt under section 9(7A)` EQUALS "the Income Tax (Deduction from Salary and Wages) Regulations 5753-1993"
+#ASSERT REFUSED `the instrument prescribing the manner and rates of deduction from` `interest or dividend` BECAUSE "needs a source: section 164 leaves the manner and rates for this kind of payment to instruments (orders and regulations made under it) that are not among the deposited sources; only the Regulations for employment income are"
+
+§§ `Regulations 2 and 9 — what the employee may claim`
+
+#ASSERT `the paragraph of regulation 9(a) for` `being a new immigrant (section 35)` EQUALS 4
+#ASSERT `the paragraph of regulation 9(a) for` `professional liability insurance paid through the employer under a collective agreement` EQUALS 19
+#ASSERT `the paragraph of regulation 9(a) for` `blindness, or a disability of 100% or of 90% on the special computation (section 9(5))` EQUALS 1
+#ASSERT `the employee may ask the assessing officer to reduce the deduction on the ground` `credit points under section 40C or 40D`
+-- Regulation 9(c): a pension of 10,000 of which 4,000 is exempt under s 9A or 9B: tax is deducted from 6,000.
+#ASSERT `the part of a pension of` 10_000 `from which tax is deducted, the part exempt under section 9A or 9B being` 4_000 EQUALS 6_000
+#ASSERT REFUSED `the part of a pension of` 10_000 `from which tax is deducted, the part exempt under section 9A or 9B being` 10_001 BECAUSE "the exempt part of a pension exceeds the pension paid"
+#ASSERT `the employer must demand an employee's card for` (`a full-time monthly salary of` 10_000 `in` 2026)
+#ASSERT NOT `the employer must demand an employee's card for` `a salary of 10,000 to a foreign worker`
+#ASSERT NOT `the employer must demand an employee's card for` `a salary of 10,000 for 10 days`

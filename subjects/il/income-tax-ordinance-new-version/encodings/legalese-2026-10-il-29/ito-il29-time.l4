@@ -1,0 +1,279 @@
+@lang en
+IMPORT prelude
+IMPORT daydate
+IMPORT `ito-il29-nouns`
+
+-- ===========================================================================
+-- Row IL-29: the tax year (s 1 "שנת מס"), the count of days in Israel, and the matching of a window of
+-- time (a period that runs from a day) with a tax year.  Helpers; the residence rules are in the
+-- modules that import this one.
+-- ===========================================================================
+
+§ `The tax year`
+
+-- src:ITO:202 | ”שנת מס“ – תקופה של שנים עשר חדשים רצופים, שתחילתה ב־1 בינואר, ואם נקבעה תקופת שומה מיוחדת – תקופת השומה שנקבעה כאמור;
+
+@ref ITO s 1, "שנת מס", line 202: the ordinary case, 1 January to 31 December
+GIVEN y IS A NUMBER
+GIVETH A `A tax year`
+`the calendar tax year` y MEANS
+    `A tax year` WITH
+        `the calendar year in which it begins` IS y
+        `first day`                            IS YMD y 1 1
+        `last day`                             IS YMD y 12 31
+
+@ref ITO s 1, "שנת מס", line 202: a special assessment period, where one was set
+GIVEN y     IS A NUMBER
+      first IS A DATE
+      last  IS A DATE
+GIVETH A `A tax year`
+`a tax year that is the special assessment period` y `from` first `to` last MEANS
+    `A tax year` WITH
+        `the calendar year in which it begins` IS y
+        `first day`                            IS first
+        `last day`                             IS last
+
+GIVEN t IS A `A tax year`
+GIVETH A NUMBER
+`the number of days in` t MEANS
+    (Day (t's `last day`) MINUS Day (t's `first day`)) PLUS 1
+
+§ `The days in Israel`
+
+-- A stay includes the day of arrival and the day of departure: part of a day is a day
+-- (s 1 "Israeli resident" (a)(2): "לענין פסקה זו, ”יום“ – לרבות חלק מיום").
+-- src:ITO:154 | לענין פסקה זו, ”יום“ – לרבות חלק מיום;
+
+@ref ITO s 1, "תושב ישראל" (a)(2), line 154
+GIVEN t  IS A `A tax year`
+      st IS A `A stay in Israel`
+GIVETH A NUMBER
+`the days that fall in` t `, a part of a day being a day, of the stay` st MEANS
+    IF   Day (st's `left`) LESS THAN Day (st's `arrived`)
+    THEN REFUSE "a stay in Israel ends before it begins"
+    ELSE IF   `the last day counted` LESS THAN `the first day counted`
+         THEN 0
+         ELSE (`the last day counted` MINUS `the first day counted`) PLUS 1
+    WHERE
+        `the first day counted` MEANS max (Day (st's `arrived`)) (Day (t's `first day`))
+        `the last day counted`  MEANS min (Day (st's `left`)) (Day (t's `last day`))
+
+GIVEN sts IS A LIST OF `A stay in Israel`
+GIVETH A BOOLEAN
+`no two of the stays share a day` sts MEANS
+    CONSIDER sts
+    WHEN EMPTY THEN TRUE
+    WHEN x FOLLOWED BY xs THEN
+        all (GIVEN o YIELD NOT (Day (x's `arrived`) AT MOST Day (o's `left`) AND Day (o's `arrived`) AT MOST Day (x's `left`))) xs
+        AND `no two of the stays share a day` xs
+
+@ref ITO s 1, "תושב ישראל" (a)(2), line 154: one day is one day, however many stays touch it
+GIVEN a IS A TYPE
+GIVETH AN a
+`two of the stays share a day, so the days would be counted twice` MEANS
+    REFUSE "two of the stays share a day, so the days would be counted twice: give one stay for the days they cover"
+
+GIVEN t   IS A `A tax year`
+      sts IS A LIST OF `A stay in Israel`
+GIVETH A NUMBER
+`the days in Israel in` t `, from the stays` sts MEANS
+    IF   NOT `no two of the stays share a day` sts
+    THEN `two of the stays share a day, so the days would be counted twice`
+    ELSE sum (map (GIVEN st YIELD `the days that fall in` t `, a part of a day being a day, of the stay` st) sts)
+
+-- The days of the tax year on which he was partly outside Israel: the day of arrival and the day of
+-- departure of each stay that falls in the tax year (a stay of one day being one such day).
+GIVEN t   IS A `A tax year`
+      sts IS A LIST OF `A stay in Israel`
+GIVETH A NUMBER
+`the days partly outside Israel in` t `, from the stays` sts MEANS
+    IF   NOT `no two of the stays share a day` sts
+    THEN `two of the stays share a day, so the days would be counted twice`
+    ELSE sum (map (GIVEN st YIELD
+                      (IF `in the tax year` (st's `arrived`) THEN 1 ELSE 0)
+                      PLUS (IF `in the tax year` (st's `left`) AND (Day (st's `left`)) GREATER THAN (Day (st's `arrived`)) THEN 1 ELSE 0)) sts)
+    WHERE
+        `in the tax year` d MEANS Day d AT LEAST Day (t's `first day`) AND Day d AT MOST Day (t's `last day`)
+
+GIVEN t   IS A `A tax year`
+      sts IS A LIST OF `A stay in Israel`
+GIVETH A NUMBER
+`the days wholly outside Israel in` t `, from the stays` sts MEANS
+    `the number of days in` t MINUS `the days in Israel in` t `, from the stays` sts
+
+§ `The days in Israel of an individual in a tax year`
+
+@ref this row; input discipline
+GIVEN a IS A TYPE
+GIVETH AN a
+`the days in Israel given exceed the days in a tax year, or are negative` MEANS
+    REFUSE "the days in Israel given are negative or exceed the number of days in the tax year"
+
+GIVEN i IS AN `An individual in a tax year, for the definition of Israeli resident`
+GIVETH A NUMBER
+`the days in Israel in the tax year of` i MEANS
+    CONSIDER i's `the days in Israel`
+    WHEN `counted by the caller` a b c THEN
+        IF   a LESS THAN 0 OR a GREATER THAN `the number of days in` (i's `the tax year`)
+        THEN `the days in Israel given exceed the days in a tax year, or are negative`
+        ELSE a
+    WHEN `counted from the stays` sts THEN `the days in Israel in` (i's `the tax year`) `, from the stays` sts
+
+GIVEN i IS AN `An individual in a tax year, for the definition of Israeli resident`
+GIVETH A NUMBER
+`the days in Israel in the tax year before that of` i MEANS
+    CONSIDER i's `the days in Israel`
+    WHEN `counted by the caller` a b c THEN
+        IF   b LESS THAN 0 OR b GREATER THAN `the number of days in` (i's `the tax year before it`)
+        THEN `the days in Israel given exceed the days in a tax year, or are negative`
+        ELSE b
+    WHEN `counted from the stays` sts THEN `the days in Israel in` (i's `the tax year before it`) `, from the stays` sts
+
+GIVEN i IS AN `An individual in a tax year, for the definition of Israeli resident`
+GIVETH A NUMBER
+`the days in Israel in the tax year before the one before that of` i MEANS
+    CONSIDER i's `the days in Israel`
+    WHEN `counted by the caller` a b c THEN
+        IF   c LESS THAN 0 OR c GREATER THAN `the number of days in` (i's `the tax year before that`)
+        THEN `the days in Israel given exceed the days in a tax year, or are negative`
+        ELSE c
+    WHEN `counted from the stays` sts THEN `the days in Israel in` (i's `the tax year before that`) `, from the stays` sts
+
+§ `Matching a window of time with a tax year`
+
+-- Several provisions speak of a period that runs from a day ("the first three years of his stay", "five
+-- years from the day he began to work", "ten years from the day he became a resident", "one year from
+-- the day he arrived") and then ask a question about a tax year.  The text does not say how a period
+-- that begins or ends inside a tax year is matched with it, so this is a fork (F-W), by default
+-- declining wherever the readings give different answers.  The readings (src of the periods are in
+-- the modules that use them):
+--   whole      the tax year lies wholly inside the window;
+--   some day   some day of the tax year lies inside the window;
+--   last day   the last day of the tax year lies inside the window;
+--   count      the tax year is among the first N tax years counted from the tax year of the start
+--              (only for a window expressed as a number of years).
+
+@ref this row; fork F-W, Meng's ruling SHRUG of 2026-10-08
+GIVEN years IS A MAYBE NUMBER
+      rd    IS A `A reading of how a window of time is matched with a tax year`
+GIVETH A LIST OF `A reading of how a window of time is matched with a tax year`
+`the readings to try for a window counted as` years `under` rd MEANS
+    CONSIDER rd
+    WHEN `declined where the readings differ` THEN
+        CONSIDER years
+        WHEN NOTHING THEN LIST `the whole tax year lies in the window`, `some day of the tax year lies in the window`, `the last day of the tax year lies in the window`
+        WHEN JUST n THEN LIST `the whole tax year lies in the window`, `some day of the tax year lies in the window`, `the last day of the tax year lies in the window`, `the tax year is among the first tax years counted from the tax year of the start`
+    OTHERWISE LIST rd
+
+@ref this row; fork F-W
+GIVEN a IS A TYPE
+GIVETH AN a
+`a window is matched under no reading` MEANS
+    REFUSE "the window cannot be matched: a default reading was passed where a named one was required, or the window is not counted in years"
+
+GIVEN first IS A DATE
+      last  IS A DATE
+      years IS A MAYBE NUMBER
+      t     IS A `A tax year`
+      rd    IS A `A reading of how a window of time is matched with a tax year`
+GIVETH A BOOLEAN
+`the window from` first `to` last `, counted as` years `, matches` t `under` rd MEANS
+    CONSIDER rd
+    WHEN `the whole tax year lies in the window` THEN
+        Day first AT MOST Day (t's `first day`) AND Day (t's `last day`) AT MOST Day last
+    WHEN `some day of the tax year lies in the window` THEN
+        Day first AT MOST Day (t's `last day`) AND Day (t's `first day`) AT MOST Day last
+    WHEN `the last day of the tax year lies in the window` THEN
+        Day first AT MOST Day (t's `last day`) AND Day (t's `last day`) AT MOST Day last
+    WHEN `the tax year is among the first tax years counted from the tax year of the start` THEN
+        CONSIDER years
+        WHEN JUST n THEN
+            (t's `the calendar year in which it begins`) AT LEAST (DATE_YEAR first)
+            AND (t's `the calendar year in which it begins`) LESS THAN (DATE_YEAR first) PLUS n
+        WHEN NOTHING THEN `a window is matched under no reading`
+    OTHERWISE `a window is matched under no reading`
+
+-- The values the window can take for the tax year under the reading asked for: one value, or two where
+-- the default reading is passed and the readings differ.
+GIVEN first IS A DATE
+      last  IS A DATE
+      years IS A MAYBE NUMBER
+      t     IS A `A tax year`
+      rd    IS A `A reading of how a window of time is matched with a tax year`
+GIVETH A LIST OF BOOLEAN
+`the possible matches of the window from` first `to` last `, counted as` years `, with` t `under` rd MEANS
+    nub (map (GIVEN r YIELD `the window from` first `to` last `, counted as` years `, matches` t `under` r)
+             (`the readings to try for a window counted as` years `under` rd))
+
+-- A window of N whole years that runs from a day: it ends on the day before the Nth anniversary.
+-- (Assumption A3, NOTES.md: the text does not say whether the anniversary itself is inside.)
+GIVEN n     IS A NUMBER
+      first IS A DATE
+GIVETH A DATE
+`the last day of the window of` n `years from` first MEANS
+    Date ((Day (`add years` first n)) MINUS 1)
+
+§ `The tax years this row answers`
+
+-- Every top-level rule asks this first.  The deposited Ordinance is the consolidation read on 2026-10-06;
+-- row IL-08 answers tax years from 2024 (its assumption A1) and the capstone composes the two, so this
+-- row answers the same years.  The figures published for the Regulations' amounts begin in 2024 too.
+@ref this row; assumption A1 (as row IL-08)
+GIVETH A NUMBER
+`the first tax year row IL-29 answers` MEANS 2024
+
+@ref this row; assumption A1
+GIVEN a IS A TYPE
+GIVETH AN a
+`row IL-29 does not hold the text of these provisions for a tax year before 2024` MEANS
+    REFUSE "row IL-29 does not hold the text of these provisions for a tax year before 2024"
+
+GIVEN a      IS A TYPE
+      t      IS A `A tax year`
+      answer IS AN a
+GIVETH AN a
+`for` t `, row IL-29 answers` answer MEANS
+    IF   t's `the calendar year in which it begins` AT LEAST `the first tax year row IL-29 answers`
+    THEN answer
+    ELSE `row IL-29 does not hold the text of these provisions for a tax year before 2024`
+
+§ `Choosing one answer among the values the readings allow`
+
+-- A rule that has several allowed readings computes the values each allows.  Where they agree it answers;
+-- where they differ it declines (Meng's ruling SHRUG of 2026-10-08).
+GIVEN values IS A LIST OF BOOLEAN
+      why    IS A BOOLEAN
+GIVETH A BOOLEAN
+`the single value among` values `, else` why MEANS
+    CONSIDER nub values
+    WHEN EMPTY THEN `no value at all was computed`
+    WHEN x FOLLOWED BY xs THEN IF null xs THEN x ELSE why
+
+GIVEN a IS A TYPE
+GIVETH AN a
+`no value at all was computed` MEANS
+    REFUSE "no value was computed, which should not happen"
+
+GIVEN values IS A LIST OF NUMBER
+      why    IS A NUMBER
+GIVETH A NUMBER
+`the single number among` values `, else` why MEANS
+    CONSIDER nub values
+    WHEN EMPTY THEN `no value at all was computed`
+    WHEN x FOLLOWED BY xs THEN IF null xs THEN x ELSE why
+
+§ `A value reduced by a deduction that may exceed it`
+
+-- The Regulations reduce a monthly value ("in deduction of" the employee's payment, "less" a fixed reduction).
+-- Neither says what a result below zero is.  Fork XD, by default declining where it matters.
+@ref ITO s 2(2)(b); TEL reg 2, line 20; VTP reg 1(c1) and (d1), (d2): fork XD
+GIVEN v  IS A NUMBER
+      rd IS A `A reading of a deduction that exceeds the value`
+GIVETH A LIST OF NUMBER
+`the values of a result of` v `when a deduction may exceed the value, read` rd MEANS
+    IF   v AT LEAST 0
+    THEN LIST v
+    ELSE CONSIDER rd
+         WHEN `declined where the readings differ` THEN LIST 0, v
+         WHEN `the value is then nil` THEN LIST 0
+         WHEN `the value is then negative` THEN LIST v

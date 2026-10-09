@@ -1,11 +1,141 @@
 # NOTES — il/national-insurance-law-consolidated-version-5755-1995, encoding row `legalese-2026-10-il-05`
 
 National Insurance Law [Consolidated Version], 5755-1995: **s 342** (who is liable to pay insurance contributions, and the employer's deduction), **s 348** (the maximum, the minimum and the disregarded amount) and **Schedule K** (לוח י״א, the maximum and minimum income for contributions), encoded in L4 by one agent in one session (run `IL-05-20261006`, 2026-10-06), from the brief in `BRIEF.md`.
-Status: **draft**. Version **0.5.0** (2026-10-08): fork DATE (a day of birth the month of the age lacks, s 342(c)(2)) is a switch, ruled by Meng (SHRUG), declined by default (BACKLOG IL-39); see "Version 0.5.0" below.
+Status: **draft**. Version **0.6.0** (2026-10-08): SHRUG on the remaining ambiguities (BACKLOG IL-50): s 348(a1) (fork F3) and the Schedule K item of a person of a class s 348(d) or (e) names (forks F6, F7) are switches, declined by default where their readings differ; see "Version 0.6.0" below.
+Version 0.5.0 (2026-10-08): fork DATE (a day of birth the month of the age lacks, s 342(c)(2)) is a switch, ruled by Meng (SHRUG), declined by default (BACKLOG IL-39); see "Version 0.5.0" below.
 Version 0.4.0 (2026-10-08): repairs from the inventory of 2026-10-08 (BACKLOG IL-17): s 342(c), (d) and (e1) on the income s 348(a) takes into account, nine of the independent tester's assertions re-pointed to the printed totals it decided, one call for a person both employee and self-employed; see "Version 0.4.0" below.
 Version 0.3.0 (2026-10-07): row IL-04's Schedule J switch reaches s 342(c); see "Version 0.3.0" below.
 No domain expert has read it against the source; HG1 has not been sought.
 The row depends on row IL-04 (s 1, s 334, s 337, Schedule J), whose modules it could not import (section 8).
+
+## Version 0.6.0 (2026-10-08): SHRUG on the remaining ambiguities (BACKLOG IL-50)
+
+Backlog row IL-50, agent `shrug-il-50`, one session, no sub-agents, on Meng's ruling of 2026-10-08 (SHRUG, extended to all remaining ambiguities) as the lead relayed it: where the text does not decide, one named switch per ambiguity, declined by default, declining only where the readings give different answers to the question asked (fork F26's policy), every other reading kept by name and tested.
+The items are this row's in the inventory of 2026-10-08 (`l4-pipeline/findings/il-2026-10-08/inventory.tsv`): 05-F6, 05-F9, 05-Q7, 05-RC4, 05-X1, and this row's side of row IL-04's 04-F5 and 04-Q2 (IL-04 v0.6.1, BACKLOG IL-49).
+Nothing in the sections below was deleted; entries this version changes are marked **(0.6.0)** in place.
+`DECIDED-ANSWERS.md`, `INDEPENDENT-FINDINGS.md` and the section "Comparison with Axiom's RuleSpec" are untouched, and that section was not read for this version.
+
+### The items
+
+| item | class | what changed | tests added |
+| --- | --- | --- | --- |
+| 05-X1 (fork F3, s 348(a1)) | (a) | A switch: `the part up to the 25% sum is not taken into account` (this row's reading before 0.6.0), `all of it is not taken into account if it does not exceed the 25% sum, and none of it if it does`, and the default, declined where they differ. | 11 |
+| 05-F6 (fork F6, Schedule K item 3) | (a) | A switch: `the classes section 348(d) and (e) name` (the reading before 0.6.0), `one of the classes section 348(e) names only while the income does not reach the item 3 minimum`, and the default. | 11 |
+| 05-F6 (fork F7, the item of one who works and is of such a class) | (a) | A switch: `item 1 or 2, by the person's status` (the reading before 0.6.0), `item 3, by the class`, and the default. | 12 |
+| 05-F9 (fork F9, s 342(c)(2), a month split by the age or the pension) | (b) | Nothing: the month is already declined, by name, in exactly the cases where apportioning and taking the whole month one way could differ. | 0 |
+| 05-RC4 (fork F5, s 348(d), deeming or floor; a quarter) | (b) | Nothing: (d) is already answered only where deeming and floor agree (income not above the item 3 minimum) and declined by name elsewhere, and a quarter or a year is declined ("section 348(d) is stated for a full month"). A per-month input for "a full month in every month of the quarter" is an interface extension, not a reading. | 0 |
+| 05-Q7 (fork F8, s 348(e)'s temporary text, expiry 31.8.2026) | (d) | Nothing: whether the National-Civic Service Law's expiry was moved after Amendment 9 needs that Law's later amendments, which this row does not hold; that Law is now deposited (commit 317b20c5) and BACKLOG IL-34 is to encode it. The deposited text says 31.8.2026, and the dated arm stays on it. | 0 |
+| 04-F5, this row's side (fork F1, which "average wage") | (b) | Nothing; recorded: the s 2 figure is the only reading the text supports for contributions, and the input convention is stated. | 0 |
+| 04-Q2, this row's side (fork F23, a police officer at the printed totals) | (b) | Nothing; recorded: ruled more specifically (TAKEAWAY), and fork F23 gives row IL-04's default for the same branch set. | 0 |
+
+**05-X1, class (a).** s 348(a1) disregards income not from work "ואינה עולה על" (which does not exceed) 25% of the average wage (line 3764): the part up to the sum, or all of it if it does not exceed the sum and none if it does.
+Fork F3, restated at 0.4.0, found that the words read at least as naturally as all or nothing; the Institute's practice is a deduction.
+The readings differ wherever such income exceeds the sum, so this is a gating choice the encoding was taking silently.
+The default declines the (a1) questions wherever the income is above the sum, and the s 348 income wherever the two give different incomes after (a), (b), (d) and (e): rent of 60,000 is answered (both are capped at 51,910), rent of 12,000 is not (8,557.75 or 12,000).
+**05-F6, class (a), two forks.** Schedule K item 3 is for "מבוטח כאמור בסעיף 348(ד) ו־(ה)" (line 4763).
+Fork F6: one of (e)'s classes whose income reaches the item 3 minimum is either within item 3 (the classes) or not, being then outside (e)'s words "who has no income or whose income does not reach" (the condition), and so under item 4 if neither employee nor self-employed.
+Fork F7: an employee or a self-employed person of such a class is under item 1 or 2, which name him by status, or under item 3, which names the class.
+Both change "the minimum amount stated for him" under s 348(b), so both change answers: a yeshiva student who is neither, with 3,000 in a quarter, has 3,000 or 6,196.05; an employee who is one, paid 3,000 in June, has 6,443.85 or 3,000.
+F6 reaches (e)'s classes only, since (d) has no income condition.
+The maximum is the same for every item, so neither fork moves it.
+**05-F9, class (b).** "בעד הזמן שלאחר הגיע המבוטח לגיל" (for the time after the insured reaches the age, line 3662) and "בעד הזמן שבעדו מגיעה למבוטח קצבת אזרח ותיק" (for the time for which a senior citizen pension is payable to the insured): a month split by the day the age is reached or by a pension payable for part of it is declined by name (two refusals, fork F9), and every other month is wholly on one side, where apportioning and taking the month one way agree.
+That is already the shape SHRUG asks for; no reading is taken silently.
+Fork DATE (0.5.0) settles the day in a month that lacks the day of birth.
+**05-RC4, class (b).** As in the table.
+The independent tester's H2 and H3 (`tests-independent.l4` lines 387, 389) stay refused, as declared since 0.3.0.
+**05-Q7, class (d).** The editors' note and Amendment 9 give 31.8.2026 (fork F8).
+This row read Amendments 7 to 9 (section 7) and did not search for a later one; nothing was fetched for this version.
+The National-Civic Service Law 5774-2014 has since been deposited (`subjects/il/national-civic-service-law-5774-2014/registers/source-bundle/`, commons commit 317b20c5); it was not read for this version, and on the lead's instruction Q7 stays class (d) here, BACKLOG IL-34 to encode that Law.
+**04-F5, this row's side, class (b) with an input convention.** Row IL-04 v0.6.1 picks no figure (its class (c)).
+This row's fork F1 takes the figure calculated under s 2 because s 2(b) applies its changes "בחישוב השכר הממוצע, לצורך גמלאות ודמי ביטוח" (in calculating the average wage, for benefits and insurance contributions; line 236), and Schedule K and s 348(a1) are contribution provisions; every Institute figure this row checked fits it (fork F1).
+Input convention, stated: the rules take the average wage from `The figures Schedule K reads for a tax year`; the 2026 record as published carries the s 2 figure (13,769), and a caller who supplies another figure gets the schedule on it (the s 1 figure is published by name too, and the tests show it does not reproduce the Institute's figures).
+**04-Q2, this row's side, class (b).** Row IL-04 v0.6.1 classes it (b): its fork F21 is a switch, ruled more specifically (TAKEAWAY, DESSERT).
+This row takes column D for the deduction branches from its caller, and its one partial-set computation, fork F23 (a police or prison officer: the printed total less item 6's own amount), is the set without unemployment, one of the sets F21's default answers, with the same result ("Version 0.5.0", "Row IL-37 (TAKEAWAY)").
+
+### What changed in the modules
+
+1. **Readings** (`nii-il05-nouns.l4`): `A reading of section 348(a1)`, `A reading of Schedule K item 3's "as stated in section 348(d) and (e)"`, `A reading of the Schedule K item of an employee or a self-employed person of a class section 348(d) or (e) names`, each with two readings and a declined one, and `The readings of section 348 where the text does not decide`, a record of the three.
+   A reading is an argument, never a field of the case records.
+2. **The switch** (`nii-s348-maximum-minimum.l4`): `section 348 — the readings this row takes where the text does not decide`, all three declined; `section 348 read with (a1) as` … `, item 3 as` … `, and the item of one who works as` … names a set of readings; three refusals by name.
+3. **How "declined" answers.** `section 348 — the answer to` q `, declined where the readings it is given differ, reading the text as` rs asks q under each reading a declined one stands for, in turn for F3, F6 and F7, and answers only if they agree; otherwise it refuses with that fork's refusal.
+   Where one reading's answer is itself a refusal (fork F5's or F7's of 0.1.0, say), that refusal is the answer.
+4. **Which rules.** Each rule a reading reaches has a form "…, at the readings" rs (readings none of which is declined), a form "…, reading the text as" rs, and its name before 0.6.0, which now follows the switch: `the item of Schedule K for` c (with the figures for the case's tax year, read only where item 3's income condition is), `the Schedule K maximum for`, `the Schedule K minimum for`, `s 348(a1) — the income not from work that is not taken into account, for`, `s 348(a1) — the income taken into account, for`, `s 348(a) and (b) — …`, `s 348(d) — …`, both `s 348(e) — …` rules, and `s 348 — the income on which contributions are computed, for` c `, under` f; the form without figures calls that one, as before.
+   `s 348(a1), read as all or nothing — …` keeps its name and is the second reading of F3.
+5. **What the default changes.** Answers that were numbers and are now refused: income not from work above the 25% sum, where the two readings give different answers to the question asked; one of (e)'s classes who is neither, with income at or above the item 3 minimum and below item 4's; an employee or a self-employed person of a class (d) or (e) names whose income is at or above the item 3 minimum and below item 1's or 2's minimum; and `the item of Schedule K for` such persons wherever the readings name different items.
+   Nothing that was refused became a number.
+   The version is minor.
+
+### Assertions re-pointed or added
+
+No expected value changed.
+`nii-il05-tests.l4`: **8 re-pointed** by name to the readings this row took before 0.6.0 (`, under` `the 2026 figures` `, reading the text as` (`section 348 read with (a1) as` `the part up to the 25% sum is not taken into account` `, item 3 as` `the classes section 348(d) and (e) name` `, and the item of one who works as` `item 1 or 2, by the person's status`)), values unchanged; and **35 added** (236 to 271), in the section "Version 0.6.0".
+The figures for 2026 the 0.1.0 names used are the same published figures the re-pointed calls name, `the 2026 figures`.
+Every added value was worked out by hand from Schedule K's 2026 cells before the first run that evaluated it; all 35 were satisfied on that run, and with four of them altered in a scratch copy (two values, an item, a refusal's wording) the module reported each as failed.
+
+| assertion (2026) | at the reading before 0.6.0 | at the other reading | at the switch |
+| --- | --- | --- | --- |
+| (re-pointed) the item of an employee yeshiva student paid 8,000, January | item 1 | item 3 | declined (F7) |
+| (re-pointed) rent of 12,000, one who is neither, January (and the two rounded figures on it) | 8,557.75 (8,558; 1,035) | 12,000 | declined (F3) |
+| (re-pointed) income not from work disregarded, rent of 5,000, January | 3,442.25 | 0 | declined (F3) |
+| (re-pointed) rent of 4,000 under s 350(c), January | 557.75 | 4,000 | declined (F3) |
+| (re-pointed) rent of 4,000 with unemployment benefit for a full month, March | 688.45 | (4,000 is above the item 3 minimum: fork F5 declines) | declined |
+| (re-pointed) a yeshiva student who is neither, rent of 5,000, January | 1,557.75 | 2,065.35 (item 4, under (e)'s condition) | declined (F3 and F6) |
+| the switch | — | — | all three declined |
+| (a1), rent of 3,000, January | — | — | 3,000 (they agree) |
+| (a1), income taken into account, rent of 3,442.26, February | 0.01 | 3,442.26 | declined (F3) |
+| s 348, rent of 60,000, January; a wage of 60,000 with rent of 5,000, March | — | — | 51,910; 51,910 (both capped) |
+| a yeshiva student who is neither, 3,000 from work in the first quarter: income; item | 3,000; item 3 | 6,196.05; item 4 | declined (F6); declined (F6) |
+| the same with 7,000: income; item | — | — | 7,000; declined (F6) |
+| the same with 2,000: income; item | — | — | 2,065.35; item 3 ((e) applies under both) |
+| an employee yeshiva student paid 3,000 in June | 6,443.85 | 3,000 (item 3 read as the classes); 6,443.85 (under (e)'s condition) | declined (F7) |
+| the same paid 500 | declined ((e) and (b) give different minimums) | 688.45 | declined |
+| the same paid 8,000, January: the item | item 1 (re-pointed, above) | item 3 | declined (F7) |
+| a self-employed yeshiva student paid 2,000 in July | 3,442.25 | 2,000 | declined (F7) |
+
+`tests-independent.l4`: **4 re-pointed**, with the lead's yes, under the repair brief's ADDENDUM terms.
+At the switch these four were declined, each one the independent tester decided on a reading it named as one of two.
+Each was re-pointed on its own line to that reading by name, through `, reading the text as` (`section 348 read with (a1) as` … `, item 3 as` … `, and the item of one who works as` …), the forks the tester did not decide left at the switch's declined readings, which do not reach these lines; no expected value or input changed and no line was inserted.
+A dated note at the end of the file cites each line with its item, reading and `DECIDED-ANSWERS.md` entry.
+
+| line | id | item | reading | `DECIDED-ANSWERS.md` | expected | at the switch | at 0.6.0, re-pointed |
+| ---: | --- | --- | --- | --- | --- | --- | --- |
+| 367 | G3 | 05-X1 | (a1) as `the part up to the 25% sum is not taken into account` | section G: "a deduction, not a cliff"; G3 | 0.01 | declined (F3) | satisfied |
+| 371 | G5 | 05-X1 | the same | section G; G5 | 8,557.75 | declined (F3) | satisfied |
+| 395 | H6 | 05-F6 (F6) | item 3 as `the classes section 348(d) and (e) name` | section H, row H6: "item 3, not item 4, governs him" | item 3 | declined (F6) | satisfied |
+| 396 | H6 | 05-F6 (F6) | the same | row H6 | 3,000 | declined (F6) | satisfied |
+
+Line 395's rule takes figures in its reading form, so the line now passes the tester's own `fid 2026 figures`, which line 396 already passes; under its old name the rule read the same 2026 figures as published.
+The file was re-run after the edit: 131 satisfied, 6 failed, 2 refused, each of the four satisfied with its original value.
+
+### What `check.sh` prints at 0.6.0
+
+Run from 2026-10-08T22:50:26Z to 22:50:33Z as `L4=/Users/mengwong/.local/bin/l4 ./check.sh`, `JL4_LIBRARY_PATH` unset, on the cabal store build `jl4-0.1-6df1397b`, sha256 `f0759b2ef2f1d1b2a577c68f059c54f487de9d913553fc9f0d9bf0f7f5dab0d8`, the same before and after the run (not the binary of 0.5.0, `f4f2bd25…`).
+On it, before any change (22:34:51Z to 22:34:59Z), the row gave 0.5.0's table, exit 0; and before the tester's four lines were re-pointed (22:47:42Z to 22:47:49Z) it gave 400 satisfied, 9 failed and 6 refused, exit 0, with the four declared.
+
+```
+module                                    errors satisfied  failed  refused  expected
+nii-il05-nouns.l4                              0         0       0        0         0
+nii-il05-published-figures.l4                  0         0       0        0         0
+nii-il05-tests-expected-red.l4                 3         2       3        0         3
+nii-il05-tests.l4                              0       271       0        0         0
+nii-s342-liability-and-deduction.l4            0         0       0        0         0
+nii-s348-maximum-minimum.l4                    0         0       0        0         0
+nii-schedule-k.l4                              0         0       0        0         0
+tests-independent.l4                           6       131       6        2       6/2
+TOTAL (8 modules)                              9       404       9        2
+```
+
+`check.sh` exit 0; every error is a failed assertion, and every failure and refusal is declared.
+**`check.sh`**: its counts for `tests-independent.l4` are as at 0.5.0 (6 failed, 2 refused); only the comments changed.
+**Mechanical checks** (row IL-04's tools, by path): `srcquote.py` over the three changed modules changed nothing; `hebcheck.py` passes on them, on `tests-independent.l4`, on this file and on `encoding.json`.
+
+### For the capstone (row IL-07; BACKLOG IL-54)
+
+- `nii-il05-nouns.l4` and `nii-s348-maximum-minimum.l4` changed; re-vendor them. `nii-s342-liability-and-deduction.l4` did not change in this version.
+- Nothing was renamed or removed: every name of 0.5.0 still exists, and those of s 348 now follow the switch.
+- The capstone's earner is an employee with no income not from work and of no class s 348(d) or (e) names, so none of the three forks reaches it.
+  In a scratch copy of the capstone as committed with the two changed modules in place of its vendored copies, every capstone module compiled and gave the counts it gave before: `il07-tests.l4` 130 satisfied, `il07-tests-il08.l4` 130, `tests-independent.l4` 260 satisfied and 18 failed, `tests-independent-2.l4` 304 satisfied, 7 failed and 14 refused.
+- New: the three reading types, the readings record, the switch, `section 348 read with (a1) as` …, the refusals, and the forms "…, at the readings" and "…, reading the text as" of the rules listed above.
 
 ## Version 0.5.0 (2026-10-08): fork DATE as a switch (BACKLOG IL-39)
 
@@ -143,6 +273,7 @@ The version is minor, not a patch, because the row now answers questions it coul
   The tester's I3 (`tests-independent.l4` line 421) expects a refusal for February 2027; the rules that take amounts answer on what they are given (187.3811), and it stays failing, declared in `check.sh`.
   The new rules of 05-RC2 decline 2027 at the switch, because the Schedule K figures for 2027 were not published, not because of s 7(b).
 - **05-X1, its F3 rewording (P1) (WORDING).** Fork F3's reason is restated in place, and open question 2 is extended; the answer is unchanged.
+  **(0.6.0)** Ruled by Meng on 2026-10-08 (SHRUG): fork F3 is now a switch, declined by default where its readings differ; see "Version 0.6.0".
 - **05-P2 and 05-P4 (WORDING).** The two presuppositions are stated in assumption A5.
 - **05-W1 (WORDING).** Section 11's "independent test pass … was not run" is marked stale in place.
   The comparison section's "the composed answer would use 4.67" (its subsection "Schedule J column D: 4.67 or 7.00") is stale too, and is noted here because that section is not edited: since row IL-11 (IL-04 and this row v0.3.0, the capstone v0.2.1, which follows IL-04's switch), the printed totals govern by default, so the composed deduction above the threshold uses 7.00 (80.1812 at 7,704), and 4.67 only at the items' reading by name.
@@ -251,7 +382,7 @@ Nothing in the sections below was deleted; the section "Comparison with Axiom's 
 
 | # | where | the question | readings | taken, and why |
 | --- | --- | --- | --- | --- |
-| F23 | s 342(c)(2) (3662), at the printed totals | "the deduction in item 6" when the deduction is a total for the branches together | (i) item 6's own amount, from the items; (ii) a share of the total | **(i)**: item 6 is a row of Schedule J with its own printed figures; the total covers it, so the rest is the total less it. |
+| F23 **(0.6.0: row IL-04's 04-Q2, this row's side, class (b): it gives IL-04's fork F21 default for the same branch set; "Version 0.6.0")** | s 342(c)(2) (3662), at the printed totals | "the deduction in item 6" when the deduction is a total for the branches together | (i) item 6's own amount, from the items; (ii) a share of the total | **(i)**: item 6 is a row of Schedule J with its own printed figures; the total covers it, so the rest is the total less it. |
 | F24 | s 342(c)(1) (3661), "as in Schedule J" | row IL-04's fork F4, as it reaches this row | (i) the printed totals; (ii) the items | **(i) by default, ruled 2026-10-07**; (ii) by name. At (i) the amount for the branches together is an argument, computed by row IL-04. |
 
 ### Assertions changed, or now asking the items by name
@@ -484,15 +615,15 @@ Neither s 342 nor s 348 nor Schedule K says to round; the Institute publishes wh
 
 | # | where | the question | readings | taken, and why |
 | --- | --- | --- | --- | --- |
-| F1 | Schedule K items 2-4 (4761-4765); s 348(a1) (3764) | Which "average wage": the s 1 figure (13,566 for 2026) or the figure calculated under s 2 (13,769)? | (i) s 1; (ii) s 2 | **(ii)**: s 2(b) says that "in calculating the average wage, for benefits and contributions, these changes apply" (line 236); and every Institute figure this row checked fits (ii) and not (i): 3,442 (25% of 13,769), 143 (6.92% of 15% of 13,769), 171 (48 + 123), the 2025 table's 3,134, 627 and 1,880 (25%, 5%, 15% of 12,536, the 2025 s 2 figure for contributions). The rules take the figure in the figures record; the 2026 record uses (ii); tests show (i) does not reproduce the Institute's figures. Bears on row IL-04's open fork F5. |
+| F1 | Schedule K items 2-4 (4761-4765); s 348(a1) (3764) | Which "average wage": the s 1 figure (13,566 for 2026) or the figure calculated under s 2 (13,769)? | (i) s 1; (ii) s 2 | **(ii)**: s 2(b) says that "in calculating the average wage, for benefits and contributions, these changes apply" (line 236); and every Institute figure this row checked fits (ii) and not (i): 3,442 (25% of 13,769), 143 (6.92% of 15% of 13,769), 171 (48 + 123), the 2025 table's 3,134, 627 and 1,880 (25%, 5%, 15% of 12,536, the 2025 s 2 figure for contributions). The rules take the figure in the figures record; the 2026 record uses (ii); tests show (i) does not reproduce the Institute's figures. Bears on row IL-04's open fork F5. **(0.6.0)** Row IL-04's 04-F5, this row's side: class (b), the only reading the text supports for contributions; the input convention is stated ("Version 0.6.0"). |
 | F2 | Schedule K items 2-4 | They print no figure for a month; what is a month's? | (i) a third of the quarter's; (ii) none (decline monthly periods) | **(i)**: every quarterly figure is written as a monthly amount "× 3"; s 337(a)(2) divides annual income into monthly advance periods (s 336); s 348(d) speaks of a month; the Institute prints monthly figures that are exactly a third (51,910, 3,442). |
-| F3 | s 348(a1) (3764) | "the income … which does not exceed 25% of the average wage shall not be taken into account": all of it if it does not exceed, none if it does; or the part up to 25%? | (i) all or nothing; (ii) a deduction of up to the 25% sum | **(ii)**: (a)'s "the amount of the income exceeding the maximum" is read as the part above it, and (a1) is the same construction from below; the Institute's January 2026 example deducts 3,442 from rent of 12,000. (i) is encoded beside it; the readings agree up to the sum and part above it (tests). **(0.4.0, 05-X1 and P1)** The first reason is withdrawn: (a) and (a1) are not the same construction. In (a) the subject is "the amount" of the income, with יבוא (line 3763), and read as all or nothing it would disregard the whole income of anyone above the maximum, which cannot be meant; in (a1) it is "the income" itself, with תובא and a qualifying clause (line 3764), and all or nothing gives a cliff at 3,442.25 in 2026, odd but not absurd. On the words the text reads at least as naturally as (i). (ii) is kept because the Institute's published example applies it (rent of 12,000 charged on 8,558); a second encoder (Axiom) took (i). The answer is unchanged. |
+| F3 | s 348(a1) (3764) | "the income … which does not exceed 25% of the average wage shall not be taken into account": all of it if it does not exceed, none if it does; or the part up to 25%? | (i) all or nothing; (ii) a deduction of up to the 25% sum | **(ii)**: (a)'s "the amount of the income exceeding the maximum" is read as the part above it, and (a1) is the same construction from below; the Institute's January 2026 example deducts 3,442 from rent of 12,000. (i) is encoded beside it; the readings agree up to the sum and part above it (tests). **(0.4.0, 05-X1 and P1)** The first reason is withdrawn: (a) and (a1) are not the same construction. In (a) the subject is "the amount" of the income, with יבוא (line 3763), and read as all or nothing it would disregard the whole income of anyone above the maximum, which cannot be meant; in (a1) it is "the income" itself, with תובא and a qualifying clause (line 3764), and all or nothing gives a cliff at 3,442.25 in 2026, odd but not absurd. On the words the text reads at least as naturally as (i). (ii) is kept because the Institute's published example applies it (rent of 12,000 charged on 8,558); a second encoder (Axiom) took (i). The answer is unchanged. **(0.6.0)** Ruled by Meng on 2026-10-08 (SHRUG): a switch, declined by default where (i) and (ii) differ, both kept by name and tested (05-X1, class (a); "Version 0.6.0"). |
 | F4 | s 348(a1) | The 25% sum has no period. | (i) a month's; (ii) scaled to the period | **(i), and other periods declined**: the average wage is a monthly figure, and the Institute applies the sum "per month". A quarter or year with income not from work is declined by name. |
-| F5 | s 348(d) (3767) | (d) has no condition "who has no income or whose income does not reach". A deeming (the item 3 minimum whatever the income), or a floor like (e)? | (i) deeming; (ii) floor | **neither; answered only where they agree**: income not above the item 3 minimum gives the minimum under both; above it, declined by name. No source settles it. |
-| F6 | Schedule K item 3 (4763) | "an insured person as stated in s 348(d) and (e)": the classes (d) and (e) name, or only those meeting (e)'s income condition? | (i) the classes; (ii) the classes with the condition | **(i)**: (ii) puts a yeshiva student with a little income on item 4's 15% minimum, above the 5% minimum of one with none (a cliff the schedule's own grading does not suggest). A test shows (i)'s answer (1,557.75, not 2,065.35). |
-| F7 | items 1-3; s 348(d), (e) | An employee or a self-employed person who is also in a class (d) or (e) names: which item? | (i) item 1 or 2 by the column; (ii) item 3 | **(i), with declines**: items 1 and 2 are named by status. Where it matters, declined: (d) for an employee or self-employed person; (e) for one whose income is below the item 3 minimum (then (e) says the item 3 minimum and (b) says item 1's or 2's). The Institute's yeshiva page charges "one who works … according to the wage". |
-| F8 | s 348(e) temporary text (3769) | The date and its edges. | — | The expiry is 31.8.2026 (the editors' note, matching Amendment 9). A month ending by then is within the temporary text; "began before" is strict (one who began on 31.8.2026 is not reached in September); a quarter or year across the date, for one who began on or after it, is declined. |
-| F9 | s 342(c)(2) (3662) | "for the time …": a month in which the age is reached after its first day, or the pension is payable for part of it. | (i) apportion the month; (ii) whole month one way | **declined**: the text speaks of time and the wage is monthly; how it is divided is not said. A month whose first day is on or after the day the age is reached is wholly "after". |
+| F5 | s 348(d) (3767) | (d) has no condition "who has no income or whose income does not reach". A deeming (the item 3 minimum whatever the income), or a floor like (e)? | (i) deeming; (ii) floor | **neither; answered only where they agree**: income not above the item 3 minimum gives the minimum under both; above it, declined by name. No source settles it. **(0.6.0)** SHRUG: class (b), already declined where the readings differ (05-RC4). |
+| F6 | Schedule K item 3 (4763) | "an insured person as stated in s 348(d) and (e)": the classes (d) and (e) name, or only those meeting (e)'s income condition? | (i) the classes; (ii) the classes with the condition | **(i)**: (ii) puts a yeshiva student with a little income on item 4's 15% minimum, above the 5% minimum of one with none (a cliff the schedule's own grading does not suggest). A test shows (i)'s answer (1,557.75, not 2,065.35). **(0.6.0)** Ruled by Meng on 2026-10-08 (SHRUG): a switch, declined by default where (i) and (ii) differ, both kept by name and tested; the test is re-pointed to (i) by name (05-F6, class (a)). |
+| F7 | items 1-3; s 348(d), (e) | An employee or a self-employed person who is also in a class (d) or (e) names: which item? | (i) item 1 or 2 by the column; (ii) item 3 | **(i), with declines**: items 1 and 2 are named by status. Where it matters, declined: (d) for an employee or self-employed person; (e) for one whose income is below the item 3 minimum (then (e) says the item 3 minimum and (b) says item 1's or 2's). The Institute's yeshiva page charges "one who works … according to the wage". **(0.6.0)** Ruled by Meng on 2026-10-08 (SHRUG): a switch, declined by default where (i) and (ii) differ, both kept by name and tested (05-F6, class (a)); the declines above are reading (i)'s. |
+| F8 | s 348(e) temporary text (3769) | The date and its edges. | — | The expiry is 31.8.2026 (the editors' note, matching Amendment 9). A month ending by then is within the temporary text; "began before" is strict (one who began on 31.8.2026 is not reached in September); a quarter or year across the date, for one who began on or after it, is declined. **(0.6.0)** 05-Q7, class (d): whether the date moved after Amendment 9 needs a source this row does not have (BACKLOG IL-34). |
+| F9 | s 342(c)(2) (3662) | "for the time …": a month in which the age is reached after its first day, or the pension is payable for part of it. | (i) apportion the month; (ii) whole month one way | **declined**: the text speaks of time and the wage is monthly; how it is divided is not said. A month whose first day is on or after the day the age is reached is wholly "after". **(0.6.0)** SHRUG: class (b), already declined where the readings differ (05-F9). |
 | F10 | s 342(c)(2) | "subject to s 245(b2)", which is repealed | — | **no effect**; checked red. |
 | F11 | Schedule K "minimum wage" (4772) | Whose minimum wage? | — | **the particular employee's**, as the definition says (partial, daily or hourly as applicable): an input. The tests use the Institute's full monthly figure for an adult, and a scenario partial figure. For an employee with none given, item 1's minimum declines by name. |
 | F12 | s 342(c)(1) (3661); s 335 (3611-3619) | Which branches are "contributions payable under s 335(a), (d), (e), (g), (h) or (i)"? | — | maternity ((a), (i)), accident injury ((d)), unemployment ((e)), disability ((g)), long-term care ((h)), senior citizens and survivors ((i)); read from s 335's text. Column D prints figures for exactly these (row IL-04's test). |
@@ -622,8 +753,10 @@ Section 6 lists what to delete or join at IL-07.
 1. F1 (and IL-04's F5): is "the average wage" in Schedule K and s 348(a1) the figure calculated under s 2 (the Institute's practice), for every provision of Chapter 15?
 2. F3 and F5: does the Institute read s 348(a1) as a deduction because of the text, or by practice; and does it read s 348(d) as a deeming or a floor?
    **(0.4.0)** On (a1) the words lean, if anywhere, to all or nothing (F3, as restated), so the question is whether a rule or ruling outside the Law supports the Institute's deduction.
+   **(0.6.0)** Until then both readings are kept by name and the switch declines where they differ (SHRUG).
 3. The Institute's yeshiva page says a yeshiva student who has not regularised his military status is charged from 1 January 2026 the full contributions, "95 NIS more each month" (the difference between the item 4 and item 3 minimums). Nothing in the deposited s 348(e) or Schedule K turns on military status. Where is that rule?
 4. F6 and F7: which Schedule K item applies to a yeshiva student or a volunteer who also works, and below what income?
+   **(0.6.0)** Until answered, both forks are switches declined by default where their readings differ (SHRUG).
 5. F9: how does the Institute apportion a month in which an employee reaches 70 (or her Part D age), or in which a pension begins?
 6. F22: is "column E" in s 342(e)(3)-(4) a remnant of an earlier numbering of Schedule J's columns?
 7. Was the National-Civic Service Law's expiry moved again after 31.8.2026, and if not, does s 348(e)'s temporary text now reach only those who began before?

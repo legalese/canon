@@ -15,6 +15,15 @@
 # the modules the capstone composes and their import closure (the ITO half's s 1 and s 2
 # modules are not composed and not copied). 36 + 14 = 50 modules.
 #
+# Version 0.6.0 (2026-10-09, BACKLOG IL-55) adds the rows for the new Laws the capstone composes,
+# each from its own subject's directory where it has one: IL-36 (the Encouragement of Aliyah and
+# Return (Temporary Provision) Law 5786-2026), IL-32 (the Minimum Wage Law 5747-1987, its figures
+# module and what it imports), IL-28 (ITO ss 48 and 48A, the Area order and the foreign worker
+# regulations), IL-25 (the National Health Insurance Law 5754-1994, s 14, for a cross-check only),
+# IL-26 (ITO s 164 and the Deduction from Salary and Wages Regulations 5753-1993, for an entry
+# point beside the pipeline; its copies of row IL-03's modules are the ones IL-03's line vendors).
+# NOTES.md section 15.
+#
 # Usage:
 #   vendor.sh            copy every module, then check it against VENDORED.sha256;
 #                        fails if a row's source no longer matches what was recorded
@@ -28,6 +37,9 @@ COMMONS="$(cd "$HERE/../../../../.." && pwd)"
 IL="$COMMONS/subjects/il"
 ITO="$IL/income-tax-ordinance-new-version/encodings"
 NII="$IL/national-insurance-law-consolidated-version-5755-1995/encodings"
+ALIYAH="$IL/encouragement-of-aliyah-and-return-temporary-provision-law-5786-2026/encodings"
+MW="$IL/minimum-wage-law-5747-1987/encodings"
+NHI="$IL/national-health-insurance-law-5754-1994/encodings"
 MANIFEST="$HERE/VENDORED.sha256"
 
 # row  source-directory  module ... (each row's import closure, rule modules only)
@@ -40,6 +52,11 @@ rows() {
   echo "IL-06 $NII/legalese-2026-10-il-06 nii-il06-nouns.l4 nii-il06-period.l4 nii-s1-basic-amount.l4 nii-s65-interpretation.l4 nii-s66-entitlement.l4 nii-s67-count-of-children.l4 nii-s68-amount.l4 nii-il06-published-figures.l4 nii-il06-family-on-a-day.l4"
   echo "IL-08 $ITO/legalese-2026-10-il-08 ito-il08-nouns.l4 ito-il08-tax-years.l4 ito-il08-published-figures.l4 ito-s47a-definitions.l4 ito-s45a-insurance-and-pension-credit.l4 ito-s47-deduction.l4 ito-s40-children-credit-points.l4 ito-s37-s38-s39-spouse-credits.l4 ito-s35-new-immigrant.l4 ito-s64b-s65-registered-spouse.l4"
   echo "IL-08 $NII/legalese-2026-10-il-08 nii-il08-nouns.l4 nii-s72-period-of-allowance.l4 nii-s335-branches.l4 nii-schedule-a1-part-d.l4"
+  echo "IL-28 $ITO/legalese-2026-10-il-28 ito-il28-nouns.l4 ito-s48-area-order.l4 ito-s48a-foreign-worker-regs.l4 ito-il28-routing.l4"
+  echo "IL-26 $ITO/legalese-2026-10-il-26 ito-il26-nouns.l4 ito-il26-schedule-a.l4 ito-il26-published-figures.l4 ito-il26-regulations.l4"
+  echo "IL-25 $NHI/legalese-2026-10-il-25 nhi-il25-nouns.l4 nhi-il25-published-figures.l4 nhi-s14-income.l4 nhi-s14-fixed-and-benefits.l4 nhi-s14-month.l4"
+  echo "IL-32 $MW/legalese-2026-10-il-32 mw-il32-nouns.l4 mw-s1-definitions.l4 mw-il32-published-figures.l4"
+  echo "IL-36 $ALIYAH/legalese-2026-10-il-36 il36-nouns.l4 il36-s1-definitions.l4 il36-s4-departure.l4 il36-s5-s6-commencement.l4 il36-s2-exemption.l4 il36-s3-entity.l4 il36-answers.l4"
 }
 
 sha() { shasum -a 256 "$1" | cut -d' ' -f1; }
