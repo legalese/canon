@@ -1,0 +1,176 @@
+IMPORT prelude
+
+-- Mental Capacity Act 2008 (Singapore) -- lasting powers of attorney: who may make one and who may be a donee (ss 11,
+-- 12), what a donee may and may not do (ss 13, 14), revocation and termination (s 15); and what a court-appointed deputy
+-- can never be given (s 25).
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Mental Capacity Act 2008 -- lasting powers of attorney and deputies`
+
+§§ `11, 12 -- making an LPA, and who may be a donee`
+
+-- s 11(2)(c): the donor must, when executing, have "attained the age of 21 years and [have] capacity to execute it".
+-- s 12(1): a donee must be (a) for property and affairs only: (i) an individual aged 21 or more acting "without
+-- remuneration"; (ii) an individual "professional donee [who] is not related to P by blood or marriage"; or (iii) a
+-- professional donee that is not an individual; (b) otherwise (personal welfare): (i) or (ii) only.
+-- s 12(2): an undischarged bankrupt may not be a property-and-affairs donee.
+-- s 12(5): if the instrument does not say, joint donees act JOINTLY; (6): if they act jointly, one donee's failure to
+-- qualify "prevents a lasting power of attorney from being created" at all; (7): if jointly and severally, only that
+-- donee's appointment fails.
+--
+-- A child who is a professional (a lawyer, say) cannot be appointed as a PAID professional donee of a parent: s 12(1)
+-- (a)(ii) excludes anyone related by blood or marriage. They can act only unpaid.
+DECLARE Donee HAS
+    `age` IS A NUMBER
+    `is an individual` IS A BOOLEAN
+    `is paid` IS A BOOLEAN
+    `is a professional donee` IS A BOOLEAN
+    `is related to P by blood or marriage` IS A BOOLEAN
+    `is an undischarged bankrupt` IS A BOOLEAN
+
+GIVEN `the donee` IS A Donee, `property and affairs only` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the person may be a donee` IF
+        (    (    `the donee`'s `is an individual`
+              AND `the donee`'s `age` AT LEAST 21
+              AND NOT `the donee`'s `is paid`)
+         OR  (    `the donee`'s `is an individual`
+              AND `the donee`'s `is a professional donee`
+              AND NOT `the donee`'s `is related to P by blood or marriage`)
+         OR  (    `property and affairs only`
+              AND NOT `the donee`'s `is an individual`
+              AND `the donee`'s `is a professional donee`))
+    AND NOT (`the donee`'s `is an undischarged bankrupt` AND `property and affairs only`)
+
+DECLARE Appointment IS ONE OF
+    `jointly`
+    `jointly and severally`
+    `unspecified`
+
+GIVEN `the appointment` IS AN Appointment, `one donee fails to qualify` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the whole LPA fails` IF
+        `one donee fails to qualify`
+    AND CONSIDER `the appointment`
+        WHEN `jointly and severally` THEN FALSE
+        OTHERWISE TRUE
+
+GIVEN `donor's age` IS A NUMBER, `donor has capacity to execute` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the donor may make an LPA` IF
+    `donor's age` AT LEAST 21 AND `donor has capacity to execute`
+
+§§ `13 -- what a donee may not do`
+
+-- s 13(1): a donee may decide only where P lacks capacity or the donee reasonably believes so.
+-- (6): a welfare donee may consent to or refuse treatment "if, and only if, the instrument contains express provision".
+-- (8): "Despite anything in the lasting power of attorney, a donee ... may NOT make ANY decision with respect to the
+-- carrying out or continuation of -- (a) LIFE-SUSTAINING TREATMENT on P ...; or (b) any other treatment ... necessary to
+-- prevent a serious deterioration".
+-- (9), (9A): a property donee may not make or revoke an insurance nomination, a CPF nomination, or execute a WILL for P.
+-- (10): a person dealing with a donee "may require the donee to produce a certificate from a registered medical
+-- practitioner stating that P's lack of capacity is LIKELY TO BE PERMANENT", and may refuse the donee's authority if it
+-- is not produced.
+--
+-- (8) admits no override: even an LPA that expressly confers authority over life-sustaining treatment confers none.
+-- And (10) lets a bank refuse a donee whose donor's incapacity is temporary -- the case of a stroke from which the
+-- donor is expected to recover -- though s 4(2) says incapacity "permanent or temporary" is still incapacity.
+DECLARE DoneeDecision IS ONE OF
+    `everyday care`
+    `ordinary medical treatment`
+    `life-sustaining treatment`
+    `treatment to prevent serious deterioration`
+    `selling P's shares`
+    `executing a will for P`
+    `an insurance nomination`
+    `a CPF nomination`
+    `a gift from P's estate`
+
+DECLARE LPATerms HAS
+    `covers personal welfare` IS A BOOLEAN
+    `covers property and affairs` IS A BOOLEAN
+    `expressly covers medical treatment` IS A BOOLEAN
+    `expressly covers life-sustaining treatment` IS A BOOLEAN
+    `expressly authorises gifts` IS A BOOLEAN
+
+GIVEN `the terms` IS AN LPATerms, `the decision` IS A DoneeDecision
+GIVETH A BOOLEAN
+DECIDE `the donee may make the decision` IF
+    CONSIDER `the decision`
+    WHEN `everyday care` THEN `the terms`'s `covers personal welfare`
+    WHEN `ordinary medical treatment` THEN `the terms`'s `covers personal welfare` AND `the terms`'s `expressly covers medical treatment`
+    WHEN `life-sustaining treatment` THEN FALSE
+    WHEN `treatment to prevent serious deterioration` THEN FALSE
+    WHEN `selling P's shares` THEN `the terms`'s `covers property and affairs`
+    WHEN `executing a will for P` THEN FALSE
+    WHEN `an insurance nomination` THEN FALSE
+    WHEN `a CPF nomination` THEN FALSE
+    WHEN `a gift from P's estate` THEN `the terms`'s `covers property and affairs` AND `the terms`'s `expressly authorises gifts`
+
+GIVEN `certificate of likely permanent incapacity produced` IS A BOOLEAN, `the third party asked for one` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the third party may refuse the donee's authority` IF
+    `the third party asked for one` AND NOT `certificate of likely permanent incapacity produced`
+
+§§ `14 -- gifts`
+
+-- s 14(2): gifts "if, and only if, the lasting power of attorney contains express authorisation". (3): where the
+-- authorisation states no value, gifts "not unreasonable having regard to all the circumstances and, in particular, the
+-- size of the donor's estate", with regard to s 6(7) (preserving property for P's maintenance).
+-- (The reasonableness of a gift is a judgment; it is represented here by a share of the estate the user supplies.)
+GIVEN `the terms` IS AN LPATerms, `gift as a share of the estate` IS A NUMBER, `a reasonable share` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the gift is permitted` IF
+        `the terms`'s `expressly authorises gifts`
+    AND `gift as a share of the estate` AT MOST `a reasonable share`
+
+§§ `15 -- revocation and termination`
+
+-- s 15(2): P may revoke while having capacity. (3): P's bankruptcy revokes the property part. (5): a donee's appointment
+-- ends on disclaimer, death, bankruptcy (property only, (7)), dissolution or annulment of marriage to P (unless the
+-- instrument says otherwise, (8)), or the donee's loss of capacity. (4)(b), (6): the event revokes the whole power unless
+-- a replacement donee is named or another joint-and-several donee remains.
+DECLARE DoneeEvent IS ONE OF
+    `the donee disclaims`
+    `the donee dies`
+    `the donee becomes bankrupt`
+    `the donee divorces P`
+    `the donee loses capacity`
+
+GIVEN `the event` IS A DoneeEvent, `the power` IS A STRING, `the instrument keeps a divorced spouse` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the donee's appointment ends` IF
+    CONSIDER `the event`
+    WHEN `the donee becomes bankrupt` THEN `the power` EQUALS "property and affairs"
+    WHEN `the donee divorces P` THEN NOT `the instrument keeps a divorced spouse`
+    OTHERWISE TRUE
+
+GIVEN `the donee's appointment ended` IS A BOOLEAN, `a replacement donee is named` IS A BOOLEAN, `another joint-and-several donee remains` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the whole power is revoked` IF
+        `the donee's appointment ended`
+    AND NOT `a replacement donee is named`
+    AND NOT `another joint-and-several donee remains`
+
+§§ `25 -- what a deputy can never be given`
+
+-- s 25(3): a deputy "may not be given powers with respect to -- (a) the disposition of P's property by making GIFTS; (b),
+-- (c) insurance nominations; (d) the execution for P of a WILL; (e), (f) CPF nominations; or (g) life-sustaining
+-- treatment or treatment to prevent serious deterioration." (2): nor to forbid a named person contact with P, or change
+-- P's health-care provider. (1): no power where the deputy believes P has capacity for the matter.
+--
+-- A donee can make gifts if the LPA says so (s 14). A court-appointed deputy never can (s 25(3)(a)). A parent who made an
+-- LPA with a gifts clause has kept a power that a parent without one can never have exercised for them.
+DECLARE Holder IS ONE OF
+    `an LPA donee with a gifts clause`
+    `an LPA donee without a gifts clause`
+    `a court-appointed deputy`
+
+GIVEN `the holder` IS A Holder
+GIVETH A BOOLEAN
+DECIDE `the holder may make gifts from P's estate` IF
+    CONSIDER `the holder`
+    WHEN `an LPA donee with a gifts clause` THEN TRUE
+    OTHERWISE FALSE
