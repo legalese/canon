@@ -1,0 +1,176 @@
+IMPORT prelude
+
+-- Trustees Act 1967 (Singapore) -- the statutory duty of care (s 3A), investment (ss 4 to 6, 9, 10), advancement (s 34), the
+-- number and replacement of trustees (ss 36, 37), delegation (ss 41B, 41N), remuneration (ss 41Q, 41R), relief for breach
+-- (s 60) and impounding a beneficiary's interest (s 61).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/TA1967.txt.
+--
+-- WHY THIS ACT. Cited by 16 of the 527 Singapore Acts deposited in this repository. SCOPED to what a private trustee and a
+-- beneficiary most often need. Not encoded: the powers of sale, receipts and insurance (Part 3 beyond s 34), maintenance (s 33),
+-- protective trusts (s 35), vesting (s 41, Part 5 orders), nominees and custodians beyond liability, expenses, payment into
+-- court, and charitable trusts (Part 6).
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Trustees Act 1967 -- trustees`
+
+§§ `3A -- the duty of care`
+
+-- s 3A(1): reasonable care and skill, having regard to the trustee's special knowledge, or, for a trustee acting in the course
+-- of a business or profession, the knowledge expected of that kind of professional. (2): applies "except if, or insofar as, it
+-- appears from the trust instrument that the requirements ... are not meant to apply" -- the settlor can exclude it.
+GIVEN `the instrument excludes the duty` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the statutory duty of care applies` IF
+    NOT `the instrument excludes the duty`
+
+§§ `4 to 6, 9, 10 -- investment`
+
+-- s 4(1)(a): a trustee may make "any kind of investment that the trustee could have made if the trustee were absolutely entitled".
+-- s 5: must have regard to suitability and "the need for diversification", and review from time to time.
+-- s 6(1): must "obtain and consider proper advice" before investing, (3) unless the trustee "reasonably concludes that in all the
+-- circumstances it is unnecessary or inappropriate".
+-- s 9(1): lending on property is not a breach "by reason only of the proportion" of loan to value if made on proper advice and not
+-- exceeding TWO-THIRDS of the advised value.
+-- s 10(1): if a trustee advances too much on a mortgage that was proper for a smaller sum, the security is authorised for the
+-- smaller sum and the trustee "is only liable to make good the sum advanced in excess", with interest.
+GIVEN `took proper advice` IS A BOOLEAN, `reasonably concluded advice was unnecessary` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the advice requirement is met` IF
+    `took proper advice` OR `reasonably concluded advice was unnecessary`
+
+GIVEN `the loan` IS A NUMBER, `the advised value` IS A NUMBER, `on proper advice` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the loan-to-value is protected` IF
+    `on proper advice` AND `the loan` TIMES 3 AT MOST `the advised value` TIMES 2
+
+GIVEN `the amount advanced` IS A NUMBER, `the proper amount` IS A NUMBER
+GIVETH A NUMBER
+`the trustee's liability for over-advancing` MEANS
+    IF `the amount advanced` GREATER THAN `the proper amount` THEN `the amount advanced` MINUS `the proper amount` ELSE 0
+
+§§ `34 -- advancement`
+
+-- s 34(1): trustees may pay capital for the "advancement or benefit" of a person entitled to capital, even contingently.
+-- (3): the total advanced "must not exceed altogether in amount ONE-HALF of the presumptive or vested share", and is brought into
+-- account. (4): not so as to prejudice a prior life or other interest, unless that person "is in existence and of full age and
+-- consents in writing".
+GIVEN `the beneficiary's share` IS A NUMBER, `already advanced` IS A NUMBER
+GIVETH A NUMBER
+`the most that can still be advanced` MEANS
+    IF `already advanced` TIMES 2 GREATER THAN `the beneficiary's share` THEN 0
+    ELSE `the beneficiary's share` DIVIDED BY 2 MINUS `already advanced`
+
+GIVEN `there is a prior life interest` IS A BOOLEAN, `the life tenant is an adult and consented in writing` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the advancement may prejudice the prior interest` IF
+    (NOT `there is a prior life interest`) OR `the life tenant is an adult and consented in writing`
+
+§§ `36, 37 -- number and replacement of trustees`
+
+-- s 36(1): for private trusts, "the number of trustees must not in any case exceed 4"; where more are named, "the 4 first named
+-- (who are able and willing to act) must alone be the trustees". (2): no limit for charitable, religious or public trusts.
+-- s 37(1): a trustee may be replaced if dead, OUT OF SINGAPORE FOR MORE THAN 12 MONTHS, wishing to be discharged, refusing,
+-- unfit, incapable, or an infant.
+GIVEN `trustees named` IS A NUMBER, `is charitable or public` IS A BOOLEAN
+GIVETH A NUMBER
+`the number who are trustees` MEANS
+    IF `is charitable or public` THEN `trustees named`
+    ELSE IF `trustees named` GREATER THAN 4 THEN 4 ELSE `trustees named`
+
+DECLARE Ground IS ONE OF
+    `death`
+    `abroad for 18 months`
+    `abroad for 6 months`
+    `wishes to retire`
+    `unfit to act`
+    `is an infant`
+    `disagrees with co-trustees`
+
+GIVEN `the ground` IS A Ground
+GIVETH A BOOLEAN
+DECIDE `the trustee may be replaced on this ground` IF
+    CONSIDER `the ground`
+    WHEN `abroad for 6 months` THEN FALSE
+    WHEN `disagrees with co-trustees` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `41B, 41N -- delegation`
+
+-- s 41B(2): trustees of a private trust may delegate any function EXCEPT (a) deciding whether or how to distribute assets,
+-- (b) deciding whether payments come from income or capital, (c) appointing trustees, (d) powers to delegate.
+-- s 41N(1): a trustee is not liable for an agent's default unless the trustee breached the duty of care in appointing or
+-- reviewing the agent.
+DECLARE Function IS ONE OF
+    `managing the investments`
+    `collecting rent`
+    `deciding which beneficiary gets a distribution`
+    `deciding whether a fee comes from income or capital`
+    `appointing a new trustee`
+
+GIVEN `the function` IS A Function
+GIVETH A BOOLEAN
+DECIDE `the function can be delegated` IF
+    CONSIDER `the function`
+    WHEN `managing the investments` THEN TRUE
+    WHEN `collecting rent` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN `took care in appointing and reviewing the agent` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the trustee is liable for the agent's default` IF
+    NOT `took care in appointing and reviewing the agent`
+
+§§ `41Q, 41R -- remuneration`
+
+-- s 41R(1): a TRUST CORPORATION is entitled to reasonable remuneration. (2): a trustee acting in a professional capacity who is
+-- "not a trust corporation OR A SOLE TRUSTEE" is entitled only if "each other trustee has agreed in writing". (4): neither applies
+-- where the trust instrument (or any written law) makes "any provision about the entitlement to remuneration". A lay trustee has
+-- no statutory remuneration.
+-- s 41Q(2): where the instrument allows payment, a professional trustee may charge even for work a lay trustee could do.
+--
+-- A solicitor acting as SOLE trustee of a trust that says nothing about payment has no statutory right to be paid at all. A
+-- trust corporation in the same position does.
+DECLARE Trustee IS ONE OF
+    `a trust corporation`
+    `a professional co-trustee`
+    `a professional sole trustee`
+    `a lay trustee`
+
+GIVEN `the trustee` IS A Trustee, `the instrument deals with remuneration` IS A BOOLEAN, `all other trustees agreed in writing` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the trustee has statutory remuneration` IF
+        (NOT `the instrument deals with remuneration`)
+    AND CONSIDER `the trustee`
+        WHEN `a trust corporation` THEN TRUE
+        WHEN `a professional co-trustee` THEN `all other trustees agreed in writing`
+        OTHERWISE FALSE
+
+§§ `60, 61 -- relief and impounding`
+
+-- s 60: the court may relieve a trustee wholly or partly if the trustee "has acted honestly AND reasonably, AND ought fairly to be
+-- excused".
+-- s 61(1): where a breach was committed "at the instigation or request or with the WRITTEN consent of a beneficiary", the court
+-- may impound that beneficiary's interest to indemnify the trustee. (The section still refers to "a married woman restrained from
+-- anticipation".)
+GIVEN `acted honestly` IS A BOOLEAN, `acted reasonably` IS A BOOLEAN, `ought fairly to be excused` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may relieve the trustee` IF
+    `acted honestly` AND `acted reasonably` AND `ought fairly to be excused`
+
+DECLARE Involvement IS ONE OF
+    `instigated the breach`
+    `requested the breach`
+    `consented in writing`
+    `consented orally`
+    `knew but said nothing`
+
+GIVEN `the involvement` IS AN Involvement
+GIVETH A BOOLEAN
+DECIDE `the beneficiary's interest may be impounded` IF
+    CONSIDER `the involvement`
+    WHEN `consented orally` THEN FALSE
+    WHEN `knew but said nothing` THEN FALSE
+    OTHERWISE TRUE
