@@ -1,0 +1,299 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `hda-types`
+
+-- Housing and Development Act 1959 — GOALS 1-3: BUYING, DEALING WITH AND
+-- LOSING A FLAT (Parts 4 and 4B: ss 50-74, 92).
+--
+--   Goal 1: "May this person buy a flat from the Board, and may the Board
+--   cancel the application?" (ss 50, 57, 92)
+--   Goal 2: "Is this dealing with a sold flat lawful, void, or one that needs
+--   the Board's consent; is the flat protected from creditors?" (ss 52, 55,
+--   56, 58, 59)
+--   Goal 3: "May the Board re-enter, acquire or vest the flat, or penalise
+--   the owner instead; and by when must each step be taken?" (ss 50(3)-(9),
+--   59, 62-69, 74)
+--
+-- The Board's and the Minister's discretions are inputs.
+-- Source: ../source/HDA1959.txt, Part 4.
+
+§ `Goals 1-3 — the flat`
+
+§§ `Goal 1 — buying a flat (ss 50, 57, 92)`
+
+-- s 50(1): "A person is not entitled to purchase ... if the person, his or her
+-- spouse or any authorised occupier — (a) is the owner of any other flat,
+-- house, building or land or has an estate or interest therein; or (b) has, at
+-- any time within 30 months immediately prior to the date of making an
+-- application ..., or between the date of the application and the date of
+-- completion ..., sold any flat, house, building or land ... or divested
+-- himself or herself of any interest therein." (10): the Board may exempt;
+-- s 57: a declared body corporate. FORK F1: a disposal exactly 30 months
+-- before the application is within the period.
+@ref ss 50(1), (10), 57
+GIVEN p IS A `Purchase facts`
+GIVETH A BOOLEAN
+DECIDE `entitled to purchase a flat from the Board` p IF
+        p's `exempted by the Board or on the Minister's direction`
+    OR  p's `a body corporate declared under s 57`
+    OR  (    NOT p's `owns any other flat, house, building or land, or an interest in one`
+         AND NOT `a disposal in the barred period`)
+    WHERE
+        `a disposal in the barred period` MEANS
+            any (GIVEN d YIELD `barred` d) (p's `disposed of such property on`)
+        `barred` d MEANS
+                    ((d LESS THAN p's `application made on`) AND ((`add months` d 30) AT LEAST p's `application made on`))
+                OR  ((d AT LEAST p's `application made on`) AND
+                        CONSIDER p's `purchase completed on`
+                        WHEN JUST c  THEN d AT MOST c
+                        WHEN NOTHING THEN TRUE)
+
+-- s 50(12): the Board "may cancel an application" on any of grounds (a)-(d).
+@ref s 50(12)
+GIVEN g IS A `Cancellation ground`
+GIVETH A BOOLEAN
+DECIDE `the Board may cancel the application on` g IF NOT g EQUALS `none`
+
+-- s 92(1): a buyer from an approved developer is ineligible "if the person or
+-- his or her spouse is not entitled to purchase from the Board any flat ...
+-- under Part 4".
+@ref s 92(1)
+GIVEN `person entitled under Part 4` IS A BOOLEAN, `spouse entitled under Part 4` IS A BOOLEAN, `the Minister allows otherwise` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `eligible to buy a DBSS flat, person entitled:` `person entitled under Part 4` `, spouse entitled:` `spouse entitled under Part 4` `, Minister allows:` `the Minister allows otherwise` IF
+    `the Minister allows otherwise` OR (`person entitled under Part 4` AND `spouse entitled under Part 4`)
+
+§§ `Goal 2 — dealings (ss 52, 55, 56, 58, 59)`
+
+DECLARE `Effect of a dealing` IS ONE OF
+    `lawful`
+    `void`
+    `may be declared void by the Board, and is a breach`
+    `cannot be registered without the Board's consent`
+    `a breach of the lease`
+
+-- s 55(1)-(3): within the minimum occupation period, "except with the prior
+-- written consent of the Board" an owner "must not ... sell or agree to sell";
+-- a contract not in the prescribed form; such contracts "made on or after
+-- 20 November 1998 in contravention ... [are] void".
+-- s 56(1)-(2): no sale, lease, mortgage or disposal "without the prior written
+-- consent of the Board"; if registered, the Board may declare it void.
+-- s 58(1), (4): using protected property as security is void unless in favour
+-- of the Board, an approved financial institution or a prescribed person;
+-- (9)-(10): a trust without approval is void; (11): no resulting or
+-- constructive trust. s 59(1): no registration of a transmission or transfer
+-- on death without consent. s 52(3): a use the lease does not permit, without
+-- approval.
+@ref ss 52(3), 55(1)-(3), 56(1)-(2), 58(1), (4), (9)-(11), 59(1)
+GIVEN d IS A `Dealing facts`
+GIVETH AN `Effect of a dealing`
+`the effect of` d MEANS
+    IF (d's `the Board's prior written consent or approval`) AND (NOT `never cured by consent`)
+    THEN `lawful`
+    ELSE CONSIDER d's `dealing`
+         WHEN `selling or agreeing to sell within the minimum occupation period` THEN
+             IF d's `made on or after 20 November 1998` THEN `void` ELSE `a breach of the lease`
+         WHEN `a sale contract not in the prescribed form` THEN
+             IF d's `made on or after 20 November 1998` THEN `void` ELSE `a breach of the lease`
+         WHEN `selling, leasing, mortgaging or otherwise disposing of the flat` THEN `may be declared void by the Board, and is a breach`
+         WHEN `using the flat or its proceeds as security for a debt` permitted THEN
+             IF permitted THEN `lawful` ELSE `void`
+         WHEN `creating a trust of the flat`                        THEN `void`
+         WHEN `claiming under a resulting or constructive trust`    THEN `void`
+         WHEN `registering a transmission or transfer on the owner's death` THEN `cannot be registered without the Board's consent`
+         WHEN `using the flat for a purpose the lease does not permit` THEN `a breach of the lease`
+    WHERE
+        `never cured by consent` MEANS
+            d's `dealing` EQUALS `claiming under a resulting or constructive trust`
+
+-- s 58(6): protected property does not vest in the Official Assignee on the
+-- owner's bankruptcy; s 58(8): unless every owner is a non-citizen.
+@ref s 58(6), (8)
+GIVEN `all owners non-citizens` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `does not vest in the Official Assignee on bankruptcy, all owners non-citizens:` `all owners non-citizens` IF
+    NOT `all owners non-citizens`
+
+-- s 58(7): protected property is not attached in execution "unless the order
+-- of the court is obtained by (a) a mortgagee ... under a mortgage created with
+-- the prior written consent of the Board ...; or (b) a chargee ... under any
+-- written law"; s 58(8): unless every owner is a non-citizen.
+@ref s 58(7)-(8)
+GIVEN `all owners non-citizens` IS A BOOLEAN, `a consented mortgagee or statutory chargee` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `may not be attached in execution, all owners non-citizens:` `all owners non-citizens` `, order obtained by a consented mortgagee or chargee:` `a consented mortgagee or statutory chargee` IF
+    (NOT `all owners non-citizens`) AND (NOT `a consented mortgagee or statutory chargee`)
+
+-- Both protections together: s 58(6)-(8) in the Official Assignee on
+-- bankruptcy and is not attached in execution, unless by a consented
+-- mortgagee or a statutory chargee — and neither protection applies if every
+-- owner is a non-citizen.
+@ref s 58(6)-(8)
+GIVEN `all owners non-citizens` IS A BOOLEAN, `a consented mortgagee or statutory chargee` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `protected from bankruptcy and attachment, all owners non-citizens:` `all owners non-citizens` `, a consented mortgagee or chargee enforcing:` `a consented mortgagee or statutory chargee` IF
+    (NOT `all owners non-citizens`) AND (NOT `a consented mortgagee or statutory chargee`)
+
+-- s 59(3): the Board may vest the flat in itself where "(a) no representation
+-- has been taken out ... within 12 months from the death ...; (b) ... the
+-- personal representatives do not apply for the written consent ... within
+-- 6 months from the date of representation; or (c) ... the sale or transfer
+-- ... is not completed within 12 months from the date of that written
+-- consent".
+@ref s 59(3)
+GIVEN died IS A DATE, represented IS A MAYBE DATE, applied IS A MAYBE DATE, consented IS A MAYBE DATE, completed IS A MAYBE DATE, `as at` IS A DATE
+GIVETH A BOOLEAN
+DECIDE `the Board may vest a deceased owner's flat, died` died `, representation` represented `, applied for consent` applied `, consent` consented `, completed` completed `, as at` `as at` IF
+    CONSIDER represented
+    WHEN NOTHING THEN `as at` AT LEAST `add months` died 12
+    WHEN JUST r  THEN
+            r GREATER THAN `add months` died 12
+        OR  `late` applied (`add months` r 6)
+        OR  CONSIDER consented
+            WHEN JUST c  THEN `late` completed (`add months` c 12)
+            WHEN NOTHING THEN FALSE
+    WHERE
+        `late` x deadline MEANS
+            CONSIDER x
+            WHEN JUST t  THEN t GREATER THAN deadline
+            WHEN NOTHING THEN `as at` GREATER THAN deadline
+
+§§ `Goal 3 — the Board's remedies (ss 62, 63, 74)`
+
+-- s 62(1): the Board may re-enter and the lease determines "(a) if the rent ...
+-- is unpaid for 3 calendar months after becoming payable and the Board has sent
+-- a written demand by registered post ...; (b) if the owner has committed any
+-- breach of a condition against assigning, underletting or parting with
+-- possession ... or ... any other condition the breach of which is not capable
+-- of remedy and the Board has sent a written notice ...; (c) if any condition
+-- (being a condition the breach of which is capable of remedy) ... is not
+-- performed or observed within 2 weeks after a written notice ...; (d) ... a
+-- false statement in the owner's application form ...; (e) ... a breach of any
+-- of the rules made under section 74(1)(g); or (f) ... used ... otherwise than
+-- for the purpose permitted by the lease".
+@ref s 62(1)
+GIVEN r IS A `Re-entry facts`
+GIVETH A BOOLEAN
+DECIDE `the Board may re-enter and determine the lease` r IF
+        (r's `months rent unpaid after it became payable` AT LEAST 3 AND r's `a written demand sent by registered post`)
+    OR  r's `breach of a non-assignment condition, or an irremediable breach, notified`
+    OR  r's `days since notice of a remediable breach, still unremedied` GREATER THAN 14
+    OR  r's `a false statement in the application form`
+    OR  r's `a breach of rules under s 74(1)(g), in the Board's opinion`
+    OR  r's `used otherwise than as the lease permits, without approval`
+
+-- s 63(1)(a)-(o), with s 63(2): ground (b) does not apply to commercial
+-- property bought with consent "not exceeding in value $250,000 or such higher
+-- value as the Minister may allow" and used for business; (k) "3 calendar
+-- months"; (m) an occupier "above the age of 14 years"; (o) at least one other
+-- abatement or exclusion offence.
+@ref s 63(1)-(2)
+GIVEN g IS AN `Acquisition ground`
+GIVETH A BOOLEAN
+DECIDE `a ground for compulsory acquisition` g IF
+    CONSIDER g
+    WHEN `(b) owner, spouse or occupier acquired other property` value higher business THEN
+        CONSIDER value
+        WHEN NOTHING THEN TRUE
+        WHEN JUST v  THEN NOT (business AND v AT MOST `the cap` higher)
+    WHEN `(k) rent or payment unpaid 3 months after due, with notice of demand` months THEN months AT LEAST 3
+    WHEN `(m) a conviction for throwing things from Board property` age occupier since1984 THEN
+        since1984 AND ((NOT occupier) OR age GREATER THAN 14)
+    WHEN `(o) repeated abatement or exclusion offences` others who appointed THEN
+        who AND appointed AND others AT LEAST 1
+    OTHERWISE TRUE
+    WHERE
+        `the cap` h MEANS
+            CONSIDER h
+            WHEN JUST x  THEN IF x GREATER THAN 250000 THEN x ELSE 250000
+            WHEN NOTHING THEN 250000
+
+GIVEN gs IS A LIST OF `Acquisition ground`
+GIVETH A BOOLEAN
+DECIDE `the Board may compulsorily acquire the flat on` gs IF
+    any (GIVEN g YIELD `a ground for compulsory acquisition` g) gs
+
+-- s 74(1)(i)-(k): instead of proceeding under ss 50, 62 or 63, the Board may
+-- (by rules) impose "a financial penalty not exceeding $50,000" for a breach on
+-- or after 20 July 2015.
+@ref s 74(1)(i)-(k)
+GIVEN `breach on` IS A DATE
+GIVETH A NUMBER
+`the most financial penalty instead of ss 50, 62 or 63, breach on` `breach on` MEANS
+    IF `breach on` AT LEAST YMD 2015 7 20 THEN 50000 ELSE 0
+
+§§ `Goal 3 — the periods (ss 50, 59, 63, 66, 68, 69)`
+
+DECLARE `Board step` IS ONE OF
+    `s 50 vesting or termination after notice`       -- 14 days; appeal 14 days
+    `s 59 vesting or rescission after notice`        -- 28 days; appeal 28 days
+    `s 63 acquisition: objection after notice`       -- 28 days
+    `s 63 acquisition: appeal after the Board's decision` -- 28 days
+    `s 66 vesting where no objection was made`       -- 28 days after the s 63(3) notice
+    `s 68 taking possession after notice`            -- 30 days
+    `s 69 collecting movable property after notice`  -- at least 30 days
+
+-- s 50(3A), (4): the Board waits 14 days after its notice; the purchaser may
+-- appeal within 14 days. s 59(5A), (6): 28 days, and appeal within 28 days.
+-- s 63(5), (7): objection within 28 days of the notice; appeal within 28 days
+-- of the decision. s 66(1)(a)(i): vesting "on the expiry of a period of 28 days
+-- after the date of service". s 68(1): possession "on the expiry of a period of
+-- 30 days after the service of a notice". s 69(2): "at least 30 days".
+@ref ss 50(3A)-(4), 59(5A)-(6), 63(5), (7), 66(1)(a)(i), 68(1), 69(2)
+GIVEN s IS A `Board step`
+GIVETH A NUMBER
+`the days allowed for` s MEANS
+    CONSIDER s
+    WHEN `s 50 vesting or termination after notice` THEN 14
+    WHEN `s 68 taking possession after notice`      THEN 30
+    WHEN `s 69 collecting movable property after notice` THEN 30
+    OTHERWISE 28
+
+-- The Board may act once that many days after service have expired; an
+-- objection or appeal is in time if made within that many days.
+@ref ss 50(3A), 59(5A), 66(1), 68(1)
+GIVEN s IS A `Board step`, served IS A DATE
+GIVETH A DATE
+`the earliest the Board may act on` s `, notice served` served MEANS
+    served PLUS `the days allowed for` s PLUS 1
+
+@ref ss 50(4), 59(6), 63(5), (7)
+GIVEN s IS A `Board step`, served IS A DATE
+GIVETH A DATE
+`the last day to object or appeal for` s `, served` served MEANS
+    served PLUS `the days allowed for` s
+
+-- s 15(1): the Board may vary a mortgage interest rate "upon giving the
+-- mortgagor one month's notice".
+@ref s 15(1)-(2)
+GIVEN notice IS A DATE
+GIVETH A DATE
+`the earliest a varied mortgage rate may apply, notice` notice MEANS `add months` notice 1
+
+-- ss 28(14), 29(9): costs of urgent repairs are payable "within one month after
+-- the date of the written notice or within such other period as the Board may
+-- specify".
+@ref ss 28(14), 29(9)
+GIVEN notice IS A DATE, `other period set by the Board` IS A MAYBE DATE
+GIVETH A DATE
+`repair costs must be paid by, notice` notice `, other date set` `other period set by the Board` MEANS
+    CONSIDER `other period set by the Board`
+    WHEN JUST d  THEN d
+    WHEN NOTHING THEN `add months` notice 1
+
+§§ `Provisions carried as text`
+
+@ref ss 49, 50(2)-(9), 51, 53, 54, 57, 60, 61, 64-67, 71, 73, 74, 87-91, 93, 94
+GIVETH A LIST OF STRING
+`flat provisions carried as text` MEANS
+    LIST "s 49: the Board may sell developed land with the Minister's approval; no assurance of sold land is registered without its consent"
+         "s 50(2)-(9): a barred purchase may not be presented for registration; the Board gives notice, then vests the title or terminates, and may forfeit moneys paid"
+         "s 51: the Board may vary the terms of an application and cancel it, refunding deposit and fees, without liability"
+         "ss 53, 54: the Board may execute instruments for a purchaser who fails to, and may act for a party without a solicitor"
+         "ss 60, 61: management corporations for Board buildings; the Board or a company may act as one"
+         "ss 64, 65: warrants to search and powers to investigate grounds of acquisition"
+         "ss 66, 67: vesting of acquired flats and payment or deposit of the compensation the Board determines"
+         "s 71: the Minister's direction that property is or is not commercial property is conclusive"
+         "s 73: money paid after a notice to quit, acquire or re-enter does not waive it"
+         "s 74: rules on sale terms, consents, eligibility, payment, management corporations, use, fees and financial penalties"
+         "ss 87-91, 93, 94: the Design-Build-and-Sell Scheme — approved developers, vesting in the Board, Part 4 applied, death of a purchaser before completion"

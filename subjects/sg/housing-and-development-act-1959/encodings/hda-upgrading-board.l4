@@ -1,0 +1,282 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `hda-types`
+
+-- Housing and Development Act 1959 — GOALS 4-6: UPGRADING, THE BOARD,
+-- OFFENCES AND SERVICE (Parts 2, 3, 4A, 5, 6).
+--
+--   Goal 4: "Did the poll carry; may the Board carry out these upgrading
+--   works; when is the improvement contribution due, when does it become a
+--   charge, and how are sale proceeds applied?" (ss 77-84)
+--   Goal 5: "Is the Board properly constituted and quorate; is a member
+--   disqualified; when are budgets due?" (ss 6-11, 44, 45, 98-104)
+--   Goal 6: "What is the most an offence can cost, or be compounded for;
+--   when is an owner liable for a parking offence; when is a document
+--   served?" (ss 13, 14, 30-33, 70, 72, 84, 107, 108, 111)
+--
+-- Source: ../source/HDA1959.txt, the sections cited.
+
+§ `Goals 4-6 — upgrading, the Board, offences`
+
+§§ `Goal 4 — upgrading polls (s 77)`
+
+-- Every poll threshold in s 77 is "75% or more of the total value in votes of
+-- all prescribed owners".
+@ref s 77(4), (5), (8), (9), (9A)
+GIVEN r IS A `Poll result`
+GIVETH A BOOLEAN
+DECIDE `the poll carries` r IF
+    r's `value in votes cast in favour` AT LEAST r's `total value in votes of all prescribed owners` TIMES 0.75
+
+DECLARE `Specified works outcome` IS ONE OF
+    `the whole building`
+    `the residential part only`
+    `not to be carried out`
+
+-- s 77(5)-(7): specified upgrading works, once general works are approved for
+-- the precinct — (a) a wholly residential building: its poll carries; (b) a
+-- mixed building: the residential poll, and then (only if it carries) a
+-- separate poll of non-residential owners; (6): if only the residential poll
+-- carries, the residential part only.
+@ref s 77(5)-(7)
+GIVEN `general works approved` IS A BOOLEAN, residential IS A `Poll result`, `non-residential` IS A MAYBE `Poll result`
+GIVETH A `Specified works outcome`
+`specified upgrading works may be carried out in, general approved:` `general works approved` `, residential poll` residential `, non-residential poll` `non-residential` MEANS
+    BRANCH IF NOT `general works approved`        THEN `not to be carried out`
+           IF NOT `the poll carries` residential  THEN `not to be carried out`
+           OTHERWISE
+               CONSIDER `non-residential`
+               WHEN NOTHING  THEN `the whole building`        -- a wholly residential building
+               WHEN JUST n   THEN IF `the poll carries` n THEN `the whole building` ELSE `the residential part only`
+
+-- s 77(8): special upgrading works "if, and only if — (a)" the building poll
+-- carries "and (b) where the proposal is for the special upgrading works to be
+-- carried out ... together with any general upgrading works", the precinct
+-- poll carries too.
+@ref s 77(8)
+GIVEN building IS A `Poll result`, precinct IS A MAYBE `Poll result`
+GIVETH A BOOLEAN
+DECIDE `special upgrading works may be carried out, building poll` building `, precinct poll if combined` precinct IF
+        `the poll carries` building
+    AND CONSIDER precinct
+        WHEN JUST p  THEN `the poll carries` p
+        WHEN NOTHING THEN TRUE
+
+-- s 80(1): the improvement contribution is payable "not later than one month
+-- from the date of the written demand". s 82(1): unpaid "on the expiry of the
+-- period of 3 months after" the demand, it becomes a charge on the flat.
+-- s 82(4): the Board may declare its intention to sell "on the expiry of the
+-- period of 3 months from the date of the notice of sale".
+@ref s 80(1)
+GIVEN demand IS A DATE
+GIVETH A DATE
+`the improvement contribution is due by, demand` demand MEANS `add months` demand 1
+
+@ref s 82(1)
+GIVEN demand IS A DATE
+GIVETH A DATE
+`an unpaid improvement contribution becomes a charge on, demand` demand MEANS `add months` demand 3
+
+@ref s 82(4)-(5)
+GIVEN notice IS A DATE, `movable property sufficient to satisfy it` IS A BOOLEAN
+GIVETH A MAYBE DATE
+`the earliest the Board may sell the flat, notice of sale` notice `, sufficient movable property:` `movable property sufficient to satisfy it` MEANS
+    IF `movable property sufficient to satisfy it` THEN NOTHING ELSE JUST (`add months` notice 3)
+
+-- s 82(8): the proceeds, after prior encumbrances, moneys due to the Board and
+-- Town Council charges, are applied "(a) firstly, in payment of all costs and
+-- expenses ... incidental to the sale ...; (b) secondly, in discharge of the
+-- improvement contribution and interest and penalty ...; (c) thirdly, ... the
+-- conservancy and service charges and interest ... due to a Town Council ...;
+-- (d) fourthly, in payment of subsequent mortgages and charges ...; and (e)
+-- the residue ... to the person ... entitled".
+@ref s 82(8)
+GIVEN proceeds IS A NUMBER, claims IS A LIST OF NUMBER
+GIVETH A LIST OF NUMBER
+`the s 82(8) application of proceeds` proceeds `, claims in order` claims MEANS
+    CONSIDER claims
+    WHEN EMPTY THEN LIST (IF proceeds GREATER THAN 0 THEN proceeds ELSE 0)   -- (e) the residue
+    WHEN c FOLLOWED BY rest THEN
+        `paid` FOLLOWED BY `the s 82(8) application of proceeds` (proceeds MINUS `paid`) `, claims in order` rest
+        WHERE
+            `paid` MEANS IF proceeds AT LEAST c THEN c ELSE (IF proceeds LESS THAN 0 THEN 0 ELSE proceeds)
+
+§§ `Goal 5 — the Board (ss 6-11, 44, 45, 98)`
+
+-- s 6(1): "(a) a Chairperson; and (b) at least 4 and not more than 14 other
+-- members"; (4): "for the period, not being more than 3 years".
+@ref s 6(1), (4)
+GIVEN `other members` IS A NUMBER, `term in years` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the Board's constitution is within s 6, other members` `other members` `, longest term` `term in years` IF
+    `other members` AT LEAST 4 AND `other members` AT MOST 14 AND `term in years` AT MOST 3
+
+-- s 7(1): not eligible if "(a) ... an undischarged bankrupt; (b) has been
+-- convicted ... and sentenced to imprisonment for a term of not less than
+-- 6 months and has not received a free pardon; or (c) has a mental disorder
+-- and is incapable of managing himself or herself". (2): the office becomes
+-- vacant on death, on missing "3 consecutive meetings" without acceptable
+-- cause, on a disqualification, or on resignation.
+@ref s 7(1)-(2)
+GIVEN m IS A `Member facts`
+GIVETH A BOOLEAN
+DECIDE `the member's office is vacant or barred` m IF
+        m's `an undischarged bankrupt`
+    OR  m's `months of imprisonment on a Singapore conviction, unpardoned` AT LEAST 6
+    OR  m's `a mental disorder, incapable of managing affairs`
+    OR  m's `consecutive meetings missed without acceptable cause` AT LEAST 3
+    OR  m's `dead or resigned`
+
+-- s 9(1): "The quorum at all meetings of the Board is one‑third of the total
+-- number of members in office, of whom one must be the Chairperson or the
+-- Deputy Chairperson".
+@ref s 9(1)
+GIVEN present IS A NUMBER, `in office` IS A NUMBER, `chair or deputy present` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the meeting is quorate, present` present `, in office` `in office` `, chair or deputy present:` `chair or deputy present` IF
+    present TIMES 3 AT LEAST `in office` AND `chair or deputy present`
+
+-- s 98(1)-(2): the budget for the ensuing financial year goes to the Minister
+-- "not later than 15 November"; a financial year ends "on 31 March".
+@ref s 98(1)-(2)
+GIVEN `financial year ending in` IS A NUMBER
+GIVETH A DATE
+`the budget is due by, for the financial year ending 31 March of` `financial year ending in` MEANS
+    YMD (`financial year ending in` MINUS 2) 11 15
+
+-- s 45(4): the Chief Executive Officer may appoint persons temporarily "for a
+-- period not exceeding 2 months".
+@ref s 45(4)
+GIVEN starts IS A DATE, ends IS A DATE
+GIVETH A BOOLEAN
+DECIDE `a temporary appointment starting` starts `, ending` ends `, is within 2 months` IF
+    ends AT MOST `add months` starts 2
+
+§§ `Goal 6 — offences, penalties and composition`
+
+-- s 13(2), 14(3): "$2,000 or ... 6 months or ... both"; s 70: "$5,000 or ...
+-- 6 months or ... both"; s 72(2): "$2,000 and, in the case of a continuing
+-- offence, ... $100 for every day"; s 84(7): "$5,000 and ... $100 for every
+-- day"; s 107: "a fine not exceeding $5,000 or to imprisonment for a term not
+-- exceeding 6 months" (no "or both"); s 108(3), (5): "$2,000 or ... 3 months
+-- or ... both"; rules under s 31(2)(f): "a fine not exceeding $5,000";
+-- renovation rules under s 31(3)(g): "$20,000 or ... 12 months or ... both".
+@ref ss 13(2), 14(3), 31(2)(f), 31(3)(g), 70, 72(2), 84(7), 107, 108(3), (5)
+GIVEN o IS AN `HDA offence`
+GIVETH AN `HDA penalty`
+`the maximum penalty for` o MEANS
+    CONSIDER o
+    WHEN `s 13(2) using a symbol like the Board's`                    THEN `HDA penalty` OF 2000,  6,  0,   TRUE
+    WHEN `s 14(3) using the name of the Board or "HDB"`               THEN `HDA penalty` OF 2000,  6,  0,   TRUE
+    WHEN `s 70 a false statement to the Board`                        THEN `HDA penalty` OF 5000,  6,  0,   TRUE
+    WHEN `s 72(2) failing to remove a dangerous article as directed`  THEN `HDA penalty` OF 2000,  0,  100, FALSE
+    WHEN `s 84(7) obstructing upgrading works`                        THEN `HDA penalty` OF 5000,  0,  100, FALSE
+    WHEN `s 107 obstructing an officer of the Board`                  THEN `HDA penalty` OF 5000,  6,  0,   FALSE
+    WHEN `s 108(3) refusing access, information or a lawful demand`   THEN `HDA penalty` OF 2000,  3,  0,   TRUE
+    WHEN `s 108(5) refusing or misstating identity information`       THEN `HDA penalty` OF 2000,  3,  0,   TRUE
+    WHEN `an offence under rules made under s 31(2)(f)`               THEN `HDA penalty` OF 5000,  0,  0,   FALSE
+    WHEN `an offence under renovation rules made under s 31(3)(g)`    THEN `HDA penalty` OF 20000, 12, 0,   TRUE
+
+-- s 32(1): a prescribed compoundable offence may be compounded by collecting
+-- "(a) one half of the amount of the maximum fine that is prescribed for the
+-- offence; or (b) a sum not exceeding $5,000, whichever is the lower".
+@ref s 32(1)
+GIVEN o IS AN `HDA offence`, prescribed IS A BOOLEAN
+GIVETH A MAYBE NUMBER
+`the most that may be collected to compound` o `, prescribed:` prescribed MEANS
+    IF NOT prescribed THEN NOTHING
+    ELSE JUST (IF `half` LESS THAN 5000 THEN `half` ELSE 5000)
+    WHERE
+        `half` MEANS (`the maximum penalty for` o)'s `fine` DIVIDED BY 2
+
+DECLARE `Financial penalty kind` IS ONE OF
+    `a lessee's breach of the lease (rules under s 31(2)(h))`
+    `a renovation licensee's breach of a licence condition (rules under s 31(3)(f))`
+    `a breach instead of action under s 50, 62 or 63 (rules under s 74(1)(i)-(k))`
+
+-- s 31(2)(h): "not exceeding $5,000"; (3)(f): "not exceeding $10,000"; s 74(1)
+-- (i)-(k): "not exceeding $50,000". s 30(4): only where the contravention "is
+-- not an offence".
+@ref ss 30(4), 31(2)(h), 31(3)(f), 74(1)(i)-(k)
+GIVEN k IS A `Financial penalty kind`, `the contravention is an offence` IS A BOOLEAN
+GIVETH A NUMBER
+`the most financial penalty for` k `, the contravention is an offence:` `the contravention is an offence` MEANS
+    IF `the contravention is an offence` THEN 0
+    ELSE CONSIDER k
+         WHEN `a lessee's breach of the lease (rules under s 31(2)(h))` THEN 5000
+         WHEN `a renovation licensee's breach of a licence condition (rules under s 31(3)(f))` THEN 10000
+         WHEN `a breach instead of action under s 50, 62 or 63 (rules under s 74(1)(i)-(k))` THEN 50000
+
+-- s 33(1), (3), (5): the owner of a vehicle is guilty of a parking offence as
+-- if the actual offender "unless the court is satisfied that the vehicle was
+-- ... stolen ... or illegally taken or used", or the owner "(a) within 7 days
+-- after service ... of a notice ... provides by statutory declaration ... the
+-- name and address of the person who was in charge"; (b)-(c) satisfies the
+-- Board or the court the owner could not with reasonable diligence ascertain
+-- them. A declaration covering more than one offence does not count.
+@ref s 33(1), (3), (5)
+GIVEN stolen IS A BOOLEAN, `notice served` IS A DATE, `declaration given` IS A MAYBE DATE, `covers one offence only` IS A BOOLEAN, `could not ascertain the driver` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the vehicle owner is liable for the parking offence, stolen:` stolen `, notice served` `notice served` `, declaration` `declaration given` `, one offence only:` `covers one offence only` `, could not ascertain:` `could not ascertain the driver` IF
+        NOT stolen
+    AND NOT `could not ascertain the driver`
+    AND NOT `a valid declaration`
+    WHERE
+        `a valid declaration` MEANS
+            CONSIDER `declaration given`
+            WHEN JUST d  THEN d AT MOST `notice served` PLUS 7 AND `covers one offence only`
+            WHEN NOTHING THEN FALSE
+
+-- s 111(8): service "(a) if ... by fax and a notification of successful
+-- transmission is received, on the day of transmission; (b) ... by email, at
+-- the time that the email becomes capable of being retrieved ...; or (c) ... by
+-- prepaid registered post, 2 days after the day the document was posted".
+DECLARE `Mode of service` IS ONE OF
+    `by hand or by leaving or affixing it`
+    `by fax`
+    `by email`
+    `by prepaid registered post`
+
+@ref s 111(8)
+GIVEN m IS A `Mode of service`, sent IS A DATE
+GIVETH A DATE
+`service takes effect on, mode` m `, sent on` sent MEANS
+    IF m EQUALS `by prepaid registered post` THEN sent PLUS 2 ELSE sent
+
+-- s 111(6)-(7): email service needs prior consent, and is not available for a
+-- summons or a document under ss 50, 59, 63, 66, 68 or 82(4).
+@ref s 111(5)-(7)
+GIVEN `consented to email` IS A BOOLEAN, `a summons or a document under ss 50, 59, 63, 66, 68 or 82(4)` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `may be served by email, consented:` `consented to email` `, an excluded document:` `a summons or a document under ss 50, 59, 63, 66, 68 or 82(4)` IF
+    `consented to email` AND NOT `a summons or a document under ss 50, 59, 63, 66, 68 or 82(4)`
+
+-- ss 28(1), 84(1): entry on "24 hours' notice" for urgent repairs and "48 hours'
+-- notice" for upgrading works.
+DECLARE `Purpose of entry` IS ONE OF
+    `urgent repairs (s 28)`
+    `upgrading works (s 84)`
+    `imminent danger to public safety or health (s 29)`
+
+@ref ss 28(1), 29(1), 84(1)
+GIVEN p IS A `Purpose of entry`
+GIVETH A NUMBER
+`hours of notice needed to enter for` p MEANS
+    CONSIDER p
+    WHEN `urgent repairs (s 28)`   THEN 24
+    WHEN `upgrading works (s 84)`  THEN 48
+    WHEN `imminent danger to public safety or health (s 29)` THEN 0
+
+§§ `Provisions carried as text`
+
+@ref long title; ss 1-5, 8, 10-12, 16-27, 34-48, 75, 76, 78, 79, 81, 83, 85, 86, 95-97, 99-106, 109, 110; First and Second Schedules
+GIVETH A LIST OF STRING
+`board provisions carried as text` MEANS
+    LIST "Long title: An Act to constitute a Housing and Development Board for Singapore."
+         "s 1: This Act is the Housing and Development Act 1959."
+         "ss 3-5, 8, 10-12, 16-27: the Board's incorporation, seal, members' pay, vacancies, proceedings, functions, companies, gifts, directions, plans, contracts, protection, agency, intellectual property, ex gratia payments, land dealings"
+         "ss 34-48: standing orders, committees and delegation, the Master Plan, rents and fees, the transfers from the Singapore Improvement Trust, the Housing and Urban Development Company and the Jurong Town Corporation, the Government's charge, the Chief Executive Officer, officers and pension schemes"
+         "ss 75, 76, 78, 79, 81, 83, 85, 86: upgrading definitions, precincts, recovery of contributions, ministerial directions, additional floor area, debt recovery, rules, saving"
+         "ss 95-97, 99-106: borrowing, shares, statements, budgets, accounts, audit, bank accounts, payments and investment"
+         "ss 109-110: fines to the Consolidated Fund; prosecutions by Board officers"
+         "First and Second Schedules: the lands of the Housing and Urban Development Company and the Jurong Town Corporation vested in the Board on 1 May 1982 (lot tables; the deposited text interleaves their columns)"

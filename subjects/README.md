@@ -237,6 +237,7 @@ One directory per jurisdiction, then one directory per body of law inside it.
 | [`eu/`](eu/) | European Union Regulations and Directives |
 | [`sg/`](sg/) | Singapore Acts |
 | [`sg/sale-of-food-act-1973`](sg/sale-of-food-act-1973) | Sale of Food Act 1973 — the whole Act under one top-level goal (does the Act reach the article, is an offence committed, does a defence answer it, the most it can cost) and four goals: what the Act reaches (food, unsafe, unsuitable, adulterated, non-retail business), offences and penalties, defences and liability, enforcement and procedure | `draft` |
+| [`sg/housing-and-development-act-1959`](sg/housing-and-development-act-1959) | Housing and Development Act 1959 — the whole Act under one top-level goal (may the person buy the flat, is the dealing lawful, is it safe from creditors, may the Board re-enter, acquire or penalise instead) and six goals: buying, dealings, the Board's remedies and periods, upgrading, the Board, offences and service | `draft` |
 | [`au/`](au/) | Commonwealth of Australia Acts |
 | [`au/nsw/`](au/nsw/) | New South Wales Acts |
 | [`au/vic/`](au/vic/) | Victorian Acts -- **not openly licensed; metadata only** until permission is obtained |
