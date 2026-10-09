@@ -1,0 +1,162 @@
+IMPORT prelude
+
+-- Town Councils Act 1988 (Singapore) -- what HDB residents meet: lift upgrading polls and improvement contributions
+-- (Part 4A, ss 29 to 36), the charge and power of sale for unpaid conservancy charges (s 66), and the vehicle owner's
+-- liability for parking offences (s 70).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/TCA1988.txt.
+--
+-- WHY THIS ACT. Cited by 27 of the 527 Singapore Acts deposited in this repository, 16 of them for s 4 (a Town Council's
+-- establishment): other Acts make Town Councils responsible for common property. SCOPED to the money and liability a
+-- resident meets. Not encoded: establishment and constitution, members and conflicts, functions and by-laws, proceedings,
+-- the Town Council Fund and accounts, compliance reviews and official management, and the HDB-Town Council relationship.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Town Councils Act 1988 -- residents`
+
+§§ `31 -- the lift upgrading poll`
+
+-- s 31(3): a Town Council may carry out lift upgrading works in a building "if, and only if -- (a) ... the total VOTING
+-- VALUE of votes in favour ... is at least 75% of the total voting value of votes of ALL such owners; and (b) the Minister
+-- approves". (2)(b): the poll is of owners of flats "the occupants of which directly benefit". (5): HDB votes for unsold
+-- flats. (4): a poll is not invalid for procedural failure if the principles were followed and the result unaffected.
+--
+-- The threshold is 75% of all eligible owners' voting value -- not of votes cast. Abstention counts against.
+GIVEN `voting value in favour` IS A NUMBER, `total voting value of all eligible owners` IS A NUMBER, `the Minister approves` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the lift upgrading may proceed` IF
+        (`voting value in favour` TIMES 4) AT LEAST (`total voting value of all eligible owners` TIMES 3)
+    AND `the Minister approves`
+
+§§ `32, 33 -- who pays, and how much`
+
+-- s 32(2): on completion the Town Council "may recover, by way of improvement contributions, the costs ... from every owner"
+-- of the benefiting flats -- including those who voted against. (3): the amount is determined by the Town Council "whose
+-- decision is final". (4): it "must NOT BE LESS THAN the improvement contribution that the Board might have determined" for
+-- similar works.
+-- (5): "owner" means the owner "at the time the improvement contribution is DETERMINED".
+-- s 33(1): pay within one month of a written demand. (2): where no representation has been taken out for a deceased owner,
+-- or the personal representatives fail to seek HDB consent to transfer, the Town Council may require "the SPOUSE (if any) ...
+-- or any BENEFICIARY of his or her estate who has attained the age of 21 years to pay ... as if it is a debt owed by him or
+-- her".
+--
+-- (4) is a floor, not a cap: the contribution may exceed what HDB would have charged, never fall below it. And because
+-- liability attaches at determination, a buyer who completes after the works but before the determination pays for works
+-- done before they bought.
+DECLARE Contribution HAS
+    `the amount determined` IS A NUMBER
+    `what HDB would have determined` IS A NUMBER
+
+GIVEN `the contribution` IS A Contribution
+GIVETH A BOOLEAN
+DECIDE `the amount is within section 32(4)` IF
+    `the contribution`'s `the amount determined` AT LEAST `the contribution`'s `what HDB would have determined`
+
+GIVEN `owned the flat when the contribution was determined` IS A BOOLEAN, `voted against` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the person must pay the contribution` IF
+    `owned the flat when the contribution was determined`
+
+DECLARE Relation IS ONE OF
+    `the surviving spouse`
+    `an adult beneficiary`
+    `a beneficiary under 21`
+    `a neighbour`
+
+GIVEN `the relation` IS A Relation, `the estate has no representation or the representatives did not seek transfer` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Town Council may require the person to pay as their own debt` IF
+        `the estate has no representation or the representatives did not seek transfer`
+    AND CONSIDER `the relation`
+        WHEN `the surviving spouse` THEN TRUE
+        WHEN `an adult beneficiary` THEN TRUE
+        OTHERWISE FALSE
+
+§§ `34, 66 -- the charge on the flat and the power of sale`
+
+-- s 34(1): an improvement contribution unpaid "3 MONTHS after" a written demand becomes "a charge on the flat". s 66(1):
+-- conservancy and service charges unpaid "90 DAYS after" a written demand do the same.
+-- s 34(5), 66(2): the Town Council then "has the power of sale ... as if the Town Council is a registered mortgagee, EVEN THOUGH
+-- THE CHARGE IS NOT REGISTERED". s 34(6), 66(4): sale only after notice of 90 days (with HDB's approval), and (s 34(6)(c)) no
+-- pending legal action. s 34(7), 66(5): not if the owner's movable property in the flat would cover the debt.
+-- s 34(4), 66(3): the charge ranks behind prior registered encumbrances, HDB lease moneys and the CPF charge.
+-- s 34(9): the purchaser need not inquire into the regularity of the sale.
+--
+-- A flat can be sold for unpaid conservancy charges. The steps run: demand; 90 days; charge; notice of sale; 90 more days.
+DECLARE Arrears HAS
+    `kind` IS A STRING
+    `days since the written demand` IS A NUMBER
+    `days since the notice of sale` IS A NUMBER
+    `HDB approved the sale` IS A BOOLEAN
+    `legal action to restrain the sale is pending` IS A BOOLEAN
+    `movable property in the flat would cover the debt` IS A BOOLEAN
+
+GIVEN `the arrears` IS AN Arrears
+GIVETH A BOOLEAN
+DECIDE `the arrears are a charge on the flat` IF
+    `the arrears`'s `days since the written demand` GREATER THAN 90
+
+GIVEN `the arrears` IS AN Arrears
+GIVETH A BOOLEAN
+DECIDE `the Town Council may sell the flat` IF
+        `the arrears are a charge on the flat` `the arrears`
+    AND `the arrears`'s `days since the notice of sale` GREATER THAN 90
+    AND `the arrears`'s `HDB approved the sale`
+    AND NOT `the arrears`'s `legal action to restrain the sale is pending`
+    AND NOT `the arrears`'s `movable property in the flat would cover the debt`
+
+-- (For improvement contributions s 34(1) says "3 months"; for conservancy charges s 66(1) says "90 days". The encoding uses
+-- 90 days for both; the two are not the same length in every quarter.)
+
+§§ `35 -- where the sale money goes`
+
+-- s 35, in order: (a) costs of sale; (b) the CPF Board's charge; (c) HDB lease moneys; (d) HDB's improvement-contribution
+-- charge and the Town Council's charge, in their order of priority; (e) conservancy charges and unsecured improvement
+-- contributions owed to the Town Council, EQUALLY; (f) HDB's unsecured improvement contributions; (g) later mortgages; (h)
+-- the residue to the owner.
+DECLARE Payee IS ONE OF
+    `costs of the sale`
+    `the CPF Board's charge`
+    `HDB lease moneys`
+    `secured improvement contributions`
+    `conservancy charges and unsecured Town Council contributions`
+    `HDB unsecured contributions`
+    `a later bank mortgage`
+    `the owner`
+
+GIVEN `the payee` IS A Payee
+GIVETH A NUMBER
+`the order of payment` MEANS
+    CONSIDER `the payee`
+    WHEN `costs of the sale` THEN 1
+    WHEN `the CPF Board's charge` THEN 2
+    WHEN `HDB lease moneys` THEN 3
+    WHEN `secured improvement contributions` THEN 4
+    WHEN `conservancy charges and unsecured Town Council contributions` THEN 5
+    WHEN `HDB unsecured contributions` THEN 6
+    WHEN `a later bank mortgage` THEN 7
+    WHEN `the owner` THEN 8
+
+§§ `70 -- parking offences`
+
+-- s 70(1): the vehicle's owner at the time "shall be guilty of an offence ... as if the person were the actual offender",
+-- unless the vehicle was stolen or illegally taken. (3): not guilty if the owner (a) within 7 DAYS after the notice names
+-- the person in charge by STATUTORY DECLARATION; or (b), (c) shows they could not with reasonable diligence find out who
+-- it was. (5): "A statutory declaration which relates to MORE THAN ONE parking offence is not regarded as a statutory
+-- declaration" for (3)(a).
+--
+-- One declaration per ticket: a single declaration naming the driver for three tickets saves the owner from none.
+DECLARE Ticket HAS
+    `the vehicle was stolen or illegally taken` IS A BOOLEAN
+    `declared the driver within 7 days` IS A BOOLEAN
+    `the declaration covers more than one offence` IS A BOOLEAN
+    `could not with reasonable diligence identify the driver` IS A BOOLEAN
+
+GIVEN `the ticket` IS A Ticket
+GIVETH A BOOLEAN
+DECIDE `the owner is liable for the parking offence` IF
+        NOT `the ticket`'s `the vehicle was stolen or illegally taken`
+    AND NOT (`the ticket`'s `declared the driver within 7 days` AND NOT `the ticket`'s `the declaration covers more than one offence`)
+    AND NOT `the ticket`'s `could not with reasonable diligence identify the driver`
