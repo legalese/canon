@@ -1,0 +1,229 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `sfa-types`
+
+-- Sale of Food Act 1973 — GOAL 4: ENFORCEMENT, DIRECTIONS, LICENCES AND
+-- PROCEEDINGS (Parts 2, 2A, 6, 7).
+--
+--   "By when may a seizure be challenged; when does a direction take effect
+--    and end; when must compensation be decided and reviewed; what does a
+--    short licence cost and what penalty may be imposed on a licensee; by
+--    when must an appeal, a summons or a notice be made?"
+--
+-- The Director-General's powers to enter, inspect, sample, direct and
+-- license are discretions (inputs); the periods and limits are computed.
+-- Source: ../source/SFA1973.txt, the sections cited.
+
+§ `Goal 4 — enforcement and procedure`
+
+§§ `Seizure (s 4(2)-(3))`
+
+-- s 4(2): a claimant "may within 48 hours after the seizure complain thereof
+-- to a Magistrate's Court"; (3): if no complaint within 48 hours, or the
+-- seizure is confirmed, the article "becomes the property of the Agency and
+-- must be destroyed or otherwise disposed of". Hours are given as elapsed
+-- hours since the seizure.
+@ref s 4(2)-(3)
+GIVEN `hours since seizure` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `a complaint about a seizure is still in time, hours since seizure` `hours since seizure` IF
+    `hours since seizure` AT MOST 48
+
+@ref s 4(3)
+GIVEN `complained in time` IS A BOOLEAN, `seizure confirmed` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the seized article passes to the Agency, complained in time:` `complained in time` `, confirmed:` `seizure confirmed` IF
+    (NOT `complained in time`) OR `seizure confirmed`
+
+§§ `Directions under Part 2A (ss 10A-10J)`
+
+-- s 10A: the persons a direction may be given to.
+DECLARE `Recipient` IS ONE OF
+    `a licensee`
+    `a proprietor of a food business or food premises`
+    `an importer or exporter of food or a food contact article`
+    `a manufacturer or seller of food contact articles`
+    `a person in control of food or a thing that may become food`
+    `another person`
+
+@ref s 10A
+GIVEN r IS A Recipient
+GIVETH A BOOLEAN
+DECIDE `a direction may be given to` r IF NOT r EQUALS `another person`
+
+-- s 10C(4): a direction served personally or by s 44 "takes effect when it is
+-- served"; served on each member of a class, "when it is served on all the
+-- persons in the class"; published in a newspaper or news media and on the
+-- Agency's website, "at the beginning of the day after the date on which
+-- subsection (2)(b) has been complied with".
+DECLARE `Manner of service` IS ONE OF
+    `served on the person`
+    `served on each member of the class` HAS `last served on` IS A DATE
+    `published in the news media and on the Agency's website` HAS `published on` IS A DATE
+
+@ref s 10C(4)
+GIVEN m IS A `Manner of service`, served IS A DATE
+GIVETH A DATE
+`the direction takes effect on, manner` m `, served on` served MEANS
+    CONSIDER m
+    WHEN `served on the person`                                         THEN served
+    WHEN `served on each member of the class` last                      THEN last
+    WHEN `published in the news media and on the Agency's website` pub THEN pub PLUS 1
+
+-- s 10B(5): a direction "continues in force until the earlier of" its stated
+-- expiry date and its revocation.
+@ref s 10B(5)
+GIVEN on IS A DATE, expiry IS A MAYBE DATE, revoked IS A MAYBE DATE
+GIVETH A BOOLEAN
+DECIDE `the direction is in force on` on `, expiring` expiry `, revoked` revoked IF
+        `before` expiry
+    AND `before` revoked
+    WHERE
+        `before` d MEANS
+            CONSIDER d
+            WHEN JUST x  THEN on LESS THAN x
+            WHEN NOTHING THEN TRUE
+
+§§ `Compensation for a direction (s 10I)`
+
+-- s 10I(4): undecided "within 28 days after receiving the application", the
+-- Agency "is taken to have refused". (5): review by the District Court "(a)
+-- within 14 days after the day on which notification of the determination was
+-- received; or (b) ... within 14 days after the 28-day period ... ends". (6):
+-- above the District Court's limit, to the General Division of the High Court.
+@ref s 10I(4)
+GIVEN received IS A DATE
+GIVETH A DATE
+`the application is taken as refused after, received` received MEANS received PLUS 28
+
+@ref s 10I(5)
+GIVEN received IS A DATE, notified IS A MAYBE DATE
+GIVETH A DATE
+`the last day to seek review of compensation, application received` received `, determination notified` notified MEANS
+    CONSIDER notified
+    WHEN JUST n  THEN n PLUS 14
+    WHEN NOTHING THEN received PLUS 28 PLUS 14
+
+@ref s 10I(5)-(6)
+GIVEN sought IS A NUMBER, `District Court limit` IS A NUMBER
+GIVETH A STRING
+`the court to review compensation, sought` sought `, District Court limit` `District Court limit` MEANS
+    IF sought GREATER THAN `District Court limit` THEN "the General Division of the High Court" ELSE "the District Court"
+
+§§ `Licences (ss 22(6), 46)`
+
+-- s 46(9): "Where a licence is granted for less than 12 months, the
+-- Director-General may charge a proportionate fee ...; and in charging such
+-- proportionate fee, any part of a month is to be reckoned as one month."
+@ref s 46(9)
+GIVEN `months, any part counted whole` IS A NUMBER, `annual fee` IS A NUMBER
+GIVETH A NUMBER
+`the proportionate licence fee for` `months, any part counted whole` `months, annual fee` `annual fee` MEANS
+    IF `months, any part counted whole` AT LEAST 12 THEN `annual fee`
+    ELSE `annual fee` TIMES (CEILING `months, any part counted whole`) DIVIDED BY 12
+
+-- s 46(12)(d): for breach of a licence condition, the Director-General may
+-- impose "a financial penalty of such amount, not exceeding $5,000".
+@ref s 46(12)
+GIVEN `a breach of a licence condition` IS A BOOLEAN
+GIVETH A NUMBER
+`the most financial penalty on a licensee, breach of a condition:` `a breach of a licence condition` MEANS
+    IF `a breach of a licence condition` THEN 5000 ELSE 0
+
+-- s 22(6): the licence may be revoked or suspended if "(a) the licensee is
+-- suffering from an infectious disease; (b) the licensee knowingly employs any
+-- person who is suffering ...; (c) the licensee or [staff] refuses to comply
+-- with any requisition ...; or (d) the licensee does not comply with
+-- subsection (5)".
+@ref s 22(6)
+GIVEN `licensee infectious` IS A BOOLEAN, `knowingly employs an infectious person` IS A BOOLEAN, `refused a medical requisition` IS A BOOLEAN, `staff not immunised as required` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the licence may be revoked or suspended under s 22(6), licensee infectious:` `licensee infectious` `, employs infectious:` `knowingly employs an infectious person` `, refused:` `refused a medical requisition` `, not immunised:` `staff not immunised as required` IF
+    `licensee infectious` OR `knowingly employs an infectious person` OR `refused a medical requisition` OR `staff not immunised as required`
+
+-- s 55(1): an administrative exemption only where the Director-General is
+-- satisfied that all of (a) negligible risk, (b) other sufficient safeguards,
+-- (c) other requirements dealing with the matter, and (d) necessary or
+-- desirable to avoid unnecessary restrictions on trade, apply.
+@ref s 55(1)
+GIVEN `negligible risk` IS A BOOLEAN, `other safeguards` IS A BOOLEAN, `other requirements` IS A BOOLEAN, `avoids unnecessary trade restrictions` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `an administrative exemption may be given, negligible risk:` `negligible risk` `, safeguards:` `other safeguards` `, other law:` `other requirements` `, trade:` `avoids unnecessary trade restrictions` IF
+    `negligible risk` AND `other safeguards` AND `other requirements` AND `avoids unnecessary trade restrictions`
+
+§§ `Appeals and proceedings (ss 10J, 30, 34, 39, 45, 46(14))`
+
+DECLARE `Decision appealed` IS ONE OF
+    `a Part 2A direction`
+    `a licence refusal, suspension, cancellation, financial penalty or forfeiture`
+    `another notice, order or decision of the Director-General`
+    `a sentence or order of a District or Magistrate's Court`
+
+-- s 45(1): "within 7 days of the notice, order or decision, appeal in writing to
+-- the Minister whereupon the execution ... must be stayed"; s 46(14): "within
+-- 14 days"; s 10J(2): "within a prescribed period" (an input); s 39: to the
+-- General Division of the High Court (the period is the Criminal Procedure
+-- Code's).
+@ref ss 10J(2), 39, 45(1), 46(14)
+GIVEN d IS A `Decision appealed`, decided IS A DATE
+GIVETH A MAYBE DATE
+`the last day to appeal against` d `, decided on` decided MEANS
+    CONSIDER d
+    WHEN `another notice, order or decision of the Director-General`              THEN JUST (decided PLUS 7)
+    WHEN `a licence refusal, suspension, cancellation, financial penalty or forfeiture` THEN JUST (decided PLUS 14)
+    OTHERWISE NOTHING
+
+@ref ss 10J, 39, 45, 46(14)
+GIVEN d IS A `Decision appealed`
+GIVETH A STRING
+`the appeal lies to` d MEANS
+    CONSIDER d
+    WHEN `a sentence or order of a District or Magistrate's Court` THEN "the General Division of the High Court (s 39)"
+    OTHERWISE "the Minister, whose decision is final"
+
+@ref s 45(1)
+GIVEN d IS A `Decision appealed`
+GIVETH A BOOLEAN
+DECIDE `an appeal stays the decision` d IF
+    d EQUALS `another notice, order or decision of the Director-General`
+
+-- s 30(1): "The summons ... must not be made returnable in less than 14 days
+-- from the date on which it is served." FORK F2: on or after served + 14.
+@ref s 30(1)
+GIVEN served IS A DATE, returnable IS A DATE
+GIVETH A BOOLEAN
+DECIDE `the summons is returnable late enough, served` served `, returnable` returnable IF
+    returnable AT LEAST served PLUS 14
+
+-- s 34(1): the accused requiring the analyst as a witness "must give notice
+-- ... at least 3 clear days before the day on which the summons is
+-- returnable": clear days exclude both the day of notice and the return day.
+@ref s 34(1), (3)
+GIVEN notice IS A DATE, returnable IS A DATE
+GIVETH A BOOLEAN
+DECIDE `notice was given 3 clear days before, notice` notice `, returnable` returnable IF
+    notice PLUS 4 AT MOST returnable
+
+-- s 29: District Courts and Magistrates' Courts may try any offence and
+-- impose the full penalty.
+@ref s 29
+GIVETH A LIST OF STRING
+`the courts that may try an offence and impose the full penalty` MEANS
+    LIST "a District Court", "a Magistrate's Court"
+
+§§ `Provisions carried as text`
+
+@ref long title; ss 1, 3, 4(1), (4), 5(1)-(3), (6), 6(1)-(3), 7(1), 8, 10(1)-(2), 10B-10H, 10L, 22(1)-(4), 24(2)-(7), 28, 36-38, 42-44, 46(1)-(8), (10)-(11), (13), (15)-(16), 47, 51-54, 56
+GIVETH A LIST OF STRING
+`provisions carried as text` MEANS
+    LIST "Long title: An Act for regulating food to ensure that food for sale is safe and suitable for human consumption and to promote public health, for ensuring the provision of information relating to food to enable consumers to make informed choices and for preventing misleading conduct in connection with the sale of food."
+         "s 1: This Act is the Sale of Food Act 1973."
+         "s 3: the Director-General, authorised officers and analysts are appointed; delegation"
+         "ss 4-8, 10: officers may enter, inspect, seize, destroy, call for information and take samples; anyone may have a sample analysed; analysts' certificates"
+         "ss 10B-10H, 10L: the content, service, duration and kinds of Part 2A directions; other laws not derogated from"
+         "ss 22(1)-(4), 24(2)-(7): medical examination and treatment of licensees and staff; arrest and notices to attend court for Part 4 offences"
+         "s 28: food sold or exposed for sale is presumed sold for human consumption"
+         "ss 36-38, 42-44, 47, 51-53: non-disclosure, costs, fees, forfeiture, notification of conviction, service, documents, evidence and forms"
+         "s 46: licences are discretionary, may carry conditions and security, are not transferable and fees are not refundable"
+         "s 54: the Minister may exempt by order in the Gazette"
+         "s 56: regulations on standards, additives, hygiene, labelling, records, imports, analysis, fees, advertising and nutrition information"
