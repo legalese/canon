@@ -1,0 +1,145 @@
+IMPORT prelude
+
+-- Limited Liability Partnerships Act 2005 (Singapore) -- the default terms between partners (s 14 and the First
+-- Schedule), and the partners' continuing liability when a firm converts (s 26 and the Second Schedule, paras 2
+-- and 15 and 16).
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage
+-- table, no independent test pass, no human gate. See NOTES.md.
+
+§ `Limited Liability Partnerships Act 2005 -- default terms and conversion`
+
+§§ `14 and the First Schedule -- the terms that apply when the agreement is silent`
+
+-- s 14(1): the partners' mutual rights are governed "(a) by the limited liability partnership agreement; or (b) in the
+-- absence of agreement as to any matter, by any provision relating to that matter set out in the First Schedule."
+-- First Schedule:
+--   2. "All the partners ... are entitled to share EQUALLY in the capital and profits".
+--   3. The LLP must indemnify each partner for payments and personal liabilities in the ordinary and proper conduct of
+--      the business, or in preserving the business or property.
+--   4. "Every partner may take part in the management".
+--   5. "A partner is not entitled to remuneration for acting in the business or management".
+--   6. "A person must not be introduced as a partner without the consent of ALL existing partners."
+--   7. Any matter "must be decided by resolution passed by a MAJORITY IN NUMBER of the partners, and ... each partner has
+--      ONE VOTE."
+--   9. A partner who without consent carries on a competing business "must account for and pay over ... all profits".
+--  10. A partner must account for any benefit from a transaction concerning the LLP or use of its property, name or
+--      business connection, without consent.
+--  11. "No majority of the partners can expel any partner unless a power to do so has been conferred by express
+--      agreement".
+--
+-- "Share equally in the CAPITAL" -- para 2 -- means that, absent agreement, a partner who put in 90% of the capital
+-- shares it equally with one who put in 10%. And voting is by head, not by capital.
+DECLARE Partner HAS
+    `capital contributed` IS A NUMBER
+
+GIVEN `the partners` IS A LIST OF Partner
+GIVETH A NUMBER
+`the number of partners` MEANS
+    CONSIDER `the partners`
+    WHEN EMPTY THEN 0
+    WHEN `p` FOLLOWED BY `rest` THEN 1 PLUS `the number of partners` `rest`
+
+GIVEN `the partners` IS A LIST OF Partner
+GIVETH A NUMBER
+`the total capital` MEANS
+    CONSIDER `the partners`
+    WHEN EMPTY THEN 0
+    WHEN `p` FOLLOWED BY `rest` THEN `p`'s `capital contributed` PLUS `the total capital` `rest`
+
+-- Under para 2, each partner's share of the capital (and of the profits) is the total divided equally.
+GIVEN `the amount` IS A NUMBER, `the partners` IS A LIST OF Partner
+GIVETH A NUMBER
+`each partner's default share` MEANS
+    `the amount` DIVIDED BY `the number of partners` `the partners`
+
+GIVEN `the agreement says how capital is shared` IS A BOOLEAN, `the partners` IS A LIST OF Partner
+GIVETH A NUMBER
+`each partner's share of capital where the agreement is silent` MEANS
+    `each partner's default share` (`the total capital` `the partners`) `the partners`
+
+-- Para 7: a majority in number, one vote each.
+GIVEN `votes in favour` IS A NUMBER, `number of partners` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the resolution passes by default` IF
+    (`votes in favour` TIMES 2) GREATER THAN `number of partners`
+
+-- Para 6: admitting a new partner needs every existing partner.
+GIVEN `existing partners consenting` IS A NUMBER, `number of partners` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `a new partner may be admitted by default` IF
+    `existing partners consenting` EQUALS `number of partners`
+
+-- Para 11: no expulsion without an express power.
+GIVEN `the agreement expressly gives a power to expel` IS A BOOLEAN, `votes to expel` IS A NUMBER, `number of partners` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the majority may expel the partner` IF
+        `the agreement expressly gives a power to expel`
+    AND (`votes to expel` TIMES 2) GREATER THAN `number of partners`
+
+-- Para 5: no remuneration. Para 3: indemnity.
+GIVEN `the agreement provides for remuneration` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the partner is entitled to remuneration` IF
+    `the agreement provides for remuneration`
+
+DECLARE Outlay HAS
+    `in the ordinary and proper conduct of the business` IS A BOOLEAN
+    `necessarily done to preserve the business or property` IS A BOOLEAN
+
+GIVEN `the outlay` IS AN Outlay
+GIVETH A BOOLEAN
+DECIDE `the LLP must indemnify the partner` IF
+    `the outlay`'s `in the ordinary and proper conduct of the business` OR `the outlay`'s `necessarily done to preserve the business or property`
+
+-- Paras 9 and 10: accounting for profits and benefits.
+DECLARE SideDealing HAS
+    `carried on a competing business of the same nature` IS A BOOLEAN
+    `derived a benefit from an LLP transaction or its property, name or connections` IS A BOOLEAN
+    `the LLP consented` IS A BOOLEAN
+
+GIVEN `the dealing` IS A SideDealing
+GIVETH A BOOLEAN
+DECIDE `the partner must account to the LLP` IF
+        NOT `the dealing`'s `the LLP consented`
+    AND (    `the dealing`'s `carried on a competing business of the same nature`
+         OR  `the dealing`'s `derived a benefit from an LLP transaction or its property, name or connections`)
+
+§§ `Second Schedule -- converting a firm`
+
+-- para 2: a firm may convert "if and only if the partners of the [LLP] ... comprises ALL the partners of the firm AND NO
+-- ONE ELSE".
+-- para 15(1): "every partner of a firm that has converted ... continues to be personally liable (jointly and severally
+-- with the [LLP]) for the liabilities and obligations of the firm which were incurred PRIOR TO the conversion OR WHICH
+-- AROSE FROM ANY CONTRACT ENTERED INTO PRIOR TO the conversion." (2): a partner who pays is entitled to a full indemnity
+-- from the LLP, subject to contrary agreement.
+-- para 16: for 12 months starting 14 days after registration, invoices must state the conversion and the firm's name.
+--
+-- Para 15 reaches liabilities that arise AFTER conversion, if the contract was made before. A five-year lease signed by
+-- the firm leaves every former partner personally liable for rent falling due years after the LLP took over.
+DECLARE Conversion HAS
+    `the LLP's partners are exactly the firm's partners` IS A BOOLEAN
+
+GIVEN `the conversion` IS A Conversion
+GIVETH A BOOLEAN
+DECIDE `the firm may convert` IF
+    `the conversion`'s `the LLP's partners are exactly the firm's partners`
+
+DECLARE ConversionDebt HAS
+    `the person was a partner of the firm` IS A BOOLEAN
+    `incurred before conversion` IS A BOOLEAN
+    `arose from a contract made before conversion` IS A BOOLEAN
+
+GIVEN `the debt` IS A ConversionDebt
+GIVETH A BOOLEAN
+DECIDE `the former firm partner remains personally liable` IF
+        `the debt`'s `the person was a partner of the firm`
+    AND (    `the debt`'s `incurred before conversion`
+         OR  `the debt`'s `arose from a contract made before conversion`)
+
+-- para 16: day 0 is the date of registration.
+GIVEN `days after registration` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `invoices must state the conversion` IF
+        `days after registration` AT LEAST 14
+    AND `days after registration` LESS THAN 14 PLUS 365

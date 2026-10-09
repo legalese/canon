@@ -1,0 +1,296 @@
+IMPORT prelude
+
+-- Limited Liability Partnerships Act 2005 (Singapore) -- what an LLP is, who may be a partner, the partners'
+-- limited liability, a partner's power to bind, leaving, bankruptcy, assignment, the two-partner minimum, the
+-- manager, publication, and the bar on bankrupt managers: ss 4 to 17, 28, 29, 33 and 58.
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at
+-- ../../registers/source-bundle/ (amendments to Act 21 of 2024 and Act 30 of 2024).
+--
+-- WHY THIS ACT. Cited by 115 of the 527 Singapore Acts deposited in this repository, second only to the Companies
+-- Act. Most of those citations are to s 2 (92 Acts) and s 4 (19): other Acts pull LLPs into their definition of a
+-- body corporate. SCOPED: Part 2, the two-partner and manager rules, and the First Schedule's default terms. Not
+-- encoded: registration and names (Part 3), conversion (Part 4) except the Second Schedule's partner-liability rule,
+-- accounts and filings, receivership and winding up, the register of controllers (Part 6A), striking off, and the
+-- offences machinery.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage
+-- table, no independent test pass, no human gate. See NOTES.md.
+
+§ `Limited Liability Partnerships Act 2005 -- nature and partners`
+
+§§ `4, 10 -- a body corporate, outside partnership law`
+
+-- s 4(1): an LLP "is a body corporate which is formed by being registered under this Act and which has legal
+-- personality separate from that of its partners". (3): "Any change in the partners ... does not affect the existence,
+-- rights or liabilities". s 10: "Except as otherwise provided by this Act, the law relating to partnerships does not
+-- apply to a limited liability partnership."
+GIVEN `registered under the Act` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the business is a limited liability partnership` IF
+    `registered under the Act`
+
+GIVEN `a partner has changed` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the change affects the LLP's existence, rights or liabilities` IF
+    FALSE
+
+§§ `11 -- who may be a partner`
+
+-- s 11(1): "Any individual or body corporate may be a partner". (2): "body corporate excludes any trade union or
+-- platform work association". (A firm, which is not a body corporate, cannot be a partner.)
+DECLARE PartnerKind IS ONE OF
+    `an individual`
+    `a company`
+    `another LLP`
+    `a foreign company`
+    `a registered trade union`
+    `a platform work association`
+    `an unincorporated firm`
+    `an unincorporated society`
+
+GIVEN `the kind` IS A PartnerKind
+GIVETH A BOOLEAN
+DECIDE `the person may be a partner` IF
+    CONSIDER `the kind`
+    WHEN `an individual` THEN TRUE
+    WHEN `a company` THEN TRUE
+    WHEN `another LLP` THEN TRUE
+    WHEN `a foreign company` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `7, 8 -- deeds without a seal`
+
+-- s 7(1): a deed may be executed without a seal by signature "(a) ... by at least 2 partners ...; or (b) ... by a
+-- partner ... in the presence of a witness who attests the signature." (3): a person signing for more than one LLP
+-- must sign "separately in each capacity". s 6(1): an LLP "may have a common seal but need not have one".
+DECLARE DeedExecution HAS
+    `the number of partners who signed` IS A NUMBER
+    `a witness attested a partner's signature` IS A BOOLEAN
+    `the signatory signs for more than one LLP` IS A BOOLEAN
+    `signed separately in each capacity` IS A BOOLEAN
+    `the common seal was affixed` IS A BOOLEAN
+
+GIVEN `the execution` IS A DeedExecution
+GIVETH A BOOLEAN
+DECIDE `the deed is validly executed without a seal` IF
+        (    `the execution`'s `the number of partners who signed` AT LEAST 2
+         OR  (    `the execution`'s `the number of partners who signed` AT LEAST 1
+              AND `the execution`'s `a witness attested a partner's signature`))
+    AND (    NOT `the execution`'s `the signatory signs for more than one LLP`
+         OR  `the execution`'s `signed separately in each capacity`)
+
+GIVEN `the execution` IS A DeedExecution
+GIVETH A BOOLEAN
+DECIDE `the deed binds as a deed` IF
+        `the deed is validly executed without a seal` `the execution`
+    OR  `the execution`'s `the common seal was affixed`
+
+§§ `12 -- limited liability`
+
+-- s 12(1): "An obligation of the limited liability partnership, whether arising in contract, tort or otherwise, is
+-- solely the obligation of the limited liability partnership."
+-- (2): a partner is not personally liable for it "solely by reason of being a partner".
+-- (3): this does not affect "the personal liability of a partner IN TORT for the partner's OWN wrongful act or
+-- omission, but a partner is not personally liable for the wrongful act or omission of any OTHER partner".
+-- (4): where a partner is liable to a person (OTHER THAN another partner) for a wrongful act in the course of the
+-- LLP's business or with its authority, "the limited liability partnership is liable to the same extent".
+--
+-- The carve-out in (3) is for TORT. A partner who personally breaches a contract the LLP made is not liable on it:
+-- the contract is the LLP's obligation. And (4) does not run in favour of a fellow partner: a partner harmed by
+-- another partner's wrong in the course of business cannot use (4) to make the LLP liable.
+DECLARE Wrong IS ONE OF
+    `the partner's own tort`
+    `another partner's tort`
+    `the LLP's contract`
+    `the LLP's debt`
+
+GIVEN `the wrong` IS A Wrong, `the partner gave a personal guarantee` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the partner is personally liable` IF
+    CONSIDER `the wrong`
+    WHEN `the partner's own tort` THEN TRUE
+    WHEN `another partner's tort` THEN FALSE
+    OTHERWISE `the partner gave a personal guarantee`
+
+DECLARE TortClaim HAS
+    `the partner is liable for their own wrongful act` IS A BOOLEAN
+    `in the course of the LLP's business or with its authority` IS A BOOLEAN
+    `the claimant is another partner` IS A BOOLEAN
+
+GIVEN `the claim` IS A TortClaim
+GIVETH A BOOLEAN
+DECIDE `the LLP is liable to the same extent as the partner` IF
+        `the claim`'s `the partner is liable for their own wrongful act`
+    AND `the claim`'s `in the course of the LLP's business or with its authority`
+    AND NOT `the claim`'s `the claimant is another partner`
+
+§§ `13 -- a partner's power to bind`
+
+-- s 13(1): "Every partner ... is the agent of the limited liability partnership."
+-- (2): the LLP "is not bound by anything done by a partner in dealing with a person if -- (a) the partner has in fact
+-- no authority ...; AND (b) the person KNOWS that the partner has no authority OR does NOT KNOW OR BELIEVE the partner
+-- to be a partner".
+-- (3): a former partner is "regarded (in relation to any person dealing with the [LLP]) as still being a partner ...
+-- unless -- (a) the person has notice that the former partner has ceased ...; or (b) notice ... has been delivered to
+-- the Registrar."
+--
+-- So an unauthorised partner still binds the LLP in dealing with someone who believes them a partner and does not
+-- know of the lack of authority. And the LLP escapes a former partner's dealings by filing with the Registrar,
+-- whether or not the person dealing ever looked.
+DECLARE Dealing HAS
+    `the partner had actual authority` IS A BOOLEAN
+    `the person knew the partner lacked authority` IS A BOOLEAN
+    `the person knew or believed the partner to be a partner` IS A BOOLEAN
+
+GIVEN `the dealing` IS A Dealing
+GIVETH A BOOLEAN
+DECIDE `the LLP is bound by the partner's act` IF
+        `the dealing`'s `the partner had actual authority`
+    OR  (    NOT `the dealing`'s `the person knew the partner lacked authority`
+         AND `the dealing`'s `the person knew or believed the partner to be a partner`)
+
+DECLARE FormerPartner HAS
+    `the person dealing had notice of the cessation` IS A BOOLEAN
+    `notice of the cessation was delivered to the Registrar` IS A BOOLEAN
+
+GIVEN `the former` IS A FormerPartner
+GIVETH A BOOLEAN
+DECIDE `the former partner is still regarded as a partner` IF
+        NOT `the former`'s `the person dealing had notice of the cessation`
+    AND NOT `the former`'s `notice of the cessation was delivered to the Registrar`
+
+§§ `15 -- leaving`
+
+-- s 15(1): a partner may cease "in accordance with the limited liability partnership agreement, or in the absence of
+-- such agreement, by that partner giving 30 DAYS' NOTICE". (2): death or dissolution ends it.
+-- (3): unless the agreement provides otherwise, the former partner is entitled to "(a) ... capital contribution ...
+-- and ... right to share in the accumulated profits ... after the deduction of losses ...; and (b) determined as at the
+-- date the former partner ceased". (4): they "must not interfere in the management".
+--
+-- The default payout is capital plus share of accumulated profits net of losses. It does not include goodwill or the
+-- value of the business as a going concern; and if losses exceed the profits, the text does not say whether the
+-- shortfall comes off the capital.
+DECLARE Departure HAS
+    `the agreement provides for leaving` IS A BOOLEAN
+    `left as the agreement provides` IS A BOOLEAN
+    `days of notice given` IS A NUMBER
+    `died or was dissolved` IS A BOOLEAN
+
+GIVEN `the departure` IS A Departure
+GIVETH A BOOLEAN
+DECIDE `the partner has ceased to be a partner` IF
+        `the departure`'s `died or was dissolved`
+    OR  (    `the departure`'s `the agreement provides for leaving`
+         AND `the departure`'s `left as the agreement provides`)
+    OR  (    NOT `the departure`'s `the agreement provides for leaving`
+         AND `the departure`'s `days of notice given` AT LEAST 30)
+
+GIVEN `capital contribution` IS A NUMBER, `share of accumulated profits` IS A NUMBER, `share of losses` IS A NUMBER
+GIVETH A NUMBER
+`the default payout to a departing partner` MEANS
+    `capital contribution` PLUS `share of accumulated profits` MINUS `share of losses`
+
+§§ `16, 17, 58 -- bankruptcy and assignment`
+
+-- s 16: unless the agreement provides otherwise, bankruptcy "(a) ... does not by itself cause the bankrupt partner to
+-- cease being a partner ..., but the restriction ... under section 58 applies; and (b) the Official Assignee ... must not
+-- interfere in the management ... but is entitled to receive distributions".
+-- s 58(1): an undischarged bankrupt who "acts as manager of any limited liability partnership without the permission
+-- of the General Division of the High Court or the written permission of the Official Assignee" commits an offence --
+-- $10,000 or 2 years.
+-- s 2(1): "manager" means "any person (whether or not a partner ...) who is concerned in or takes part in the
+-- management".
+-- First Schedule para 4 (the default term): "Every partner may take part in the management".
+--
+-- Read together: under the default terms a bankrupt partner remains a partner with a right to take part in
+-- management, and exercising that right makes them a "manager" who commits the s 58 offence. The default right and the
+-- offence collide; only the court's or the Official Assignee's permission resolves it.
+DECLARE BankruptPartner HAS
+    `the agreement provides that bankruptcy ends partnership` IS A BOOLEAN
+    `takes part in management` IS A BOOLEAN
+    `has the court's or the Official Assignee's permission` IS A BOOLEAN
+
+GIVEN `the partner` IS A BankruptPartner
+GIVETH A BOOLEAN
+DECIDE `the bankrupt remains a partner` IF
+    NOT `the partner`'s `the agreement provides that bankruptcy ends partnership`
+
+GIVEN `the partner` IS A BankruptPartner
+GIVETH A BOOLEAN
+DECIDE `the bankrupt partner commits the section 58 offence` IF
+        `the partner`'s `takes part in management`
+    AND NOT `the partner`'s `has the court's or the Official Assignee's permission`
+
+-- s 17: a partner may assign their interest "but only to the extent that the assignee becomes entitled to receive
+-- distributions"; the assignment does not end the partnership or let the assignee interfere in management.
+DECLARE AssigneeRight IS ONE OF
+    `receiving distributions`
+    `taking part in management`
+    `voting`
+    `becoming a partner`
+
+GIVEN `the right` IS AN AssigneeRight
+GIVETH A BOOLEAN
+DECIDE `the assignee acquires the right` IF
+    CONSIDER `the right`
+    WHEN `receiving distributions` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `28 -- the two-partner minimum`
+
+-- s 28(1): "at least 2 partners". (2): if it carries on business with fewer than 2 partners "for a period of more than 2
+-- years", a person is personally liable jointly and severally "for any obligation ... incurred during the period that
+-- the [LLP] so carries on business AFTER THOSE 2 YEARS if, at the time the obligation was incurred, the person -- (a) was
+-- a partner ...; and (b) KNEW that the [LLP] was carrying on business with fewer than 2 partners for a period of more
+-- than 2 years."
+--
+-- The sole remaining partner who does not KNOW the two years have passed keeps limited liability. The test is knowledge,
+-- not constructive knowledge.
+DECLARE SolePartnerDebt HAS
+    `months trading with fewer than 2 partners when the debt was incurred` IS A NUMBER
+    `the person was a partner when the debt was incurred` IS A BOOLEAN
+    `the person knew it had been more than 2 years` IS A BOOLEAN
+
+GIVEN `the debt` IS A SolePartnerDebt
+GIVETH A BOOLEAN
+DECIDE `the partner is personally liable for the debt under section 28` IF
+        `the debt`'s `months trading with fewer than 2 partners when the debt was incurred` GREATER THAN 24
+    AND `the debt`'s `the person was a partner when the debt was incurred`
+    AND `the debt`'s `the person knew it had been more than 2 years`
+
+§§ `29 -- the manager`
+
+-- s 29(1): at least one manager who "(a) is a natural person; (b) has attained 18 years of age and is otherwise of full
+-- legal capacity; and (c) is ordinarily resident in Singapore." (4): contravention -- the LLP AND EVERY PARTNER, $5,000
+-- and $200 a day.
+DECLARE ManagerCandidate HAS
+    `is a natural person` IS A BOOLEAN
+    `age` IS A NUMBER
+    `of full legal capacity` IS A BOOLEAN
+    `ordinarily resident in Singapore` IS A BOOLEAN
+    `is an undischarged bankrupt without permission` IS A BOOLEAN
+
+GIVEN `the candidate` IS A ManagerCandidate
+GIVETH A BOOLEAN
+DECIDE `the candidate meets section 29(1)` IF
+        `the candidate`'s `is a natural person`
+    AND `the candidate`'s `age` AT LEAST 18
+    AND `the candidate`'s `of full legal capacity`
+    AND `the candidate`'s `ordinarily resident in Singapore`
+
+-- s 29(1) itself does not exclude a bankrupt; s 58 makes their acting an offence. Both are needed for a lawful manager.
+GIVEN `the candidate` IS A ManagerCandidate
+GIVETH A BOOLEAN
+DECIDE `the candidate may lawfully be the required manager` IF
+        `the candidate meets section 29(1)` `the candidate`
+    AND NOT `the candidate`'s `is an undischarged bankrupt without permission`
+
+§§ `33 -- invoices and correspondence`
+
+-- s 33(1): invoices and official correspondence must bear "(a) the name and registration number ...; (b) a statement
+-- that it is registered with limited liability." (2): $1,000 and $200 a day.
+GIVEN `shows name and registration number` IS A BOOLEAN, `states it is registered with limited liability` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the invoice complies with section 33` IF
+    `shows name and registration number` AND `states it is registered with limited liability`
