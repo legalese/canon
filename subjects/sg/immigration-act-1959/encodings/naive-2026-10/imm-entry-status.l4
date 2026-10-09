@@ -1,0 +1,320 @@
+IMPORT prelude
+
+-- Immigration Act 1959 (Singapore) -- entering, leaving and staying: ss 5 to 9AA (entry and departure, prohibited
+-- immigrants, entry bans, no-boarding directives), ss 10 to 15 (entry and re-entry permits, loss of citizenship,
+-- cancellation, overstaying), s 36 (return after removal) and ss 39A and 39B (no judicial review, no hearing).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/ (amendments
+-- to Act 31 of 2023, Act 5 of 2025 and Act 16 of 2026).
+--
+-- WHY THIS ACT. Cited by 48 of the 527 Singapore Acts deposited in this repository, mostly for s 2 definitions (25)
+-- and s 3 (10). SCOPED. Not encoded: visas (Part 2A), arrival procedure and carriers' passenger information (Part 4),
+-- removal and detention (Part 5), information sharing (Part 5A), cross-border railway pre-clearance (Part 5B), and the
+-- enforcement powers in Part 6.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Immigration Act 1959 -- entry and status`
+
+§§ `5 -- entering and leaving only at authorised places`
+
+-- s 5(2), (4): a person must not, "unless compelled by accident or other reasonable cause", enter or leave Singapore
+-- except at an authorised place. (5): an offence -- no penalty stated, so the s 58 general penalty: $2,000 or 6 months.
+-- This binds citizens too.
+GIVEN `at an authorised place` IS A BOOLEAN, `compelled by accident or other reasonable cause` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the crossing is an offence under section 5` IF
+    (NOT `at an authorised place`) AND (NOT `compelled by accident or other reasonable cause`)
+
+§§ `6, 7 -- who may enter`
+
+-- s 7(1): "A citizen of Singapore is entitled to enter Singapore without having obtained a permit or pass". (2): "The
+-- burden of proof that any person is a citizen of Singapore shall lie upon that person."
+-- s 6(1): a non-citizen must not enter unless (a) holding a valid entry or re-entry permit, (b) named on one and
+-- accompanying the holder, (c) holding a valid pass, or (d) exempted.
+-- s 6(3)(a): "imprisonment for a term not exceeding 6 months and SHALL ALSO be punished with caning with not less than
+-- 3 strokes" (or a fine of up to $6,000 in lieu where the person cannot be caned).
+DECLARE Entrant HAS
+    `is a citizen` IS A BOOLEAN
+    `holds a valid entry or re-entry permit` IS A BOOLEAN
+    `is endorsed on a permit and with its holder` IS A BOOLEAN
+    `holds a valid pass` IS A BOOLEAN
+    `is exempted by order` IS A BOOLEAN
+
+GIVEN `the entrant` IS AN Entrant
+GIVETH A BOOLEAN
+DECIDE `the person may lawfully enter` IF
+        `the entrant`'s `is a citizen`
+    OR  `the entrant`'s `holds a valid entry or re-entry permit`
+    OR  `the entrant`'s `is endorsed on a permit and with its holder`
+    OR  `the entrant`'s `holds a valid pass`
+    OR  `the entrant`'s `is exempted by order`
+
+GIVEN `the entrant` IS AN Entrant
+GIVETH A BOOLEAN
+DECIDE `caning is mandatory for the unlawful entry` IF
+    NOT `the person may lawfully enter` `the entrant`
+
+§§ `8 -- prohibited immigrants`
+
+-- s 8(1): a non-citizen who is a member of a prohibited class, "or who, in the opinion of the Controller, is a member",
+-- is a prohibited immigrant. (4): "The burden of proof that any person seeking to enter Singapore is not a prohibited
+-- immigrant shall lie upon that person."
+-- s 8(3) lists the classes. Among them:
+--   (a) unable to show means of support or definite employment, or likely to become a charge on the public;
+--   (ba) "any person suffering from Acquired Immune Deficiency Syndrome or infected with the Human Immunodeficiency
+--        Virus";
+--   (d) convicted in ANY country of an offence for which ANY term of imprisonment was passed, not pardoned, and deemed
+--       undesirable by the Controller;
+--   (e) a prostitute, or a person who lived on or received the proceeds of prostitution;
+--   (g) vagrants or habitual beggars;
+--   (i) a person who "disbelieves in or is opposed to established government";
+--   (n) "the family and dependants of a prohibited immigrant".
+-- s 8(2)(b): a prohibited immigrant (other than one banned under s 9) may enter only with a pass issuable to prohibited
+-- immigrants under the regulations.
+--
+-- (ba) is unqualified: HIV infection alone makes a non-citizen a prohibited immigrant. (n) makes prohibition hereditary:
+-- the family of a prohibited immigrant are prohibited themselves, with no class of their own required. (i) reaches
+-- belief alone -- "disbelieves in" established government.
+DECLARE ProhibitedClass IS ONE OF
+    `cannot show means of support`
+    `a dangerous contagious disease`
+    `AIDS or HIV infection`
+    `refused a medical examination`
+    `an imprisonment sentence anywhere, unpardoned, and deemed undesirable`
+    `a prostitute or living on prostitution`
+    `procuring prostitutes`
+    `a vagrant or habitual beggar`
+    `entry was unlawful`
+    `opposed to or disbelieving in established government`
+    `in a subversive organisation`
+    `deemed undesirable by the Minister on information received`
+    `removed elsewhere and deemed undesirable`
+    `lacking valid travel documents`
+    `family or dependant of a prohibited immigrant`
+    `banned by an order under section 9`
+    `none`
+
+GIVEN `the class` IS A ProhibitedClass, `is a citizen` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the person is a prohibited immigrant` IF
+        NOT `is a citizen`
+    AND CONSIDER `the class`
+        WHEN `none` THEN FALSE
+        OTHERWISE TRUE
+
+-- A conviction in any country counts only with an imprisonment sentence, no free pardon, and the Controller's view.
+DECLARE ForeignConviction HAS
+    `a sentence of imprisonment was passed` IS A BOOLEAN
+    `received a free pardon` IS A BOOLEAN
+    `the Controller deems the person undesirable` IS A BOOLEAN
+
+GIVEN `the conviction` IS A ForeignConviction
+GIVETH A BOOLEAN
+DECIDE `the conviction puts the person in class (d)` IF
+        `the conviction`'s `a sentence of imprisonment was passed`
+    AND NOT `the conviction`'s `received a free pardon`
+    AND `the conviction`'s `the Controller deems the person undesirable`
+
+DECLARE ProhibitedEntry HAS
+    `banned by a section 9 order` IS A BOOLEAN
+    `holds a pass issuable to prohibited immigrants` IS A BOOLEAN
+    `exempted under section 56` IS A BOOLEAN
+
+GIVEN `the entry` IS A ProhibitedEntry
+GIVETH A BOOLEAN
+DECIDE `the prohibited immigrant may enter` IF
+        `the entry`'s `exempted under section 56`
+    OR  (    NOT `the entry`'s `banned by a section 9 order`
+         AND `the entry`'s `holds a pass issuable to prohibited immigrants`)
+
+§§ `9 -- entry bans`
+
+-- s 9(1)(a): the Minister may prohibit or limit entry "in the interests of public security or public health, or by
+-- reason of any economic, industrial, social, educational or other conditions". (1A): an order other than one for
+-- public security or public health does not apply to a person OUTSIDE Singapore holding a valid re-entry permit or pass.
+-- (2): no order applies to a citizen. (3): a class order (other than security or health) must go to Parliament and may
+-- be annulled within 3 months. (5): breach -- "a presumptive minimum term of not less than 2 years and not more than
+-- 4 years" and a fine up to $6,000.
+DECLARE BanFacts HAS
+    `is a citizen` IS A BOOLEAN
+    `the order is for public security or public health` IS A BOOLEAN
+    `outside Singapore when the order was made` IS A BOOLEAN
+    `holds a valid re-entry permit or pass` IS A BOOLEAN
+
+GIVEN `the facts` IS A BanFacts
+GIVETH A BOOLEAN
+DECIDE `the ban applies to the person` IF
+        NOT `the facts`'s `is a citizen`
+    AND (    `the facts`'s `the order is for public security or public health`
+         OR  NOT (`the facts`'s `outside Singapore when the order was made` AND `the facts`'s `holds a valid re-entry permit or pass`))
+
+GIVETH A NUMBER
+`the presumptive minimum years for breaching a ban` MEANS 2
+
+§§ `9AA -- no-boarding directives`
+
+-- s 9AA(2): a directive must not issue "(a) against a citizen ...; (b) on the ground [the person's presence would be
+-- undesirable] against a person who holds a valid permit or pass; or (c) on the ground [the person would not be issued
+-- a permit or pass] against a person who intends to board ... for the purpose of transiting". (6): the Controller "is
+-- not required to serve the no-boarding directive on the subject person, or otherwise inform" them. (7)(a), (8): each
+-- carrier notified is liable to $10,000 if the person arrives -- a STRICT LIABILITY offence.
+DECLARE NoBoardGround IS ONE OF
+    `a prohibited immigrant`
+    `covered by an entry ban`
+    `a risk to safety or health`
+    `presence would be undesirable`
+    `would not be issued a permit or pass`
+
+DECLARE NoBoardFacts HAS
+    `the ground` IS A NoBoardGround
+    `is a citizen` IS A BOOLEAN
+    `holds a valid permit or pass` IS A BOOLEAN
+    `is transiting` IS A BOOLEAN
+
+GIVEN `the facts` IS A NoBoardFacts
+GIVETH A BOOLEAN
+DECIDE `a no-boarding directive may issue` IF
+        NOT `the facts`'s `is a citizen`
+    AND CONSIDER `the facts`'s `the ground`
+        WHEN `presence would be undesirable` THEN NOT `the facts`'s `holds a valid permit or pass`
+        WHEN `would not be issued a permit or pass` THEN NOT `the facts`'s `is transiting`
+        OTHERWISE TRUE
+
+GIVETH A BOOLEAN
+DECIDE `the person must be told of the directive` IF
+    FALSE
+
+§§ `11, 14A -- permanent residents abroad`
+
+-- s 11(1A): a permanent resident "who is outside Singapore without a valid re-entry permit must apply for a re-entry
+-- permit within the prescribed period" (the period is in regulations, not retrieved). (1C): the duty continues even if
+-- they re-enter on a pass. s 14A(1): the entry permit -- permanent residence -- is CANCELLED AUTOMATICALLY if they do not
+-- apply in time, or if the application is rejected. s 11(2A): the Controller may refuse a re-entry permit.
+DECLARE PRAbroad HAS
+    `outside Singapore without a valid re-entry permit` IS A BOOLEAN
+    `applied within the prescribed period` IS A BOOLEAN
+    `applied before the period began and it was pending or later rejected` IS A BOOLEAN
+    `the application was rejected` IS A BOOLEAN
+
+GIVEN `the pr` IS A PRAbroad
+GIVETH A BOOLEAN
+DECIDE `permanent residence is cancelled automatically` IF
+        `the pr`'s `outside Singapore without a valid re-entry permit`
+    AND (    (    NOT `the pr`'s `applied within the prescribed period`
+              AND NOT `the pr`'s `applied before the period began and it was pending or later rejected`)
+         OR  `the pr`'s `the application was rejected`)
+
+§§ `11A -- losing citizenship while in Singapore`
+
+-- s 11A(1): a person in Singapore who ceases to be a citizen "must not remain in Singapore for more than 24 HOURS"
+-- without a permit or pass, unless they apply within that time (then they may stay pending the decision, and must leave
+-- within 24 hours of a rejection). (6): the overstay penalties below.
+GIVEN `hours since ceasing to be a citizen` IS A NUMBER, `applied within 24 hours` IS A BOOLEAN, `holds a permit or pass` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the former citizen is unlawfully in Singapore` IF
+        `hours since ceasing to be a citizen` GREATER THAN 24
+    AND NOT `applied within 24 hours`
+    AND NOT `holds a permit or pass`
+
+§§ `12 -- endorsing a wife and children`
+
+-- s 12: the Controller may, on application by the holder, "endorse upon the permit, pass or certificate ... the name or
+-- names of the WIFE or child of that person."
+--
+-- The text provides for a wife, not a husband or spouse. A female permit-holder has no route under s 12 to endorse her
+-- husband, and s 6(1)(b) lets only an ENDORSED person enter on another's permit.
+DECLARE Relative IS ONE OF
+    `wife`
+    `husband`
+    `child`
+    `parent`
+
+GIVEN `the relative` IS A Relative
+GIVETH A BOOLEAN
+DECIDE `the relative may be endorsed on the holder's permit` IF
+    CONSIDER `the relative`
+    WHEN `wife` THEN TRUE
+    WHEN `child` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `14, 15 -- cancellation and overstaying`
+
+-- s 14(3): if the holder is a prohibited immigrant, the Controller MUST cancel. s 14(4): if a material statement was
+-- false, the holder is a prohibited immigrant, or the holder contravened the Act, the regulations or a condition, the
+-- Controller MAY cancel "and may declare AT ANY TIME after the date of the entry ... that the presence of that person in
+-- Singapore is unlawful." (5): cancelling a re-entry permit for breach of ITS condition lets the Controller cancel the
+-- ENTRY permit too, "whether or not that person has contravened any condition of the entry permit".
+-- s 15(3): remaining after cancellation or expiry, without reasonable cause --
+--   (a) up to 90 days: $4,000 or 6 months or both;
+--   (b) over 90 days: "SHALL ... be punished with imprisonment for a term not exceeding 6 months and SHALL ALSO be
+--       punished with caning with not less than 3 strokes".
+--
+-- Day 90 and day 91 fall on opposite sides of a line between a fine and mandatory imprisonment with caning.
+GIVEN `days overstayed` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `imprisonment and caning are mandatory for the overstay` IF
+    `days overstayed` GREATER THAN 90
+
+GIVEN `days overstayed` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the overstay may be punished by a fine alone` IF
+        `days overstayed` GREATER THAN 0
+    AND `days overstayed` AT MOST 90
+
+DECLARE CancellationGround IS ONE OF
+    `the holder is a prohibited immigrant`
+    `a false material statement`
+    `breach of the Act, regulations or a condition`
+    `the holder's political views`
+
+GIVEN `the ground` IS A CancellationGround
+GIVETH A BOOLEAN
+DECIDE `the Controller must cancel` IF
+    CONSIDER `the ground`
+    WHEN `the holder is a prohibited immigrant` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN `the ground` IS A CancellationGround
+GIVETH A BOOLEAN
+DECIDE `the Controller may cancel` IF
+    CONSIDER `the ground`
+    WHEN `the holder's political views` THEN FALSE
+    OTHERWISE TRUE
+
+-- (The "political views" fixture is no answer in practice: s 8(3)(i) makes a person "opposed to established government"
+-- a prohibited immigrant, and so within the first ground.)
+
+§§ `36 -- coming back after removal`
+
+-- s 36(1): a person removed must not enter or reside without the Controller's prior written permission. (2): "a
+-- presumptive minimum term of not less than one year and not more than 3 years" and up to $6,000.
+GIVEN `was removed` IS A BOOLEAN, `has the Controller's prior written permission` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the return is an offence` IF
+    `was removed` AND NOT `has the Controller's prior written permission`
+
+§§ `39A, 39B -- no judicial review, no hearing`
+
+-- s 39A(1): "There shall be no judicial review in any court of any act done or decision made by the Minister or the
+-- Controller under any provision of this Act EXCEPT in regard to any question relating to compliance with any
+-- PROCEDURAL requirement". (2): includes quashing, mandatory and prohibiting orders, declarations, injunctions, an Order
+-- for Review of Detention (habeas corpus), and "any other suit or action".
+-- s 39B: the Controller or Minister "is not required to give any person ... an opportunity to be heard".
+--
+-- Read together: the only reviewable ground is procedural non-compliance, and s 39B removes the procedural requirement
+-- most often relied on.
+DECLARE ReviewGround IS ONE OF
+    `breach of a procedural requirement in the Act or regulations`
+    `no opportunity to be heard`
+    `irrationality`
+    `error of law`
+    `unlawful detention`
+
+GIVEN `the ground` IS A ReviewGround
+GIVETH A BOOLEAN
+DECIDE `a court may review the decision on the ground` IF
+    CONSIDER `the ground`
+    WHEN `breach of a procedural requirement in the Act or regulations` THEN TRUE
+    OTHERWISE FALSE
