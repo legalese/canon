@@ -1,0 +1,263 @@
+IMPORT prelude
+
+-- Shared Mobility Enterprises (Control and Licensing) Act 2020 (Singapore) -- what counts as a shared vehicle and when it is
+-- undocked (ss 2(1), 3(2), (3)), improper parking in a public place (s 2(2)), refusing hire to riders who persistently park
+-- improperly (ss 23(4) to (6), 25(3)), questioning riders (s 34(3)), the unauthorised-service offence (s 8), the offence of
+-- not complying with an authorised officer (s 36), financial penalties on operators (s 29(6)), composition (s 37) and
+-- appeal deadlines (ss 38, 39).
+--
+-- Edition: 2020 Revised Edition (incorporating amendments up to 1 December 2021, in operation 31 December 2021), informal
+-- consolidation "version in force from 4/5/2026", as deposited at ../../registers/source-bundle/SMECLA2020.txt. The latest
+-- amendment annotated is Act 5 of 2026 with effect from 4 May 2026 (a definition deleted from s 2(1) and the definition of
+-- "mobility vehicle" inserted). The Schedule closes with [S 58/2021].
+--
+-- WHY THIS ACT. Chosen for everyday-life relevance: it governs the bike-share and scooter-share services ordinary people hire
+-- from the kerb, and lets operators (and the LTA) cut off riders who park badly. SCOPED to what a rider meets, plus the headline
+-- operator penalties. Not encoded: licence applications and grant criteria (ss 10, 11), licence conditions and their
+-- modification (ss 13 to 16), class licences (ss 17 to 19), accounts and records (ss 20 to 22), standards of performance
+-- (s 24), safety directives (ss 26 to 28), the grounds for regulatory action and its procedure (ss 29(1) to (5), 30, 31), entry
+-- and information powers beyond s 34(3) (ss 33 to 35), officers' liability (ss 43, 44), service (s 46), and the transitional
+-- Schedule. Whether a service is a "shared mobility service" at all depends on vehicle types prescribed by Regulations,
+-- which were not retrieved.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Shared Mobility Enterprises (Control and Licensing) Act 2020 -- hiring`
+
+§§ `2(1) -- what is a vehicle`
+
+-- s 2(1) "vehicle" means (a) a bicycle; (b) a power-assisted bicycle; (c) a personal mobility device; (d) a mobility vehicle; or
+-- (e) any other vehicle "designed to transport people only (with or without carry-on baggage)" and "ordinarily not permitted by
+-- law to be used on a road", "and does not include a motor car or motor cycle, a heavy or light locomotive, a motor tractor or a
+-- public service vehicle which is a bus, private hire car or taxi". Para (d) depends on the definition inserted by Act 5 of 2026.
+DECLARE Conveyance IS ONE OF
+    `a bicycle`
+    `a power-assisted bicycle`
+    `a personal mobility device`
+    `a mobility vehicle`
+    `another people-only vehicle not allowed on roads`
+    `a cargo trike`
+    `a motor car`
+    `a motor cycle`
+    `a taxi`
+    `a private hire car`
+    `a bus`
+
+-- `a cargo trike` is an illustrative conveyance that is not designed to transport people only, so it fails para (e). Whether a
+-- real cargo trike is a bicycle under the Active Mobility Act 2017 was not checked.
+GIVEN `the conveyance` IS A Conveyance
+GIVETH A BOOLEAN
+DECIDE `it is a vehicle under the Act` IF
+    CONSIDER `the conveyance`
+    WHEN `a bicycle` THEN TRUE
+    WHEN `a power-assisted bicycle` THEN TRUE
+    WHEN `a personal mobility device` THEN TRUE
+    WHEN `a mobility vehicle` THEN TRUE
+    WHEN `another people-only vehicle not allowed on roads` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `3(2), (3) -- undocked and docked`
+
+-- s 3(2): a vehicle is treated as UNDOCKED if parked or left at rest without a rider in or at a place "(a) that is outdoors or in
+-- an unenclosed shelter; and (b) other than in or at a vehicle docking station or installation that -- (i) is attached
+-- permanently to the ground; and (ii) is installed or provided by a person for the exclusive use of that person's customers and
+-- can only be used by those customers". (3): docked in every other case.
+GIVEN `outdoors or in an unenclosed shelter` IS A BOOLEAN,
+      `at a dock permanently attached to the ground` IS A BOOLEAN,
+      `the dock is for the exclusive use of the provider's customers` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the vehicle is undocked` IF
+    `outdoors or in an unenclosed shelter`
+    AND (NOT (`at a dock permanently attached to the ground` AND `the dock is for the exclusive use of the provider's customers`))
+
+§§ `2(2) -- improperly park a vehicle in a public place`
+
+-- s 2(2): "improperly park a vehicle in a public place" means parking, or permitting to remain at rest without a rider, "the
+-- vehicle undocked outside an area that is -- (a) demarcated (by a marking or traffic sign or other signboard) for parking of
+-- vehicles of that type; and (b) provided by any licensee, class licensee, the Government or a public authority for the parking
+-- of vehicles of that type".
+GIVEN `left undocked` IS A BOOLEAN,
+      `inside an area demarcated for that type` IS A BOOLEAN,
+      `the area is provided by a licensee, the Government or a public authority` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `it is improper parking` IF
+    `left undocked`
+    AND (NOT (`inside an area demarcated for that type` AND `the area is provided by a licensee, the Government or a public authority`))
+
+§§ `23(4) to (6) -- refusing hire to persistent improper parkers`
+
+-- s 23(5): a rider seeking to hire an undocked vehicle ("vehicle A") "may be treated" as one who persistently improperly parks if,
+-- "pursuant to an information sharing arrangement", the licensee reasonably believes the rider improperly parked "on at least 3
+-- earlier occasions within the year" (a) where the vehicle was "of the same type as vehicle A or is of a prescribed class within
+-- which vehicle A falls"; and (b) "after disregarding all other occasions ... before that year". (7): Regulations may vary the 3.
+-- (6): once a licensee refuses hire, "all occasions which counted towards that refusal must be disregarded" for later decisions
+-- by ANY licensee.
+--
+-- Inputs are counts of occasions this year of the same type or prescribed class; `counted toward an earlier refusal` is the
+-- number of those that must now be disregarded.
+GIVEN `occasions this year of the same type` IS A NUMBER,
+      `occasions counted toward an earlier refusal` IS A NUMBER,
+      `believed through an information sharing arrangement` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the rider may be treated as a persistent improper parker` IF
+    `believed through an information sharing arrangement`
+    AND `occasions this year of the same type` MINUS `occasions counted toward an earlier refusal` AT LEAST 3
+
+-- s 23(4): every licensee "(a) is entitled to refuse to hire or further hire for a period not exceeding a prescribed period to
+-- any individual any undocked vehicle" where it "has reasonable grounds to believe that the individual persistently improperly
+-- parks vehicles (whether or not hired from the same licensee)"; and "(b) must refuse" an undocked vehicle to a particular
+-- individual "where directed by the LTA under section 25". The power reaches UNDOCKED vehicles only. s 23(5) is one way of
+-- having those grounds ("may be treated"), not the only way; `other reasonable grounds` stands for the rest.
+GIVEN `the vehicle sought is undocked` IS A BOOLEAN,
+      `treated as persistent under s 23(5)` IS A BOOLEAN,
+      `other reasonable grounds` IS A BOOLEAN,
+      `the LTA has directed refusal` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the licensee may refuse to hire` IF
+    `the vehicle sought is undocked`
+    AND (`treated as persistent under s 23(5)` OR `other reasonable grounds` OR `the LTA has directed refusal`)
+
+GIVEN `the vehicle sought is undocked` IS A BOOLEAN, `the LTA has directed refusal` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the licensee must refuse to hire` IF
+    `the vehicle sought is undocked` AND `the LTA has directed refusal`
+
+§§ `25(3) -- when the LTA may direct a refusal`
+
+-- s 25(3): a direction to refuse hire to a particular hirer "(a) must not have an expiry date that is longer than the prescribed
+-- period"; and "(b) may only be given with respect to an individual who is convicted of, or has accepted a composition sum offered
+-- with respect to" (i) an offence under s 21 or 22 of the Active Mobility Act 2017; (ii) s 5A of the Road Traffic Act 1961; or
+-- (iii) the Parking Places Act 1974 or rules under it "involving improper parking of vehicles hired from any licensee or class
+-- licensee", "committed or allegedly committed on or after 22 July 2020".
+DECLARE RiderOffence IS ONE OF
+    `Active Mobility Act s 21 or 22`
+    `Road Traffic Act s 5A`
+    `Parking Places Act improper parking of a hired vehicle`
+    `Parking Places Act offence not about a hired vehicle`
+    `some other offence`
+
+GIVEN `the offence` IS A RiderOffence,
+      `convicted or compounded` IS A BOOLEAN,
+      `committed on or after 22 July 2020` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the LTA may direct refusal of hire to this rider` IF
+    `convicted or compounded`
+    AND `committed on or after 22 July 2020`
+    AND CONSIDER `the offence`
+        WHEN `Active Mobility Act s 21 or 22` THEN TRUE
+        WHEN `Road Traffic Act s 5A` THEN TRUE
+        WHEN `Parking Places Act improper parking of a hired vehicle` THEN TRUE
+        OTHERWISE FALSE
+
+§§ `34(3) -- questioning a rider`
+
+-- s 34(1)(f): an authorised officer may require "the rider of the vehicle, or a person in possession of the vehicle, to answer any
+-- question". (3): that power "must not be exercised in relation to an individual who is an under-aged rider, but may be exercised
+-- in relation to any individual who is an appropriate supervisor ... escorting" that rider.
+GIVEN `the person is an under-aged rider` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the officer may require answers from the person` IF
+    NOT `the person is an under-aged rider`
+
+§§ `36 -- failing to comply with an authorised officer`
+
+-- s 36(1): failing "without reasonable excuse" to do anything required under s 33(1), 34(1) or a s 35(1) notice -- fine up to
+-- $10,000. (3): a defence to prove, on a balance of probabilities, that the person (a) "does not possess the document or
+-- information required" and (b) "has taken all reasonable steps ... and has been unable to obtain it". (4): it is a reasonable
+-- excuse to refuse "if doing so might tend to incriminate that person".
+GIVEN `failed to comply with a requirement` IS A BOOLEAN,
+      `had a reasonable excuse` IS A BOOLEAN,
+      `complying might incriminate the person` IS A BOOLEAN,
+      `proves non-possession and all reasonable steps` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the person commits the s 36(1) offence` IF
+    `failed to comply with a requirement`
+    AND (NOT `had a reasonable excuse`)
+    AND (NOT `complying might incriminate the person`)
+    AND (NOT `proves non-possession and all reasonable steps`)
+
+§§ `8 -- providing a service without a licence`
+
+-- s 8(1): providing a shared mobility service in Singapore when not authorised by a licence or class licence and not exempt under
+-- s 47; (2) "a strict liability offence"; (3) a fine up to $10,000 or 6 months or both "and, in the case of a continuing offence,
+-- to a further fine not exceeding $500 for every day or part of a day during which the offence continues after conviction".
+-- (4): a licensee is not authorised while its licence is suspended under s 29.
+GIVEN `licensed or class licensed` IS A BOOLEAN, `licence suspended` IS A BOOLEAN, `exempt under s 47` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `providing the service is an offence under s 8` IF
+    (NOT (`licensed or class licensed` AND (NOT `licence suspended`)))
+    AND (NOT `exempt under s 47`)
+
+-- Days are whole days, a part day counted as one.
+GIVEN `days the offence continues after conviction` IS A NUMBER
+GIVETH A NUMBER
+`the maximum s 8 fine in dollars` MEANS
+    10000 PLUS 500 TIMES `days the offence continues after conviction`
+
+§§ `29(6) -- maximum financial penalty on an operator`
+
+-- s 29(6): "The higher of the following is the maximum financial penalty": "(a) $100,000 for each instance of the contravention
+-- or non-compliance"; "(b) 10% of the annual turnover of the licensee's or class licensee's business derived from or
+-- attributable to providing a shared mobility service, as ascertained from the ... latest audited accounts". s 30(4) is the same
+-- for former licensees.
+GIVEN `first amount` IS A NUMBER, `second amount` IS A NUMBER
+GIVETH A NUMBER
+`the higher of` MEANS
+    IF `first amount` GREATER THAN `second amount` THEN `first amount` ELSE `second amount`
+
+GIVEN `first amount` IS A NUMBER, `second amount` IS A NUMBER
+GIVETH A NUMBER
+`the lower of` MEANS
+    IF `first amount` LESS THAN `second amount` THEN `first amount` ELSE `second amount`
+
+GIVEN `instances of contravention` IS A NUMBER, `annual shared mobility turnover` IS A NUMBER
+GIVETH A NUMBER
+`the maximum financial penalty in dollars` MEANS
+    `the higher of` (100000 TIMES `instances of contravention`) (`annual shared mobility turnover` TIMES 10 DIVIDED BY 100)
+
+§§ `37 -- composition`
+
+-- s 37(1): a prescribed compoundable offence may be compounded for "a sum not exceeding the lower of": "(a) one half of the amount
+-- of the maximum fine that is prescribed for the offence"; "(b) $5,000".
+GIVEN `maximum fine for the offence` IS A NUMBER
+GIVETH A NUMBER
+`the maximum composition sum in dollars` MEANS
+    `the lower of` (`maximum fine for the offence` DIVIDED BY 2) 5000
+
+§§ `38, 39 -- appeals to the Minister`
+
+-- s 38 "appealable decision" lists (a) refusal of a licence; (b) imposing a condition; (c) a s 14 modification; (d) refusal to
+-- modify under s 15(5)(b); (e) a security requirement on a s 15(5)(a) grant; (f) refusal of consent to transfer; (g) "a direction
+-- under section 25, except a direction described in section 25(3)"; (h) revocation; (i) other regulatory action.
+-- s 39(2): appeal in writing (a) for a s 14 modification "within 28 days after the date the decision appealed against is given";
+-- (b) for any other appealable decision "within 14 days". (5) the Minister's decision is final; (7) an appeal does not suspend
+-- the decision unless the Minister directs.
+DECLARE Decision IS ONE OF
+    `refusal of a licence`
+    `a modification of a licence condition under s 14`
+    `a direction under s 25 about collecting vehicles`
+    `a direction under s 25(3) to refuse hire to a rider`
+    `a financial penalty under s 29(2)`
+    `a decision to compound an offence`
+
+GIVEN `the decision` IS A Decision
+GIVETH A BOOLEAN
+DECIDE `the decision is appealable` IF
+    CONSIDER `the decision`
+    WHEN `a direction under s 25(3) to refuse hire to a rider` THEN FALSE
+    WHEN `a decision to compound an offence` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the decision` IS A Decision
+GIVETH A NUMBER
+`the appeal period in days` MEANS
+    CONSIDER `the decision`
+    WHEN `a modification of a licence condition under s 14` THEN 28
+    OTHERWISE 14
+
+GIVEN `the decision` IS A Decision, `days since the decision was given` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `an appeal now is in time` IF
+    `the decision is appealable` `the decision`
+    AND `days since the decision was given` AT MOST `the appeal period in days` `the decision`
