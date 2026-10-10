@@ -1,0 +1,222 @@
+IMPORT prelude
+
+-- Status of Children (Assisted Reproduction Technology) Act 2013 (Singapore) -- who the law treats as the mother and father of a
+-- child born through a fertilisation procedure: where the Act applies (s 3), written consent (s 4), donors (s 5), the gestational
+-- mother (s 6), the husband and the later-married partner (s 7), the court's discretion for an unmarried partner (s 8), mix-ups
+-- (s 9), who may apply and when (s 10), legitimacy (s 11) and children born before 1 October 2014 (s 15).
+--
+-- Edition: 2020 Revised Edition, as deposited at ../../registers/source-bundle/SCARTA2013.txt. The deposit says the revised edition
+-- incorporates amendments up to 1 December 2021, and is marked "Informal Consolidation -- version in force from 15/10/2024"; the
+-- latest amendment annotated is Act 25 of 2021 wef 15/10/2024 (s 10(2), (3)).
+--
+-- WHY THIS ACT. Chosen for its everyday relevance: it decides who a child's legal parents are after IVF, donor eggs or sperm,
+-- artificial insemination, or a clinic mix-up. SCOPED to almost the whole Act. Not encoded: the definitions of egg, sperm and
+-- embryo beyond their use, void marriages (s 2(2)), the effect clauses of s 3(3) beyond exclusivity, the welfare factors of
+-- s 10(7) (listed, not weighed), ancillary orders (s 10(8)), regulations and rules (ss 13, 14). Dates are abstract day numbers.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Status of Children (Assisted Reproduction Technology) Act 2013 -- parenthood`
+
+GIVEN `first day` IS A NUMBER, `second day` IS A NUMBER
+GIVETH A NUMBER
+`the later of` MEANS
+    IF `first day` AT LEAST `second day` THEN `first day` ELSE `second day`
+
+§§ `3 -- where the Act applies`
+
+-- s 3(1): "applies only to a child born on or after 1 October 2014 as a result of a fertilisation procedure" and where (a) "the
+-- child is born in Singapore"; or (b) any of the gestational mother, her husband or de facto partner at the time of the procedure,
+-- the person whose sperm or egg was used, or the person who consented "is domiciled in Singapore on the date of the birth".
+-- (2): "a citizen of Singapore is presumed to be domiciled in Singapore, unless the contrary is proved".
+-- (4): not to a child "treated by virtue of adoption as not being the child of any person other than the adopter or adopters".
+-- (5): "does not by itself affect the citizenship of a child".
+GIVEN `is a citizen` IS A BOOLEAN, `contrary proved` IS A BOOLEAN, `domiciled on the evidence` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the person is taken as domiciled in Singapore` IF
+    IF `is a citizen` THEN NOT `contrary proved` ELSE `domiciled on the evidence`
+
+GIVEN `born on or after 1 October 2014` IS A BOOLEAN, `born in Singapore` IS A BOOLEAN,
+      `a listed person is domiciled in Singapore at the birth` IS A BOOLEAN, `adopted away` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Act applies to the child` IF
+        `born on or after 1 October 2014`
+    AND (`born in Singapore` OR `a listed person is domiciled in Singapore at the birth`)
+    AND (NOT `adopted away`)
+
+§§ `4 -- consent must be in writing`
+
+-- s 4(a): a person "is deemed not to have validly given or withdrawn" consent to a fertilisation procedure, "whether done in
+-- Singapore or elsewhere", unless it is "in writing". (b): consent "is presumed" valid, "unless the contrary is proved", for a
+-- procedure done in Singapore if in writing and "in accordance with any law ... or any requirement or procedure imposed by the
+-- responsible authority".
+GIVEN `in writing` IS A BOOLEAN, `procedure in Singapore` IS A BOOLEAN, `followed the legal requirements` IS A BOOLEAN,
+      `contrary proved` IS A BOOLEAN, `otherwise proved valid` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `consent is treated as validly given` IF
+        `in writing`
+    AND (IF `procedure in Singapore` AND `followed the legal requirements`
+         THEN NOT `contrary proved`
+         ELSE `otherwise proved valid`)
+
+§§ `5, 6 and 9 -- the mother`
+
+-- s 5: "Except as determined under this Act", the woman whose egg was used "is not to be treated as the mother", and the man whose
+-- sperm was used "is not to be treated as the father". s 6: "Subject to section 9", the woman who "carried a child as a result of
+-- a fertilisation procedure" is the mother "from the date of the birth", wherever the procedure was done. s 9(2): after a mix-up,
+-- parenthood is decided under s 6 or 7 "as if" it "had not occurred" -- the carrier is still the mother -- but s 9(3) lets the court
+-- declare someone else "to be the parent".
+DECLARE Woman IS ONE OF
+    `the woman who carried the child with her own egg`
+    `the woman who carried the child with a donor egg`
+    `an egg donor`
+    `an intended mother whose embryo another woman carried`
+    `the intended mother whose egg was swapped in a clinic mix-up`
+
+GIVEN `the woman` IS A Woman, `the court declared her the parent under section 9(3)` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the woman is treated as the mother` IF
+        `the court declared her the parent under section 9(3)`
+    OR  CONSIDER `the woman`
+        WHEN `the woman who carried the child with her own egg` THEN TRUE
+        WHEN `the woman who carried the child with a donor egg` THEN TRUE
+        OTHERWISE FALSE
+
+§§ `7 -- the husband or later-married partner treated as father`
+
+-- s 7(1): mother married at the procedure "or was married at any time thereafter", child "brought about with the sperm of her
+-- husband" -- father from the birth "or the date of the marriage, whichever is the later".
+-- (2): married at the procedure, not his sperm -- father from the birth "unless it is proved that he did not consent".
+-- (3): married, not his sperm, did not consent, "has nevertheless through a course of conduct accepted the child" knowing it was not
+-- his -- father "from the time he so accepted the child".
+-- (4), (5), (6): the same three cases for a "de facto partner" at the procedure whom she married "at any time after" it, each from
+-- the later of the birth (or acceptance) and the marriage.
+-- s 2(1): a "de facto partner" is "the man (if any) with whom the gestational mother is living in a relationship as if he were her
+-- spouse". Inference: by s 4(a) a man who gave no written consent is deemed not to have consented, so this encoding reads "proved
+-- that he did not consent" as "gave no written consent".
+DECLARE Man HAS
+    `married to her at the procedure` IS A BOOLEAN
+    `her de facto partner at the procedure` IS A BOOLEAN
+    `her de facto partner only after the procedure` IS A BOOLEAN
+    `married to her after the procedure` IS A BOOLEAN
+    `his sperm was used` IS A BOOLEAN
+    `gave written consent` IS A BOOLEAN
+    `accepted the child knowing it was not his` IS A BOOLEAN
+    `marriage day` IS A NUMBER
+    `acceptance day` IS A NUMBER
+
+GIVEN `the man` IS A Man
+GIVETH A BOOLEAN
+DECIDE `the man is treated as father under section 7` IF
+        ((`the man`'s `married to her at the procedure` OR `the man`'s `married to her after the procedure`) AND `the man`'s `his sperm was used`)
+    OR  (`the man`'s `married to her at the procedure` AND (NOT `the man`'s `his sperm was used`)
+         AND (`the man`'s `gave written consent` OR `the man`'s `accepted the child knowing it was not his`))
+    OR  (`the man`'s `her de facto partner at the procedure` AND `the man`'s `married to her after the procedure`
+         AND (NOT `the man`'s `his sperm was used`)
+         AND (`the man`'s `gave written consent` OR `the man`'s `accepted the child knowing it was not his`))
+
+GIVEN `the man` IS A Man, `the birth day` IS A NUMBER
+GIVETH A NUMBER
+`the day from which he is father under section 7` MEANS
+    IF `the man`'s `his sperm was used`
+        THEN `the later of` `the birth day` (`the man`'s `marriage day`)
+        ELSE IF `the man`'s `married to her at the procedure`
+                 THEN (IF `the man`'s `gave written consent` THEN `the birth day` ELSE `the man`'s `acceptance day`)
+                 ELSE IF `the man`'s `gave written consent`
+                          THEN `the later of` `the birth day` (`the man`'s `marriage day`)
+                          ELSE `the later of` (`the man`'s `acceptance day`) (`the man`'s `marriage day`)
+
+-- s 7(7): if two or more men qualify, "only the man who is to be treated as the father of the child earlier in time" is the
+-- father. The section says nothing of two men who qualify from the same day.
+DECLARE Outcome IS ONE OF
+    `the first man`
+    `the second man`
+    `neither man under section 7`
+    `a tie the section does not resolve`
+
+GIVEN `man one` IS A Man, `man two` IS A Man, `the birth day` IS A NUMBER
+GIVETH AN Outcome
+`the father under section 7` MEANS
+    IF `the man is treated as father under section 7` `man one` AND `the man is treated as father under section 7` `man two`
+        THEN (IF `the day from which he is father under section 7` `man one` `the birth day` LESS THAN `the day from which he is father under section 7` `man two` `the birth day`
+                  THEN `the first man`
+                  ELSE IF `the day from which he is father under section 7` `man two` `the birth day` LESS THAN `the day from which he is father under section 7` `man one` `the birth day`
+                           THEN `the second man`
+                           ELSE `a tie the section does not resolve`)
+        ELSE IF `the man is treated as father under section 7` `man one`
+                 THEN `the first man`
+                 ELSE IF `the man is treated as father under section 7` `man two`
+                          THEN `the second man`
+                          ELSE `neither man under section 7`
+
+§§ `8 -- the court may declare an unmarried partner the father`
+
+-- s 8(1): applies only if no man is father under s 7, s 9 does not apply, and there is no prior s 8 order.
+-- (2): a de facto partner at the procedure, or "at any time after", whom she never married after it, whose sperm was used.
+-- (3): a de facto partner at the procedure, never married, not his sperm, who "had consented".
+-- (4): the same, who did not consent but accepted the child through a course of conduct.
+-- In each case "the court may, in its discretion and upon an application made under section 10, declare" him the father.
+-- (5): he "is not to be treated as the father of a child unless the court so declares".
+GIVEN `the man` IS A Man, `some man is father under section 7` IS A BOOLEAN, `section 9 applies` IS A BOOLEAN,
+      `a prior section 8 order exists` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may declare him father under section 8` IF
+        (NOT `some man is father under section 7`) AND (NOT `section 9 applies`) AND (NOT `a prior section 8 order exists`)
+    AND (NOT `the man`'s `married to her after the procedure`)
+    AND (    ((`the man`'s `her de facto partner at the procedure` OR `the man`'s `her de facto partner only after the procedure`) AND `the man`'s `his sperm was used`)
+         OR  (`the man`'s `her de facto partner at the procedure` AND (NOT `the man`'s `his sperm was used`)
+              AND (`the man`'s `gave written consent` OR `the man`'s `accepted the child knowing it was not his`)))
+
+§§ `9 -- mix-ups: the two-year limit`
+
+-- s 9(1): applies where "by reason of any mistake, negligence, recklessness or fraud" the egg, sperm or embryo used "was not the
+-- egg, sperm or embryo intended to be used". (3): the court may declare a person "other than the person to be treated as the
+-- parent" under s 9(2) to be the parent; (4): not "unless an application has been made under section 10 within 2 years after the
+-- date on which the applicant discovered" the mix-up. Inference: this encoding counts whole months and treats 24 as within.
+GIVEN `there was a mix-up` IS A BOOLEAN, `already the parent under section 9(2)` IS A BOOLEAN, `months since discovery` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the court may declare the applicant a parent under section 9(3)` IF
+        `there was a mix-up` AND (NOT `already the parent under section 9(2)`) AND `months since discovery` AT MOST 24
+
+§§ `10 -- who may apply, and when`
+
+-- s 10(2): the child; a person claiming to be a parent under s 6, 7 or 9(2); a person seeking a declaration under s 8 or 9(3); "any
+-- other person, with the permission of the court". (3): permission only if "a sufficient interest in the parenthood of the child".
+-- (4): "may only be made after the birth of the child". (5): "whether or not there is a dispute".
+DECLARE Applicant IS ONE OF
+    `the child`
+    `a person claiming parenthood under section 6, 7 or 9(2)`
+    `a person seeking a declaration under section 8 or 9(3)`
+    `any other person`
+
+GIVEN `the applicant` IS AN Applicant, `the child has been born` IS A BOOLEAN, `has sufficient interest and permission` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the applicant may apply to determine parenthood` IF
+        `the child has been born`
+    AND CONSIDER `the applicant`
+        WHEN `any other person` THEN `has sufficient interest and permission`
+        OTHERWISE TRUE
+
+§§ `11 -- legitimacy`
+
+-- s 11: if the legal mother "is married to" the legal father, the child is legitimate and a child of the marriage from "whichever of
+-- the following dates occurs last": (a) the birth; (b) the marriage; (c) the date the child "is accepted as a child of the marriage"
+-- by the father. Only the date is encoded; it assumes the two legal parents are married to each other.
+
+GIVEN `the birth day` IS A NUMBER, `the wedding day` IS A NUMBER, `the day accepted` IS A NUMBER
+GIVETH A NUMBER
+`the day from which the child is legitimate` MEANS
+    `the later of` (`the later of` `the birth day` `the wedding day`) `the day accepted`
+
+§§ `15 -- children born before 1 October 2014`
+
+-- s 15(1): "Despite section 3", for a child born before 1 October 2014 "the court may, in its discretion, make an order declaring the
+-- parenthood". (2): the court "may additionally have regard to" ss 6 to 9 "but is not bound to apply those provisions". (3): "No
+-- application ... may be made after the expiry of a period of 2 years after the date on which the applicant discovered" that the
+-- child was brought about in s 9(1) circumstances. Inference: where there was no mix-up the subsection sets no limit.
+GIVEN `born before 1 October 2014` IS A BOOLEAN, `there was a mix-up` IS A BOOLEAN, `months since discovery` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the court may hear a section 15 application` IF
+        `born before 1 October 2014`
+    AND (IF `there was a mix-up` THEN `months since discovery` AT MOST 24 ELSE TRUE)
