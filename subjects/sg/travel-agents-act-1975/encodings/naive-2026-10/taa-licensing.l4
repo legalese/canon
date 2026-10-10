@@ -1,0 +1,270 @@
+IMPORT prelude
+
+-- Travel Agents Act 1975 (Singapore) -- who carries on the business of a travel agent and must be licensed (ss 2, 3, 4, 6), the
+-- Board's licensing decisions and their safeguards (ss 7(4), 9, 10, 11), the offences an operator meets and their maxima (ss 6, 10,
+-- 13, 14, 19, 21, 28(2)), the Public Prosecutor's consent (s 25), composition (s 27) and the search of an arrested woman (s 16(4)).
+--
+-- Edition: 2020 Revised Edition, as deposited at ../../registers/source-bundle/TAA1975.txt. The deposit says the edition
+-- "incorporates all amendments up to and including 1 December 2021 and comes into operation on 31 December 2021"; the latest
+-- amending Act in its legislative history and annotated in the body is Act 47 of 2017 (Travel Agents (Amendment) Act 2017,
+-- commenced 1 January 2018). SSO marked it "Current version as at 01 Oct 2026" on retrieval.
+--
+-- WHY THIS ACT. Chosen for its everyday-life relevance: anyone in Singapore who books a flight, a package holiday or a guided tour
+-- through an agent deals with a business this Act licenses, and anyone who sells such things -- including a small online
+-- operator -- needs to know whether it must hold a licence. SCOPED to what an operator or customer most often meets. Not encoded:
+-- the refusal and suspension GROUNDS themselves (s 7(3), s 9(1)) except the financial-penalty ground, licence conditions (s 7A),
+-- limits on licence numbers (s 8), publication (s 12), the enforcement powers (ss 15-18, other than s 16(4)), corporate and
+-- partnership liability (ss 20, 20A), service of documents (s 22), recovery of penalties (s 27A), and everything in the
+-- regulations (fees, minimum financial requirements, the code of conduct), none of which was retrieved.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Travel Agents Act 1975 -- licensing`
+
+§§ `2, 3 and 4 -- the business of a travel agent`
+
+-- s 4(1): a person carries on the business of a travel agent if it carries on, "or advertises or holds himself, herself or itself
+-- out as carrying on", a business of (a) supplying a right to travel on any conveyance; (b) supplying a right to travel AND a right
+-- of accommodation at a hotel or similar premises; (c) "purchasing, or reserving, for resale" a right to travel; (d) supplying any
+-- tour "(whether or not organised by the person)"; (e) any other prescribed activity.
+-- s 2: "tour" means a visit in which the participants are, "for any part of the visit, accompanied by an individual who is not a
+-- participant of the visit". "supply" includes "the sale, or arranging for the provision" of the travel product.
+-- s 4(2): an employee or agent of a licensee does not carry on the business by reason only of doing so in that capacity.
+-- s 4(3): not a travel agent if (a) for (1)(a), only for a conveyance the person owns; (b) for (1)(a) or (c), only for a regular
+-- route bus service, a community or courtesy bus service travelling only within Singapore, or a train service; (c) for (1)(b),
+-- only for a conveyance the person owns AND a hotel the person owns or operates; (d) for (1)(d), only for a place the person owns
+-- or operates.
+-- s 3(5): "This Act does not apply to the Government, or a body established by or under a public Act for a public purpose."
+-- Prescribed activities under s 4(1)(e) are not modelled (none retrieved).
+DECLARE Activity IS ONE OF
+    `selling rights to travel`
+    `selling travel with accommodation`
+    `buying travel for resale`
+    `supplying tours`
+    `some other activity`
+
+DECLARE Operator HAS
+    `activity` IS AN Activity
+    `is an employee or agent of a licensee` IS A BOOLEAN
+    `owns the conveyance` IS A BOOLEAN
+    `owns or operates the hotel` IS A BOOLEAN
+    `the conveyance is a scheduled bus or train` IS A BOOLEAN
+    `owns or operates the place visited` IS A BOOLEAN
+    `participants are accompanied by a non-participant` IS A BOOLEAN
+    `is the Government or a public body` IS A BOOLEAN
+    `holds a licence` IS A BOOLEAN
+
+GIVEN `o` IS AN Operator
+GIVETH A BOOLEAN
+DECIDE `the visit is a tour` IF `o`'s `participants are accompanied by a non-participant`
+
+GIVEN `o` IS AN Operator
+GIVETH A BOOLEAN
+DECIDE `carries on the business of a travel agent` IF
+        (NOT `o`'s `is an employee or agent of a licensee`)
+    AND CONSIDER `o`'s `activity`
+        WHEN `selling rights to travel` THEN (NOT `o`'s `owns the conveyance`) AND (NOT `o`'s `the conveyance is a scheduled bus or train`)
+        WHEN `selling travel with accommodation` THEN NOT (`o`'s `owns the conveyance` AND `o`'s `owns or operates the hotel`)
+        WHEN `buying travel for resale` THEN NOT `o`'s `the conveyance is a scheduled bus or train`
+        WHEN `supplying tours` THEN `the visit is a tour` `o` AND (NOT `o`'s `owns or operates the place visited`)
+        OTHERWISE FALSE
+
+GIVEN `o` IS AN Operator
+GIVETH A BOOLEAN
+DECIDE `needs a licence` IF
+    `carries on the business of a travel agent` `o` AND (NOT `o`'s `is the Government or a public body`)
+
+-- s 6(1): "A person must not carry on the business of a travel agent unless the person is authorised to do so by a licence."
+-- (2): fine up to $25,000 or imprisonment up to 2 years or both.
+GIVEN `o` IS AN Operator
+GIVETH A BOOLEAN
+DECIDE `trading without a licence is an offence` IF
+    `needs a licence` `o` AND (NOT `o`'s `holds a licence`)
+
+-- s 3(1): executors, administrators, trustees, liquidators, official receivers, trustees in bankruptcy, donees of lasting powers
+-- and deputies need no licence to perform their functions. (2): but one in whom "the management of the business of any travel
+-- agent" is vested may not carry it on "after the expiration of 3 months" from vesting unless licensed. (4): the Official Assignee
+-- acting as trustee in bankruptcy is not required to hold a licence. Days are counted from vesting; "3 months" is taken as a
+-- given number of days (an inference -- the Act does not convert months to days).
+GIVEN `days since management vested` IS A NUMBER, `three months in days` IS A NUMBER, `is the Official Assignee` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the office-holder now needs a licence` IF
+    (NOT `is the Official Assignee`) AND `days since management vested` GREATER THAN `three months in days`
+
+§§ `7(4), 9 and 10 -- suspension, revocation and financial penalties`
+
+-- s 7(4): "Before refusing an application to RENEW a licence", the Board must serve written notice and let the applicant submit
+-- reasons. Nothing in s 7 requires notice before refusing a FIRST application.
+GIVEN `is a renewal` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `notice is required before refusal` IF `is a renewal`
+
+-- s 9(1): suspension "for a period not exceeding 6 months (or a longer maximum period if prescribed in substitution)", or
+-- revocation, on the listed grounds. A prescribed longer maximum is a parameter (0 where none is prescribed).
+GIVEN `my helper a` IS A NUMBER, `my helper b` IS A NUMBER
+GIVETH A NUMBER
+`the higher of` MEANS IF `my helper a` GREATER THAN `my helper b` THEN `my helper a` ELSE `my helper b`
+
+GIVEN `my helper a` IS A NUMBER, `my helper b` IS A NUMBER
+GIVETH A NUMBER
+`the lower of` MEANS IF `my helper a` LESS THAN `my helper b` THEN `my helper a` ELSE `my helper b`
+
+GIVEN `months of suspension` IS A NUMBER, `prescribed maximum months` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the suspension is within the maximum` IF
+    `months of suspension` AT MOST `the higher of` 6 `prescribed maximum months`
+
+-- s 9(2): "where subsection (1)(c) applies" (the licensee is contravening or has contravened the Act, the regulations, a licence
+-- condition or a code of conduct), INSTEAD of suspending or revoking, the Board may require "a financial penalty of such amount
+-- not exceeding $2,000". (3): not for "any contravention that is prescribed to be an offence".
+DECLARE Ground IS ONE OF
+    `the licensee contravened the Act, regulations, a condition or the code`
+    `the licensee is not a suitable person`
+    `a dishonesty offence is believed committed`
+    `the application was untrue or misleading`
+    `the licensee has ceased business`
+    `the public interest`
+
+GIVEN `the ground` IS A Ground, `the contravention is a prescribed offence` IS A BOOLEAN, `penalty amount` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `a financial penalty may be imposed instead` IF
+        (NOT `the contravention is a prescribed offence`)
+    AND `penalty amount` AT MOST 2000
+    AND CONSIDER `the ground`
+        WHEN `the licensee contravened the Act, regulations, a condition or the code` THEN TRUE
+        OTHERWISE FALSE
+
+-- s 9(4): before suspending, revoking or imposing a penalty, the Board must serve written notice and allow reasons "within 14 days
+-- after the date that the Board serves the written notice". (5): not where the licensee "has died or is adjudged a bankrupt, or has
+-- been dissolved or wound up, or has otherwise ceased to exist".
+GIVEN `the licensee has died, gone bankrupt or ceased to exist` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Board must give notice first` IF NOT `the licensee has died, gone bankrupt or ceased to exist`
+
+GIVEN `notice served on day` IS A NUMBER
+GIVETH A NUMBER
+`the last day to submit reasons` MEANS `notice served on day` PLUS 14
+
+-- s 9(6): the decision "only takes effect as from the day immediately following" (a) if no appeal, the expiry of the s 11 appeal
+-- period; (b) if appealed, the withdrawal, the Minister's confirmation, or the Board's confirmation on reconsideration.
+-- s 11(1): appeal "within 14 days after notice of the decision is served". No extension by the Minister is modelled here.
+GIVEN `decision served on day` IS A NUMBER, `an appeal was made` IS A BOOLEAN, `appeal ended on day` IS A NUMBER
+GIVETH A NUMBER
+`the day the decision takes effect` MEANS
+    IF `an appeal was made`
+    THEN `appeal ended on day` PLUS 1
+    ELSE `decision served on day` PLUS 14 PLUS 1
+
+-- s 9(7): while a suspension is in force the licensee "must not ... carry on the business of a travel agent other than doing what
+-- is necessary to fulfil the licensee's obligations under a contract to supply a travel product, entered into before the date the
+-- order of suspension takes effect".
+GIVEN `fulfilling an existing contract` IS A BOOLEAN, `contract made on day` IS A NUMBER, `suspension effective on day` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `a suspended licensee may do it` IF
+    `fulfilling an existing contract` AND `contract made on day` LESS THAN `suspension effective on day`
+
+-- s 10(1), (2): once the Board has served a s 9(4) notice it may require the licensee to tell (a) customers with unperformed
+-- contracts "within 2 working days after the date the Board serves the written notice"; and (b) anyone who communicates about a
+-- travel product in the specified period "within 2 working days after the date of the first communication ... or before entering
+-- into a contract with the person ..., whichever is earlier". (3): fine up to $4,000.
+GIVEN `working days after the notice` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `an existing customer was told in time` IF `working days after the notice` AT MOST 2
+
+GIVEN `working days after first contact` IS A NUMBER, `contracted before telling` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `an enquirer was told in time` IF
+    (NOT `contracted before telling`) AND `working days after first contact` AT MOST 2
+
+§§ `11 -- appeal to the Minister`
+
+-- s 11(1): appeal "within 14 days after notice of the decision is served on the person or any extended period that the Minister
+-- may allow". (7): "The Minister's decision on appeal is final." (11): "appealable decision" means refusing to grant or renew a
+-- licence (s 7(2)), varying, revoking or imposing a condition (s 7A(3)), suspending or revoking (s 9(1)), or a financial penalty
+-- (s 9(2)). An order under s 10 to inform customers, a limit on licence numbers (s 8) and publication (s 12) are not listed.
+DECLARE Decision IS ONE OF
+    `refusing to grant a licence`
+    `refusing to renew a licence`
+    `imposing a new licence condition`
+    `suspending a licence`
+    `revoking a licence`
+    `imposing a financial penalty`
+    `requiring customers to be informed`
+    `limiting the number of licences`
+    `publishing information about the licensee`
+
+GIVEN `the decision` IS A Decision
+GIVETH A BOOLEAN
+DECIDE `the decision is appealable` IF
+    CONSIDER `the decision`
+    WHEN `requiring customers to be informed` THEN FALSE
+    WHEN `limiting the number of licences` THEN FALSE
+    WHEN `publishing information about the licensee` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `days after notice of decision` IS A NUMBER, `extended period allowed in days` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the appeal is in time` IF
+    `days after notice of decision` AT MOST `the higher of` 14 `extended period allowed in days`
+
+§§ `6, 10, 13, 14, 19, 21, 25, 27 and 28(2) -- offences`
+
+-- s 6(2) unlicensed trading: $25,000 or 2 years or both. s 10(3) failing to inform customers: $4,000. s 13 false or misleading
+-- statements to the Board: $10,000. s 14 fraudulent conversion of customers' money, fraudulent omission to account, false accounts:
+-- "imprisonment for a term not exceeding 3 years" -- no fine is provided. s 19 obstruction: $4,000 or 12 months or both. s 21(2)
+-- unlawful disclosure: $4,000 or 6 months or both. s 28(2): regulations may provide up to $10,000 or 12 months or both (and $1,000 a
+-- day for a continuing offence, not modelled).
+DECLARE Offence IS ONE OF
+    `trading without a licence`
+    `failing to inform customers`
+    `false information to the Board`
+    `misusing customers' money`
+    `obstructing an officer`
+    `unlawful disclosure`
+    `breaching the regulations at the maximum`
+
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+`the maximum fine` MEANS
+    CONSIDER `the offence`
+    WHEN `trading without a licence` THEN 25000
+    WHEN `failing to inform customers` THEN 4000
+    WHEN `false information to the Board` THEN 10000
+    WHEN `misusing customers' money` THEN 0
+    WHEN `obstructing an officer` THEN 4000
+    WHEN `unlawful disclosure` THEN 4000
+    WHEN `breaching the regulations at the maximum` THEN 10000
+
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+`the maximum imprisonment in months` MEANS
+    CONSIDER `the offence`
+    WHEN `trading without a licence` THEN 24
+    WHEN `failing to inform customers` THEN 0
+    WHEN `false information to the Board` THEN 0
+    WHEN `misusing customers' money` THEN 36
+    WHEN `obstructing an officer` THEN 12
+    WHEN `unlawful disclosure` THEN 6
+    WHEN `breaching the regulations at the maximum` THEN 12
+
+-- s 25: "No court is to try an offence under section 14 except with the consent of the Public Prosecutor."
+GIVEN `the offence` IS AN Offence
+GIVETH A BOOLEAN
+DECIDE `trial needs the Public Prosecutor's consent` IF
+    CONSIDER `the offence`
+    WHEN `misusing customers' money` THEN TRUE
+    OTHERWISE FALSE
+
+-- s 27(1): the Board may compound a PRESCRIBED compoundable offence for "a sum not exceeding the lower of" (a) "one half of the
+-- amount of the maximum fine that is prescribed for the offence" and (b) $5,000. Which offences are prescribed compoundable was
+-- not retrieved; this computes only the ceiling from a maximum fine.
+GIVEN `maximum fine for the offence` IS A NUMBER
+GIVETH A NUMBER
+`the composition ceiling` MEANS `the lower of` (`maximum fine for the offence` DIVIDED BY 2) 5000
+
+-- s 16(4): "A woman must not be searched except by a woman."
+GIVEN `the person searched is a woman` IS A BOOLEAN, `the searcher is a woman` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the search of the arrested person is permitted` IF
+    (NOT `the person searched is a woman`) OR `the searcher is a woman`
