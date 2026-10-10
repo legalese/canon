@@ -1,0 +1,359 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `bsma-types`
+IMPORT `bsma-meetings`
+IMPORT `bsma-developer`
+IMPORT `bsma-corporation`
+IMPORT `bsma-council`
+IMPORT `bsma-boards-offences`
+IMPORT `bsma-goal`
+
+-- Building (Strata Management) Act 2004 — TESTS.
+-- Expected values are worked from ../source/BSMA2004.txt, not from the code.
+
+§ `Tests`
+
+§§ `Helpers`
+
+-- a motion voted at a meeting, without the 12-week count
+GIVEN duly IS A BOOLEAN, days IS A NUMBER, poll IS A BOOLEAN, `for` IS A NUMBER, against IS A NUMBER, `sv for` IS A NUMBER, `sv against` IS A NUMBER
+GIVETH A Motion
+`motion` duly days poll `for` against `sv for` `sv against` MEANS
+    Motion OF duly, days, poll, `for`, against, `sv for`, `sv against`, 0, 0, 0, FALSE
+
+-- a motion counted 12 weeks on (ss 2(6)-(7))
+GIVEN weeks IS A NUMBER, `sv for` IS A NUMBER, aggregate IS A NUMBER, everyone IS A BOOLEAN
+GIVETH A Motion
+`motion counted after` weeks `weeks, share value for` `sv for` `of` aggregate `, all in writing:` everyone MEANS
+    Motion OF TRUE, 22, TRUE, 0, 0, 0, 0, weeks, `sv for`, aggregate, everyone
+
+GIVEN age IS A NUMBER, cap IS A `Candidate capacity`, arrears IS A BOOLEAN, bankrupt IS A BOOLEAN, declared IS A BOOLEAN, office IS A `Council office`, other IS A BOOLEAN, terms IS A NUMBER
+GIVETH A Candidate
+`candidate` age cap arrears bankrupt declared office other terms MEANS
+    Candidate OF age, cap, arrears, FALSE, FALSE, bankrupt, declared, other, office, terms
+
+`a plain proprietor` MEANS `candidate` 40 `a subsidiary proprietor` FALSE FALSE FALSE `an ordinary member` FALSE 0
+
+GIVEN due IS A DATE, paid IS A MAYBE DATE, demand IS A MAYBE DATE
+GIVETH A `Contribution facts`
+`contribution due` due `, paid` paid `, demand` demand MEANS `Contribution facts` OF due, paid, demand, FALSE
+
+GIVEN made IS A DATE, months IS A NUMBER, requested IS A MAYBE DATE, decided IS A BOOLEAN, renewed IS A BOOLEAN, `as at` IS A DATE
+GIVETH AN `Interim order facts`
+`interim order` made months requested decided renewed `as at` MEANS `Interim order facts` OF made, months, requested, decided, renewed, `as at`
+
+§§ `Goal 1 — the six resolutions (s 2)`
+
+-- s 2(2): ordinary — 15th day, more for than against
+#ASSERT `the motion is decided as` `an ordinary resolution` `, on` (`motion` TRUE 15 FALSE 10 9 0 0)
+#ASSERT NOT `the motion is decided as` `an ordinary resolution` `, on` (`motion` TRUE 14 FALSE 10 9 0 0)
+#ASSERT NOT `the motion is decided as` `an ordinary resolution` `, on` (`motion` TRUE 15 FALSE 10 10 0 0)
+-- on a poll, share value decides: 10 heads for, 2 against, but 500 to 600 by value
+#ASSERT NOT `the motion is decided as` `an ordinary resolution` `, on` (`motion` TRUE 15 TRUE 10 2 500 600)
+-- s 2(3): special — 22nd day, at least 75% of the value of valid votes cast
+#ASSERT `the motion is decided as` `a special resolution` `, on` (`motion` TRUE 22 TRUE 3 1 750 250)
+#ASSERT NOT `the motion is decided as` `a special resolution` `, on` (`motion` TRUE 22 TRUE 3 1 749 251)
+#ASSERT NOT `the motion is decided as` `a special resolution` `, on` (`motion` TRUE 21 TRUE 3 1 750 250)
+-- s 2(5): 90%
+#ASSERT `the motion is decided as` `a 90% resolution` `, on` (`motion` TRUE 22 TRUE 9 1 900 100)
+#ASSERT NOT `the motion is decided as` `a 90% resolution` `, on` (`motion` TRUE 22 TRUE 9 1 899 101)
+-- s 2(4): unanimous — every valid vote cast
+#ASSERT `the motion is decided as` `a unanimous resolution` `, on` (`motion` TRUE 22 FALSE 5 0 0 0)
+#ASSERT NOT `the motion is decided as` `a unanimous resolution` `, on` (`motion` TRUE 22 FALSE 5 1 0 0)
+#ASSERT NOT `the motion is decided as` `a unanimous resolution` `, on` (`motion` FALSE 22 FALSE 5 0 0 0)
+-- s 2(6): comprehensive — 90% of ALL proprietors' share value, 12 weeks on
+#ASSERT `the motion is decided as` `a comprehensive resolution` `, on` (`motion counted after` 12 `weeks, share value for` 900 `of` 1000 `, all in writing:` FALSE)
+#ASSERT NOT `the motion is decided as` `a comprehensive resolution` `, on` (`motion counted after` 11 `weeks, share value for` 900 `of` 1000 `, all in writing:` FALSE)
+#ASSERT NOT `the motion is decided as` `a comprehensive resolution` `, on` (`motion counted after` 12 `weeks, share value for` 899 `of` 1000 `, all in writing:` FALSE)
+-- s 2(7): by consensus — every proprietor in writing, 12 weeks on
+#ASSERT `the motion is decided as` `a resolution by consensus` `, on` (`motion counted after` 12 `weeks, share value for` 0 `of` 1000 `, all in writing:` TRUE)
+#ASSERT NOT `the motion is decided as` `a resolution by consensus` `, on` (`motion counted after` 12 `weeks, share value for` 999 `of` 1000 `, all in writing:` FALSE)
+-- First Schedule para 9(4): a proposed lot's vote is worth 25%, fraction ignored
+#ASSERT `the value of the vote, share value` 10 `, a proposed lot:` TRUE EQUALS 2
+#ASSERT `the value of the vote, share value` 10 `, a proposed lot:` FALSE EQUALS 10
+
+§§ `Goal 1 — which resolution each matter needs`
+
+#ASSERT `the resolution needed for` (`an exclusive use by-law` 1) EQUALS `an ordinary resolution`
+#ASSERT `the resolution needed for` (`an exclusive use by-law` 2) EQUALS `a special resolution`
+#ASSERT `the resolution needed for` (`an exclusive use by-law` 3) EQUALS `a special resolution`
+#ASSERT `the resolution needed for` (`an exclusive use by-law` 3.5) EQUALS `a 90% resolution`
+#ASSERT `the resolution needed for` (`leasing common property` 4) EQUALS `a 90% resolution`
+#ASSERT `the resolution needed for` (`leasing common property for a fixed EV charger` 10) EQUALS `an ordinary resolution`
+#ASSERT `the resolution needed for` `granting, accepting or surrendering an easement or restrictive covenant (s 35)` EQUALS `a unanimous resolution`
+#ASSERT `the resolution needed for` `making, amending or repealing by-laws (s 32(3))` EQUALS `a special resolution`
+#ASSERT `the resolution needed for` `a by-law for parking lots with fixed EV chargers (s 32(3A))` EQUALS `an ordinary resolution`
+#ASSERT `the resolution needed for` `authorising an improvement increasing floor area (s 37(2))` EQUALS `a 90% resolution`
+#ASSERT `the resolution needed for` `terminating the strata scheme (s 84(1))` EQUALS `a resolution by consensus`
+#ASSERT `the resolution needed for` `levying contributions by a different formula after a change of use (s 41(6))` EQUALS `a comprehensive resolution`
+#ASSERT `the resolution needed for` `not insuring the building under a damage policy (s 70(1))` EQUALS `a resolution by consensus`
+#ASSERT `the resolution needed for` `transferring common property (s 34(1)(a))` EQUALS `a 90% resolution`
+#ASSERT `the matter is validly decided:` `granting, accepting or surrendering an easement or restrictive covenant (s 35)` `, on` (`motion` TRUE 22 FALSE 5 0 0 0)
+-- a bare majority at 15 days is not a special resolution for a by-law
+#ASSERT NOT `the matter is validly decided:` `making, amending or repealing by-laws (s 32(3))` `, on` (`motion` TRUE 15 FALSE 6 5 0 0)
+#ASSERT `the resolution needed to amend or revoke a` `a special resolution` EQUALS `a special resolution`
+
+§§ `Goal 1 — the meeting (First Schedule; ss 26, 27)`
+
+#ASSERT `the proprietor's vote counts, on the roll:` TRUE `, paid up:` TRUE `, unanimous or consensus:` FALSE `, first mortgagee votes:` FALSE `, s 65(8) notice outstanding:` FALSE
+#ASSERT NOT `the proprietor's vote counts, on the roll:` TRUE `, paid up:` FALSE `, unanimous or consensus:` FALSE `, first mortgagee votes:` FALSE `, s 65(8) notice outstanding:` FALSE
+#ASSERT `the proprietor's vote counts, on the roll:` TRUE `, paid up:` FALSE `, unanimous or consensus:` TRUE `, first mortgagee votes:` FALSE `, s 65(8) notice outstanding:` FALSE
+#ASSERT NOT `the proprietor's vote counts, on the roll:` TRUE `, paid up:` TRUE `, unanimous or consensus:` FALSE `, first mortgagee votes:` TRUE `, s 65(8) notice outstanding:` FALSE
+#ASSERT NOT `the proprietor's vote counts, on the roll:` TRUE `, paid up:` TRUE `, unanimous or consensus:` FALSE `, first mortgagee votes:` FALSE `, s 65(8) notice outstanding:` TRUE
+-- para 3: 30% quorum; after half an hour, 2 in person — not on requisition
+#ASSERT `the general meeting may transact business, share value present` 300 `, aggregate` 1000 `, minutes waited` 0 `, in person` 1 `, on requisition:` FALSE
+#ASSERT `the general meeting may transact business, share value present` 299 `, aggregate` 1000 `, minutes waited` 30 `, in person` 2 `, on requisition:` FALSE
+#ASSERT NOT `the general meeting may transact business, share value present` 299 `, aggregate` 1000 `, minutes waited` 30 `, in person` 2 `, on requisition:` TRUE
+#ASSERT NOT `the general meeting may transact business, share value present` 299 `, aggregate` 1000 `, minutes waited` 29 `, in person` 2 `, on requisition:` FALSE
+-- para 1A(1): 14 days
+#ASSERT `the general meeting had enough notice, given` (YMD 2026 1 1) `, meeting` (YMD 2026 1 15) `, short notice directed:` FALSE
+#ASSERT NOT `the general meeting had enough notice, given` (YMD 2026 1 1) `, meeting` (YMD 2026 1 14) `, short notice directed:` FALSE
+#ASSERT `the general meeting had enough notice, given` (YMD 2026 1 1) `, meeting` (YMD 2026 1 5) `, short notice directed:` TRUE
+-- para 17(5): 2 lots or 2% rounded down, whichever is higher
+#ASSERT `the most lots one proxy may represent, lots in the development` 50 EQUALS 2
+#ASSERT `the most lots one proxy may represent, lots in the development` 199 EQUALS 3
+#ASSERT `the most lots one proxy may represent, lots in the development` 200 EQUALS 4
+#ASSERT `lodged in time, hours before the meeting` 48
+#ASSERT NOT `lodged in time, hours before the meeting` 47
+-- para 14(1): 20% of share value or 25% of proprietors; para 15(1)(b): 25% of share value before the first AGM
+#ASSERT `the requisition obliges a meeting, share value` 200 `of` 1000 `, proprietors` 1 `of` 100 `, before the first AGM:` FALSE
+#ASSERT NOT `the requisition obliges a meeting, share value` 199 `of` 1000 `, proprietors` 24 `of` 100 `, before the first AGM:` FALSE
+#ASSERT `the requisition obliges a meeting, share value` 199 `of` 1000 `, proprietors` 25 `of` 100 `, before the first AGM:` FALSE
+#ASSERT NOT `the requisition obliges a meeting, share value` 200 `of` 1000 `, proprietors` 50 `of` 100 `, before the first AGM:` TRUE
+#ASSERT `the requisition obliges a meeting, share value` 250 `of` 1000 `, proprietors` 1 `of` 100 `, before the first AGM:` TRUE
+#ASSERT `a requisitioned meeting must be held by, received` (YMD 2026 3 1) EQUALS YMD 2026 4 12
+#ASSERT `requisitionists may convene from, deposited` (YMD 2026 3 1) EQUALS YMD 2026 3 16
+#ASSERT `a requisitionists' meeting must be held by, deposited` (YMD 2026 3 1) EQUALS YMD 2026 6 1
+#ASSERT `a general meeting may be held wholly online, access:` TRUE `, physical place resolved:` FALSE
+#ASSERT NOT `a general meeting may be held wholly online, access:` FALSE `, physical place resolved:` FALSE
+-- initial period: 12 months or the first AGM, whichever first
+#ASSERT `the initial period ends, constituted` (YMD 2026 2 1) `, first AGM` NOTHING EQUALS YMD 2027 2 1
+#ASSERT `the initial period ends, constituted` (YMD 2026 2 1) `, first AGM` (JUST (YMD 2026 10 1)) EQUALS YMD 2026 10 1
+-- s 26(1): one month after the initial period, or 8 weeks after a 10% request
+#ASSERT `the first AGM must be held by, constituted` (YMD 2026 2 1) `, request received` NOTHING `, lots requesting` 0 `of` 100 EQUALS YMD 2027 3 1
+#ASSERT `the first AGM must be held by, constituted` (YMD 2026 2 1) `, request received` (JUST (YMD 2026 6 1)) `, lots requesting` 10 `of` 100 EQUALS YMD 2026 7 27
+#ASSERT `the first AGM must be held by, constituted` (YMD 2026 2 1) `, request received` (JUST (YMD 2026 6 1)) `, lots requesting` 9 `of` 100 EQUALS YMD 2027 3 1
+-- s 26(4)(b): the budget starts on the first day of the next month
+#ASSERT `the first budget starts on, first AGM` (YMD 2026 3 15) EQUALS YMD 2026 4 1
+#ASSERT `the first budget starts on, first AGM` (YMD 2026 12 31) EQUALS YMD 2027 1 1
+-- s 27(1): each calendar year, and within 15 months
+#ASSERT `the next AGM is in time, last` (YMD 2026 3 1) `, next` (YMD 2027 5 31)
+#ASSERT NOT `the next AGM is in time, last` (YMD 2025 11 15) `, next` (YMD 2027 1 15)
+#ASSERT NOT `the next AGM is in time, last` (YMD 2026 1 1) `, next` (YMD 2027 4 2)
+#ASSERT `the chairperson and secretary commit an offence, AGM in time:` FALSE `, due diligence:` FALSE
+#ASSERT NOT `the chairperson and secretary commit an offence, AGM in time:` FALSE `, due diligence:` TRUE
+
+§§ `Goal 2 — the owner developer`
+
+`for sale` MEANS `Development facts` OF TRUE, 10, 2, 2, (JUST (YMD 2026 3 1)), (JUST (YMD 2026 5 1)), TRUE
+#ASSERT NOT `the developer may make the disposal` (Disposal OF FALSE, FALSE, FALSE) `in` `for sale`
+#ASSERT `the developer may make the disposal` (Disposal OF TRUE, FALSE, FALSE) `in` `for sale`
+#ASSERT `the developer may make the disposal` (Disposal OF FALSE, TRUE, FALSE) `in` `for sale`
+#ASSERT `the developer may make the disposal` (Disposal OF FALSE, FALSE, TRUE) `in` `for sale`
+#ASSERT `the Commissioner must decide on the schedule by, filed` (YMD 2026 3 1) EQUALS YMD 2026 4 12
+#ASSERT `a sold lot's share value may be altered, consent:` TRUE `, minor survey adjustment:` FALSE `, after a s 34 resolution:` FALSE `, redevelopment:` FALSE `, amended schedule accepted:` TRUE
+#ASSERT NOT `a sold lot's share value may be altered, consent:` TRUE `, minor survey adjustment:` FALSE `, after a s 34 resolution:` FALSE `, redevelopment:` FALSE `, amended schedule accepted:` FALSE
+#ASSERT NOT `a sold lot's share value may be altered, consent:` FALSE `, minor survey adjustment:` FALSE `, after a s 34 resolution:` FALSE `, redevelopment:` FALSE `, amended schedule accepted:` TRUE
+-- s 15: more than 4 lots; 2 or more sold to more than one purchaser
+#ASSERT `Division 1 applies to` `for sale`
+#ASSERT NOT `Division 1 applies to` (`Development facts` OF TRUE, 4, 2, 2, NOTHING, NOTHING, FALSE)
+#ASSERT NOT `Division 1 applies to` (`Development facts` OF TRUE, 10, 2, 1, NOTHING, NOTHING, FALSE)
+-- s 16(1): the later of the first TOP and the Division applying
+#ASSERT `the duty to establish maintenance funds arises on, for` `for sale` EQUALS YMD 2026 5 1
+#ASSERT REFUSED `the duty to establish maintenance funds arises on, for` (`Development facts` OF TRUE, 10, 2, 2, NOTHING, NOTHING, FALSE)
+#ASSERT `the maintenance funds the developer must establish for` `for sale` EQUALS 2
+-- s 17(2): the later of 4 weeks after the first TOP and the fund's establishment
+#ASSERT `sold lots' charges are payable into the fund from, first TOP` (YMD 2026 3 1) `, fund established` (YMD 2026 3 10) EQUALS YMD 2026 3 29
+#ASSERT `sold lots' charges are payable into the fund from, first TOP` (YMD 2026 3 1) `, fund established` (YMD 2026 4 1) EQUALS YMD 2026 4 1
+#ASSERT `the maintenance fund accounts must be audited by, MC constituted` (YMD 2026 1 15) EQUALS YMD 2026 5 15
+#ASSERT `audited accounts must be filed and opened for inspection by, audited` (YMD 2026 6 1) EQUALS YMD 2026 6 29
+#ASSERT `the register of purchasers must be sent by, requested` (YMD 2026 6 1) EQUALS YMD 2026 6 15
+#ASSERT NOT `the collection is lawful, approved:` FALSE `, by a management corporation:` FALSE
+#ASSERT `the Commissioner may appoint a managing agent from, notice served` (YMD 2026 3 1) EQUALS YMD 2026 3 15
+#ASSERT `the last day to appeal the Commissioner's appointment, gazetted` (YMD 2026 3 1) EQUALS YMD 2026 3 22
+#ASSERT `the Commissioner's managing agent must report by, appointed` (YMD 2026 3 1) EQUALS YMD 2026 5 1
+#ASSERT `unpaid maintenance charges become a debt after, demand served` (YMD 2026 3 1) EQUALS YMD 2026 3 29
+#ASSERT `the developer must hand over control by, first AGM` (YMD 2026 3 1) EQUALS YMD 2026 3 8
+#ASSERT `the developer must keep financial records until, control transferred` (YMD 2026 3 8) EQUALS YMD 2028 3 8
+#ASSERT `the developer must deliver the s 26(4) documents by, first AGM` (YMD 2026 3 1) EQUALS YMD 2026 3 15
+#ASSERT `the accounts period is recent enough, ending` (YMD 2025 11 1) `, meeting` (YMD 2026 3 1)
+#ASSERT NOT `the accounts period is recent enough, ending` (YMD 2025 10 31) `, meeting` (YMD 2026 3 1)
+-- s 49: special resolution for (b); the Commissioner's order for the rest
+#ASSERT `the management corporation may do` `(b) altering or building on common property` `, in the initial period:` TRUE `, special resolution:` TRUE `, Commissioner's order:` FALSE
+#ASSERT NOT `the management corporation may do` `(f) borrowing or giving securities` `, in the initial period:` TRUE `, special resolution:` TRUE `, Commissioner's order:` FALSE
+#ASSERT `the management corporation may do` `(f) borrowing or giving securities` `, in the initial period:` FALSE `, special resolution:` FALSE `, Commissioner's order:` FALSE
+#ASSERT `the developer is liable for the initial-period contravention:` TRUE `, without knowledge:` FALSE `, not in a position:` TRUE `, due diligence:` TRUE
+#ASSERT NOT `the developer is liable for the initial-period contravention:` TRUE `, without knowledge:` TRUE `, not in a position:` TRUE `, due diligence:` FALSE
+
+§§ `Goal 3 — contributions and charges`
+
+#ASSERT `the lot's contribution, levy` 120000 `, share value` 10 `of` 1000 `, proposed lot without TOP:` FALSE EQUALS 1200
+#ASSERT `the lot's contribution, levy` 120000 `, share value` 10 `of` 1000 `, proposed lot without TOP:` TRUE EQUALS 300
+#ASSERT `the s 81 share, A` 10 `, B` 200 `, C` 40000 EQUALS 2000
+-- s 40(6)(b): interest from the expiry of 30 days after due
+#ASSERT `interest runs on the contribution from` (`contribution due` (YMD 2026 3 1) `, paid` NOTHING `, demand` NOTHING) EQUALS JUST (YMD 2026 4 1)
+#ASSERT `interest runs on the contribution from` (`contribution due` (YMD 2026 3 1) `, paid` (JUST (YMD 2026 3 31)) `, demand` NOTHING) EQUALS NOTHING
+#ASSERT `interest runs on the contribution from` (`Contribution facts` OF (YMD 2026 3 1), NOTHING, NOTHING, TRUE) EQUALS NOTHING
+#ASSERT `a demand may be served from, for` (`contribution due` (YMD 2026 3 1) `, paid` NOTHING `, demand` NOTHING) EQUALS YMD 2026 4 1
+-- s 40(10): unpaid "before the 14th day after" service of the demand
+#ASSERT NOT `the proprietor commits the s 40(10) offence on` (`contribution due` (YMD 2026 3 1) `, paid` NOTHING `, demand` (JUST (YMD 2026 4 1))) `, as at` (YMD 2026 4 14)
+#ASSERT `the proprietor commits the s 40(10) offence on` (`contribution due` (YMD 2026 3 1) `, paid` NOTHING `, demand` (JUST (YMD 2026 4 1))) `, as at` (YMD 2026 4 15)
+#ASSERT NOT `the proprietor commits the s 40(10) offence on` (`contribution due` (YMD 2026 3 1) `, paid` (JUST (YMD 2026 4 14)) `, demand` (JUST (YMD 2026 4 1))) `, as at` (YMD 2026 5 1)
+#ASSERT NOT `the proprietor commits the s 40(10) offence on` (`contribution due` (YMD 2026 3 1) `, paid` NOTHING `, demand` NOTHING) `, as at` (YMD 2026 12 1)
+-- s 43(1): a charge once unpaid on the expiry of 30 days after the demand
+#ASSERT NOT `the corporation may lodge a charge for` (`contribution due` (YMD 2026 3 1) `, paid` NOTHING `, demand` (JUST (YMD 2026 4 1))) `, as at` (YMD 2026 5 1)
+#ASSERT `the corporation may lodge a charge for` (`contribution due` (YMD 2026 3 1) `, paid` NOTHING `, demand` (JUST (YMD 2026 4 1))) `, as at` (YMD 2026 5 2)
+#ASSERT NOT `the corporation may lodge a charge for` (`contribution due` (YMD 2026 3 1) `, paid` (JUST (YMD 2026 4 20)) `, demand` (JUST (YMD 2026 4 1))) `, as at` (YMD 2026 6 1)
+-- s 43(3): special resolution, newspaper notice, 6 weeks unpaid, no action pending
+#ASSERT NOT `the corporation may sell the charged lot,` (`Sale facts` OF TRUE, (JUST (YMD 2026 6 1)), FALSE, FALSE, (YMD 2026 7 13))
+#ASSERT `the corporation may sell the charged lot,` (`Sale facts` OF TRUE, (JUST (YMD 2026 6 1)), FALSE, FALSE, (YMD 2026 7 14))
+#ASSERT NOT `the corporation may sell the charged lot,` (`Sale facts` OF TRUE, (JUST (YMD 2026 6 1)), FALSE, TRUE, (YMD 2026 8 1))
+#ASSERT NOT `the corporation may sell the charged lot,` (`Sale facts` OF FALSE, (JUST (YMD 2026 6 1)), FALSE, FALSE, (YMD 2026 8 1))
+#ASSERT `a mortgagee in possession is jointly liable, periodic:` TRUE `, levy served on it:` FALSE
+#ASSERT NOT `a mortgagee in possession is jointly liable, periodic:` FALSE `, levy served on it:` FALSE
+#ASSERT NOT `an additional contribution may be levied, ground:` TRUE `, reasonable:` TRUE `, heard:` FALSE
+
+§§ `Goal 3 — funds, records, by-laws, the lot`
+
+#ASSERT `the fund may pay for, sinking fund:` TRUE `, purpose` `a s 39(2) liability`
+#ASSERT NOT `the fund may pay for, sinking fund:` FALSE `, purpose` `a s 39(2) liability`
+#ASSERT NOT `the fund may pay for, sinking fund:` TRUE `, purpose` `a social, cultural, educational or sports activity for all`
+#ASSERT NOT `the fund may pay for, sinking fund:` FALSE `, purpose` `installing or removing a fixed EV charger`
+#ASSERT NOT `the fund may pay for, sinking fund:` FALSE `, purpose` `a collective sale, other than its general meeting`
+#ASSERT `the fund may pay for, sinking fund:` TRUE `, purpose` `the corporation's powers and duties`
+#ASSERT `the council must appoint an auditor by, AGM concluded` (YMD 2026 3 1) EQUALS YMD 2026 5 30
+#ASSERT `the inspection must take place by, application received` (YMD 2026 3 1) EQUALS YMD 2026 3 22
+#ASSERT `an acquisition notice must be displayed by, received` (YMD 2026 3 1) EQUALS YMD 2026 3 8
+#ASSERT `records and keys must be delivered by, notice served` (YMD 2026 3 1) EQUALS YMD 2026 3 8
+#ASSERT `records must be kept until, financial year ended` (YMD 2026 3 31) EQUALS YMD 2031 3 31
+#ASSERT `notice must be given by, decided` (YMD 2026 3 1) EQUALS YMD 2026 3 8
+#ASSERT `the seller must notify the transfer by, registered` (YMD 2026 3 1) EQUALS YMD 2026 3 11
+#ASSERT `the by-law has effect, lodged:` TRUE `, restricts dealings or easements:` FALSE `, inconsistent with prescribed by-laws:` FALSE
+#ASSERT NOT `the by-law has effect, lodged:` FALSE `, restricts dealings or easements:` FALSE `, inconsistent with prescribed by-laws:` FALSE
+#ASSERT NOT `the by-law has effect, lodged:` TRUE `, restricts dealings or easements:` TRUE `, inconsistent with prescribed by-laws:` FALSE
+#ASSERT `the by-law must be lodged by, resolution passed` (YMD 2026 3 1) EQUALS YMD 2026 4 15
+#ASSERT `the proprietor bears the maintenance duties of the exclusive-use area, kept by the corporation:` FALSE
+#ASSERT `the exterior window is part of the lot, movable:` TRUE `, plan says otherwise:` FALSE
+#ASSERT NOT `the exterior window is part of the lot, movable:` FALSE `, plan says otherwise:` FALSE
+#ASSERT NOT `the proprietor may make the improvement` `increasing floor area` `, 90% resolution:` FALSE `, corporation's authority:` TRUE
+#ASSERT `the proprietor may make the improvement` `increasing floor area` `, 90% resolution:` TRUE `, corporation's authority:` FALSE
+#ASSERT `the proprietor may make the improvement` `safety equipment under s 37A` `, 90% resolution:` FALSE `, corporation's authority:` FALSE
+#ASSERT NOT `the corporation may authorise an appearance improvement, in keeping:` TRUE `, structurally sound:` FALSE
+#ASSERT `the corporation may enter the lot, emergency:` TRUE `, reasonable time:` FALSE `, notice:` FALSE
+#ASSERT NOT `the corporation may enter the lot, emergency:` FALSE `, reasonable time:` TRUE `, notice:` FALSE
+#ASSERT `the corporation must rectify the defect, defect:` TRUE `, due to a s 63(a) breach:` FALSE
+#ASSERT NOT `the corporation must rectify the defect, defect:` TRUE `, due to a s 63(a) breach:` TRUE
+#ASSERT NOT `the corporation must keep a damage policy, consensus otherwise:` TRUE
+#ASSERT `the mortgaged-lot insurer pays, insured` 500000 `, loss` 300000 `, to discharge` 400000 EQUALS 300000
+
+§§ `Goal 4 — the council`
+
+#ASSERT `the council's size, proprietors` 3 `, seats decided` 9 EQUALS 3
+#ASSERT `the council's size, proprietors` 50 `, seats decided` 16 EQUALS 14
+#ASSERT `the council's size, proprietors` 50 `, seats decided` 9 EQUALS 9
+-- s 53(12): the lower of the proportional number and 49%, fractions ignored
+#ASSERT `the threshold number, share value` 300 `of` 1000 `, seats` 9 EQUALS 2
+#ASSERT `the threshold number, share value` 600 `of` 1000 `, seats` 9 EQUALS 4
+#ASSERT `eligible for election to the council` `a plain proprietor`
+#ASSERT NOT `eligible for election to the council` (`candidate` 20 `a subsidiary proprietor` FALSE FALSE FALSE `an ordinary member` FALSE 0)
+#ASSERT NOT `eligible for election to the council` (`candidate` 40 `none of these` FALSE FALSE FALSE `an ordinary member` FALSE 0)
+#ASSERT NOT `eligible for election to the council` (`candidate` 40 `a subsidiary proprietor` TRUE FALSE FALSE `an ordinary member` FALSE 0)
+#ASSERT NOT `eligible for election to the council` (`candidate` 40 `a subsidiary proprietor` FALSE TRUE FALSE `an ordinary member` FALSE 0)
+#ASSERT `eligible for election to the council` (`candidate` 40 `a subsidiary proprietor` FALSE TRUE TRUE `an ordinary member` FALSE 0)
+#ASSERT NOT `eligible for election to the council` (`candidate` 40 `a subsidiary proprietor` FALSE FALSE FALSE `treasurer` FALSE 2)
+#ASSERT `eligible for election to the council` (`candidate` 40 `a subsidiary proprietor` FALSE FALSE FALSE `treasurer` FALSE 1)
+#ASSERT NOT `eligible for election to the council` (`candidate` 40 `a subsidiary proprietor` FALSE FALSE FALSE `chairperson` TRUE 0)
+#ASSERT `eligible for election to the council` (`candidate` 21 `an immediate family member nominated by a subsidiary proprietor` FALSE FALSE FALSE `an ordinary member` FALSE 0)
+#ASSERT `may stand for a reserved council office, proprietors` 4 `, classes of use` 2 `, of that class:` TRUE
+#ASSERT NOT `may stand for a reserved council office, proprietors` 3 `, classes of use` 2 `, of that class:` TRUE
+#ASSERT `the council member's office is vacated by` (`(c) missed council meetings without permission` 3)
+#ASSERT NOT `the council member's office is vacated by` (`(c) missed council meetings without permission` 2)
+#ASSERT NOT `the council member's office is vacated by` (`(j) convicted of fraud or dishonesty` FALSE)
+#ASSERT `the council member's office is vacated by` `(h) died`
+#ASSERT NOT `the council member's office is vacated by` `none`
+#ASSERT `the corporation may remove the council member, months in arrears` 4 `, ordinary resolution:` FALSE
+#ASSERT NOT `the corporation may remove the council member, months in arrears` 3 `, ordinary resolution:` FALSE
+#ASSERT NOT `an officer's resignation is effective, meeting to replace convened:` FALSE
+#ASSERT `the proprietor is personally liable for the debt, months without officers` 7 `, knows:` TRUE `, debt after 6 months:` TRUE
+#ASSERT NOT `the proprietor is personally liable for the debt, months without officers` 6 `, knows:` TRUE `, debt after 6 months:` TRUE
+#ASSERT `the council meeting is quorate, members` 9 `, present` 5
+#ASSERT NOT `the council meeting is quorate, members` 9 `, present` 4
+#ASSERT `the council meeting is quorate, members` 1 `, present` 1
+#ASSERT NOT `the council meeting is quorate, members` 2 `, present` 1
+-- s 58(3): "not less than one-third of the lots" opposing
+#ASSERT `the council's decision binds the corporation, restricted matter:` FALSE `, lots opposing` 33 `of` 100
+#ASSERT NOT `the council's decision binds the corporation, restricted matter:` FALSE `, lots opposing` 10 `of` 30
+#ASSERT NOT `the council's decision binds the corporation, restricted matter:` TRUE `, lots opposing` 0 `of` 100
+#ASSERT `minutes must be displayed by, general meeting:` TRUE `, meeting` (YMD 2026 3 1) EQUALS YMD 2026 4 15
+#ASSERT `minutes must be displayed by, general meeting:` FALSE `, meeting` (YMD 2026 3 1) EQUALS YMD 2026 3 15
+#ASSERT `the written council resolution is valid, notice:` TRUE `, served:` TRUE `, approving` 5 `of` 9 `, reserved:` FALSE
+#ASSERT NOT `the written council resolution is valid, notice:` TRUE `, served:` TRUE `, approving` 4 `of` 9 `, reserved:` FALSE
+#ASSERT `the member must declare and abstain, interest:` TRUE `, only non-material company interest:` FALSE
+#ASSERT NOT `the member must declare and abstain, interest:` TRUE `, only non-material company interest:` TRUE
+
+§§ `Goal 5 — Strata Titles Boards`
+
+#ASSERT `the Board is properly constituted, presided:` TRUE `, members` 2
+#ASSERT NOT `the Board is properly constituted, presided:` TRUE `, members` 3
+#ASSERT `mediation is within its limit, days` 3
+#ASSERT NOT `mediation is within its limit, days` 4
+#ASSERT `the Board's final order is due by, constituted` (YMD 2026 3 1) `, extended to` NOTHING EQUALS YMD 2026 9 1
+#ASSERT `the Board's final order is due by, constituted` (YMD 2026 3 1) `, extended to` (JUST (YMD 2026 12 1)) EQUALS YMD 2026 12 1
+#ASSERT `the corporation is deemed to have refused, applied` (YMD 2026 3 1) `, acted or answered:` FALSE `, as at` (YMD 2026 5 1)
+#ASSERT NOT `the corporation is deemed to have refused, applied` (YMD 2026 3 1) `, acted or answered:` FALSE `, as at` (YMD 2026 4 30)
+#ASSERT `a Board may order on a power exercised by` `an ordinary resolution`
+#ASSERT NOT `a Board may order on a power exercised by` `a special resolution`
+#ASSERT `the defect is taken to be in the unit above, dampness:` TRUE `, proof to the contrary:` FALSE
+#ASSERT NOT `the Board may refuse to invalidate, no prejudice:` TRUE `, same result:` FALSE
+#ASSERT `the last day to apply to nullify a resolution, meeting` (YMD 2026 3 1) EQUALS YMD 2026 3 22
+#ASSERT NOT `the Board may dismiss the application on` (LIST)
+#ASSERT `the Board may dismiss the application on` (LIST `(d) the applicant proprietor has unpaid contributions`)
+-- s 118(5): at most 3 months; renewal pending; renewed to 6 months
+#ASSERT `the interim order is in force,` (`interim order` (YMD 2026 3 1) 3 NOTHING FALSE FALSE (YMD 2026 5 31))
+#ASSERT NOT `the interim order is in force,` (`interim order` (YMD 2026 3 1) 3 NOTHING FALSE FALSE (YMD 2026 6 1))
+#ASSERT NOT `the interim order is in force,` (`interim order` (YMD 2026 3 1) 5 NOTHING FALSE FALSE (YMD 2026 7 15))
+#ASSERT `the interim order is in force,` (`interim order` (YMD 2026 3 1) 3 NOTHING TRUE TRUE (YMD 2026 8 31))
+#ASSERT NOT `the interim order is in force,` (`interim order` (YMD 2026 3 1) 3 NOTHING TRUE TRUE (YMD 2026 9 1))
+#ASSERT `the interim order is in force,` (`interim order` (YMD 2026 3 1) 3 (JUST (YMD 2026 5 15)) FALSE FALSE (YMD 2026 6 15))
+#ASSERT NOT `the interim order is in force,` (`interim order` (YMD 2026 3 1) 3 (JUST (YMD 2026 6 2)) FALSE FALSE (YMD 2026 6 15))
+#ASSERT `the Board's order takes effect on, applicant` (YMD 2026 3 1) `, corporation` (YMD 2026 3 4) `, respondent` (YMD 2026 3 2) EQUALS YMD 2026 3 4
+
+§§ `Goal 6 — offences, composition, service`
+
+#ASSERT (`the maximum penalty for` `s 120(2) contravening a Board order`) EQUALS `BSMA penalty` OF 10000, 60, 0, TRUE
+#ASSERT (`the maximum penalty for` `s 40(10) not paying contributions 14 days after a demand`) EQUALS `BSMA penalty` OF 10000, 0, 100, FALSE
+#ASSERT (`the maximum penalty for` `s 96(2) disobeying a Board summons`) EQUALS `BSMA penalty` OF 5000, 24, 0, TRUE
+#ASSERT (`the maximum penalty for` `s 17(10) inspection, register of purchasers or copy duties`)'s `fine` EQUALS 2000
+-- s 128: no penalty stated
+#ASSERT (`the maximum penalty for` `s 18(2) collecting maintenance charges without approval`) EQUALS `BSMA penalty` OF 10000, 0, 0, FALSE
+#ASSERT (`the maximum penalty for` `a lift or escalator regulation (s 136(4)(a))`)'s `fine` EQUALS 20000
+-- s 131(1): the lower of half the maximum fine and $5,000
+#ASSERT `the most that may be collected to compound` `s 120(2) contravening a Board order` `, prescribed:` TRUE EQUALS JUST 5000
+#ASSERT `the most that may be collected to compound` `s 17(10) inspection, register of purchasers or copy duties` `, prescribed:` TRUE EQUALS JUST 1000
+#ASSERT `the most that may be collected to compound` `s 120(2) contravening a Board order` `, prescribed:` FALSE EQUALS NOTHING
+#ASSERT NOT `an excusable offence is committed, conduct:` TRUE `, excuse or due diligence:` TRUE
+-- s 129(5)(b): posted Friday 2 Oct 2026 — registered post on the 3rd working day, ordinary on the 4th
+#ASSERT `the notice is served on, mode` `by prepaid registered post` `, sent` (YMD 2026 10 2) `, public holidays` EMPTY EQUALS YMD 2026 10 7
+#ASSERT `the notice is served on, mode` `by ordinary post` `, sent` (YMD 2026 10 2) `, public holidays` EMPTY EQUALS YMD 2026 10 8
+#ASSERT `the notice is served on, mode` `by prepaid registered post` `, sent` (YMD 2026 10 2) `, public holidays` (LIST (YMD 2026 10 6)) EQUALS YMD 2026 10 8
+#ASSERT `the notice is served on, mode` `by delivery to, or affixing on, the front door of the lot` `, sent` (YMD 2026 10 2) `, public holidays` EMPTY EQUALS YMD 2026 10 2
+#ASSERT `an emailed notice to a proprietor is served on, also posted:` TRUE `, post date` (YMD 2026 10 7) `, email date` (YMD 2026 10 2) EQUALS JUST (YMD 2026 10 2)
+#ASSERT `an emailed notice to a proprietor is served on, also posted:` FALSE `, post date` (YMD 2026 10 7) `, email date` (YMD 2026 10 2) EQUALS NOTHING
+
+§§ `The top-level goal`
+
+-- a by-law voted through by a 3-to-1 share value on a poll at 22 days; a
+-- candidate in arrears; a contribution due 1 Mar 2026, demanded 1 Apr, unpaid
+`case A` MEANS `the strata position for` (`Strata case` OF `making, amending or repealing by-laws (s 32(3))`, (`motion` TRUE 22 TRUE 3 1 750 250), (JUST (`candidate` 40 `a subsidiary proprietor` TRUE FALSE FALSE `an ordinary member` FALSE 0)), (JUST (`contribution due` (YMD 2026 3 1) `, paid` NOTHING `, demand` (JUST (YMD 2026 4 1)))), (YMD 2026 5 2))
+#ASSERT `case A`'s `the resolution the matter needs` EQUALS `a special resolution`
+#ASSERT `case A`'s `the matter is validly decided`
+#ASSERT NOT `case A`'s `a Board may order on the matter`
+#ASSERT `case A`'s `the candidate is eligible for the council` EQUALS JUST FALSE
+#ASSERT `case A`'s `interest runs on the contribution from` EQUALS JUST (YMD 2026 4 1)
+#ASSERT `case A`'s `the proprietor has committed the s 40(10) offence`
+#ASSERT `case A`'s `a charge may be lodged on the lot`
+-- the same motion cannot terminate the scheme
+`case B` MEANS `the strata position for` (`Strata case` OF `terminating the strata scheme (s 84(1))`, (`motion` TRUE 22 TRUE 3 1 750 250), NOTHING, NOTHING, (YMD 2026 5 2))
+#ASSERT NOT `case B`'s `the matter is validly decided`
+#ASSERT `case B`'s `the candidate is eligible for the council` EQUALS NOTHING
+#ASSERT NOT `case B`'s `a charge may be lodged on the lot`
