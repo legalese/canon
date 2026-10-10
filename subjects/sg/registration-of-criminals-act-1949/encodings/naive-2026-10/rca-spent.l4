@@ -1,0 +1,237 @@
+IMPORT prelude
+
+-- Registration of Criminals Act 1949 (Singapore) -- when a criminal record becomes spent (ss 7A, 7B, 7C, 7D, 7DA, Third Schedule),
+-- what a spent record lets the individual say (s 7E), whose consent is needed to take identifying information or body samples
+-- (s 8 "appropriate consent"), the refusal offences (ss 16, 27) and removal of records at death or age 100 (s 33).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/RCA1949.txt, with amendments
+-- to S 608/2026 (in force 15 September 2026) shown.
+--
+-- WHY THIS ACT. Cited by 19 of the 527 Singapore Acts deposited in this repository. SCOPED to the provisions an ordinary person
+-- with a conviction, or a person asked for fingerprints or a body sample, actually meets. Not encoded: the Registrar and the
+-- register itself (ss 3-5), the powers to take identifying information and body samples (ss 9-15, 17-26) beyond the consent rule,
+-- the court's inferences from refusal (s 28), the databases (ss 29-32), removal on acquittal or non-involvement and the appeal to a
+-- Reviewing Tribunal (ss 34-46), foreign agencies and evidence (ss 47-51), the First Schedule list of registrable crimes, and
+-- the Youth Court route of s 7DA(2) beyond a flag.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Registration of Criminals Act 1949 -- spent records`
+
+-- A handful of offences, to show the Third Schedule test. The first five are listed in the Third Schedule (Part 1, Penal Code ss
+-- 147, 304, 354, 363; Part 2, Misuse of Drugs Act 1973 s 5). Theft and cheating do not appear in the deposited Third Schedule.
+DECLARE Offence IS ONE OF
+    `rioting`
+    `culpable homicide not amounting to murder`
+    `outraging of modesty`
+    `kidnapping`
+    `trafficking in controlled drugs`
+    `theft`
+    `cheating`
+
+GIVEN `the offence` IS AN Offence
+GIVETH A BOOLEAN
+DECIDE `the offence is in the Third Schedule` IF
+    CONSIDER `the offence`
+    WHEN `theft` THEN FALSE
+    WHEN `cheating` THEN FALSE
+    OTHERWISE TRUE
+
+-- The facts about one conviction within Singapore for a registrable crime, and the individual's position since.
+DECLARE Conviction HAS
+    `offence` IS AN Offence
+    `months of imprisonment` IS A NUMBER
+    `months of imprisonment in default of a fine` IS A NUMBER
+    `fine in dollars` IS A NUMBER
+    `committed within 5 years of release from an approved institution or centre` IS A BOOLEAN
+    `detained under the Criminal Law (Temporary Provisions) Act before the conviction` IS A BOOLEAN
+    `has an unexecuted warrant of arrest` IS A BOOLEAN
+    `number of convictions in the register` IS A NUMBER
+    `had an earlier record spent or treated as spent` IS A BOOLEAN
+    `years since the relevant date` IS A NUMBER
+    `crime-free since the relevant date` IS A BOOLEAN
+    `community sentence passed and completed` IS A BOOLEAN
+    `Youth Court order ended or satisfied` IS A BOOLEAN
+    `Commissioner granted treatment as spent` IS A BOOLEAN
+
+§§ `7B(4) -- the relevant date`
+
+-- s 7B(4) "relevant date": (a) where the sentence "does not include a term of imprisonment and is no longer subject to appeal, the
+-- date on which the sentence was passed"; (b) where it "includes a term of imprisonment", "the date of his or her release from legal
+-- custody"; (c) where imprisonment "has been wholly remitted or commuted to or substituted with a sentence other than a term of
+-- imprisonment, the date of that remission, commutation or substituted sentence".
+-- s 7A(1): "term of imprisonment" does not include imprisonment "in default of payment of a fine or penalty". s 7A(2): home
+-- detention is legal custody. Dates are given as numbers (years); the "no longer subject to appeal" condition is not modelled.
+GIVEN `the sentence includes a term of imprisonment` IS A BOOLEAN,
+      `the imprisonment was wholly remitted or commuted` IS A BOOLEAN,
+      `date sentence passed` IS A NUMBER,
+      `date released from custody` IS A NUMBER,
+      `date of remission or commutation` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the relevant date` IS
+    IF `the sentence includes a term of imprisonment` AND `the imprisonment was wholly remitted or commuted`
+    THEN `date of remission or commutation`
+    ELSE IF `the sentence includes a term of imprisonment`
+         THEN `date released from custody`
+         ELSE `date sentence passed`
+
+§§ `7C and Third Schedule -- disqualification`
+
+-- s 7C: disqualified if (a) the offence is in the Third Schedule; (b) the sentence included "(i) a term of imprisonment exceeding
+-- 3 months; or (ii) a fine exceeding $2,000"; (c) the crime was committed "within 5 years after" release from an approved
+-- institution (Misuse of Drugs Act) or approved centre (Intoxicating Substances Act); (d) detained or under police supervision under
+-- s 30(1) Criminal Law (Temporary Provisions) Act "at any time before that conviction"; (e) "for the time being" an unexecuted
+-- warrant of arrest; (f) "records in the register of more than one conviction, whether or not those convictions arise from the same
+-- particular occasion"; or (g) "any previous record" already spent under s 7B or treated as spent under s 7D.
+-- Imprisonment in default of a fine is not a "term of imprisonment" (s 7A(1)), so it does not count under (b)(i).
+GIVEN `the conviction` IS A Conviction
+GIVETH A BOOLEAN
+DECIDE `the individual is disqualified` IF
+        `the offence is in the Third Schedule` (`the conviction`'s `offence`)
+    OR  `the conviction`'s `months of imprisonment` GREATER THAN 3
+    OR  `the conviction`'s `fine in dollars` GREATER THAN 2000
+    OR  `the conviction`'s `committed within 5 years of release from an approved institution or centre`
+    OR  `the conviction`'s `detained under the Criminal Law (Temporary Provisions) Act before the conviction`
+    OR  `the conviction`'s `has an unexecuted warrant of arrest`
+    OR  `the conviction`'s `number of convictions in the register` GREATER THAN 1
+    OR  `the conviction`'s `had an earlier record spent or treated as spent`
+
+§§ `7B -- spent by lapse of time`
+
+-- s 7B(2): the record "becomes spent on the expiration of the crime-free period applicable to the individual, unless he or she is
+-- disqualified under section 7C". (4) "crime-free period": "not less than 5 consecutive years starting from the relevant date",
+-- during which the individual was not convicted of a registrable crime, not unlawfully at large, not detained or supervised under
+-- the Criminal Law (Temporary Provisions) Act, and not under a drug supervision order or in an approved institution or centre.
+-- (3): a spent record "is not revived by the subsequent conviction of the individual for any offence after the crime-free period".
+GIVEN `the conviction` IS A Conviction
+GIVETH A BOOLEAN
+DECIDE `the record is spent by lapse of time` IF
+        (NOT `the individual is disqualified` `the conviction`)
+    AND `the conviction`'s `years since the relevant date` AT LEAST 5
+    AND `the conviction`'s `crime-free since the relevant date`
+
+§§ `7DA -- community sentences and Youth Court orders`
+
+-- s 7DA(1): "Despite any provision in this Part", a record of a conviction for which a community sentence is passed "becomes spent on
+-- the date on which the community sentence is completed". (2): a Youth Court order under s 49(1)(e)-(j) Children and Young Persons
+-- Act 1993 -- the record becomes spent at the end of the supervision or detention, the day after a community sentence is completed,
+-- or the day after the fine, damages or costs are paid.
+-- "Despite any provision in this Part" is read here as overriding s 7C disqualification.
+GIVEN `the conviction` IS A Conviction
+GIVETH A BOOLEAN
+DECIDE `the record is spent on completing the sentence` IF
+        `the conviction`'s `community sentence passed and completed`
+    OR  `the conviction`'s `Youth Court order ended or satisfied`
+
+§§ `7D -- treated as spent on application`
+
+-- s 7D(1): a disqualified individual "may, at any time, apply to the Commissioner of Police to have the record treated as spent".
+-- (3) the Commissioner may refuse or grant; (4) having regard to the severity of the conviction, the severity of the sentence and
+-- "the applicant's conduct subsequent to the conviction". The Commissioner's grant is taken as a fact.
+GIVEN `the conviction` IS A Conviction
+GIVETH A BOOLEAN
+DECIDE `the individual may apply to the Commissioner` IF
+    `the individual is disqualified` `the conviction`
+
+GIVEN `the conviction` IS A Conviction
+GIVETH A BOOLEAN
+DECIDE `the record is spent or treated as spent` IF
+        `the record is spent by lapse of time` `the conviction`
+    OR  `the record is spent on completing the sentence` `the conviction`
+    OR  (`the individual may apply to the Commissioner` `the conviction` AND `the conviction`'s `Commissioner granted treatment as spent`)
+
+§§ `7E -- what a spent record allows`
+
+-- s 7E(1)(a): the individual "is deemed to have no record of that conviction, and it is lawful for him or her to answer a question
+-- ... about his or her criminal record ... as if he or she had no record of that conviction". (1)(c): references in agreements
+-- and documents are read the same way.
+-- (2): (1)(a) and (c) do NOT apply to (a) an investigation into an offence; (b) a prosecution of the individual; (c) proceedings
+-- before a court, including giving evidence and sentencing; (d) an application for an office, profession or vocation "from which
+-- the individual may be disqualified under any written law by reason of his or her conviction".
+-- (3): "Despite subsection (2)", (1)(a) and (c) apply to all of those where the individual is a child or young person.
+DECLARE Setting IS ONE OF
+    `a private employer's job application`
+    `an insurance proposal form`
+    `a police investigation`
+    `a prosecution of the individual`
+    `giving evidence in court`
+    `an application to a profession the law bars convicted persons from`
+
+GIVEN `the setting` IS A Setting
+GIVETH A BOOLEAN
+DECIDE `the setting is excepted by s 7E(2)` IF
+    CONSIDER `the setting`
+    WHEN `a private employer's job application` THEN FALSE
+    WHEN `an insurance proposal form` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the conviction` IS A Conviction, `the setting` IS A Setting, `the individual is a child or young person` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the individual may answer as if there were no record` IF
+        `the record is spent or treated as spent` `the conviction`
+    AND (    (NOT `the setting is excepted by s 7E(2)` `the setting`)
+         OR  `the individual is a child or young person`)
+
+§ `Registration of Criminals Act 1949 -- identification`
+
+§§ `8 -- appropriate consent`
+
+-- s 8 "appropriate consent": (a) aged 16 or over -- "the written consent of the individual"; (b) under 16 but at least 14 -- "the
+-- written consent of both the individual and the individual's parent or guardian"; (c) under 14 -- "the written consent of the
+-- individual's parent or guardian".
+GIVEN `age` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the individual's own consent is needed` IF
+    `age` AT LEAST 14
+
+GIVEN `age` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `a parent's or guardian's consent is needed` IF
+    `age` LESS THAN 16
+
+§§ `16 and 27 -- refusal offences`
+
+-- s 16(2): an individual within s 9(1), 10(1)/(2), 11(1)/(3)/(5), 12(1) or 13(1) commits an offence if, "without reasonable excuse",
+-- he refuses to submit to finger impressions, photographs or a forensic procedure, refuses to provide identifying information, or
+-- otherwise hinders or obstructs. (3): the offence is committed "regardless of whether" the information was obtained by reasonable
+-- force under s 17. (4): fine up to $1,000, imprisonment up to one month, or both.
+GIVEN `within the classes of s 16(1)` IS A BOOLEAN, `refused or obstructed` IS A BOOLEAN, `had a reasonable excuse` IS A BOOLEAN,
+      `taken anyway by reasonable force` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `refusing identifying information is an offence` IF
+    `within the classes of s 16(1)` AND `refused or obstructed` AND (NOT `had a reasonable excuse`)
+
+-- s 27(3): where the individual is 14 or 15, "both the parent or guardian of the individual and the individual" who refuse
+-- appropriate consent for an invasive sample "each commits an offence". (4): under 14, the parent or guardian who refuses commits an
+-- offence. Neither subsection reaches a parent of an individual aged 16 or over.
+-- For an individual of 16 or over, s 27(2) makes refusing "to give a body sample" or "to allow a body sample to be taken" an
+-- offence. Treating refusal of consent to an invasive sample as such a refusal is an INFERENCE; that case is not asserted.
+GIVEN `age` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the individual commits an offence by refusing invasive-sample consent` IF
+    `age` AT LEAST 14
+
+GIVEN `age` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the parent commits an offence by refusing invasive-sample consent` IF
+    `age` LESS THAN 16
+
+-- s 16(4) and s 27(6): "a fine not exceeding $1,000 or ... imprisonment for a term not exceeding one month or ... both".
+GIVETH A NUMBER
+DECIDE `maximum fine for a refusal offence` IS 1000
+
+GIVETH A NUMBER
+DECIDE `maximum months of imprisonment for a refusal offence` IS 1
+
+§ `Registration of Criminals Act 1949 -- removal`
+
+§§ `33 -- death or age 100`
+
+-- s 33: the Registrar "must remove from the register, identification database and DNA database, all identifying information, records
+-- and DNA information" relating to an individual (a) "whose death has been registered" under the Registration of Births and Deaths
+-- Act 2021; or (b) who, the Registrar is satisfied, "has attained 100 years of age".
+GIVEN `death registered` IS A BOOLEAN, `age` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the Registrar must remove all records` IF
+    `death registered` OR `age` AT LEAST 100
