@@ -1,0 +1,199 @@
+IMPORT prelude
+
+-- Public Trustee Act 1915 (Singapore) -- which trusts the Public Trustee may and must not accept (s 4(4), (5)), small estates
+-- (s 6(1)), appointment as trustee and the beneficiaries' notice (s 7), preference of next of kin for letters of administration and
+-- transfer of an estate (s 8(2), (4)), the deadline for paying Common Fund income (s 12A(4)), the Investment Board's quorum (s 13(7)),
+-- the Consolidated Fund's liability (s 17), unclaimed funds (s 21) and the investigation and audit of trust accounts (s 22).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/PTA1915.txt. The deposit says
+-- it "incorporates all amendments up to and including 1 December 2021"; it also shows Act 25 of 2021 (wef 1 April 2022) and Act 31
+-- of 2022 (wef 1 November 2022) annotated.
+--
+-- WHY THIS ACT. Cited by 6 of the 527 Singapore Acts deposited in this repository. SCOPED to the rules with decision content that a
+-- trustee, beneficiary, executor or family member meets. Not encoded: appointment of officers (s 3), delegation (s 4(6)-(9)),
+-- litigation representative for minors (s 5), the Common Fund's investment machinery and the income formula (ss 10-12A(3), 15A,
+-- 16), fees (s 18, left to the Minister), the mode of action (s 20), and rules (s 23). The "prescribed amount" for a small estate
+-- (s 6(1)) is set by rules that were not retrieved, so it is a parameter here.
+--
+-- NAIVE ENCODING. Straight from the deposited text, following the other naive rows. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Public Trustee Act 1915 -- trusts`
+
+§§ `4(4), (5) -- accepting a trust`
+
+-- s 4(4): the Public Trustee "may decline, either absolutely or except on the prescribed conditions, to accept any trust, but must
+-- not decline to accept any trust on the ground only of the small value of the trust property".
+-- s 4(5): the Public Trustee "must not accept" (a) a trust involving "the management or carrying on of any business, except in the
+-- cases in which the Public Trustee is authorised to do so by rules"; (b) a trust under a deed of arrangement for the benefit of
+-- creditors; or (c) the administration of an estate the Public Trustee "knows or believes to be insolvent".
+GIVEN `involves carrying on a business` IS A BOOLEAN,
+      `authorised by rules to carry on the business` IS A BOOLEAN,
+      `under a deed of arrangement for creditors` IS A BOOLEAN,
+      `estate known or believed insolvent` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Public Trustee must not accept the trust` IF
+        (`involves carrying on a business` AND (NOT `authorised by rules to carry on the business`))
+    OR  `under a deed of arrangement for creditors`
+    OR  `estate known or believed insolvent`
+
+GIVEN `the only ground is the small value of the trust property` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `declining the trust is permitted` IF
+    NOT `the only ground is the small value of the trust property`
+
+§§ `6(1) -- small estates`
+
+-- s 6(1): a person who in the Public Trustee's opinion could apply to court for administration of an estate whose gross capital
+-- value is proved "to be less than the prescribed amount" may apply to the Public Trustee; where "the persons beneficially entitled
+-- are persons of small means, the Public Trustee must administer the estate, unless the Public Trustee sees good reason for refusing".
+GIVEN `applicant could apply to court for administration` IS A BOOLEAN,
+      `gross capital value` IS A NUMBER,
+      `prescribed amount` IS A NUMBER,
+      `beneficiaries are of small means` IS A BOOLEAN,
+      `Public Trustee sees good reason to refuse` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Public Trustee must administer the small estate` IF
+        `applicant could apply to court for administration`
+    AND `gross capital value` < `prescribed amount`
+    AND `beneficiaries are of small means`
+    AND (NOT `Public Trustee sees good reason to refuse`)
+
+§§ `7 -- appointment as trustee`
+
+-- s 7(4): "No appointment under subsection (1) has effect unless the Public Trustee has given his or her written consent". s 7(6):
+-- where no written consent was given before the appointment, the Public Trustee may, after knowing of it, "act as if the Public
+-- Trustee had given his or her written consent". (Treating acting under s 7(6) as giving the appointment effect is an inference.)
+-- s 7(8): not to be appointed as a new or additional trustee where the instrument "contains a direction to the contrary, unless the
+-- court orders otherwise". s 7(10): a court order prohibiting the appointment. s 7(11): "The failure to give the notice under
+-- subsection (9) does not invalidate the appointment."
+GIVEN `written consent given` IS A BOOLEAN,
+      `Public Trustee acts after learning of appointment` IS A BOOLEAN,
+      `new or additional trustee` IS A BOOLEAN,
+      `instrument directs to the contrary` IS A BOOLEAN,
+      `court orders otherwise` IS A BOOLEAN,
+      `court prohibits the appointment` IS A BOOLEAN,
+      `notice to beneficiaries given` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the appointment of the Public Trustee has effect` IF
+        (`written consent given` OR `Public Trustee acts after learning of appointment`)
+    AND (NOT (`new or additional trustee` AND `instrument directs to the contrary` AND (NOT `court orders otherwise`)))
+    AND (NOT `court prohibits the appointment`)
+
+-- s 7(10): a person given notice who "applies to the court within 21 days from the receipt of the notice" may obtain an order
+-- prohibiting the appointment.
+GIVEN `days since notice received` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the beneficiary is in time to apply to prohibit` IF
+    `days since notice received` <= 21
+
+§§ `8(2), (4) -- probate and transfer of an estate`
+
+-- s 8(2): "as between the Public Trustee and the widower, widow or next of kin of the deceased, the widower, widow or next of kin is to
+-- be preferred, unless good cause is shown to the contrary".
+GIVEN `good cause shown to the contrary` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the next of kin is preferred to the Public Trustee` IF
+    NOT `good cause shown to the contrary`
+
+-- s 8(4): an executor or administrator applying to transfer the estate to the Public Trustee "must, before making such an
+-- application, obtain the Public Trustee's written consent". s 8(3): even if he or she "has already acted in the administration ...
+-- in part".
+GIVEN `has probate or letters` IS A BOOLEAN, `obtained Public Trustee's written consent` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the executor may apply to transfer the estate` IF
+    `has probate or letters` AND `obtained Public Trustee's written consent`
+
+§§ `12A(4), 13(7) -- Common Fund income and the Investment Board`
+
+-- s 12A(4): income payable to an estate "after rounding down to the nearest cent, must be distributed to the estate no later than the
+-- 45th day after the last day of the basis period".
+GIVEN `days after the basis period ended` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the income is distributed in time` IF
+    `days after the basis period ended` <= 45
+
+-- s 13(7): "The chairperson and 2 other members of the Board form a quorum."
+GIVEN `chairperson present` IS A BOOLEAN, `other members present` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the Investment Board is quorate` IF
+    `chairperson present` AND `other members present` >= 2
+
+§§ `17 -- liability of the Consolidated Fund`
+
+-- s 17: the Consolidated Fund "shall be liable to make good all sums required to discharge any liability which the Public Trustee, if
+-- he or she were a private trustee, would be personally liable to discharge", EXCEPT where neither the Public Trustee nor any officer
+-- "has in any way contributed" AND none "could by the exercise of reasonable diligence have averted" it -- "and in that case, neither
+-- the Public Trustee nor the Consolidated Fund shall be subject to any liability".
+GIVEN `a private trustee would be personally liable` IS A BOOLEAN,
+      `Public Trustee or officer contributed` IS A BOOLEAN,
+      `reasonable diligence could have averted it` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Consolidated Fund must make good the liability` IF
+        `a private trustee would be personally liable`
+    AND (`Public Trustee or officer contributed` OR `reasonable diligence could have averted it`)
+
+§§ `21 -- unclaimed funds`
+
+-- s 21(1): funds the Public Trustee cannot distribute "by reason of the untraceability of the person entitled ... or for any other
+-- cause" must be credited to the Unclaimed Estates Account. (2): kept "for 7 years and, if they remain unclaimed at the end of that
+-- period", paid with interest into the Consolidated Fund. (3): an established later claim is paid "without interest, from the
+-- Consolidated Fund".
+GIVEN `years in the Unclaimed Estates Account` IS A NUMBER, `claimed` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the funds are paid into the Consolidated Fund` IF
+    `years in the Unclaimed Estates Account` >= 7 AND (NOT `claimed`)
+
+GIVEN `amount certified due` IS A NUMBER, `interest earned meanwhile` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the sum paid to a late claimant` IS
+    `amount certified due`
+
+§§ `22 -- investigation and audit of trust accounts`
+
+-- s 22(1): on application by "any trustee or beneficiary", the accounts are audited "by a solicitor or public accountant agreed on by
+-- the applicant and the trustees or, in default of agreement, by the Public Trustee or a person appointed by the Public Trustee".
+-- (2): "Except with the permission of the court no investigation or audit may be applied for ... within 12 months after any such
+-- previous investigation or audit, and a trustee or beneficiary must not be appointed under this section".
+GIVEN `applicant is trustee or beneficiary` IS A BOOLEAN,
+      `there was a previous audit` IS A BOOLEAN,
+      `months since previous audit` IS A NUMBER,
+      `court permission` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `an audit may be applied for` IF
+        `applicant is trustee or beneficiary`
+    AND (   (NOT `there was a previous audit`)
+         OR `months since previous audit` >= 12
+         OR `court permission`)
+
+GIVEN `is a trustee or beneficiary` IS A BOOLEAN,
+      `is a solicitor or public accountant` IS A BOOLEAN,
+      `agreed by applicant and trustees` IS A BOOLEAN,
+      `appointed by the Public Trustee after no agreement` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the person may act as auditor` IF
+        (NOT `is a trustee or beneficiary`)
+    AND (   (`is a solicitor or public accountant` AND `agreed by applicant and trustees`)
+         OR `appointed by the Public Trustee after no agreement`)
+
+-- s 22(7): remuneration and expenses "unless the Public Trustee directs otherwise, are to be borne by the estate"; (8) the Public
+-- Trustee may order them borne by the applicant, the trustees personally, or partly by each.
+DECLARE `Audit cost bearer` IS ONE OF
+    `the estate`
+    `the applicant`
+    `the trustees personally`
+    `the applicant and trustees in part`
+
+GIVEN `the Public Trustee's direction` IS AN `Audit cost bearer`, `Public Trustee directs otherwise` IS A BOOLEAN
+GIVETH AN `Audit cost bearer`
+DECIDE `who bears the audit expenses` IS
+    IF `Public Trustee directs otherwise` THEN `the Public Trustee's direction` ELSE `the estate`
+
+-- s 22(10): a person "who wilfully makes, in any statement of accounts, report or certificate required for the purposes of this
+-- section, a statement that is false in any material particular" -- a fine or imprisonment "not exceeding 2 years or to both".
+GIVEN `wilfully made` IS A BOOLEAN, `statement is false` IS A BOOLEAN, `material particular` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the false audit statement is an offence` IF
+    `wilfully made` AND `statement is false` AND `material particular`
+
+`maximum imprisonment in years for a false audit statement` MEANS 2
