@@ -4,10 +4,10 @@
 skill and nothing else. No pipeline, no coverage table, no independent test
 pass, no human gate.
 
-**Edition:** 2020 Revised Edition, informal consolidation, with amendments to 2025
+**Edition:** 2021 Revised Edition, informal consolidation (version in force from 1 October 2025), with amendments to 2025
 shown (including the 4 July 2025 change to seller's duty).
 
-**Checks:** one case file, 35 assertions satisfied, 0 errors, 0 warnings.
+**Checks:** one case file, 46 assertions satisfied (35 at first encoding; 11 added on 11 Oct 2026 for REQ-0008), 0 errors, 0 warnings.
 
 ## Why this Act, and why scoped
 
@@ -17,8 +17,9 @@ Article 3:
 - additional buyer's stamp duty (ABSD) on residential property
 - seller's stamp duty
 - duty on share transfers
+- and, added for REQ-0008, Article 8 duty on leases and who pays it (Third Schedule)
 
-The charging and procedural sections, leases, mortgages, settlements, the
+The charging and procedural sections, mortgages, settlements, the
 property-holding-entity rules, ABSD remission and the two-property elections are not
 encoded.
 
@@ -70,6 +71,20 @@ between 11 March 2017 and 3 July 2025, it is 12/8/4% within 3 years. Asserted.
 - **Head-note:** duty is rounded down to the dollar, with a $1 minimum. Rounding is not
   modelled, so the cases use prices that give whole dollars.
 - **Para (c):** 0.2% on share transfers.
+
+### 5. Leases: 0.4% of the rent, paid by the tenant (added for REQ-0008)
+
+Article 8(aa), for leases without a premium executed on or after 22 February 2014:
+- For a lease of up to 4 years, the duty is 0.4% of the total rent for the term.
+- For a longer or indefinite lease, it is 0.4% × 4 × the average annual rent.
+
+Exempt are leases whose average annual rent is $1,000 or less, and direct HDB public
+rentals. Duty is rounded down to the dollar, with a $1 minimum. The Third Schedule makes
+**the lessee** liable. REQ-0008's two-year tenancy at $2,400 a month comes to $57,600 in
+rent; 0.4% is $230.40, so the duty is **$230**, paid by the couple as lessees. Asserted.
+
+The Article 8 table is column-shifted in the `.txt` deposit, like Article 3's; the
+formulas were read from their cells.
 
 ## What would need doing before this is worth anything
 
