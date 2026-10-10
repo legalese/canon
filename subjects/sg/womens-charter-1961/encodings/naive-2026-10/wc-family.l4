@@ -1,7 +1,8 @@
 IMPORT prelude
 
 -- Women's Charter 1961 (Singapore) -- when a marriage is void (ss 9, 11, 11A, 12, 13), marrying again during a spouse's
--- lifetime (s 6A), parental consent for under-21s and the licence waiting period (ss 17(2), 21A), maintenance of a wife,
+-- lifetime (s 6A), parental consent for under-21s and the licence waiting period (ss 17(2), 21A), the notice of marriage
+-- and its lapse (ss 14, 15), who solemnises and how (ss 22, 23, 40; added for REQ-0005 and REQ-0006), maintenance of a wife,
 -- an incapacitated husband and children (s 69), protection orders against family violence (ss 60, 60A, 63C), and
 -- divorce: jurisdiction, the three-year bar and irretrievable breakdown (ss 93, 94, 95, 95A).
 --
@@ -13,7 +14,8 @@ IMPORT prelude
 -- duty to maintain a spouse and children, protection from family violence, and divorce. (An automated count found 0 of
 -- the 527 deposited Singapore Acts citing it by its slug title; that count undercounts Acts cited by short titles.)
 -- SCOPED, because the Act is several hundred pages. Not encoded: the prohibited degrees (s 10, First Schedule), the
--- Second Schedule list of whose consent is needed, solemnisation procedure, caveats, the family violence assessment and
+-- Second Schedule list of whose consent is needed, the declarations and licence conditions (ss 16, 18), caveats (ss 19, 20),
+-- special licences (s 21), remote solemnisation conditions (s 24) beyond a flag, registration (Part 4), the family violence assessment and
 -- enforcement powers (ss 58-66), maintenance enforcement (ss 71 onward), custody, division of matrimonial assets and
 -- post-divorce maintenance (Part 10), judicial separation and nullity procedure, the Part 10A mediation and parenting
 -- programmes, married women's property, and Parts on women and girls.
@@ -111,6 +113,90 @@ GIVEN `the age of the party` IS A NUMBER, `previously married` IS A BOOLEAN
 GIVETH A BOOLEAN
 DECIDE `consents are needed before a licence` IF
     `the age of the party` < 21 AND (NOT `previously married`)
+
+§§ `14, 15 -- the notice of marriage and when it lapses`
+
+-- REQ-0005 (subjects/sg/requirements.jsonl, cradle-to-grave-simone e052): notice given 20 April 2029; earliest
+-- solemnisation, and when the notice lapses.
+-- s 14(1): one party "must give to the Registrar a notice of marriage". s 15(1): the notice "ceases to have effect if --
+-- (a) 3 months (or any longer prescribed period) have elapsed since the notice of marriage was given to the Registrar and
+-- the intended marriage has not been solemnised; or (b) the notice of marriage is cancelled by the Registrar". (3): if it
+-- ceases, "any marriage licence issued in consequence of that notice of marriage is void" and "a fresh notice of marriage
+-- must be given before the parties may lawfully marry".
+-- s 13 (above) and s 17(2) (below): a marriage needs a valid licence, and a licence issues only "after the expiry of 21
+-- days from the date of the notice". Counting the notice date as day 0 (Interpretation Act s 50(a)), the earliest licence,
+-- and so the earliest solemnisation, is day 22: for a notice on 20 April 2029, 12 May 2029. REQ-0005 expected "21 days after
+-- notice" (11 May); the text gives one day later.
+-- INFERENCE: "3 months ... have elapsed" is read as reached on the same day of the month three months on (a notice of
+-- 20 April 2029 ceases on 20 July 2029). A notice given on a day with no counterpart three months on (31 May -> 31 August
+-- exists, but 30 November -> 30 February does not) is not modelled: the function returns that day number regardless.
+GIVETH A NUMBER
+`the earliest solemnisation, in days after the notice` MEANS 22
+
+GIVEN `notice year` IS A NUMBER, `notice month` IS A NUMBER, `notice day` IS A NUMBER
+GIVETH A NUMBER
+`the date the notice lapses, as YYYYMMDD` MEANS
+    IF `notice month` PLUS 3 GREATER THAN 12
+    THEN (`notice year` PLUS 1) TIMES 10000 PLUS (`notice month` PLUS 3 MINUS 12) TIMES 100 PLUS `notice day`
+    ELSE `notice year` TIMES 10000 PLUS (`notice month` PLUS 3) TIMES 100 PLUS `notice day`
+
+GIVEN `months elapsed since the notice` IS A NUMBER, `cancelled by the Registrar` IS A BOOLEAN, `already solemnised` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the notice has ceased to have effect` IF
+        (NOT `already solemnised`)
+    AND (`months elapsed since the notice` AT LEAST 3 OR `cancelled by the Registrar`)
+
+§§ `22, 23, 40 -- who solemnises, and how`
+
+-- REQ-0006 (cradle-to-grave-simone e053): who may solemnise at the Registry of Marriages, and what makes it valid.
+-- s 22(1): "A marriage may be solemnised by the Registrar or a licensed solemniser." s 23(1): it "must be solemnised with all
+-- the following persons in the presence of each other in Singapore: (a) the parties ...; (b) the Registrar or a licensed
+-- solemniser; (c) at least 2 credible witnesses", unless (s 24) the Registrar permits remote solemnisation by live video.
+-- (2): the solemniser "must not solemnise the marriage unless ... satisfied that both parties freely consent".
+-- s 13: the marriage is VOID unless on a valid licence and by the Registrar or a licensed solemniser. Missing witnesses are
+-- NOT a ground in s 13: s 40(1)(b) makes it an offence for the solemniser who "knowingly ... solemnises ... without at
+-- least 2 credible witnesses" (3 years and a fine up to $5,000), and the Act as read does not make the marriage void for it.
+-- REQ-0006 expected the witnesses as a condition of validity; on the words of s 13 they are a condition of lawful
+-- solemnisation, not of validity.
+DECLARE Officiant IS ONE OF
+    `the Registrar`
+    `a licensed solemniser`
+    `a religious leader without a solemniser's licence`
+    `a friend of the couple`
+
+GIVEN `the officiant` IS AN Officiant
+GIVETH A BOOLEAN
+DECIDE `the officiant may solemnise a marriage` IF
+    CONSIDER `the officiant`
+    WHEN `the Registrar` THEN TRUE
+    WHEN `a licensed solemniser` THEN TRUE
+    OTHERWISE FALSE
+
+DECLARE Solemnisation HAS
+    `the officiant` IS AN Officiant
+    `on a valid licence` IS A BOOLEAN
+    `witnesses present` IS A NUMBER
+    `all present together or remote with permission` IS A BOOLEAN
+    `both parties freely consented` IS A BOOLEAN
+
+GIVEN `the ceremony` IS A Solemnisation
+GIVETH A BOOLEAN
+DECIDE `the ceremony is void under section 13` IF
+        (NOT `the ceremony`'s `on a valid licence`)
+    OR  (NOT `the officiant may solemnise a marriage` (`the ceremony`'s `the officiant`))
+
+GIVEN `the ceremony` IS A Solemnisation
+GIVETH A BOOLEAN
+DECIDE `the ceremony meets section 23` IF
+        `the ceremony`'s `witnesses present` AT LEAST 2
+    AND `the ceremony`'s `all present together or remote with permission`
+    AND `the ceremony`'s `both parties freely consented`
+
+GIVEN `the ceremony` IS A Solemnisation
+GIVETH A BOOLEAN
+DECIDE `the solemniser commits a section 40 offence` IF
+        (NOT `the ceremony`'s `on a valid licence`)
+    OR  `the ceremony`'s `witnesses present` LESS THAN 2
 
 §§ `69 -- maintenance of a wife, an incapacitated husband and children`
 

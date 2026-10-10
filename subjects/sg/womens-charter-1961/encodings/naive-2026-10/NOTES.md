@@ -8,7 +8,7 @@ pass, no human gate.
 informal consolidation, version in force from 17/8/2026. The latest amendment
 annotated in the deposit is Act 21 of 2025 wef 17/08/2026.
 
-**Checks:** one case file, 54 assertions satisfied, 0 errors, 0 warnings.
+**Checks:** one case file, 77 assertions satisfied, 0 errors, 0 warnings (54 at first encoding; 23 added on 11 Oct 2026 for requirements REQ-0005 and REQ-0006).
 
 ## Why this Act, and why scoped
 
@@ -20,11 +20,13 @@ cited by short titles and is not a measure of importance.)
 
 The Act runs to several hundred pages, so this row takes void marriages (ss 9, 11,
 11A, 12, 13), marrying again during a spouse's lifetime (s 6A), the licence waiting
-period and consents for under-21s (ss 17(2), 21A), maintenance of a wife, an
+period and consents for under-21s (ss 17(2), 21A), the notice of marriage and its lapse
+(ss 14, 15), who solemnises and how (ss 22, 23, 40), maintenance of a wife, an
 incapacitated husband and children (s 69), protection orders (ss 60, 60A, 63C), and
 divorce jurisdiction, the three-year bar and irretrievable breakdown (ss 93, 94, 95,
 95A). Not encoded: the prohibited degrees (s 10, First Schedule), the Second Schedule
-list of whose consent is needed, solemnisation procedure and caveats, family violence
+list of whose consent is needed, the declarations, licence conditions and caveats (ss 16, 18-20), special licences,
+registration, family violence
 assessment and enforcement powers, maintenance enforcement (s 71 onward), custody,
 division of matrimonial assets and post-divorce maintenance, judicial separation,
 nullity procedure, and the Part 10A mediation and parenting provisions.
@@ -88,6 +90,26 @@ amendment wef 1 July 2024, a written agreement that the marriage has broken down
 which the court must not accept if reconciliation remains reasonably possible), and
 that granting the divorce is "just and reasonable" (s 95(2)(c)). Jurisdiction needs
 domicile or 3 years' habitual residence of either party (s 93). Asserted.
+
+### 7. The earliest wedding day is day 22, not day 21 (added for REQ-0005)
+
+s 17(2)(a): a licence issues only "after the expiry of 21 days from the date of the notice
+of marriage". s 13 requires a valid licence. So for a notice given on 20 April 2029, the 21
+days expire at the end of 11 May, and the earliest solemnisation is **12 May 2029**. REQ-0005
+expected "21 days after notice", one day earlier. The notice lapses once "3 months ... have
+elapsed" without solemnisation (s 15(1)(a)), read as 20 July 2029. That is an inference about
+the boundary day. If the notice lapses, any licence issued on it is void and a fresh notice
+is needed (s 15(3)). Asserted.
+
+### 8. Witnesses make a wedding lawful, not valid (added for REQ-0006)
+
+s 22: only the Registrar or a licensed solemniser may solemnise. s 23: the parties, the
+solemniser and at least two credible witnesses must be present together (or linked by video
+with the Registrar's permission, s 24), and both parties must freely consent. But s 13 voids
+a marriage only for want of a valid licence or an authorised solemniser. Holding the
+ceremony with fewer than two witnesses is the solemniser's **offence** under s 40(1)(b) (3
+years and a fine of up to $5,000), and the Act as read does not make the marriage void for
+it. REQ-0006 expected the witnesses as a condition of validity. Asserted.
 
 ## What would need doing before this is worth anything
 
