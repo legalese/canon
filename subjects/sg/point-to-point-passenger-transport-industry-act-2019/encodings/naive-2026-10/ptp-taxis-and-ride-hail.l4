@@ -1,0 +1,263 @@
+IMPORT prelude
+
+-- Point-to-Point Passenger Transport Industry Act 2019 (Singapore) -- what a street-hail (taxi) service and a ride-hail service
+-- are (ss 3, 4), the offences of running one unlicensed and of a driver taking bookings from an unlicensed provider (ss 9-11), false
+-- applications (s 12(5)), the cap on the LTA's financial penalty and the 3-month suspension (s 35), notice before regulatory action
+-- (s 36), roadside questioning of drivers and passengers and the offence of not complying (ss 39, 41), composition (s 42) and appeals
+-- to the Minister (ss 43, 44).
+--
+-- Edition: 2020 Revised Edition, informal consolidation "version in force from 4/5/2026", as deposited at
+-- ../../registers/source-bundle/PPPTIA2019.txt. The cover says the revised edition incorporates amendments up to 1 December 2021;
+-- the latest amendment annotated in the text is Act 5 of 2026 (wef 04/05/2026, the definition of "motor vehicle"); Act 30 of 2024
+-- (Platform Workers Act 2024, wef 01/01/2025) is annotated in s 4.
+--
+-- WHY THIS ACT. Chosen for everyday-life relevance: it governs the taxis and ride-hail apps people in Singapore use, and the drivers
+-- who work through them. SCOPED to what a passenger, a driver or a small would-be operator meets. Not encoded: the licence
+-- application and grant criteria beyond the false-information offence (ss 12-13, 18-19), licence conditions and their modification
+-- (ss 15-17, 21-23), the content of exempt ride-hail operator orders (ss 24-26), accounts and records (ss 28, 29), codes of practice,
+-- directions and emergency directives except as appealable decisions (ss 30-34), powers of entry (s 38), service of documents,
+-- corporate liability (ss 48, 49), Regulations, and the savings in s 68 and the Schedule. No Regulations or exempt-operator orders
+-- were retrieved, so prescribed fees, periods and the fleet sizes that orders may use are unknown here.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules conventions. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Point-to-Point Passenger Transport Industry Act 2019`
+
+-- Helpers (the prelude is not relied on for these).
+GIVEN `first` IS A NUMBER, `second` IS A NUMBER
+GIVETH A NUMBER
+`the larger of` MEANS IF `first` AT LEAST `second` THEN `first` ELSE `second`
+
+GIVEN `first` IS A NUMBER, `second` IS A NUMBER
+GIVETH A NUMBER
+`the lesser of` MEANS IF `first` AT MOST `second` THEN `first` ELSE `second`
+
+§§ `3 -- street-hail service`
+
+-- s 3: "street-hail service" means a passenger transport service "(a) provided using motor vehicles which are taxis, 2 or more of
+-- which at any time in a year are taxis owned by the provider of that service; and (b) under which any individual can hail or hire
+-- on-demand such a motor vehicle when it is (i) standing or plying for hire on a road; and (ii) authorised ... to stand or ply for
+-- hire on a road". "Provide" means in the course of business (s 2, s 3).
+-- So a person owning a single taxi is not providing a street-hail service within s 3, whatever else may regulate them.
+GIVEN `uses taxis` IS A BOOLEAN, `most taxis owned by the provider at any time in the year` IS A NUMBER,
+      `can be hailed on the road` IS A BOOLEAN, `in the course of business` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `this is providing a street-hail service` IF
+        `uses taxis`
+    AND `most taxis owned by the provider at any time in the year` AT LEAST 2
+    AND `can be hailed on the road`
+    AND `in the course of business`
+
+§§ `4 -- bookable vehicles and ride-hail service`
+
+-- s 4(1): "bookable vehicle" means (a) a taxi; (b) a private hire car hired "for use as a whole with a driver"; (c) a motor vehicle in
+-- a class allowed under s 101 of the Road Traffic Act 1961 to be used as a public service vehicle "and is prescribed as permissible
+-- for the purposes of this definition".
+DECLARE Vehicle IS ONE OF
+    `a taxi`
+    `a private hire car hired as a whole with a driver`
+    `a section 101 class vehicle prescribed as permissible`
+    `a section 101 class vehicle not prescribed`
+    `a privately owned car`
+
+GIVEN `the vehicle` IS A Vehicle
+GIVETH A BOOLEAN
+DECIDE `the vehicle is a bookable vehicle` IF
+    CONSIDER `the vehicle`
+    WHEN `a taxi` THEN TRUE
+    WHEN `a private hire car hired as a whole with a driver` THEN TRUE
+    WHEN `a section 101 class vehicle prescribed as permissible` THEN TRUE
+    OTHERWISE FALSE
+
+-- s 4(1): "ride-hail service" means (a) an on-demand passenger transport service or (b) an on-demand ride booking service. An
+-- on-demand passenger transport service uses bookable vehicles, the passenger "determines or substantially determines" where and when,
+-- and it "does not involve a street-hail service". An on-demand ride booking service includes (a) taking or facilitating bookings for
+-- bookable vehicles and communicating them to providers or drivers.
+-- s 4(4): "a person is not to be regarded as providing an on-demand passenger transport service solely because the person drives a
+-- public service motor vehicle". s 4(2)(b): it does not matter that the provider is located outside Singapore if the journey is
+-- wholly or partly within Singapore.
+-- Simplification: only limb (a) of "on-demand ride booking service" is modelled; vehicle pooling and prescribed services are not.
+GIVEN `the vehicle` IS A Vehicle, `the passenger sets the route and time` IS A BOOLEAN,
+      `involves a street-hail service` IS A BOOLEAN, `takes or facilitates bookings and passes them on` IS A BOOLEAN,
+      `only drives the vehicle` IS A BOOLEAN, `in the course of business` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `this is providing a ride-hail service` IF
+        `in the course of business`
+    AND `the vehicle is a bookable vehicle` `the vehicle`
+    AND (    (`the passenger sets the route and time` AND (NOT `involves a street-hail service`) AND (NOT `only drives the vehicle`))
+          OR `takes or facilitates bookings and passes them on`)
+
+§§ `9, 10 -- providing a service without authority`
+
+-- s 9(1): an offence to provide a street-hail service when "(a) ... not authorised to do so by a street-hail service licence; and
+-- (b) ... not exempt from this section by an order under section 52". (2) "a strict liability offence". (4) a licensee "is not
+-- authorised by its licence ... during the period the licence is suspended".
+-- s 10(1): the same for a ride-hail service, where the person is not authorised "by a ride-hail service licence and is not authorised
+-- to do so as an exempt ride-hail service operator". s 24(3): an exempt operator's service is "deemed authorised by this Act if it is
+-- done in accordance with the conditions of the order".
+GIVEN `holds a licence` IS A BOOLEAN, `the licence is suspended` IS A BOOLEAN, `exempted by a section 52 order` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `providing the street-hail service is an offence` IF
+    (NOT (`holds a licence` AND (NOT `the licence is suspended`))) AND (NOT `exempted by a section 52 order`)
+
+GIVEN `holds a licence` IS A BOOLEAN, `the licence is suspended` IS A BOOLEAN,
+      `is an exempt operator within the order's conditions` IS A BOOLEAN, `exempted by a section 52 order` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `providing the ride-hail service is an offence` IF
+        (NOT (`holds a licence` AND (NOT `the licence is suspended`)))
+    AND (NOT `is an exempt operator within the order's conditions`)
+    AND (NOT `exempted by a section 52 order`)
+
+-- ss 9(3), 10(3): "a fine not exceeding $10,000 or ... imprisonment ... not exceeding 6 months or ... both and, in the case of a
+-- continuing offence, to a further fine not exceeding $500 for every day or part of a day during which the offence continues after
+-- conviction". Days are whole days or parts of days counted by the caller.
+GIVEN `days continued after conviction` IS A NUMBER
+GIVETH A NUMBER
+`the maximum fine for unauthorised provision` MEANS 10000 PLUS 500 TIMES `days continued after conviction`
+
+GIVETH A NUMBER
+`the maximum months of imprisonment for unauthorised provision` MEANS 6
+
+§§ `11 -- a driver accepting bookings from an unauthorised provider`
+
+-- s 11(1): a driver commits an offence if "(a) the driver intentionally takes one or more bookings ... from the provider of the
+-- ride-hail service; (b) the provider ... is not authorised ... by a ride-hail service licence; ... is not authorised ... as an exempt
+-- ride-hail service operator; and ... is not exempt from section 10(1) ... by an order under section 52; and (c) the driver knows that,
+-- or is reckless as to whether, the provider ... is not authorised". Unlike s 10, NOT strict liability.
+GIVEN `intentionally took a booking` IS A BOOLEAN, `the provider is unauthorised and not exempt` IS A BOOLEAN,
+      `knew or was reckless about it` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the driver commits the booking offence` IF
+    `intentionally took a booking` AND `the provider is unauthorised and not exempt` AND `knew or was reckless about it`
+
+-- s 11(2): "(a) ... a fine not exceeding $1,000 or ... imprisonment ... not exceeding 3 months or ... both; (b) in the case of a second
+-- or subsequent conviction, ... a fine not exceeding $2,000 or ... imprisonment ... not exceeding 6 months or ... both".
+GIVEN `previous convictions under section 11` IS A NUMBER
+GIVETH A NUMBER
+`the driver's maximum fine` MEANS IF `previous convictions under section 11` AT LEAST 1 THEN 2000 ELSE 1000
+
+GIVEN `previous convictions under section 11` IS A NUMBER
+GIVETH A NUMBER
+`the driver's maximum months of imprisonment` MEANS IF `previous convictions under section 11` AT LEAST 1 THEN 6 ELSE 3
+
+§§ `12(5) -- false information in a licence application`
+
+-- s 12(5): an applicant for a street-hail service licence who provides a document or information "false in a material particular"
+-- and "knows or ought reasonably to know that, or is reckless as to whether, it is false or misleading". (6) $10,000 or 12 months.
+-- The ride-hail equivalent in s 18 was not read in full and is not encoded.
+GIVEN `provided materially false information` IS A BOOLEAN, `knew, ought to have known, or was reckless` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the applicant commits the false information offence` IF
+    `provided materially false information` AND `knew, ought to have known, or was reckless`
+
+§§ `35 -- regulatory action against a licensee`
+
+-- s 35(2)(e): the LTA may "suspend the licence without any compensation for not more than 3 months".
+GIVEN `months of suspension` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the suspension is within the LTA's power` IF `months of suspension` AT MOST 3
+
+-- s 35(6): the maximum financial penalty is "the highest of the following": (a) $100,000; (b) 10% of the annual turnover from the
+-- street-hail or ride-hail business, from the latest audited accounts; (c) $100,000 for each contravention, where the ground is
+-- s 35(1)(a) (breach of conditions, a non-offence provision, a code of practice or a direction); (d) 10% of that turnover for each act
+-- or omission resulting in a failure to provide an adequate and satisfactory service, where the ground is s 35(1)(d).
+DECLARE Ground IS ONE OF
+    `breach of a condition, code or direction`
+    `inadequate or unsatisfactory service`
+    `another ground`
+
+GIVEN `the ground` IS A Ground, `annual turnover` IS A NUMBER, `number of instances` IS A NUMBER
+GIVETH A NUMBER
+`the maximum financial penalty` MEANS
+    CONSIDER `the ground`
+    WHEN `breach of a condition, code or direction` THEN
+        `the larger of` (`the larger of` 100000 (`annual turnover` TIMES 10 DIVIDED BY 100)) (100000 TIMES `number of instances`)
+    WHEN `inadequate or unsatisfactory service` THEN
+        `the larger of` (`the larger of` 100000 (`annual turnover` TIMES 10 DIVIDED BY 100)) (`annual turnover` TIMES 10 DIVIDED BY 100 TIMES `number of instances`)
+    OTHERWISE `the larger of` 100000 (`annual turnover` TIMES 10 DIVIDED BY 100)
+
+§§ `36 -- notice before regulatory action`
+
+-- s 36(1)(c): the LTA's notice must specify a time "being not less than 14 days after the date of service of notice" for written
+-- representations. s 36(5): suspension or revocation does not affect "the enforcement by any person of any right or claim against the
+-- licensee".
+GIVEN `days allowed for representations` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the notice allows enough time` IF `days allowed for representations` AT LEAST 14
+
+§§ `39, 41 -- roadside questioning and the offence of not complying`
+
+-- s 39(1)(f): an authorised officer may "require the driver or any passenger of the vehicle, or a person in possession of the vehicle,
+-- to answer any question ... and to provide any document or information". s 41(1): failing "without reasonable excuse" to do anything
+-- so required is an offence, fine not exceeding $10,000. (3): a defence "to prove, on a balance of probabilities," that the person
+-- "(a) does not possess the document or information required; or (b) has taken all reasonable steps ... and has been unable to obtain
+-- it". (4): "it is a reasonable excuse ... to refuse or fail to provide any information, produce any document or answer any question if
+-- doing so might tend to incriminate that person".
+GIVEN `failed to comply with the officer` IS A BOOLEAN, `answering might incriminate them` IS A BOOLEAN,
+      `had another reasonable excuse` IS A BOOLEAN, `proved they did not possess it or could not obtain it` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `not complying is an offence` IF
+        `failed to comply with the officer`
+    AND (NOT `answering might incriminate them`)
+    AND (NOT `had another reasonable excuse`)
+    AND (NOT `proved they did not possess it or could not obtain it`)
+
+§§ `42 -- composition`
+
+-- s 42(1): an offence "prescribed as a compoundable offence" may be compounded for "a sum not exceeding the lower of ... (a) one half of
+-- the amount of the maximum fine that is prescribed for the offence; (b) $5,000". (2): on payment, "no further proceedings".
+-- Which offences are prescribed is in Regulations not retrieved; the caller says so.
+GIVEN `the offence is prescribed as compoundable` IS A BOOLEAN, `the maximum fine` IS A NUMBER
+GIVETH A NUMBER
+`the most that can be collected to compound` MEANS
+    IF `the offence is prescribed as compoundable` THEN `the lesser of` (`the maximum fine` DIVIDED BY 2) 5000 ELSE 0
+
+§§ `43, 44 -- appeals to the Minister`
+
+-- s 43 "appealable decision": (a) refusing the grant of a licence (s 13 or 19) -- and s 2 says "grant" "includes granted or grant on
+-- renewal"; (b) imposing a condition; (c) modifying a condition (s 16 or 22); (d) refusing consent to transfer; (e) revoking a licence;
+-- (f) imposing other regulatory action; (g) a s 31 direction "except a direction described in section 31(3)" -- the 24-hour order to
+-- stop service during a serious public passenger transport incident. Nothing in s 43 covers an exempt ride-hail operator order or its
+-- variation or revocation (s 26).
+-- s 44(2): an appeal in writing with grounds, "(a) for an appealable decision under section 16 or 22 about the modification of a
+-- condition in a licence, within 28 days after the date the decision appealed against is served; and (b) for any other appealable
+-- decision, within 14 days". (5) "The Minister's decision on an appeal is final." (7) an appeal does not stop the decision operating.
+DECLARE Decision IS ONE OF
+    `refusing a licence`
+    `refusing to renew a licence`
+    `imposing a licence condition`
+    `modifying a licence condition`
+    `refusing consent to transfer a licence`
+    `revoking a licence`
+    `suspending a licence or a financial penalty`
+    `a public-interest direction`
+    `a 24-hour stop-service direction in a transport incident`
+    `revoking an exempt ride-hail operator order`
+
+GIVEN `the decision` IS A Decision
+GIVETH A BOOLEAN
+DECIDE `the decision can be appealed to the Minister` IF
+    CONSIDER `the decision`
+    WHEN `a 24-hour stop-service direction in a transport incident` THEN FALSE
+    WHEN `revoking an exempt ride-hail operator order` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the decision` IS A Decision
+GIVETH A NUMBER
+`the days allowed to appeal` MEANS
+    CONSIDER `the decision`
+    WHEN `modifying a licence condition` THEN 28
+    WHEN `a 24-hour stop-service direction in a transport incident` THEN 0
+    WHEN `revoking an exempt ride-hail operator order` THEN 0
+    OTHERWISE 14
+
+GIVEN `the decision` IS A Decision, `days after service` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the appeal is in time` IF
+    `the decision can be appealed to the Minister` `the decision` AND `days after service` AT MOST `the days allowed to appeal` `the decision`
+
+-- s 44(7): the decision "must be complied with until the determination of the appeal" unless the Minister directs otherwise.
+GIVEN `an appeal is pending` IS A BOOLEAN, `the Minister directed otherwise` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the decision must be complied with now` IF NOT `the Minister directed otherwise`
