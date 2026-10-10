@@ -1,0 +1,279 @@
+IMPORT prelude
+
+-- Hazardous Waste (Control of Export, Import and Transit) Act 1997 (Singapore) -- what counts as hazardous or other waste (ss 4, 5,
+-- 9, 10, Annex II of the Schedule), what a transit proposal is (s 6), the military exemption (s 12), the bars on granting a permit
+-- (ss 22, 23), the prohibitions on importing, exporting and transiting waste and their penalties (ss 25 to 27), entry into a
+-- dwelling (s 31(2)), the enforcement offences and their penalties (ss 29, 30, 32 to 37), officers of a company (s 42) and the appeal
+-- against a refusal of a permit (s 45).
+--
+-- Edition: 2020 Revised Edition, informal consolidation (version in force from 1 January 2025), as deposited at
+-- ../../registers/source-bundle/HWCEITA1997.txt. The revised edition "incorporates all amendments up to and including 1 December
+-- 2021"; the latest amendment annotated in the deposit is S 871/2024 wef 01/01/2025, which amends the Basel Convention annexes in
+-- the Schedule (including Annex II, which now ends with entry Y49, electrical and electronic waste).
+--
+-- WHY THIS ACT. Requirement REQ-0082 in ../../../requirements.jsonl: Tier 2 of the remaining Singapore Acts, ordered by
+-- everyday-life relevance. It asks what the Act decides for a person or business it applies to; no scenario has asked a sharper
+-- question yet. SCOPED to the classification of waste, the three prohibitions and the offences a trader, carrier or company officer
+-- meets. Not encoded: the regulation-making provisions (ss 17 to 20, 48) beyond the penalty ceiling in s 48(2)(e), the
+-- corresponding-requirement rules between sets of Article 11 regulations (s 21), the fee rule (s 24), the time limit for permit
+-- conditions (s 11), injunctions (s 28), the content of the movement-control and search powers (ss 30 to 32), evidentiary
+-- certificates (ss 39 to 41), service (s 46), Convention countries (s 47), and the Basel Convention text in the Schedule except the
+-- headings of Annexes I to III. No regulations made under the Act were retrieved, so "prescribed" waste and every permit condition are
+-- inputs.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Hazardous Waste (Control of Export, Import and Transit) Act 1997 -- waste and movements`
+
+DECLARE Movement IS ONE OF
+    `import`
+    `export`
+    `transit`
+
+-- s 2(1): "waste" means a substance or object that is "(a) proposed to be disposed of; (b) disposed of; or (c) required by any
+-- written law to be disposed of". The Annex flags below stand for membership of a category or characteristic in the Basel
+-- Convention as set out in the Schedule; which category a real substance falls in is not encoded.
+DECLARE Waste HAS
+    `is waste within s 2` IS A BOOLEAN
+    `prescribed by regulations` IS A BOOLEAN
+    `in an Annex I category` IS A BOOLEAN
+    `has an Annex III characteristic` IS A BOOLEAN
+    `in an Annex II category` IS A BOOLEAN
+    `from the normal operations of a ship` IS A BOOLEAN
+    `radioactive` IS A BOOLEAN
+
+-- The other country is the country of export (for an import) or of destination (for an export or a transit).
+DECLARE Country HAS
+    `party to the Basel Convention` IS A BOOLEAN
+    `listed on the Secretariat website as classifying it hazardous` IS A BOOLEAN
+    `the Minister has declared it hazardous for that country` IS A BOOLEAN
+    `party to an Article 11 arrangement` IS A BOOLEAN
+    `the arrangement controls it` IS A BOOLEAN
+    `the arrangement expressly excludes it` IS A BOOLEAN
+
+§§ `4 -- hazardous waste and other waste`
+
+-- s 4: "Subject to section 5", (a) "hazardous waste" means (i) "waste prescribed by any regulations made under this Act, where the
+-- waste has any of the characteristics mentioned in Annex III", or (ii) waste in any category in Annex I "unless it does not possess
+-- any of the characteristics contained in Annex III"; (b) "other waste" means waste in any category in Annex II (Y46 "Wastes
+-- collected from households", Y47 incineration residues of household wastes, Y48 plastic waste with exceptions, Y49 electrical and
+-- electronic waste); "but hazardous and other wastes do not include wastes which derive from the normal operations of a ship and
+-- radioactive wastes".
+--
+-- Both limbs of (a) need an Annex III characteristic: prescribing a waste by regulation does not make it hazardous without one.
+GIVEN `the waste` IS A Waste
+GIVETH A BOOLEAN
+DECIDE `is hazardous or other waste under s 4` IF
+        `the waste`'s `is waste within s 2`
+    AND (NOT `the waste`'s `from the normal operations of a ship`)
+    AND (NOT `the waste`'s `radioactive`)
+    AND (    (`the waste`'s `prescribed by regulations` AND `the waste`'s `has an Annex III characteristic`)
+         OR  (`the waste`'s `in an Annex I category` AND `the waste`'s `has an Annex III characteristic`)
+         OR  `the waste`'s `in an Annex II category`)
+
+§§ `5, 9 and 10 -- the extended and the excluded meaning`
+
+-- s 5(1): applies only to an export, or a transit "that involves the taking out of Singapore of a substance or object to a particular
+-- foreign country". (2): if the country is a Basel party and the prescribed website of the Secretariat states that the substance is,
+-- in particular circumstances, classified as hazardous or other waste under its law, then it is hazardous or other waste "for those
+-- purposes". (3), (4), (5): a Minister's declaration in the Gazette (for a Basel party's classification, or for household waste the
+-- country classifies as hazardous) "has effect accordingly".
+-- s 9(2): if the country is a party to an Article 11 arrangement and the substance is "subject to notification or control under the
+-- arrangement", it is "taken to be hazardous or other waste" -- for an import, an export or a transit.
+-- s 10(2): if the arrangement "expressly provides that the substance or object is not subject to notification or control", it is
+-- "taken not to be hazardous or other waste".
+--
+-- INFERENCES (the text does not rank them): s 10 is applied last and overrides everything, because it has no "apart from this
+-- section" qualifier; s 5 and s 9 are applied without the s 2 meaning of waste or the ship and radioactive exclusions in s 4,
+-- because s 4 is "subject to section 5" and s 9 speaks of a "substance or object".
+GIVEN `the waste` IS A Waste, `the movement` IS A Movement, `the other country` IS A Country
+GIVETH A BOOLEAN
+DECIDE `is hazardous or other waste` IF
+        (NOT (`the other country`'s `party to an Article 11 arrangement` AND `the other country`'s `the arrangement expressly excludes it`))
+    AND (    `is hazardous or other waste under s 4` `the waste`
+         OR  (`the other country`'s `party to an Article 11 arrangement` AND `the other country`'s `the arrangement controls it`)
+         OR  (    (NOT (`the movement` EQUALS `import`))
+              AND (    (`the other country`'s `party to the Basel Convention` AND `the other country`'s `listed on the Secretariat website as classifying it hazardous`)
+                   OR  `the other country`'s `the Minister has declared it hazardous for that country`)))
+
+§§ `6 -- transit proposals`
+
+-- s 6(2): a proposal "(a) to bring hazardous or other waste into Singapore for the purpose of being carried to a foreign country
+-- either by the same or another conveyance; and (b) if the waste is brought into Singapore by sea or air, the carriage is on a through
+-- bill of lading or through airway bill, is a transit proposal so long as it is not proposed to dispose of the waste in Singapore".
+-- s 2(1): a through bill is one "from a place outside Singapore to a final destination outside Singapore without a consignee in
+-- Singapore". Waste brought in by land needs no through bill.
+GIVEN `bound for a foreign country` IS A BOOLEAN, `brought in by sea or air` IS A BOOLEAN, `on a through bill` IS A BOOLEAN,
+      `disposal in Singapore is proposed` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `is a transit proposal` IF
+        `bound for a foreign country`
+    AND ((NOT `brought in by sea or air`) OR `on a through bill`)
+    AND (NOT `disposal in Singapore is proposed`)
+
+§§ `22 and 23 -- when the Director-General must not grant a permit`
+
+-- s 23: the Director-General "must not grant a Basel permit or special permit if he or she is satisfied that the grant could result in
+-- hazardous or other waste being brought into Antarctica" (s 2(1): south of 60 degrees South latitude).
+-- s 22(1), (3), (5): where a proposal for a Basel permit is within the scope of a set of Article 11 regulations, the Director-General
+-- "must not grant the permit unless he or she is satisfied that the corresponding requirements of that set of regulations have been
+-- met". These are bars only: the Act does not say when a permit must be granted.
+GIVEN `could result in waste reaching Antarctica` IS A BOOLEAN, `within the scope of a set of Article 11 regulations` IS A BOOLEAN,
+      `corresponding requirements met` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the grant is barred` IF
+        `could result in waste reaching Antarctica`
+    OR  (`within the scope of a set of Article 11 regulations` AND (NOT `corresponding requirements met`))
+
+§§ `12, 25, 26 and 27 -- the three prohibitions`
+
+-- s 25(1): a person must not import hazardous or other waste unless "(a) the person is the holder of an import permit ...; (b) the
+-- import is authorised by an order made under any regulation made under Part 3; or (c) the import has been ordered under any
+-- regulation made under Part 3". (2): the holder must not import "except in accordance with the permit" or, "whether before or after
+-- importing", breach any permit condition. (3): a person authorised by an order must not import or deal with the waste "except in
+-- accordance with the order".
+-- s 26(1): a person must not export unless "(a) the person is the holder of an export permit ...; or (b) the export has been ordered
+-- under any regulation made under Part 3" -- there is no limb for an export merely AUTHORISED by an order. (2): as s 25(2).
+-- s 27(1): a person must not bring waste into Singapore in the course of a transit proposal "unless the person is the holder of a
+-- transit permit" -- no order of either kind will do. (2): as s 25(2), including taking it out of Singapore.
+-- s 12: "This Act does not apply to or in relation to any vessel or aircraft belonging to the naval, military or air forces of
+-- Singapore or any other country."
+DECLARE Shipment HAS
+    `the kind of movement` IS A Movement
+    `the goods are hazardous or other waste` IS A BOOLEAN
+    `holds the matching permit` IS A BOOLEAN
+    `kept to the permit and its conditions` IS A BOOLEAN
+    `authorised by an order under Part 3 regulations` IS A BOOLEAN
+    `kept to the order` IS A BOOLEAN
+    `ordered under Part 3 regulations` IS A BOOLEAN
+    `on a naval or military vessel or aircraft` IS A BOOLEAN
+
+GIVEN `the shipment` IS A Shipment
+GIVETH A BOOLEAN
+DECIDE `the shipment is an offence` IF
+        (NOT `the shipment`'s `on a naval or military vessel or aircraft`)
+    AND `the shipment`'s `the goods are hazardous or other waste`
+    AND (IF `the shipment`'s `holds the matching permit`
+         THEN NOT `the shipment`'s `kept to the permit and its conditions`
+         ELSE CONSIDER `the shipment`'s `the kind of movement`
+              WHEN `import` THEN
+                    (`the shipment`'s `authorised by an order under Part 3 regulations` AND (NOT `the shipment`'s `kept to the order`))
+                OR  ((NOT `the shipment`'s `authorised by an order under Part 3 regulations`) AND (NOT `the shipment`'s `ordered under Part 3 regulations`))
+              WHEN `export` THEN NOT `the shipment`'s `ordered under Part 3 regulations`
+              WHEN `transit` THEN TRUE)
+
+-- ss 25(4), 26(3), 27(3): "(a) in the case of a body corporate, to a fine not exceeding $300,000; or (b) in the case of an individual,
+-- to a fine not exceeding $100,000 or to imprisonment for a term not exceeding 2 years or to both". A company faces three times the
+-- fine but no imprisonment.
+GIVEN `is a body corporate` IS A BOOLEAN
+GIVETH A NUMBER
+`the maximum fine for a shipment offence` MEANS
+    IF `is a body corporate` THEN 300000 ELSE 100000
+
+GIVEN `is a body corporate` IS A BOOLEAN
+GIVETH A NUMBER
+`the maximum months of imprisonment for a shipment offence` MEANS
+    IF `is a body corporate` THEN 0 ELSE 24
+
+§§ `29, 30, 32 to 37 and 48 -- the enforcement offences`
+
+-- Each is "liable on conviction to a fine not exceeding $10,000 or to imprisonment for a term not exceeding 12 months or to both",
+-- except ss 33(3) and 34(3), failing to produce a permit or order: "a fine not exceeding $3,000" and no imprisonment.
+-- s 48(2)(e): regulations MAY create offences up to the same $10,000 or 12 months, with a further $1,000 a day for a continuing
+-- offence; whether any regulation does is not known here.
+DECLARE EnforcementOffence IS ONE OF
+    `ignoring a notice to give information`
+    `disobeying a requirement to move or hold a vessel, aircraft or vehicle`
+    `refusing to answer or produce documents during a search`
+    `failing to produce an import or export permit`
+    `failing to produce a transit permit`
+    `refusing reasonable assistance`
+    `obstructing the Director-General or an officer`
+    `making a false statement`
+    `contravening regulations that create an offence`
+
+GIVEN `the offence` IS AN EnforcementOffence
+GIVETH A NUMBER
+`the maximum fine` MEANS
+    CONSIDER `the offence`
+    WHEN `failing to produce an import or export permit` THEN 3000
+    WHEN `failing to produce a transit permit` THEN 3000
+    OTHERWISE 10000
+
+GIVEN `the offence` IS AN EnforcementOffence
+GIVETH A NUMBER
+`the maximum months of imprisonment` MEANS
+    CONSIDER `the offence`
+    WHEN `failing to produce an import or export permit` THEN 0
+    WHEN `failing to produce a transit permit` THEN 0
+    OTHERWISE 12
+
+-- Most of these offences are committed only "without reasonable excuse". The Act names two excuses: s 30(7), "if complying with the
+-- requirement would have endangered the person or any other person"; s 32(4), refusing to answer or produce "if answering the
+-- question, or producing the document, might tend to incriminate the person". It names none for s 29 (information notices) or
+-- s 33 or s 34. This rule says only whether the Act NAMES the excuse; a court may still find an unnamed excuse reasonable.
+GIVEN `the offence` IS AN EnforcementOffence, `complying would endanger someone` IS A BOOLEAN, `it might incriminate the person` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Act names a reasonable excuse` IF
+    CONSIDER `the offence`
+    WHEN `disobeying a requirement to move or hold a vessel, aircraft or vehicle` THEN `complying would endanger someone`
+    WHEN `refusing to answer or produce documents during a search` THEN `it might incriminate the person`
+    OTHERWISE FALSE
+
+-- s 37(1), (2): a person must not "knowingly or recklessly (a) make a statement that is false or misleading in a material particular;
+-- or (b) give ... a document containing information that is false or misleading in a material particular without (i) indicating ...
+-- that the document is false or misleading and in which respect it is so; and (ii) providing correct information ... if the person
+-- has, or can reasonably obtain, the correct information".
+GIVEN `knowingly or recklessly` IS A BOOLEAN, `false or misleading in a material particular` IS A BOOLEAN, `it is a document handed over` IS A BOOLEAN,
+      `said it was false and where` IS A BOOLEAN, `gave the correct information or could not reasonably obtain it` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a false statement offence` IF
+        `knowingly or recklessly`
+    AND `false or misleading in a material particular`
+    AND ((NOT `it is a document handed over`) OR (NOT (`said it was false and where` AND `gave the correct information or could not reasonably obtain it`)))
+
+§§ `31(2) -- entering a home`
+
+-- s 31(2): the Director-General or an authorised officer "must not ... enter into any dwelling house in actual occupation, unless with
+-- the consent of the occupier of the dwelling house or with 6 hours' previous notice to the occupier". (3): a court may by warrant
+-- authorise entry, "if need be by force", where admission was refused or the place is unoccupied and the case is urgent.
+-- INFERENCE: a warrant under (3) authorises entry to a dwelling despite (2).
+GIVEN `an occupied dwelling house` IS A BOOLEAN, `the occupier consented` IS A BOOLEAN, `hours of notice given` IS A NUMBER, `a court warrant` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `entry is permitted` IF
+        (NOT `an occupied dwelling house`)
+    OR  `the occupier consented`
+    OR  `hours of notice given` AT LEAST 6
+    OR  `a court warrant`
+
+§§ `42 -- officers of a company`
+
+-- s 42(1): where a body corporate commits an offence, a "director, manager, secretary or other similar officer", or one purporting to
+-- act as such, "shall also be guilty of that offence ... unless the person proves that (a) the offence was committed without his or
+-- her knowledge, consent or connivance; and (b) he or she had exercised all such diligence to prevent the commission of the offence".
+-- (2): diligence is judged by regard to compliance assessments, an environmentally sound waste management system, contingency
+-- procedures, and staff knowledge of the Act. Both limbs must be proved; the burden is the officer's.
+GIVEN `the company committed an offence` IS A BOOLEAN, `was a director, manager, secretary or similar officer` IS A BOOLEAN,
+      `proved no knowledge, consent or connivance` IS A BOOLEAN, `proved all due diligence` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the officer is also guilty` IF
+        `the company committed an offence`
+    AND `was a director, manager, secretary or similar officer`
+    AND (NOT (`proved no knowledge, consent or connivance` AND `proved all due diligence`))
+
+§§ `45 -- appeal to the Minister`
+
+-- s 45: "Any applicant who is aggrieved by the refusal of the Director-General to grant a permit under this Act may, within 30 days of
+-- the decision of the Director-General, appeal in writing to the Minister whose decision is final". Only a REFUSAL TO GRANT is
+-- appealable under s 45; the Act gives no appeal against a permit condition or a revocation (the regulations may).
+DECLARE PermitDecision IS ONE OF
+    `a refusal to grant a permit`
+    `a permit condition`
+    `a revocation of a permit`
+
+GIVEN `the decision` IS A PermitDecision, `days since the decision` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `an appeal to the Minister lies` IF
+        `the decision` EQUALS `a refusal to grant a permit`
+    AND `days since the decision` AT MOST 30
