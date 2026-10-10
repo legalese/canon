@@ -7,7 +7,7 @@ pass, no human gate.
 **Edition:** 2020 Revised Edition, informal consolidation (amendments to Act 33 of
 2022).
 
-**Checks:** one case file, 37 assertions satisfied, 0 errors, 0 warnings.
+**Checks:** two case files, 59 assertions satisfied (37 at first encoding; 22 added on 11 Oct 2026 for REQ-0010 in `ptx-owner-occupier-cases.l4`), 0 errors, 0 warnings.
 
 ## Why this Act, and why scoped
 
@@ -15,8 +15,9 @@ pass, no human gate.
 Valuation List): other Acts measure their own charges by annual value. This row
 takes what an owner pays and how to dispute it. **The rate orders under s 9(2) --
 which set the owner-occupier and other progressive rates most owners actually pay
--- were not retrieved.** The statute's own rate is 36%, and the cases use it or a
-stand-in.
+-- were not retrieved.** The statute's own rate is 36%, and the core cases use it or a
+stand-in. The owner-occupier rates are now in `ptx-owner-occupier.l4`, **taken from
+IRAS's published tables, not from the order** (see §"Owner-occupier rates" below).
 
 ## What the Act turns out to say
 
@@ -65,10 +66,28 @@ sickness or reasonable cause (s 29(4)). Asserted.
 - **s 2:** annual value is the yearly rent reasonably expected with the **landlord**
   paying repairs, insurance, upkeep and taxes other than GST.
 
+## Owner-occupier rates, from IRAS (added for REQ-0010)
+
+`ptx-owner-occupier.l4` has four rate tables: 2015 to 2022, 2023, 2024, and 2025 onwards. They were read on 10 October
+2026 from IRAS's page "Lower property tax rates for owner-occupied residential properties". The page cites only "the
+Property Tax Act". **This is an administrative publication, not the s 9(2) order.** The bands are therefore as IRAS
+states them, and they would change if the order were found to differ.
+
+Checks made:
+- Each table's cumulative-tax column was recomputed from its bands and rates. All of them agree.
+- The page's three worked examples (for 2026) are asserted: $12,000 gives $0, $36,000 gives $960, and $84,000 gives
+  $5,480.
+
+From 2025 the first $12,000 of annual value is taxed at 0% (it was $8,000 before). **REQ-0010's flat, with an annual
+value of $12,000 in 2032, pays nil.** Asserted. That assumes the 2025 rates still apply in 2032, which no source
+can confirm in 2026. In 2024 the same flat would have paid $160.
+
+Owner-occupier status (IRAS approval) is an input. Rebates and part-year occupation are not modelled.
+
 ## What would need doing before this is worth anything
 
-- **Retrieve the Property Tax (Residential Property) orders** and other s 9(2) orders;
-  without them no case here computes a real owner-occupier's tax.
+- **Retrieve the s 9(2) orders.** The owner-occupier rates here are IRAS's published figures;
+  the order should be checked against them. The non-owner-occupied residential rates are not encoded.
 - **No case law was searched.** Annual value has a large body of Valuation Review
   Board and High Court decisions.
 - Recovery by agent declaration (s 38), attachment and sale are not encoded.
