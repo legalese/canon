@@ -1,0 +1,329 @@
+IMPORT prelude
+
+-- Building and Construction Industry Security of Payment Act 2004 (Singapore) -- which contracts the Act reaches (s 4), when a
+-- progress payment falls due and the interest on it (s 8), pay-when-paid clauses (s 9), the 30-month long-stop for a payment
+-- claim (s 10(2)(b)), the payment response deadline (s 11(1)), when and how fast a claimant may go to adjudication (ss 12, 13(3)(a)),
+-- which objections a respondent may raise (ss 15(3), (4), 17(6), 27(7)), who may seek an adjudication review (s 18(1), (3)), when
+-- the adjudicated amount must be paid (s 22(1), (2)(a)), lien and suspension of work (ss 24(3), 25, 26(1), (4), (5)), the security
+-- for a setting-aside application (s 27(4), (5)), and no contracting out (s 36).
+--
+-- Edition: 2020 Revised Edition ("incorporates all amendments up to and including 1 December 2021"), informal consolidation,
+-- "version in force from 1/4/2022", as deposited at ../../registers/source-bundle/BCISPA2004.txt. The latest amendment annotated in
+-- the text is Act 25 of 2021 (wef 01/04/2022: ss 21(1)(a), 27(1)-(3), 28A(4) -- "permission of the court"); most of the
+-- post-2005 changes are annotated [47/2018].
+--
+-- WHY THIS ACT. It is requirement REQ-0030 in subjects/sg/requirements.jsonl: Tier 2 of the remaining Singapore Acts, ordered by
+-- everyday-life relevance. The requirement asks what the Act decides for a person or business it applies to; no scenario has asked a
+-- sharper question yet. SCOPED to the payment-claim-to-enforcement path a contractor, subcontractor, supplier or paying party actually
+-- walks. Not encoded: the definitions of construction work, goods and services beyond their effect (s 3), valuation (s 7), the form
+-- and content of claims and responses (ss 10(4), 11(3)), appointment of adjudicators and review adjudicators (ss 14, 14A, 18(5)-(7),
+-- 18A), adjudication and review procedure (ss 16, 17(1)-(5), (7)-(11), 19), withdrawal (s 20), the binding effect of a determination
+-- (s 21), direct payment by the principal beyond its 21-day bar (s 24), the authorised nominating bodies, adjudicators' eligibility,
+-- costs and fees (ss 28-32), confidentiality (s 33), other proceedings (s 34), service (s 37) and the Minister's powers (ss 38-41).
+-- Nothing prescribed by regulations was retrieved: the prescribed date for a payment claim (s 10(2)(a)(ii)), the prescribed amount
+-- for a review (s 18(1)) and the judgment-debt interest rate (s 8(5)(b)) are therefore parameters, not figures.
+--
+-- DAYS. s 2: "day" means "any day other than a public holiday within the meaning of the Holidays Act 1998". Every day number in this
+-- file is a count on that calendar (public holidays already removed); the encoding does not know the holidays. Weekends are days.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Building and Construction Industry Security of Payment Act 2004 -- payments`
+
+GIVEN `first` IS A NUMBER, `second` IS A NUMBER
+GIVETH A NUMBER
+`the earlier of` MEANS
+    IF `first` AT MOST `second` THEN `first` ELSE `second`
+
+GIVEN `first` IS A NUMBER, `second` IS A NUMBER
+GIVETH A NUMBER
+`the later of` MEANS
+    IF `first` AT LEAST `second` THEN `first` ELSE `second`
+
+§§ `4 -- which contracts the Act applies to`
+
+-- s 4(1): the Act "applies to any contract that is made in writing on or after 1 April 2005, whether or not the contract is expressed
+-- to be governed by the law of Singapore". (4): a contract is "treated as being made in writing" if it is in writing "whether or not
+-- it is signed", made "by an exchange of written communications", made orally but "recorded by one of the parties ... or by a third
+-- party, with the authority of the parties", or agreed orally "by reference to terms that are in writing".
+-- (2): it does NOT apply to (a) work on "any residential property ... which does not require the approval of the Commissioner of
+-- Building Control under the Building Control Act 1989"; (b)(i) a party working "as an employee"; (b)(ii) construction work "carried
+-- out outside Singapore"; (c) a terminated contract whose termination provisions let the respondent suspend progress payments until
+-- a date or event that has not yet come. ((2)(d), (e) and (3) are not encoded.)
+GIVEN `signed or unsigned written contract` IS A BOOLEAN,
+      `contract by exchange of written communications` IS A BOOLEAN,
+      `oral contract recorded with the parties' authority` IS A BOOLEAN,
+      `oral agreement referring to written terms` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the contract is treated as made in writing` IF
+        `signed or unsigned written contract`
+    OR  `contract by exchange of written communications`
+    OR  `oral contract recorded with the parties' authority`
+    OR  `oral agreement referring to written terms`
+
+GIVEN `treated as made in writing` IS A BOOLEAN,
+      `made on or after 1 April 2005` IS A BOOLEAN,
+      `residential work not needing building approval` IS A BOOLEAN,
+      `the worker is the paying party's employee` IS A BOOLEAN,
+      `the work is outside Singapore` IS A BOOLEAN,
+      `termination clause still suspends payment` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Act applies to the contract` IF
+        `treated as made in writing`
+    AND `made on or after 1 April 2005`
+    AND (NOT `residential work not needing building approval`)
+    AND (NOT `the worker is the paying party's employee`)
+    AND (NOT `the work is outside Singapore`)
+    AND (NOT `termination clause still suspends payment`)
+
+§§ `8 -- due date and interest`
+
+-- s 8(1): a construction contract that fixes a due date -- the payment is due on "the earlier of" the contract date and "the date
+-- immediately upon the expiry of 35 days after" (i) the date a GST-registered claimant submits its tax invoice, or (ii) otherwise "the
+-- date on which or the period within which the payment response is required to be provided under section 11(1) (whether or not a
+-- payment response is provided)". (2): no contract date -- "immediately upon the expiry of 14 days after" the same trigger.
+-- (3): a supply contract that fixes a due date -- the earlier of that date and 60 days after the payment claim is served; (4) no
+-- contract date -- 30 days after service.
+-- The contract can make payment FASTER, never slower: a 60-day or 90-day contract term yields to the 35-day cap.
+GIVEN `the claimant has submitted a GST tax invoice` IS A BOOLEAN, `invoice day` IS A NUMBER, `response deadline day` IS A NUMBER
+GIVETH A NUMBER
+`the trigger day` MEANS
+    IF `the claimant has submitted a GST tax invoice` THEN `invoice day` ELSE `response deadline day`
+
+GIVEN `the contract fixes a due date` IS A BOOLEAN, `contract due day` IS A NUMBER,
+      `the claimant has submitted a GST tax invoice` IS A BOOLEAN, `invoice day` IS A NUMBER, `response deadline day` IS A NUMBER
+GIVETH A NUMBER
+`the due day under a construction contract` MEANS
+    IF `the contract fixes a due date`
+    THEN `the earlier of` `contract due day` (`the trigger day` `the claimant has submitted a GST tax invoice` `invoice day` `response deadline day` PLUS 35)
+    ELSE `the trigger day` `the claimant has submitted a GST tax invoice` `invoice day` `response deadline day` PLUS 14
+
+GIVEN `the contract fixes a due date` IS A BOOLEAN, `contract due day` IS A NUMBER, `claim served day` IS A NUMBER
+GIVETH A NUMBER
+`the due day under a supply contract` MEANS
+    IF `the contract fixes a due date`
+    THEN `the earlier of` `contract due day` (`claim served day` PLUS 60)
+    ELSE `claim served day` PLUS 30
+
+-- s 8(5): interest on an unpaid progress payment is "at the higher of" (a) the contract rate and (b) "the rate prescribed in respect
+-- of judgment debts under the Supreme Court of Judicature Act 1969". (The judgment rate is not in the deposit: a parameter.)
+GIVEN `contract rate` IS A NUMBER, `judgment debt rate` IS A NUMBER
+GIVETH A NUMBER
+`the interest rate in percent` MEANS
+    `the later of` `contract rate` `judgment debt rate`
+
+§§ `9 and 36 -- clauses the Act strikes down`
+
+-- s 9(1): "A pay when paid provision of a contract is unenforceable and has no effect". (2): it is a provision "by whatever name
+-- called" that makes (a) liability to pay, or (b) the due date, "contingent or conditional on" payment by a further party, or (c)
+-- "otherwise" on "the operation of any other contract or agreement".
+-- s 36(1): the Act has effect "despite any provision to the contrary in any contract"; (2) void are (a) any provision by which the
+-- Act "is, or is purported to be, excluded, modified, restricted or in any way prejudiced", and (b) "a provision that may reasonably
+-- be construed as an attempt to deter a person from taking action under this Act".
+DECLARE Clause IS ONE OF
+    `pay the subcontractor only when the employer pays the main contractor`
+    `pay the subcontractor 7 days after the employer pays`
+    `payment conditional on the employer's financing agreement`
+    `the subcontractor waives adjudication`
+    `the subcontractor forfeits its retention if it adjudicates`
+    `payment within 30 days of the claim`
+    `liquidated damages for late completion`
+
+GIVEN `the clause` IS A Clause
+GIVETH A BOOLEAN
+DECIDE `the clause is a pay when paid provision` IF
+    CONSIDER `the clause`
+    WHEN `pay the subcontractor only when the employer pays the main contractor` THEN TRUE
+    WHEN `pay the subcontractor 7 days after the employer pays` THEN TRUE
+    WHEN `payment conditional on the employer's financing agreement` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN `the clause` IS A Clause
+GIVETH A BOOLEAN
+DECIDE `the clause is struck down by the Act` IF
+        `the clause is a pay when paid provision` `the clause`
+    OR  CONSIDER `the clause`
+        WHEN `the subcontractor waives adjudication` THEN TRUE
+        WHEN `the subcontractor forfeits its retention if it adjudicates` THEN TRUE
+        OTHERWISE FALSE
+
+§§ `10(2)(b) -- the 30-month long-stop for a payment claim`
+
+-- s 10(2)(b): a payment claim must be served "not later than 30 months after" (i) for goods and services, the date they "were last
+-- supplied"; (ii) for construction work, "the latest of" (A) the date the work "was last carried out", (B) the issuance date of the
+-- last document "certifying the completion of the construction work", (C) the issuance date of "the last temporary occupation
+-- permit". Months are counted here as month numbers on one running scale (an encoding choice; the Act counts calendar months).
+-- (10(2)(a), the contractual or prescribed date, is a separate limit and not encoded.)
+GIVEN `last work month` IS A NUMBER, `completion certificate month` IS A NUMBER, `last TOP month` IS A NUMBER, `claim month` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the construction claim is within the long-stop` IF
+    `claim month` AT MOST (`the later of` (`the later of` `last work month` `completion certificate month`) `last TOP month` PLUS 30)
+
+§§ `11(1) and 12 -- payment response, dispute settlement period`
+
+-- s 11(1): a respondent under a construction contract "must respond" (a) "by the date as specified in or determined in accordance
+-- with the terms of the construction contract, or within 21 days after the payment claim is served ..., whichever is the earlier";
+-- or (b) with no such term, "within 14 days after the payment claim is served".
+-- (A supply-contract respondent "may" respond by paying or objecting by the due date: s 11(2). Not a duty.)
+GIVEN `the contract fixes a response date` IS A BOOLEAN, `contract response day` IS A NUMBER, `claim served day` IS A NUMBER
+GIVETH A NUMBER
+`the payment response deadline` MEANS
+    IF `the contract fixes a response date`
+    THEN `the earlier of` `contract response day` (`claim served day` PLUS 21)
+    ELSE `claim served day` PLUS 14
+
+-- s 12(2): where the claimant disputes the payment response, or none is provided in time, the claimant may apply for adjudication
+-- "if, by the end of the dispute settlement period, the dispute is not settled or the respondent does not provide the payment
+-- response". (3): a claimant "is considered to dispute a payment response if the claimant does not in writing accept" it.
+-- (6): the dispute settlement period is "the period of 7 days after" the payment response deadline.
+-- s 13(3)(a): the application "must be made within 7 days after the entitlement ... first arises".
+-- So silence by the claimant is a dispute; and for a disputed construction claim the window opens at the response deadline + 7 and
+-- closes 7 days later.
+GIVEN `accepted the response in writing` IS A BOOLEAN, `a response was provided in time` IS A BOOLEAN,
+      `settled within the dispute settlement period` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the claimant may apply for adjudication on the dispute` IF
+        ((NOT `accepted the response in writing`) OR (NOT `a response was provided in time`))
+    AND (NOT `settled within the dispute settlement period`)
+
+GIVEN `response deadline day` IS A NUMBER
+GIVETH A NUMBER
+`the end of the dispute settlement period` MEANS `response deadline day` PLUS 7
+
+GIVEN `response deadline day` IS A NUMBER
+GIVETH A NUMBER
+`the last day to apply for adjudication of a disputed construction claim` MEANS
+    `the end of the dispute settlement period` `response deadline day` PLUS 7
+
+-- s 12(1): a claimant who "fails to receive payment by the due date of the response amount which the claimant has accepted in writing"
+-- may also apply; (4) a supply-contract claimant may apply if unpaid by the due date, or if it disputes a response amount "less than
+-- the claimed amount".
+GIVEN `accepted the response in writing` IS A BOOLEAN, `paid the accepted amount by the due date` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the claimant may apply for adjudication on the accepted amount` IF
+    `accepted the response in writing` AND (NOT `paid the accepted amount by the due date`)
+
+§§ `15(3), (4), 17(6), 27(7) -- objections the respondent may raise`
+
+-- s 15(3): the respondent "must not include in the adjudication response an objection of any nature, unless" (a) for a construction
+-- contract it "was included in the relevant payment response", or (b) for a supply contract it was "raised ... in writing on or
+-- before the relevant due date". (4): unless the circumstances "only arose after" that point, or the respondent "could not reasonably
+-- have known of the circumstances" then.
+GIVEN `raised in the payment response or by the due date` IS A BOOLEAN, `arose only afterwards` IS A BOOLEAN,
+      `could not reasonably have known then` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the objection may go in the adjudication response` IF
+    `raised in the payment response or by the due date` OR `arose only afterwards` OR `could not reasonably have known then`
+
+-- s 17(6): the adjudicator "must not consider an objection ... that was not included in the adjudication response, unless" (a) it
+-- arose afterwards, (b) the respondent could not reasonably have known, or (c) "the objection relates to a patent error".
+-- s 2: "patent error" is "an error that is obvious, manifest or otherwise easily recognisable on the face of the claim".
+GIVEN `in the adjudication response` IS A BOOLEAN, `arose only afterwards` IS A BOOLEAN,
+      `could not reasonably have known then` IS A BOOLEAN, `a patent error` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the adjudicator may consider the objection` IF
+    `in the adjudication response` OR `arose only afterwards` OR `could not reasonably have known then` OR `a patent error`
+
+-- s 27(7): a respondent may not apply to set aside "on any ground if the objection to support that ground was not included in the
+-- respondent's adjudication response, unless" it arose afterwards or could not reasonably have been known. There is NO patent-error
+-- exception here, unlike s 17(6)(c).
+GIVEN `in the adjudication response` IS A BOOLEAN, `arose only afterwards` IS A BOOLEAN,
+      `could not reasonably have known then` IS A BOOLEAN, `a patent error` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the respondent may rely on the ground to set aside` IF
+    `in the adjudication response` OR `arose only afterwards` OR `could not reasonably have known then`
+
+§§ `18(1), (3) -- adjudication review`
+
+-- s 18(1): review is open to a respondent "if the adjudicated amount exceeds the relevant response amount by the prescribed amount or
+-- more", and to a claimant "if the claimed amount exceeds the adjudicated amount by the prescribed amount or more". (2) within 7
+-- days of service of the determination. (3): a respondent ordered to pay "must not lodge any application for the review ... unless
+-- the respondent has paid the adjudicated amount to the authorised nominating body". (The prescribed amount is a parameter.)
+GIVEN `adjudicated amount` IS A NUMBER, `response amount` IS A NUMBER, `prescribed amount` IS A NUMBER,
+      `paid the adjudicated amount to the nominating body` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the respondent may seek review` IF
+        `adjudicated amount` MINUS `response amount` AT LEAST `prescribed amount`
+    AND `paid the adjudicated amount to the nominating body`
+
+GIVEN `claimed amount` IS A NUMBER, `adjudicated amount` IS A NUMBER, `prescribed amount` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the claimant may seek review` IF
+    `claimed amount` MINUS `adjudicated amount` AT LEAST `prescribed amount`
+
+§§ `22(1), (2)(a) -- paying the adjudicated amount`
+
+-- s 22(1): the respondent must pay "within 7 days after the adjudicator's determination is served on the respondent; or by the date on
+-- which the adjudicated amount is determined by the adjudicator to be payable, whichever is the later".
+-- (2): where the CLAIMANT may seek review under s 18(2), the respondent must pay "(a) not earlier than 7 days but within 10 days after"
+-- service, "(b) within 7 days after" service of a review determination on the claimant's review, or "(c)" by a date set by the review
+-- adjudicator, "whichever is the later". Read literally, the adjudicator's own payable date is not in the (2) list. Encoded for the
+-- case where no review is brought: the respondent must pay between day 7 and day 10 after service.
+GIVEN `served day` IS A NUMBER, `determined payable day` IS A NUMBER, `the claimant may seek review` IS A BOOLEAN
+GIVETH A NUMBER
+`the last day to pay the adjudicated amount` MEANS
+    IF `the claimant may seek review`
+    THEN `served day` PLUS 10
+    ELSE `the later of` (`served day` PLUS 7) `determined payable day`
+
+GIVEN `served day` IS A NUMBER, `the claimant may seek review` IS A BOOLEAN
+GIVETH A NUMBER
+`the first day the adjudicated amount may be paid` MEANS
+    IF `the claimant may seek review` THEN `served day` PLUS 7 ELSE `served day`
+
+§§ `24(3), 25, 26 -- lien and suspension`
+
+-- s 24(3): where the principal is "a licensed housing developer ... with a Project Account", the claimant may not exercise the lien
+-- or suspend "for 21 days after being served the notice of payment" by the principal, "unless the principal had previously defaulted
+-- on any payment to the claimant under this section in relation to the same contract". (Day 21 itself is treated as inside the bar,
+-- an inference from "for 21 days after".)
+GIVEN `the principal is a licensed housing developer with a Project Account` IS A BOOLEAN,
+      `the principal served a notice of direct payment` IS A BOOLEAN, `days since that notice` IS A NUMBER,
+      `the principal defaulted before on this contract` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the developer's 21-day bar applies` IF
+        `the principal is a licensed housing developer with a Project Account`
+    AND `the principal served a notice of direct payment`
+    AND `days since that notice` AT MOST 21
+    AND (NOT `the principal defaulted before on this contract`)
+
+-- s 26(1): a claimant may suspend work or supply "if, and only if" (a) it served on the respondent the notice in s 23(1)(b), (b) a
+-- copy was served on "the principal (if known) and the owner", (c) "7 days have elapsed since the notice was served ... or since the
+-- last of them was served", and (d) it "has not been paid the adjudicated amount". s 25(2) puts the same four conditions on the lien;
+-- s 25(1) confines it to goods "that are unfixed and which have not been paid for"; s 25(4)(a) excludes goods "owned by a person other
+-- than the claimant or the respondent". (Day 7 itself is treated as "7 days have elapsed", an inference.)
+GIVEN `notice served on the respondent` IS A BOOLEAN, `copies served on principal and owner` IS A BOOLEAN,
+      `days since the last service` IS A NUMBER, `paid the adjudicated amount` IS A BOOLEAN, `under the developer's bar` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the claimant may suspend work` IF
+        `notice served on the respondent`
+    AND `copies served on principal and owner`
+    AND `days since the last service` AT LEAST 7
+    AND (NOT `paid the adjudicated amount`)
+    AND (NOT `under the developer's bar`)
+
+GIVEN `notice served on the respondent` IS A BOOLEAN, `copies served on principal and owner` IS A BOOLEAN,
+      `days since the last service` IS A NUMBER, `paid the adjudicated amount` IS A BOOLEAN, `under the developer's bar` IS A BOOLEAN,
+      `the goods are unfixed and unpaid for` IS A BOOLEAN, `a third party owns the goods` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the claimant may exercise the lien on goods` IF
+        `the claimant may suspend work` `notice served on the respondent` `copies served on principal and owner` `days since the last service` `paid the adjudicated amount` `under the developer's bar`
+    AND `the goods are unfixed and unpaid for`
+    AND (NOT `a third party owns the goods`)
+
+-- s 26(4): the claimant "must resume such work or supply within 3 days after being paid the adjudicated amount". (5): also within 3
+-- days after a Project-Account developer principal, not previously in default, serves a notice of direct payment. (2): during a lawful
+-- suspension the claimant "is not liable" for the loss it causes; (7) the suspension period is disregarded for contractual time limits.
+GIVEN `trigger day` IS A NUMBER
+GIVETH A NUMBER
+`the last day to resume work` MEANS `trigger day` PLUS 3
+
+§§ `27(4), (5) -- enforcing and setting aside`
+
+-- s 27(1): a determination may, "with permission of the court", be enforced like a judgment. (4): if part has been paid, "the judgment
+-- is to be for the unpaid part". (5): a party who applies to set aside "must pay into the court as security the unpaid portion of the
+-- adjudicated amount that that party is required to pay".
+GIVEN `adjudicated amount` IS A NUMBER, `already paid` IS A NUMBER
+GIVETH A NUMBER
+`the unpaid portion` MEANS `adjudicated amount` MINUS `already paid`
