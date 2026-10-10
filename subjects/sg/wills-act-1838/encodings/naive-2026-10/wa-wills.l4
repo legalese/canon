@@ -1,0 +1,277 @@
+IMPORT prelude
+
+-- Wills Act 1838 (Singapore) -- who may make a will (ss 4, 27), how it must be signed and witnessed (ss 5, 6), gifts to
+-- witnesses (s 10), revocation by marriage and otherwise (ss 13-15), alterations (s 16), revival (s 17), gifts to children
+-- who die first (s 26), and the six-month window for rectification (s 28).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/WA1838.txt. The
+-- deposit's page footer reads "Informal Consolidation - version in force from 28/10/2022"; the latest amendment annotated
+-- in the body is Act 24 of 2022 (s 27(5), wef 28/10/2022). The section numbers follow the BODY; the arrangement of
+-- sections at the top of the deposit is one place out of step.
+--
+-- WHY THIS ACT. Chosen for its everyday-life relevance: almost every adult in Singapore who makes a will (or dies leaving
+-- one) meets these rules. An automated count found none of the 527 deposited Singapore Acts citing it by its slug title;
+-- that count undercounts Acts cited by short or older titles and is not a measure of importance. SCOPED to making,
+-- witnessing, revoking and correcting a will, and the one anti-lapse rule a family most often meets. Not encoded: the
+-- definitions (s 2) beyond their use here, what property may be disposed of (s 3), powers of appointment (ss 5(3)(d), 5(4),
+-- 7, 21), the choice-of-law details of s 5(3)-(8), creditor and executor witnesses (ss 11, 12) beyond a comment, and the
+-- rules of construction in ss 18-25.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Wills Act 1838 -- wills`
+
+§§ `4, 27 -- who may make a will`
+
+-- s 4: "No will made by any person under 21 years of age shall be valid."
+-- s 27(1): "any soldier being in actual military service, or any mariner or seaman being at sea, may dispose of his
+-- personal estate as he might have done before the making of this Act and may do so EVEN THOUGH UNDER 21 years of age."
+-- (2): the same for real estate, for one "who dies after 29 August 1938". (4): extends to "any member of any naval or marine
+-- forces not only when he is at sea but also when he is so circumstanced that if he were a soldier he would be in actual
+-- military service". (5): "soldier" includes "a member of an air force and a serviceman serving in the digital and
+-- intelligence service of the Singapore Armed Forces" (Act 24 of 2022).
+DECLARE Service IS ONE OF
+    `a civilian`
+    `a soldier in actual military service`
+    `a soldier not in actual military service`
+    `a mariner at sea`
+    `a mariner ashore`
+    `a naval member ashore in circumstances of actual military service`
+    `an air force member in actual military service`
+    `a digital and intelligence serviceman in actual military service`
+
+GIVEN `the service` IS A Service
+GIVETH A BOOLEAN
+DECIDE `the testator is privileged under section 27` IF
+    CONSIDER `the service`
+    WHEN `a civilian` THEN FALSE
+    WHEN `a soldier not in actual military service` THEN FALSE
+    WHEN `a mariner ashore` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the age` IS A NUMBER, `the service status` IS A Service
+GIVETH A BOOLEAN
+DECIDE `the testator is old enough` IF
+        `the age` AT LEAST 21
+    OR  `the testator is privileged under section 27` `the service status`
+
+§§ `6 -- how a will must be executed`
+
+-- s 6(1): "No will shall be valid unless it is IN WRITING and executed in the manner mentioned in subsection (2)."
+-- (2): "signed at the foot or end thereof by the testator, or by some other person in his presence and by his direction, and
+-- the signature shall be MADE OR ACKNOWLEDGED by the testator ... in the presence of 2 OR MORE WITNESSES PRESENT AT THE SAME
+-- TIME, and those witnesses shall subscribe the will IN THE PRESENCE OF THE TESTATOR, but no form of attestation shall be
+-- necessary." (3): the signature's position is enough if "it shall be apparent on the face of the will that the testator
+-- intended to give effect by such his signature to the writing signed as his will".
+--
+-- The text requires the witnesses to sign in the testator's presence. It does not say they must sign in each other's.
+DECLARE Execution HAS
+    `in writing` IS A BOOLEAN
+    `signed by the testator` IS A BOOLEAN
+    `signed by another in the testator's presence and by direction` IS A BOOLEAN
+    `signature placed so as to show it gives effect to the will` IS A BOOLEAN
+    `witnesses present together when the signature was made or acknowledged` IS A NUMBER
+    `each witness signed in the testator's presence` IS A BOOLEAN
+
+GIVEN `the execution` IS AN Execution
+GIVETH A BOOLEAN
+DECIDE `the will is executed as section 6 requires` IF
+        `the execution`'s `in writing`
+    AND (    `the execution`'s `signed by the testator`
+         OR  `the execution`'s `signed by another in the testator's presence and by direction`)
+    AND `the execution`'s `signature placed so as to show it gives effect to the will`
+    AND `the execution`'s `witnesses present together when the signature was made or acknowledged` AT LEAST 2
+    AND `the execution`'s `each witness signed in the testator's presence`
+
+§§ `5 -- wills executed under another law`
+
+-- s 5(1): "This section shall take effect notwithstanding any other provisions of this Act." (2): a will "shall be treated as
+-- properly executed if its execution conformed to the internal law in force" in the territory where it was executed, where
+-- the testator was domiciled or habitually resided, or the state of which he was a national, at execution or at death.
+-- (9): "This section shall not apply to a will of a testator who died before 26 June 1992".
+--
+-- Dates are YYYYMMDD numbers. The text is silent on a testator who died ON 26 June 1992 ("before" excludes him; "dies after
+-- that date" does not include him). INFERENCE: this encoding applies s 5 to him.
+GIVEN `the execution` IS AN Execution, `conformed to a law named in section 5(2)` IS A BOOLEAN, `the date of death` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the will is treated as properly executed` IF
+        `the will is executed as section 6 requires` `the execution`
+    OR  (`conformed to a law named in section 5(2)` AND `the date of death` AT LEAST 19920626)
+
+-- Putting the age and form rules together. INFERENCE: s 27(1) lets a privileged testator dispose "as he might have done
+-- before the making of this Act"; the deposit does not say what that earlier law required, and this encoding takes it to
+-- excuse the formalities of s 6 entirely. That is an assumption about law outside the deposit.
+GIVEN `the age` IS A NUMBER, `the service status` IS A Service, `the execution` IS AN Execution, `conformed to a law named in section 5(2)` IS A BOOLEAN, `the date of death` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the will is valid in form and age` IF
+        `the testator is old enough` `the age` `the service status`
+    AND (    `the will is treated as properly executed` `the execution` `conformed to a law named in section 5(2)` `the date of death`
+         OR  `the testator is privileged under section 27` `the service status`)
+
+§§ `9, 10 -- gifts to witnesses`
+
+-- s 9: if a witness is "incompetent to be admitted a witness to prove the execution thereof, the will shall NOT on that
+-- account be invalid". s 10(1): a "beneficial devise, legacy, estate, interest, gift or appointment" to an attesting witness
+-- "or to whose wife or husband", "other than and except charges and directions for the payment of any debt", is "so far only
+-- as concerns the person attesting ... UTTERLY NULL AND VOID". (3): the attestation is DISREGARDED "if the will is duly
+-- executed without his attestation and without that of any other such person". (4): (3) applies to the will of "any person
+-- dying after 29 May 1992". s 12: an executor is not incompetent to be a witness.
+--
+-- The will survives; only the witness's own gift fails. And it is saved if two other, disinterested witnesses were enough.
+GIVEN `the witness or spouse takes a beneficial gift` IS A BOOLEAN, `the gift is only for payment of a debt` IS A BOOLEAN, `disinterested witnesses` IS A NUMBER, `the date of death` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the gift to the witness is void` IF
+        `the witness or spouse takes a beneficial gift`
+    AND (NOT `the gift is only for payment of a debt`)
+    AND (NOT (`disinterested witnesses` AT LEAST 2 AND `the date of death` GREATER THAN 19920529))
+
+§§ `13 -- revocation by marriage`
+
+-- s 13(1): "Every will made by a man or woman shall be REVOKED by his or her MARRIAGE", except an appointment under a power
+-- where the property would not otherwise pass to the heir, executor, administrator or person entitled on intestacy.
+-- (2): "where a will made on or after 29 August 1938 is expressed to be made IN CONTEMPLATION OF A MARRIAGE, the will shall
+-- not be revoked by the solemnisation of THE MARRIAGE CONTEMPLATED"; this applies even to "the first, second or subsequent
+-- marriage of a person lawfully practising polygamy".
+GIVEN `the testator married after making the will` IS A BOOLEAN, `expressed in contemplation of a marriage` IS A BOOLEAN, `the marriage was the one contemplated` IS A BOOLEAN, `the will date` IS A NUMBER, `the will only exercises a power whose property would not pass on default to the heirs` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the will is revoked by marriage` IF
+        `the testator married after making the will`
+    AND (NOT `the will only exercises a power whose property would not pass on default to the heirs`)
+    AND (NOT (    `expressed in contemplation of a marriage`
+              AND `the marriage was the one contemplated`
+              AND `the will date` AT LEAST 19380829))
+
+§§ `14, 15 -- other ways a will is or is not revoked`
+
+-- s 14: "No will shall be revoked by any presumption of an intention on the ground of an alteration in circumstances."
+-- s 15: "No will or codicil ... shall be revoked otherwise than -- (a) as provided in section 13; (b) by another will or
+-- codicil executed in the manner by this Act required; (c) by some writing declaring an intention to revoke it, and executed
+-- in the manner in which a will is ... required to be executed; or (d) by the burning, tearing, or otherwise destroying the
+-- will by the testator, or by some person in his presence and by his direction, WITH THE INTENTION OF REVOKING IT."
+--
+-- Divorce and the birth of a child do not appear in the Act. INFERENCE: they are "an alteration in circumstances" under
+-- s 14, so they revoke nothing. A later will counts only where it revokes; this encoding uses one with a revocation clause.
+DECLARE Event IS ONE OF
+    `a later will with a revocation clause, duly executed`
+    `a signed and duly witnessed writing declaring the will revoked`
+    `an unwitnessed letter declaring the will revoked`
+    `the testator tearing up the will meaning to revoke it`
+    `another person burning the will in the testator's presence at the testator's direction, meaning to revoke it`
+    `another person destroying the will in the testator's absence`
+    `the will destroyed by accident`
+    `a divorce`
+    `the birth of a child`
+
+GIVEN `the event` IS AN Event
+GIVETH A BOOLEAN
+DECIDE `the event revokes the will` IF
+    CONSIDER `the event`
+    WHEN `a later will with a revocation clause, duly executed` THEN TRUE
+    WHEN `a signed and duly witnessed writing declaring the will revoked` THEN TRUE
+    WHEN `the testator tearing up the will meaning to revoke it` THEN TRUE
+    WHEN `another person burning the will in the testator's presence at the testator's direction, meaning to revoke it` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `16 -- alterations after signing`
+
+-- s 16(1): "No obliteration, interlineation or other alteration made in any will AFTER THE EXECUTION thereof shall be valid or
+-- have any effect EXCEPT so far as the words or effect of the will before such alteration shall NOT BE APPARENT, unless the
+-- alteration shall be executed in the like manner as ... the will." (2): it is enough that the testator's signature and the
+-- witnesses' subscription are "in the margin or on some other part of the will opposite or near to the alteration".
+--
+-- INFERENCE: an alteration made before execution is outside s 16 and is treated here as part of the will.
+GIVEN `made after the will was executed` IS A BOOLEAN, `the alteration was signed and witnessed like a will` IS A BOOLEAN, `the original words are still apparent` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the alteration has effect` IF
+        (NOT `made after the will was executed`)
+    OR  `the alteration was signed and witnessed like a will`
+    OR  (NOT `the original words are still apparent`)
+
+§§ `17 -- reviving a revoked will`
+
+-- s 17(1): a revoked will shall not "be revived otherwise than by the RE-EXECUTION thereof, or by a CODICIL executed in the
+-- manner required by this Act and showing an intention to revive". (2): reviving a will partly and then wholly revoked does
+-- not revive the part revoked first, "unless an intention to the contrary be shown".
+DECLARE Revival IS ONE OF
+    `re-executing the old will`
+    `a duly executed codicil showing an intention to revive it`
+    `revoking the later will that revoked it`
+    `telling the family the old will stands`
+    `an unwitnessed codicil reviving it`
+
+GIVEN `the step` IS A Revival
+GIVETH A BOOLEAN
+DECIDE `the step revives the will` IF
+    CONSIDER `the step`
+    WHEN `re-executing the old will` THEN TRUE
+    WHEN `a duly executed codicil showing an intention to revive it` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `26 -- gifts to children who die before the testator`
+
+-- s 26: where a child "or other issue of the testator" given property "for any estate or interest not determinable at or
+-- before the death of that person shall die in the lifetime of the testator LEAVING ISSUE, and any such issue ... shall be
+-- living at the time of the death of the testator, that devise or bequest SHALL NOT LAPSE, but shall take effect as if the
+-- death of that person had happened immediately after the death of the testator, unless a contrary intention shall appear
+-- by the will".
+--
+-- INFERENCE: that a gift to someone who dies before the testator otherwise lapses is general law the Act assumes (s 20 speaks
+-- of a devise that fails "by reason of the death of the devisee in the lifetime of the testator"); it does not enact it.
+-- Note what s 26 does: the gift takes effect as if the child had died just AFTER the testator, i.e. into the child's estate,
+-- not directly to the grandchildren.
+GIVEN `the beneficiary is the testator's child or other issue` IS A BOOLEAN, `the beneficiary died before the testator` IS A BOOLEAN, `the beneficiary left issue living at the testator's death` IS A BOOLEAN, `the interest ends at or before the beneficiary's death` IS A BOOLEAN, `the will shows a contrary intention` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the gift lapses` IF
+        `the beneficiary died before the testator`
+    AND (NOT (    `the beneficiary is the testator's child or other issue`
+              AND `the beneficiary left issue living at the testator's death`
+              AND (NOT `the interest ends at or before the beneficiary's death`)
+              AND (NOT `the will shows a contrary intention`)))
+
+§§ `28 -- rectification`
+
+-- s 28(1): a court may order a will rectified "so as to carry out the testator's intentions" if "as a consequence of either or
+-- both of ... (a) a clerical error; (b) a failure to understand the testator's instructions", the will fails to carry them out.
+-- (2): "Except with the permission of a court, an application ... must be made no later than 6 MONTHS after the date on which
+-- a grant authorising the administration of the testator's estate is FIRST made." (4): disregarded are "(a) a grant limited to
+-- settled land or to trust property; (b) any other grant that does not permit the distribution of the testator's estate; (c) a
+-- grant limited to a part only of the testator's estate, unless a grant limited to the remainder ... has previously been made
+-- or is made at the same time". (3): personal representatives who distribute after the 6 months are not liable for having
+-- failed to allow for a late application, though the property may still be recovered.
+--
+-- Months are given as a whole number counted by the caller; no calendar arithmetic is attempted.
+DECLARE Grant IS ONE OF
+    `probate`
+    `letters of administration with the will annexed`
+    `a grant limited to settled land or trust property`
+    `a grant that does not permit distribution`
+    `a grant limited to part of the estate alone`
+    `a grant limited to part of the estate made with one for the remainder`
+
+GIVEN `the grant` IS A Grant
+GIVETH A BOOLEAN
+DECIDE `the grant starts the six-month period` IF
+    CONSIDER `the grant`
+    WHEN `a grant limited to settled land or trust property` THEN FALSE
+    WHEN `a grant that does not permit distribution` THEN FALSE
+    WHEN `a grant limited to part of the estate alone` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `months since the first grant` IS A NUMBER, `the court gave permission` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the application is in time` IF
+        `months since the first grant` AT MOST 6
+    OR  `the court gave permission`
+
+GIVEN `a clerical error` IS A BOOLEAN, `a failure to understand the instructions` IS A BOOLEAN, `the will fails to carry out the intentions` IS A BOOLEAN, `months after grant` IS A NUMBER, `permission given` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may rectify` IF
+        (`a clerical error` OR `a failure to understand the instructions`)
+    AND `the will fails to carry out the intentions`
+    AND `the application is in time` `months after grant` `permission given`
+
+GIVEN `months after the first grant when distributed` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the personal representatives are protected for distributing` IF
+    `months after the first grant when distributed` GREATER THAN 6
