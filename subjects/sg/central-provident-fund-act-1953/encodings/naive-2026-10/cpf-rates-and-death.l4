@@ -1,0 +1,154 @@
+IMPORT prelude
+
+-- Central Provident Fund Act 1953 (Singapore) -- the contribution rates for citizens and second-year-plus permanent residents
+-- (First Schedule paragraphs 1 and 7, from 1 January 2026), and what happens to CPF moneys on a member's death (s 24(3A),
+-- s 25(5)).
+--
+-- Edition: 2020 Revised Edition, informal consolidation (version in force from 1 July 2026), as deposited at
+-- ../../registers/source-bundle/CPFA1953.txt. First Schedule paragraph 1 as amended by S 886/2025 wef 1 January 2026.
+--
+-- WHY. Added on 11 October 2026 for two requirements in subjects/sg/requirements.jsonl, both raised by the
+-- cradle-to-grave-simone scenario: REQ-0001 (event e041: the employer's and employee's shares for an employee aged 23 earning
+-- $4,200 in August 2026) and REQ-0012 (event e088: whether CPF moneys paid under a nomination form part of the estate).
+--
+-- THE FIRST SCHEDULE TABLES ARE COLUMN-SHIFTED IN THE .txt DEPOSIT, as in the Stamp Duties deposit: each band's percentages
+-- were read from the cells in order. The second column is the TOTAL the employer pays to the Fund; the third column is the
+-- part the employer may recover from the employee's wages.
+--
+-- NOT ENCODED: additional wages and the annual additional-wage ceiling (the encoding takes ordinary wages only, with no
+-- additional wages in the month); the graduated rates for the first two years of permanent residence (paragraphs 1A to 1D);
+-- foreign employees; public-sector employees (paragraph 7 and its Regulations); platform workers; the allocation into the
+-- Ordinary, Special and Medisave Accounts (s 13 and regulations, REQ-0002); months before January 2026.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table, no
+-- independent test pass, no human gate. See NOTES.md.
+
+§ `Central Provident Fund Act 1953 -- contribution rates and death`
+
+§§ `First Schedule paragraph 1 -- the rates from 1 January 2026`
+
+-- Para 1: "with effect from 1 January 2026, the contributions payable by the employer and the amount recoverable from the
+-- employee's wages are as follows", by age band:
+--   (a) 55 and below:          wages over $50 to $500: 17% of Total Wages, nothing recoverable;
+--                              over $500 to $750: 17% of Total Wages + 0.6 x (Total Wages - $500), of which 0.6 x (Total
+--                              Wages - $500) recoverable; over $750: 37% of ordinary wages (capped at 37% of the Ordinary Wage
+--                              Ceiling), of which 20% (capped at 20% of the Ceiling) recoverable.
+--   (b) above 55 to 60:        16% / 0.54 / 34% of which 18%;
+--   (c) above 60 to 65:        12.5% / 0.375 / 25% of which 12.5%;
+--   (d) above 65 to 70:        9% / 0.225 / 16.5% of which 7.5%;
+--   (e) above 70:              7.5% / 0.15 / 12.5% of which 5%.
+-- Wages of $50 or less: no band applies, so no contribution.
+DECLARE Band HAS
+    `low rate` IS A NUMBER
+    `phase-in factor` IS A NUMBER
+    `total rate` IS A NUMBER
+    `employee rate` IS A NUMBER
+
+GIVEN age IS A NUMBER
+GIVETH A Band
+`the rate band for` age MEANS
+    IF age AT MOST 55 THEN Band WITH `low rate` IS 0.17, `phase-in factor` IS 0.6, `total rate` IS 0.37, `employee rate` IS 0.2
+    ELSE IF age AT MOST 60 THEN Band WITH `low rate` IS 0.16, `phase-in factor` IS 0.54, `total rate` IS 0.34, `employee rate` IS 0.18
+         ELSE IF age AT MOST 65 THEN Band WITH `low rate` IS 0.125, `phase-in factor` IS 0.375, `total rate` IS 0.25, `employee rate` IS 0.125
+              ELSE IF age AT MOST 70 THEN Band WITH `low rate` IS 0.09, `phase-in factor` IS 0.225, `total rate` IS 0.165, `employee rate` IS 0.075
+                   ELSE Band WITH `low rate` IS 0.075, `phase-in factor` IS 0.15, `total rate` IS 0.125, `employee rate` IS 0.05
+
+-- Para 7(ea): the "Ordinary Wage Ceiling" is $6,300 a month for September to December 2023, $6,800 in 2024, $7,400 in 2025, and
+-- "$8,000" for "each month in the year 2026 and every subsequent year".
+GIVEN year IS A NUMBER
+GIVETH A NUMBER
+`the Ordinary Wage Ceiling in` year MEANS
+    IF year AT LEAST 2026 THEN 8000
+    ELSE IF year EQUALS 2025 THEN 7400
+         ELSE IF year EQUALS 2024 THEN 6800
+              ELSE 6300
+
+-- Para 7(b): "the contribution payable by the employer is to be rounded off to the nearest dollar except, where the fraction of a
+-- dollar is 50 cents, it is to be regarded as a dollar". (c): "in calculating the amount recoverable by the employer from the
+-- employee's wages, a fraction of a dollar is to be ignored".
+GIVEN x IS A NUMBER
+GIVETH A NUMBER
+`rounded to the nearest dollar, 50 cents up` x MEANS FLOOR (x PLUS 0.5)
+
+GIVEN wages IS A NUMBER, year IS A NUMBER
+GIVETH A NUMBER
+`the capped ordinary wages` wages year MEANS
+    IF wages GREATER THAN `the Ordinary Wage Ceiling in` year THEN `the Ordinary Wage Ceiling in` year ELSE wages
+
+GIVEN age IS A NUMBER, wages IS A NUMBER, year IS A NUMBER
+GIVETH A NUMBER
+`the total contribution before rounding` age wages year MEANS
+    IF wages AT MOST 50 THEN 0
+    ELSE IF wages AT MOST 500 THEN wages TIMES (`the rate band for` age)'s `low rate`
+         ELSE IF wages AT MOST 750
+              THEN wages TIMES (`the rate band for` age)'s `low rate` PLUS (wages MINUS 500) TIMES (`the rate band for` age)'s `phase-in factor`
+              ELSE `the capped ordinary wages` wages year TIMES (`the rate band for` age)'s `total rate`
+
+GIVEN age IS A NUMBER, wages IS A NUMBER, year IS A NUMBER
+GIVETH A NUMBER
+`the employee share before rounding` age wages year MEANS
+    IF wages AT MOST 500 THEN 0
+    ELSE IF wages AT MOST 750 THEN (wages MINUS 500) TIMES (`the rate band for` age)'s `phase-in factor`
+         ELSE `the capped ordinary wages` wages year TIMES (`the rate band for` age)'s `employee rate`
+
+-- The total the employer pays to the Fund for the month.
+GIVEN age IS A NUMBER, wages IS A NUMBER, year IS A NUMBER
+GIVETH A NUMBER
+`the total CPF contribution` age wages year MEANS
+    `rounded to the nearest dollar, 50 cents up` (`the total contribution before rounding` age wages year)
+
+-- The part the employer may deduct from the employee's wages.
+GIVEN age IS A NUMBER, wages IS A NUMBER, year IS A NUMBER
+GIVETH A NUMBER
+`the employee's CPF share` age wages year MEANS
+    FLOOR (`the employee share before rounding` age wages year)
+
+-- What the employer bears itself.
+GIVEN age IS A NUMBER, wages IS A NUMBER, year IS A NUMBER
+GIVETH A NUMBER
+`the employer's own CPF share` age wages year MEANS
+    `the total CPF contribution` age wages year MINUS `the employee's CPF share` age wages year
+
+§§ `First Schedule paragraph 7(a) -- when an older band starts`
+
+-- Para 7(a): contributions for an employee "above 55, 60, 65 or 70 years of age are payable -- (i) from the first day of the month
+-- following the month in which the employee attains that age; and (ii) in the case of an employee who is born on 29 February,
+-- from the first day of March in the year in which the employee attains that age". So the band for a month is fixed by the age
+-- the employee had at the end of the PREVIOUS month. The encoding takes "age for the month" as that input.
+GIVEN `age at the end of the previous month` IS A NUMBER
+GIVETH A NUMBER
+`the age that sets the month's band` `age at the end of the previous month` MEANS `age at the end of the previous month`
+
+§§ `24(3A), 25(5) -- CPF moneys on death`
+
+-- s 24(3A): "all moneys paid out of the Fund on or after the death of any member of the Fund are deemed to be impressed with a
+-- trust in favour of -- (a) the person or persons nominated under section 25(1) by the deceased member, if any; or (b) the person
+-- or persons who are entitled to the whole or a share of the moneys payable to the Public Trustee under section 25A(1), but,
+-- without affecting the operation of the Estate Duty Act 1929, are deemed not to form part of the deceased member's estate or to
+-- be subject to his or her debts."
+-- s 25(5): "Any nomination made by a member of the Fund under subsection (1) is revoked -- (a) by his or her marriage ... ; or
+-- (b) in such other circumstances ... as the Board may prescribe."
+--
+-- REQ-0012 asked a case-law question; the Act answers it. CPF moneys paid on death are NOT part of the estate the executor
+-- administers, whether paid under a nomination or through the Public Trustee, and are not subject to the member's debts. A will
+-- leaving "everything" to the spouse does not reach them. But a nomination made BEFORE the member married is revoked by the
+-- marriage, so the moneys go through the Public Trustee route instead (s 25A, not encoded).
+GIVETH A BOOLEAN
+DECIDE `CPF moneys paid on death form part of the member's estate` IF FALSE
+
+GIVETH A BOOLEAN
+DECIDE `CPF moneys paid on death are subject to the member's debts` IF FALSE
+
+GIVEN `nomination made` IS A BOOLEAN, `member married after the nomination` IS A BOOLEAN, `revoked by the Board's prescribed circumstances` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the nomination is in force at death` IF
+        `nomination made`
+    AND (NOT `member married after the nomination`)
+    AND (NOT `revoked by the Board's prescribed circumstances`)
+
+GIVEN `nomination made` IS A BOOLEAN, `member married after the nomination` IS A BOOLEAN, `revoked by the Board's prescribed circumstances` IS A BOOLEAN
+GIVETH A STRING
+`who the CPF moneys are held on trust for` `nomination made` `member married after the nomination` `revoked by the Board's prescribed circumstances` MEANS
+    IF `the nomination is in force at death` `nomination made` `member married after the nomination` `revoked by the Board's prescribed circumstances`
+    THEN "the nominee"
+    ELSE "the persons entitled through the Public Trustee under section 25A"

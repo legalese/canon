@@ -7,8 +7,8 @@ pass, no human gate.
 **Edition:** 2020 Revised Edition, informal consolidation in force from
 1 July 2026.
 
-**Checks:** `l4 run cpf-cases.l4` and `l4 run cpf-medisave-cases.l4` — 60
-assertions satisfied, 0 errors, 0 warnings.
+**Checks:** `l4 run cpf-cases.l4`, `l4 run cpf-medisave-cases.l4` and `l4 run cpf-rates-and-death-cases.l4` -- 101
+assertions satisfied, 0 errors (60 before 11 October 2026; 41 added for requirements REQ-0001 and REQ-0012).
 
 ## Scope — read this first
 
@@ -151,6 +151,42 @@ Asserted as that pair.
 Also encoded: s 25(1)(a)(ii)(B) splits a large nomination to a citizen or
 permanent resident — the Minister's maximum is transferred into the nominee's
 own CPF accounts and the excess is paid out to them in cash.
+
+## Contribution rates and death (added 11 October 2026 for REQ-0001 and REQ-0012)
+
+A third module, `cpf-rates-and-death.l4`, answers two requirements raised by the
+`cradle-to-grave-simone` scenario.
+
+### REQ-0001: the shares for an employee aged 23 on $4,200 in August 2026
+
+First Schedule paragraph 1, in force from 1 January 2026. For wages over $750 the employer
+pays a total of **37%** of ordinary wages, up to the Ordinary Wage Ceiling, and may recover
+**20%** from the employee. The ceiling is $8,000 a month from 2026 (para 7(ea)). So $4,200
+gives **$1,554** in total: **$840** deducted from the employee and **$714** borne by the
+employer, exactly as the entry expected. Asserted.
+
+The other bands are 34/18 (above 55 to 60), 25/12.5 (above 60 to 65), 16.5/7.5 (above 65 to
+70) and 12.5/5 (above 70). Wages of $500 to $750 phase in the employee share. The total is
+rounded to the nearest dollar with 50 cents rounding up, and the employee share drops any
+fraction (para 7(b), (c)). An older band starts the month **after** the birthday month
+(para 7(a)). The tables are column-shifted in the `.txt` deposit; the rates were read cell
+by cell.
+
+Not encoded: additional wages, the graduated rates for new permanent residents, foreign
+and public-sector employees, and the allocation into the three accounts (REQ-0002, which
+needs subsidiary legislation).
+
+### REQ-0012: CPF moneys on death are outside the estate by statute
+
+The entry asked this as a case-law question. The Act answers it. s 24(3A): moneys paid out
+on a member's death "are deemed to be impressed with a trust in favour of" the nominee
+(or, with no nomination, those entitled through the Public Trustee under s 25A), and "are
+deemed not to form part of the deceased member's estate or to be subject to his or her
+debts". A will leaving everything to the spouse does not reach them.
+
+One trap is s 25(5)(a): a nomination is **revoked by the member's marriage**. A nomination
+made before marrying does not survive the wedding, and the moneys then go through the
+Public Trustee route. Asserted.
 
 ## Still a small fraction of the Act
 
