@@ -1,0 +1,324 @@
+IMPORT prelude
+
+-- Maritime and Port Authority of Singapore Act 1996 (Singapore) -- what a shipowner, agent, master, pilot or salvor meets in the
+-- port: port clearance and its return (s 46, 47), the appeal against a direction to leave (s 49), compulsory pilotage and who may
+-- pilot (ss 60, 61, 63, 64), the liability of owners, pilots and the Authority (ss 71, 72, 74, 90, 91), the salvage licence (s 80),
+-- the 5% controller notice and its two defences (s 86E), the maximum penalties for the Act's offences (ss 39, 44-47, 50, 61, 64, 73,
+-- 80, 86I, 92-99) and the ceiling on composition (s 102).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/MPASA1996.txt, with
+-- amendments to Act 17 of 2025 (in force 1 February 2026) shown.
+--
+-- WHY THIS ACT. Cited by 15 of the 527 Singapore Acts deposited in this repository. SCOPED to the rules with decision content for
+-- people using the port. Not encoded: the constitution, functions, finances and staff of the Authority (Parts 2 to 6); seamen's
+-- regulations (s 40); port regulations (s 41); wreck removal (Part 9); the Pilotage Committee (ss 66-70); dredging, surveys and works
+-- (ss 77-79); public licences (Part 12); the approvals regime for 25%/50%/75% controllers (s 86F onward); special administration
+-- (Part 13); and Part 16. Fees and dues are prescribed by regulations, which were not retrieved.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Maritime and Port Authority of Singapore Act 1996 -- port users`
+
+§§ `46 -- port clearance`
+
+-- s 46(1): a vessel, other than one in subsection (3), "must not leave the port without the owner, agent or master obtaining port
+-- clearance from the Port Master". (3): the section does not apply to (a) "any ship of war"; (b) a Government vessel "unless the
+-- vessel is carrying or habitually carries cargo or passengers for freight or fares"; (c) vessels exempted by the Minister.
+DECLARE Vessel IS ONE OF
+    `a merchant ship`
+    `a ship of war`
+    `a Government vessel carrying no freight or fares`
+    `a Government ferry carrying passengers for fares`
+    `a vessel exempted by the Minister`
+
+GIVEN `the vessel` IS A Vessel
+GIVETH A BOOLEAN
+DECIDE `port clearance is required` IF
+    CONSIDER `the vessel`
+    WHEN `a ship of war` THEN FALSE
+    WHEN `a Government vessel carrying no freight or fares` THEN FALSE
+    WHEN `a vessel exempted by the Minister` THEN FALSE
+    OTHERWISE TRUE
+
+-- s 46(4): if a vessel "leaves or attempts to leave the port without port clearance", the owner, agent or master "or any person who
+-- sends or attempts to send the vessel to sea" commits an offence "if that ... person is party or privy to the offence". Fine up to
+-- $10,000 for every offence; the vessel may be detained.
+GIVEN `the vessel` IS A Vessel, `left or attempted to leave` IS A BOOLEAN, `had port clearance` IS A BOOLEAN,
+      `the accused was party or privy` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `leaving without port clearance is an offence` IF
+        `port clearance is required` `the vessel`
+    AND `left or attempted to leave`
+    AND (NOT `had port clearance`)
+    AND `the accused was party or privy`
+
+-- s 46(5): port clearance "must not be granted" to a vessel (a) whose owner, agent or master has not complied with the Regulation of
+-- Imports and Exports Act 1995 or other import or export law; or (b) until the country the vessel belongs to has been declared.
+-- (6): where a vessel "is to be detained" the Port Master MUST refuse; where it "may be detained" he or she MAY.
+-- (7): MAY refuse where the owner or master "has not complied with, or has been charged with an offence under", this Act or other
+-- written law. (8): MAY refuse a vessel that anchored in the submarine cable corridor until a deposit or security is given.
+GIVEN `complied with import and export law` IS A BOOLEAN, `declared the country of the vessel` IS A BOOLEAN,
+      `the vessel is to be detained` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `port clearance must be refused` IF
+        (NOT `complied with import and export law`)
+    OR  (NOT `declared the country of the vessel`)
+    OR  `the vessel is to be detained`
+
+GIVEN `complied with import and export law` IS A BOOLEAN, `declared the country of the vessel` IS A BOOLEAN,
+      `the vessel is to be detained` IS A BOOLEAN, `the vessel may be detained` IS A BOOLEAN,
+      `owner or master is in breach or charged under any written law` IS A BOOLEAN,
+      `anchored in the cable corridor without giving security` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `port clearance may be refused` IF
+        `port clearance must be refused` `complied with import and export law` `declared the country of the vessel` `the vessel is to be detained`
+    OR  `the vessel may be detained`
+    OR  `owner or master is in breach or charged under any written law`
+    OR  `anchored in the cable corridor without giving security`
+
+§§ `47 -- returning an unused port clearance`
+
+-- s 47(1): a vessel that "fails to leave the port within 48 hours, or any shorter period specified by the Port Master, after
+-- obtaining port clearance must, within 6 hours after the expiry of the 48 hours or the shorter period, return ... the port clearance
+-- certificate". (2): fine up to $5,000 for every offence, and the vessel may be detained.
+-- A shorter period of 0 is read here as "none specified" -- a modelling convention, not the Act's.
+GIVEN `shorter period specified, in hours` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the period to leave, in hours` IS
+    IF `shorter period specified, in hours` > 0 AND `shorter period specified, in hours` < 48
+    THEN `shorter period specified, in hours`
+    ELSE 48
+
+GIVEN `shorter period specified, in hours` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the deadline to return the clearance, in hours after clearance` IS
+    `the period to leave, in hours` `shorter period specified, in hours` + 6
+
+GIVEN `shorter period specified, in hours` IS A NUMBER, `hours after clearance the vessel left` IS A NUMBER,
+      `hours after clearance it was returned` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `failing to return the clearance is an offence` IF
+        `hours after clearance the vessel left` > `the period to leave, in hours` `shorter period specified, in hours`
+    AND `hours after clearance it was returned` > `the deadline to return the clearance, in hours after clearance` `shorter period specified, in hours`
+
+§§ `49 -- appeal against a direction to leave territorial waters`
+
+-- s 49(2): a person aggrieved by a direction to leave "may, within 7 days of the receipt of such direction, appeal to the Minister
+-- whose decision is final". (3): if the vessel does not leave in time, or after the appeal is refused, the Authority "may take
+-- possession of and dispose of the vessel".
+GIVEN `days after receipt of the direction` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `an appeal to the Minister is in time` IF
+    `days after receipt of the direction` <= 7
+
+§§ `60, 61, 63, 64 -- compulsory pilotage`
+
+-- s 60(1): "Every vessel while navigating in any pilotage district ... must be under pilotage". (2): a vessel being moved within a
+-- part of the port that is a pilotage district is deemed to be navigating in it. (3): the Authority may exempt a vessel or class.
+GIVEN `in a pilotage district, navigating or being moved` IS A BOOLEAN, `exempted by the Authority` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the vessel must be under pilotage` IF
+    `in a pilotage district, navigating or being moved` AND (NOT `exempted by the Authority`)
+
+-- s 61: an owner, agent or master who does not employ an authorised pilot when pilotage is required: fine up to $5,000 "and shall in
+-- addition be liable to pay to the Authority as penalty double the amount of pilotage dues and rates which would have been payable".
+GIVEN `pilotage dues and rates that would have been payable` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the additional penalty for not taking a pilot` IS
+    2 * `pilotage dues and rates that would have been payable`
+
+-- s 63: "A vessel must not be piloted in a pilotage district by any person other than an authorised pilot."
+-- s 64(1): a person "not being an authorised pilot" who "engages in any pilotage act": fine up to $5,000. (3): an authorised pilot
+-- "acting beyond the limits for which the person is licensed or authorised ... or acting in contravention of any of the conditions"
+-- is DEEMED not to be an authorised pilot. (4): "Any person may, without subjecting himself or herself or his or her employer to any
+-- penalty, act as the pilot of a vessel entering or leaving any pilotage district, when that vessel is in distress" or the master
+-- must take the best assistance to be found.
+GIVEN `is an authorised pilot` IS A BOOLEAN, `acting beyond limits or conditions` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `counts as an authorised pilot` IF
+    `is an authorised pilot` AND (NOT `acting beyond limits or conditions`)
+
+GIVEN `is an authorised pilot` IS A BOOLEAN, `acting beyond limits or conditions` IS A BOOLEAN,
+      `the vessel is in distress or in necessity` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `piloting is an offence under section 64(1)` IF
+        (NOT `counts as an authorised pilot` `is an authorised pilot` `acting beyond limits or conditions`)
+    AND (NOT `the vessel is in distress or in necessity`)
+
+§§ `71, 72, 74 -- who answers for a piloted vessel`
+
+-- s 71: the master or owner of a vessel under compulsory pilotage "is answerable for any loss or damage caused by the vessel or by any
+-- fault of the navigation of the vessel in the same manner as the master or owner would if pilotage were not compulsory".
+-- s 74(2): an authorised pilot "is deemed to be the employee only of the master or owner of the vessel under pilotage and the Authority
+-- shall not be liable".
+GIVEN `the damage was caused by the vessel or its navigation` IS A BOOLEAN, `pilotage was compulsory` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the master or owner is answerable` IF
+    `the damage was caused by the vessel or its navigation`
+
+GIVEN `the damage was caused by the pilot` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Authority is liable for the pilot` IF
+    FALSE
+
+-- s 72(2): "Every pilot must give a bond in the sum of $1,000". (1): a pilot who has given it "is not liable for neglect, want of
+-- skill or incapacity in office beyond the penalty of the bond and the amount payable to the Authority on account of pilotage in
+-- respect of the voyage".
+GIVEN a IS A NUMBER, b IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the lesser of` IS
+    IF a < b THEN a ELSE b
+
+GIVEN `the pilot gave the bond` IS A BOOLEAN, `pilotage payable for the voyage` IS A NUMBER, `the claim` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the pilot's liability` IS
+    IF `the pilot gave the bond`
+    THEN `the lesser of` `the claim` (1000 + `pilotage payable for the voyage`)
+    ELSE `the claim`
+
+§§ `90, 91 -- the Authority's own liability`
+
+-- s 90: "Despite the grant of any public licence, the Authority shall not be liable in any circumstances" for a public licensee's
+-- default, negligence or wrongful act.
+-- s 91(1): where, "without its actual fault or privity", loss or damage is caused to a vessel or anything on board, the Authority is not
+-- liable "beyond an aggregate amount not exceeding ... the equivalent of 1,000 gold francs for each ton of the vessel's tonnage". (2):
+-- the Singapore-dollar equivalent is as gazetted under s 136(3) of the Merchant Shipping Act 1995 as in force before 1 May 2005 --
+-- not stated in this Act, so it is a parameter here.
+GIVEN `the Authority was at actual fault or privy` IS A BOOLEAN, `tonnage` IS A NUMBER,
+      `dollar value of 1,000 gold francs` IS A NUMBER, `the loss` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the Authority's liability for the vessel` IS
+    IF `the Authority was at actual fault or privy`
+    THEN `the loss`
+    ELSE `the lesser of` `the loss` (`tonnage` * `dollar value of 1,000 gold francs`)
+
+§§ `80 -- salvage`
+
+-- s 80(1): a person "must not carry on the business of rendering salvage services in the territorial waters of Singapore without a
+-- valid licence". (3): fine up to $10,000 or 12 months or both. (4): appeal to the Minister "within 30 days after receiving the
+-- Authority's notification".
+GIVEN `carries on a salvage business` IS A BOOLEAN, `in Singapore territorial waters` IS A BOOLEAN, `holds a salvage licence` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `salvage without a licence is an offence` IF
+    `carries on a salvage business` AND `in Singapore territorial waters` AND (NOT `holds a salvage licence`)
+
+GIVEN `days after notification of refusal or cancellation` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `a salvage licence appeal is in time` IF
+    `days after notification of refusal or cancellation` <= 30
+
+§§ `86E -- notice by a 5% controller`
+
+-- s 86E(1): a person who becomes a 5% controller of a designated entity "must within 7 days after becoming the 5% controller give
+-- written notice to the Authority". (3) defence: the accused "(a) was not aware of the contravention when it occurred; and (b) notified
+-- the Authority ... within a period of 14 days after becoming aware". (4) defence, "though the accused was aware": (a) the increase was
+-- by an associate; (b) no agreement or arrangement with that associate; (c) notice "within a period of 7 days after the
+-- contravention". (5): otherwise lack of intent or knowledge is no defence. s 86I: individual up to $500,000 or 3 years or both; any
+-- other case up to $1 million.
+-- Counting days "after the contravention" from day 7 is an INFERENCE: the Act does not say when the contravention occurs.
+GIVEN `days after becoming a 5% controller until notice` IS A NUMBER, `was aware of the contravention when it occurred` IS A BOOLEAN,
+      `days after becoming aware until notice` IS A NUMBER, `the increase was by an associate` IS A BOOLEAN,
+      `had an arrangement with that associate` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the 5% controller commits an offence` IF
+        `days after becoming a 5% controller until notice` > 7
+    AND NOT (    (NOT `was aware of the contravention when it occurred`) AND `days after becoming aware until notice` <= 14)
+    AND NOT (    `the increase was by an associate`
+             AND (NOT `had an arrangement with that associate`)
+             AND `days after becoming a 5% controller until notice` - 7 <= 7)
+
+GIVEN `is an individual` IS A BOOLEAN
+GIVETH A NUMBER
+DECIDE `the maximum fine under Part 12A` IS
+    IF `is an individual` THEN 500000 ELSE 1000000
+
+§§ `39, 44-47, 50, 61, 64, 73, 80, 92-99 -- maximum penalties`
+
+DECLARE Offence IS ONE OF
+    `engaging a seaman other than by the regulations`
+    `failing to report arrival`
+    `failing to give transit particulars`
+    `leaving without port clearance`
+    `failing to return an unused port clearance`
+    `disobeying a Part 8 direction`
+    `not taking a pilot when required`
+    `piloting without authority`
+    `a pilot acting while intoxicated`
+    `salvage without a licence`
+    `damaging Authority property`
+    `operating a port service without a public licence`
+    `evading port dues`
+    `misstating draught or height`
+    `using an overloaded vessel in the port`
+    `obstructing the Authority`
+    `disclosing Authority information`
+    `an offence with no penalty provided`
+
+-- Fines: s 39 $2,000; s 44(3) $10,000; s 45(2) $10,000; s 46(4) $10,000; s 47(2) $5,000; s 50(1) $5,000; s 61 $5,000; s 64(1) $5,000;
+-- s 73(1)(d) $2,000; s 80(3) $10,000; s 92(1) $10,000; s 93 $10,000; s 94(1) $10,000; s 95(1) $20,000; s 96(f) $10,000; s 97 $5,000;
+-- s 98(2) $2,000; s 99 (general) $5,000.
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+DECIDE `the maximum fine` IS
+    CONSIDER `the offence`
+    WHEN `engaging a seaman other than by the regulations` THEN 2000
+    WHEN `failing to report arrival` THEN 10000
+    WHEN `failing to give transit particulars` THEN 10000
+    WHEN `leaving without port clearance` THEN 10000
+    WHEN `failing to return an unused port clearance` THEN 5000
+    WHEN `disobeying a Part 8 direction` THEN 5000
+    WHEN `not taking a pilot when required` THEN 5000
+    WHEN `piloting without authority` THEN 5000
+    WHEN `a pilot acting while intoxicated` THEN 2000
+    WHEN `salvage without a licence` THEN 10000
+    WHEN `damaging Authority property` THEN 10000
+    WHEN `operating a port service without a public licence` THEN 10000
+    WHEN `evading port dues` THEN 10000
+    WHEN `misstating draught or height` THEN 20000
+    WHEN `using an overloaded vessel in the port` THEN 10000
+    WHEN `obstructing the Authority` THEN 5000
+    WHEN `disclosing Authority information` THEN 2000
+    WHEN `an offence with no penalty provided` THEN 5000
+
+-- Imprisonment: s 39 6 months; ss 44-47, 50, 61, 64, 73, 92 none; s 80 12 months; s 93 3 years; ss 94-98 6 months; s 99 6 months.
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+DECIDE `the maximum imprisonment in months` IS
+    CONSIDER `the offence`
+    WHEN `engaging a seaman other than by the regulations` THEN 6
+    WHEN `salvage without a licence` THEN 12
+    WHEN `operating a port service without a public licence` THEN 36
+    WHEN `evading port dues` THEN 6
+    WHEN `misstating draught or height` THEN 6
+    WHEN `using an overloaded vessel in the port` THEN 6
+    WHEN `obstructing the Authority` THEN 6
+    WHEN `disclosing Authority information` THEN 6
+    WHEN `an offence with no penalty provided` THEN 6
+    OTHERWISE 0
+
+-- Daily fines for continuing offences: s 50(1) "$500 for every day or part of a day" the person wilfully continues to disobey; s 93
+-- "$1,000 for every day or part of a day during which the offence continues after conviction".
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+DECIDE `the further daily fine` IS
+    CONSIDER `the offence`
+    WHEN `disobeying a Part 8 direction` THEN 500
+    WHEN `operating a port service without a public licence` THEN 1000
+    OTHERWISE 0
+
+-- s 94(1): dues evasion carries "in addition ... as penalty double the amount of the dues" evaded or attempted to be evaded; (2)
+-- later tender or acceptance of the dues "does not release or discharge any person".
+GIVEN `dues evaded` IS A NUMBER, `dues later paid` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the additional penalty for evading dues` IS
+    2 * `dues evaded`
+
+§§ `102 -- composition`
+
+-- s 102(1): a prescribed compoundable offence may be compounded for "a sum not exceeding the lower of the following: (a) one half of the
+-- amount of the maximum fine that is prescribed for the offence; (b) $2,000." Which offences are compoundable is left to regulations.
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+DECIDE `the maximum composition sum` IS
+    `the lesser of` (`the maximum fine` `the offence` / 2) 2000
