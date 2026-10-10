@@ -8,6 +8,7 @@ tools' own output and from the data files, so no number in NOTES.md is typed by 
   @@ROADMAP@@    the lines `tools/roadmap.py status registers/roadmap-*.json` prints
   @@CHECK@@      the table `check.sh` prints
   @@VNSRC@@      the last line `tools/vnsrc.py check ...` prints
+  @@SRCREFS@@    the output of `tools/srcrefs.py check --strict ...` and `--refs ...`, and what the modules contain (NOTES.md 7.1)
   @@FORKS@@, @@FINDINGS@@   the fork register and the findings, from tools/notes_data.py
 
   python3 -I tools/gen_notes.py
@@ -82,6 +83,43 @@ def findings_md():
     return "\n".join(out)
 
 
+def srcrefs_md():
+    """The generated part of NOTES.md 7.1: the gate's own output, the counts, and the quote runs that take no @ref."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("srcrefs", os.path.join(HERE, "srcrefs.py"))
+    sr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(sr)
+    raw = os.path.join("..", "..", "source", "raw", "law08-2022-qh15.txt")
+    mods = sorted(os.path.basename(p) for p in glob.glob(os.path.join(DEP, "*.l4")))
+    res = []
+    problems = []
+    for flag in ("--strict", "--refs"):
+        out = run([sys.executable, "-I", "tools/srcrefs.py", "check", flag, raw] + mods).strip().split("\n")
+        problems += out[:-1]
+        res += [f"    $ python3 -I tools/srcrefs.py check {flag} {raw} *.l4", "    " + out[-1], ""]
+    refs, runs, exempt = 0, 0, {}
+    for m in mods:
+        lines = open(os.path.join(DEP, m), encoding="utf-8").read().split("\n")
+        refs += sum(1 for ln in lines if ln.startswith("@ref "))
+        scan = sr.Scan(lines)
+        runs += len(scan.runs)
+        for _, block, _ in scan.runs:
+            if scan.exempt(block):
+                end = scan.ends[block]
+                kind = "end of file" if end is None else "`" + end.split()[0] + "`"
+                exempt.setdefault(m, {})
+                exempt[m][kind] = exempt[m].get(kind, 0) + 1
+    res += [f"- `@ref` lines in the modules: {refs} (the gate counts their locators above).",
+            f"- Quote runs: {runs}, of which {sum(sum(v.values()) for v in exempt.values())} are followed by a heading, a directive or the end of a file, so take no `@ref`."]
+    if exempt:
+        res += ["", "| Module | Runs that take no `@ref` | What follows the run |", "| --- | --- | --- |"]
+        for mod in sorted(exempt):
+            res.append(f"| `{mod}` | {sum(exempt[mod].values())} | " + ", ".join(k if len(exempt[mod]) == 1 else f"{k} x {n}" for k, n in sorted(exempt[mod].items())) + " |")
+    res += ["", "Problems: " + ("none." if not problems else "")]
+    res += ["- `" + x + "`" for x in problems]
+    return "\n".join(res)
+
+
 def main():
     tsv = load_tsv()
     sections, missing = [], []
@@ -121,7 +159,8 @@ def main():
 
     tpl = open(os.path.join(DEP, "templates", "NOTES.md.in"), encoding="utf-8").read()
     body = (tpl.replace("@@COVERAGE@@", "\n\n".join(sections)).replace("@@ROADMAP@@", status)
-               .replace("@@CHECK@@", chk).replace("@@FORKS@@", forks_md()).replace("@@FINDINGS@@", findings_md()))
+               .replace("@@CHECK@@", chk).replace("@@FORKS@@", forks_md()).replace("@@FINDINGS@@", findings_md())
+               .replace("@@SRCREFS@@", srcrefs_md()))
 
     # SOURCE-LICENSE.md first (its text is part of the vnsrc run)
     nsrc = 0
