@@ -1,0 +1,266 @@
+IMPORT prelude
+
+-- Prevention of Human Trafficking Act 2014 (Singapore) -- what counts as trafficking and what it costs: the definitions a case turns
+-- on (s 2: child, abuse of the position of vulnerability, exploitation, debt bondage), the trafficking offence (s 3), the penalties and
+-- the listed aggravating factors (s 4), abetment (s 5), receiving payments (s 6), the 48-hour limit on arrest without warrant
+-- (s 9(3)), the offence penalties in ss 17, 18 and 20, the protection of sexually-exploited victims (s 18) and of informers (s 21).
+--
+-- Edition: 2020 Revised Edition ("incorporates all amendments up to and including 1 December 2021"), informal consolidation marked
+-- "version in force from 17/8/2026", as deposited at ../../registers/source-bundle/PHTA2014.txt. The latest amendment annotated is
+-- Act 21 of 2025 (Criminal Law (Miscellaneous Amendments) Act 2025) "wef 17/08/2026", against s 4(1) and s 6(2). The deposit does
+-- not show what those penalties were before that amendment.
+--
+-- WHY THIS ACT. REQ-0058 in ../../../requirements.jsonl: Tier 2 of the remaining Singapore Acts, ordered by everyday-life relevance.
+-- The requirement asks what the Act decides for a person or business it applies to; no scenario has asked a sharper question yet.
+-- The Act is short (24 sections), so the row covers nearly all of the rules a person can be on either side of. Not encoded: the
+-- other s 2 definitions beyond their use here (servile form of marriage, serfdom, servitude are named, not tested), the enforcement
+-- powers in ss 7, 8 and 10 to 16 except where s 8(4) feeds s 17, bail (s 9(4), (5)), the "reasonable in the circumstances" limb of
+-- s 9(3), victim assistance (s 19, which is discretionary), the elements of the s 20 false-statement offence (only its penalty),
+-- the Public Prosecutor's consent (s 22), District Court jurisdiction to impose the full penalty (s 23), and rules (s 24). Caning exemptions under other Acts are not in this Act
+-- and are not modelled.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Prevention of Human Trafficking Act 2014 -- offences`
+
+§§ `2 -- definitions`
+
+-- "child" means an individual below 18 years of age.
+GIVEN age IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `is a child` IF age LESS THAN 18
+
+-- "abuse of the position of vulnerability" MEANS taking advantage of the vulnerable position the individual is placed in "as a result
+-- of" (a) entering or remaining in Singapore illegally; (b) pregnancy; (c) physical or mental illness, infirmity or disability; or
+-- (d) impairment of decision-making ability by reason of such illness, infirmity or disability. The list is closed ("means"):
+-- poverty, debt or being a lawful foreign worker are not on it (they may still be coercion or debt bondage on other facts).
+DECLARE Vulnerability IS ONE OF
+    `entering or remaining in Singapore illegally`
+    `pregnancy`
+    `illness, infirmity or disability`
+    `impaired decision-making from illness or disability`
+    `poverty`
+    `being a lawful foreign worker`
+
+GIVEN `the vulnerability` IS A Vulnerability
+GIVETH A BOOLEAN
+DECIDE `is a position of vulnerability under s 2` IF
+    CONSIDER `the vulnerability`
+    WHEN `poverty` THEN FALSE
+    WHEN `being a lawful foreign worker` THEN FALSE
+    OTHERWISE TRUE
+
+-- "debt bondage": (a) "the pledging by a debtor of the personal services of the debtor or an individual under the debtor's control,
+-- as security for a debt"; AND (b) "the reasonable value of such services not being applied towards the discharge of the debt, or
+-- the length or nature of such services not being limited or defined". Debt bondage is a "practice similar to slavery", which is
+-- exploitation.
+GIVEN `services pledged as security for a debt` IS A BOOLEAN, `value applied towards the debt` IS A BOOLEAN, `length and nature defined` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `is debt bondage` IF
+    `services pledged as security for a debt` AND ((NOT `value applied towards the debt`) OR (NOT `length and nature defined`))
+
+-- "exploitation" means "sexual exploitation, forced labour, slavery or any practice similar to slavery, servitude or the removal of
+-- an organ".
+DECLARE Purpose IS ONE OF
+    `sexual exploitation`
+    `forced labour`
+    `slavery`
+    `a practice similar to slavery`
+    `servitude`
+    `removal of an organ`
+    `ordinary paid work`
+
+GIVEN `the purpose` IS A Purpose
+GIVETH A BOOLEAN
+DECIDE `is exploitation` IF
+    CONSIDER `the purpose`
+    WHEN `ordinary paid work` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `3 -- trafficking in persons`
+
+-- s 3(1): any person who "recruits, transports, transfers, harbours or receives" an individual (other than a child) by means of
+-- (a) threat or use of force or other coercion; (b) abduction; (c) fraud or deception; (d) abuse of power; (e) abuse of the position
+-- of vulnerability; or (f) giving or receiving money or a benefit to secure the consent of a person having control over the
+-- individual, "for the purpose of the exploitation (whether in Singapore or elsewhere)" -- an offence.
+-- s 3(2): for a CHILD, recruiting etc. for the purpose of exploitation is enough -- no means need be shown.
+-- s 3(3): the victim's consent (or for a child, the child's or parent's or guardian's consent) "is irrelevant".
+-- s 3(4): it "does not matter" that the act is done partly outside Singapore, if it would be an offence done wholly in Singapore.
+DECLARE Means IS ONE OF
+    `force or coercion`
+    `abduction`
+    `fraud or deception`
+    `abuse of power`
+    `abuse of the position of vulnerability`
+    `paying the person in control for consent`
+    `no listed means`
+
+DECLARE Conduct HAS
+    `recruited, transported, transferred, harboured or received` IS A BOOLEAN
+    `age of the individual` IS A NUMBER
+    `means used` IS A Means
+    `purpose of the conduct` IS A Purpose
+    `the individual or a parent consented` IS A BOOLEAN
+    `done partly outside Singapore` IS A BOOLEAN
+
+GIVEN `the means` IS A Means
+GIVETH A BOOLEAN
+DECIDE `is a listed means` IF
+    CONSIDER `the means`
+    WHEN `no listed means` THEN FALSE
+    OTHERWISE TRUE
+
+-- Consent (s 3(3)) and the partly-foreign element (s 3(4)) are carried on the record but deliberately play no part.
+GIVEN `the conduct` IS A Conduct
+GIVETH A BOOLEAN
+DECIDE `is trafficking under s 3` IF
+        `the conduct`'s `recruited, transported, transferred, harboured or received`
+    AND `is exploitation` (`the conduct`'s `purpose of the conduct`)
+    AND (    `is a child` (`the conduct`'s `age of the individual`)
+         OR  `is a listed means` (`the conduct`'s `means used`))
+
+§§ `4, 6, 17, 18(4), 20 -- penalties`
+
+-- s 4(1)(a) first offence: "shall be punished with a fine not exceeding $100,000 AND with imprisonment for a term not exceeding
+-- 10 years, and shall be liable to caning not exceeding 6 strokes"; (b) second or subsequent: $150,000, 15 years, 9 strokes.
+-- [Act 21 of 2025 wef 17/08/2026]. s 6(2) sets the same penalties for knowingly receiving payments.
+-- s 17 obstruction: "a fine not exceeding $10,000 OR to imprisonment for a term not exceeding 12 months OR to both".
+-- s 18(4) identifying a sexually-exploited victim: $5,000 or 3 years or both. s 20 false statements: $10,000 or 12 months or both.
+-- INFERENCE: "second or subsequent offence" is read as an offence committed after a previous conviction for the same offence; the
+-- text does not define it.
+DECLARE Offence IS ONE OF
+    `trafficking`
+    `receiving payment from exploitation`
+    `obstructing an officer`
+    `identifying a sexually-exploited victim`
+    `a false statement`
+
+GIVEN `the offence` IS A Offence, `previous convictions` IS A NUMBER
+GIVETH A NUMBER
+`the maximum fine` MEANS
+    CONSIDER `the offence`
+    WHEN `trafficking` THEN IF `previous convictions` AT LEAST 1 THEN 150000 ELSE 100000
+    WHEN `receiving payment from exploitation` THEN IF `previous convictions` AT LEAST 1 THEN 150000 ELSE 100000
+    WHEN `obstructing an officer` THEN 10000
+    WHEN `identifying a sexually-exploited victim` THEN 5000
+    WHEN `a false statement` THEN 10000
+
+GIVEN `the offence` IS A Offence, `previous convictions` IS A NUMBER
+GIVETH A NUMBER
+`the maximum imprisonment in months` MEANS
+    CONSIDER `the offence`
+    WHEN `trafficking` THEN IF `previous convictions` AT LEAST 1 THEN 180 ELSE 120
+    WHEN `receiving payment from exploitation` THEN IF `previous convictions` AT LEAST 1 THEN 180 ELSE 120
+    WHEN `obstructing an officer` THEN 12
+    WHEN `identifying a sexually-exploited victim` THEN 36
+    WHEN `a false statement` THEN 12
+
+GIVEN `the offence` IS A Offence, `previous convictions` IS A NUMBER
+GIVETH A NUMBER
+`the maximum strokes of the cane` MEANS
+    CONSIDER `the offence`
+    WHEN `trafficking` THEN IF `previous convictions` AT LEAST 1 THEN 9 ELSE 6
+    WHEN `receiving payment from exploitation` THEN IF `previous convictions` AT LEAST 1 THEN 9 ELSE 6
+    OTHERWISE 0
+
+-- "shall be punished with a fine ... and with imprisonment": both a fine and a prison term must be imposed for ss 3 and 6.
+GIVEN `the offence` IS A Offence
+GIVETH A BOOLEAN
+DECIDE `imprisonment is mandatory` IF
+    CONSIDER `the offence`
+    WHEN `trafficking` THEN TRUE
+    WHEN `receiving payment from exploitation` THEN TRUE
+    OTHERWISE FALSE
+
+-- s 4(2): the court "may take into account the aggravating factors ... including": (a) serious injury or death (including by suicide);
+-- (b) particular vulnerability known to the offender; (c) the victim was a child; (d) exposure to a life-threatening illness;
+-- (e) actual or threatened use of a weapon or drug; (f) the offender was a public servant; (g) the offender was the victim's spouse
+-- or conjugal partner; (h) abuse of a position of trust or authority. The list is open ("including"); a factor off the list is not
+-- excluded, only not named.
+DECLARE Factor IS ONE OF
+    `the victim died by suicide`
+    `the victim was a child`
+    `a weapon or drug was threatened`
+    `the offender was a public servant`
+    `the offender was the victim's conjugal partner`
+    `the offender abused a position of trust`
+    `the victim consented`
+    `the offence lasted a long time`
+
+GIVEN `the factor` IS A Factor
+GIVETH A BOOLEAN
+DECIDE `is a listed aggravating factor` IF
+    CONSIDER `the factor`
+    WHEN `the victim consented` THEN FALSE
+    WHEN `the offence lasted a long time` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `5 -- abetment`
+
+-- s 5(1): a person abets an offence under s 3 if (a) the person "instructs another person to commit the offence"; (b) "provides or
+-- arranges any form of financing, transport, shelter, accommodation or any other facility WITH THE INTENTION of facilitating" it; or
+-- (c) participates in the recruitment etc., employs any of the s 3(1) means, or does any act to promote the exploitation, "with the
+-- intention of facilitating the commission of the offence". The intention qualifies (b) and (c), not (a).
+-- s 5(2): without prejudice to "abetment" in the Penal Code generally.
+GIVEN `instructed another to commit it` IS A BOOLEAN, `provided financing, transport, shelter or a facility` IS A BOOLEAN, `participated in the trafficking or exploitation` IS A BOOLEAN, `intended to facilitate it` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `abets trafficking under s 5` IF
+        `instructed another to commit it`
+    OR  (    (`provided financing, transport, shelter or a facility` OR `participated in the trafficking or exploitation`)
+         AND `intended to facilitate it`)
+
+§§ `6 -- receiving payments`
+
+-- s 6(1): "Any person who knowingly receives any payment in connection with the actual or intended exploitation IN SINGAPORE of a
+-- trafficked victim" -- an offence. Contrast s 3, where the exploitation may be "in Singapore or elsewhere".
+GIVEN `received a payment` IS A BOOLEAN, `knew of the connection` IS A BOOLEAN, `the exploitation is in Singapore` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `commits the s 6 offence` IF
+    `received a payment` AND `knew of the connection` AND `the exploitation is in Singapore`
+
+§§ `9(3) -- detention after arrest without warrant`
+
+-- s 9(3): a person arrested without warrant must not be detained "for longer than is reasonable in the circumstances, and such period
+-- must not exceed 48 hours exclusive of the time necessary for the journey from the place of arrest to the Magistrate's Court".
+-- Only the outer limit is modelled.
+GIVEN `hours held` IS A NUMBER, `hours of necessary journey` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `detention is within the 48-hour limit` IF
+    `hours held` MINUS `hours of necessary journey` AT MOST 48
+
+§§ `18 -- sexually-exploited victims`
+
+-- s 18(1): where a person is charged with or convicted of a Part 2 offence "involving the sexual exploitation of a trafficked victim",
+-- the court (a) where the victim is a child "MUST hear the matter or proceedings in private"; (b) in any other case "MAY order" a
+-- private hearing. [Act 25 of 2021 wef 01/04/2022]
+-- s 18(2): no person may publish anything likely to identify the victim; (3) "regardless of whether" the hearing is in private.
+DECLARE Hearing IS ONE OF
+    `must be in private`
+    `may be ordered in private`
+    `no rule under s 18`
+
+GIVEN `involves sexual exploitation` IS A BOOLEAN, `age of the victim` IS A NUMBER
+GIVETH A Hearing
+`the s 18 hearing rule` MEANS
+    IF NOT `involves sexual exploitation` THEN `no rule under s 18`
+    ELSE IF `is a child` `age of the victim` THEN `must be in private`
+         ELSE `may be ordered in private`
+
+GIVEN `involves sexual exploitation` IS A BOOLEAN, `heard in private` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `publishing the victim's identity is banned` IF
+    `involves sexual exploitation`
+
+§§ `21 -- informers`
+
+-- s 21(1): no complaint as to a Part 2 offence is admitted in evidence and no witness may disclose an informer, "except as provided".
+-- (3): the court may order disclosure (a) in proceedings FOR THE OFFENCE, if after full inquiry it thinks the informer "wilfully made a
+-- material statement which the informer knew or believed to be false or did not believe to be true"; or (b) in ANY OTHER proceedings,
+-- if "justice cannot be fully done between the parties ... without the discovery of the informer".
+GIVEN `proceedings for the offence` IS A BOOLEAN, `informer wilfully made a false material statement` IS A BOOLEAN, `justice needs the informer disclosed` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may order the informer disclosed` IF
+    IF `proceedings for the offence`
+    THEN `informer wilfully made a false material statement`
+    ELSE `justice needs the informer disclosed`
