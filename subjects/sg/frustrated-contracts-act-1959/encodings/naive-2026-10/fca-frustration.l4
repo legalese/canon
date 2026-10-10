@@ -1,0 +1,169 @@
+IMPORT prelude
+
+-- Frustrated Contracts Act 1959 (Singapore) -- what happens to money paid, money owed and benefits conferred when a contract is
+-- frustrated: the adjustment rules (s 2) and when the Act applies at all (s 3). The whole operative Act (ss 2 and 3) is covered.
+--
+-- Edition: 2020 Revised Edition, as deposited at ../../registers/source-bundle/FCA1959.txt. The deposit says it "incorporates all
+-- amendments up to and including 1 December 2021 and comes into operation on 31 December 2021"; the latest amending Act in its
+-- legislative history is Act 7 of 1997 (Statutes (Miscellaneous Amendments) Act 1997, in force 1 October 1997).
+--
+-- WHY THIS ACT. Chosen for its everyday-life relevance: a wedding venue closed, a tour cancelled by a border closure, a renovation
+-- stopped by a fire -- this Act decides who gets the deposit back. Not encoded: the court's discretion itself ("as the court
+-- considers just"), which is modelled only by the statutory ceilings it must stay within; what counts as frustration (the Act
+-- takes it as given and does not define it); and the Sale of Goods Act 1979 s 7 which s 3(5)(c) refers to (not read).
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Frustrated Contracts Act 1959`
+
+GIVEN `a` IS A NUMBER, `b` IS A NUMBER
+GIVETH A NUMBER
+`the lesser of` MEANS
+    IF `a` AT MOST `b` THEN `a` ELSE `b`
+
+§§ `3(1), (2), (5) -- which contracts the Act reaches`
+
+-- s 2(1): the section has effect "Where a contract has become impossible of performance or been otherwise frustrated, and the parties
+-- to the contract have for that reason been discharged from the further performance of the contract".
+-- s 3(1): applies to contracts "whether made before or after 13 February 1959, as respects which the time of discharge is on or after
+-- 1 January 1959". (2): applies to contracts "to which the Government is a party in like manner as to contracts between private
+-- persons". (5) does NOT apply (a) to any charterparty "except a time charterparty or a charterparty by way of demise", or to any other
+-- contract for the carriage of goods by sea; (b) to any contract of insurance, except as provided by s 2(6); (c) to a contract to which
+-- s 7 of the Sale of Goods Act 1979 applies, "or to any other contract for the sale ... of specific goods, where the contract is
+-- frustrated by reason of the fact that the goods have perished".
+DECLARE ContractKind IS ONE OF
+    `an ordinary contract`
+    `a contract with the Government`
+    `a time charterparty`
+    `a charterparty by way of demise`
+    `a voyage charterparty`
+    `a contract for carriage of goods by sea`
+    `a contract of insurance`
+    `a sale of specific goods frustrated by their perishing`
+    `a sale of specific goods frustrated otherwise`
+
+GIVEN `the kind` IS A ContractKind
+GIVETH A BOOLEAN
+DECIDE `the kind of contract is excluded` IF
+    CONSIDER `the kind`
+    WHEN `a voyage charterparty` THEN TRUE
+    WHEN `a contract for carriage of goods by sea` THEN TRUE
+    WHEN `a contract of insurance` THEN TRUE
+    WHEN `a sale of specific goods frustrated by their perishing` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN `the kind` IS A ContractKind, `frustrated and discharged` IS A BOOLEAN, `year of discharge` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the Act applies` IF
+        `frustrated and discharged`
+    AND `year of discharge` AT LEAST 1959
+    AND (NOT `the kind of contract is excluded` `the kind`)
+
+§§ `3(3) -- the contract's own frustration clause`
+
+-- s 3(3): where the contract contains a provision "intended to have effect in the event of circumstances arising which operate ... to
+-- frustrate the contract", or whether such circumstances arise or not, "the court shall give effect to that provision and shall only
+-- give effect to section 2 to such extent, if any, as appears to the court to be consistent with that provision".
+DECLARE Adjustment IS ONE OF
+    `the Act does not apply`
+    `section 2 in full`
+    `the contract's own clause, with section 2 only so far as consistent`
+
+GIVEN `the kind` IS A ContractKind, `frustrated and discharged` IS A BOOLEAN, `year of discharge` IS A NUMBER,
+      `the contract provides for frustration` IS A BOOLEAN
+GIVETH AN Adjustment
+`how the parties' positions are adjusted` MEANS
+    IF NOT `the Act applies` `the kind` `frustrated and discharged` `year of discharge`
+        THEN `the Act does not apply`
+        ELSE IF `the contract provides for frustration`
+                THEN `the contract's own clause, with section 2 only so far as consistent`
+                ELSE `section 2 in full`
+
+§§ `3(4) -- a severable part already performed`
+
+-- s 3(4): where a part of the contract "can properly be severed from the remainder", being "a part wholly performed before the time of
+-- discharge, or so performed except for the payment in respect of that part ... of sums which are or can be ascertained under the
+-- contract", the court "shall treat that part of the contract as if it were a separate contract and had not been frustrated".
+GIVEN `the part can properly be severed` IS A BOOLEAN, `the part was wholly performed` IS A BOOLEAN,
+      `the part was performed except for an ascertainable payment` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the part is treated as a separate unfrustrated contract` IF
+        `the part can properly be severed`
+    AND (`the part was wholly performed` OR `the part was performed except for an ascertainable payment`)
+
+§§ `2(2), (3) -- money paid and money payable`
+
+-- s 2(2): "all sums paid or payable ... before the time of discharge shall, in the case of sums so paid, be recoverable ... and, in the
+-- case of sums so payable, cease to be so payable".
+-- s 2(3): if the payee "incurred expenses before the time of discharge in, or for the purpose of, the performance of the contract, the
+-- court may, if it considers it just ... allow him to retain or, as the case may be, recover the whole or any part of the sums so paid
+-- or payable, not being an amount in excess of the expenses so incurred".
+-- INFERENCE: the ceiling is read as the lesser of (sums paid plus sums payable) and the expenses, so an allowance larger than what was
+-- paid is taken first from what was paid and the rest recovered from what was payable. The text does not spell out the order.
+-- s 2(5): in estimating expenses the court "may ... include such sum as appears to be reasonable in respect of overhead expenses and in
+-- respect of any work or services performed personally by that party".
+GIVEN `direct expenses` IS A NUMBER, `reasonable overheads` IS A NUMBER, `value of personal work` IS A NUMBER
+GIVETH A NUMBER
+`the expenses the court may count` MEANS
+    `direct expenses` PLUS `reasonable overheads` PLUS `value of personal work`
+
+GIVEN `paid` IS A NUMBER, `payable` IS A NUMBER, `expenses` IS A NUMBER
+GIVETH A NUMBER
+`the most the payee may be allowed` MEANS
+    `the lesser of` (`paid` PLUS `payable`) `expenses`
+
+GIVEN `paid` IS A NUMBER, `payable` IS A NUMBER, `expenses` IS A NUMBER, `allowance` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the allowance is within section 2(3)` IF
+        `allowance` AT LEAST 0
+    AND `allowance` AT MOST `the most the payee may be allowed` `paid` `payable` `expenses`
+
+GIVEN `paid` IS A NUMBER, `allowance` IS A NUMBER
+GIVETH A NUMBER
+`the refund to the payer` MEANS
+    `paid` MINUS `the lesser of` `paid` `allowance`
+
+GIVEN `paid` IS A NUMBER, `allowance` IS A NUMBER
+GIVETH A NUMBER
+`the sum the payee may still recover` MEANS
+    IF `allowance` GREATER THAN `paid` THEN `allowance` MINUS `paid` ELSE 0
+
+§§ `2(4), (7) -- a valuable benefit other than money`
+
+-- s 2(4): where a party "obtained a valuable benefit (other than a payment of money to which subsection (2) applies) before the time of
+-- discharge" by reason of anything done by another party in performance, there is recoverable "such sum (if any), not exceeding the
+-- value of that benefit to the party obtaining it, as the court considers just", having regard in particular to (a) the benefited
+-- party's expenses and (b) "the effect, in relation to that benefit, of the circumstances giving rise to the frustration".
+-- s 2(7): where a person assumed obligations in return for a benefit conferred on ANOTHER person, the court "may, if ... it considers it
+-- just", treat that benefit as obtained by the person who assumed the obligations.
+GIVEN `obtained before discharge` IS A BOOLEAN, `conferred by the other party's performance` IS A BOOLEAN,
+      `the benefit is money covered by section 2(2)` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a claim for a benefit lies` IF
+        `obtained before discharge`
+    AND `conferred by the other party's performance`
+    AND (NOT `the benefit is money covered by section 2(2)`)
+
+GIVEN `value of the benefit to the recipient` IS A NUMBER, `award` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the award is within section 2(4)` IF
+        `award` AT LEAST 0
+    AND `award` AT MOST `value of the benefit to the recipient`
+
+GIVEN `obligations assumed for a benefit to someone else` IS A BOOLEAN, `the court considers it just` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the benefit may be treated as the obligor's` IF
+    `obligations assumed for a benefit to someone else` AND `the court considers it just`
+
+§§ `2(6) -- insurance money`
+
+-- s 2(6): the court "shall not take into account any sums which have, by reason of the circumstances giving rise to the frustration of
+-- the contract, become payable to that party under any contract of insurance unless there was an obligation to insure imposed by an
+-- express term of the frustrated contract or by or under any enactment".
+GIVEN `insurance money became payable because of the frustration` IS A BOOLEAN, `an express term required insurance` IS A BOOLEAN,
+      `an enactment required insurance` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the insurance money may be taken into account` IF
+        `insurance money became payable because of the frustration`
+    AND (`an express term required insurance` OR `an enactment required insurance`)
