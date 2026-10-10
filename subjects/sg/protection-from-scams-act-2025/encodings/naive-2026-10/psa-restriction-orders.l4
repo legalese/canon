@@ -1,0 +1,248 @@
+IMPORT prelude
+
+-- Protection from Scams Act 2025 (Singapore) -- restriction orders that freeze a scam victim's own bank accounts and credit:
+-- who is a scam victim and a scammer (s 2 and the Schedule), what an order blocks (s 3), when one may be issued and who counts as a
+-- "relative" (s 4), how long it lasts, extensions and variations (s 5), the bank's offence (s 6), appeals (ss 7, 8) and the bank's
+-- immunity (s 9).
+--
+-- Edition: Act No. 1 of 2025, informal consolidation, as deposited at ../../registers/source-bundle/PSA2025.txt. Every page of the
+-- deposit is footed "Informal Consolidation - version in force from 1/7/2025"; no amending Act or subsidiary legislation is
+-- annotated in it. The deposit's metadata records it as the "Current version as at 01 Oct 2026".
+--
+-- WHY THIS ACT. Chosen for its everyday-life relevance to ordinary people in Singapore: it lets the police stop a person's own bank
+-- from letting them pay a scammer. The Act is short, so nearly all of it is encoded. Not encoded: commencement (s 1), the
+-- Minister's powers to amend the Schedule and to make regulations (ss 10, 11), the Minister's power to exclude a communication
+-- system from "remote communication", the notification rules (left to regulations by s 11(2)), and the prescribed form and period
+-- for an appeal (not in the Act). Section 8 (designation of a Deputy Commissioner to hear appeals) is noted, not modelled.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Protection from Scams Act 2025 -- restriction orders`
+
+§§ `2 and the Schedule -- scam offences, scam victims and scammers`
+
+-- Schedule item 1: "An offence under section 416A, 417, 418, 419, 420, 420A, 424A or 424B of the Penal Code 1871."
+-- Item 2: "An abetment of, or a conspiracy or an attempt to commit, an offence mentioned in item 1."
+-- (The Act gives section numbers only; it does not name the offences, so neither does this encoding.)
+DECLARE `Penal Code section` IS ONE OF
+    `section 416A`
+    `section 417`
+    `section 418`
+    `section 419`
+    `section 420`
+    `section 420A`
+    `section 424A`
+    `section 424B`
+    `any other Penal Code section`
+
+GIVEN `the section` IS A `Penal Code section`
+GIVETH A BOOLEAN
+DECIDE `the section is listed in the Schedule` IF
+    CONSIDER `the section`
+    WHEN `any other Penal Code section` THEN FALSE
+    OTHERWISE TRUE
+
+-- Whether the offence is the completed offence or an abetment, conspiracy or attempt makes no difference (item 2).
+GIVEN `the section` IS A `Penal Code section`, `only abetted, conspired or attempted` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the offence is a scam offence` IF
+    `the section is listed in the Schedule` `the section`
+
+-- s 2: "scam victim" means "an INDIVIDUAL against whom a scam offence is committed or intended to be committed".
+GIVEN `is an individual` IS A BOOLEAN, `a scam offence is committed against them` IS A BOOLEAN, `a scam offence is intended against them` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the person is a scam victim` IF
+    `is an individual` AND (`a scam offence is committed against them` OR `a scam offence is intended against them`)
+
+-- s 2: "scammer" means any person whom a specified officer HAS REASON TO BELIEVE (a) has committed, participated in or facilitated,
+-- or taken any step preparatory to or in furtherance of, any scam offence against a scam victim, "whether in Singapore or
+-- elsewhere"; AND (b) "has interacted with the scam victim via remote communication" (Internet, telephone or other communication
+-- device, television or radio, or other electronic technology) for that purpose.
+GIVEN `officer believes involvement in a scam offence` IS A BOOLEAN, `interacted with the victim by remote communication` IS A BOOLEAN, `acted from outside Singapore` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the person is a scammer` IF
+    `officer believes involvement in a scam offence` AND `interacted with the victim by remote communication`
+
+-- s 2: "bank account", in relation to a scam victim, means an account with a bank (a) "held in the name of, the scam victim"; or
+-- (b) held in the names of 2 or more persons, "at least one of whom is the scam victim".
+DECLARE `Account holding` IS ONE OF
+    `in the victim's sole name`
+    `joint, with the victim as one holder`
+    `in the name of the victim's company`
+    `in a relative's sole name`
+
+GIVEN `the holding` IS A `Account holding`
+GIVETH A BOOLEAN
+DECIDE `the account is the victim's bank account` IF
+    CONSIDER `the holding`
+    WHEN `in the victim's sole name` THEN TRUE
+    WHEN `joint, with the victim as one holder` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `3 -- what a restriction order blocks`
+
+-- s 3: the order directs the bank not to, "at any time when the restriction order is in force": (i) "allow a transfer or withdrawal
+-- of money FROM any bank account of the scam victim"; (ii) "grant, or allow a drawdown of, any credit facility to the scam victim";
+-- and (b) specifies "the time that the direction ... takes effect".
+-- Money coming IN is not mentioned, so a deposit into the account is not blocked (a reading of what s 3 lists).
+DECLARE Transaction IS ONE OF
+    `a transfer out of the account`
+    `a cash withdrawal`
+    `a deposit into the account`
+    `granting a new loan`
+    `a drawdown on an existing credit line`
+    `checking the balance`
+
+GIVEN `the transaction` IS A Transaction
+GIVETH A BOOLEAN
+DECIDE `the transaction is of a restricted kind` IF
+    CONSIDER `the transaction`
+    WHEN `a transfer out of the account` THEN TRUE
+    WHEN `a cash withdrawal` THEN TRUE
+    WHEN `granting a new loan` THEN TRUE
+    WHEN `a drawdown on an existing credit line` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN `the transaction` IS A Transaction, `the order has taken effect` IS A BOOLEAN, `the order is still in force` IS A BOOLEAN, `a variation permits it` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the bank must refuse the transaction` IF
+    `the transaction is of a restricted kind` `the transaction` AND `the order has taken effect` AND `the order is still in force` AND (NOT `a variation permits it`)
+
+§§ `4 -- when a restriction order may be issued`
+
+-- s 4(1): a specified officer (a police officer or Commercial Affairs Officer) may, "on receipt of any information", issue an order
+-- if (a) the officer has reason to believe the scam victim WILL (i) instruct a transfer to a scammer, (ii) withdraw money intending to
+-- give it to a scammer, or (iii) apply for or draw down credit intending to benefit a scammer -- in each case "whether directly or
+-- indirectly through any intermediary"; AND (b) the order "is necessary for the protection of the scam victim", having regard to the
+-- time needed by officers, relatives or others (including NGOs) to reduce the risk, and all other relevant circumstances.
+-- s 4 states no requirement for the victim's consent, a court order or a hearing.
+GIVEN `received information` IS A BOOLEAN, `believes the victim will transfer to a scammer` IS A BOOLEAN, `believes the victim will withdraw for a scammer` IS A BOOLEAN, `believes the victim will borrow for a scammer` IS A BOOLEAN, `necessary for the victim's protection` IS A BOOLEAN, `the victim consents` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a restriction order may be issued` IF
+        `received information`
+    AND (`believes the victim will transfer to a scammer` OR `believes the victim will withdraw for a scammer` OR `believes the victim will borrow for a scammer`)
+    AND `necessary for the victim's protection`
+
+-- s 4(2): "relative" means "the spouse, or a sibling or stepsibling, child (including an adopted child), stepchild, grandchild or
+-- step-grandchild, nephew or step-nephew, or niece or step-niece, of the scam victim". Parents, grandparents, aunts, uncles and
+-- cousins are not in the list.
+DECLARE Relation IS ONE OF
+    `spouse`
+    `sibling`
+    `stepsibling`
+    `child`
+    `adopted child`
+    `stepchild`
+    `grandchild`
+    `step-grandchild`
+    `nephew or niece`
+    `step-nephew or step-niece`
+    `parent`
+    `grandparent`
+    `uncle or aunt`
+    `cousin`
+
+GIVEN `the relation` IS A Relation
+GIVETH A BOOLEAN
+DECIDE `the person is a relative under section 4` IF
+    CONSIDER `the relation`
+    WHEN `parent` THEN FALSE
+    WHEN `grandparent` THEN FALSE
+    WHEN `uncle or aunt` THEN FALSE
+    WHEN `cousin` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `5 -- duration, extension and variation`
+
+-- s 5(1): an order "is in force for 30 days or any shorter period that may be specified in the order".
+GIVEN `days specified` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the initial period is lawful` IF
+    `days specified` GREATER THAN 0 AND `days specified` AT MOST 30
+
+-- s 5(5): an officer may, while the order is in force, extend it "for a period not exceeding 30 days" if more time is required by any
+-- specified officer to reduce the risk; (6): "must not be extended more than 5 times".
+GIVEN `in force now` IS A BOOLEAN, `extensions already made` IS A NUMBER, `days requested` IS A NUMBER, `more time is required` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the order may be extended` IF
+    `in force now` AND `more time is required` AND `extensions already made` LESS THAN 5 AND `days requested` GREATER THAN 0 AND `days requested` AT MOST 30
+
+-- Hence the longest an order can last: 30 days plus five extensions of 30 days.
+GIVEN `extensions made` IS A NUMBER
+GIVETH A NUMBER
+`the longest the order can last in days` MEANS
+    IF `extensions made` AT LEAST 5
+        THEN 180
+        ELSE IF `extensions made` AT MOST 0
+                THEN 30
+                ELSE 30 PLUS (`extensions made` TIMES 30)
+
+-- s 5(4): an officer may vary an order, "on the application of" (a) the scam victim or (b) any joint account holder, permitting the
+-- bank to allow a transfer or withdrawal "by or on the instruction of the applicant", subject to any limit or terms.
+-- s 7(1): the same two classes of person may appeal to the Commissioner.
+DECLARE Applicant IS ONE OF
+    `the scam victim`
+    `a joint account holder`
+    `a relative of the victim`
+    `the bank`
+
+GIVEN `the applicant` IS A Applicant
+GIVETH A BOOLEAN
+DECIDE `may apply for a variation` IF
+    CONSIDER `the applicant`
+    WHEN `the scam victim` THEN TRUE
+    WHEN `a joint account holder` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN `the applicant` IS A Applicant
+GIVETH A BOOLEAN
+DECIDE `may appeal to the Commissioner` IF
+    CONSIDER `the applicant`
+    WHEN `the scam victim` THEN TRUE
+    WHEN `a joint account holder` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `6 -- the bank's offence`
+
+-- s 6(1): a bank which contravenes an order "without reasonable excuse" is liable on conviction to "a fine not exceeding $3,000".
+-- (2): an officer may compound by collecting "a sum not exceeding $1,500"; (3): then no further proceedings.
+GIVEN `contravened the order` IS A BOOLEAN, `had a reasonable excuse` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the bank commits an offence` IF
+    `contravened the order` AND (NOT `had a reasonable excuse`)
+
+`the maximum fine on a bank` MEANS 3000
+
+`the maximum composition sum` MEANS 1500
+
+GIVEN `amount` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the composition sum is within the cap` IF
+    `amount` GREATER THAN 0 AND `amount` AT MOST `the maximum composition sum`
+
+§§ `7 -- appeals`
+
+-- s 7(2): an appeal must be (a) in the prescribed form, specifying grounds; (b) with the prescribed documents or information; and
+-- (c) within the prescribed period after receipt of the notification. (3): the Commissioner "may reject" an appeal that fails (2).
+GIVEN `in the prescribed form with grounds` IS A BOOLEAN, `with the prescribed documents` IS A BOOLEAN, `within the prescribed period` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Commissioner may reject the appeal for non-compliance` IF
+    (NOT `in the prescribed form with grounds`) OR (NOT `with the prescribed documents`) OR (NOT `within the prescribed period`)
+
+-- s 7(8): an appeal "does not affect the operation of the decision appealed against", and "unless otherwise directed by the
+-- Commissioner, the decision appealed against must be complied with until the determination of the appeal". (6): the
+-- Commissioner's decision "is final". (4): it may be decided on documents alone, without a hearing.
+GIVEN `an appeal is pending` IS A BOOLEAN, `the Commissioner directed otherwise` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the order must still be complied with` IF
+    NOT `the Commissioner directed otherwise`
+
+§§ `9 -- immunity for complying banks`
+
+-- s 9(1): "No criminal or civil liability" for a bank, or an officer, employee or agent of a bank, "for anything done or omitted to
+-- be done with reasonable care AND in good faith in complying with any restriction order".
+GIVEN `is the bank or its officer, employee or agent` IS A BOOLEAN, `acted in compliance with an order` IS A BOOLEAN, `with reasonable care` IS A BOOLEAN, `in good faith` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the immunity applies` IF
+    `is the bank or its officer, employee or agent` AND `acted in compliance with an order` AND `with reasonable care` AND `in good faith`
