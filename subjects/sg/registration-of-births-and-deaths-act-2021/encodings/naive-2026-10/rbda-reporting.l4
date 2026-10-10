@@ -1,0 +1,295 @@
+IMPORT prelude
+
+-- Registration of Births and Deaths Act 2021 (Singapore) -- who must report a birth, death or stillbirth, to whom, and the
+-- deadlines and penalties that follow (ss 7, 8, 10, 22, 23, 26, 32, 33, 35); what counts as a stillborn child (s 2(1)); the rules on
+-- a child's name in the register (ss 19, 20, 21); registering a death abroad (s 28); and the false-statement offence (s 48).
+--
+-- Edition: Act 17 of 2021 (not a 2020 Revised Edition -- the Act post-dates it), informal consolidation, as deposited at
+-- ../../registers/source-bundle/RBDA2021.txt ("version in force from 30/9/2026"), with amendments by Act 2 of 2024 (in force
+-- 16 April 2024), Act 20 of 2022 (in force 15 October 2024) and Act 16 of 2026 (in force 30 September 2026) shown.
+--
+-- WHY THIS ACT. Cited by 10 of the 527 Singapore Acts deposited in this repository. SCOPED to the duties that fall on parents,
+-- relatives, occupiers, doctors, hospitals and masters of conveyances, and on naming a child. Not encoded: administration and
+-- delegation (ss 3-6), registration of births in conveyances (ss 11-13), adoption, legitimation and assisted-reproduction
+-- re-registration (ss 14-18), registration duties of the Registrar-General (ss 9, 24, 25, 29, 30, 34, 36), registers and
+-- corrections (ss 37-41), information and investigation powers (ss 42-47) beyond their penalties, register and certificate
+-- offences (ss 49-50A), corporate liability, composition, and Parts 9-10.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Registration of Births and Deaths Act 2021 -- reporting`
+
+DECLARE Place IS ONE OF
+    `in a hospital`
+    `in other premises`
+    `in a conveyance in Singapore`
+    `in any other place`
+
+DECLARE Person IS ONE OF
+    `a parent`
+    `a legal guardian`
+    `a doctor attending at the hospital`
+    `the hospital`
+    `an occupier who knows`
+    `the master of the conveyance`
+    `a relative present at the event`
+    `a relative who knows but was absent`
+    `a bystander present at the event`
+    `a person who took charge of the body`
+
+§§ `7 -- report of a birth in Singapore`
+
+-- s 7(2): responsible for reporting: (a) born in a hospital -- "every medical practitioner who attends to the birth, and the
+-- hospital"; (b) born outside a hospital "and is brought to a hospital within 24 hours after the child's birth" -- every doctor who
+-- attends to the child at the hospital, and the hospital; (c) born in other premises -- "the child's parents, and every occupier of
+-- the premises who knows of the child's birth"; (d) in a conveyance in Singapore -- the parents and the master; (e) any other place
+-- -- the parents. (3): the people in (c), (d), (e) remain responsible even if the child is brought to a hospital within 24 hours.
+-- (4): report to the Registrar-General "as soon as practicable"; (5): one report discharges everyone; (6): without reasonable
+-- excuse, $1,500 or one month or both.
+--
+-- For a birth IN a hospital the parents are not on the list.
+GIVEN `the place` IS A Place, `the person` IS A Person, `brought to hospital within 24 hours` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `responsible for reporting the birth` IF
+    CONSIDER `the place`
+    WHEN `in a hospital` THEN `is hospital staff` `the person`
+    WHEN `in other premises` THEN
+            `the person` EQUALS `a parent`
+        OR  `the person` EQUALS `an occupier who knows`
+        OR  (`brought to hospital within 24 hours` AND `is hospital staff` `the person`)
+    WHEN `in a conveyance in Singapore` THEN
+            `the person` EQUALS `a parent`
+        OR  `the person` EQUALS `the master of the conveyance`
+        OR  (`brought to hospital within 24 hours` AND `is hospital staff` `the person`)
+    OTHERWISE
+            `the person` EQUALS `a parent`
+        OR  (`brought to hospital within 24 hours` AND `is hospital staff` `the person`)
+
+GIVEN `the person` IS A Person
+GIVETH A BOOLEAN
+DECIDE `is hospital staff` IF
+        `the person` EQUALS `a doctor attending at the hospital`
+    OR  `the person` EQUALS `the hospital`
+
+-- The same offence shape recurs in ss 7(6), 10(6), 22(5), 26(5), 32(5), 35(5): a responsible person, no report by ANY
+-- responsible person (one report discharges all), and no reasonable excuse. Unlike s 5 of the Coroners Act 2010, the Act does not
+-- say who bears the burden of proving the excuse.
+GIVEN `is responsible` IS A BOOLEAN, `someone reported` IS A BOOLEAN, `has a reasonable excuse` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `failing to report is an offence` IF
+    `is responsible` AND (NOT `someone reported`) AND (NOT `has a reasonable excuse`)
+
+§§ `8 -- birth particulars within 42 days`
+
+-- s 8(5): "responsible person" here means every parent, a legal guardian, or (for certain CYPA orders) the Director-General of
+-- Social Welfare or a protector -- NOT the doctor or hospital who reported the birth under s 7. (1)(a): provide the birth
+-- particulars "within 42 days after the child's birth". (2): "Subsection (1) does not apply in the case of a child who dies
+-- within 42 days after the child's birth." (3): one person's compliance discharges the rest. (4): $1,500 or one month or both,
+-- and "a further fine not exceeding $50 for every day" the offence continues after conviction.
+GIVEN `the person` IS A Person
+GIVETH A BOOLEAN
+DECIDE `must provide the birth particulars` IF
+        `the person` EQUALS `a parent`
+    OR  `the person` EQUALS `a legal guardian`
+
+GIVEN `the person` IS A Person, `days since the birth` IS A NUMBER, `the child died within 42 days` IS A BOOLEAN,
+      `particulars provided by anyone` IS A BOOLEAN, `has a reasonable excuse` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `in breach of the 42-day duty` IF
+        `must provide the birth particulars` `the person`
+    AND `days since the birth` GREATER THAN 42
+    AND (NOT `the child died within 42 days`)
+    AND (NOT `particulars provided by anyone`)
+    AND (NOT `has a reasonable excuse`)
+
+-- s 8(1A)(a) (Act 2 of 2024): where the birth is registered without a name, the duty to provide the name "continues despite the
+-- registration until the end of 7 years after the child's birth".
+GIVEN `registered without a name` IS A BOOLEAN, `name provided` IS A BOOLEAN, `whole years since the birth` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the duty to provide the name continues` IF
+    `registered without a name` AND (NOT `name provided`) AND `whole years since the birth` LESS THAN 7
+
+§§ `19, 20, 21 -- the child's name`
+
+-- s 19(1): the name "(a) must be in a form expressed in characters in the modern English alphabet; (b) may include a permitted
+-- character; and (c) must not exceed the number of characters permitted in the electronic form of the register". The limit is
+-- not stated in the Act; it is an input here.
+GIVEN `only English letters or permitted characters` IS A BOOLEAN, `length of the name` IS A NUMBER, `register limit` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the name is in an acceptable form` IF
+    `only English letters or permitted characters` AND `length of the name` AT MOST `register limit`
+
+-- s 19(2): the Registrar-General MAY refuse a name that "(a) contains anything that represents or resembles a title, a rank or an
+-- award"; (b) in a patronymic or matronymic system, uses an expression "that does not correspond to the child's sex"; (c) "is
+-- obscene or offensive"; or (d) "is contrary to the public interest".
+GIVEN `resembles a title, rank or award` IS A BOOLEAN, `lineage marker does not match sex` IS A BOOLEAN,
+      `obscene or offensive` IS A BOOLEAN, `contrary to the public interest` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the name may be refused` IF
+        `resembles a title, rank or award`
+    OR  `lineage marker does not match sex`
+    OR  `obscene or offensive`
+    OR  `contrary to the public interest`
+
+-- s 20: where a birth is registered without a name, a responsible person may apply for a name to be entered, "within 7 years after
+-- the child's birth"; the Registrar-General may enter it if the name complies with s 19(1) and is not refused under s 19(2).
+GIVEN `registered without a name` IS A BOOLEAN, `whole years since the birth` IS A NUMBER, `name acceptable` IS A BOOLEAN,
+      `name refused` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a late name may be entered` IF
+    `registered without a name` AND `whole years since the birth` LESS THAN 7 AND `name acceptable` AND (NOT `name refused`)
+
+-- s 21: where a name was entered at registration, a responsible person may apply to alter it "within one year after the child's
+-- birth"; the Registrar-General may alter it if (b) the new name complies and is not refused, (c) the name "has not been altered
+-- before under this section", and (d) "the child is not deceased". A name may be changed under s 21 ONCE.
+GIVEN `name entered at registration` IS A BOOLEAN, `whole months since the birth` IS A NUMBER, `name acceptable` IS A BOOLEAN,
+      `name refused` IS A BOOLEAN, `altered before` IS A BOOLEAN, `the child is deceased` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the name may be altered` IF
+        `name entered at registration`
+    AND `whole months since the birth` LESS THAN 12
+    AND `name acceptable`
+    AND (NOT `name refused`)
+    AND (NOT `altered before`)
+    AND (NOT `the child is deceased`)
+
+§§ `22, 32 -- report of a death or stillbirth in Singapore`
+
+-- s 22(1): a death in Singapore must be reported under this section "if the death is not, or does not appear to be, a reportable
+-- death" (reportable deaths go to the police under the Coroners Act 2010; s 31 preserves duties under other written law).
+-- (2): (a) in a hospital -- the hospital; (b) other premises -- "every relative of the deceased person who is present at the death"
+-- and every occupier who knows; (c) conveyance in Singapore -- every relative "in the conveyance at the time and knows of the
+-- death", and the master; (d) any other place -- every relative who knows, every person present, and every person who takes charge
+-- of the body. (3): report "to a medical practitioner" as soon as practicable. (5): $1,500 or one month or both.
+-- s 32(2) repeats the same list word for word for a stillbirth (relatives "of the stillborn child"), and s 32(3) the same duty.
+-- (Being in the conveyance at the time is treated here as being present.)
+GIVEN `the place` IS A Place, `the person` IS A Person
+GIVETH A BOOLEAN
+DECIDE `responsible for reporting the death` IF
+    CONSIDER `the place`
+    WHEN `in a hospital` THEN `the person` EQUALS `the hospital`
+    WHEN `in other premises` THEN
+            `the person` EQUALS `a relative present at the event`
+        OR  `the person` EQUALS `an occupier who knows`
+    WHEN `in a conveyance in Singapore` THEN
+            `the person` EQUALS `a relative present at the event`
+        OR  `the person` EQUALS `the master of the conveyance`
+    OTHERWISE
+            `the person` EQUALS `a relative present at the event`
+        OR  `the person` EQUALS `a relative who knows but was absent`
+        OR  `the person` EQUALS `a bystander present at the event`
+        OR  `the person` EQUALS `a person who took charge of the body`
+
+GIVEN `the place` IS A Place, `the person` IS A Person
+GIVETH A BOOLEAN
+DECIDE `responsible for reporting the stillbirth` IF
+    `responsible for reporting the death` `the place` `the person`
+
+GIVEN `apparently a reportable death` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `section 22 applies` IF NOT `apparently a reportable death`
+
+-- s 2(1) "stillborn child": a child that "(a) issues from the child's mother after the twenty-fourth week of pregnancy; and (b) does
+-- not show any sign of life at any time after being completely expelled or extracted", and "does not include a foetus that is
+-- aborted by or through treatment carried out for termination of pregnancy". READING: "after the twenty-fourth week" is taken as
+-- 24 or more completed weeks.
+GIVEN `completed weeks of pregnancy` IS A NUMBER, `showed a sign of life` IS A BOOLEAN, `a termination of pregnancy` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the child is stillborn` IF
+    `completed weeks of pregnancy` AT LEAST 24 AND (NOT `showed a sign of life`) AND (NOT `a termination of pregnancy`)
+
+§§ `7, 10, 22, 26, 32, 35 -- to whom the report goes`
+
+-- s 7(4), 10(4): births go to the Registrar-General. s 22(3), 32(3): deaths and stillbirths in Singapore go to "a medical
+-- practitioner", who then has 24 hours to send particulars to the Registrar-General (ss 23(2), 33(1)(b)). s 26(3), 35(3): a death
+-- or stillbirth in a conveyance outside but bound for Singapore goes "to the police".
+DECLARE Event IS ONE OF
+    `a birth in Singapore`
+    `a birth on a conveyance bound for Singapore`
+    `a non-reportable death in Singapore`
+    `a death on a conveyance bound for Singapore`
+    `a stillbirth in Singapore`
+    `a stillbirth on a conveyance bound for Singapore`
+
+DECLARE Recipient IS ONE OF
+    `the Registrar-General`
+    `a medical practitioner`
+    `the police`
+
+GIVEN `the event` IS A Event
+GIVETH A Recipient
+`the report goes to` MEANS
+    CONSIDER `the event`
+    WHEN `a birth in Singapore` THEN `the Registrar-General`
+    WHEN `a birth on a conveyance bound for Singapore` THEN `the Registrar-General`
+    WHEN `a non-reportable death in Singapore` THEN `a medical practitioner`
+    WHEN `a stillbirth in Singapore` THEN `a medical practitioner`
+    OTHERWISE `the police`
+
+-- s 10(1), 26(1), 35(1): an event in a conveyance outside Singapore must be reported only if it happened during the flight,
+-- voyage or passage TO Singapore, and the child or body "arrives in Singapore" and "was not taken to any foreign country or
+-- territory" in between.
+GIVEN `during the journey to Singapore` IS A BOOLEAN, `arrived in Singapore` IS A BOOLEAN, `taken to a foreign country first` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the conveyance event must be reported` IF
+    `during the journey to Singapore` AND `arrived in Singapore` AND (NOT `taken to a foreign country first`)
+
+§§ `28 -- death of a citizen or PR abroad`
+
+-- s 28(1): where a Singapore citizen or PR dies outside Singapore "and the body of the deceased person is brought to Singapore", a
+-- relative may apply. (2)(a) within 3 months; (b) with a document from a medical practitioner "whether in Singapore or elsewhere"
+-- certifying the cause of death. (5): not for a death required to be reported under s 26.
+GIVEN `citizen or permanent resident` IS A BOOLEAN, `body brought to Singapore` IS A BOOLEAN, `a section 26 death` IS A BOOLEAN,
+      `whole months since the death` IS A NUMBER, `has a cause-of-death certificate` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a relative may apply under section 28` IF
+        `citizen or permanent resident`
+    AND `body brought to Singapore`
+    AND (NOT `a section 26 death`)
+    AND `whole months since the death` LESS THAN 3
+    AND `has a cause-of-death certificate`
+
+§§ `48 -- false or misleading statements`
+
+-- s 48: a statement to the Registrar-General "false or misleading in a material particular", made "(a) knowing it to be false or
+-- misleading" or "(b) being reckless as to whether it is", is an offence: $10,000 or 10 years or both.
+GIVEN `false in a material particular` IS A BOOLEAN, `knew` IS A BOOLEAN, `reckless` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the statement is an offence` IF
+    `false in a material particular` AND (`knew` OR `reckless`)
+
+§§ `Penalties`
+
+-- ss 7(6), 10(6), 22(5), 26(5), 32(5), 35(5): $1,500 or one month. s 8(4): $1,500 or one month (plus $50 a day continuing).
+-- ss 23(3), 33(2): a doctor who fails to send particulars within 24 hours: fine up to $1,000, no imprisonment. s 42(3): failing
+-- to answer an information notice: $1,500 or one month. s 48: $10,000 or 10 years. s 51: obstruction, $2,500 or 3 months.
+DECLARE Offence IS ONE OF
+    `failing to report a birth, death or stillbirth`
+    `failing to provide birth particulars`
+    `a doctor failing to send particulars within 24 hours`
+    `ignoring an information notice`
+    `a false or misleading statement`
+    `obstruction`
+
+GIVEN `the offence` IS A Offence
+GIVETH A NUMBER
+`the maximum fine` MEANS
+    CONSIDER `the offence`
+    WHEN `failing to report a birth, death or stillbirth` THEN 1500
+    WHEN `failing to provide birth particulars` THEN 1500
+    WHEN `a doctor failing to send particulars within 24 hours` THEN 1000
+    WHEN `ignoring an information notice` THEN 1500
+    WHEN `a false or misleading statement` THEN 10000
+    OTHERWISE 2500
+
+GIVEN `the offence` IS A Offence
+GIVETH A NUMBER
+`the maximum imprisonment in months` MEANS
+    CONSIDER `the offence`
+    WHEN `failing to report a birth, death or stillbirth` THEN 1
+    WHEN `failing to provide birth particulars` THEN 1
+    WHEN `a doctor failing to send particulars within 24 hours` THEN 0
+    WHEN `ignoring an information notice` THEN 1
+    WHEN `a false or misleading statement` THEN 120
+    OTHERWISE 3
