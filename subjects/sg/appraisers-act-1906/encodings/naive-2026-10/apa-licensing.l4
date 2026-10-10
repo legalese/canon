@@ -1,0 +1,181 @@
+IMPORT prelude
+
+-- Appraisers Act 1906 (Singapore) -- who is an appraiser (s 2), the duty to be licensed (s 4), the fee bar on granting (s 6(4), (5)),
+-- what a licence must state (s 7(1)), expiry and renewal (s 7(2)), the offence and fine (s 7(3)), refusal and cancellation (ss 10,
+-- 11) and trial by a District Court (s 12).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/AA1906.txt. The deposit says it
+-- "incorporates all amendments up to and including 1 December 2021" and comes into operation on 31 December 2021; the latest
+-- amending Act annotated in the body is Act 4 of 2021.
+--
+-- WHY THIS ACT. Cited by 4 of the 527 Singapore Acts deposited in this repository. The Act is short (ten live sections), so nearly
+-- all of it is encoded. Not encoded: s 1 (short title), s 6(1) to (3) and (6) (who grants, under whose hand, Gazette notification,
+-- the Minister's power to set fees by class), s 13 (regulations), and the wording of Form A beyond its expiry line. No fee amount
+-- appears in the Act; fees are left to a Ministerial order that was not retrieved.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules conventions. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Appraisers Act 1906 -- licensing`
+
+-- s 2: "Every person who values or appraises any estate or immovable property, lands, tenements or hereditaments, or any interest
+-- in possession or reversion, remainder or contingency in any estate or immovable property, for or on expectation of any hire,
+-- gain, fee or reward or valuable consideration to be paid to the person therefor, is deemed to carry on the business of an
+-- appraiser, and is an appraiser within the meaning of this Act."
+--
+-- The definition names only immovable property and interests in it. Valuing goods, shares or vehicles is not mentioned; treating
+-- those as outside s 2 is an INFERENCE from the words used.
+DECLARE Subject IS ONE OF
+    `land`
+    `a building`
+    `a leasehold interest in land`
+    `a reversionary interest in land`
+    `a contingent interest in land`
+    `movable goods`
+    `shares in a company`
+    `a motor vehicle`
+
+DECLARE Valuer HAS
+    `what is valued` IS A Subject
+    `for hire, gain, fee or reward` IS A BOOLEAN
+    `holds a licence in force` IS A BOOLEAN
+    `previously held a licence that has expired` IS A BOOLEAN
+    `carries on the valuing` IS A BOOLEAN
+
+§§ `2 -- who is an appraiser`
+
+GIVEN `the subject` IS A Subject
+GIVETH A BOOLEAN
+DECIDE `the subject is immovable property or an interest in it` IF
+    CONSIDER `the subject`
+    WHEN `movable goods` THEN FALSE
+    WHEN `shares in a company` THEN FALSE
+    WHEN `a motor vehicle` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the valuer` IS A Valuer
+GIVETH A BOOLEAN
+DECIDE `is an appraiser` IF
+        `the subject is immovable property or an interest in it` (`the valuer`'s `what is valued`)
+    AND `the valuer`'s `for hire, gain, fee or reward`
+
+§§ `4 -- appraisers to be licensed`
+
+-- s 4: "Every appraiser must take out a licence in Form A in the Schedule."
+GIVEN `the valuer` IS A Valuer
+GIVETH A BOOLEAN
+DECIDE `must take out a licence` IF `is an appraiser` `the valuer`
+
+§§ `7(3) -- the offence`
+
+-- s 7(3): "Any person who -- (a) having had such a licence continues to carry on the trade or business for which the licence was
+-- granted in the year next ensuing its expiry and omits to renew it; and (b) carries on a trade or business required by this Act
+-- to be licensed without taking out a licence, shall, except as provided in this Act, each be guilty of an offence and shall be
+-- liable on conviction to a fine not exceeding $2,000."
+--
+-- The limbs are joined by "and", but "each be guilty" reads as two separate offences. This encoding treats them as ALTERNATIVES
+-- (either limb is an offence) -- an INFERENCE. No imprisonment is provided.
+GIVEN `the valuer` IS A Valuer
+GIVETH A BOOLEAN
+DECIDE `commits the lapsed-licence offence` IF
+        `is an appraiser` `the valuer`
+    AND `the valuer`'s `carries on the valuing`
+    AND `the valuer`'s `previously held a licence that has expired`
+    AND (NOT `the valuer`'s `holds a licence in force`)
+
+GIVEN `the valuer` IS A Valuer
+GIVETH A BOOLEAN
+DECIDE `commits the unlicensed-business offence` IF
+        `is an appraiser` `the valuer`
+    AND `the valuer`'s `carries on the valuing`
+    AND (NOT `the valuer`'s `previously held a licence that has expired`)
+    AND (NOT `the valuer`'s `holds a licence in force`)
+
+GIVEN `the valuer` IS A Valuer
+GIVETH A BOOLEAN
+DECIDE `commits an offence under section 7(3)` IF
+        `commits the lapsed-licence offence` `the valuer`
+    OR  `commits the unlicensed-business offence` `the valuer`
+
+GIVETH A NUMBER
+`the maximum fine in dollars` MEANS 2000
+
+-- s 12: "Any offence punishable under this Act may be tried by a District Court."
+GIVEN `the valuer` IS A Valuer
+GIVETH A BOOLEAN
+DECIDE `may be tried by a District Court` IF `commits an offence under section 7(3)` `the valuer`
+
+§§ `6(4), (5) -- the fee comes first`
+
+-- s 6(4): on every licence there must be paid "such fee as may be prescribed by the Minister in respect of the class of licence".
+-- s 6(5): "No licence may be granted or renewed under this Act until the fee has first been paid."
+-- Payment is necessary, not sufficient: s 10 lets the Comptroller refuse any application.
+GIVEN `the fee has been paid` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Comptroller is barred from granting or renewing` IF NOT `the fee has been paid`
+
+§§ `7(1) -- what a licence must state`
+
+-- s 7(1): every licence must state "(a) the true name and place of abode of the person taking it out; (b) the true date or time of
+-- granting the licence; and (c) the principal place of business at which the trade or business ... is to be carried on."
+DECLARE Licence HAS
+    `states the true name` IS A BOOLEAN
+    `states the place of abode` IS A BOOLEAN
+    `states the date or time of grant` IS A BOOLEAN
+    `states the principal place of business` IS A BOOLEAN
+
+GIVEN `the licence` IS A Licence
+GIVETH A BOOLEAN
+DECIDE `the licence states what section 7(1) requires` IF
+        `the licence`'s `states the true name`
+    AND `the licence`'s `states the place of abode`
+    AND `the licence`'s `states the date or time of grant`
+    AND `the licence`'s `states the principal place of business`
+
+§§ `7(2) -- expiry and renewal`
+
+-- s 7(2): "Every licence expires on 31 December and must be renewed annually at least 10 days before the expiry of the licence."
+-- Form A: "This licence will continue in force until 31 December ______, unless previously cancelled under section 10".
+-- That a licence granted in a year expires on 31 December OF THAT YEAR is an INFERENCE (the next 31 December); the Act does not say
+-- so in terms.
+GIVEN `the year of grant` IS A NUMBER
+GIVETH A NUMBER
+`the year of expiry` MEANS `the year of grant`
+
+-- The last day in December on which renewal is "at least 10 days before" a 31 December expiry.
+GIVETH A NUMBER
+`the last renewal day in December` MEANS 31 MINUS 10
+
+GIVEN `days before expiry` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `renewed in time` IF `days before expiry` AT LEAST 10
+
+§§ `10, 11 -- refusal and cancellation`
+
+-- s 10: the Comptroller "may refuse any application for a licence or to renew any licence, and may cancel the licence of any person
+-- who has been convicted of any offence under this Act or who has failed to account for or pay over any money or property which has
+-- come into his or her possession or control as a licensed person."
+-- s 11: a court judgment, civil or criminal, finding that a licensed person "(a) is liable or responsible for any money or property
+-- come into his or her possession or control as a licensed person under circumstances amounting to a breach of trust or duty; or
+-- (b) has paid or agreed to pay to his or her employer any part of his or her charges or expenses by way of return commission when
+-- the employer is a person accountable to any other person for the proceeds of the sale, is a ground for the cancellation".
+--
+-- Refusal needs no stated ground. Cancellation is limited to the grounds below, and is discretionary ("may").
+DECLARE Licensee HAS
+    `convicted of an offence under this Act` IS A BOOLEAN
+    `failed to account for money or property held as licensee` IS A BOOLEAN
+    `judgment of breach of trust or duty over money or property` IS A BOOLEAN
+    `judgment of return commission paid to employer` IS A BOOLEAN
+    `employer accountable to another for the sale proceeds` IS A BOOLEAN
+
+GIVEN `the licensee` IS A Licensee
+GIVETH A BOOLEAN
+DECIDE `a ground for cancellation exists` IF
+        `the licensee`'s `convicted of an offence under this Act`
+    OR  `the licensee`'s `failed to account for money or property held as licensee`
+    OR  `the licensee`'s `judgment of breach of trust or duty over money or property`
+    OR  (    `the licensee`'s `judgment of return commission paid to employer`
+         AND `the licensee`'s `employer accountable to another for the sale proceeds`)
+
+GIVETH A BOOLEAN
+DECIDE `the Comptroller needs a ground to refuse an application` IF FALSE
