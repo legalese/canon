@@ -1,0 +1,391 @@
+IMPORT prelude
+
+-- Personal Data Protection Act 2012 (Singapore) -- who the data protection obligations bind and what data they reach (s 4),
+-- consent and its withdrawal (ss 13 to 16), retention (s 25), data breach notification (ss 26B to 26D), the Do Not Call duties
+-- (ss 43, 44, 48), the individual offences of unauthorised disclosure, improper use and re-identification (ss 48C to 48F), the
+-- ceiling on financial penalties (s 48J) and the right of private action (s 48O).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/PDPA2012.txt, with
+-- amendments to Act 19 of 2025 (wef 5 December 2025) shown; the Act 40 of 2020 penalty ceilings are annotated wef 1 October 2022.
+--
+-- WHY THIS ACT. Cited by 10 of the 527 Singapore Acts deposited in this repository. SCOPED to the duties an organisation, a
+-- telemarketer or an employee actually meets, and what happens when they are broken. Not encoded: the Commission and its
+-- administration (Part 2), policies and practices (s 12), purpose limitation and notification (ss 18 to 20), access and correction
+-- and their Schedules (ss 21, 22, Fifth and Sixth Schedules), accuracy, protection and overseas transfer (ss 23, 24, 26), the
+-- First and Second Schedule exceptions to consent (treated as a single flag), the register itself (ss 39 to 42), checkers
+-- (s 43A), calling line identity (s 45), dictionary attacks (s 48B) beyond its penalty ceiling, review, directions, undertakings
+-- and appeals (ss 48G to 48N, 48P to 48R), investigation powers and the s 51 offences. Part 6B (data portability) is referred to
+-- throughout the deposit but its text is not in it.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Personal Data Protection Act 2012 -- obligations`
+
+§§ `4 -- whom Parts 3 to 6A bind`
+
+-- s 4(1): Parts 3, 4, 5, 6, 6A and 6B "do not impose any obligation on" (a) "any individual acting in a personal or domestic
+-- capacity"; (b) "any employee acting in the course of his or her employment with an organisation"; (c) "any public agency".
+-- s 4(2): those Parts, "except sections 24 and 25", 6A "except sections 26C(3)(a) and 26E", do not impose any obligation on a data
+-- intermediary processing on behalf of another organisation "pursuant to a contract which is evidenced or made in writing".
+-- s 4(3): the organisation has the same obligation for data its intermediary processes "as if the personal data were processed by
+-- the organisation itself".
+DECLARE Actor IS ONE OF
+    `an organisation processing for its own purposes`
+    `an individual acting in a personal or domestic capacity`
+    `an employee acting in the course of employment`
+    `a public agency`
+    `a data intermediary under a written contract`
+    `a data intermediary without a written contract`
+
+DECLARE Obligation IS ONE OF
+    `obtain consent (s 13)`
+    `protect the data (s 24)`
+    `cease to retain the data (s 25)`
+    `assess a suspected breach (s 26C(2))`
+    `tell the principal of a breach (s 26C(3)(a))`
+    `notify the Commission of a notifiable breach (s 26D)`
+
+GIVEN `the actor` IS AN Actor, `the obligation` IS AN Obligation
+GIVETH A BOOLEAN
+DECIDE `the obligation binds the actor` IF
+    CONSIDER `the actor`
+    WHEN `an individual acting in a personal or domestic capacity` THEN FALSE
+    WHEN `an employee acting in the course of employment` THEN FALSE
+    WHEN `a public agency` THEN FALSE
+    WHEN `a data intermediary under a written contract` THEN
+        CONSIDER `the obligation`
+        WHEN `protect the data (s 24)` THEN TRUE
+        WHEN `cease to retain the data (s 25)` THEN TRUE
+        WHEN `tell the principal of a breach (s 26C(3)(a))` THEN TRUE
+        OTHERWISE FALSE
+    WHEN `a data intermediary without a written contract` THEN TRUE
+    OTHERWISE
+        CONSIDER `the obligation`
+        WHEN `tell the principal of a breach (s 26C(3)(a))` THEN FALSE
+        OTHERWISE TRUE
+
+-- Inference, not text: s 4(2) lifts the other duties only where the intermediary's contract is "evidenced or made in writing", so an
+-- intermediary without one is read here as bound by everything, including s 26C(3)(a), which is addressed to "a data intermediary".
+
+-- s 4(4): "This Act does not apply in respect of" (a) data "contained in a record that has been in existence for at least 100
+-- years"; or (b) data about a deceased individual, "except that the provisions relating to the disclosure of personal data and
+-- section 24 (protection of personal data) apply" where the individual "has been dead for 10 years or less".
+GIVEN `age of the record in years` IS A NUMBER, `the individual is dead` IS A BOOLEAN, `years since death` IS A NUMBER,
+      `the provision concerns disclosure or protection` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Act applies to the data` IF
+        `age of the record in years` LESS THAN 100
+    AND (    (NOT `the individual is dead`)
+         OR  (`the provision concerns disclosure or protection` AND `years since death` AT MOST 10))
+
+-- s 4(5): "Except where business contact information is expressly mentioned, Parts 3, 4, 5, 6 and 6A do not apply to business
+-- contact information."
+GIVEN `is business contact information` IS A BOOLEAN, `the provision expressly mentions business contact information` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `Parts 3 to 6A reach the information` IF
+    (NOT `is business contact information`) OR `the provision expressly mentions business contact information`
+
+§§ `13 to 16 -- consent`
+
+-- s 13: an organisation "must not ... collect, use or disclose personal data about an individual unless" (a) the individual
+-- "gives, or is deemed to have given" consent, or (b) doing so without consent "is required or authorised under this Act or any
+-- other written law".
+-- s 14(1): no consent unless the individual was "provided with the information required under section 20". s 14(2): an
+-- organisation must not (a) require consent "beyond what is reasonable to provide the product or service", or (b) obtain consent
+-- by "false or misleading information" or "deceptive or misleading practices"; (3) such consent "is not validly given".
+-- s 15(1): deemed consent where the individual "voluntarily provides the personal data" for the purpose and "it is reasonable
+-- that the individual would voluntarily provide the data".
+-- s 15A: deemed consent by notification, from 1 February 2021, if the organisation (4)(a) assessed that the use "is not likely to
+-- have an adverse effect", (b) told the individual of its intention, purpose and "a reasonable period" to object, and the
+-- individual did not object in time; (3) not for "any prescribed purpose".
+-- s 16(1): the individual "may at any time withdraw any consent given, or deemed to have been given"; (4) the organisation
+-- "must cease ... unless" processing without consent is required or authorised.
+DECLARE Processing HAS
+    `date of processing` IS A NUMBER
+    `consent given` IS A BOOLEAN
+    `told the section 20 information` IS A BOOLEAN
+    `consent demanded beyond what the service needs` IS A BOOLEAN
+    `consent obtained by deception` IS A BOOLEAN
+    `data volunteered for the purpose` IS A BOOLEAN
+    `reasonable to volunteer it` IS A BOOLEAN
+    `adverse-effect assessment done` IS A BOOLEAN
+    `notified of intention, purpose and opt-out period` IS A BOOLEAN
+    `objected within the period` IS A BOOLEAN
+    `for a prescribed purpose` IS A BOOLEAN
+    `consent withdrawn` IS A BOOLEAN
+    `required or authorised without consent` IS A BOOLEAN
+
+GIVEN `the processing` IS A Processing
+GIVETH A BOOLEAN
+DECIDE `consent is validly given` IF
+        `the processing`'s `consent given`
+    AND `the processing`'s `told the section 20 information`
+    AND (NOT `the processing`'s `consent demanded beyond what the service needs`)
+    AND (NOT `the processing`'s `consent obtained by deception`)
+
+GIVEN `the processing` IS A Processing
+GIVETH A BOOLEAN
+DECIDE `consent is deemed by conduct` IF
+    `the processing`'s `data volunteered for the purpose` AND `the processing`'s `reasonable to volunteer it`
+
+GIVEN `the processing` IS A Processing
+GIVETH A BOOLEAN
+DECIDE `consent is deemed by notification` IF
+        `the processing`'s `date of processing` AT LEAST 20210201
+    AND `the processing`'s `adverse-effect assessment done`
+    AND `the processing`'s `notified of intention, purpose and opt-out period`
+    AND (NOT `the processing`'s `objected within the period`)
+    AND (NOT `the processing`'s `for a prescribed purpose`)
+
+GIVEN `the processing` IS A Processing
+GIVETH A BOOLEAN
+DECIDE `the organisation may collect, use or disclose` IF
+        `the processing`'s `required or authorised without consent`
+    OR  (    (NOT `the processing`'s `consent withdrawn`)
+         AND (    `consent is validly given` `the processing`
+              OR  `consent is deemed by conduct` `the processing`
+              OR  `consent is deemed by notification` `the processing`))
+
+§§ `25 -- retention`
+
+-- s 25: an organisation "must cease to retain" documents containing personal data, or anonymise them, "as soon as it is
+-- reasonable to assume that" (a) the purpose "is no longer being served by retention" AND (b) "retention is no longer necessary for
+-- legal or business purposes".
+GIVEN `the purpose is still served` IS A BOOLEAN, `needed for legal or business purposes` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the organisation must stop retaining the data` IF
+    (NOT `the purpose is still served`) AND (NOT `needed for legal or business purposes`)
+
+§§ `26A to 26D -- data breaches`
+
+-- s 26A: "data breach" means (a) "unauthorised access, collection, use, disclosure, copying, modification or disposal", or (b)
+-- "the loss of any storage medium or device" where such things are likely.
+-- s 26B(1): notifiable if it (a) "results in, or is likely to result in, significant harm to an affected individual"; or (b) "is,
+-- or is likely to be, of a significant scale". (2) deemed significant harm if it involves "prescribed personal data"; (3) deemed
+-- significant scale if it affects "not fewer than the prescribed number of affected individuals". (4) a breach relating to "the
+-- unauthorised access, collection, use, disclosure, copying or modification of personal data only within an organisation is deemed
+-- not to be a notifiable data breach". Disposal and loss of a device are not in that list.
+-- The prescribed number is not in the Act; it is a parameter here.
+DECLARE BreachKind IS ONE OF
+    `unauthorised access`
+    `unauthorised disclosure`
+    `unauthorised copying`
+    `unauthorised modification`
+    `unauthorised disposal`
+    `loss of a storage device`
+
+DECLARE Breach HAS
+    `kind` IS A BreachKind
+    `only within the organisation` IS A BOOLEAN
+    `significant harm likely` IS A BOOLEAN
+    `involves prescribed personal data` IS A BOOLEAN
+    `significant scale likely` IS A BOOLEAN
+    `individuals affected` IS A NUMBER
+
+GIVEN `the breach` IS A Breach
+GIVETH A BOOLEAN
+DECIDE `the internal-only exclusion applies` IF
+        `the breach`'s `only within the organisation`
+    AND CONSIDER `the breach`'s `kind`
+        WHEN `unauthorised disposal` THEN FALSE
+        WHEN `loss of a storage device` THEN FALSE
+        OTHERWISE TRUE
+
+GIVEN `the breach` IS A Breach
+GIVETH A BOOLEAN
+DECIDE `the breach is harmful in the s 26B(1)(a) sense` IF
+    `the breach`'s `significant harm likely` OR `the breach`'s `involves prescribed personal data`
+
+GIVEN `the breach` IS A Breach, `the prescribed number` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the breach is notifiable` IF
+        (NOT `the internal-only exclusion applies` `the breach`)
+    AND (    `the breach is harmful in the s 26B(1)(a) sense` `the breach`
+         OR  `the breach`'s `significant scale likely`
+         OR  `the breach`'s `individuals affected` AT LEAST `the prescribed number`)
+
+-- s 26D(1): notify the Commission "as soon as is practicable, but in any case no later than 3 calendar days after the day the
+-- organisation makes that assessment". Days are counted as day numbers here.
+GIVEN `day of assessment` IS A NUMBER
+GIVETH A NUMBER
+`the last day to notify the Commission` MEANS `day of assessment` PLUS 3
+
+-- s 26D(2): "the organisation must also notify each affected individual affected by a notifiable data breach mentioned in section
+-- 26B(1)(a)" -- the harm limb only; a breach notifiable only for its scale need not be told to individuals.
+-- (5) not if the organisation (a) after assessing took action "that renders it unlikely" the breach will cause significant harm, or
+-- (b) had earlier implemented "any technological measure" with that effect. (6) "must not notify" if a prescribed law enforcement
+-- agency "so instructs" or the Commission "so directs". (7) the Commission may waive on written application.
+DECLARE Aftermath HAS
+    `remedial action makes harm unlikely` IS A BOOLEAN
+    `prior technological measure makes harm unlikely` IS A BOOLEAN
+    `law enforcement agency instructs silence` IS A BOOLEAN
+    `Commission directs silence` IS A BOOLEAN
+    `Commission waived notification` IS A BOOLEAN
+
+GIVEN `the aftermath` IS AN Aftermath
+GIVETH A BOOLEAN
+DECIDE `notifying individuals is forbidden` IF
+    `the aftermath`'s `law enforcement agency instructs silence` OR `the aftermath`'s `Commission directs silence`
+
+GIVEN `the breach` IS A Breach, `the prescribed number` IS A NUMBER, `the aftermath` IS AN Aftermath
+GIVETH A BOOLEAN
+DECIDE `the organisation must notify affected individuals` IF
+        `the breach is notifiable` `the breach` `the prescribed number`
+    AND `the breach is harmful in the s 26B(1)(a) sense` `the breach`
+    AND (NOT `the aftermath`'s `remedial action makes harm unlikely`)
+    AND (NOT `the aftermath`'s `prior technological measure makes harm unlikely`)
+    AND (NOT `notifying individuals is forbidden` `the aftermath`)
+    AND (NOT `the aftermath`'s `Commission waived notification`)
+
+§§ `43, 44 and 48 -- Do Not Call`
+
+-- s 43(1): a person "must not send a specified message addressed to a Singapore telephone number unless" it has "valid
+-- confirmation that the Singapore telephone number is not listed in the relevant register". (2) valid confirmation is (a) the
+-- Commission's confirmation "within the prescribed duration before sending", or (b) a checker's information where the person "has
+-- no reason to believe that, and is not reckless as to whether" the prescribed period has expired or the information is false.
+-- (4) no contravention if the subscriber or user "gave clear and unambiguous consent" that is "evidenced in written or other form".
+-- s 48(2): s 43(1) and s 44 do not apply to an employee who sends "in good faith" in the course of employment or on the employer's
+-- instructions; (4) except an officer or partner who "knew or ought reasonably to have known" the number was listed and the message
+-- was sent "with Z's consent or connivance" or through "neglect on Z's part".
+DECLARE Message HAS
+    `Commission confirmation within the prescribed duration` IS A BOOLEAN
+    `checker says not listed` IS A BOOLEAN
+    `reason to suspect the checker information is stale or false` IS A BOOLEAN
+    `clear consent evidenced in accessible form` IS A BOOLEAN
+    `sent by an employee in good faith for the employer` IS A BOOLEAN
+    `sender is an officer or partner who knew and consented or neglected` IS A BOOLEAN
+
+GIVEN `the message` IS A Message
+GIVETH A BOOLEAN
+DECIDE `the sender has valid confirmation` IF
+        `the message`'s `Commission confirmation within the prescribed duration`
+    OR  (`the message`'s `checker says not listed` AND (NOT `the message`'s `reason to suspect the checker information is stale or false`))
+
+GIVEN `the message` IS A Message
+GIVETH A BOOLEAN
+DECIDE `the employee exemption applies` IF
+    `the message`'s `sent by an employee in good faith for the employer`
+    AND (NOT `the message`'s `sender is an officer or partner who knew and consented or neglected`)
+
+GIVEN `the message` IS A Message
+GIVETH A BOOLEAN
+DECIDE `sending the message contravenes s 43` IF
+        (NOT `the sender has valid confirmation` `the message`)
+    AND (NOT `the message`'s `clear consent evidenced in accessible form`)
+    AND (NOT `the employee exemption applies` `the message`)
+
+-- s 44: the message must identify the sender, say how to contact it, and (d) that information must be "reasonably likely to be
+-- valid for at least 30 days after the message is sent".
+GIVEN `identifies the sender` IS A BOOLEAN, `says how to contact the sender` IS A BOOLEAN, `days the details stay valid` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the contact information complies with s 44` IF
+    `identifies the sender` AND `says how to contact the sender` AND `days the details stay valid` AT LEAST 30
+
+§§ `48C to 48F -- offences by individuals`
+
+-- s 48D(1): an individual who discloses personal data held by an organisation or public agency, where the disclosure "is not
+-- authorised", "knowing" that or "reckless as to whether" it is authorised, is guilty of an offence: "a fine not exceeding $5,000 or
+-- ... imprisonment for a term not exceeding 2 years or ... both". s 48E(1): the same for use, but only if the individual as a result
+-- "obtains a gain", "causes harm to another individual" or "causes a loss to another person". s 48F(1): the same for re-identifying
+-- anonymised information. Defences (ss 48D(2), 48E(2), 48F(2)), to be proved "on a balance of probabilities", include public
+-- availability, other law, court order, and (48D, 48E) a reasonable belief in a legal right. s 48C(2): the Part does not apply to a
+-- "relevant public official in a Singapore public sector agency".
+DECLARE Misuse IS ONE OF
+    `disclosure (s 48D)`
+    `use (s 48E)`
+    `re-identification (s 48F)`
+
+DECLARE Conduct HAS
+    `what was done` IS A Misuse
+    `authorised by the organisation` IS A BOOLEAN
+    `knew or was reckless that it was unauthorised` IS A BOOLEAN
+    `resulted in gain, harm or loss` IS A BOOLEAN
+    `a defence is proved` IS A BOOLEAN
+    `a relevant public official` IS A BOOLEAN
+
+GIVEN `the conduct` IS A Conduct
+GIVETH A BOOLEAN
+DECIDE `the individual commits an offence under Part 9B` IF
+        (NOT `the conduct`'s `authorised by the organisation`)
+    AND `the conduct`'s `knew or was reckless that it was unauthorised`
+    AND (NOT `the conduct`'s `a defence is proved`)
+    AND (NOT `the conduct`'s `a relevant public official`)
+    AND CONSIDER `the conduct`'s `what was done`
+        WHEN `use (s 48E)` THEN `the conduct`'s `resulted in gain, harm or loss`
+        OTHERWISE TRUE
+
+GIVEN `the misuse` IS A Misuse
+GIVETH A NUMBER
+`the maximum fine for the misuse` MEANS 5000
+
+GIVEN `the misuse` IS A Misuse
+GIVETH A NUMBER
+`the maximum imprisonment in years for the misuse` MEANS 2
+
+§§ `48J -- financial penalties`
+
+-- s 48J(1): the Commission may impose a financial penalty if satisfied an organisation "intentionally or negligently contravened"
+-- Parts 3 to 6B, or a person Part 9 or s 48B(1). (2) not for a contravention "the breach of which is an offence under this Act".
+-- (3) organisations, Parts 3 to 6B: (a) for a contravention after the commencement of s 24 of the 2020 amendment Act by an
+-- organisation "whose annual turnover in Singapore exceeds $10 million -- 10% of the annual turnover in Singapore"; (b) "in any
+-- other case -- $1 million". (4) Part 9: (a) an individual $200,000; (b) any other case $1 million. (4A) s 48B(1): (a) an individual
+-- $200,000; (b) after that commencement, turnover in Singapore exceeding $20 million, 5% of it; (c) otherwise $1 million. These are
+-- ceilings on the prescribed maximum ("in no case may be more than"), not the penalty.
+-- The commencement date is not printed in the section; 20221001 is read from the annotation "[Act 40 of 2020 wef 01/10/2022]"
+-- under s 48J(3), an inference.
+DECLARE Contravention IS ONE OF
+    `Parts 3 to 6B by an organisation`
+    `Part 9 Do Not Call`
+    `s 48B dictionary attack`
+
+GIVEN `intentional or negligent` IS A BOOLEAN, `the breach is itself an offence` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a financial penalty may be imposed` IF
+    `intentional or negligent` AND (NOT `the breach is itself an offence`)
+
+GIVEN `the contravention` IS A Contravention, `is an individual` IS A BOOLEAN, `annual turnover in Singapore` IS A NUMBER,
+      `date of contravention` IS A NUMBER
+GIVETH A NUMBER
+`the ceiling on the financial penalty` MEANS
+    CONSIDER `the contravention`
+    WHEN `Parts 3 to 6B by an organisation` THEN
+        IF `date of contravention` AT LEAST 20221001 AND `annual turnover in Singapore` GREATER THAN 10000000
+        THEN `annual turnover in Singapore` TIMES 0.1
+        ELSE 1000000
+    WHEN `Part 9 Do Not Call` THEN
+        IF `is an individual` THEN 200000 ELSE 1000000
+    WHEN `s 48B dictionary attack` THEN
+        IF `is an individual` THEN 200000
+        ELSE `the s 48B ceiling for others` `annual turnover in Singapore` `date of contravention`
+
+GIVEN `turnover` IS A NUMBER, `on` IS A NUMBER
+GIVETH A NUMBER
+`the s 48B ceiling for others` MEANS
+    IF `on` AT LEAST 20221001 AND `turnover` GREATER THAN 20000000
+    THEN `turnover` TIMES 0.05
+    ELSE 1000000
+
+§§ `48O -- right of private action`
+
+-- s 48O(1): "A person who suffers loss or damage directly as a result of a contravention" by an organisation "of any provision of
+-- Part 4, 5, 6, 6A or 6B", or by a person of "Division 3 of Part 9 or section 48B(1)", "has a right of action for relief in civil
+-- proceedings". Part 3 (compliance, policies and practices) is not in the list. (2) where the Commission has made a decision, the
+-- action "may not be brought ... until after the decision has become final".
+DECLARE Provision IS ONE OF
+    `Part 3 policies and practices`
+    `Part 4 consent and purpose`
+    `Part 5 access and correction`
+    `Part 6 care of personal data`
+    `Part 6A breach notification`
+    `Part 9 Division 3 Do Not Call`
+    `s 48B dictionary attacks`
+
+GIVEN `the provision` IS A Provision, `loss suffered directly` IS A BOOLEAN, `a Commission decision is still open to appeal` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a private action may be brought now` IF
+        `loss suffered directly`
+    AND (NOT `a Commission decision is still open to appeal`)
+    AND CONSIDER `the provision`
+        WHEN `Part 3 policies and practices` THEN FALSE
+        OTHERWISE TRUE
