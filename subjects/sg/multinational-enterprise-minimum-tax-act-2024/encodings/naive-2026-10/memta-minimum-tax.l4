@@ -1,0 +1,332 @@
+IMPORT prelude
+
+-- Multinational Enterprise (Minimum Tax) Act 2024 (Singapore) -- which groups the Act reaches (ss 2 "MNE group", 7, 8), who is
+-- charged with the multinational enterprise top-up tax (MTT) and the domestic top-up tax (DTT) (ss 12, 13, 28, 29), the arithmetic
+-- of a jurisdiction's top-up amount (ss 15 to 18 and the Second Schedule), the de minimis exclusion (s 19), registration and the
+-- filing and payment deadlines (ss 31, 36, 40 to 45), and the offences for returns (ss 64, 66, 68, 69).
+--
+-- Edition: informal consolidation, "version in force from 20/3/2025" (the page footer), as deposited at
+-- ../../registers/source-bundle/MEMTA2024.txt (retrieved 1 October 2026; SSO "Current version as at 01 Oct 2026"). The latest
+-- amendment annotated is Act 25 of 2025, with effect from 1 January 2025. Section numbers follow the BODY: the arrangement of
+-- sections at the top of the deposit is shifted by one (it numbers "Minimum rate" 7 against the title "MNE group to which this Act
+-- applies"). Several formulae are garbled in the .txt (a fraction bar renders as a replacement character, the denominator on the
+-- next line); how each was read is said at the rule.
+--
+-- WHY THIS ACT. Requirement REQ-0077 in ../../../requirements.jsonl: Tier 2 of the remaining Singapore Acts, ordered by everyday-life
+-- relevance. The requirement asks what the Act decides for a person or business it applies to; no scenario has asked a sharper
+-- question yet. SCOPED: this is a 130-page Pillar Two statute and most of it is computation of GloBE income and covered taxes in the
+-- First Schedule. Not encoded: the First Schedule (GloBE income or loss, adjusted covered taxes, excluded entities, investment
+-- entities, flow-through entities, joint ventures, minority-owned entities), additional current top-up amounts (s 21), stateless
+-- entities (s 22), multi-parent groups (s 26), negative tax carried forward (s 17(4)), safe harbours (s 20, which depend on
+-- regulations), the recalculation formulae in s 16(3), currency (s 9), assessments, objections and appeals (Parts 6 and 7), and
+-- every matter left to regulations. Amounts are in EUR million or in the group's presentation currency, as the cases say.
+--
+-- NAIVE ENCODING. Straight from the deposited text, following the conventions of the finished naive rows (the writing-l4-rules
+-- skill was not available in this session). No pipeline, no coverage table, no independent test pass, no human gate. See NOTES.md.
+
+§ `Multinational Enterprise (Minimum Tax) Act 2024`
+
+GIVEN x IS A NUMBER
+GIVETH A NUMBER
+`at least nil` MEANS IF x LESS THAN 0 THEN 0 ELSE x
+
+§§ `2, 7, 8 -- the groups the Act reaches`
+
+-- s 2(1): "MNE group" means "a group that has at least one entity or permanent establishment that is not located in the
+-- jurisdiction of the ultimate parent entity". s 7: "The minimum rate is 15%."
+-- s 8(1): the Act applies to an MNE group "for a financial year beginning on or after 1 January 2025 if its consolidated group
+-- revenue ... for at least 2 financial years out of the 4 financial years immediately before that financial year, is equal to or
+-- exceeds the threshold"; (2) the threshold is "A x B / 12" (garbled in the deposit as "A [?] B ;" over "12"), A being
+-- "EUR 750 million" and B "the number of months in the financial year".
+-- INFERENCE: s 8(2) speaks of "the threshold for a financial year"; this encoding applies it to each of the four earlier years with
+-- that year's own months, so a 6-month year is tested against EUR 375 million.
+DECLARE `Prior year` HAS
+    `consolidated revenue in EUR million` IS A NUMBER
+    `months` IS A NUMBER
+
+GIVETH A NUMBER
+`the minimum rate in percent` MEANS 15
+
+GIVEN `months in the year` IS A NUMBER
+GIVETH A NUMBER
+`the revenue threshold in EUR million` MEANS 750 TIMES `months in the year` DIVIDED BY 12
+
+GIVEN `the year` IS A `Prior year`
+GIVETH A BOOLEAN
+DECIDE `the year meets the threshold` IF
+    `the year`'s `consolidated revenue in EUR million` AT LEAST `the revenue threshold in EUR million` (`the year`'s `months`)
+
+GIVEN `the year` IS A `Prior year`
+GIVETH A NUMBER
+`one if it meets the threshold` MEANS IF `the year meets the threshold` `the year` THEN 1 ELSE 0
+
+GIVEN `the year the financial year begins` IS A NUMBER,
+      `the group has an entity outside the parent's jurisdiction` IS A BOOLEAN,
+      `four years before` IS A `Prior year`,
+      `three years before` IS A `Prior year`,
+      `two years before` IS A `Prior year`,
+      `the year before` IS A `Prior year`
+GIVETH A BOOLEAN
+DECIDE `the Act applies to the group` IF
+        `the year the financial year begins` AT LEAST 2025
+    AND `the group has an entity outside the parent's jurisdiction`
+    AND     `one if it meets the threshold` `four years before`
+        PLUS `one if it meets the threshold` `three years before`
+        PLUS `one if it meets the threshold` `two years before`
+        PLUS `one if it meets the threshold` `the year before`
+        AT LEAST 2
+
+§§ `12, 13 -- who is chargeable with MTT`
+
+-- s 12: an entity is a chargeable entity if "(a) the entity is a responsible member of an MNE group ...; (b) this Act applies to the
+-- MNE group ...; (c) the entity holds an ownership interest in another constituent entity ...; (d) that other constituent entity is
+-- located in a jurisdiction outside Singapore or is a stateless entity, and has a top-up amount ...; and (e) the entity is located in
+-- Singapore."
+-- s 13(1): the ultimate parent entity is a responsible member "if it is not an excluded entity and is (a) located in Singapore; or
+-- (b) subject to a qualified IIR under the law of the jurisdiction where it is located".
+GIVEN `responsible member` IS A BOOLEAN, `Act applies` IS A BOOLEAN, `holds an interest in another constituent entity` IS A BOOLEAN,
+      `that entity is outside Singapore or stateless` IS A BOOLEAN, `that entity has a top-up amount` IS A BOOLEAN,
+      `located in Singapore` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the entity is chargeable with MTT` IF
+        `responsible member` AND `Act applies` AND `holds an interest in another constituent entity`
+    AND `that entity is outside Singapore or stateless` AND `that entity has a top-up amount` AND `located in Singapore`
+
+GIVEN `excluded entity` IS A BOOLEAN, `parent located in Singapore` IS A BOOLEAN, `subject to a qualified IIR` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the ultimate parent entity is a responsible member` IF
+    (NOT `excluded entity`) AND (`parent located in Singapore` OR `subject to a qualified IIR`)
+
+§§ `15 -- top-up tax and the inclusion ratio`
+
+-- s 15(1): top-up tax is "the top-up amount of the relevant entity ... multiplied by the chargeable entity's inclusion ratio".
+-- s 15(2): the ratio is "(A - B) / A" (garbled in the deposit as "A[?]B ;" over "A"), A the relevant entity's GloBE income or loss,
+-- B the part "attributable to entities other than the chargeable entity". s 15(6): where GloBE income or loss is "nil or a negative
+-- amount", it "is deemed to be its top-up amount for the financial year divided by 15%".
+GIVEN `top-up amount` IS A NUMBER, `GloBE income or loss` IS A NUMBER, `attributable to others` IS A NUMBER
+GIVETH A NUMBER
+`the inclusion ratio` MEANS
+    (`the deemed income` MINUS `attributable to others`) DIVIDED BY `the deemed income`
+    WHERE
+        `the deemed income` MEANS
+            IF `GloBE income or loss` AT MOST 0 THEN `top-up amount` DIVIDED BY 0.15 ELSE `GloBE income or loss`
+
+GIVEN `top-up amount` IS A NUMBER, `GloBE income or loss` IS A NUMBER, `attributable to others` IS A NUMBER
+GIVETH A NUMBER
+`the top-up tax for the relevant entity` MEANS
+    `top-up amount` TIMES `the inclusion ratio` `top-up amount` `GloBE income or loss` `attributable to others`
+
+§§ `16, 17 -- effective tax rate, top-up tax percentage, excess profits, jurisdictional top-up amount`
+
+-- s 17(1): effective tax rate = "A / B x 100%" (garbled), A the adjusted covered taxes, B the GloBE income or loss of the
+-- jurisdiction's constituent entities. (2) "if B is nil or a negative amount, the effective tax rate ... is 15%". (3) "if A is a
+-- negative amount and B is a positive amount -- (a) the effective tax rate ... is nil".
+GIVEN `adjusted covered taxes` IS A NUMBER, `GloBE income` IS A NUMBER
+GIVETH A NUMBER
+`the effective tax rate in percent` MEANS
+    IF `GloBE income` AT MOST 0 THEN 15
+    ELSE IF `adjusted covered taxes` LESS THAN 0 THEN 0
+         ELSE `adjusted covered taxes` DIVIDED BY `GloBE income` TIMES 100
+
+-- s 16(5): the top-up tax percentage is "L - M", L the minimum rate and M the effective tax rate, "and if the percentage so
+-- determined is nil or less, the top-up tax percentage ... is nil".
+GIVEN `adjusted covered taxes` IS A NUMBER, `GloBE income` IS A NUMBER
+GIVETH A NUMBER
+`the top-up tax percentage` MEANS
+    `at least nil` (`the minimum rate in percent` MINUS `the effective tax rate in percent` `adjusted covered taxes` `GloBE income`)
+
+§§ `18 and Second Schedule -- substance-based income exclusion`
+
+-- s 18(1): the exclusion is "A + B", the payroll carve-out and the tangible asset carve-out. (2), (3): each is "the applicable
+-- percentage in the Second Schedule" of eligible payroll costs and of the carrying value of eligible tangible assets.
+-- Second Schedule para 1 (payroll), for a financial year beginning in: 2023 10.0%; 2024 9.8%; 2025 9.6%; 2026 9.4%; 2027 9.2%;
+-- 2028 9.0%; 2029 8.2%; 2030 7.4%; 2031 6.6%; 2032 5.8%; after 2032 5.0%.
+-- Para 2 (tangible assets): 2023 8.0%; 2024 7.8%; 2025 7.6%; 2026 7.4%; 2027 7.2%; 2028 7.0%; 2029 6.6%; 2030 6.2%; 2031 5.8%;
+-- 2032 5.4%; after 2032 5.0%. (Years before 2023 are not in the Schedule; they are given the 2023 figure here.)
+GIVEN `the year` IS A NUMBER
+GIVETH A NUMBER
+`the payroll carve-out percentage for` MEANS
+    IF `the year` AT LEAST 2033 THEN 5.0
+    ELSE IF `the year` EQUALS 2032 THEN 5.8
+         ELSE IF `the year` EQUALS 2031 THEN 6.6
+              ELSE IF `the year` EQUALS 2030 THEN 7.4
+                   ELSE IF `the year` EQUALS 2029 THEN 8.2
+                        ELSE IF `the year` EQUALS 2028 THEN 9.0
+                             ELSE IF `the year` EQUALS 2027 THEN 9.2
+                                  ELSE IF `the year` EQUALS 2026 THEN 9.4
+                                       ELSE IF `the year` EQUALS 2025 THEN 9.6
+                                            ELSE IF `the year` EQUALS 2024 THEN 9.8
+                                                 ELSE 10.0
+
+GIVEN `the year` IS A NUMBER
+GIVETH A NUMBER
+`the tangible asset carve-out percentage for` MEANS
+    IF `the year` AT LEAST 2033 THEN 5.0
+    ELSE IF `the year` EQUALS 2032 THEN 5.4
+         ELSE IF `the year` EQUALS 2031 THEN 5.8
+              ELSE IF `the year` EQUALS 2030 THEN 6.2
+                   ELSE IF `the year` EQUALS 2029 THEN 6.6
+                        ELSE IF `the year` EQUALS 2028 THEN 7.0
+                             ELSE IF `the year` EQUALS 2027 THEN 7.2
+                                  ELSE IF `the year` EQUALS 2026 THEN 7.4
+                                       ELSE IF `the year` EQUALS 2025 THEN 7.6
+                                            ELSE IF `the year` EQUALS 2024 THEN 7.8
+                                                 ELSE 8.0
+
+GIVEN `the year` IS A NUMBER, `eligible payroll costs` IS A NUMBER, `carrying value of eligible tangible assets` IS A NUMBER
+GIVETH A NUMBER
+`the substance-based income exclusion` MEANS
+        `eligible payroll costs` TIMES `the payroll carve-out percentage for` `the year` DIVIDED BY 100
+    PLUS `carrying value of eligible tangible assets` TIMES `the tangible asset carve-out percentage for` `the year` DIVIDED BY 100
+
+-- s 16(6): excess profits are "N - O", N the GloBE income, O the substance-based income exclusion, "and if the amount so determined
+-- is nil or less, the excess profits ... is nil".
+-- s 16(4): the jurisdictional top-up amount is "(H x I) + J - K": H the top-up tax percentage, I the excess profits, J the additional
+-- current top-up amount (s 21), K the qualified domestic minimum top-up tax of that jurisdiction. s 30(2)(b): for DTT, "in
+-- section 16(4), K is nil". s 16(1): a constituent entity "has a top-up amount" only "if the amount ... is a positive amount".
+GIVEN `the year` IS A NUMBER, `GloBE income` IS A NUMBER, `eligible payroll costs` IS A NUMBER,
+      `carrying value of eligible tangible assets` IS A NUMBER
+GIVETH A NUMBER
+`the excess profits` MEANS
+    `at least nil` (`GloBE income` MINUS
+        `the substance-based income exclusion` `the year` `eligible payroll costs` `carrying value of eligible tangible assets`)
+
+GIVEN `the year` IS A NUMBER, `adjusted covered taxes` IS A NUMBER, `GloBE income` IS A NUMBER, `eligible payroll costs` IS A NUMBER,
+      `carrying value of eligible tangible assets` IS A NUMBER, `additional current top-up amount` IS A NUMBER,
+      `qualified domestic minimum top-up tax` IS A NUMBER
+GIVETH A NUMBER
+`the jurisdictional top-up amount` MEANS
+        `the top-up tax percentage` `adjusted covered taxes` `GloBE income` DIVIDED BY 100
+            TIMES `the excess profits` `the year` `GloBE income` `eligible payroll costs` `carrying value of eligible tangible assets`
+    PLUS `additional current top-up amount`
+    MINUS `qualified domestic minimum top-up tax`
+
+-- s 16(2): where the jurisdiction's GloBE income is positive, each entity's top-up amount is "A x B / C" (garbled): A the
+-- jurisdictional top-up amount, B the entity's GloBE income "if the constituent entity has a positive amount ..., otherwise B is
+-- nil", C the sum of the positive GloBE incomes.
+GIVEN `jurisdictional amount` IS A NUMBER, `the entity's GloBE income` IS A NUMBER, `sum of positive GloBE incomes` IS A NUMBER
+GIVETH A NUMBER
+`the entity's top-up amount` MEANS
+    `jurisdictional amount` TIMES `at least nil` `the entity's GloBE income` DIVIDED BY `sum of positive GloBE incomes`
+
+§§ `19 -- de minimis exclusion`
+
+-- s 19(1): applies if "(a) the average of" the adjusted revenues for the year and the two before "is less than EUR 10 million" and
+-- "(b) the average of" the GloBE income or loss for the same years "is less than EUR 1 million". (4): if it applies "and the filing
+-- entity ... so elects in a GloBE information return ..., the top-up amounts ... are deemed to be nil". Not encoded: s 19(2)
+-- (a year with no entities is disregarded), (3) (short and long years rescaled to 365 days), and the exclusion of stateless,
+-- investment and insurance investment entities.
+GIVEN `revenue this year` IS A NUMBER, `revenue last year` IS A NUMBER, `revenue the year before` IS A NUMBER,
+      `income this year` IS A NUMBER, `income last year` IS A NUMBER, `income the year before` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the jurisdiction is within the de minimis exclusion` IF
+        (`revenue this year` PLUS `revenue last year` PLUS `revenue the year before`) DIVIDED BY 3 LESS THAN 10
+    AND (`income this year` PLUS `income last year` PLUS `income the year before`) DIVIDED BY 3 LESS THAN 1
+
+GIVEN `within the exclusion` IS A BOOLEAN, `the filing entity elected` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the top-up amounts are deemed nil` IF `within the exclusion` AND `the filing entity elected`
+
+§§ `28, 29 -- domestic top-up tax`
+
+-- s 28(1): DTT "is payable in respect of an MNE group for a financial year where (a) the MNE group is one to which this Act applies
+-- ...; (b) at least one of its constituent entities is located in Singapore or is a section 29(b) entity; and (c) the MNE group has a
+-- top-up amount". (2): DTT "is the top-up amount for the MNE group". s 30(10): the top-up amount of an investment entity or
+-- insurance investment entity "is treated as nil".
+GIVEN `Act applies` IS A BOOLEAN, `has a Singapore or section 29(b) entity` IS A BOOLEAN, `group top-up amount` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `DTT is payable` IF `Act applies` AND `has a Singapore or section 29(b) entity` AND `group top-up amount` GREATER THAN 0
+
+§§ `31, 36 -- registration and the surcharge for failing to register`
+
+-- s 31(1): a group to which the Act applies "and that has a constituent entity located in Singapore (including a joint venture or JV
+-- subsidiary ...) or a section 29(b) entity, must be registered". (2): the ultimate parent entity must notify the Comptroller
+-- "within 6 months after the end of the financial year or such extended period as may be allowed". (5): not again where already
+-- registered for a prior year and not cancelled or suspended.
+-- s 36(2): on failure to register, a surcharge "of an amount equal to 10% of the total of the MTT and the DTT assessed".
+GIVEN `Act applies` IS A BOOLEAN, `has a Singapore or section 29(b) entity` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the group must be registered` IF `Act applies` AND `has a Singapore or section 29(b) entity`
+
+GIVETH A NUMBER
+`months after year end to notify registration` MEANS 6
+
+GIVEN `MTT assessed` IS A NUMBER, `DTT assessed` IS A NUMBER
+GIVETH A NUMBER
+`the surcharge for failure to register` MEANS (`MTT assessed` PLUS `DTT assessed`) TIMES 10 DIVIDED BY 100
+
+§§ `40 to 45 -- returns and payment`
+
+-- ss 40(4), 41(3), 43(4): the due date is "if the financial year is the transition year ... the last day of the period of 18 months
+-- after the end of that transition year" and otherwise "15 months after the end of that financial year". "Transition year" (s 2(1))
+-- is the first year the group comes within a qualified IIR or UTPR, or "for which the MNE group is liable to be registered under
+-- Part 4, whichever is earlier".
+-- ss 42(1), 44(1): payment "no later than one month after the due date", "without demand", in Singapore dollars.
+-- s 41(1)(a), 43(1)(a): a return is due even where nothing is payable -- "a return stating that fact".
+GIVEN `the transition year` IS A BOOLEAN
+GIVETH A NUMBER
+`months after year end the return is due` MEANS IF `the transition year` THEN 18 ELSE 15
+
+GIVEN `the transition year` IS A BOOLEAN
+GIVETH A NUMBER
+`months after year end payment is due` MEANS `months after year end the return is due` `the transition year` PLUS 1
+
+GIVEN `responsible member located in Singapore` IS A BOOLEAN, `registered group to which the Act applies` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `an MTT return is due even if nothing is payable` IF
+    `responsible member located in Singapore` AND `registered group to which the Act applies`
+
+-- s 45(2): "Unless the Comptroller permits otherwise, an MNE group must not make an election ... in respect of more than 30 entities";
+-- (3)(a): not for an entity that "has a negative amount of GloBE income or loss".
+GIVEN `entities elected` IS A NUMBER, `the Comptroller permits more` IS A BOOLEAN, `the entity has negative GloBE income` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a separate-payment election may be made for the entity` IF
+    (`entities elected` AT MOST 30 OR `the Comptroller permits more`) AND (NOT `the entity has negative GloBE income`)
+
+§§ `64, 66, 68, 69 -- offences`
+
+-- s 64(1): failing without reasonable excuse to furnish an MTT or DTT return: "a fine not exceeding $5,000" and, if continuing, "a
+-- further penalty of $100 for every day" after conviction. s 66: the same for the GloBE information return. s 64(2): failing "for
+-- 2 years or more": "a penalty equal to double the amount of MTT or DTT that the Comptroller assesses" and a fine up to $5,000.
+GIVEN `days continued after conviction` IS A NUMBER
+GIVETH A NUMBER
+`the maximum fine for failing to make a return` MEANS 5000 PLUS 100 TIMES `days continued after conviction`
+
+-- s 68(1): an incorrect return -- penalty "equal to the amount ... omitted or understated"; (2) "without reasonable excuse or through
+-- negligence" -- "double", fine up to $5,000 or 3 years; (3) "wilfully with intent to evade" -- "treble", fine up to $10,000 or
+-- 3 years. s 69(1): false books, "fraud, art or contrivance" -- "4 times", fine up to $50,000 or 5 years.
+-- s 68(4), 69(2): an individual convicted of 3 or more s 68(3) offences, 2 or more s 69 offences, or one of each, faces imprisonment
+-- "not ... less than 6 months".
+DECLARE Wrongdoing IS ONE OF
+    `an incorrect return`
+    `a negligent incorrect return`
+    `a wilful incorrect return to evade`
+    `false books or fraud to evade`
+    `no return for 2 years or more`
+
+GIVEN `the wrongdoing` IS A Wrongdoing
+GIVETH A NUMBER
+`the penalty multiple of the tax` MEANS
+    CONSIDER `the wrongdoing`
+    WHEN `an incorrect return` THEN 1
+    WHEN `a negligent incorrect return` THEN 2
+    WHEN `a wilful incorrect return to evade` THEN 3
+    WHEN `false books or fraud to evade` THEN 4
+    WHEN `no return for 2 years or more` THEN 2
+
+GIVEN `the wrongdoing` IS A Wrongdoing
+GIVETH A NUMBER
+`the maximum fine` MEANS
+    CONSIDER `the wrongdoing`
+    WHEN `an incorrect return` THEN 0
+    WHEN `a negligent incorrect return` THEN 5000
+    WHEN `a wilful incorrect return to evade` THEN 10000
+    WHEN `false books or fraud to evade` THEN 50000
+    WHEN `no return for 2 years or more` THEN 5000
+
+GIVEN `section 68(3) convictions` IS A NUMBER, `section 69 convictions` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `at least 6 months' imprisonment is mandatory` IF
+        `section 68(3) convictions` AT LEAST 3
+    OR  `section 69 convictions` AT LEAST 2
+    OR  (`section 68(3) convictions` AT LEAST 1 AND `section 69 convictions` AT LEAST 1)
