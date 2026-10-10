@@ -1,0 +1,224 @@
+IMPORT prelude
+
+-- Holidays Act 1998 (Singapore) -- what a public holiday is (s 2 and the Schedule), the Sunday rule (s 4), the President's
+-- declarations (s 5), employer-employee substitution agreements (s 6), acts done on Sundays and public holidays (ss 7, 8), and the
+-- saving for the Employment Act 1968 (s 9).
+--
+-- Edition: 2020 Revised Edition, as deposited at ../../registers/source-bundle/HA1998.txt. The deposit says it "incorporates all
+-- amendments up to and including 1 December 2021 and comes into operation on 31 December 2021". Its legislative history lists no
+-- amending Act after Act 8 of 1998; the last entry is the 1999 Revised Edition (operation 30 December 1999).
+--
+-- WHY THIS ACT. Chosen for its everyday-life relevance to ordinary people in Singapore: it is the Act that makes the public holidays.
+-- It is short (nine sections and a one-page Schedule), so the whole operative text is encoded. Not encoded: s 1 (short title) and
+-- s 3 ("This Act binds the Government") beyond this note; the actual DATES of any holiday, which the Act does not contain; and the
+-- Employment Act 1968 provisions that s 9 preserves.
+--
+-- DAYS AS NUMBERS. The deposited l4 has no working calendar library here, so a day is a whole number and day 0 is a Sunday: a day is
+-- a Sunday when it leaves remainder 0 on division by 7, and a Saturday when it leaves 6. This is an encoding convention, not the
+-- Act's.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules conventions. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Holidays Act 1998 -- public holidays`
+
+§§ `2 and the Schedule -- what a public holiday is`
+
+-- The Schedule ("Sections 2 and 4"), PUBLIC HOLIDAYS: "New Year's Day / Chinese New Year (2 days) / Hari Raya Puasa / Hari Raya Haji /
+-- Good Friday / Labour Day / Vesak Day / National Day / Deepavali / Christmas Day". Ten names, eleven days. No date is given for any.
+DECLARE `Schedule holiday` IS ONE OF
+    `New Year's Day`
+    `Chinese New Year, first day`
+    `Chinese New Year, second day`
+    `Hari Raya Puasa`
+    `Hari Raya Haji`
+    `Good Friday`
+    `Labour Day`
+    `Vesak Day`
+    `National Day`
+    `Deepavali`
+    `Christmas Day`
+
+GIVETH A LIST OF `Schedule holiday`
+`the Schedule` MEANS
+    LIST `New Year's Day`, `Chinese New Year, first day`, `Chinese New Year, second day`, `Hari Raya Puasa`, `Hari Raya Haji`,
+         `Good Friday`, `Labour Day`, `Vesak Day`, `National Day`, `Deepavali`, `Christmas Day`
+
+GIVEN hs IS A LIST OF `Schedule holiday`
+GIVETH A NUMBER
+`the count of` hs MEANS
+    CONSIDER hs
+    WHEN EMPTY THEN 0
+    WHEN h FOLLOWED BY rest THEN 1 PLUS `the count of` rest
+
+GIVETH A NUMBER
+`the number of days in the Schedule` MEANS `the count of` `the Schedule`
+
+-- s 2: "'public holiday' means -- (a) any of the days specified in the Schedule; or (b) any other day declared by section 4(2) or
+-- under section 5 to be a public holiday."
+-- s 5(1): the President may declare a day "by notification in the Gazette". s 6: an employer-employee agreement gives "the employee
+-- any other holiday or holidays in substitution for" a public holiday -- it does not make that day a public holiday.
+DECLARE `Kind of day` IS ONE OF
+    `a day specified in the Schedule`
+    `the day after a Schedule day that falls on a Sunday`
+    `the day after a Schedule day that falls on a Saturday`
+    `a day the President declares by Gazette notification under s 5(1)`
+    `an additional day the President declares by Gazette notification under s 5(2)`
+    `a day the President announces without a Gazette notification`
+    `a substitute day off agreed with an employer under s 6`
+
+GIVEN k IS A `Kind of day`
+GIVETH A BOOLEAN
+DECIDE `the day is a public holiday under s 2` IF
+    CONSIDER k
+    WHEN `a day specified in the Schedule` THEN TRUE
+    WHEN `the day after a Schedule day that falls on a Sunday` THEN TRUE
+    WHEN `a day the President declares by Gazette notification under s 5(1)` THEN TRUE
+    WHEN `an additional day the President declares by Gazette notification under s 5(2)` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `4 -- the Schedule days and the Sunday rule`
+
+-- s 4(1): "the days specified in the Schedule are declared to be public holidays in Singapore."
+-- s 4(2): "if any day specified in the Schedule falls on a Sunday, the day next following not being itself a public holiday is
+-- declared a public holiday in Singapore."
+-- Nothing is said of a Schedule day that falls on a Saturday. And "the day next following not being itself a public holiday" skips
+-- over a Monday that is already a holiday (the second day of Chinese New Year, or a gazetted day) to the next free day.
+-- SIMPLIFICATION: "already a public holiday" is tested against the Schedule days and the gazetted days given; a day produced by
+-- s 4(2) for another Sunday holiday is not counted, so two Sunday holidays on the SAME day both point at the same next day.
+DECLARE `Observance`
+    HAS `holiday` IS A `Schedule holiday`
+        `day`     IS A NUMBER
+
+GIVEN n IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `is a Sunday` n IF n MODULO 7 EQUALS 0
+
+GIVEN n IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `is a Saturday` n IF n MODULO 7 EQUALS 6
+
+GIVEN n IS A NUMBER
+      ns IS A LIST OF NUMBER
+GIVETH A BOOLEAN
+DECIDE `is among` n ns IF
+    CONSIDER ns
+    WHEN EMPTY THEN FALSE
+    WHEN m FOLLOWED BY rest THEN m EQUALS n OR `is among` n rest
+
+GIVEN os IS A LIST OF `Observance`
+GIVETH A LIST OF NUMBER
+`the days of` os MEANS
+    CONSIDER os
+    WHEN EMPTY THEN EMPTY
+    WHEN o FOLLOWED BY rest THEN o's `day` FOLLOWED BY `the days of` rest
+
+GIVEN n IS A NUMBER
+      `scheduled days` IS A LIST OF NUMBER
+      `gazetted days` IS A LIST OF NUMBER
+GIVETH A NUMBER
+`the next day not already a public holiday after` n `scheduled` `scheduled days` `gazetted` `gazetted days` MEANS
+    IF `is among` (n PLUS 1) `scheduled days` OR `is among` (n PLUS 1) `gazetted days`
+    THEN `the next day not already a public holiday after` (n PLUS 1) `scheduled` `scheduled days` `gazetted` `gazetted days`
+    ELSE n PLUS 1
+
+GIVEN o IS AN `Observance`
+      `the year's Schedule days` IS A LIST OF `Observance`
+      `the year's gazetted days` IS A LIST OF NUMBER
+GIVETH A MAYBE NUMBER
+`the day s 4(2) adds for` o `in a year with` `the year's Schedule days` `and gazetted days` `the year's gazetted days` MEANS
+    IF `is a Sunday` (o's `day`)
+    THEN JUST (`the next day not already a public holiday after` (o's `day`)
+                   `scheduled` (`the days of` `the year's Schedule days`) `gazetted` `the year's gazetted days`)
+    ELSE NOTHING
+
+GIVEN remaining IS A LIST OF `Observance`
+      `all Schedule days` IS A LIST OF `Observance`
+      `all gazetted days` IS A LIST OF NUMBER
+GIVETH A LIST OF NUMBER
+`the s 4(2) days among` remaining `of` `all Schedule days` `with gazetted` `all gazetted days` MEANS
+    CONSIDER remaining
+    WHEN EMPTY THEN EMPTY
+    WHEN o FOLLOWED BY rest THEN
+        CONSIDER `the day s 4(2) adds for` o `in a year with` `all Schedule days` `and gazetted days` `all gazetted days`
+        WHEN JUST n THEN n FOLLOWED BY `the s 4(2) days among` rest `of` `all Schedule days` `with gazetted` `all gazetted days`
+        WHEN NOTHING THEN `the s 4(2) days among` rest `of` `all Schedule days` `with gazetted` `all gazetted days`
+
+GIVEN n IS A NUMBER
+      `Schedule days that year` IS A LIST OF `Observance`
+      `gazetted days that year` IS A LIST OF NUMBER
+GIVETH A BOOLEAN
+DECIDE `the day numbered` n `is a public holiday, given Schedule days` `Schedule days that year` `and gazetted days` `gazetted days that year` IF
+        `is among` n (`the days of` `Schedule days that year`)
+    OR  `is among` n `gazetted days that year`
+    OR  `is among` n (`the s 4(2) days among` `Schedule days that year` `of` `Schedule days that year` `with gazetted` `gazetted days that year`)
+
+§§ `5 -- the President's declarations`
+
+-- s 5(1): "The President may, by notification in the Gazette, declare any day in any particular year to be observed as a public
+-- holiday in Singapore in addition to, or in substitution for, any day specified in the Schedule."
+-- s 5(2): "Where in any year 2 public holidays fall on the same day, the President may, by notification in the Gazette, declare any
+-- day in that year to be observed as an additional public holiday."
+-- Both are powers ("may"), not duties. The Act gives no automatic extra day when two holidays coincide; only s 4(2)'s Sunday rule
+-- is automatic.
+GIVEN `notified in the Gazette` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a declaration under s 5 can make a public holiday` IF `notified in the Gazette`
+
+GIVEN `public holidays falling on the same day` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the s 5(2) power to add a day is available` IF `public holidays falling on the same day` AT LEAST 2
+
+GIVEN os IS A LIST OF `Observance`
+GIVETH A BOOLEAN
+DECIDE `two Schedule days fall on the same day among` os IF
+    CONSIDER os
+    WHEN EMPTY THEN FALSE
+    WHEN o FOLLOWED BY rest THEN `is among` (o's `day`) (`the days of` rest) OR `two Schedule days fall on the same day among` rest
+
+§§ `6 -- substitution agreements`
+
+-- s 6: "Nothing in this Act prevents or affects the validity of any agreement made between any employer with any of the employer's
+-- employees giving the employee any other holiday or holidays in substitution for any one or more public holidays."
+-- s 6 only says the Holidays Act does not stand in the way. Whether the agreement is valid on other grounds is not this Act's
+-- question; this rule answers only whether s 6 shelters it.
+GIVEN `between an employer and the employer's own employee` IS A BOOLEAN, `gives another holiday in place of a public holiday` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `s 6 shelters the substitution agreement` IF
+    `between an employer and the employer's own employee` AND `gives another holiday in place of a public holiday`
+
+§§ `7 and 8 -- things done on a Sunday or public holiday`
+
+-- s 7: "Subject to any other written law, nothing in this Act renders invalid any act or thing relating to any Government department
+-- or public authority, any judicial proceeding, any transaction, instrument or any other act or thing ... where it is done or
+-- executed on a Sunday or public holiday."
+-- s 8: "no act or thing ... is invalid by reason only that it was done or executed on a Sunday or public holiday before 10 April
+-- 1998" (the Act's commencement date, per its long title and legislative history).
+-- So a contract signed or a court step taken on a public holiday is not invalid because of the day -- unless some OTHER written law
+-- says so. That other law is an input.
+GIVEN `another written law invalidates it for being done on that day` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a thing done on a Sunday or public holiday is invalid for that reason` IF
+    `another written law invalidates it for being done on that day`
+
+GIVEN `done on a Sunday or public holiday` IS A BOOLEAN, `done before 10 April 1998` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `s 8 declares it not invalid by reason only of the day` IF
+    `done on a Sunday or public holiday` AND `done before 10 April 1998`
+
+§§ `9 -- saving for the Employment Act 1968`
+
+-- s 9: "This Act does not affect the operation of any of the provisions of the Employment Act 1968 relating to rest days, hours of
+-- work, shift workers, holidays and other conditions of service."
+-- The Holidays Act itself confers no day off and no holiday pay on anyone: it declares which days are public holidays. What an
+-- employee is owed for them is left to the Employment Act 1968 and to contracts.
+DECLARE `Employment matter` IS ONE OF
+    `rest days`
+    `hours of work`
+    `shift workers`
+    `holidays`
+    `other conditions of service`
+
+GIVEN m IS AN `Employment matter`
+GIVETH A BOOLEAN
+DECIDE `this Act affects the Employment Act provisions on` m IF FALSE
