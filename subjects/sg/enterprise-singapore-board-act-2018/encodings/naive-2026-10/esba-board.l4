@@ -1,0 +1,287 @@
+IMPORT prelude
+
+-- Enterprise Singapore Board Act 2018 (Singapore) -- who may sit on the Board and when a member ceases to hold office (ss 11(2),
+-- 18, 20(1)), how the Board decides (ss 22(3), 23, 25), secrecy and protection from liability (ss 34, 35), the offences of Part 2
+-- and Part 7 with their maximum penalties (ss 8(2), 34(2), 46 to 48, 50, 51), the bar on registering names that use the Board's
+-- protected words (s 49), and the ceiling on composition (s 52).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/ESBA2018.txt (the revised
+-- edition incorporates amendments up to 1 December 2021; later annotations shown include S 26/2022, Act 13 of 2025 wef 1 July 2025
+-- and Act 17 of 2026 wef 1 July 2026; the deposit's metadata says "Current version as at 03 Oct 2026").
+--
+-- WHY THIS ACT. Cited by 6 of the 527 Singapore Acts deposited in this repository. SCOPED to the rules with decision content: Board
+-- membership, quorum and voting, secrecy, immunity, offences and penalties, the registration bar and composition. Not encoded: the
+-- Board's functions and powers (ss 5, 6), Ministerial directions (s 7), appointment mechanics and the Chairperson (ss 10, 12 to 17),
+-- delegation and committees (ss 27 to 30), finance (ss 36 to 44, including the export levy of s 38, whose rates are left to a
+-- Gazette order), the inspection powers of s 45 beyond their use in s 46, corporate and partnership liability (ss 54, 55), service,
+-- regulations, and the transfer and transitional Parts 8 and 9.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules conventions. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Enterprise Singapore Board Act 2018 -- the Board`
+
+§§ `11(2) -- who is disqualified from membership`
+
+-- s 11(2): "the following individuals are disqualified to be or from being a member of the Board": (a) "an undischarged bankrupt or
+-- an individual who has entered into a composition with any of his or her creditors"; (b) "a Judge or judicial officer"; (c) "an
+-- individual who has been sentenced to imprisonment for a term of 6 months or more, and has not received a free pardon"; (d) an
+-- individual disqualified under the Companies Act 1967 or the Variable Capital Companies Act 2018 from acting as a director, during
+-- the period of disqualification; (e) an individual who lacks capacity within the Mental Capacity Act 2008 or is under an order
+-- under s 10 of the Mental Health (Care and Treatment) Act 2008.
+-- s 14(3): the same disqualifications bar appointment as an acting Chairperson or acting member.
+DECLARE Candidate HAS
+    `is an undischarged bankrupt` IS A BOOLEAN
+    `has entered into a composition with creditors` IS A BOOLEAN
+    `is a Judge or judicial officer` IS A BOOLEAN
+    `longest sentence of imprisonment in months` IS A NUMBER
+    `received a free pardon` IS A BOOLEAN
+    `is currently disqualified from acting as a director` IS A BOOLEAN
+    `lacks capacity or is under a mental health order` IS A BOOLEAN
+
+GIVEN `the candidate` IS A Candidate
+GIVETH A BOOLEAN
+DECIDE `the candidate is disqualified from the Board` IF
+        `the candidate`'s `is an undischarged bankrupt`
+    OR  `the candidate`'s `has entered into a composition with creditors`
+    OR  `the candidate`'s `is a Judge or judicial officer`
+    OR  (    `the candidate`'s `longest sentence of imprisonment in months` AT LEAST 6
+         AND (NOT `the candidate`'s `received a free pardon`))
+    OR  `the candidate`'s `is currently disqualified from acting as a director`
+    OR  `the candidate`'s `lacks capacity or is under a mental health order`
+
+§§ `18 and 20(1) -- term and vacation of office`
+
+-- s 18(1): "each member of the Board holds office for a period of 3 years or any shorter period specified in the instrument of
+-- appointment." (2): "A member of the Board may be re-appointed."
+-- The encoding reads a period stated in the instrument that is longer than 3 years as capped at 3 (an inference: the text says "3
+-- years or any shorter period", and does not say what happens to a longer one). A stated period of 0 means none was stated.
+GIVEN `the years stated in the instrument` IS A NUMBER
+GIVETH A NUMBER
+`the term of office in years` MEANS
+    IF `the years stated in the instrument` GREATER THAN 0 AND `the years stated in the instrument` LESS THAN 3
+    THEN `the years stated in the instrument`
+    ELSE 3
+
+-- s 20(1): a member "ceases to hold office" if he or she (a) dies; (b) is adjudicated a bankrupt or enters into a composition with
+-- creditors; (c) becomes otherwise disqualified under s 11(2); (d) is removed under s 15; (e) resigns under s 16; (f) fails without
+-- reasonable cause to disclose an interest required under the Public Sector (Governance) Act 2018 "and a notice is given under that
+-- Act to the Minister about that default"; (g) "fails to attend 3 consecutive meetings of the Board without the approval of the
+-- Board"; or (h) is not re-appointed when the term expires.
+-- s 15(1): the Minister may remove a member "at any time and without giving any reason". s 20(2): no compensation on ceasing to hold
+-- office "for any reason".
+DECLARE Event IS ONE OF
+    `the member dies`
+    `the member is adjudicated a bankrupt`
+    `the member is removed by the Minister`
+    `the member resigns`
+    `the term expires without re-appointment`
+    `the member fails to disclose an interest and the Minister is notified`
+    `the member fails to disclose an interest but no notice is given`
+    `the member is criticised by the Board`
+    `the member takes up a private directorship`
+
+GIVEN `the event` IS AN Event
+GIVETH A BOOLEAN
+DECIDE `the event vacates the office` IF
+    CONSIDER `the event`
+    WHEN `the member fails to disclose an interest but no notice is given` THEN FALSE
+    WHEN `the member is criticised by the Board` THEN FALSE
+    WHEN `the member takes up a private directorship` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `consecutive meetings missed` IS A NUMBER, `the Board approved the absences` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `absence vacates the office` IF
+    `consecutive meetings missed` AT LEAST 3 AND (NOT `the Board approved the absences`)
+
+§§ `22(3), 23 and 25 -- meetings, quorum and voting`
+
+-- s 22(3): if the Chairperson "receives a written request signed by 4 or more members that a meeting of the Board be convened for a
+-- purpose specified in the request, the Chairperson must, within 7 days after receiving the request, convene a meeting".
+GIVEN `members signing the written request` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the Chairperson must convene a meeting` IF
+    `members signing the written request` AT LEAST 4
+
+GIVEN `the day the request is received` IS A NUMBER
+GIVETH A NUMBER
+`the last day to convene the meeting` MEANS `the day the request is received` PLUS 7
+
+-- s 9(1): "The Board consists of at least 8 members."
+-- s 23(1): "The quorum is the higher of the following: (a) one-third of the number of members of the Board; (b) 5 members of the
+-- Board." (2): "No business may be transacted at a meeting of the Board if a quorum is not present."
+-- The encoding asks whether enough members are present rather than computing a rounded quorum, so a fractional third (e.g. 16 / 3)
+-- needs the next whole member.
+GIVEN `members of the Board` IS A NUMBER, `members present` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `a quorum is present` IF
+    `members present` AT LEAST 5 AND `members present` TIMES 3 AT LEAST `members of the Board`
+
+-- s 25(1): "Each member of the Board has one vote." (2): the member presiding has, "in the case of an equality of votes, a casting
+-- vote". (3): a resolution passes "if it is agreed to by all members present without dissent, or if a majority of the votes cast on it
+-- by members present and voting are in favour of it". (4): a member present "is presumed to have agreed to, and to have cast a vote in
+-- favour of, a decision of the Board unless the member expressly dissents from or votes against the decision".
+-- The encoding counts every present member who does not dissent as a vote in favour (s 25(4)) and ignores members prevented from
+-- voting by s 26 of the Public Sector (Governance) Act 2018. It requires a quorum (s 23(2)).
+GIVEN `members of the Board` IS A NUMBER, `members present` IS A NUMBER, `members dissenting` IS A NUMBER,
+      `the presiding member casts the casting vote in favour` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the resolution is passed` IF
+        `a quorum is present` `members of the Board` `members present`
+    AND (    `members present` MINUS `members dissenting` GREATER THAN `members dissenting`
+         OR  (    `members present` MINUS `members dissenting` EQUALS `members dissenting`
+              AND `the presiding member casts the casting vote in favour`))
+
+§§ `34 -- preservation of secrecy`
+
+-- s 34(1): a member, the Chief Executive, or an officer, inspector, agent or committee member "who has information in his or her
+-- capacity as such that would not otherwise be available to him or her, must not disclose that information to any person except" (a)
+-- in the performance of the Board's functions; (b) "with the prior authorisation from the Board"; (c) for investigations or
+-- proceedings for an offence under this Act, or a report of them; (d) "as required by an order of court or required or allowed by or
+-- under any written law"; or (e) in complying with the interest-disclosure requirements of the Public Sector (Governance) Act 2018.
+-- (2): without reasonable excuse -- a fine up to $2,000 or imprisonment up to 12 months or both.
+DECLARE Disclosure IS ONE OF
+    `in performing the Board's functions`
+    `with the Board's prior authorisation`
+    `for an investigation of an offence under this Act`
+    `under a court order`
+    `to declare an interest under the Public Sector (Governance) Act`
+    `to a journalist`
+    `to a business contact`
+    `with the Board's authorisation given afterwards`
+
+GIVEN `the disclosure` IS A Disclosure
+GIVETH A BOOLEAN
+DECIDE `the disclosure is excepted` IF
+    CONSIDER `the disclosure`
+    WHEN `to a journalist` THEN FALSE
+    WHEN `to a business contact` THEN FALSE
+    WHEN `with the Board's authorisation given afterwards` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the disclosure` IS A Disclosure, `the information came only through the office` IS A BOOLEAN,
+      `had a reasonable excuse` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the disclosure is an offence` IF
+        `the information came only through the office`
+    AND (NOT `the disclosure is excepted` `the disclosure`)
+    AND (NOT `had a reasonable excuse`)
+
+§§ `35 -- protection from liability`
+
+-- s 35(1): "No liability shall lie against" the Chief Executive, a member, officer, inspector, agent or committee member, or anyone
+-- acting under the Board's direction, "who, acting in good faith and with reasonable care, does or omits to do anything in" the
+-- performance or purported performance of a function, or the exercise or purported exercise of a power, of the Board.
+-- (2): no liability lies against the Government or the Board because a product or process conforms or is alleged to conform to a
+-- Singapore Standard, or an accreditation or certification mark is used in relation to it.
+GIVEN `acting in a Board function or power` IS A BOOLEAN, `in good faith` IS A BOOLEAN, `with reasonable care` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the officer is protected from liability` IF
+    `acting in a Board function or power` AND `in good faith` AND `with reasonable care`
+
+§§ `8(2), 34(2), 46 to 48, 50, 51 -- offences and maximum penalties`
+
+-- s 8(2): using the Board's symbol without prior written permission, or one so resembling it as to deceive -- $5,000 or 6 months.
+-- s 34(2): breach of secrecy -- $2,000 or 12 months.
+-- s 46(2): false or misleading statements in applications for financial benefits, or in information given under ss 45 or 51, or
+-- intentionally altering, suppressing or destroying documents -- $10,000 or 12 months.
+-- s 47(4): improper use of accreditation or certification marks, reports or certificates -- $50,000 or 3 years; (5) "a District Court
+-- has power to impose the full penalty"; (6) property may be forfeited.
+-- s 48(3): false Singapore Standards and false claims of conformity -- $5,000 or 6 months.
+-- s 50(2): obstructing a member, officer, agent or inspector -- $5,000 or 6 months.
+-- s 51(2): failing to comply with a notice to provide returns or information -- "a fine not exceeding $1,000" (no imprisonment).
+DECLARE Offence IS ONE OF
+    `misuse of the Board's symbol`
+    `breach of secrecy`
+    `false information to the Board`
+    `misuse of an accreditation or certification mark`
+    `false claim to a Singapore Standard`
+    `obstructing an officer`
+    `failing to provide returns or information`
+
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+`the maximum fine` MEANS
+    CONSIDER `the offence`
+    WHEN `misuse of the Board's symbol` THEN 5000
+    WHEN `breach of secrecy` THEN 2000
+    WHEN `false information to the Board` THEN 10000
+    WHEN `misuse of an accreditation or certification mark` THEN 50000
+    WHEN `false claim to a Singapore Standard` THEN 5000
+    WHEN `obstructing an officer` THEN 5000
+    WHEN `failing to provide returns or information` THEN 1000
+
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+`the maximum imprisonment in months` MEANS
+    CONSIDER `the offence`
+    WHEN `misuse of the Board's symbol` THEN 6
+    WHEN `breach of secrecy` THEN 12
+    WHEN `false information to the Board` THEN 12
+    WHEN `misuse of an accreditation or certification mark` THEN 36
+    WHEN `false claim to a Singapore Standard` THEN 6
+    WHEN `obstructing an officer` THEN 6
+    WHEN `failing to provide returns or information` THEN 0
+
+-- s 46(1)(a): a person must not, in relation to an application for "any incentive, grant, loan or other financial benefit given or
+-- administered by the Board", make a statement "that the person knows to be false or misleading in any material particular".
+-- (3): "it is not a defence ... that the accused did not obtain any incentive, grant, loan or other financial benefit".
+GIVEN `knew the statement was false or misleading` IS A BOOLEAN, `in a material particular` IS A BOOLEAN,
+      `obtained the benefit` IS A BOOLEAN, `had a reasonable excuse` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the false application statement is an offence` IF
+    `knew the statement was false or misleading` AND `in a material particular` AND (NOT `had a reasonable excuse`)
+
+-- s 47(1): a person must not use an accreditation or certification mark, "or a colourable imitation", in respect of a product or
+-- process or in any trade mark or design, unless the person (a) holds a valid accreditation or certification authorising that use,
+-- or (b) "is authorised by the Board to use that accreditation mark or certification mark". (4): without reasonable excuse.
+GIVEN `uses the mark or a colourable imitation` IS A BOOLEAN, `holds a valid accreditation or certification for it` IS A BOOLEAN,
+      `is authorised by the Board` IS A BOOLEAN, `had a reasonable excuse` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the use of the mark is an offence` IF
+        `uses the mark or a colourable imitation`
+    AND (NOT `holds a valid accreditation or certification for it`)
+    AND (NOT `is authorised by the Board`)
+    AND (NOT `had a reasonable excuse`)
+
+§§ `49 -- names a registering authority must refuse`
+
+-- s 49(1): "Despite anything in any written law, except where consent has been granted by the Board, a registering authority must
+-- not" register a company, firm or other body, or a trade mark or design, bearing a name or mark in (2). (2)(b): a name containing
+-- the words "Singapore Standard" or "Technical Reference", "SISIR", "SPRING Singapore", "International Enterprise Singapore Board",
+-- "IE Singapore", "Enterprise Singapore Board", "ESG", "Singapore Accreditation Council" and others, "in any form"; (c) a name that so
+-- nearly resembles one of them as to be likely to deceive; (a) a name whose use contravenes s 47(1).
+DECLARE ProposedName IS ONE OF
+    `ESG Advisory Pte Ltd`
+    `Singapore Standard Plumbing`
+    `IE Singapore Holdings`
+    `SPRING Singapore Labs`
+    `Technical Reference Consultants`
+    `Lion City Bakery`
+
+GIVEN `the name` IS A ProposedName
+GIVETH A BOOLEAN
+DECIDE `the name uses a protected word` IF
+    CONSIDER `the name`
+    WHEN `Lion City Bakery` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the name` IS A ProposedName, `the Board consented` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `registration is barred` IF
+    `the name uses a protected word` `the name` AND (NOT `the Board consented`)
+
+§§ `52 -- composition`
+
+-- s 52(1): the Chief Executive or an authorised officer "may compound any offence under this Act that is prescribed as a compoundable
+-- offence" by collecting "a sum not exceeding the lower of the following: (a) one half of the amount of the maximum fine that is
+-- prescribed for the offence; (b) $5,000." (3): sums collected go to the Consolidated Fund.
+-- Which offences are prescribed as compoundable is left to regulations, which were not read; the encoding computes the ceiling only.
+GIVEN `a` IS A NUMBER, `b` IS A NUMBER
+GIVETH A NUMBER
+`the lower of` MEANS IF `a` LESS THAN `b` THEN `a` ELSE `b`
+
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+`the maximum composition sum` MEANS `the lower of` (`the maximum fine` `the offence` DIVIDED BY 2) 5000
