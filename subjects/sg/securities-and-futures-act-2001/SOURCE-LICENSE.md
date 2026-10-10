@@ -9,7 +9,7 @@ Legislation Division of the Attorney-General's Chambers of Singapore ("AGC").
   grant in [SSO's Terms of Use](https://sso.agc.gov.sg/Terms-of-Use) cl.13,
   subject to the conditions reproduced below. AGC may modify or revoke that
   permission at any time without notice (cl.14).
-- **Retrieved**: 2026-10-01, from https://sso.agc.gov.sg/Act/SFA2001
+- **Retrieved**: 2026-10-09, from https://sso.agc.gov.sg/Act/SFA2001
 - **Excluded from the grant**: graphics and images on SSO, which may not be
   reproduced without AGC's prior written permission (cl.6).
 

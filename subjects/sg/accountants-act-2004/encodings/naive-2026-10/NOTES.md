@@ -71,3 +71,10 @@ limit, and the offence need not involve dishonesty. Asserted.
 - **No case law was searched.**
 - Practice monitoring and the AML/CFT reviews (Parts 5 and 5A) carry much of the
   practical regulatory weight and are not encoded.
+
+## Source refreshed after encoding (10 Oct 2026)
+
+This row was encoded against the deposit as it stood before the source refresh: the SSO consolidation current at the
+earlier retrieval, still in git at commit da331074. The deposit has since been replaced by the consolidation current as at
+9 October 2026, whose text differs. **The row has not been re-checked against the refreshed text.** Its assertions do not
+read the source, so they still pass; whether the encoded provisions changed is an open question.

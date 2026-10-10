@@ -69,3 +69,10 @@ disqualifies as surely as a prison term. Asserted.
   and are not encoded; the `companies-act-1967` row covers only its definitions core.
 - The VCC Regulations (prescribed managers, fit-and-proper factors) were not retrieved.
 - **No case law was searched.**
+
+## Source refreshed after encoding (10 Oct 2026)
+
+This row was encoded against the deposit as it stood before the source refresh: the SSO consolidation current at the
+earlier retrieval, still in git at commit da331074. The deposit has since been replaced by the consolidation current as at
+9 October 2026, whose text differs. **The row has not been re-checked against the refreshed text.** Its assertions do not
+read the source, so they still pass; whether the encoded provisions changed is an open question.
