@@ -1,0 +1,216 @@
+IMPORT prelude
+
+-- Guardianship of Infants Act 1934 (Singapore) -- who may apply for custody, access and maintenance (ss 3 to 5), enforcing an access
+-- order (s 5A), who becomes guardian when a parent dies and testamentary guardians (ss 6, 7), joint guardians who disagree (s 8), what
+-- the court must consider (ss 11, 11A), and the limits on a guardian of an infant's property (ss 16 to 18, 21).
+--
+-- Edition: 2020 Revised Edition ("incorporates all amendments up to and including 1 December 2021"), informal consolidation, "version
+-- in force from 2/1/2025", as deposited at ../../registers/source-bundle/GIA1934.txt. The latest amendments annotated are Act 3 of 2022
+-- and Act 18 of 2023, both "wef 02/01/2025" (s 5A(6) to (8)).
+--
+-- WHY THIS ACT. Chosen for its everyday-life relevance: it is the Act under which a parent asks the court for custody, access or
+-- maintenance of a child outside divorce, enforces a denied access order, or names a guardian for a child in a will. SCOPED to those
+-- provisions and the guardian-of-property limits. Not encoded: s 9 (attachment of pensions and income), s 12 (trusts for maintenance),
+-- ss 13, 14 (production and return of an infant), s 15 (security and accounts), s 19 (small estates), s 20 (applications for
+-- directions), s 5A(3)(b) to (d), (7), (8) (compensation, programmes, bonds, Family Court procedure, High Court orders).
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Guardianship of Infants Act 1934`
+
+DECLARE Applicant IS ONE OF
+    `the father`
+    `the mother`
+    `a guardian appointed under this Act`
+    `a grandparent`
+    `the infant`
+
+DECLARE Instrument IS ONE OF
+    `a deed`
+    `a will`
+    `a signed letter`
+    `an oral wish`
+
+DECLARE Arrangement IS ONE OF
+    `the survivor alone`
+    `the survivor jointly with the testamentary guardian`
+    `the survivor alone, and the testamentary guardian may apply to the court`
+
+DECLARE Dealing IS ONE OF
+    `selling the property`
+    `mortgaging the property`
+    `exchanging the property`
+    `parting with possession of the property`
+    `leasing land`
+    `collecting rent`
+    `giving a discharge for a legacy`
+
+§§ `3, 4 and 5 -- equal standing and who may apply`
+
+-- s 3: the welfare of the infant is "the first and paramount consideration" and, save insofar as welfare otherwise requires, "the
+-- father of an infant shall not be deemed to have any right superior to that of the mother ... nor shall the mother be deemed to have
+-- any claim superior to that of the father".
+-- s 4: the mother has "the like powers of applying to the court ... as are possessed by the father".
+-- s 5: the court may, "upon the application of either parent or of any guardian appointed under this Act", make orders on custody,
+-- "the right of access thereto" and maintenance, and may alter, vary or discharge them on the same applications.
+GIVEN `the applicant` IS AN Applicant
+GIVETH A BOOLEAN
+DECIDE `may apply under s 5 for custody, access or maintenance` IF
+    CONSIDER `the applicant`
+    WHEN `the father` THEN TRUE
+    WHEN `the mother` THEN TRUE
+    WHEN `a guardian appointed under this Act` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `5A -- enforcing an access order`
+
+-- s 5A(1), (2): where an order under s 5 gives X access to a child and "the order is breached by the person (Y) who is required by
+-- the order to give X access", X may apply to the court to enforce it.
+-- (3)(a): the court may order Y to give X "additional access ... to make up for the access denied"; (4): such an order "must not give
+-- X more access than what X is entitled to under the access order".
+-- (3)(e): "for every breach of the access order by Y", a fine not exceeding $20,000 or imprisonment not exceeding 12 months or both.
+-- (6): "X may do either, but not both" of applying under (2) and bringing contempt proceedings "in respect of that breach".
+GIVEN `there is an access order under s 5` IS A BOOLEAN, `Y breached it` IS A BOOLEAN,
+      `X has brought contempt proceedings for that breach` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `X may apply to enforce the access order` IF
+    `there is an access order under s 5` AND `Y breached it` AND (NOT `X has brought contempt proceedings for that breach`)
+
+-- s 5A(4) read literally: the make-up access is compared with X's entitlement under the access order, not with the access denied.
+GIVEN `make-up access hours` IS A NUMBER, `hours X is entitled to under the access order` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the make-up access order is within s 5A(4)` IF
+    `make-up access hours` AT MOST `hours X is entitled to under the access order`
+
+-- "for every breach": the encoding multiplies the per-breach maxima. Whether sentences run together is not said in s 5A.
+GIVEN `breaches` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the maximum fine for the breaches` IS `breaches` TIMES 20000
+
+GIVEN `breaches` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the maximum imprisonment in months for the breaches` IS `breaches` TIMES 12
+
+§§ `6 and 7 -- guardianship when a parent dies`
+
+-- s 6(1), (2): on the death of one parent, the surviving parent "shall ... be guardian of the infant, either alone or jointly with any
+-- guardian appointed by" the deceased. "When no guardian has been appointed ... or if the guardian or guardians appointed ... is or are
+-- dead or refuses or refuse to act, the court may if it thinks fit appoint a guardian to act jointly" with the survivor.
+-- s 7(1), (2): either parent "may by deed or will appoint any person to be guardian of the infant after his [her] death".
+-- s 7(3): that guardian "shall act jointly with the mother or father ... unless the mother or father objects to his so acting".
+-- s 7(4): if the parent objects, or the guardian considers the parent unfit, "the guardian may apply to the court", which may refuse
+-- (the parent remaining sole guardian), order joint guardianship, or make the testamentary guardian sole guardian.
+GIVEN `the instrument` IS AN Instrument
+GIVETH A BOOLEAN
+DECIDE `the appointment is in a form s 7 allows` IF
+    CONSIDER `the instrument`
+    WHEN `a deed` THEN TRUE
+    WHEN `a will` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN `the deceased appointed a guardian` IS A BOOLEAN, `that guardian is dead or refuses to act` IS A BOOLEAN,
+      `the survivor objects` IS A BOOLEAN
+GIVETH AN Arrangement
+DECIDE `the guardianship after the first parent dies` IS
+    IF (NOT `the deceased appointed a guardian`) OR `that guardian is dead or refuses to act`
+    THEN `the survivor alone`
+    ELSE IF `the survivor objects`
+         THEN `the survivor alone, and the testamentary guardian may apply to the court`
+         ELSE `the survivor jointly with the testamentary guardian`
+
+GIVEN `the deceased appointed a guardian` IS A BOOLEAN, `that guardian is dead or refuses to act` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may appoint a co-guardian under s 6` IF
+    (NOT `the deceased appointed a guardian`) OR `that guardian is dead or refuses to act`
+
+-- s 7(4): the testamentary guardian may apply if the survivor objects OR if the guardian considers the survivor unfit.
+GIVEN `the survivor objects` IS A BOOLEAN, `the guardian considers the survivor unfit for custody` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the testamentary guardian may apply under s 7(4)` IF
+    `the survivor objects` OR `the guardian considers the survivor unfit for custody`
+
+-- s 6(3): "Where an infant has no parent, no guardian of the person and no other person having parental rights with respect to him,
+-- the court, on the application of any person, may, if it thinks fit, appoint the applicant to be the guardian".
+GIVEN `the infant has a parent` IS A BOOLEAN, `the infant has a guardian of the person` IS A BOOLEAN,
+      `someone else has parental rights` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `any person may apply to be appointed guardian under s 6(3)` IF
+    (NOT `the infant has a parent`) AND (NOT `the infant has a guardian of the person`) AND (NOT `someone else has parental rights`)
+
+§§ `8 -- joint guardians who disagree`
+
+-- s 8: "Where 2 or more persons act as joint guardians of an infant and they are unable to agree on any question affecting the
+-- welfare of the infant, any of them may apply to the court for its direction".
+GIVEN `number of joint guardians` IS A NUMBER, `they are unable to agree on a question affecting welfare` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `any joint guardian may apply for directions` IF
+    `number of joint guardians` AT LEAST 2 AND `they are unable to agree on a question affecting welfare`
+
+§§ `11 and 11A -- what the court must consider`
+
+-- s 11: the court "must have regard primarily to the welfare of the infant, and must consider -- (a) where the infant has a parent or
+-- parents -- the wishes of the parent or both of them ...; and (b) where the infant is of an age to express an independent opinion --
+-- the wishes of the infant". No age is given.
+-- s 11A: on custody, the court "shall, whenever it is practicable, have regard to the advice of" a person trained or experienced in
+-- child welfare, "but shall not be bound to follow such advice".
+GIVEN `the infant is of an age to express an independent opinion` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court must consider the infant's wishes` IF
+    `the infant is of an age to express an independent opinion`
+
+GIVEN `the question is custody` IS A BOOLEAN, `it is practicable` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court must have regard to child-welfare advice` IF
+    `the question is custody` AND `it is practicable`
+
+-- s 11A: "shall not be bound to follow such advice".
+GIVETH A BOOLEAN
+DECIDE `the court is bound to follow child-welfare advice` IF FALSE
+
+§§ `16, 17 and 21 -- limits on a guardian of an infant's property`
+
+-- s 16(1): a guardian of the property of an infant "shall not, without the permission of the court -- (a) sell, mortgage, exchange,
+-- or otherwise part with the possession of any of the movable or immovable property of the infant; or (b) lease any land belonging to
+-- the infant for a term exceeding one year".
+-- s 16(2): a disposal in contravention "may be declared void" -- voidable on declaration, not void.
+-- s 16(3): the court "shall not make any order under subsection (1) unless it is necessary or advisable in the interests of the infant".
+-- s 17: no power "to give a good discharge for any legacy or other capital moneys" unless the court otherwise orders.
+GIVEN `the dealing` IS A Dealing, `lease term in months` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the guardian needs the court` IF
+    CONSIDER `the dealing`
+    WHEN `selling the property` THEN TRUE
+    WHEN `mortgaging the property` THEN TRUE
+    WHEN `exchanging the property` THEN TRUE
+    WHEN `parting with possession of the property` THEN TRUE
+    WHEN `leasing land` THEN `lease term in months` GREATER THAN 12
+    WHEN `giving a discharge for a legacy` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN `it is necessary or advisable in the infant's interests` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may permit the dealing` IF
+    `it is necessary or advisable in the infant's interests`
+
+GIVEN `the disposal contravened s 16` IS A BOOLEAN, `the court has declared it void` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the disposal is void` IF
+    `the disposal contravened s 16` AND `the court has declared it void`
+
+-- s 21: "Unless the court otherwise orders, nothing in this Act shall apply to any money paid into a District Court to the credit of an
+-- infant".
+GIVEN `the money was paid into a District Court for the infant` IS A BOOLEAN, `the court orders otherwise` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Act applies to the money` IF
+    (NOT `the money was paid into a District Court for the infant`) OR `the court orders otherwise`
+
+§§ `18 -- maintaining the infant out of income`
+
+-- s 18(1): a guardian of property "may make reasonable provision out of the income of such property for his maintenance and
+-- education, having regard to his station in life; but no sum exceeding $100 per month may be so applied without the permission of the
+-- court". (2): capital may be used only by court order.
+GIVEN `monthly amount` IS A NUMBER, `it comes from income` IS A BOOLEAN, `it is reasonable for the infant's station in life` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the guardian may apply it without the court` IF
+    `it comes from income` AND `it is reasonable for the infant's station in life` AND `monthly amount` AT MOST 100
