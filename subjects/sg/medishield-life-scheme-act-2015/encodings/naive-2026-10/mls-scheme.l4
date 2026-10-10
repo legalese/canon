@@ -1,0 +1,254 @@
+IMPORT prelude
+
+-- MediShield Life Scheme Act 2015 (Singapore) -- who the Scheme covers (s 3(3)), when and by whom the premium is paid (s 4), the cap on
+-- late-payment penalties (s 17), objecting to a defaulter's-agent declaration and joint moneys (ss 12(4), 13), the offences and their
+-- penalties (ss 16(6), 19, 21(4), 22, 29), composition (s 24), a minor's right to opt out of information-gathering (ss 27(4), 28(6)),
+-- and the notice an approved medical institution must get before revocation or suspension (s 3B(3), (4)).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/MLSA2015.txt. The deposit's
+-- cover says it "incorporates all amendments up to and including 1 December 2021", but the body carries annotations to Act 40 of 2024
+-- (in force 1 April 2025), which is the latest amendment seen.
+--
+-- WHY THIS ACT. Cited by 5 of the 527 Singapore Acts deposited in this repository. SCOPED to the rules an insured person, a parent, a
+-- defaulter's agent, a medical institution or an investigator's target actually meets. Not encoded: the approval of medical
+-- institutions (s 3A) beyond s 3B's notice rule, refunds (s 5), shortfalls and overpayments (s 6), the Fund and Council (ss 7-9),
+-- recovery through the Government and by suit (ss 14, 15), corporate officers' liability (s 23), the disclosure gateways of Part 5
+-- beyond the minor opt-out and the s 29 offence, service of documents, regulations and transitional provisions. Premium amounts,
+-- interest rates and penalty rates are prescribed elsewhere and are not in the deposit.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules conventions. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `MediShield Life Scheme Act 2015`
+
+-- helpers
+GIVEN a IS A NUMBER, b IS A NUMBER
+GIVETH A NUMBER
+`the lesser of` a b MEANS IF a AT MOST b THEN a ELSE b
+
+GIVEN a IS A NUMBER, b IS A NUMBER
+GIVETH A NUMBER
+`the greater of` a b MEANS IF a AT LEAST b THEN a ELSE b
+
+§§ `3(3) -- who the Scheme covers`
+
+-- s 3(3): "The Scheme applies to every person who is a citizen or permanent resident of Singapore."
+DECLARE Status IS ONE OF
+    `a citizen`
+    `a permanent resident`
+    `a foreigner on a work pass`
+    `a visitor`
+
+GIVEN `the person's status` IS A Status
+GIVETH A BOOLEAN
+DECIDE `the Scheme applies` IF
+    CONSIDER `the person's status`
+    WHEN `a citizen` THEN TRUE
+    WHEN `a permanent resident` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `4 -- the premium`
+
+-- s 4(1): the premium is to be paid "(a) not later than 30 days after the beginning of the relevant insurance period, or on or before
+-- such later date as the Board may permit"; (c) by the insured person, or "a parent or both parents of the insured person ... if the
+-- insured person has not attained 21 years of age at the beginning of the relevant insurance period", in such proportion as the
+-- Board may require. s 4(3): "parent" includes an adoptive parent, a step-parent, a guardian, or any person who has the actual custody.
+-- s 4(2): the Board may deduct the premium from the payer's medisave account "Despite anything in the CPF Act".
+GIVEN `days the Board permits` IS A NUMBER
+GIVETH A NUMBER
+`the last day for paying the premium` MEANS `the greater of` 30 `days the Board permits`
+
+GIVEN `days after the period began` IS A NUMBER, `days the Board permits` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the premium is paid in time` IF
+    `days after the period began` AT MOST `the last day for paying the premium` `days the Board permits`
+
+DECLARE Relation IS ONE OF
+    `the insured person`
+    `a parent`
+    `an adoptive parent`
+    `a step-parent`
+    `a guardian`
+    `a person with actual custody`
+    `an adult sibling`
+    `a grandparent without custody`
+
+GIVEN `the payer` IS A Relation, `insured's age at start of period` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the Board may require this person to pay` IF
+    CONSIDER `the payer`
+    WHEN `the insured person` THEN TRUE
+    WHEN `an adult sibling` THEN FALSE
+    WHEN `a grandparent without custody` THEN FALSE
+    OTHERWISE `insured's age at start of period` LESS THAN 21
+
+§§ `11 and 17 -- interest and penalty for late payment`
+
+-- s 11(1) and s 17(1): interest and a penalty may be imposed if the premium remains unpaid at the expiry of "such period as the Board
+-- may permit (being not less than one month)" / "(being at least one month)" after the beginning of the insurance period.
+-- s 17(3): "The total amount of the penalties imposed on the premium and interest for an insurance period must not exceed 17% of the
+-- total amount of the premium for that insurance period and any interest imposed under section 11(1)(a)".
+-- s 17(5): a recovery body "may for any good cause shown remit the whole or any part of the penalty".
+-- The rates themselves are prescribed in regulations, which were not retrieved.
+GIVEN `months the Board permits` IS A NUMBER, `months unpaid` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `a late-payment penalty may be added` IF
+        `months the Board permits` AT LEAST 1
+    AND `months unpaid` GREATER THAN `months the Board permits`
+
+GIVEN `the premium` IS A NUMBER, `the interest` IS A NUMBER
+GIVETH A NUMBER
+`the most the penalties may total` MEANS (17 / 100) TIMES (`the premium` PLUS `the interest`)
+
+GIVEN `the premium` IS A NUMBER, `the interest` IS A NUMBER, `the penalties` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the penalties are within the cap` IF
+    `the penalties` AT MOST `the most the penalties may total` `the premium` `the interest`
+
+§§ `12(4) and 13 -- defaulter's agents and joint moneys`
+
+-- s 12(4): a person declared a defaulter's agent "may object to the declaration by written notice to the recovery body within 14 days
+-- after the date of receipt of the notice, or within such longer period as the recovery body in its discretion may allow".
+GIVEN `days since receipt` IS A NUMBER, `extra days allowed` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the agent's objection is in time` IF
+    `days since receipt` AT MOST 14 PLUS `extra days allowed`
+
+-- s 13(3): "It is presumed, until the contrary is proved, that the joint account holders of a joint account have equal shares".
+-- s 13(9): "joint account" means a bank account in the names of 2 or more persons, "but excludes any partnership account, any trust
+-- account and any account where a minor is one of the joint account holders".
+-- s 13(2)(a): the agent must notify every owner within 14 days; (c) pay within the time in the notice, "being at least 42 days";
+-- s 13(4): an owner may object within 28 days of the agent's notice.
+GIVEN `holders` IS A NUMBER, `a partnership account` IS A BOOLEAN, `a trust account` IS A BOOLEAN, `a minor is a holder` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `it is a joint account for s 13` IF
+        `holders` AT LEAST 2
+    AND (NOT `a partnership account`)
+    AND (NOT `a trust account`)
+    AND (NOT `a minor is a holder`)
+
+GIVEN `the balance` IS A NUMBER, `holders` IS A NUMBER
+GIVETH A NUMBER
+`the defaulter's presumed share` MEANS `the balance` / `holders`
+
+GIVEN `days the notice gives` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the payment window is long enough` IF `days the notice gives` AT LEAST 42
+
+§§ `3B(3), (4) -- notice before revoking a medical institution's approval`
+
+-- s 3B(3): "The Minister must not revoke an approval ... or suspend an approval ... without giving the medical institution concerned
+-- written notice of the Minister's intention to do so and a reasonable opportunity to make representations".
+-- s 3B(4): "Subsection (3) does not apply where the medical institution -- (a) if a natural person -- has died or is adjudged bankrupt;
+-- or (b) in any other case -- has been dissolved or wound up or has otherwise ceased to exist."
+GIVEN `a natural person` IS A BOOLEAN, `died or adjudged bankrupt` IS A BOOLEAN, `dissolved, wound up or ceased to exist` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `notice and a chance to make representations are required` IF
+    IF `a natural person`
+    THEN NOT `died or adjudged bankrupt`
+    ELSE NOT `dissolved, wound up or ceased to exist`
+
+§§ `16(6), 19, 21(4), 22, 29 -- offences`
+
+-- s 16(6): a defaulter who, "knowing that a direction has been issued under this section to prevent the defaulter's departure from
+-- Singapore, voluntarily leaves or attempts to leave Singapore without paying the outstanding premium or furnishing security" --
+-- fine up to $5,000 or 12 months or both, and arrest without warrant.
+GIVEN `knew of the direction` IS A BOOLEAN, `left or tried to leave voluntarily` IS A BOOLEAN, `paid or gave security` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `leaving under a travel direction is an offence` IF
+    `knew of the direction` AND `left or tried to leave voluntarily` AND (NOT `paid or gave security`)
+
+-- s 19(1): a person commits an offence who makes a health declaration, means declaration or claim application "false or misleading
+-- in a material particular, knowing" it is so, or knowingly omits a matter that makes it misleading, or knowingly provides false
+-- information that may be included in one or affect a benefit, claim, grant or subsidy.
+-- s 19(2): on conviction, "(a) in any case where the person is an individual, to a penalty equal to the relevant amount; or (b) in any
+-- other case, to a penalty equal to 5 times the relevant amount". No fine, no imprisonment.
+-- s 19(3): if done "with the intention of causing any premium to be undercharged, any benefit or claim to be overpaid" or a higher
+-- grant: an individual -- fine up to $5,000 or 12 months or both, "and, in addition, a penalty equal to 2 times the relevant amount";
+-- anyone else -- fine up to $10,000 "and, in addition, a penalty equal to 4 times the relevant amount".
+-- s 19(4): "relevant amount" is the premium undercharged, the benefit overpaid or the grant wrongly given -- or that WOULD have been,
+-- had the false statement been accepted.
+GIVEN `false or misleading in a material particular` IS A BOOLEAN, `knew it` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a false declaration offence is committed` IF
+    `false or misleading in a material particular` AND `knew it`
+
+GIVEN `an individual` IS A BOOLEAN, `the relevant amount` IS A NUMBER
+GIVETH A NUMBER
+`the s 19(2) penalty` MEANS IF `an individual` THEN `the relevant amount` ELSE 5 TIMES `the relevant amount`
+
+GIVEN `an individual` IS A BOOLEAN, `the relevant amount` IS A NUMBER
+GIVETH A NUMBER
+`the s 19(3) additional penalty` MEANS IF `an individual` THEN 2 TIMES `the relevant amount` ELSE 4 TIMES `the relevant amount`
+
+GIVEN `an individual` IS A BOOLEAN
+GIVETH A NUMBER
+`the s 19(3) maximum fine` MEANS IF `an individual` THEN 5000 ELSE 10000
+
+GIVEN `an individual` IS A BOOLEAN
+GIVETH A NUMBER
+`the s 19(3) maximum imprisonment in months` MEANS IF `an individual` THEN 12 ELSE 0
+
+-- s 21(4): refusing or failing, "without reasonable excuse", to furnish information or produce a document within the time allowed --
+-- fine up to $10,000 or 6 months or both. s 22: obstructing an investigator without reasonable excuse -- fine up to $20,000 or 12
+-- months or both. s 29(1): knowingly accessing, using or disclosing information obtained under ss 26-28 "without the written consent
+-- of that other person" -- fine up to $5,000 or 12 months or both, subject to the good-faith protections in s 29(2).
+DECLARE Offence IS ONE OF
+    `leaving under a travel direction`
+    `failing to give information to an investigator`
+    `obstructing an investigator`
+    `misusing disclosed information`
+    `a knowing false declaration with intent, by an individual`
+    `a knowing false declaration with intent, by a company`
+
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+`the maximum fine` MEANS
+    CONSIDER `the offence`
+    WHEN `leaving under a travel direction` THEN 5000
+    WHEN `failing to give information to an investigator` THEN 10000
+    WHEN `obstructing an investigator` THEN 20000
+    WHEN `misusing disclosed information` THEN 5000
+    WHEN `a knowing false declaration with intent, by an individual` THEN 5000
+    WHEN `a knowing false declaration with intent, by a company` THEN 10000
+
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+`the maximum imprisonment in months` MEANS
+    CONSIDER `the offence`
+    WHEN `leaving under a travel direction` THEN 12
+    WHEN `failing to give information to an investigator` THEN 6
+    WHEN `obstructing an investigator` THEN 12
+    WHEN `misusing disclosed information` THEN 12
+    WHEN `a knowing false declaration with intent, by an individual` THEN 12
+    WHEN `a knowing false declaration with intent, by a company` THEN 0
+
+GIVEN `required by an investigator` IS A BOOLEAN, `gave it in time` IS A BOOLEAN, `had a reasonable excuse` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `failing to give information is an offence` IF
+    `required by an investigator` AND (NOT `gave it in time`) AND (NOT `had a reasonable excuse`)
+
+GIVEN `knew it was obtained under ss 26 to 28` IS A BOOLEAN, `had written consent` IS A BOOLEAN, `acted in good faith in accordance with Part 5` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `using disclosed information is an offence` IF
+    `knew it was obtained under ss 26 to 28` AND (NOT `had written consent`) AND (NOT `acted in good faith in accordance with Part 5`)
+
+§§ `24 -- composition`
+
+-- s 24(1): a prescribed compoundable offence may be compounded by collecting "a sum not exceeding the lower of the following: (a) one
+-- half of the amount of the maximum fine that is prescribed for the offence; (b) $1,000." Which offences are compoundable is
+-- prescribed elsewhere; this rule assumes the offence is.
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+`the most a composition may be` MEANS `the lesser of` ((`the maximum fine` `the offence`) / 2) 1000
+
+§§ `27(4) and 28(6) -- a minor opting out`
+
+-- s 27(4) (health information for premium loading) and s 28(6) (means information): a person under 21 "may opt out ... only if --
+-- (a) the minor has attained 16 years of age; and (b) any other person who is liable to pay the minor's premium under section 4(1)(c)(ii)
+-- does not object to the opting out by the minor." An adult may opt out without those conditions (ss 27(3), 28(4)).
+GIVEN `age` IS A NUMBER, `a paying parent objects` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the person may opt out` IF
+        `age` AT LEAST 21
+    OR  (`age` AT LEAST 16 AND (NOT `a paying parent objects`))
