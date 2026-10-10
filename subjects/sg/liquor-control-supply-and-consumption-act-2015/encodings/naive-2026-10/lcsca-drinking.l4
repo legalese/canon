@@ -1,0 +1,266 @@
+IMPORT prelude
+
+-- Liquor Control (Supply and Consumption) Act 2015 (Singapore) -- what counts as liquor and as supplying it (s 2(1)), who is a repeat
+-- offender (s 2(2)), the ban on unlicensed supply (s 4), the ban on drinking in a public place during a no-public drinking period
+-- (s 12), drunkenness in public (s 14), the Liquor Control Zone uplift (s 16), banning notices and directions to leave a Liquor
+-- Control Zone (ss 18 to 20), refusing a police request (ss 21, 22), false information (s 28) and the composition cap (s 33).
+--
+-- Edition: 2020 Revised Edition, as deposited at ../../registers/source-bundle/LCSCA2015.txt. The deposit says the revised edition
+-- "incorporates all amendments up to and including 1 December 2021" and came into operation on 31 December 2021; the latest
+-- amendment annotated in the text is Act 28 of 2017 ([28/2017], at s 2). The retrieval record calls it the current version as at
+-- 1 October 2026.
+--
+-- WHY THIS ACT. Chosen for its everyday-life relevance: it is the law that decides where and when a person in Singapore may drink in
+-- public, what happens to someone drunk in the street, and who may sell a beer. SCOPED to the provisions an individual meets. Not
+-- encoded: licence grant, conditions, suspension and cancellation (ss 8, 9), trading hours of licensees (s 6) and premises (s 5),
+-- signage (s 7), entry, closure and search powers (ss 10, 11, 23), the declaration of Liquor Control Zones (s 15), the cessation of
+-- business order (s 17), consumption permits beyond their effect as an exception (s 13), appeals (ss 25 to 27), exemptions, arrest,
+-- obstruction, corporate liability and regulations (ss 29 to 36). The no-public drinking period itself is PRESCRIBED by the Minister
+-- (s 12(1), (2)) and is not in the Act, so it is an input here, not a clock.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Liquor Control (Supply and Consumption) Act 2015 -- drinking and supply`
+
+GIVEN `first` IS A NUMBER, `second` IS A NUMBER
+GIVETH A NUMBER
+`the lesser of` MEANS
+    IF `first` AT MOST `second` THEN `first` ELSE `second`
+
+§§ `2(1) -- liquor and supply`
+
+-- "liquor" means (a) a beverage containing "more than 0.5% ethanol by mass or volume"; (b) a mixture of ethanol and another substance
+-- containing more than 0.5% ethanol; or (c) any other substance prescribed by the regulations as liquor.
+GIVEN `ethanol percent` IS A NUMBER, `prescribed as liquor` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the substance is liquor` IF
+    `ethanol percent` GREATER THAN 0.5 OR `prescribed as liquor`
+
+-- "supply" means (a) to "sell, barter or exchange the liquor (whether the reward or consideration is received ... specifically for the
+-- liquor or as part of services or other goods sold ...)"; (b) to offer or agree to so sell, barter or exchange; or (c) to serve,
+-- send, forward or deliver "in connection with such sale, barter or exchange". A gift with nothing given in return is not within the
+-- words (an inference from the definition: no clause covers it).
+DECLARE Dealing IS ONE OF
+    `selling a bottle`
+    `bartering a bottle for goods`
+    `offering a bottle for sale`
+    `delivering a bottle that was sold`
+    `serving drinks included in a paid package`
+    `giving a bottle away for nothing`
+
+GIVEN `the dealing` IS A Dealing
+GIVETH A BOOLEAN
+DECIDE `the dealing is supply` IF
+    CONSIDER `the dealing`
+    WHEN `giving a bottle away for nothing` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `2(2) -- repeat offender`
+
+-- A person convicted of an offence under a provision is a repeat offender if "on at least one other occasion not earlier than 5 years
+-- before" that conviction the person had been convicted under that same provision (or a listed predecessor provision).
+GIVEN `has an earlier conviction under the same provision` IS A BOOLEAN, `years between the convictions` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the person is a repeat offender` IF
+    `has an earlier conviction under the same provision` AND `years between the convictions` AT MOST 5
+
+§§ `4 -- supply only under a liquor licence`
+
+-- s 4(1): a person "must not supply any liquor unless the person is authorised by a liquor licence". (2) Not applicable to (a) delivery
+-- only to a person, at that person's request, of liquor owned or ordered by that person; (b) an emergency where the liquor is necessary
+-- to preserve life or prevent injury; (c) a religious service, ceremony or rite lawfully conducted by a priest or minister of religion
+-- in a place of worship; (d) circumstances specified by Ministerial order in the Gazette.
+DECLARE SupplyCircumstance IS ONE OF
+    `an ordinary sale`
+    `delivering liquor the recipient owns or ordered`
+    `an emergency to preserve life or prevent injury`
+    `a religious rite in a place of worship`
+    `a circumstance specified by Ministerial order`
+
+GIVEN `the dealing` IS A Dealing, `licensed to supply` IS A BOOLEAN, `the supply circumstance` IS A SupplyCircumstance
+GIVETH A BOOLEAN
+DECIDE `the supply is an offence under section 4` IF
+        `the dealing is supply` `the dealing`
+    AND (NOT `licensed to supply`)
+    AND CONSIDER `the supply circumstance`
+        WHEN `an ordinary sale` THEN TRUE
+        OTHERWISE FALSE
+
+§§ `12 -- drinking in a public place`
+
+-- s 12(1): an individual "must not consume any liquor at any public place during any prescribed no-public drinking period applicable
+-- to that place". (3) Not applicable to: (a) licensed premises where the licence allows consumption there AND it is during trading
+-- hours; (b) consumption in accordance with a consumption permit in force for the place; (c) a prescribed public place in accordance
+-- with prescribed conditions; (d) an emergency to preserve life or prevent injury; (e) a religious rite in a place of worship.
+DECLARE DrinkingCircumstance IS ONE OF
+    `drinking with no special circumstance`
+    `at licensed premises allowing it, within trading hours`
+    `at licensed premises after trading hours`
+    `at licensed premises whose licence does not allow drinking there`
+    `under a consumption permit for the place`
+    `at a prescribed place within the prescribed conditions`
+    `in an emergency to preserve life or prevent injury`
+    `in a religious rite in a place of worship`
+
+GIVEN `at a public place` IS A BOOLEAN, `within the no-public drinking period` IS A BOOLEAN, `the drinking circumstance` IS A DrinkingCircumstance
+GIVETH A BOOLEAN
+DECIDE `the drinking is an offence under section 12` IF
+        `at a public place`
+    AND `within the no-public drinking period`
+    AND CONSIDER `the drinking circumstance`
+        WHEN `at licensed premises allowing it, within trading hours` THEN FALSE
+        WHEN `under a consumption permit for the place` THEN FALSE
+        WHEN `at a prescribed place within the prescribed conditions` THEN FALSE
+        WHEN `in an emergency to preserve life or prevent injury` THEN FALSE
+        WHEN `in a religious rite in a place of worship` THEN FALSE
+        OTHERWISE TRUE
+
+§§ `14 -- drunkenness in public`
+
+-- s 14(6): an individual is drunk if (a) the individual's "speech, balance, coordination or behaviour is noticeably affected"; and
+-- (b) it is reasonable to believe that this "is the result of the consumption of liquor".
+GIVEN `noticeably affected` IS A BOOLEAN, `reasonably attributable to liquor` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the individual is drunk` IF
+    `noticeably affected` AND `reasonably attributable to liquor`
+
+-- s 14(1): drunk "and incapable of taking care of himself or herself in any public place". (2) while drunk, appears in a public place
+-- or in premises "which it is a trespass for the individual to enter", and there conducts himself or herself so as to "cause annoyance
+-- to any person".
+GIVEN `noticeably affected` IS A BOOLEAN, `reasonably attributable to liquor` IS A BOOLEAN, `in a public place` IS A BOOLEAN,
+      `incapable of taking care of oneself` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `drunk and incapable is an offence under section 14(1)` IF
+    `the individual is drunk` `noticeably affected` `reasonably attributable to liquor` AND `in a public place` AND `incapable of taking care of oneself`
+
+GIVEN `noticeably affected` IS A BOOLEAN, `reasonably attributable to liquor` IS A BOOLEAN, `in a public place` IS A BOOLEAN,
+      `trespassing on premises` IS A BOOLEAN, `causing annoyance to someone` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `drunken annoyance is an offence under section 14(2)` IF
+        `the individual is drunk` `noticeably affected` `reasonably attributable to liquor`
+    AND (`in a public place` OR `trespassing on premises`)
+    AND `causing annoyance to someone`
+
+§§ `4, 12, 14, 16, 19 to 22, 28 -- maximum penalties`
+
+-- s 4(3): $20,000; repeat offender $20,000 or 3 months or both.
+-- s 12(4): $1,000; repeat offender $2,000 or 3 months or both.
+-- s 14(1): $1,000 or one month or both; repeat offender $2,000 or 3 months or both.
+-- s 14(2) and s 14(4) (failing to leave when directed under s 14(3)(a)): $1,000 or 6 months or both; repeat offender $2,000 or
+-- 6 MONTHS or both -- a repeat offender faces the same prison term as a first offender.
+-- s 19(1) (breaching a banning notice), s 20(4) (breaching a direction to leave or not enter a zone), s 21(2) (failing to state name,
+-- residence, or how the liquor was acquired), s 22(2) (failing to allow inspection): $2,500 or 3 months or both. No repeat uplift.
+-- s 28 (knowingly or recklessly giving false or misleading information): $5,000; repeat offender $10,000 or 3 months or both.
+-- s 16: an offence under section 4, 12 or 14 "committed within a Liquor Control Zone" is liable to "not more than one and a half times
+-- the respective penalties". Applied here to both fine and imprisonment, since s 16 says "penalties" without distinction.
+DECLARE Offence IS ONE OF
+    `unlicensed supply`
+    `drinking in public in the no-public drinking period`
+    `being drunk and incapable in public`
+    `drunken annoyance`
+    `ignoring a direction to leave`
+    `breaching a banning notice`
+    `breaching a direction to leave a zone`
+    `refusing to give name or residence`
+    `refusing an inspection`
+    `giving false information`
+
+GIVEN `the offence` IS A Offence
+GIVETH A BOOLEAN
+DECIDE `the zone uplift applies to` IF
+    CONSIDER `the offence`
+    WHEN `unlicensed supply` THEN TRUE
+    WHEN `drinking in public in the no-public drinking period` THEN TRUE
+    WHEN `being drunk and incapable in public` THEN TRUE
+    WHEN `drunken annoyance` THEN TRUE
+    WHEN `ignoring a direction to leave` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN `the offence` IS A Offence, `repeat` IS A BOOLEAN
+GIVETH A NUMBER
+`the base maximum fine` MEANS
+    CONSIDER `the offence`
+    WHEN `unlicensed supply` THEN 20000
+    WHEN `drinking in public in the no-public drinking period` THEN IF `repeat` THEN 2000 ELSE 1000
+    WHEN `being drunk and incapable in public` THEN IF `repeat` THEN 2000 ELSE 1000
+    WHEN `drunken annoyance` THEN IF `repeat` THEN 2000 ELSE 1000
+    WHEN `ignoring a direction to leave` THEN IF `repeat` THEN 2000 ELSE 1000
+    WHEN `giving false information` THEN IF `repeat` THEN 10000 ELSE 5000
+    OTHERWISE 2500
+
+GIVEN `the offence` IS A Offence, `repeat` IS A BOOLEAN
+GIVETH A NUMBER
+`the base maximum months of imprisonment` MEANS
+    CONSIDER `the offence`
+    WHEN `unlicensed supply` THEN IF `repeat` THEN 3 ELSE 0
+    WHEN `drinking in public in the no-public drinking period` THEN IF `repeat` THEN 3 ELSE 0
+    WHEN `being drunk and incapable in public` THEN IF `repeat` THEN 3 ELSE 1
+    WHEN `drunken annoyance` THEN 6
+    WHEN `ignoring a direction to leave` THEN 6
+    WHEN `giving false information` THEN IF `repeat` THEN 3 ELSE 0
+    OTHERWISE 3
+
+GIVEN `the offence` IS A Offence, `in a Liquor Control Zone` IS A BOOLEAN
+GIVETH A NUMBER
+`the zone multiplier` MEANS
+    IF `in a Liquor Control Zone` AND `the zone uplift applies to` `the offence` THEN 1.5 ELSE 1
+
+GIVEN `the offence` IS A Offence, `repeat` IS A BOOLEAN, `in a Liquor Control Zone` IS A BOOLEAN
+GIVETH A NUMBER
+`the maximum fine in dollars` MEANS
+    `the base maximum fine` `the offence` `repeat` TIMES `the zone multiplier` `the offence` `in a Liquor Control Zone`
+
+GIVEN `the offence` IS A Offence, `repeat` IS A BOOLEAN, `in a Liquor Control Zone` IS A BOOLEAN
+GIVETH A NUMBER
+`the maximum months of imprisonment` MEANS
+    `the base maximum months of imprisonment` `the offence` `repeat` TIMES `the zone multiplier` `the offence` `in a Liquor Control Zone`
+
+§§ `18, 19 -- Liquor Control Zone banning notices`
+
+-- s 18(1): may be given if the Commissioner or an authorised officer "suspects, on reasonable grounds, the individual of committing or
+-- having committed an offence under section 12 or 14 wholly or partly in a Liquor Control Zone". (3) no right to be heard first.
+-- (4) the period "must not exceed 30 days".
+GIVEN `suspected of a section 12 or 14 offence in a zone` IS A BOOLEAN, `days banned` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the banning notice is within power` IF
+    `suspected of a section 12 or 14 offence in a zone` AND `days banned` AT MOST 30
+
+-- s 19(1): an offence if the individual "without reasonable excuse" enters, remains, or attempts to, in contravention of the notice.
+-- (2) the notice does not prevent entering or remaining "for the purpose of the individual residing" there "or attending to the
+-- individual's usual place of residence or work" there, or entering in accordance with the exceptions specified in the notice.
+DECLARE Purpose IS ONE OF
+    `going for a drink`
+    `going home`
+    `going to work`
+    `visiting a friend`
+    `within an exception stated in the notice`
+
+GIVEN `entered or remained in the banned area` IS A BOOLEAN, `the purpose` IS A Purpose, `had a reasonable excuse` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the entry breaches the banning notice` IF
+        `entered or remained in the banned area`
+    AND (NOT `had a reasonable excuse`)
+    AND CONSIDER `the purpose`
+        WHEN `going home` THEN FALSE
+        WHEN `going to work` THEN FALSE
+        WHEN `within an exception stated in the notice` THEN FALSE
+        OTHERWISE TRUE
+
+§§ `20 -- directions to leave or not enter a zone`
+
+-- s 20(2): unless the entrant is arrested, a police officer or approved person may direct an entrant to leave and not re-enter, or
+-- refuse entry, "for a stated reasonable time of not more than 24 hours".
+GIVEN `arrested` IS A BOOLEAN, `hours stated` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the zone direction is within power` IF
+    (NOT `arrested`) AND `hours stated` AT MOST 24
+
+§§ `33 -- composition`
+
+-- s 33(1): a prescribed compoundable offence may be compounded for a sum "not exceeding the lower of" (a) "one half of the amount of
+-- the maximum fine that is prescribed for the offence" and (b) $5,000.
+GIVEN `maximum fine` IS A NUMBER
+GIVETH A NUMBER
+`the most that can be collected to compound` MEANS
+    `the lesser of` (`maximum fine` DIVIDED BY 2) 5000
