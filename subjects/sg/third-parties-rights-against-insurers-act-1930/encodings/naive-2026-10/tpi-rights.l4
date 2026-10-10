@@ -1,0 +1,237 @@
+IMPORT prelude
+
+-- Third Parties (Rights Against Insurers) Act 1930 (Singapore) -- when an insolvent insured's rights under a liability policy
+-- pass to the person the insured injured or owes (s 1), how much the insurer then owes that person (s 1(4)), the duty to tell a
+-- claimant about the insurance (s 2), why a late settlement with the insured cannot defeat the claimant (s 3), and limited
+-- liability partnerships (s 3A).
+--
+-- Edition: 2020 Revised Edition, as deposited at ../../registers/source-bundle/TPRAIA1930.txt. The deposit says the edition
+-- "incorporates all amendments up to and including 1 December 2021 and comes into operation on 31 December 2021"; the latest
+-- amendment annotated in the body is Act 27 of 2019 (Work Injury Compensation Act 2019, s 1(6)(b)), and the Legislative History
+-- lists Act 40 of 2018 (Insolvency, Restructuring and Dissolution Act 2018) for s 1(2), (3) and s 2(1). The metadata records it
+-- as the current version as at 1 October 2026. The arrangement of sections at the top of the deposit is out of step with the
+-- headings (the titles are shifted one line); the BODY's numbering (1, 2, 3, 3A, 4) is followed here.
+--
+-- WHY THIS ACT. Requirement REQ-0038 (subjects/sg/requirements.jsonl): Tier 2 of the remaining Singapore Acts, ordered by
+-- everyday-life relevance. The requirement asks what the Act decides for a person or business it applies to; no scenario has
+-- asked a sharper question yet. The whole operative text (ss 1 to 3A) is encoded; the Act is four pages.
+--
+-- NOT ENCODED: s 4 (short title); what counts as "bankrupt", a "composition or arrangement", a "winding-up order" or the
+-- "commencement" of a bankruptcy or winding up (all defined elsewhere, mainly in the Insolvency, Restructuring and Dissolution
+-- Act 2018, which was not read); the content of s 28 of the Work Injury Compensation Act 2019 (s 1(6)(b) is taken as a flag);
+-- the policy's own terms and conditions, which the insurer can still raise (s 1(4) puts the insurer under "the same liability"
+-- as to the insured -- this encoding does not model those terms).
+--
+-- NAIVE ENCODING. Straight from the deposited text, following the conventions of the example rows (the writing-l4-rules skill
+-- was not available in this session). No pipeline, no coverage table, no independent test pass, no human gate. NOT for public
+-- use. See NOTES.md.
+
+§ `Third Parties (Rights Against Insurers) Act 1930`
+
+DECLARE `Kind of insured` IS ONE OF
+    `an individual`
+    `a company`
+    `a limited liability partnership`
+
+DECLARE `Insolvency event` IS ONE OF
+    `bankruptcy`
+    `a composition or arrangement with creditors`
+    `a winding-up order`
+    `a resolution for voluntary winding up`
+    `appointment of a receiver or manager`
+    `floating-charge holders taking possession`
+    `a section 419 order on a deceased debtor's estate`
+    `no insolvency event`
+
+§§ `1(1), (2), 3A -- which events move the rights`
+
+-- s 1(1): "in the event of the insured becoming bankrupt or making a composition or arrangement with his creditors" (para (a));
+-- or (para (b)) "in the case of the insured being a company, in the event of a winding-up order being made, or a resolution for
+-- a voluntary winding up being passed, ... or of a receiver or manager of the company's business or undertaking being duly
+-- appointed, or of possession being taken, by or on behalf of the holders of any debentures secured by a floating charge".
+-- s 1(2): where "an order is made under section 419 of the Insolvency, Restructuring and Dissolution Act 2018, for the
+-- administration of the estate of a deceased debtor according to the law of bankruptcy".
+-- s 3A: "This Act applies to limited liability partnerships ... as it applies to companies."
+--
+-- Para (a) is not limited by its words to individuals and is encoded literally for every kind of insured. Treating a s 419
+-- order as an event for an individual only is an INFERENCE from "deceased debtor"; the Act does not say so in terms.
+GIVEN `the insured` IS A `Kind of insured`, `the event` IS AN `Insolvency event`
+GIVETH A BOOLEAN
+DECIDE `the event can trigger the Act` IF
+    CONSIDER `the event`
+    WHEN `bankruptcy` THEN TRUE
+    WHEN `a composition or arrangement with creditors` THEN TRUE
+    WHEN `a section 419 order on a deceased debtor's estate` THEN `the insured` EQUALS `an individual`
+    WHEN `no insolvency event` THEN FALSE
+    OTHERWISE NOT (`the insured` EQUALS `an individual`)
+
+§§ `1(1), (4), (5), (6) -- the transfer`
+
+-- s 1(1): where "a person (referred to in this Act as the insured) is insured against liabilities to third parties which he may
+-- incur", then on such an event, "if, either before or after that event, any such liability is incurred by the insured, his
+-- rights against the insurer under the contract in respect of the liability shall, notwithstanding anything in any Act or rule
+-- of law to the contrary, be transferred to and vest in the third party".
+-- s 1(5): "liabilities to third parties" do "not include any liability of that person in the capacity of insurer under some
+-- other contract of insurance" (so a reinsurance claim does not pass).
+-- s 1(6): the Act does not apply "(a) where a company is wound up voluntarily merely for the purposes of reconstruction or of
+-- amalgamation with another company; or (b) to any case to which section 28(1), (2) and (3) of the Work Injury Compensation Act
+-- 2019 ... applies".
+DECLARE Claim HAS
+    `the insured` IS A `Kind of insured`
+    `the event` IS AN `Insolvency event`
+    `insured against liabilities to third parties` IS A BOOLEAN
+    `liability incurred to the third party` IS A BOOLEAN
+    `liability incurred only after the event` IS A BOOLEAN
+    `liability is as insurer under another contract` IS A BOOLEAN
+    `voluntary winding up merely for reconstruction or amalgamation` IS A BOOLEAN
+    `Work Injury Compensation Act section 28 applies` IS A BOOLEAN
+
+GIVEN `the claim` IS A Claim
+GIVETH A BOOLEAN
+DECIDE `the reconstruction exclusion applies` IF
+        `the claim`'s `the event` EQUALS `a resolution for voluntary winding up`
+    AND `the claim`'s `voluntary winding up merely for reconstruction or amalgamation`
+
+-- "either before or after that event": `liability incurred only after the event` deliberately plays no part.
+GIVEN `the claim` IS A Claim
+GIVETH A BOOLEAN
+DECIDE `the insured's rights pass to the third party` IF
+        `the claim`'s `insured against liabilities to third parties`
+    AND `the claim`'s `liability incurred to the third party`
+    AND (NOT `the claim`'s `liability is as insurer under another contract`)
+    AND `the event can trigger the Act` (`the claim`'s `the insured`) (`the claim`'s `the event`)
+    AND (NOT `the reconstruction exclusion applies` `the claim`)
+    AND (NOT `the claim`'s `Work Injury Compensation Act section 28 applies`)
+
+-- s 1(4): "the insurer shall, subject to section 3, be under the same liability to the third party as he would have been under to
+-- the insured, but -- (a) if the liability of the insurer to the insured exceeds the liability of the insured to the third party,
+-- nothing in this Act shall affect the rights of the insured against the insurer in respect of the excess; and (b) if the
+-- liability of the insurer to the insured is less than the liability of the insured to the third party, nothing in this Act
+-- shall affect the rights of the third party against the insured in respect of the balance."
+-- Reading (a) and (b) together, the third party recovers the lesser of the two from the insurer.
+GIVEN `x` IS A NUMBER, `y` IS A NUMBER
+GIVETH A NUMBER
+`the lesser of` MEANS
+    IF `x` AT MOST `y` THEN `x` ELSE `y`
+
+GIVEN `x` IS A NUMBER
+GIVETH A NUMBER
+`at least nothing` MEANS
+    IF `x` LESS THAN 0 THEN 0 ELSE `x`
+
+GIVEN `insurer owes the insured` IS A NUMBER, `insured owes the third party` IS A NUMBER
+GIVETH A NUMBER
+`the insurer must pay the third party` MEANS
+    `the lesser of` `insurer owes the insured` `insured owes the third party`
+
+GIVEN `insurer owes the insured` IS A NUMBER, `insured owes the third party` IS A NUMBER
+GIVETH A NUMBER
+`the third party's balance still owed by the insured` MEANS
+    `at least nothing` (`insured owes the third party` MINUS `insurer owes the insured`)
+
+GIVEN `insurer owes the insured` IS A NUMBER, `insured owes the third party` IS A NUMBER
+GIVETH A NUMBER
+`the excess the insured keeps against the insurer` MEANS
+    `at least nothing` (`insurer owes the insured` MINUS `insured owes the third party`)
+
+§§ `1(3), 2(1) -- policy terms struck down`
+
+-- s 1(3): "In so far as any contract of insurance in respect of any liability of the insured to third parties purports, directly or
+-- indirectly, to avoid the contract or to alter the rights of the parties thereunder upon the happening to the insured of any of
+-- the events specified in paragraph (a) or (b) of subsection (1) or upon the making of an order under section 419 ... the
+-- contract shall be of no effect."
+-- s 2(1): any contract of insurance "in so far as it purports, directly or indirectly, to avoid the contract or to alter the
+-- rights of the parties thereunder upon the giving of any such information in the events aforesaid or otherwise to prohibit or
+-- prevent the giving thereof in the said events shall be of no effect".
+-- The Act says nothing about other terms. That an ordinary exclusion or a claims-notice condition SURVIVES is the absence of any
+-- provision striking it down, read with s 1(4) ("the same liability ... as he would have been under to the insured").
+DECLARE `Policy term` IS ONE OF
+    `cover ends if the insured becomes bankrupt`
+    `cover ends if the company is wound up`
+    `the insurer pays the insured only, never the injured party, after insolvency`
+    `cover ends if the insured tells a claimant about the policy`
+    `the insured must not disclose the policy to anyone`
+    `cover excludes deliberate acts`
+    `claims must be notified within 30 days`
+
+GIVEN `the term` IS A `Policy term`
+GIVETH A BOOLEAN
+DECIDE `the term is of no effect` IF
+    CONSIDER `the term`
+    WHEN `cover excludes deliberate acts` THEN FALSE
+    WHEN `claims must be notified within 30 days` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `2 -- the duty to give information`
+
+-- s 2(1): on the same events, "it shall be the duty of the bankrupt, debtor, personal representative of the deceased debtor or
+-- company, and, as the case may be, of the trustee in bankruptcy, trustee, liquidator, receiver, or manager, or person in
+-- possession of the property to give, at the request of any person claiming that the bankrupt, debtor, deceased debtor, or
+-- company is under a liability to him, such information as may reasonably be required by him for the purpose of ascertaining
+-- whether any rights have been transferred to and vested in him by this Act and for the purpose of enforcing such rights".
+-- s 2(2): "If the information given ... discloses reasonable ground for supposing that there have or may have been transferred
+-- to him under this Act rights against any particular insurer, that insurer shall be subject to the same duty".
+-- s 2(3): the duty includes "a duty to allow all contracts of insurance, receipts for premiums, and other relevant documents in
+-- the possession or power of the person ... to be inspected and copies thereof to be taken".
+-- The Act prescribes no penalty and no time limit for breach of the s 2 duty.
+DECLARE `Person asked` IS ONE OF
+    `the bankrupt or debtor`
+    `the deceased debtor's personal representative`
+    `the company`
+    `the trustee in bankruptcy or trustee`
+    `the liquidator`
+    `the receiver or manager`
+    `the person in possession under the floating charge`
+    `the insurer`
+    `the insured's broker`
+
+GIVEN `the person` IS A `Person asked`, `an insolvency event has happened` IS A BOOLEAN,
+      `asked by a person claiming the insured is liable to him` IS A BOOLEAN,
+      `earlier information points to this insurer` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the person must give the information` IF
+        `an insolvency event has happened`
+    AND `asked by a person claiming the insured is liable to him`
+    AND CONSIDER `the person`
+        WHEN `the insurer` THEN `earlier information points to this insurer`
+        WHEN `the insured's broker` THEN FALSE
+        OTHERWISE TRUE
+
+DECLARE Document IS ONE OF
+    `a contract of insurance`
+    `a receipt for premiums`
+    `another relevant document`
+
+GIVEN `the document` IS A Document, `in the person's possession or power` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the claimant may inspect and copy it` IF
+    `in the person's possession or power`
+
+§§ `3 -- settlements after the event`
+
+-- s 3: "Where the insured has become bankrupt or where, in the case of the insured being a company, a winding-up order has been
+-- made or a resolution for a voluntary winding up has been passed, ... no agreement made between the insurer and the insured
+-- after liability has been incurred to a third party and after the commencement of the bankruptcy or winding up, as the case may
+-- be, nor any waiver, assignment, or other disposition made by, or payment made to the insured after the commencement aforesaid
+-- shall be effective to defeat or affect the rights transferred to the third party".
+-- Only bankruptcy and winding up are named: a composition, a receivership, possession under a floating charge and a s 419 order
+-- are not. Read literally, "after liability has been incurred" qualifies the AGREEMENT only; a waiver, assignment, disposition or
+-- payment is caught if made after the commencement.
+DECLARE Dealing IS ONE OF
+    `an agreement between insurer and insured`
+    `a waiver by the insured`
+    `an assignment by the insured`
+    `another disposition by the insured`
+    `a payment to the insured`
+
+GIVEN `the event` IS AN `Insolvency event`, `the dealing` IS A Dealing,
+      `made after the commencement` IS A BOOLEAN, `made after the liability was incurred` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `section 3 disregards the dealing` IF
+        (    `the event` EQUALS `bankruptcy`
+         OR  `the event` EQUALS `a winding-up order`
+         OR  `the event` EQUALS `a resolution for voluntary winding up`)
+    AND `made after the commencement`
+    AND CONSIDER `the dealing`
+        WHEN `an agreement between insurer and insured` THEN `made after the liability was incurred`
+        OTHERWISE TRUE
