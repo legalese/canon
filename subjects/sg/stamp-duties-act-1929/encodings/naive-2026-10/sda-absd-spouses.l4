@@ -1,0 +1,225 @@
+IMPORT prelude
+
+-- Stamp Duties (Spouses) (Remission of ABSD) Rules 2013 (S 217/2013), made under s 74 of the Stamp Duties Act 1929 -- remission
+-- of additional buyer's stamp duty (ABSD) where a married couple buy one residential property together.
+--
+-- Edition: the version current at 10 October 2026 (amendments to S 245/2023 wef 27 April 2023), saved by hand from SSO and
+-- deposited at ../../registers/source-bundle/SDA1929-S217-2013.txt.
+--
+-- WHY. Added on 11 October 2026 for REQ-0009 in subjects/sg/requirements.jsonl (cradle-to-grave-simone, event e081, on the
+-- alternative ordering where the couple buy before they sell): on what conditions, and within what time, is ABSD remitted?
+--
+-- DATES are calendar dates (year, month, day), because rule 4(3)(c) counts months. "Within 6 months after" a date is read as
+-- ON OR BEFORE the same day of the month six months later; where that month is shorter, its last day. That reading is the
+-- encoder's, not the Rules'.
+--
+-- NOT ENCODED: who counts as owning property beyond the inputs (rule 2(5) to (6): partnership and trust property, land under
+-- acquisition, s 22C settlors are disregarded or treated specially -- the caller decides the count); the Commissioner's
+-- discretion to allow a longer refund period (an input); trust arrangements before 9 May 2022.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table, no
+-- independent test pass, no human gate. See NOTES.md.
+
+§ `Stamp Duties (Spouses) (Remission of ABSD) Rules 2013`
+
+§§ `Dates`
+
+DECLARE Date HAS
+    year IS A NUMBER
+    month IS A NUMBER
+    day IS A NUMBER
+
+GIVEN y IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `is a leap year` y IF
+    ((y MODULO 4 EQUALS 0) AND (NOT (y MODULO 100 EQUALS 0))) OR (y MODULO 400 EQUALS 0)
+
+GIVEN y IS A NUMBER, m IS A NUMBER
+GIVETH A NUMBER
+`the number of days in month` y m MEANS
+    IF m EQUALS 2
+    THEN IF `is a leap year` y THEN 29 ELSE 28
+    ELSE IF m EQUALS 4 OR m EQUALS 6 OR m EQUALS 9 OR m EQUALS 11 THEN 30 ELSE 31
+
+-- A single number that orders dates: later dates give larger numbers.
+GIVEN d IS A Date
+GIVETH A NUMBER
+`the ordinal of` d MEANS d's year TIMES 10000 PLUS d's month TIMES 100 PLUS d's day
+
+GIVEN a IS A Date, b IS A Date
+GIVETH A BOOLEAN
+DECIDE `falls on or before` a b IF `the ordinal of` a AT MOST `the ordinal of` b
+
+GIVEN d IS A Date, n IS A NUMBER
+GIVETH A Date
+`the date months after` d n MEANS
+    Date WITH year IS `the new year`, month IS `the new month`, day IS `the new day`
+    WHERE
+        `the month count` MEANS d's year TIMES 12 PLUS d's month MINUS 1 PLUS n
+        `the new year` MEANS FLOOR (`the month count` DIVIDED BY 12)
+        `the new month` MEANS `the month count` MINUS `the new year` TIMES 12 PLUS 1
+        `the new day` MEANS
+            IF d's day GREATER THAN `the number of days in month` `the new year` `the new month`
+            THEN `the number of days in month` `the new year` `the new month`
+            ELSE d's day
+
+§§ `Rule 2 -- definitions`
+
+-- Rule 2(1): "Singapore citizen not owning property", "... owning one property", and the same for permanent residents and
+-- foreigners: whether the person, "if not for the transaction which is the subject of the exempt instrument", beneficially
+-- owns an estate or interest in no residential property, or in one, in Singapore.
+DECLARE Residence IS ONE OF
+    `Singapore citizen`
+    `Singapore permanent resident`
+    foreigner
+
+DECLARE Spouse HAS
+    residence IS A Residence
+    `residential properties owned apart from this purchase` IS A NUMBER
+
+GIVEN s IS A Spouse
+GIVETH A BOOLEAN
+DECIDE `is a citizen not owning property` s IF
+    s's residence EQUALS `Singapore citizen` AND s's `residential properties owned apart from this purchase` EQUALS 0
+
+GIVEN s IS A Spouse
+GIVETH A BOOLEAN
+DECIDE `is a citizen owning one property` s IF
+    s's residence EQUALS `Singapore citizen` AND s's `residential properties owned apart from this purchase` EQUALS 1
+
+GIVEN s IS A Spouse
+GIVETH A BOOLEAN
+DECIDE `is a non-citizen not owning property` s IF
+    (NOT (s's residence EQUALS `Singapore citizen`)) AND s's `residential properties owned apart from this purchase` EQUALS 0
+
+GIVEN s IS A Spouse
+GIVETH A BOOLEAN
+DECIDE `is anyone owning one property` s IF
+    s's `residential properties owned apart from this purchase` EQUALS 1
+
+GIVEN s IS A Spouse
+GIVETH A BOOLEAN
+DECIDE `is a non-citizen owning at most one property` s IF
+    (NOT (s's residence EQUALS `Singapore citizen`)) AND s's `residential properties owned apart from this purchase` AT MOST 1
+
+-- The facts at the time the instrument is executed (rules 3(1), 4(1)).
+DECLARE Purchase HAS
+    `number of joint parties` IS A NUMBER
+    `the parties are married to each other` IS A BOOLEAN
+    `first party` IS A Spouse
+    `second party` IS A Spouse
+    `to be held as partnership property` IS A BOOLEAN
+    `executed on or after 9 May 2022 and to be held on trust` IS A BOOLEAN
+    `executed on` IS A Date
+
+GIVEN p IS A Purchase
+GIVETH A BOOLEAN
+DECIDE `is a married couple buying together` p IF
+    p's `number of joint parties` EQUALS 2 AND p's `the parties are married to each other`
+
+§§ `Rule 3 -- spouses neither of whom owns property`
+
+-- Rule 3(1): the full ABSD is remitted on a purchase of a single residential property where there are "2 (and only 2) joint
+-- parties", "married to each other", and they are "respectively, a Singapore citizen not owning property and either a
+-- Singapore permanent resident not owning property or a foreigner not owning property". (2): not for partnership property.
+-- (3): not where, for an instrument executed on or after 9 May 2022, either party holds on trust.
+GIVEN p IS A Purchase
+GIVETH A BOOLEAN
+DECIDE `rule 3 remits the ABSD` p IF
+        `is a married couple buying together` p
+    AND (    (`is a citizen not owning property` (p's `first party`) AND `is a non-citizen not owning property` (p's `second party`))
+          OR (`is a citizen not owning property` (p's `second party`) AND `is a non-citizen not owning property` (p's `first party`)))
+    AND NOT p's `to be held as partnership property`
+    AND NOT p's `executed on or after 9 May 2022 and to be held on trust`
+
+§§ `Rule 4 -- spouses one or both of whom owns one property`
+
+-- Rule 4(2): one of three descriptions --
+--   (a) one is a citizen not owning property, the other owns one property (citizen, PR or foreigner);
+--   (b) one is a citizen owning one property, the other is a PR or foreigner owning none or one;
+--   (c) each is a citizen owning one property, "whether or not it is the same residential property".
+GIVEN x IS A Spouse, y IS A Spouse
+GIVETH A BOOLEAN
+DECIDE `fit description (a) or (b) in that order` x y IF
+       (`is a citizen not owning property` x AND `is anyone owning one property` y)
+    OR (`is a citizen owning one property` x AND `is a non-citizen owning at most one property` y)
+
+GIVEN p IS A Purchase
+GIVETH A BOOLEAN
+DECIDE `fit a rule 4(2) description` p IF
+       `fit description (a) or (b) in that order` (p's `first party`) (p's `second party`)
+    OR `fit description (a) or (b) in that order` (p's `second party`) (p's `first party`)
+    OR (`is a citizen owning one property` (p's `first party`) AND `is a citizen owning one property` (p's `second party`))
+
+GIVEN p IS A Purchase
+GIVETH A BOOLEAN
+DECIDE `is within rule 4(1)` p IF
+    `is a married couple buying together` p AND `fit a rule 4(2) description` p
+
+-- What happens after the purchase, for the conditions in rule 4(3).
+DECLARE Aftermath HAS
+    `ABSD paid to the Commissioner` IS A BOOLEAN
+    `TOP or CSC granted on or before the date of execution` IS A BOOLEAN
+    `earlier of TOP and CSC` IS A Date
+    `every property that made a party an owner has been disposed of` IS A BOOLEAN
+    `date of the last disposal` IS A Date
+    `either party acquired another residential property before that disposal` IS A BOOLEAN
+    `on that date the two own the new property together and with no one else` IS A BOOLEAN
+    `on that date they remain married` IS A BOOLEAN
+    `refund claimed on` IS A Date
+    `the Commissioner allowed a longer period for the claim` IS A BOOLEAN
+
+-- Rule 4(3)(c): the clock runs from execution, or, "if no TOP or CSC is granted or issued ... on the date of execution", from
+-- the grant or issue of "the TOP or of the CSC, whichever is the earlier".
+GIVEN p IS A Purchase, a IS A Aftermath
+GIVETH A Date
+`the date the disposal clock starts` p a MEANS
+    IF a's `TOP or CSC granted on or before the date of execution` THEN p's `executed on` ELSE a's `earlier of TOP and CSC`
+
+-- Rule 4(3A): if the instrument was executed on or before 1 June 2020 and the six-month deadline falls on or after
+-- 1 February 2020, the period is 12 months.
+GIVEN p IS A Purchase, a IS A Aftermath
+GIVETH A NUMBER
+`the disposal period in months` p a MEANS
+    IF     `falls on or before` (p's `executed on`) (Date WITH year IS 2020, month IS 6, day IS 1)
+       AND `falls on or before` (Date WITH year IS 2020, month IS 2, day IS 1) (`the date months after` (`the date the disposal clock starts` p a) 6)
+    THEN 12
+    ELSE 6
+
+GIVEN p IS A Purchase, a IS A Aftermath
+GIVETH A Date
+`the last day to dispose of the other property` p a MEANS
+    `the date months after` (`the date the disposal clock starts` p a) (`the disposal period in months` p a)
+
+-- Rule 4(3)(f): the refund claim is made within 6 months after the date of disposal "or such longer period as the
+-- Commissioner may allow in a particular case". (4): where two properties were disposed of on different dates, the later date.
+GIVEN a IS A Aftermath
+GIVETH A Date
+`the last day to claim the refund` a MEANS `the date months after` (a's `date of the last disposal`) 6
+
+GIVEN p IS A Purchase, a IS A Aftermath
+GIVETH A BOOLEAN
+DECIDE `the rule 4(3) conditions are met` p a IF
+        NOT p's `to be held as partnership property`                                                       -- (a)
+    AND NOT p's `executed on or after 9 May 2022 and to be held on trust`                                   -- (aa)
+    AND a's `ABSD paid to the Commissioner`                                                                -- (b)
+    AND a's `every property that made a party an owner has been disposed of`                               -- (c)
+    AND `falls on or before` (a's `date of the last disposal`) (`the last day to dispose of the other property` p a)
+    AND NOT a's `either party acquired another residential property before that disposal`                  -- (d)
+    AND a's `on that date the two own the new property together and with no one else`                      -- (e)(i)
+    AND a's `on that date they remain married`                                                             -- (e)(ii)
+    AND (    `falls on or before` (a's `refund claimed on`) (`the last day to claim the refund` a)          -- (f)
+          OR a's `the Commissioner allowed a longer period for the claim`)
+
+GIVEN p IS A Purchase, a IS A Aftermath
+GIVETH A BOOLEAN
+DECIDE `rule 4 remits the ABSD` p a IF
+    `is within rule 4(1)` p AND `the rule 4(3) conditions are met` p a
+
+§§ `Result`
+
+-- Rule 3 remits at the outset; rule 4 only by refund of ABSD already paid (condition (b)).
+GIVEN p IS A Purchase, a IS A Aftermath, `ABSD chargeable` IS A NUMBER
+GIVETH A NUMBER
+`the ABSD remitted` p a `ABSD chargeable` MEANS
+    IF `rule 3 remits the ABSD` p OR `rule 4 remits the ABSD` p a THEN `ABSD chargeable` ELSE 0
