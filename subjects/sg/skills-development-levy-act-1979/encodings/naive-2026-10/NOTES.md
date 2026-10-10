@@ -51,7 +51,13 @@ was followed. Asserted.
 ## What would need doing before this is worth anything
 
 - **Check the Gazette** for any notification under s 3(1)(a) or (2) changing the rate or
-  the $4,500 ceiling. The encoding assumes none.
+  the $4,500 ceiling. The encoding assumes none. *Partly checked on 11 Oct 2026:* the CPF
+  Board's employer page on SDL (https://www.cpf.gov.sg/employer/employer-obligations/skills-development-levy,
+  read 10 Oct 2026) gives the same figures. Those are 0.25% of total wages, $2 for wages under
+  $800, and at most $11.25 above $4,500, so no change by notification is in force. The page
+  adds a step the row does not model: the levy is computed for each employee, the amounts are
+  added, and the **total is rounded down to the dollar**. Its example totals $40.75 and pays $40.
+  The Act's source for that rounding was not found.
 - The s 4 exemption orders and the wages excluded by notification under s 2 were not
   retrieved.
 - No case law was searched.
