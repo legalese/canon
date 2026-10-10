@@ -1,0 +1,235 @@
+IMPORT prelude
+
+-- Inheritance (Family Provision) Act 1966 (Singapore) -- who may ask the court for maintenance out of a dead person's estate when
+-- the will or the intestacy rules leave them short, the bar where the surviving spouse already takes two-thirds of the income, the
+-- six-month deadline and its extension, the form and limits of an order, and its later variation. The whole Act, ss 1 to 6.
+--
+-- Edition: 2020 Revised Edition, as deposited at ../../registers/source-bundle/IFPA1966.txt. The deposit says it "incorporates all
+-- amendments up to and including 1 December 2021" and comes into operation on 31 December 2021; the last amendment in its
+-- Legislative History is Act 40 of 2019 (Supreme Court of Judicature (Amendment) Act 2019, commencement 2 January 2021). The
+-- arrangement of sections at the top of the .txt is out of step with the body by one line; the BODY's numbering is followed.
+--
+-- WHY THIS ACT. Chosen for its everyday-life relevance (Tier 1 of the remaining Acts): it is the only route by which a spouse or
+-- child left out of a will, or left short by intestacy, can ask a court for maintenance from the estate. Not chosen by citation
+-- count. Not encoded: the court's discretionary weighing under s 3(5) to (8) (recorded as comments only), consequential directions
+-- and the filing of orders (s 5(1), (3)), and anything outside this Act -- the Intestate Succession Act, the Probate and
+-- Administration Act, CPF nominations and Muslim law are not read here.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Inheritance (Family Provision) Act 1966 -- family provision`
+
+§§ `1 and 3(1) -- whose estate`
+
+-- s 1(2): "This Act shall not apply to the estates of deceased Muslims."
+-- s 3(1): "Where, after 16 September 1966, a person dies domiciled in Singapore leaving ..." a dependant.
+GIVEN `died after 16 September 1966` IS A BOOLEAN, `died domiciled in Singapore` IS A BOOLEAN, `the deceased was a Muslim` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Act applies to the estate` IF
+        `died after 16 September 1966`
+    AND `died domiciled in Singapore`
+    AND (NOT `the deceased was a Muslim`)
+
+§§ `2 and 3(1) -- who is a dependant`
+
+-- s 3(1): the deceased leaves "(a) a wife or husband; (b) a daughter who has not been married or who is, by reason of some mental or
+-- physical disability, incapable of maintaining herself; (c) an infant son; or (d) a son who is, by reason of some mental or physical
+-- disability, incapable of maintaining himself" -- each "referred to in this Act as a dependant of the deceased".
+-- s 2: "son" and "daughter" include a child adopted by order under the adoption law "of Singapore, Malaysia or Brunei Darussalam",
+-- and a child "en ventre sa mere at the date of the death".
+-- "Infant" is not defined in the Act. INFERENCE: under 21, because s 3(2)(c) ends an infant son's payments at 21.
+-- INFERENCE: a parent, a sibling, a former spouse and a stepchild who was not adopted are not in the list, so are not dependants.
+DECLARE Relation IS ONE OF
+    `a wife or husband`
+    `a daughter`
+    `a son`
+    `a parent`
+    `a sibling`
+    `a former spouse`
+    `an unadopted stepchild`
+
+DECLARE Claimant HAS
+    `relation` IS A Relation
+    `age` IS A NUMBER
+    `has ever been married` IS A BOOLEAN
+    `cannot maintain themself through mental or physical disability` IS A BOOLEAN
+
+GIVEN `the claimant` IS A Claimant
+GIVETH A BOOLEAN
+DECIDE `the claimant is a dependant` IF
+    CONSIDER `the claimant`'s `relation`
+    WHEN `a wife or husband` THEN TRUE
+    WHEN `a daughter` THEN
+            (NOT `the claimant`'s `has ever been married`)
+        OR  `the claimant`'s `cannot maintain themself through mental or physical disability`
+    WHEN `a son` THEN
+            `the claimant`'s `age` LESS THAN 21
+        OR  `the claimant`'s `cannot maintain themself through mental or physical disability`
+    OTHERWISE FALSE
+
+§§ `3(1) proviso -- the two-thirds bar`
+
+-- "Provided that no application shall be made to the court by or on behalf of any person in any case where the disposition of a
+-- deceased's estate effected as aforesaid is such that the surviving spouse is entitled to not less than two-thirds of the income of
+-- the net estate and where the only other dependant or dependants, if any, is or are a child or children of the surviving spouse."
+-- The share is taken in percent; "not less than two-thirds" is tested as 3 x percent AT LEAST 200, to avoid a recurring decimal.
+GIVEN `there is a surviving spouse` IS A BOOLEAN, `the spouse's percent of the income of the net estate` IS A NUMBER, `every other dependant is a child of the surviving spouse` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `every application is barred by the proviso` IF
+        `there is a surviving spouse`
+    AND 3 * `the spouse's percent of the income of the net estate` AT LEAST 200
+    AND `every other dependant is a child of the surviving spouse`
+
+§§ `4(1), (2) and (4) -- the six-month deadline`
+
+-- s 4(1): an order shall not be made "save on an application made within 6 months from the date on which representation in regard to
+-- the deceased's estate is first taken out" (except under s 4 or s 6).
+-- s 4(2): if the limit "would operate unfairly" in consequence of (a) "the discovery of a will or codicil involving a substantial
+-- change in the disposition", (b) a question whether a person had an interest in the estate, or as to its nature, "not having been
+-- determined at the time when representation was first taken out", or (c) "some other circumstances affecting the administration or
+-- distribution of the estate", "the court may extend that period".
+-- s 4(4): "a grant limited to trust property shall be left out of account unless a grant limited to the remainder of the estate has
+-- previously been made or is made at the same time."
+-- Time is taken in whole months; the boundary at exactly 6 months is not asserted.
+DECLARE `Reason for lateness` IS ONE OF
+    `a later-discovered will or codicil substantially changing the disposition`
+    `an undetermined question about an interest in the estate`
+    `other circumstances affecting administration or distribution`
+    `none of the listed reasons`
+
+GIVEN `the reason` IS A `Reason for lateness`, `the limit would operate unfairly` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may extend the period` IF
+        `the limit would operate unfairly`
+    AND CONSIDER `the reason`
+        WHEN `none of the listed reasons` THEN FALSE
+        OTHERWISE TRUE
+
+GIVEN `months since representation was first taken out` IS A NUMBER, `the court extended the period` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the application is in time` IF
+        `months since representation was first taken out` AT MOST 6
+    OR  `the court extended the period`
+
+GIVEN `the grant is limited to trust property` IS A BOOLEAN, `a grant for the remainder was made before or at the same time` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the grant starts the six months` IF
+        (NOT `the grant is limited to trust property`)
+    OR  `a grant for the remainder was made before or at the same time`
+
+-- s 4(3): the Act does not make the personal representatives liable "for having distributed any part of the estate of the deceased
+-- after the expiration of the said period of 6 months on the ground that they ought to have taken into account the possibility that
+-- the court might exercise its power to extend that period" -- without prejudice to recovery under an order. (Recorded only.)
+-- s 4(5): a proposed applicant is "deemed to be a person interested in his estate" for ss 18(2) and 39 of the Probate and
+-- Administration Act 1934 (not read here).
+
+§§ `2 -- the net estate`
+
+-- s 2: "net estate" means "all the property of which a deceased person had power to dispose by his will (otherwise than by virtue of
+-- a special power of appointment) less the amount of his funeral, testamentary and administration expenses, debts and liabilities and
+-- estate duty payable out of his estate on his death".
+GIVEN `property disposable by will` IS A NUMBER, `funeral, testamentary and administration expenses` IS A NUMBER, `debts and liabilities` IS A NUMBER, `estate duty payable` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the net estate` IS
+    `property disposable by will` - `funeral, testamentary and administration expenses` - `debts and liabilities` - `estate duty payable`
+
+§§ `3(2) to (4) -- the form of the order and its limits`
+
+-- s 3(2): provision "shall, subject to subsection (4), be by way of periodical payments".
+-- s 3(3): payments to one dependant "shall not be at an annual rate which exceeds the annual income of the net estate", and for more
+-- than one dependant "the aggregate of the annual rates ... shall not exceed the annual income of the net estate".
+-- s 3(4): "Where the value of a deceased's net estate does not exceed $50,000, the court shall have power to make an order providing
+-- for maintenance, in whole or in part, by way of a lump sum payment."
+-- s 2: "annual income" is what the net estate "might be expected at the date of the order ... when realised, to yield in a year".
+GIVEN `the value of the net estate` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `a lump sum may be ordered` IF
+    `the value of the net estate` AT MOST 50000
+
+GIVEN `the annual rate to this dependant` IS A NUMBER, `the aggregate annual rate to all dependants` IS A NUMBER, `the annual income of the net estate` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the periodical payments are within the income cap` IF
+        `the annual rate to this dependant` AT MOST `the annual income of the net estate`
+    AND `the aggregate annual rate to all dependants` AT MOST `the annual income of the net estate`
+
+-- s 5(2): "no larger part of the net estate shall be set aside or appropriated to answer by the income thereof the provision for
+-- maintenance ... than such a part as, at the date of the order, is sufficient to produce by the income thereof the amount of the said
+-- provision." The yield is taken in percent a year.
+GIVEN `the annual provision` IS A NUMBER, `the expected yield in percent a year` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the largest part that may be set aside` IS
+    `the annual provision` * 100 / `the expected yield in percent a year`
+
+§§ `3(2) -- when the payments must end`
+
+-- s 3(2): the order "shall provide for their termination not later than -- (a) in the case of a wife or husband, her or his
+-- remarriage; (b) in the case of a daughter who has not been married, or who is under disability, her marriage or the cesser of her
+-- disability, whichever is the later; (c) in the case of an infant son, his attaining the age of 21 years; (d) in the case of a son
+-- under disability, the cesser of his disability, or in any case, his or her earlier death."
+-- The court may set an earlier end; this rule says only whether the LATEST permitted end has been reached.
+-- INFERENCE on (b): a daughter who qualified by being unmarried AND disabled has reached the end only when she has both married and
+-- ceased to be disabled ("whichever is the later"); one who qualified only by disability (she had been married) reaches it when the
+-- disability ceases; one who qualified only by being unmarried reaches it on marriage.
+-- INFERENCE on (c), (d): a son who is both an infant and disabled is treated as reaching the end only when both events have occurred.
+-- The Act does not say which governs; no case asserts it.
+DECLARE `Later events` HAS
+    `has died` IS A BOOLEAN
+    `has married or remarried` IS A BOOLEAN
+    `disability has ceased` IS A BOOLEAN
+    `has turned 21` IS A BOOLEAN
+
+GIVEN `the dependant` IS A Claimant, `the events` IS A `Later events`
+GIVETH A BOOLEAN
+DECIDE `the latest end of the payments has been reached` IF
+        `the events`'s `has died`
+    OR  CONSIDER `the dependant`'s `relation`
+        WHEN `a wife or husband` THEN `the events`'s `has married or remarried`
+        WHEN `a daughter` THEN
+                ((`the dependant`'s `has ever been married`) OR `the events`'s `has married or remarried`)
+            AND ((NOT `the dependant`'s `cannot maintain themself through mental or physical disability`) OR `the events`'s `disability has ceased`)
+        WHEN `a son` THEN
+                ((`the dependant`'s `age` AT LEAST 21) OR `the events`'s `has turned 21`)
+            AND ((NOT `the dependant`'s `cannot maintain themself through mental or physical disability`) OR `the events`'s `disability has ceased`)
+        OTHERWISE TRUE
+
+-- s 3(5) to (8), the court's weighing, are not decided here. (5): no provision that "would necessitate a realisation that would be
+-- improvident". (6): regard to the dependant's "past, present or future capital or income from any source", their conduct "in relation
+-- to the deceased and otherwise", and any other relevant matter. (7): regard to "the deceased's reasons, so far as ascertainable",
+-- including "any statement in writing signed by the deceased and dated". (8): the court "shall not be bound to assume that the law
+-- relating to intestacy makes reasonable provision in all cases."
+
+§§ `6 -- variation after the period`
+
+-- s 6(1): on an application after the s 4 period, the court may order, "but only as respects property the income of which is at that
+-- date applicable for the maintenance of a dependant", (a) a variation "on the ground that a material fact was not disclosed to the
+-- court when the order was made, or that a substantial change has taken place in the circumstances of the dependant or of a person
+-- beneficially interested in the property", or (b) provision "for the maintenance of another dependant of the deceased".
+-- s 6(2): a (1)(a) application "may be made by or on behalf of a dependant of the deceased or by the trustees of the property or by or
+-- on behalf of a person beneficially interested therein".
+DECLARE `Late ground` IS ONE OF
+    `a material fact was not disclosed`
+    `a substantial change in the circumstances of the dependant or a beneficiary`
+    `provision for another dependant`
+    `none of the listed grounds`
+
+GIVEN `the ground` IS A `Late ground`, `the property's income is applicable to maintenance at that date` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a late order may be made under section 6` IF
+        `the property's income is applicable to maintenance at that date`
+    AND CONSIDER `the ground`
+        WHEN `none of the listed grounds` THEN FALSE
+        OTHERWISE TRUE
+
+DECLARE `Variation applicant` IS ONE OF
+    `a dependant`
+    `the trustees of the property`
+    `a beneficiary of the property`
+    `a creditor of the estate`
+
+GIVEN `the applicant` IS A `Variation applicant`
+GIVETH A BOOLEAN
+DECIDE `may apply to vary under section 6(1)(a)` IF
+    CONSIDER `the applicant`
+    WHEN `a creditor of the estate` THEN FALSE
+    OTHERWISE TRUE
