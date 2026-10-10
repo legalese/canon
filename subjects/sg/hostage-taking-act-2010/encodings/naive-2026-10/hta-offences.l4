@@ -1,0 +1,323 @@
+IMPORT prelude
+
+-- Hostage-Taking Act 2010 (Singapore) -- the hostage-taking offence and its two punishment limbs (ss 2, 3), extraterritoriality
+-- (s 4), the duty to disclose information (s 5), the Public Prosecutor's bank-freeze, inspection and information orders and the
+-- offences for not complying (ss 6, 7, 8), consent to prosecute (s 9), protection of informers (s 10), liability of officers and
+-- partners (s 11), arrest without warrant (s 12) and the extradition deeming (s 14(1)).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/HTA2010.txt, with amendments to
+-- Act 17 of 2022 (in force 1 July 2022) shown on s 14.
+--
+-- WHY THIS ACT. Cited by 10 of the 527 Singapore Acts deposited in this repository. The Act is short (14 sections), so most of it is
+-- encoded. Not encoded: s 13 and s 14(2) to (8) (mutual assistance and the Gazette notifications applying the Extradition Act 1968
+-- to Convention countries) beyond the flat deemings, the meaning of "customer information" (borrowed from s 40A of the Banking Act
+-- 1970), the content of a s 8(1) order, and rules under s 11(7) for foreign entities.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Hostage-Taking Act 2010 -- offences and powers`
+
+§§ `2 -- hostage-taking offence`
+
+-- s 2: "hostage-taking offence" means "(a) the offence under section 3; or (b) an abetment of, or a conspiracy or attempt to commit,
+-- the offence under section 3".
+DECLARE Involvement IS ONE OF
+    `committing the s 3 offence`
+    `abetting it`
+    `conspiring to commit it`
+    `attempting it`
+    `harbouring the offender afterwards`
+
+GIVEN `the involvement` IS AN Involvement
+GIVETH A BOOLEAN
+DECIDE `the involvement is a hostage-taking offence` IF
+    CONSIDER `the involvement`
+    WHEN `harbouring the offender afterwards` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `3 -- hostage-taking`
+
+-- s 3(1): any person (A) who "(a) seizes or detains another person (B); and (b) threatens to cause death or hurt to B or to continue
+-- to detain B, or by A's conduct gives rise to a reasonable apprehension that B may be put to death or hurt or may continue to be
+-- detained, or causes death or hurt to B, in order to compel -- (c) the Government, the government of another State or an
+-- international intergovernmental organisation to do or abstain from doing any act ... shall be punished with death or imprisonment
+-- for life, and shall, if A is not sentenced to death, also be liable to fine or to caning; or (d) any other person (C) to do or
+-- abstain from doing any act ... shall be punished with imprisonment for a term which may extend to 15 years, and shall also be
+-- liable to fine or to caning."
+-- s 3(2): subsection (1) "does not apply to any act which is an offence under section 3 of the Geneva Conventions Act 1973".
+DECLARE Incident HAS
+    `A seized or detained B` IS A BOOLEAN
+    `A threatened death, hurt or continued detention` IS A BOOLEAN
+    `A's conduct gave a reasonable apprehension of death, hurt or continued detention` IS A BOOLEAN
+    `A caused death or hurt to B` IS A BOOLEAN
+    `to compel a government or intergovernmental organisation` IS A BOOLEAN
+    `to compel any other person` IS A BOOLEAN
+    `an offence under s 3 of the Geneva Conventions Act 1973` IS A BOOLEAN
+
+GIVEN `the incident` IS AN Incident
+GIVETH A BOOLEAN
+DECIDE `there is a coercive element` IF
+        `the incident`'s `A threatened death, hurt or continued detention`
+    OR  `the incident`'s `A's conduct gave a reasonable apprehension of death, hurt or continued detention`
+    OR  `the incident`'s `A caused death or hurt to B`
+
+GIVEN `the incident` IS AN Incident
+GIVETH A BOOLEAN
+DECIDE `the incident is an offence under s 3` IF
+        `the incident`'s `A seized or detained B`
+    AND `there is a coercive element` `the incident`
+    AND (    `the incident`'s `to compel a government or intergovernmental organisation`
+         OR  `the incident`'s `to compel any other person`)
+    AND (NOT `the incident`'s `an offence under s 3 of the Geneva Conventions Act 1973`)
+
+-- Which limb punishes. INFERENCE: where A means to compel both a government and a private person, the text does not say which limb
+-- applies; this encoding takes limb (c), since the act is then done "in order to compel" a government.
+DECLARE Punishment IS ONE OF
+    `death or imprisonment for life, and fine or caning if not sentenced to death`
+    `imprisonment up to 15 years, and fine or caning`
+    `no s 3 punishment`
+
+GIVEN `the incident` IS AN Incident
+GIVETH A Punishment
+`the s 3 punishment` MEANS
+    IF NOT `the incident is an offence under s 3` `the incident`
+    THEN `no s 3 punishment`
+    ELSE IF `the incident`'s `to compel a government or intergovernmental organisation`
+         THEN `death or imprisonment for life, and fine or caning if not sentenced to death`
+         ELSE `imprisonment up to 15 years, and fine or caning`
+
+§§ `4 -- extraterritoriality`
+
+-- s 4: "Every person who, outside Singapore, commits an act that, if committed in Singapore, would constitute a hostage-taking
+-- offence is deemed to commit the act in Singapore and may be proceeded against, charged, tried and punished accordingly."
+-- No nationality or residence condition is stated.
+GIVEN `would be a hostage-taking offence in Singapore` IS A BOOLEAN, `committed outside Singapore` IS A BOOLEAN, `the offender is a Singapore citizen` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the act may be tried in Singapore` IF
+    `would be a hostage-taking offence in Singapore`
+
+§§ `5 -- duty to disclose information`
+
+-- s 5(1): "Every person in Singapore who has information which he or she knows or believes may be of material assistance -- (a) in
+-- preventing the commission by another person of a hostage-taking offence; or (b) in securing the apprehension, prosecution or
+-- conviction of another person, in Singapore, for a hostage-taking offence, and who fails to disclose the information immediately to
+-- a police officer shall be guilty of an offence" -- fine up to $50,000 or imprisonment up to 5 years or both.
+-- (2), (3): good-faith disclosure attracts no criminal or civil proceedings and breaches no restriction imposed by "law, contract or
+-- rules of professional conduct". No reasonable-excuse defence is written into s 5(1).
+DECLARE Knowledge HAS
+    `the person is in Singapore` IS A BOOLEAN
+    `knows or believes it may materially help prevent another's hostage-taking offence` IS A BOOLEAN
+    `knows or believes it may materially help secure another's apprehension, prosecution or conviction in Singapore` IS A BOOLEAN
+    `disclosed it immediately to a police officer` IS A BOOLEAN
+
+GIVEN `the knowledge` IS A Knowledge
+GIVETH A BOOLEAN
+DECIDE `failing to disclose is an offence under s 5` IF
+        `the knowledge`'s `the person is in Singapore`
+    AND (    `the knowledge`'s `knows or believes it may materially help prevent another's hostage-taking offence`
+         OR  `the knowledge`'s `knows or believes it may materially help secure another's apprehension, prosecution or conviction in Singapore`)
+    AND (NOT `the knowledge`'s `disclosed it immediately to a police officer`)
+
+GIVEN `disclosed under s 5` IS A BOOLEAN, `in good faith` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the discloser is protected from proceedings and from breach of confidence` IF
+    `disclosed under s 5` AND `in good faith`
+
+§§ `6 -- freezing a bank account`
+
+-- s 6(1): the Public Prosecutor, if satisfied that ransom money "may be paid out of any account with any bank", may by order direct
+-- the bank not to pay out of the account "for a specified period not exceeding one month". (2) A complying bank "is relieved of any
+-- liability to any other person in respect of the payment prohibited". (3) A non-complying bank: fine up to $20,000.
+-- INFERENCE: "one month" is read as the calendar month running from the order, supplied as its length in days.
+GIVEN `the specified period in days` IS A NUMBER, `the calendar month in days` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the freeze period is within s 6(1)` IF
+        `the specified period in days` GREATER THAN 0
+    AND `the specified period in days` AT MOST `the calendar month in days`
+
+GIVEN `under a s 6 order` IS A BOOLEAN, `the bank refused the payment` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the bank is relieved of liability for refusing the payment` IF
+    `under a s 6 order` AND `the bank refused the payment`
+
+§§ `7 -- inspection of customer information`
+
+-- s 7(1): the Public Prosecutor may, if evidence of a hostage-taking offence (or a s 4 act) by a person "is likely to be found in any
+-- document containing customer information relating to that person, to the spouse, son or daughter of that person or to a person
+-- reasonably believed by the Public Prosecutor to be a trustee or agent for that person", authorise "any police officer of or above
+-- the rank of assistant superintendent" to inspect the bank's documents.
+-- (4) The power may be delegated to a Deputy Public Prosecutor or the Commissioner of Police, "except the power of delegation".
+DECLARE Relation IS ONE OF
+    `the suspect`
+    `the suspect's spouse`
+    `the suspect's son`
+    `the suspect's daughter`
+    `a person believed to be the suspect's trustee or agent`
+    `the suspect's parent`
+    `the suspect's sibling`
+
+GIVEN `the relation` IS A Relation
+GIVETH A BOOLEAN
+DECIDE `customer information about this person may ground a s 7 order` IF
+    CONSIDER `the relation`
+    WHEN `the suspect's parent` THEN FALSE
+    WHEN `the suspect's sibling` THEN FALSE
+    OTHERWISE TRUE
+
+DECLARE Rank IS ONE OF
+    `sergeant`
+    `inspector`
+    `assistant superintendent`
+    `deputy superintendent`
+    `superintendent`
+
+GIVEN `the rank` IS A Rank
+GIVETH A BOOLEAN
+DECIDE `an officer of this rank may be authorised to inspect` IF
+    CONSIDER `the rank`
+    WHEN `sergeant` THEN FALSE
+    WHEN `inspector` THEN FALSE
+    OTHERWISE TRUE
+
+DECLARE Delegate IS ONE OF
+    `a Deputy Public Prosecutor`
+    `the Commissioner of Police`
+    `an assistant superintendent`
+
+GIVEN `the delegate` IS A Delegate, `delegating the power to delegate` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the s 7 delegation is valid` IF
+        (NOT `delegating the power to delegate`)
+    AND CONSIDER `the delegate`
+        WHEN `an assistant superintendent` THEN FALSE
+        OTHERWISE TRUE
+
+-- s 7(3): "Any person who, without reasonable excuse, fails to produce any document demanded by the police officer which is in his
+-- or her possession or control" -- fine up to $20,000 or imprisonment up to 2 years or both.
+GIVEN `the document was in the person's possession or control` IS A BOOLEAN, `produced it on demand` IS A BOOLEAN, `had a reasonable excuse` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `failing to produce is an offence under s 7(3)` IF
+        `the document was in the person's possession or control`
+    AND (NOT `produced it on demand`)
+    AND (NOT `had a reasonable excuse`)
+
+§§ `8 -- orders to furnish information`
+
+-- s 8(1): the Public Prosecutor may by order require (a), (b) the person to furnish sworn statements of property; (c) any other person
+-- to do so; (d) the Comptroller of Income Tax to furnish information; (e) the head of a ministry, department or statutory board to
+-- furnish documents; (f) a bank to give copies of accounts.
+-- (2) Every recipient must comply "despite any obligation of secrecy imposed under any written law or rule of law".
+-- (3) Subsection (2) does not apply to a person in (1)(e) if the responsible Minister "certifies that it would be against the
+-- interests of national security" for the contents to be disclosed.
+-- (5) Contravening (2): fine up to $20,000 or imprisonment up to 2 years or both. No reasonable-excuse defence is written in.
+-- (6) Furnishing information "known to him or her to be false or misleading in a material particular": the same.
+DECLARE Recipient IS ONE OF
+    `the person under investigation`
+    `any other person`
+    `the Comptroller of Income Tax`
+    `the head of a ministry, department or statutory board`
+    `a bank`
+
+GIVEN `the recipient` IS A Recipient, `the Minister certified a national security objection` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the recipient must comply with the s 8 order` IF
+    CONSIDER `the recipient`
+    WHEN `the head of a ministry, department or statutory board` THEN NOT `the Minister certified a national security objection`
+    OTHERWISE TRUE
+
+GIVEN `the recipient` IS A Recipient, `the Minister certified a national security objection` IS A BOOLEAN, `complied in time` IS A BOOLEAN, `bound by a secrecy obligation` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `non-compliance is an offence under s 8(5)` IF
+        `the recipient must comply with the s 8 order` `the recipient` `the Minister certified a national security objection`
+    AND (NOT `complied in time`)
+
+GIVEN `in purported compliance with a s 8 order` IS A BOOLEAN, `false or misleading in a material particular` IS A BOOLEAN, `known to be so` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `furnishing it is an offence under s 8(6)` IF
+    `in purported compliance with a s 8 order` AND `false or misleading in a material particular` AND `known to be so`
+
+§§ `Penalties for the offences other than s 3`
+
+-- ss 5(1), 6(3), 7(3), 8(5), 8(6). The s 6(3) offence (a bank) carries a fine only.
+DECLARE Offence IS ONE OF
+    `s 5 failing to disclose information`
+    `s 6(3) bank not complying with a freeze order`
+    `s 7(3) failing to produce a document`
+    `s 8(5) not complying with a s 8 order`
+    `s 8(6) furnishing false information`
+
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+`the maximum fine` MEANS
+    CONSIDER `the offence`
+    WHEN `s 5 failing to disclose information` THEN 50000
+    OTHERWISE 20000
+
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+`the maximum imprisonment in years` MEANS
+    CONSIDER `the offence`
+    WHEN `s 5 failing to disclose information` THEN 5
+    WHEN `s 6(3) bank not complying with a freeze order` THEN 0
+    OTHERWISE 2
+
+§§ `9 -- consent to prosecute`
+
+-- s 9: "A prosecution under this Act must not be instituted except by or with the consent of the Public Prosecutor."
+GIVEN `instituted by the Public Prosecutor` IS A BOOLEAN, `with the Public Prosecutor's consent` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the prosecution may be instituted` IF
+    `instituted by the Public Prosecutor` OR `with the Public Prosecutor's consent`
+
+§§ `10 -- protection of informers`
+
+-- s 10(1): except as in (3), a witness "must not be obliged" to disclose an informer's name or address, or answer a question tending to
+-- reveal it. (3) The court may require full disclosure if "(a) in any proceedings for an offence under this Act" it is satisfied the
+-- informer "wilfully made a material statement which he or she knew or believed to be false or did not believe to be true"; or "(b)
+-- in any other proceedings" it is of the opinion that "justice cannot be fully done between the parties" without disclosure.
+-- So in a prosecution under this Act the justice ground is not available, and in other proceedings the false-statement ground is not.
+GIVEN `proceedings for an offence under this Act` IS A BOOLEAN, `informer wilfully made a false material statement` IS A BOOLEAN, `justice cannot be fully done without disclosure` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may require disclosure of the informer` IF
+    IF `proceedings for an offence under this Act`
+    THEN `informer wilfully made a false material statement`
+    ELSE `justice cannot be fully done without disclosure`
+
+§§ `11 -- officers, partners and members`
+
+-- s 11(1), (3), (5): where an offence under this Act by a body corporate, partnership or unincorporated association is proved to have
+-- been committed "with the consent or connivance" of an officer, partner or member, or to be "attributable to any act or default" on
+-- their part, that person is also guilty. (4) For a limited liability partnership the second ground reads "attributable to any
+-- neglect on the part of" a partner or manager.
+DECLARE Entity IS ONE OF
+    `a body corporate`
+    `a partnership`
+    `a limited liability partnership`
+    `an unincorporated association`
+
+GIVEN `the entity` IS AN Entity, `the entity's offence proved` IS A BOOLEAN, `with the individual's consent or connivance` IS A BOOLEAN, `attributable to the individual's act or default` IS A BOOLEAN, `attributable to the individual's neglect` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the officer, partner or member is also guilty` IF
+        `the entity's offence proved`
+    AND (    `with the individual's consent or connivance`
+         OR  CONSIDER `the entity`
+             WHEN `a limited liability partnership` THEN `attributable to the individual's neglect`
+             OTHERWISE `attributable to the individual's act or default`)
+
+§§ `12 -- arrest without warrant`
+
+-- s 12: "A police officer may arrest without warrant any person whom he or she reasonably believes has committed an offence under this
+-- Act." Every offence under the Act qualifies, including failure to disclose (s 5) and the document offences (ss 7, 8).
+GIVEN `the officer reasonably believes an offence under this Act was committed` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the officer may arrest without warrant` IF
+    `the officer reasonably believes an offence under this Act was committed`
+
+§§ `14(1) -- extradition`
+
+-- s 14(1): "Every hostage-taking offence is deemed to be an extradition offence under the Extradition Act 1968." [Act 17 of 2022]
+GIVEN `the involvement` IS AN Involvement
+GIVETH A BOOLEAN
+DECIDE `the involvement is deemed an extradition offence` IF
+    `the involvement is a hostage-taking offence` `the involvement`
