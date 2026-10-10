@@ -1,0 +1,229 @@
+IMPORT prelude
+
+-- Intestate Succession Act 1967 (Singapore) -- who inherits when a person dies without a will (or with a will that does not dispose
+-- of everything): to whom the Act applies (s 2), who counts as a "child" (s 3), which law governs (ss 4, 5), the treatment of
+-- maternal, paternal, posthumous and half-blood relatives (s 6), the nine rules of distribution (s 7), more than one widow (s 8),
+-- lifetime gifts to children (s 9), and partial intestacy (s 10). That is the whole operative Act.
+--
+-- Edition: 2020 Revised Edition, as deposited at ../../registers/source-bundle/ISA1967.txt. The deposit says it "incorporates all
+-- amendments up to and including 1 December 2021 and comes into operation on 31 December 2021"; no later amendment is annotated in
+-- the text. The accompanying metadata records it as the current version as at 1 October 2026.
+--
+-- WHY THIS ACT. Chosen for its everyday-life relevance: it decides who inherits the estate of every non-Muslim who dies in Singapore
+-- without a will. Not by citation count. Not encoded: the Probate and Administration Act 1934 (who administers, the "expenses of due
+-- administration" deducted under s 5), the Muslim law excluded by s 2, the law of any foreign domicile under s 4(1), and the
+-- Legitimacy Act or Adoption of Children Act (not read). Shares are modelled as dollar amounts of the net estate; the Act's own
+-- reversionary-interest language in rule 3 is not modelled.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Intestate Succession Act 1967 -- distribution`
+
+§§ `2, 4, 5 -- whose property passes under this Act`
+
+-- s 2: "Nothing in this Act shall apply to the estate of any Muslim".
+-- s 4(1): movable property -- "regulated by the law of the country in which he was domiciled at the time of his death".
+-- s 4(2): immovable property -- "regulated by this Act wherever he may have been domiciled".
+-- s 5: a person who "dies intestate after 2 June 1967" being (a) "domiciled in Singapore and possessed beneficially of property,
+-- whether movable or immovable ... situated in Singapore"; or (b) "domiciled outside Singapore and possessed beneficially of
+-- immovable property situated in Singapore" -- that property, "after payment thereout of the expenses of due administration as
+-- prescribed by the Probate and Administration Act 1934", is distributed under the Act.
+-- The date of death is written as a number YYYYMMDD.
+GIVEN `the deceased was a Muslim` IS A BOOLEAN,
+      `date of death` IS A NUMBER,
+      `domiciled in Singapore` IS A BOOLEAN,
+      `the property is immovable` IS A BOOLEAN,
+      `the property is situated in Singapore` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the property is distributed under this Act` IF
+        (NOT `the deceased was a Muslim`)
+    AND `date of death` GREATER THAN 19670602
+    AND `the property is situated in Singapore`
+    AND (`domiciled in Singapore` OR `the property is immovable`)
+
+§§ `3, 6(a) -- who counts as a child`
+
+-- s 3: "'child' means a legitimate child and includes any child adopted by virtue of an order of court under any written law for
+-- the time being in force in Singapore, Malaysia or Brunei Darussalam"; "'issue' includes children and the descendants of deceased
+-- children".
+-- s 6(a): no distinction between relatives through the father and through the mother, "nor between those who were actually born in
+-- his lifetime and those who at the date of his death were only conceived in the womb but who have subsequently been born alive".
+DECLARE AdoptionPlace IS ONE OF
+    `not adopted`
+    `adopted by court order in Singapore`
+    `adopted by court order in Malaysia`
+    `adopted by court order in Brunei`
+    `adopted elsewhere`
+
+GIVEN `legitimate` IS A BOOLEAN, `adoption` IS AN AdoptionPlace
+GIVETH A BOOLEAN
+DECIDE `counts as a child of the deceased` IF
+        `legitimate`
+    OR  CONSIDER `adoption`
+        WHEN `adopted by court order in Singapore` THEN TRUE
+        WHEN `adopted by court order in Malaysia` THEN TRUE
+        WHEN `adopted by court order in Brunei` THEN TRUE
+        OTHERWISE FALSE
+
+§§ `6, 7, 8 -- the family that survives`
+
+-- The surviving family, counted for the rules of distribution.
+--   `child stocks`: the children who survive plus the children who died before the intestate leaving descendants (rule 3, provisos
+--   (1) and (2): descendants "stand in the place of their parent" and "take according to their stocks").
+--   `sibling stocks`: whole-blood brothers and sisters who survive plus deceased whole-blood brothers and sisters who left children
+--   (rule 6).
+--   `half-blood sibling stocks`: the same, of the half blood. s 6(b): "those related to a person deceased by the half blood shall rank
+--   immediately after those of the whole blood related to him in the same degree". INFERENCE: half-blood siblings take under rule 6
+--   only if there is no whole-blood sibling stock, and they still exclude grandparents. The Act does not say this in terms.
+--   `spouses surviving`: s 8 lets more than one widow share.
+DECLARE Family HAS
+    `spouses surviving` IS A NUMBER
+    `child stocks` IS A NUMBER
+    `parents surviving` IS A NUMBER
+    `sibling stocks` IS A NUMBER
+    `half-blood sibling stocks` IS A NUMBER
+    `grandparents surviving` IS A NUMBER
+    `uncles and aunts surviving` IS A NUMBER
+
+GIVEN `fam` IS A Family
+GIVETH A BOOLEAN
+DECIDE `there is a spouse, issue or parent` IF
+        `fam`'s `spouses surviving` GREATER THAN 0
+    OR  `fam`'s `child stocks` GREATER THAN 0
+    OR  `fam`'s `parents surviving` GREATER THAN 0
+
+GIVEN `fam` IS A Family
+GIVETH A BOOLEAN
+DECIDE `there is a sibling stock of either blood` IF
+        `fam`'s `sibling stocks` GREATER THAN 0
+    OR  `fam`'s `half-blood sibling stocks` GREATER THAN 0
+
+§§ `7 rules 1, 2, 4 and 8 -- the surviving spouse`
+
+-- Rule 1: "surviving spouse, no issue and no parent, the spouse shall be entitled to the whole of the estate".
+-- Rule 2: "surviving spouse and issue, the spouse shall be entitled to one-half of the estate".
+-- Rule 4: "surviving spouse and no issue but a parent or parents, the spouse shall be entitled to one-half ... and the parent or
+-- parents to the other half".
+-- Nothing about brothers and sisters: a spouse with no issue and no parent takes everything, whoever else survives.
+GIVEN `estate` IS A NUMBER, `fam` IS A Family
+GIVETH A NUMBER
+`the spouses' combined share` MEANS
+    IF `fam`'s `spouses surviving` EQUALS 0 THEN 0
+    ELSE IF `fam`'s `child stocks` GREATER THAN 0 OR `fam`'s `parents surviving` GREATER THAN 0 THEN `estate` DIVIDED BY 2 ELSE `estate`
+
+-- s 8: "If any person so dying intestate leaves surviving him more than one wife, such wives shall share among them equally the share
+-- that the wife of the intestate would have been entitled to, had the intestate left only one wife surviving him."
+GIVEN `estate` IS A NUMBER, `fam` IS A Family
+GIVETH A NUMBER
+`each spouse's share` MEANS
+    IF `fam`'s `spouses surviving` EQUALS 0 THEN 0
+    ELSE `the spouses' combined share` `estate` `fam` DIVIDED BY `fam`'s `spouses surviving`
+
+§§ `7 rule 3 -- issue, per stirpes`
+
+-- Rule 3: "Subject to the rights of the surviving spouse, if any, the estate ... of an intestate who leaves issue shall be distributed
+-- by equal portions per stirpes to and amongst the children ... and such persons as legally represent those children, in case any of
+-- those children be then dead." Proviso (1): those who legally represent the children "are their descendants and not their
+-- next-of-kin". Proviso (2): descendants "take according to their stocks the share which he or she would have taken".
+GIVEN `estate` IS A NUMBER, `fam` IS A Family
+GIVETH A NUMBER
+`each child stock's share` MEANS
+    IF `fam`'s `child stocks` EQUALS 0 THEN 0
+    ELSE (`estate` MINUS `the spouses' combined share` `estate` `fam`) DIVIDED BY `fam`'s `child stocks`
+
+-- A grandchild whose parent (the intestate's child) died first shares that parent's stock equally with its brothers and sisters.
+GIVEN `estate` IS A NUMBER, `fam` IS A Family, `grandchildren in the stock` IS A NUMBER
+GIVETH A NUMBER
+`each grandchild's share in a deceased child's stock` MEANS
+    `each child stock's share` `estate` `fam` DIVIDED BY `grandchildren in the stock`
+
+§§ `7 rules 4 and 5 -- parents`
+
+-- Rule 5: "If there are no descendants, the parent or parents of the intestate shall take the estate, in equal portions if there be 2
+-- parents, subject to the rights of the surviving spouse (if any) as provided in rule 4." Where there is issue, rule 2 and rule 3
+-- dispose of the whole estate, and the parents take nothing.
+GIVEN `estate` IS A NUMBER, `fam` IS A Family
+GIVETH A NUMBER
+`each parent's share` MEANS
+    IF `fam`'s `child stocks` GREATER THAN 0 OR `fam`'s `parents surviving` EQUALS 0 THEN 0
+    ELSE (`estate` MINUS `the spouses' combined share` `estate` `fam`) DIVIDED BY `fam`'s `parents surviving`
+
+§§ `6(b), 7 rule 6 -- brothers and sisters, and their children`
+
+-- Rule 6: "If there are no surviving spouse, descendants or parents, the brothers and sisters and children of deceased brothers or
+-- sisters of the intestate shall share the estate in equal portions ... and the children of any deceased brother or sister shall take
+-- according to their stocks the share which the deceased brother or sister would have taken."
+GIVEN `estate` IS A NUMBER, `fam` IS A Family
+GIVETH A NUMBER
+`each whole-blood sibling stock's share` MEANS
+    IF `there is a spouse, issue or parent` `fam` OR `fam`'s `sibling stocks` EQUALS 0 THEN 0
+    ELSE `estate` DIVIDED BY `fam`'s `sibling stocks`
+
+-- s 6(b), read as an INFERENCE: the half blood take only when no whole-blood sibling stock exists.
+GIVEN `estate` IS A NUMBER, `fam` IS A Family
+GIVETH A NUMBER
+`each half-blood sibling stock's share` MEANS
+    IF `there is a spouse, issue or parent` `fam` OR `fam`'s `sibling stocks` GREATER THAN 0 OR `fam`'s `half-blood sibling stocks` EQUALS 0
+    THEN 0
+    ELSE `estate` DIVIDED BY `fam`'s `half-blood sibling stocks`
+
+-- A nephew or niece whose parent (the intestate's whole-blood brother or sister) died first.
+GIVEN `estate` IS A NUMBER, `fam` IS A Family, `nephews and nieces in the stock` IS A NUMBER
+GIVETH A NUMBER
+`each nephew's or niece's share in a deceased sibling's stock` MEANS
+    `each whole-blood sibling stock's share` `estate` `fam` DIVIDED BY `nephews and nieces in the stock`
+
+§§ `7 rules 7, 8 and 9 -- grandparents, uncles and aunts, and the Government`
+
+-- Rule 7: no spouse, descendants, parents, brothers and sisters or their children "but grandparents ... the grandparents shall take
+-- the whole of the estate in equal portions".
+-- Rule 8: none of those and no grandparents "but uncles and aunts ... the uncles and aunts shall take the whole of the estate in equal
+-- portions".
+-- Rule 9: "In default of distribution under rules 1 to 8, the Government shall be entitled to the whole of the estate."
+-- No rule reaches cousins, great-nephews, great-uncles or step-relatives.
+GIVEN `estate` IS A NUMBER, `fam` IS A Family
+GIVETH A NUMBER
+`each grandparent's share` MEANS
+    IF `there is a spouse, issue or parent` `fam` OR `there is a sibling stock of either blood` `fam` OR `fam`'s `grandparents surviving` EQUALS 0
+    THEN 0
+    ELSE `estate` DIVIDED BY `fam`'s `grandparents surviving`
+
+GIVEN `estate` IS A NUMBER, `fam` IS A Family
+GIVETH A NUMBER
+`each uncle's or aunt's share` MEANS
+    IF     `there is a spouse, issue or parent` `fam` OR `there is a sibling stock of either blood` `fam`
+        OR `fam`'s `grandparents surviving` GREATER THAN 0 OR `fam`'s `uncles and aunts surviving` EQUALS 0
+    THEN 0
+    ELSE `estate` DIVIDED BY `fam`'s `uncles and aunts surviving`
+
+GIVEN `estate` IS A NUMBER, `fam` IS A Family
+GIVETH A NUMBER
+`the Government's share` MEANS
+    IF     `there is a spouse, issue or parent` `fam` OR `there is a sibling stock of either blood` `fam`
+        OR `fam`'s `grandparents surviving` GREATER THAN 0 OR `fam`'s `uncles and aunts surviving` GREATER THAN 0
+    THEN 0
+    ELSE `estate`
+
+§§ `9 -- lifetime gifts to children are not deducted`
+
+-- s 9: where a child or a child's descendant claims a distributive share, "no money or other property which the intestate may during
+-- his life have given, paid or settled to or for the advancement of the child ... shall be taken into account in estimating such
+-- distributive share".
+GIVEN `share under the rules` IS A NUMBER, `lifetime gifts for advancement` IS A NUMBER
+GIVETH A NUMBER
+`the child's distributive share after lifetime gifts` MEANS
+    `share under the rules`
+
+§§ `10 -- partial intestacy`
+
+-- s 3: "'intestate' includes any person who leaves a will but dies intestate as to some beneficial interest in his property".
+-- s 10: the Act "shall have effect as respects the part of his property not so disposed of, subject to the provisions contained in
+-- the will"; proviso: the personal representative is "a trustee for the persons entitled under this Act in respect of the part of the
+-- estate not expressly disposed of unless it appears by the will that the personal representative is entitled to take that part
+-- beneficially".
+GIVEN `the will disposes of this part` IS A BOOLEAN, `the will shows the personal representative takes it beneficially` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `this part passes under the Act` IF
+        (NOT `the will disposes of this part`)
+    AND (NOT `the will shows the personal representative takes it beneficially`)
