@@ -1,0 +1,288 @@
+IMPORT prelude
+
+-- Debtors Act 1934 (Singapore) -- when a judgment debtor may be arrested, examined and committed to the civil prison (ss 3, 6, 8,
+-- 9, 10, 12, 22, 24), arrest and attachment of property BEFORE judgment (ss 13, 15, 17, 20), compensation for an improper arrest
+-- or attachment (s 21), debts incurred by fraud surviving a composition (s 26), and the offence of fraudulently obtaining credit or
+-- defeating creditors (s 27).
+--
+-- Edition: 2020 Revised Edition, informal consolidation (version in force from 1 April 2022), as deposited at
+-- ../../registers/source-bundle/DeA1934.txt. The revised edition "incorporates all amendments up to and including 1 December 2021";
+-- the latest amendment annotated in the text is Act 25 of 2021, with effect from 1 April 2022.
+--
+-- WHY THIS ACT. Requirement REQ-0033 in subjects/sg/requirements.jsonl: Tier 2 of the remaining Singapore Acts, ordered by
+-- everyday-life relevance. The requirement asks what the Act decides for a person or business it applies to; no scenario has asked
+-- a sharper question yet. The Act is short (27 sections), so most of it is encoded. Not encoded: s 2 (definitions, beyond the
+-- court/judge split), s 4 (the manner of examination and committal pending an adjourned examination), s 5 (interim protection
+-- orders), s 7 (rule-making), s 11 and s 24(10) (discharge, variation, suspension), s 14 (sureties seeking discharge), s 16
+-- (application to rescind), ss 18-19 (release and sale of seized property), s 24(1)-(6) and (11) (the judgment debtor summons
+-- procedure), s 25 (discharge of a debtor unable to pay), and every rule of court the Act defers to.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Debtors Act 1934 -- debtors`
+
+§§ `3 and 8(1) -- arresting a judgment debtor who may leave Singapore`
+
+-- s 3: "Where a judgment for the payment of money remains wholly or in part unsatisfied, whether or not an enforcement order has
+-- issued", the court may order the debtor arrested and brought before it for examination "if it appears ... that there is probable
+-- reason for believing ... that he is likely to leave Singapore with a view to avoiding payment of such money or to avoiding
+-- examination in respect of his affairs". s 2: "judgment" includes any order for the payment of money.
+-- s 8(1): where rules require the judgment creditor to deposit the expense of bringing the debtor before the court, "the debtor
+-- shall not be arrested until such deposit has been made".
+DECLARE JudgmentDebtor HAS
+    `amount still unpaid` IS A NUMBER
+    `likely to leave Singapore to avoid payment or examination` IS A BOOLEAN
+    `creditor must deposit the arrest expenses` IS A BOOLEAN
+    `arrest expenses deposited` IS A BOOLEAN
+
+GIVEN `the debtor` IS A JudgmentDebtor
+GIVETH A BOOLEAN
+DECIDE `the court may order the debtor's arrest` IF
+        `the debtor`'s `amount still unpaid` GREATER THAN 0
+    AND `the debtor`'s `likely to leave Singapore to avoid payment or examination`
+
+GIVEN `the debtor` IS A JudgmentDebtor
+GIVETH A BOOLEAN
+DECIDE `the debtor may actually be arrested` IF
+        `the court may order the debtor's arrest` `the debtor`
+    AND ((NOT `the debtor`'s `creditor must deposit the arrest expenses`) OR `the debtor`'s `arrest expenses deposited`)
+
+§§ `6, 8(1), 22 and 24(7)-(9) -- committal to the civil prison`
+
+-- s 6(1): on the conclusion of the examination the court "may commit the debtor to the civil prison for a term which may extend to
+-- 6 weeks or until earlier payment", or order payment by instalments. s 6(3): on default in an instalment, a notice to show cause is
+-- issued and "served personally upon him"; if "no sufficient cause is shown", the court may commit him for up to 6 weeks.
+-- s 6(4): "A debtor shall not be committed to prison under this section unless it appears that he has, since the date of the
+-- judgment or of the order directing payment by instalments, had sufficient means to pay the judgment or comply with the order".
+-- s 24(7)-(9) make the same provision for a District Court payment order (one sum or instalments), and s 22 applies Part 1 to
+-- District Courts. One rule is written for both.
+-- s 8(1): where the creditor must deposit money for the debtor's subsistence in prison, "the committal order shall not be executed
+-- until such deposit has been made".
+DECLARE PaymentDefault HAS
+    `defaulted under the payment order` IS A BOOLEAN
+    `notice to show cause served personally` IS A BOOLEAN
+    `sufficient cause shown` IS A BOOLEAN
+    `had sufficient means since the order` IS A BOOLEAN
+    `creditor must deposit subsistence` IS A BOOLEAN
+    `subsistence deposited` IS A BOOLEAN
+
+GIVEN `the default` IS A PaymentDefault
+GIVETH A BOOLEAN
+DECIDE `the court may commit the debtor for default` IF
+        `the default`'s `defaulted under the payment order`
+    AND `the default`'s `notice to show cause served personally`
+    AND (NOT `the default`'s `sufficient cause shown`)
+    AND `the default`'s `had sufficient means since the order`
+
+GIVEN `the default` IS A PaymentDefault
+GIVETH A BOOLEAN
+DECIDE `the committal order may be executed` IF
+        `the court may commit the debtor for default` `the default`
+    AND ((NOT `the default`'s `creditor must deposit subsistence`) OR `the default`'s `subsistence deposited`)
+
+-- s 6(1) with s 6(4): committal at the end of an examination also needs sufficient means since the judgment.
+GIVEN `examination concluded` IS A BOOLEAN, `sufficient means since the judgment` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may commit the debtor after examination` IF
+    `examination concluded` AND `sufficient means since the judgment`
+
+§§ `9 and 12 -- what imprisonment costs and what it does not discharge`
+
+-- s 9: "Unless in any case the court otherwise orders, the costs and expenses of and incidental to the arrest and imprisonment of any
+-- judgment debtor under this Act shall be added to the judgment debt and be recoverable accordingly."
+-- s 12: "No imprisonment under this Act shall operate to satisfy or extinguish any debt, or deprive any person of any right to issue
+-- an enforcement order against the property of the debtor."
+GIVEN `judgment debt` IS A NUMBER, `arrest and prison expenses` IS A NUMBER, `the court orders otherwise` IS A BOOLEAN
+GIVETH A NUMBER
+`the judgment debt with expenses` MEANS
+    IF `the court orders otherwise` THEN `judgment debt` ELSE `judgment debt` PLUS `arrest and prison expenses`
+
+GIVEN `debt before prison` IS A NUMBER, `paid meanwhile` IS A NUMBER, `weeks served` IS A NUMBER
+GIVETH A NUMBER
+`the debt still owed after imprisonment` MEANS
+    `debt before prison` MINUS `paid meanwhile`
+
+§§ `10 and 22 -- the defaulting trustee`
+
+-- s 10(1): where there has been "default by a trustee or person acting in a fiduciary capacity in payment into court of any sum in
+-- his possession or under his control, the court may commit such trustee or person to prison for a term which may extend to 6
+-- months: Provided that no such committal shall be ordered, if it appears to the court that the trustee ... has acted innocently".
+-- (2): "Upon payment of the amount due the prisoner shall be immediately released."
+-- s 22: Part 1 applies to District Courts "with the exception of section 10".
+GIVEN `defaulted in paying into court` IS A BOOLEAN, `acted innocently` IS A BOOLEAN, `in a District Court` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may commit the trustee` IF
+    `defaulted in paying into court` AND (NOT `acted innocently`) AND (NOT `in a District Court`)
+
+§§ `6, 10, 15, 24 and 27 -- how long`
+
+-- Civil detention under ss 6(1), 6(3), 24(8) and 15(2)(a): 6 weeks. A defaulting trustee under s 10(1): 6 months. The s 27 offence:
+-- imprisonment "which may extend to one year", or fine, or both (no maximum fine is stated).
+DECLARE Detention IS ONE OF
+    `committal after examination`
+    `committal for default on a payment order`
+    `committal on a District Court judgment debtor summons`
+    `detention for failing to furnish security before judgment`
+    `committal of a defaulting trustee`
+    `imprisonment for a fraudulent-debtor offence`
+
+DECLARE Unit IS ONE OF weeks, months, years
+
+GIVEN `the detention` IS A Detention
+GIVETH A NUMBER
+`the maximum length` MEANS
+    CONSIDER `the detention`
+    WHEN `committal of a defaulting trustee` THEN 6
+    WHEN `imprisonment for a fraudulent-debtor offence` THEN 1
+    OTHERWISE 6
+
+GIVEN `the detention` IS A Detention
+GIVETH A Unit
+`the unit of the maximum` MEANS
+    CONSIDER `the detention`
+    WHEN `committal of a defaulting trustee` THEN months
+    WHEN `imprisonment for a fraudulent-debtor offence` THEN years
+    OTHERWISE weeks
+
+§§ `13 and 15 -- arrest before judgment`
+
+-- s 13(1): "at any stage of any action, other than an action for the possession of immovable property, against a defendant who
+-- carries on business or ordinarily resides within the jurisdiction", if the claimant satisfies the court "by evidence upon oath that
+-- he has a good cause of action" and that the defendant, "with intent to prejudice the claimant, or to avoid any process of the court,
+-- or to obstruct or delay the enforcement of any judgment" -- (a) has absconded or left Singapore; (b) is about to abscond or leave
+-- Singapore; or (c) has disposed of or removed from Singapore his property -- the court may order his arrest to show cause why he
+-- should not furnish security. Proviso: "the defendant shall not be arrested if he pays to the officer entrusted with the enforcement
+-- of the order any sum specified in the order as sufficient to satisfy the claimant's claim".
+-- s 15(2): no detention for failing to furnish security "(a) in any case for a period longer than 6 weeks; or (b) after he has
+-- complied with such order".
+DECLARE Defendant HAS
+    `the action is for possession of immovable property` IS A BOOLEAN
+    `carries on business or ordinarily resides within the jurisdiction` IS A BOOLEAN
+    `good cause of action shown on oath` IS A BOOLEAN
+    `acting with intent to prejudice, evade process or obstruct enforcement` IS A BOOLEAN
+    `has absconded or left Singapore` IS A BOOLEAN
+    `is about to abscond or leave Singapore` IS A BOOLEAN
+    `has disposed of or removed property from Singapore` IS A BOOLEAN
+    `paid the specified sum to the officer` IS A BOOLEAN
+
+GIVEN `the defendant` IS A Defendant
+GIVETH A BOOLEAN
+DECIDE `an order to arrest the defendant may issue` IF
+        (NOT `the defendant`'s `the action is for possession of immovable property`)
+    AND `the defendant`'s `carries on business or ordinarily resides within the jurisdiction`
+    AND `the defendant`'s `good cause of action shown on oath`
+    AND `the defendant`'s `acting with intent to prejudice, evade process or obstruct enforcement`
+    AND (    `the defendant`'s `has absconded or left Singapore`
+         OR  `the defendant`'s `is about to abscond or leave Singapore`
+         OR  `the defendant`'s `has disposed of or removed property from Singapore`)
+
+GIVEN `the defendant` IS A Defendant
+GIVETH A BOOLEAN
+DECIDE `the defendant may be arrested before judgment` IF
+        `an order to arrest the defendant may issue` `the defendant`
+    AND (NOT `the defendant`'s `paid the specified sum to the officer`)
+
+GIVEN `weeks detained so far` IS A NUMBER, `complied with the security order` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `further detention for want of security is lawful` IF
+    `weeks detained so far` LESS THAN 6 AND (NOT `complied with the security order`)
+
+§§ `17 and 20 -- seizing property before judgment`
+
+-- s 17(1): "at any time after the issue of an originating claim, by evidence on oath, that the claimant has a good cause of action
+-- against the defendant", and (a) the defendant is absent from Singapore and his place of abode cannot be discovered; (b) service
+-- "cannot without great delay or difficulty be effected"; or (c) the defendant, "with intent to obstruct or delay the enforcement of
+-- any judgment", has removed, concealed or is making away with his property -- the court may order his property seized by the
+-- Sheriff; "but such order shall not constitute the claimant a secured creditor if the defendant is adjudicated bankrupt".
+-- s 17(2): property in the custody of a Government officer, the Singapore Armed Forces or visiting forces "in his official capacity"
+-- is seized "only with the consent in writing of the Attorney-General".
+DECLARE Attachment HAS
+    `originating claim issued` IS A BOOLEAN
+    `good cause of action on oath` IS A BOOLEAN
+    `defendant abroad with abode unknown` IS A BOOLEAN
+    `service only with great delay or difficulty` IS A BOOLEAN
+    `defendant hiding or removing property to obstruct enforcement` IS A BOOLEAN
+    `property held in official Government or armed forces custody` IS A BOOLEAN
+    `Attorney-General consented in writing` IS A BOOLEAN
+
+GIVEN `the application` IS A Attachment
+GIVETH A BOOLEAN
+DECIDE `the property may be seized before judgment` IF
+        `the application`'s `originating claim issued`
+    AND `the application`'s `good cause of action on oath`
+    AND (    `the application`'s `defendant abroad with abode unknown`
+         OR  `the application`'s `service only with great delay or difficulty`
+         OR  `the application`'s `defendant hiding or removing property to obstruct enforcement`)
+    AND ((NOT `the application`'s `property held in official Government or armed forces custody`) OR `the application`'s `Attorney-General consented in writing`)
+
+-- s 20: seized property is liable to enforcement for the judgment in the action, "but it shall be subject to the prior claims of any
+-- judgment creditor whose judgment was obtained within one year before the seizure ... if the judgment creditor had obtained an
+-- enforcement order against the defendant's property before the making of any order under this Part". "One year" is taken as 12
+-- months (an inference; the Act does not say how to count it).
+GIVEN `months from the other judgment to the seizure` IS A NUMBER, `enforcement order obtained before the attachment order` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the earlier judgment creditor has priority` IF
+    `months from the other judgment to the seizure` AT MOST 12 AND `enforcement order obtained before the attachment order`
+
+§§ `21 -- compensation for improper arrest or attachment`
+
+-- s 21(1): if "such arrest or attachment was applied for on insufficient grounds, or if the claimant's claim is dismissed and it
+-- appears to the court that there was no sufficient ground for instituting the action", the court may, on the defendant's
+-- application, award against the claimant "such amount, not exceeding $500, as it thinks reasonable". (2): an award "shall bar any
+-- action for damages", but the defendant may sue for damages "instead of applying for an award". The award is discretionary: what is
+-- encoded is the most the court may award.
+GIVEN `a` IS A NUMBER, `b` IS A NUMBER
+GIVETH A NUMBER
+`the lesser of` MEANS IF `a` LESS THAN `b` THEN `a` ELSE `b`
+
+GIVEN `applied for on insufficient grounds` IS A BOOLEAN, `claim dismissed and no sufficient ground for the action` IS A BOOLEAN, `injury caused` IS A NUMBER
+GIVETH A NUMBER
+`the most the court may award as compensation` MEANS
+    IF `applied for on insufficient grounds` OR `claim dismissed and no sufficient ground for the action`
+    THEN `the lesser of` `injury caused` 500
+    ELSE 0
+
+GIVEN `took a section 21 award` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the defendant may still sue for damages` IF
+    NOT `took a section 21 award`
+
+§§ `26 -- fraud debts survive a composition`
+
+-- s 26: where a debtor makes a composition or arrangement with his creditors, "he shall remain liable for the unpaid balance of any
+-- debt which he incurred or increased by any fraud, or for which ... he obtained forbearance by any fraud, provided the defrauded
+-- creditor has not assented to the arrangement or composition otherwise than by proving his debt and accepting dividends".
+GIVEN `debt incurred or increased by fraud` IS A BOOLEAN, `forbearance obtained by fraud` IS A BOOLEAN, `creditor assented beyond proving and taking dividends` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the debtor stays liable for the unpaid balance` IF
+    (`debt incurred or increased by fraud` OR `forbearance obtained by fraud`) AND (NOT `creditor assented beyond proving and taking dividends`)
+
+§§ `27 -- fraudulent debtors`
+
+-- s 27: an offence, punished "with imprisonment, which may extend to one year, or with fine or with both": (a) "if in incurring any
+-- debt or liability he has obtained credit under false pretences or by means of any other fraud"; (b) "if he has, with intent to
+-- defraud his creditors or any of them, made or caused to be made any gift, delivery or transfer of or any charge on his property";
+-- (c) "if he has, with intent to defraud his creditors or any of them, concealed or removed any part of his property since or within
+-- 2 months before the date of any unsatisfied judgment or order for payment of money obtained against him".
+DECLARE Conduct HAS
+    `obtained credit by false pretences or fraud` IS A BOOLEAN
+    `gave, transferred or charged property to defraud creditors` IS A BOOLEAN
+    `concealed or removed property to defraud creditors` IS A BOOLEAN
+    `an unsatisfied money judgment exists` IS A BOOLEAN
+    `concealment was after the judgment` IS A BOOLEAN
+    `months before the judgment the concealment happened` IS A NUMBER
+
+GIVEN `the conduct` IS A Conduct
+GIVETH A BOOLEAN
+DECIDE `the concealment is caught by paragraph (c)` IF
+        `the conduct`'s `concealed or removed property to defraud creditors`
+    AND `the conduct`'s `an unsatisfied money judgment exists`
+    AND (`the conduct`'s `concealment was after the judgment` OR `the conduct`'s `months before the judgment the concealment happened` AT MOST 2)
+
+GIVEN `the conduct` IS A Conduct
+GIVETH A BOOLEAN
+DECIDE `the person commits an offence under section 27` IF
+        `the conduct`'s `obtained credit by false pretences or fraud`
+    OR  `the conduct`'s `gave, transferred or charged property to defraud creditors`
+    OR  `the concealment is caught by paragraph (c)` `the conduct`
