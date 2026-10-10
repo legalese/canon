@@ -1,0 +1,191 @@
+IMPORT prelude
+
+-- Contributory Negligence and Personal Injuries Act 1953 (Singapore) -- the whole operative Act: the definitions of "fault",
+-- "damage" and "dependant" (s 2), apportionment of damages where the injured person was partly at fault, with its savings for
+-- contractual defences, liability caps, the recorded total, dependants' claims and time-barred parties (s 3(1)-(6)), the
+-- exclusion of Maritime Conventions Act claims (s 4), and the abolition of the defence of common employment (s 5).
+--
+-- Edition: 2020 Revised Edition, as deposited at ../../registers/source-bundle/CNPIA1953.txt. The cover says it "incorporates all
+-- amendments up to and including 1 December 2021 and comes into operation on 31 December 2021". No later amendment is annotated
+-- in the text; the last entry in the deposited legislative history is the 2002 Revised Edition, and the last amending Act it lists
+-- is Act 45 of 1998 (Civil Law (Amendment) Act 1998, commencement 1 January 1999). SSO's metadata calls it the "Current version as
+-- at 01 Oct 2026".
+--
+-- WHY THIS ACT. Chosen for its everyday-life relevance: this is the Act that decides what happens to a damages claim when the
+-- injured person was partly to blame -- the pedestrian who stepped out without looking, the passenger without a seat belt, the
+-- worker who ignored a safety rule. SCOPE: the Act has five sections and all of the operative ones are encoded. Not encoded: how
+-- a court fixes the share of responsibility (the Act leaves it to what is "just and equitable"); the content of sections 10, 20
+-- and 21 of the Civil Law Act 1909, section 1 of the Maritime Conventions Act 1911 and the Limitation Act 1959, which this Act
+-- refers to but which were not read; contribution between wrongdoers; and any case law.
+--
+-- NAIVE ENCODING. Straight from the deposited text, following the conventions of the example naive rows. No pipeline, no coverage
+-- table, no independent test pass, no human gate. See NOTES.md.
+
+§ `Contributory Negligence and Personal Injuries Act 1953 -- apportionment`
+
+GIVEN `a` IS A NUMBER, `b` IS A NUMBER
+GIVETH A NUMBER
+`the lesser of` MEANS IF `a` AT MOST `b` THEN `a` ELSE `b`
+
+§§ `2 -- fault, damage and personal injury`
+
+-- s 2: "fault" means "negligence, breach of statutory duty or other act or omission which gives rise to a liability in tort or
+-- would, apart from this Act, give rise to the defence of contributory negligence". "damage" "includes loss of life and personal
+-- injury". "court" includes an arbitrator.
+--
+-- The second limb catches conduct that wrongs nobody else -- a person's carelessness for their own safety -- so the claimant's
+-- own lapse counts as "fault" without being a tort. A breach of contract that is not also a tort is in neither limb on the words
+-- of the definition (inference: the definition does not mention contract at all).
+DECLARE Conduct IS ONE OF
+    `negligence towards another`
+    `a breach of statutory duty`
+    `another act or omission giving rise to liability in tort`
+    `carelessness for one's own safety that would give rise to the defence of contributory negligence`
+    `a breach of contract that is not a tort`
+    `blameless conduct`
+
+GIVEN `the conduct` IS A Conduct
+GIVETH A BOOLEAN
+DECIDE `the conduct is fault` IF
+    CONSIDER `the conduct`
+    WHEN `a breach of contract that is not a tort` THEN FALSE
+    WHEN `blameless conduct` THEN FALSE
+    OTHERWISE TRUE
+
+-- s 5(3): "'personal injury' includes any disease and any impairment of a person's physical or mental condition". Property
+-- damage and pure financial loss are not personal injury on any ordinary reading (inference: the definition is inclusive and does
+-- not exclude anything expressly).
+DECLARE Harm IS ONE OF
+    `a broken leg`
+    `an occupational disease`
+    `a psychiatric impairment`
+    `damage to the claimant's car`
+    `lost profits alone`
+
+GIVEN `the harm` IS A Harm
+GIVETH A BOOLEAN
+DECIDE `the harm is personal injury` IF
+    CONSIDER `the harm`
+    WHEN `damage to the claimant's car` THEN FALSE
+    WHEN `lost profits alone` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `3(1), 4 -- when apportionment applies`
+
+-- s 3(1): "Where any person suffers damage as the result partly of his own fault and partly of the fault of any other person or
+-- persons, a claim in respect of that damage shall NOT BE DEFEATED by reason of the fault of the person suffering the damage, but
+-- the damages recoverable ... shall be REDUCED to such extent as the court thinks just and equitable having regard to the
+-- claimant's share in the responsibility for the damage."
+-- s 4: "This Act shall not apply to any claims to which section 1 of the Maritime Conventions Act 1911 applies and that Act shall
+-- have effect as if this Act had not been passed."
+-- s 3(2): "Subsection (1) shall not operate to defeat any defence arising under a contract."
+GIVEN `own fault contributed` IS A BOOLEAN, `another's fault contributed` IS A BOOLEAN, `a Maritime Conventions Act claim` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `section 3 applies` IF
+    `own fault contributed` AND `another's fault contributed` AND (NOT `a Maritime Conventions Act claim`)
+
+GIVEN `own fault contributed` IS A BOOLEAN, `another's fault contributed` IS A BOOLEAN, `a Maritime Conventions Act claim` IS A BOOLEAN,
+      `a contractual defence covers the claim` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `section 3 saves the claim from the claimant's own fault` IF
+    `section 3 applies` `own fault contributed` `another's fault contributed` `a Maritime Conventions Act claim`
+    AND (NOT `a contractual defence covers the claim`)
+
+-- The claim "shall not be defeated", yet the reduction is to "such extent as the court thinks just and equitable". A 100 per cent
+-- reduction would leave nothing, which is the claim defeated by another name. Inference, not in the text: the reduction must be
+-- less than 100 per cent.
+GIVEN `reduction percent` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the reduction is within section 3(1)` IF
+    `reduction percent` AT LEAST 0 AND `reduction percent` LESS THAN 100
+
+§§ `3(1), 3(3) -- the damages recoverable`
+
+-- s 3(3): "Where any contract or written law providing for the limitation of liability is applicable to the claim, the amount of
+-- damages recoverable by the claimant UNDER SUBSECTION (1) shall not exceed the maximum limit so applicable."
+--
+-- The cap bites on the amount recoverable under s 3(1), which is the REDUCED figure. So the reduction is made from the full damages
+-- first and the cap applied afterwards (reading of the words "recoverable ... under subsection (1)"); a claimant whose full damages
+-- far exceed the cap may lose nothing by being partly at fault.
+GIVEN `full damages` IS A NUMBER, `reduction percent` IS A NUMBER
+GIVETH A NUMBER
+`the reduced damages` MEANS
+    `full damages` TIMES (100 MINUS `reduction percent`) DIVIDED BY 100
+
+GIVEN `full damages` IS A NUMBER, `reduction percent` IS A NUMBER, `a liability limit applies` IS A BOOLEAN, `the limit` IS A NUMBER
+GIVETH A NUMBER
+`the damages recoverable` MEANS
+    IF `a liability limit applies`
+    THEN `the lesser of` (`the reduced damages` `full damages` `reduction percent`) `the limit`
+    ELSE `the reduced damages` `full damages` `reduction percent`
+
+-- s 3(4): "the court SHALL find and record the total damages which would have been recoverable if the claimant had not been at
+-- fault."
+GIVEN `own fault contributed` IS A BOOLEAN, `another's fault contributed` IS A BOOLEAN, `a Maritime Conventions Act claim` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court must record the total damages` IF
+    `section 3 applies` `own fault contributed` `another's fault contributed` `a Maritime Conventions Act claim`
+
+§§ `3(5) -- deaths and dependants`
+
+-- s 3(5): where a person dies "as the result partly of his own fault and partly of the fault of any other person", and an estate
+-- action under s 10 of the Civil Law Act 1909 would be reduced under (1), damages in an action for the benefit of (a) "the
+-- dependants of that person under section 20" or (b) "any person under section 21" of that Act "shall be reduced to a
+-- proportionate extent". "dependant" (s 2): any person for whose benefit an action could be brought under s 20.
+--
+-- "Proportionate extent" is read here as the same percentage as the estate's reduction (inference).
+GIVEN `the deceased's fault contributed` IS A BOOLEAN, `another's fault contributed to the death` IS A BOOLEAN,
+      `dependants' full damages` IS A NUMBER, `estate reduction percent` IS A NUMBER
+GIVETH A NUMBER
+`the dependants' damages` MEANS
+    IF `the deceased's fault contributed` AND `another's fault contributed to the death`
+    THEN `the reduced damages` `dependants' full damages` `estate reduction percent`
+    ELSE `dependants' full damages`
+
+§§ `3(6) -- the party who pleads a time bar`
+
+-- s 3(6): where one of the persons at fault "avoids liability to any other such person or his personal representative by pleading
+-- the Limitation Act 1959 or any other written law limiting the time within which proceedings may be taken, he shall NOT be
+-- entitled to recover any damages or contributions from that other person ... by virtue of that subsection."
+GIVEN `both were at fault for the damage` IS A BOOLEAN, `pleaded a time bar against the other's claim` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `section 3 bars recovery by the party who pleaded the time bar` IF
+    `both were at fault for the damage` AND `pleaded a time bar against the other's claim`
+
+§§ `5 -- common employment`
+
+-- s 5(1): "It shall NOT be a defence to an employer who is sued in respect of personal injuries caused by the negligence of a person
+-- employed by him, that that person was at the time the injuries were caused in common employment with the person injured."
+GIVEN `the employer is sued for personal injuries` IS A BOOLEAN, `caused by negligence of someone the employer employed` IS A BOOLEAN,
+      `the negligent employee was in common employment with the injured person` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `section 5 removes the defence of common employment` IF
+    `the employer is sued for personal injuries` AND `caused by negligence of someone the employer employed`
+    AND `the negligent employee was in common employment with the injured person`
+
+-- s 5(2): "Any provision in a contract of service or apprenticeship, or in an agreement collateral thereto shall be VOID insofar as it
+-- would have the effect of excluding or limiting any liability of the employer in respect of personal injuries caused to the person
+-- employed or apprenticed by the negligence of persons in common employment with him."
+-- A contract for services with an independent contractor is not a "contract of service" (inference from the ordinary legal
+-- distinction; the Act does not define either term).
+DECLARE Instrument IS ONE OF
+    `a contract of service`
+    `a contract of apprenticeship`
+    `an agreement collateral to a contract of service`
+    `a contract for services with an independent contractor`
+
+GIVEN `the instrument` IS A Instrument
+GIVETH A BOOLEAN
+DECIDE `the instrument is within section 5(2)` IF
+    CONSIDER `the instrument`
+    WHEN `a contract for services with an independent contractor` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the instrument` IS A Instrument, `excludes or limits the employer's liability` IS A BOOLEAN, `the harm` IS A Harm,
+      `caused by negligence of a person in common employment` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the provision is void under section 5(2)` IF
+    `the instrument is within section 5(2)` `the instrument`
+    AND `excludes or limits the employer's liability`
+    AND `the harm is personal injury` `the harm`
+    AND `caused by negligence of a person in common employment`
