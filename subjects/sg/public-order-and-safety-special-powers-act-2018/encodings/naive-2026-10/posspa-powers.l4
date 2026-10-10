@@ -1,0 +1,302 @@
+IMPORT prelude
+
+-- Public Order and Safety (Special Powers) Act 2018 (Singapore) -- how long an activation order and a special authorisation may
+-- last (ss 8-10, 11, 14), who may exercise a special power (s 15), the 24-hour limit on road closures (s 19(3)), offences of
+-- non-compliance with special powers and temporary restraining orders (ss 16-21, 25, 27, 29, 49), the Part 6 offences and their
+-- penalties (ss 37-44), and arrest, bail and detention (s 48).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/POSSPA2018.txt. The
+-- deposit says it "incorporates all amendments up to and including 1 December 2021"; the latest amendment annotated in the text
+-- is Act 3 of 2021 wef 01/07/2025 (definition of "dangerous article"). The source metadata calls it the "Current version as at
+-- 01 Oct 2026". The arrangement of sections at the top of the deposit is out of step with the body; the body's numbering is used.
+--
+-- WHY THIS ACT. Cited by 6 of the 527 Singapore Acts deposited in this repository. SCOPED to the rules an ordinary person, an
+-- occupier or a practitioner meets once the powers are switched on. Not encoded: what counts as a "serious incident" (s 3) or an
+-- "act of serious violence" (s 4) beyond a flag, the content and notice of orders (ss 9, 12, 13), the search, seizure and drone-
+-- interception powers themselves (ss 22-28), communications stop orders and telecommunication directions (ss 30-34) beyond the
+-- s 44 offence, requisition and compensation (ss 35, 36), offences by corporations and associations (ss 45, 46), service of
+-- documents and regulations (ss 52, 53).
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Public Order and Safety (Special Powers) Act 2018 -- powers and offences`
+
+§§ `8-10, 11, 14 -- activation orders and special authorisations`
+
+-- s 8(1): where in the Minister's opinion there is a serious incident (or threat) and the exercise of powers is "necessary to
+-- substantially assist", the Minister may by order in writing given to the Commissioner activate the use of powers.
+-- s 8(3): failure to publish the notice "does not invalidate the order".
+-- s 10(2): "The period an activation order has effect must not exceed one month." (3) a further order may be made.
+-- Months are counted here as a whole number given by the user; the Act does not say how a month is reckoned.
+GIVEN `months of effect` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the activation order period is within the limit` IF
+    `months of effect` <= 1
+
+GIVEN `there is a serious incident or threat` IS A BOOLEAN, `the Minister thinks powers necessary` IS A BOOLEAN, `the notice was published` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the activation order may validly be made` IF
+    `there is a serious incident or threat` AND `the Minister thinks powers necessary`
+
+-- s 11(1): the Commissioner may grant a special authorisation "during the period the activation order has effect".
+-- s 14(2): the period of a special authorisation "must not in any case exceed the period the activation order has effect".
+-- Days are day numbers on any common scale.
+GIVEN `order start` IS A NUMBER, `order end` IS A NUMBER, `authorisation start` IS A NUMBER, `authorisation end` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the special authorisation period is within the activation order` IF
+        `authorisation start` >= `order start`
+    AND `authorisation end` <= `order end`
+    AND `authorisation start` <= `authorisation end`
+
+§§ `15 -- who may exercise a special power`
+
+-- s 15(1): a police officer granted the authorisation, (a) "when he or she is in uniform"; (b) when not in uniform "only after he
+-- or she produces a warrant identifying himself or herself as a police officer".
+-- (3): also a law enforcement officer, or a civilian assistant, "acting on the direction and in aid of" that police officer.
+-- (4): a civilian assistant (a) only for "section 18, 19(1) or (2), 20(1) or (2), 24 or 27(1)(a) or (b)" and (b) never with
+-- "lethal force".
+DECLARE Exerciser IS ONE OF
+    `a police officer in uniform`
+    `a police officer not in uniform`
+    `a law enforcement officer`
+    `a civilian assistant`
+
+DECLARE Power IS ONE OF
+    `stopping and questioning (s 16)`
+    `requiring identity (s 17)`
+    `imposing a cordon (s 18)`
+    `closing a road (s 19(1))`
+    `directing movement (s 20(1))`
+    `dispersing an assembly (s 20(2)(b))`
+    `imposing a curfew (s 21)`
+    `searching an individual (s 22)`
+    `removing a vehicle (s 24)`
+    `entering premises (s 25)`
+    `directing an occupier to close premises (s 27(1)(a))`
+    `directing an occupier to give documents (s 27(1)(c))`
+
+GIVEN `the power` IS A Power
+GIVETH A BOOLEAN
+DECIDE `a civilian assistant may help with the power` IF
+    CONSIDER `the power`
+    WHEN `imposing a cordon (s 18)` THEN TRUE
+    WHEN `closing a road (s 19(1))` THEN TRUE
+    WHEN `directing movement (s 20(1))` THEN TRUE
+    WHEN `dispersing an assembly (s 20(2)(b))` THEN TRUE
+    WHEN `removing a vehicle (s 24)` THEN TRUE
+    WHEN `directing an occupier to close premises (s 27(1)(a))` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN `the exerciser` IS AN Exerciser, `the power` IS A Power, `produced a warrant card` IS A BOOLEAN, `acting on a granted officer's direction` IS A BOOLEAN, `using lethal force` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the exerciser may exercise the power` IF
+    CONSIDER `the exerciser`
+    WHEN `a police officer in uniform` THEN TRUE
+    WHEN `a police officer not in uniform` THEN `produced a warrant card`
+    WHEN `a law enforcement officer` THEN `acting on a granted officer's direction`
+    WHEN `a civilian assistant` THEN
+            `acting on a granted officer's direction`
+        AND `a civilian assistant may help with the power` `the power`
+        AND (NOT `using lethal force`)
+    OTHERWISE FALSE
+
+§§ `19(3) -- road closures beyond 24 hours`
+
+-- s 19(3): the closure "must not exceed 24 hours unless the order ... is confirmed by the Commissioner before the end of the
+-- initial or a prior 24 hours". Simplified: one confirmation flag stands for confirmation in time for each later period.
+GIVEN `hours closed` IS A NUMBER, `confirmed by the Commissioner in time` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the road may still be closed` IF
+    `hours closed` <= 24 OR `confirmed by the Commissioner in time`
+
+§§ `16-21, 25, 27, 29 -- failing to comply`
+
+-- ss 16(2), 17(4), 18(9), 19(6), 20(5), 29(5): an individual commits an offence if, "without reasonable excuse", he or she refuses
+-- or fails to comply (or for s 16, fails to stop or answer to the best of his or her knowledge). Each: "a fine not exceeding
+-- $20,000 or to imprisonment for a term not exceeding 2 years or to both" (ss 16(3), 17(5), 18(10), 19(7), 20(6), 29(6)).
+-- s 17(4)(b): also giving a name "false in a material particular", or an address other than the full and correct residential address.
+GIVEN `was required by an officer acting under a special authorisation` IS A BOOLEAN, `complied` IS A BOOLEAN, `had a reasonable excuse` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `failing to comply is an offence` IF
+    `was required by an officer acting under a special authorisation` AND (NOT `complied`) AND (NOT `had a reasonable excuse`)
+
+GIVEN `was asked for identity` IS A BOOLEAN, `gave a false name or incomplete address` IS A BOOLEAN, `refused` IS A BOOLEAN, `had a reasonable excuse` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the identity request offence is committed` IF
+        `was asked for identity`
+    AND (`refused` OR `gave a false name or incomplete address`)
+    AND (NOT `had a reasonable excuse`)
+
+-- s 29(2)(b): a temporary restraining order takes effect when given to the individual; (3)(b) it "lapses when the special
+-- authorisation expires"; s 49(3) it "takes effect despite any appeal ... and remains in effect until the order is modified or
+-- reversed on appeal". s 49(5): the Minister's decision on appeal is final.
+GIVEN `given to the individual` IS A BOOLEAN, `the special authorisation is in effect` IS A BOOLEAN, `revoked` IS A BOOLEAN, `an appeal is pending` IS A BOOLEAN, `reversed on appeal` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the temporary restraining order is in force` IF
+        `given to the individual`
+    AND `the special authorisation is in effect`
+    AND (NOT `revoked`)
+    AND (NOT `reversed on appeal`)
+
+§§ `37-44 -- offences and penalties`
+
+DECLARE Offence IS ONE OF
+    `provoking a breach of the peace (s 37)`
+    `publishing prejudicial matter (s 38)`
+    `using an offensive weapon or explosive (s 39)`
+    `consorting with a s 39 offender (s 40)`
+    `carrying an offensive weapon not for a lawful purpose (s 41(1))`
+    `carrying an offensive weapon for a prejudicial purpose (s 41(3))`
+    `unauthorised drone photography (s 43)`
+    `breaching a communications stop order (s 44)`
+    `failing to comply with a special power (ss 16-20)`
+    `breaching a temporary restraining order (s 29)`
+
+-- ss 37(2), 38(3): 3 years. s 39(3): 10 years "and shall also be liable to caning". s 40(2): 7 years and caning. s 41(2): 5 years
+-- and caning. s 41(4): 3 years and caning. ss 43(1), 44(2): "$20,000 or ... 2 years or ... both". No fine is provided for ss 37-41.
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+DECIDE `the maximum imprisonment in years` IS
+    CONSIDER `the offence`
+    WHEN `provoking a breach of the peace (s 37)` THEN 3
+    WHEN `publishing prejudicial matter (s 38)` THEN 3
+    WHEN `using an offensive weapon or explosive (s 39)` THEN 10
+    WHEN `consorting with a s 39 offender (s 40)` THEN 7
+    WHEN `carrying an offensive weapon not for a lawful purpose (s 41(1))` THEN 5
+    WHEN `carrying an offensive weapon for a prejudicial purpose (s 41(3))` THEN 3
+    OTHERWISE 2
+
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+DECIDE `the maximum fine in dollars` IS
+    CONSIDER `the offence`
+    WHEN `unauthorised drone photography (s 43)` THEN 20000
+    WHEN `breaching a communications stop order (s 44)` THEN 20000
+    WHEN `failing to comply with a special power (ss 16-20)` THEN 20000
+    WHEN `breaching a temporary restraining order (s 29)` THEN 20000
+    OTHERWISE 0
+
+GIVEN `the offence` IS AN Offence
+GIVETH A BOOLEAN
+DECIDE `caning is available` IF
+    CONSIDER `the offence`
+    WHEN `using an offensive weapon or explosive (s 39)` THEN TRUE
+    WHEN `consorting with a s 39 offender (s 40)` THEN TRUE
+    WHEN `carrying an offensive weapon not for a lawful purpose (s 41(1))` THEN TRUE
+    WHEN `carrying an offensive weapon for a prejudicial purpose (s 41(3))` THEN TRUE
+    OTHERWISE FALSE
+
+-- s 38(1): during the period a special authorisation has effect, printing, publishing, selling, distributing, importing or
+-- possessing a document containing matter (a) likely to be prejudicial to public order, (b) advocating disobedience, (c) inciting
+-- violence or ill will between races or classes, or (d) bringing public servants or armed forces into hatred or contempt.
+-- (2): "it is not necessary for the prosecution to prove that an accused knew or had reason to believe" the content.
+GIVEN `a special authorisation has effect` IS A BOOLEAN, `deals with or possesses the document` IS A BOOLEAN, `the document has matter in s 38(1)(a)-(d)` IS A BOOLEAN, `knew what the document contained` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the publishing offence is committed` IF
+    `a special authorisation has effect` AND `deals with or possesses the document` AND `the document has matter in s 38(1)(a)-(d)`
+
+-- s 39(1): within a target area, using an offensive weapon, causing an explosion, or using a corrosive or inflammable substance,
+-- "for or in furtherance of an unlawful purpose". (2): "it is irrelevant whether any injury or damage to property is actually caused".
+GIVEN `within a target area` IS A BOOLEAN, `used a weapon, explosive or corrosive` IS A BOOLEAN, `for an unlawful purpose` IS A BOOLEAN, `injury or damage resulted` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the s 39 offence is committed` IF
+    `within a target area` AND `used a weapon, explosive or corrosive` AND `for an unlawful purpose`
+
+-- s 41(1): carrying or possessing an offensive weapon "other than for a lawful purpose" within a target area.
+-- s 41(3): carrying or possessing one in a target area in circumstances raising "a reasonable presumption" of a purpose
+-- prejudicial to public order. (5): defence if the accused proves "on a balance of probabilities" possession "solely for a lawful
+-- purpose". (7): that purpose is presumed if (a) the quantity exceeded ordinary household or business needs, (b) the weapons were
+-- kept concealed or out of their usual place, or (c) kept in unusual containers.
+GIVEN `excess quantity` IS A BOOLEAN, `kept concealed or out of place` IS A BOOLEAN, `kept in unusual containers` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a prejudicial purpose is presumed` IF
+    `excess quantity` OR `kept concealed or out of place` OR `kept in unusual containers`
+
+GIVEN `possesses an offensive weapon` IS A BOOLEAN, `within a target area` IS A BOOLEAN, `circumstances raise a presumption of prejudicial purpose` IS A BOOLEAN, `proved solely lawful purpose` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the s 41(3) offence is committed` IF
+        `possesses an offensive weapon`
+    AND `within a target area`
+    AND `circumstances raise a presumption of prejudicial purpose`
+    AND (NOT `proved solely lawful purpose`)
+
+-- s 41(6): where a weapon is found in or on premises, "the occupier ... is taken to be in possession" unless the occupier proves
+-- (a) some other person possessed it, or (b) both (i) no knowledge or reasonable means of knowledge and (ii) all reasonable
+-- precautions.
+GIVEN `found on the premises` IS A BOOLEAN, `proved another person possessed it` IS A BOOLEAN, `proved no knowledge` IS A BOOLEAN, `proved reasonable precautions` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the occupier is taken to possess the weapon` IF
+        `found on the premises`
+    AND (NOT `proved another person possessed it`)
+    AND (NOT (`proved no knowledge` AND `proved reasonable precautions`))
+
+-- s 42(1): committing or attempting a "relevant offence" within a target area (or abetting its commission there from anywhere in
+-- Singapore) attracts "imprisonment for a term which may extend to twice the longest term provided for that offence".
+-- (2): relevant offences are Penal Code 1871 ss 143, 144, 145, 147, 148, 151, 152, 153, 157, 158, 267B, 379, 380, 381 and 382.
+GIVEN `section` IS A STRING
+GIVETH A BOOLEAN
+DECIDE `is a s 42 relevant offence` IF
+       `section` EQUALS "143" OR `section` EQUALS "144" OR `section` EQUALS "145" OR `section` EQUALS "147"
+    OR `section` EQUALS "148" OR `section` EQUALS "151" OR `section` EQUALS "152" OR `section` EQUALS "153"
+    OR `section` EQUALS "157" OR `section` EQUALS "158" OR `section` EQUALS "267B" OR `section` EQUALS "379"
+    OR `section` EQUALS "380" OR `section` EQUALS "381" OR `section` EQUALS "382"
+
+GIVEN `section` IS A STRING, `longest ordinary term in years` IS A NUMBER, `committed in a target area` IS A BOOLEAN
+GIVETH A NUMBER
+DECIDE `the maximum term in years` IS
+    IF `committed in a target area` AND `is a s 42 relevant offence` `section`
+    THEN 2 * `longest ordinary term in years`
+    ELSE `longest ordinary term in years`
+
+-- s 43(1): a picture or film of a target area made while the authorisation is in effect, using equipment on an unmanned aircraft,
+-- autonomous vehicle or unmanned vessel, "without the Commissioner's permission": operator and maker each guilty. (2)(a) knowledge
+-- of the target area or of the camera need not be proved; (b) defence if the accused proves the picture "was not taken
+-- intentionally but was taken because of weather conditions or other unavoidable cause".
+GIVEN `authorisation in effect` IS A BOOLEAN, `made from an unmanned craft` IS A BOOLEAN, `had the Commissioner's permission` IS A BOOLEAN, `knew it was a target area` IS A BOOLEAN, `proved unintentional from weather or unavoidable cause` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the drone photography offence is committed` IF
+        `authorisation in effect`
+    AND `made from an unmanned craft`
+    AND (NOT `had the Commissioner's permission`)
+    AND (NOT `proved unintentional from weather or unavoidable cause`)
+
+-- s 44(1): while a communications stop order is in force, a person "(if not an excluded person)" making a relevant film or picture
+-- or exhibiting or communicating one, or a relevant text or audio message. (3)(b) defence: the Commissioner's "prior approval".
+-- s 30(8): excluded persons are police officers, authorised law enforcement officers and persons specified in the order.
+GIVEN `a stop order is in force` IS A BOOLEAN, `made or communicated relevant material` IS A BOOLEAN, `is an excluded person` IS A BOOLEAN, `proved prior approval` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the stop order offence is committed` IF
+        `a stop order is in force`
+    AND `made or communicated relevant material`
+    AND (NOT `is an excluded person`)
+    AND (NOT `proved prior approval`)
+
+§§ `48 -- arrest, bail and detention`
+
+-- s 48(1): arrestable: (a) an offence under this Act; (b) Penal Code ss 143, 144, 145, 147, 148, 151, 152, 153, 157, 158, 267B,
+-- 379, 380, 381 or 382 committed in the target area.
+-- (2): force "including the use of lethal weapons" to arrest for (a) an offence under this Act or (b) in a target area Penal Code
+-- ss 143 ... 382, 427, 435 or 436 [15/2019]. (6): non-bailable: (a) an offence under this Act; (b) an offence mentioned in (2)(b)
+-- committed in the target area.
+GIVEN `section` IS A STRING
+GIVETH A BOOLEAN
+DECIDE `is listed in s 48(2)(b)` IF
+    `is a s 42 relevant offence` `section` OR `section` EQUALS "427" OR `section` EQUALS "435" OR `section` EQUALS "436"
+
+GIVEN `under this Act` IS A BOOLEAN, `section` IS A STRING, `in a target area` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the offence is arrestable under s 48(1)` IF
+    `under this Act` OR (`in a target area` AND `is a s 42 relevant offence` `section`)
+
+GIVEN `under this Act` IS A BOOLEAN, `section` IS A STRING, `in a target area` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the offence is non-bailable under s 48(6)` IF
+    `under this Act` OR (`in a target area` AND `is listed in s 48(2)(b)` `section`)
+
+-- s 48(4): detention without warrant "must not exceed 48 hours exclusive of the time necessary for the journey from the place of
+-- arrest to the Magistrate's Court".
+GIVEN `hours detained` IS A NUMBER, `journey hours` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the detention is within 48 hours` IF
+    `hours detained` - `journey hours` <= 48
