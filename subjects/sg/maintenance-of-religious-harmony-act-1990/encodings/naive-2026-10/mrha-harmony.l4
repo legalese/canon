@@ -1,0 +1,279 @@
+IMPORT prelude
+
+-- Maintenance of Religious Harmony Act 1990 (Singapore) -- what the Act decides for a religious group, its officers, its donors and
+-- anyone who speaks about religion: reportable donations and the donation report (s 2 definitions, s 16A), who is a foreign principal
+-- (s 2), the nationality rules for responsible officers and governing bodies (ss 16D, 16E), the life of a restraining order (ss 8, 9,
+-- 11, 12, 16), the offence of inciting religious hatred and insulting religion with its defences (s 17F), the maximum penalties
+-- (ss 16, 17E, 17F, 17H, 17J) and composition (s 17D).
+--
+-- Edition: 2020 Revised Edition, informal consolidation (version in force from 15 September 2026), as deposited at
+-- ../../registers/source-bundle/MRHA1990.txt. The cover says the revised edition "incorporates all amendments up to and including
+-- 1 December 2021"; the page headers say "Informal Consolidation - version in force from 15/9/2026", and the latest amendment
+-- annotated is Act 10 of 2025 wef 15/09/2026 (which, among other things, deleted Part 2 and re-points "Council" to the Presidential
+-- Council for Racial and Religious Harmony established by the Maintenance of Racial Harmony Act 2025).
+--
+-- WHY THIS ACT. Requirement REQ-0056 in subjects/sg/requirements.jsonl: Tier 2 of the remaining Singapore Acts, ordered by
+-- everyday-life relevance. The requirement asks what the Act decides for a person or business it applies to; no scenario has asked a
+-- sharper question yet. SCOPED to the provisions a religious group, its officers, a donor or a speaker actually meets.
+-- Not encoded: the grounds on which the Minister may make a restraining order (s 8(1), (1A), s 9(1) -- they are matters of ministerial
+-- satisfaction, not tests a person can apply), the measures an order may impose (s 8(2), (2A)-(2D)), the foreign affiliations and key
+-- management reports (ss 16B, 16C), the information powers and their offences (ss 16G, 16GA), the offence of
+-- urging violence beyond its penalty (s 17E), liability of officers of corporations and associations (ss 17A, 17B), community remedial
+-- programmes (s 17GA), the s 17I offences, s 18 (non-justiciability), regulations, service and exemptions (ss 19-21).
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Maintenance of Religious Harmony Act 1990`
+
+§§ `2 -- donors, relevant donors and foreign principals`
+
+-- s 2 "relevant donor": a person who makes a religious donation and who, when it is accepted, (a) if an individual, is "(i) not a
+-- citizen of Singapore; (ii) not a Singapore permanent resident; and (iii) not a resident of Singapore who is prescribed as a
+-- permissible donor"; or (b) if not an individual, is "(i) not an entity which is registered in Singapore (even if incorporated
+-- outside Singapore); (ii) not incorporated under any written law; and (iii) not a corporation sole or corporation aggregate
+-- established under a private Act for religious purposes".
+-- s 2 "foreign principal": (a) an individual "who is not a citizen of Singapore and is not a Singapore permanent resident"; or (b) an
+-- entity which (i) is constituted under a foreign law and not registered in Singapore, (ii) "has its principal place of business in a
+-- foreign country, even if incorporated or registered in Singapore", or (iii) is a foreign government or its authority.
+-- The two tests differ: a prescribed permissible resident is a foreign principal but not a relevant donor, and so is a
+-- Singapore-registered entity run from abroad.
+DECLARE Donor IS ONE OF
+    `a Singapore citizen`
+    `a Singapore permanent resident`
+    `a resident prescribed as a permissible donor`
+    `a foreign individual`
+    `a Singapore-registered entity`
+    `a Singapore-registered entity based abroad`
+    `a foreign entity not registered in Singapore`
+    `an anonymous donor`
+
+GIVEN `the donor` IS A Donor
+GIVETH A BOOLEAN
+DECIDE `the donor is a relevant donor` IF
+    CONSIDER `the donor`
+    WHEN `a foreign individual` THEN TRUE
+    WHEN `a foreign entity not registered in Singapore` THEN TRUE
+    OTHERWISE FALSE
+
+-- An anonymous donor's status cannot be known; the encoding answers FALSE for it and no case relies on that answer.
+GIVEN `the donor` IS A Donor
+GIVETH A BOOLEAN
+DECIDE `the donor is a foreign principal` IF
+    CONSIDER `the donor`
+    WHEN `a resident prescribed as a permissible donor` THEN TRUE
+    WHEN `a foreign individual` THEN TRUE
+    WHEN `a Singapore-registered entity based abroad` THEN TRUE
+    WHEN `a foreign entity not registered in Singapore` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `2 and 16A -- reportable donations`
+
+-- s 2 "reportable donation": (a) "a religious donation given by a relevant donor to and accepted by the religious group, which is of
+-- or exceeding $10,000 on any one occasion, without aggregating any earlier donation by the same relevant donor"; or (b) "an
+-- anonymous donation given to and accepted by the religious group, which is of or exceeding $10,000". Paragraph (b) does not say
+-- "religious donation".
+-- "religious donation": one used or intended to be used "solely or substantially" (a) for "a religious or charitable purpose of the
+-- religious group wholly or partly in Singapore", or (b) to make a religious donation.
+-- "anonymous donation" excludes (a) a donation "deposited in a box ... in a publicly accessible location within a place of worship in
+-- Singapore for the same religion", (b) proceeds of a collection authorised by the House to House and Street Collections Act 1947,
+-- (c) "a cash donation collected during an act of collective worship or a religious ceremony or rite".
+-- "gift" "does not include any zakat or fitrah". (The encoding reads zakat or fitrah as not a donation at all. That is an
+-- INFERENCE: a donation can also be money paying expenditure or a non-commercial loan, paragraphs (b) and (c), which zakat is
+-- taken not to be.)
+DECLARE Donation HAS
+    `amount` IS A NUMBER
+    `donor` IS A Donor
+    `is used substantially for a religious or charitable purpose in Singapore` IS A BOOLEAN
+    `was put in a box in a place of worship of the same religion` IS A BOOLEAN
+    `came from an authorised house-to-house or street collection` IS A BOOLEAN
+    `was cash collected during collective worship` IS A BOOLEAN
+    `is zakat or fitrah` IS A BOOLEAN
+
+GIVEN `the donation` IS A Donation
+GIVETH A BOOLEAN
+DECIDE `the donation is an anonymous donation` IF
+        `the donation`'s `donor` EQUALS `an anonymous donor`
+    AND (NOT `the donation`'s `was put in a box in a place of worship of the same religion`)
+    AND (NOT `the donation`'s `came from an authorised house-to-house or street collection`)
+    AND (NOT `the donation`'s `was cash collected during collective worship`)
+
+GIVEN `the donation` IS A Donation
+GIVETH A BOOLEAN
+DECIDE `the donation is reportable` IF
+        (NOT `the donation`'s `is zakat or fitrah`)
+    AND `the donation`'s `amount` AT LEAST 10000
+    AND (    (    `the donor is a relevant donor` (`the donation`'s `donor`)
+              AND `the donation`'s `is used substantially for a religious or charitable purpose in Singapore`)
+         OR  `the donation is an anonymous donation` `the donation`)
+
+-- s 16A(3): the donation report for a reporting period (a calendar year, (6)) must be given "no later than 1 April of the year
+-- following the year in which the reportable donation was accepted". (5): regulations may prescribe a longer period (none read).
+-- (2)(d), (e): signed by, and declared by, "every responsible officer".
+GIVEN `the year accepted` IS A NUMBER
+GIVETH A NUMBER
+`the year whose 1 April is the donation report deadline` MEANS `the year accepted` PLUS 1
+
+§§ `16D and 16E -- nationality of responsible officers and the governing body`
+
+-- s 16D(1): the section applies "only from a date declared by the Minister by order in the Gazette" (the deposit does not say whether
+-- such an order has been made). (2): a religious group must not appoint, or permit to act, as a responsible officer "an individual who
+-- is not a citizen of Singapore and not a Singapore permanent resident ... except in accordance with the approval of the Minister".
+DECLARE Officer IS ONE OF
+    `a citizen officer`
+    `a permanent resident officer`
+    `a foreign officer`
+
+GIVEN `the officer` IS A Officer, `the section 16D order has been made` IS A BOOLEAN, `the Minister approved` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the group may let the officer act` IF
+        (NOT `the section 16D order has been made`)
+    OR  `the Minister approved`
+    OR  (NOT (`the officer` EQUALS `a foreign officer`))
+
+-- s 16E(2): a religious group "must ensure that more than half of the total number of seats in its governing body are occupied or held
+-- by individuals who are citizens of Singapore unless the religious group is expressly allowed by the Minister to do otherwise".
+-- (3): the competent authority may direct removal where the group "permitted half or more than half of the total number of seats in
+-- its governing body to be occupied or held by individuals who are not citizens". With vacant seats the two tests part company: the
+-- duty in (2) can be broken while the removal power in (3) is not triggered. Like s 16D, s 16E applies only from a gazetted date
+-- ((1)); the encoding assumes that date has passed.
+GIVEN `total seats` IS A NUMBER, `citizen members` IS A NUMBER, `allowed by the Minister` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the governing body meets section 16E(2)` IF
+        `allowed by the Minister`
+    OR  `citizen members` TIMES 2 GREATER THAN `total seats`
+
+GIVEN `total seats` IS A NUMBER, `non-citizen members` IS A NUMBER, `allowed by the Minister` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a removal direction may be given under section 16E(3)` IF
+        (NOT `allowed by the Minister`)
+    AND `non-citizen members` TIMES 2 AT LEAST `total seats`
+
+§§ `8, 9, 11 and 12 -- the life of a restraining order`
+
+-- ss 8(3), 9(3): an order "has effect for such period, not exceeding 2 years, as may be specified in the order" (subject to s 12).
+GIVEN `months specified` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the period is within the Act` IF `months specified` AT MOST 24
+
+-- s 11(1B): a representation against an order "must be in writing and must be made within 14 days after the restraining order is
+-- given to the person against whom the restraining order is made".
+GIVEN `days after the order was given` IS A NUMBER, `in writing` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the representation is valid` IF `in writing` AND `days after the order was given` AT MOST 14
+
+-- s 12(4): the order lapses unless (a) where the Cabinet's advice is contrary to the Council's recommendation, the President confirms
+-- it or is deemed by Article 21A of the Constitution to have confirmed it; or (b) "in any other case -- the President confirms the
+-- restraining order ... within 30 days after receiving the recommendation of the Council". No 30-day limit is stated for (a).
+GIVEN `the Cabinet's advice is contrary to the Council` IS A BOOLEAN, `the President confirmed it` IS A BOOLEAN,
+      `days after the recommendation` IS A NUMBER, `the President is deemed to have confirmed it` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the order does not lapse` IF
+    IF `the Cabinet's advice is contrary to the Council`
+    THEN `the President confirmed it` OR `the President is deemed to have confirmed it`
+    ELSE `the President confirmed it` AND `days after the recommendation` AT MOST 30
+
+§§ `17F -- inciting religious hatred and insulting religion`
+
+-- s 17F(1), (2): a person who "knowingly engages in conduct" that incites enmity, hatred, ill-will, hostility, contempt or ridicule
+-- against a religious group (1), or insults another's religion or wounds a person's religious feelings (2), knowing that effect is
+-- likely, commits an offence if "the person is a religious leader when the person engages in the conduct".
+-- (3), (4): the same conduct by anyone, where the feelings or the insult "would threaten the public peace or public order".
+-- (7) defence for (1) and (2): the conduct "was domestic in nature", the accused "reasonably expected that the conduct would only be
+-- perceived by the parties", and for (2) "could not reasonably have expected that the conduct would be perceived by the target
+-- person". (8) the same for (3) and (4), but "private or domestic in nature". (9): neither applies where "the parties to the conduct
+-- ought reasonably to expect that it may be heard or seen by someone else". (10): a defence of "pointing out in good faith" matters
+-- producing enmity, contempt or insult "in order to bring about a removal of those matters". Each defence is for the accused to
+-- prove on a balance of probabilities. s 17G(1): motive is irrelevant.
+DECLARE Conduct HAS
+    `incites against a religious group rather than insulting a person` IS A BOOLEAN
+    `knowingly, knowing the effect is likely` IS A BOOLEAN
+    `by a religious leader` IS A BOOLEAN
+    `would threaten public peace or order` IS A BOOLEAN
+    `domestic in nature` IS A BOOLEAN
+    `private in nature` IS A BOOLEAN
+    `expected to be perceived only by the parties` IS A BOOLEAN
+    `the target could reasonably be expected to perceive it` IS A BOOLEAN
+    `the parties ought to expect others may hear or see it` IS A BOOLEAN
+    `pointing out in good faith to bring about removal` IS A BOOLEAN
+
+GIVEN `the conduct` IS A Conduct
+GIVETH A BOOLEAN
+DECIDE `the expectation limbs of the defence are met` IF
+        `the conduct`'s `expected to be perceived only by the parties`
+    AND (NOT `the conduct`'s `the parties ought to expect others may hear or see it`)
+    AND (    `the conduct`'s `incites against a religious group rather than insulting a person`
+         OR  (NOT `the conduct`'s `the target could reasonably be expected to perceive it`))
+
+GIVEN `the conduct` IS A Conduct
+GIVETH A BOOLEAN
+DECIDE `the conduct is an offence under section 17F` IF
+        (NOT `the conduct`'s `pointing out in good faith to bring about removal`)
+    AND `the conduct`'s `knowingly, knowing the effect is likely`
+    AND (    (    `the conduct`'s `by a religious leader`
+              AND (NOT (`the conduct`'s `domestic in nature` AND `the expectation limbs of the defence are met` `the conduct`)))
+         OR  (    `the conduct`'s `would threaten public peace or order`
+              AND (NOT ((`the conduct`'s `private in nature` OR `the conduct`'s `domestic in nature`)
+                        AND `the expectation limbs of the defence are met` `the conduct`))))
+
+§§ `16, 17E, 17F, 17H, 17J and 17D -- penalties and composition`
+
+-- s 16(1): breach of a restraining order -- "a fine not exceeding $10,000 or ... imprisonment for a term not exceeding 2 years or ...
+-- both and, in the case of a second or subsequent offence, ... $20,000 or ... 3 years". s 17E(7): urging violence -- "imprisonment for
+-- a term not exceeding 10 years or to a fine, or to both". s 17F(6): "not exceeding 5 years or to a fine, or to both". No ceiling is
+-- stated for the fine under s 17E or s 17F.
+DECLARE Offence IS ONE OF
+    `breaching a restraining order, first offence`
+    `breaching a restraining order, repeat offence`
+    `urging violence on religious grounds`
+    `inciting religious hatred or insulting religion`
+
+GIVEN `the offence` IS A Offence
+GIVETH A NUMBER
+`the maximum imprisonment in years` MEANS
+    CONSIDER `the offence`
+    WHEN `breaching a restraining order, first offence` THEN 2
+    WHEN `breaching a restraining order, repeat offence` THEN 3
+    WHEN `urging violence on religious grounds` THEN 10
+    WHEN `inciting religious hatred or insulting religion` THEN 5
+
+GIVEN `the offence` IS A Offence
+GIVETH A BOOLEAN
+DECIDE `the Act caps the fine` IF
+    CONSIDER `the offence`
+    WHEN `breaching a restraining order, first offence` THEN TRUE
+    WHEN `breaching a restraining order, repeat offence` THEN TRUE
+    OTHERWISE FALSE
+
+-- Only meaningful where the Act caps the fine.
+GIVEN `the offence` IS A Offence
+GIVETH A NUMBER
+`the maximum fine` MEANS
+    CONSIDER `the offence`
+    WHEN `breaching a restraining order, first offence` THEN 10000
+    WHEN `breaching a restraining order, repeat offence` THEN 20000
+    OTHERWISE 0
+
+-- s 17H(1): a report or declaration not given as Part 4 requires -- "every responsible officer" liable to "a fine not exceeding
+-- $2,000 and, in the case of a continuing offence, to a further fine not exceeding $200 for every day or part of a day during which
+-- the offence continues after conviction". Strict liability ((6)), with a due-diligence defence ((4)).
+GIVEN `days continuing after conviction` IS A NUMBER
+GIVETH A NUMBER
+`the maximum fine on each officer for a missing report` MEANS 2000 PLUS 200 TIMES `days continuing after conviction`
+
+-- s 17J(2A), (3A): a religious group failing to comply with a removal direction under s 16D(3) or 16E(3) -- "$5,000 and, in the case
+-- of a continuing offence, ... $1,000 for every day or part of a day". (The notice offences in (1), (2) carry $500 a day, (3).)
+GIVEN `days continuing after conviction` IS A NUMBER
+GIVETH A NUMBER
+`the maximum fine for ignoring a removal direction` MEANS 5000 PLUS 1000 TIMES `days continuing after conviction`
+
+-- s 17D(1): a competent authority may compound a prescribed compoundable offence for "a sum not exceeding the lower of" (a) "one half
+-- of the amount of the maximum fine that is prescribed for the offence" and (b) "$5,000". Which offences are prescribed is not in the
+-- deposit.
+GIVEN `a` IS A NUMBER, `b` IS A NUMBER
+GIVETH A NUMBER
+`the lower of` MEANS IF `a` AT MOST `b` THEN `a` ELSE `b`
+
+GIVEN `maximum fine for the offence` IS A NUMBER
+GIVETH A NUMBER
+`the maximum composition sum` MEANS `the lower of` (`maximum fine for the offence` DIVIDED BY 2) 5000
