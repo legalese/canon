@@ -1,0 +1,214 @@
+IMPORT prelude
+
+-- Currency Act 1967 (Singapore) -- the Singapore dollar and its use (ss 11, 12), legal tender and its limits (s 13), notes and
+-- coins "illegally dealt with" (s 13(6), (7)), private bearer notes (s 14), demonetisation (s 18), mutilated money (s 19),
+-- pictures and imitations of money (s 20), defacing money and the IBNS exceptions (s 23), arrest and prosecution (ss 25, 26).
+--
+-- Edition: 2020 Revised Edition, as deposited at ../../registers/source-bundle/CA1967.txt. The deposit says it "incorporates all
+-- amendments up to and including 1 December 2021 and comes into operation on 31 December 2021"; the latest amending Act annotated
+-- in the body is 6/2019 (with 31/2017 and 15/2010). The deposit's metadata records it as the current version as at 1 October 2026.
+--
+-- WHY THIS ACT. Requirement REQ-0072 (subjects/sg/requirements.jsonl): Tier 2 of the remaining Singapore Acts, ordered by
+-- everyday-life relevance. It asks what the Act decides for a person or business it applies to; no scenario has asked a sharper
+-- question yet. SCOPED to what a person paying, being paid, handling or picturing money meets. Not encoded: Part 2 (the 2002
+-- transfer from the Board of Commissioners of Currency to the Authority, ss 3-10), the exchange arrangements and fees (s 15, which
+-- depend on prescribed conditions not deposited), form and design (s 17), the dissolved Currency Fund and the asset backing
+-- (ss 21, 22), seizure of counterfeits (s 24), the certificate of genuineness (s 13(8), (9)), regulations (s 28) and the savings
+-- (s 29). The Penal Code offences on counterfeiting, which s 23(4) preserves, are not in this Act and not encoded.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Currency Act 1967 -- tender`
+
+§§ `11, 12 -- the Singapore dollar`
+
+-- s 11(1): "The unit of currency of Singapore is the Singapore dollar, which is divided into 100 cents." (2) "S$" or "SGD".
+-- s 12: "All monetary obligations or transactions in Singapore are deemed to be expressed and recorded, and must be settled in the
+-- Singapore dollar unless otherwise provided for by law or validly agreed upon between the parties."
+GIVETH A NUMBER
+`cents in a Singapore dollar` MEANS 100
+
+GIVEN `another law provides otherwise` IS A BOOLEAN, `the parties validly agreed another currency` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the obligation must be settled in Singapore dollars` IF
+    (NOT `another law provides otherwise`) AND (NOT `the parties validly agreed another currency`)
+
+§§ `13 -- legal tender`
+
+-- s 13(1): only notes and coins issued by the Authority are legal tender. (2): notes "if the notes have not been illegally dealt
+-- with, are legal tender up to their face value for the payment of any amount". (3): coins likewise, but only "for the payment of
+-- an amount not exceeding 20 times the face value of a coin of that denomination". (4): where "a payee has given written notice to
+-- the payer that the payee would not accept as payment all or any of the denominations", (2) or (3) does not apply to the extent
+-- specified. (5): where no such notice was given, payment under (2) or (3) "is deemed to have satisfied that debt".
+-- s 13(6)(a): a coin is illegally dealt with where "impaired, diminished, or lightened otherwise than by fair wear and tear", or
+-- defaced "by having any name, word, device or number stamped or engraved" on it. (b): a note where "impaired, diminished or
+-- affected otherwise than by fair wear and tear", or defaced "by writing or impressing on any note any mark, word, letter or figure
+-- or by perforation, cutting, splitting or in any other manner". (7): a note is also illegally dealt with if "mutilated, destroyed
+-- or permanently damaged ... as a result of the activation of an IBNS".
+-- s 18(1): a withdrawn issue or denomination "upon such withdrawal cease[s] to be legal tender".
+-- The limit in (3) is on the AMOUNT OF THE PAYMENT, read literally, not on the coins' share of it. Amounts are in cents.
+DECLARE Tender HAS
+    `is a coin` IS A BOOLEAN
+    `face value in cents` IS A NUMBER
+    `payment due in cents` IS A NUMBER
+    `issued by the Authority` IS A BOOLEAN
+    `withdrawn by Gazette notification` IS A BOOLEAN
+    `impaired otherwise than by fair wear and tear` IS A BOOLEAN
+    `defaced by a mark, writing or cutting` IS A BOOLEAN
+    `damaged by an IBNS activation` IS A BOOLEAN
+    `payee gave written notice refusing the denomination` IS A BOOLEAN
+
+GIVEN `the tender` IS A Tender
+GIVETH A BOOLEAN
+DECIDE `it has been illegally dealt with` IF
+        `the tender`'s `impaired otherwise than by fair wear and tear`
+    OR  `the tender`'s `defaced by a mark, writing or cutting`
+    OR  ((NOT `the tender`'s `is a coin`) AND `the tender`'s `damaged by an IBNS activation`)
+
+GIVEN `face value` IS A NUMBER
+GIVETH A NUMBER
+`the largest payment coins of this face value can make` MEANS
+    `face value` TIMES 20
+
+GIVEN `the tender` IS A Tender
+GIVETH A BOOLEAN
+DECIDE `it is legal tender for the payment` IF
+        `the tender`'s `issued by the Authority`
+    AND (NOT `the tender`'s `withdrawn by Gazette notification`)
+    AND (NOT `it has been illegally dealt with` `the tender`)
+    AND (NOT `the tender`'s `payee gave written notice refusing the denomination`)
+    AND (    (NOT `the tender`'s `is a coin`)
+         OR  `the tender`'s `payment due in cents` AT MOST `the largest payment coins of this face value can make` (`the tender`'s `face value in cents`))
+
+§§ `14 -- private bearer notes`
+
+-- s 14(1): no person, "except with the permission of the Authority", may (a) "draw, accept, make or issue any bill of exchange,
+-- promissory note or engagement for the payment of money payable to bearer on demand"; or (b) borrow on such bills or notes.
+-- (2): "Cheques or drafts payable to bearer on demand may be drawn on bankers or agents by their customers" against moneys held.
+-- (3): liable on conviction by a Magistrate's Court "to a fine equal to the amount of the bill, note or engagement ... even if the
+-- amount of such fine may be in excess of the original jurisdiction of such Court".
+GIVEN `issued a bearer-on-demand note` IS A BOOLEAN, `had the Authority's permission` IS A BOOLEAN, `it is a cheque on a banker against funds held` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `issuing it contravenes section 14` IF
+    `issued a bearer-on-demand note` AND (NOT `had the Authority's permission`) AND (NOT `it is a cheque on a banker against funds held`)
+
+GIVEN `amount of the note` IS A NUMBER
+GIVETH A NUMBER
+`the section 14 fine` MEANS `amount of the note`
+
+§§ `18 -- demonetisation`
+
+-- s 18(2): a withdrawal notification "must give holders ... a reasonable period, in any event at least 6 months, within which such
+-- notes or coins may be exchanged at their face value". (Whether a period of 6 months or more is "reasonable" is not decided here.)
+GIVEN `months allowed for exchange` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the exchange period meets the 6-month floor` IF
+    `months allowed for exchange` AT LEAST 6
+
+§§ `19 -- mutilated notes and coins`
+
+-- s 19(1): "A person is not entitled to recover from the Authority the value of any mutilated currency note or coin or any note or
+-- coin which has been illegally dealt with." (2): a refund "as an act of grace" is "in the absolute discretion of the Authority".
+-- (3): such notes and coins "must be repossessed" when tendered to the Authority.
+GIVEN `is mutilated` IS A BOOLEAN, `is illegally dealt with` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `section 19 bars recovery of its value` IF
+    `is mutilated` OR `is illegally dealt with`
+
+GIVEN `is mutilated` IS A BOOLEAN, `is illegally dealt with` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Authority must repossess it when tendered` IF
+    `is mutilated` OR `is illegally dealt with`
+
+§§ `20 -- pictures and imitations of money`
+
+-- s 20(1): "Except with the permission of the Authority", a person must not (a) "in any size, scale or colour, use any photograph
+-- of or any drawing or design resembling any currency note or coin or part thereof, in any advertisement"; or (b) import,
+-- manufacture, sell, circulate or distribute merchandise containing one. (2): nor merchandise "containing any design or part thereof
+-- used in or on any currency note or coin". (4): a person must not make or issue a piece of any material "resembling or similar to
+-- any coin" -- with NO permission exception. (5): fine not exceeding $2,000 or imprisonment not exceeding 3 months or both.
+-- A photograph outside an advertisement and not on merchandise (for example in a news article) is outside (1) and (2) as written.
+DECLARE MoneyImage IS ONE OF
+    `a photograph of a note in an advertisement`
+    `a drawing resembling a coin in an advertisement`
+    `merchandise printed with a picture of a note`
+    `merchandise using a design element from a note`
+    `a token resembling a coin`
+    `a photograph of a note in a news article`
+
+GIVEN `the use` IS A MoneyImage, `had permission` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the use is an offence under section 20` IF
+    CONSIDER `the use`
+    WHEN `a token resembling a coin` THEN TRUE
+    WHEN `a photograph of a note in a news article` THEN FALSE
+    OTHERWISE NOT `had permission`
+
+GIVETH A NUMBER
+`the section 20 maximum fine` MEANS 2000
+
+GIVETH A NUMBER
+`the section 20 maximum imprisonment in months` MEANS 3
+
+§§ `23 -- mutilating, destroying or defacing money`
+
+-- s 23(1): an offence for any person who (a) "mutilates or destroys any currency note or coin"; (b) "causes any change in a coin so
+-- as to destroy or diminish its value or utility"; (c) "prints or stamps, or by any similar means writes, or impresses, on any
+-- currency note any mark, word, letter or figure"; or (d) "defaces any coin by stamping thereon any name or word". Fine not
+-- exceeding $2,000 (no imprisonment).
+-- (2): a licensed security service provider who sells an IBNS or uses one in cash-in-transit services is not, "by reason only of
+-- such sale or employment", liable under (1)(a) for mutilating or destroying a NOTE or (1)(c), where caused by the activation of
+-- the IBNS. (3): the same for an applicant for such a licence, for activation "in any trial or demonstration of the applicant's
+-- IBNS that is required by a licensing officer". (4): the section does not limit the Penal Code 1871.
+DECLARE MoneyAct IS ONE OF
+    `mutilating or destroying a note`
+    `mutilating or destroying a coin`
+    `changing a coin to diminish its value`
+    `printing or stamping a mark on a note`
+    `stamping a name or word on a coin`
+    `spending a worn note`
+
+GIVEN `the act` IS A MoneyAct
+GIVETH A BOOLEAN
+DECIDE `the act is within section 23(1)` IF
+    CONSIDER `the act`
+    WHEN `spending a worn note` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the act` IS A MoneyAct
+GIVETH A BOOLEAN
+DECIDE `the IBNS exceptions can reach the act` IF
+    CONSIDER `the act`
+    WHEN `mutilating or destroying a note` THEN TRUE
+    WHEN `printing or stamping a mark on a note` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN `the act` IS A MoneyAct, `caused by IBNS activation` IS A BOOLEAN, `licensed to sell or use the IBNS` IS A BOOLEAN, `in a trial required by a licensing officer` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the act is an offence under section 23` IF
+        `the act is within section 23(1)` `the act`
+    AND NOT (    `the IBNS exceptions can reach the act` `the act`
+             AND `caused by IBNS activation`
+             AND (`licensed to sell or use the IBNS` OR `in a trial required by a licensing officer`))
+
+GIVETH A NUMBER
+`the section 23 maximum fine` MEANS 2000
+
+GIVETH A NUMBER
+`the section 23 maximum imprisonment in months` MEANS 0
+
+§§ `25, 26 -- arrest and prosecution`
+
+-- s 25: any police officer "may arrest without warrant" a person offending in view against, or reasonably suspected of
+-- contravening, "section 14, 20 or 23". s 26: "No prosecution for any offence under this Act may be instituted without the consent
+-- of the Public Prosecutor."
+GIVEN `section number` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `an offence under the section is arrestable without warrant` IF
+    `section number` EQUALS 14 OR `section number` EQUALS 20 OR `section number` EQUALS 23
+
+GIVEN `the Public Prosecutor consented` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a prosecution may be instituted` IF
+    `the Public Prosecutor consented`
