@@ -7,7 +7,7 @@ pass, no human gate.
 **Edition:** 2020 Revised Edition, informal consolidation (amendments to Act 33 of
 2022).
 
-**Checks:** two case files, 59 assertions satisfied (37 at first encoding; 22 added on 11 Oct 2026 for REQ-0010 in `ptx-owner-occupier-cases.l4`), 0 errors, 0 warnings.
+**Checks:** two case files, 74 assertions satisfied, 0 errors, 0 warnings. 37 date from the first encoding; on 11 Oct 2026, 22 were added for REQ-0010 and 15 for REQ-0264, all in `ptx-owner-occupier-cases.l4`.
 
 ## Why this Act, and why scoped
 
@@ -16,8 +16,8 @@ Valuation List): other Acts measure their own charges by annual value. This row
 takes what an owner pays and how to dispute it. **The rate orders under s 9(2) --
 which set the owner-occupier and other progressive rates most owners actually pay
 -- were not retrieved.** The statute's own rate is 36%, and the core cases use it or a
-stand-in. The owner-occupier rates are now in `ptx-owner-occupier.l4`, **taken from
-IRAS's published tables, not from the order** (see §"Owner-occupier rates" below).
+stand-in. The residential rates are now in `ptx-owner-occupier.l4`, from the **Property Tax
+(Rates for Residential Premises) Order 2013** (see the section on residential rates below).
 
 ## What the Act turns out to say
 
@@ -66,28 +66,35 @@ sickness or reasonable cause (s 29(4)). Asserted.
 - **s 2:** annual value is the yearly rent reasonably expected with the **landlord**
   paying repairs, insurance, upkeep and taxes other than GST.
 
-## Owner-occupier rates, from IRAS (added for REQ-0010)
+## Residential rates: the 2013 Order (added for REQ-0010 and REQ-0264)
 
-`ptx-owner-occupier.l4` has four rate tables: 2015 to 2022, 2023, 2024, and 2025 onwards. They were read on 10 October
-2026 from IRAS's page "Lower property tax rates for owner-occupied residential properties". The page cites only "the
-Property Tax Act". **This is an administrative publication, not the s 9(2) order.** The bands are therefore as IRAS
-states them, and they would change if the order were found to differ.
+`ptx-owner-occupier.l4` encodes the **Property Tax (Rates for Residential Premises) Order 2013**
+(S 691/2013), made under s 9(2). The version is the one current at 11 October 2026, supplied as an SSO PDF and
+deposited at `../../registers/source-bundle/PTA1960-S691-2013.txt`.
 
-Checks made:
-- Each table's cumulative-tax column was recomputed from its bands and rates. All of them agree.
-- The page's three worked examples (for 2026) are asserted: $12,000 gives $0, $36,000 gives $960, and $84,000 gives
-  $5,480.
+- **Schedule Part 1, owner-occupied, "2025 and subsequent years":** 0% on the first $12,000, then 4, 6, 10, 14,
+  20, 26 and 32%. This agrees band for band with the table IRAS publishes.
+- **Schedule Part 2, not owner-occupied:** 2023 rates of 11/16/21/27%, and from 2024 12/20/28/36%, across
+  $30,000 / $15,000 / $15,000 / the rest.
+- **Paragraph 4, owner-occupation:** the owner must be named in the Valuation List and principally occupy the
+  premises, and the Comptroller must be satisfied (para 6(2)).
+  - A married couple owning two or more homes between them get the owner-occupier rates on **one** only,
+    chosen by the Comptroller (para 4(5)). The exceptions are spouses separated by court order or deed and
+    living apart, and an owner with more than one lawful spouse (paras 4(6), (7)).
+  - After the owner's death the home stays owner-occupied until the earlier of its transfer to the
+    beneficiary and two years, if it is not let.
 
-From 2025 the first $12,000 of annual value is taxed at 0% (it was $8,000 before). **REQ-0010's flat, with an annual
-value of $12,000 in 2032, pays nil.** Asserted. That assumes the 2025 rates still apply in 2032, which no source
-can confirm in 2026. In 2024 the same flat would have paid $160.
+**REQ-0010's flat** (annual value $12,000, 2032) pays nil if owner-occupied. Without the Comptroller's
+approval the non-owner-occupied rates apply, and the tax is $1,440. Both are asserted.
 
-Owner-occupier status (IRAS approval) is an input. Rebates and part-year occupation are not modelled.
+**Earlier years.** The current Order holds only the 2025 owner-occupier table. Its earlier tables (2015 to 2022,
+2023, 2024) were replaced by amendment, so they still come from IRAS's page. They were checked only against IRAS's
+own cumulative columns.
 
 ## What would need doing before this is worth anything
 
-- **Retrieve the s 9(2) orders.** The owner-occupier rates here are IRAS's published figures;
-  the order should be checked against them. The non-owner-occupied residential rates are not encoded.
+- The earlier versions of the 2013 Order (before S 1070/2024) were not retrieved, so the 2015 to 2024
+  owner-occupier tables rest on IRAS's page. The non-residential rates are not encoded.
 - **No case law was searched.** Annual value has a large body of Valuation Review
   Board and High Court decisions.
 - Recovery by agent declaration (s 38), attachment and sale are not encoded.
