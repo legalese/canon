@@ -1,0 +1,308 @@
+IMPORT prelude
+
+-- Endangered Species (Import and Export) Act 2006 (Singapore) -- what counts as a scheduled species (s 2), when a consignment is
+-- in transit (s 2A), the import, export, possession and sale offences and their penalties (ss 4, 5, 5A), the due-diligence
+-- defence (s 6), when a permit must be refused or may be cancelled (ss 7, 8), which seized conveyances can be forfeited (s 15),
+-- the repatriation window (s 15D), recovery of expenses (s 15E), the general penalty (s 18) and composition (s 25).
+--
+-- Edition: 2020 Revised Edition, informal consolidation (the deposit's cover says "version in force from 1/7/2026"), as deposited
+-- at ../../registers/source-bundle/ESIEA2006.txt. The Revised Edition incorporates amendments to 1 December 2021; the latest
+-- amendment annotated in the body is Act 15 of 2026 (wef 1 July 2026, hybrid plants and s 8A), and in the Schedule S 88/2026
+-- (wef 5 March 2026).
+--
+-- WHY THIS ACT. Requirement REQ-0081 (subjects/sg/requirements.jsonl): Tier 2 of the remaining Singapore Acts, ordered by
+-- everyday-life relevance. The requirement asks what the Act decides for a person or business it applies to; no scenario has
+-- asked a sharper question yet. SCOPED to the duties and liabilities a traveller, pet or plant owner, trader or carrier meets.
+-- Not encoded: the Schedule itself (the CITES Appendices, about 4,200 lines of the extracted text -- an item's Appendix is
+-- taken as a fact), s 2(2) (which Appendix a hybrid is treated as being in), the certification service (s 8A), the
+-- investigation, entry, search, seizure and arrest powers (ss 9 to 14), forfeiture procedure (ss 15A to 15C), who bears
+-- expenses (s 15E(1)), obstruction and false declarations beyond the s 18 penalty (ss 16, 17), corporate attribution
+-- (ss 20, 20A) beyond s 5A(2), exemptions (s 26), service (s 27) and rules (s 29).
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Endangered Species (Import and Export) Act 2006 -- trade`
+
+DECLARE Appendix IS ONE OF
+    `Appendix I`
+    `Appendix II`
+    `Appendix III`
+
+GIVEN a IS A NUMBER, b IS A NUMBER
+GIVETH A NUMBER
+`the lesser of` a b MEANS IF a AT MOST b THEN a ELSE b
+
+GIVEN a IS A NUMBER, b IS A NUMBER
+GIVETH A NUMBER
+`the greater of` a b MEANS IF a AT LEAST b THEN a ELSE b
+
+§§ `2 -- scheduled species`
+
+-- s 2(1) "scheduled species" means (a) any animal specified in the Schedule, including any readily recognisable part or
+-- derivative; (b) "any hybrid animal that has in its recent lineage any animal specified in Appendix I or II of the Schedule";
+-- (c) any plant specified in the Schedule; (d) "any hybrid plant that is derived from one or more plants specified in the
+-- Schedule" ((b) and (d) as amended by Act 15 of 2026 wef 1 July 2026).
+-- "recent lineage", in relation to a hybrid animal, means "4 generations in the lineage of the hybrid animal that immediately
+-- precede the hybrid animal".
+-- "readily recognisable part or derivative" of an animal "does not include any urine, faeces or ambergris that has been
+-- naturally excreted".
+-- An Appendix III ancestor does not bring a hybrid animal in; for a hybrid plant no generation limit is stated.
+DECLARE Item HAS
+    `is a plant` IS A BOOLEAN
+    `is itself listed in the Schedule` IS A BOOLEAN
+    `is a hybrid` IS A BOOLEAN
+    `has a listed ancestor` IS A BOOLEAN
+    `generations back to the nearest listed ancestor` IS A NUMBER
+    `the listed ancestor's Appendix` IS AN Appendix
+    `is naturally excreted urine, faeces or ambergris` IS A BOOLEAN
+
+GIVEN `the item` IS AN Item
+GIVETH A BOOLEAN
+DECIDE `the item is a scheduled species` IF
+        (NOT `the item`'s `is naturally excreted urine, faeces or ambergris`)
+    AND (    `the item`'s `is itself listed in the Schedule`
+         OR  (    `the item`'s `is a hybrid`
+              AND `the item`'s `has a listed ancestor`
+              AND (    `the item`'s `is a plant`
+                   OR  (    `the item`'s `generations back to the nearest listed ancestor` AT MOST 4
+                        AND (NOT `the item`'s `the listed ancestor's Appendix` EQUALS `Appendix III`)))))
+
+§§ `2A -- transit`
+
+-- s 2A: a scheduled species is in transit "only if" (a) it is supported by a prescribed document that (i) "is issued on or
+-- before, or within 14 days after, the date on which the scheduled species is brought into Singapore" and (ii) specifies a
+-- destination outside Singapore; and (b) one of: (i) it "remains at all times in or on the conveyance"; (ii) it is removed and
+-- returned or "transferred directly to another conveyance" under the control of the Director-General or an authorised officer;
+-- (iii) it is removed and kept under that control "for a period not exceeding 14 days, or such longer period as the
+-- Director-General may approve".
+-- "import" and "export" in s 2(1) both exclude "any scheduled species in transit in Singapore".
+DECLARE Consignment HAS
+    `days after arrival the document was issued` IS A NUMBER
+    `document names a destination outside Singapore` IS A BOOLEAN
+    `stayed on the conveyance` IS A BOOLEAN
+    `transferred directly under official control` IS A BOOLEAN
+    `held under official control` IS A BOOLEAN
+    `days held under official control` IS A NUMBER
+    `a longer period was approved` IS A BOOLEAN
+
+GIVEN `the consignment` IS A Consignment
+GIVETH A BOOLEAN
+DECIDE `the consignment is in transit` IF
+        `the consignment`'s `days after arrival the document was issued` AT MOST 14
+    AND `the consignment`'s `document names a destination outside Singapore`
+    AND (    `the consignment`'s `stayed on the conveyance`
+         OR  `the consignment`'s `transferred directly under official control`
+         OR  (    `the consignment`'s `held under official control`
+              AND (    `the consignment`'s `days held under official control` AT MOST 14
+                   OR  `the consignment`'s `a longer period was approved`)))
+
+§§ `4 -- the trade offences`
+
+-- s 4(1): an offence is committed by any person who (a) "imports, introduces from the sea, exports or re-exports any scheduled
+-- species without a valid permit"; (b) has in possession or control, sells, offers, exposes or advertises for sale, or displays
+-- to the public, "any scheduled species that is imported, or introduced from the sea, without a valid permit"; or (c) sells,
+-- offers, exposes or advertises for sale, or displays to the public, any scheduled species "specified by the Minister by
+-- notification in the Gazette".
+-- Possession alone is an offence only under (b): of a species that came in without a permit. Selling a Gazette-notified species
+-- is an offence even if it came in lawfully. The transit carve-out is read from the definitions of "import" and "export"; its
+-- application to re-export ("the export of any scheduled species that has previously been imported") is an inference.
+DECLARE Conduct IS ONE OF
+    `importing`
+    `introducing from the sea`
+    `exporting`
+    `re-exporting`
+    `possessing`
+    `selling or advertising for sale`
+    `displaying to the public`
+
+GIVEN `the conduct` IS A Conduct, `holds a valid permit` IS A BOOLEAN, `is in transit` IS A BOOLEAN,
+      `came in without a valid permit` IS A BOOLEAN, `is Gazette-notified` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the conduct is an offence under section 4` IF
+    CONSIDER `the conduct`
+    WHEN `importing` THEN (NOT `is in transit`) AND (NOT `holds a valid permit`)
+    WHEN `introducing from the sea` THEN NOT `holds a valid permit`
+    WHEN `exporting` THEN (NOT `is in transit`) AND (NOT `holds a valid permit`)
+    WHEN `re-exporting` THEN (NOT `is in transit`) AND (NOT `holds a valid permit`)
+    WHEN `possessing` THEN `came in without a valid permit`
+    OTHERWISE `came in without a valid permit` OR `is Gazette-notified`
+
+§§ `4(2), 5(5), 5A -- penalties for the trade and transit offences`
+
+-- s 4(2) (and s 5(5) in the same words), for a person other than one in s 5A: Appendix I -- a fine "not exceeding $100,000 for
+-- each specimen of that scheduled species (but not exceeding $500,000 for, or the market value (at the material time of the
+-- offence) of, all the specimens of that scheduled species comprised in the offence, whichever is higher)" or imprisonment up to
+-- 6 years or both; Appendix II or III -- $50,000 per specimen, the same overall cap, or up to 4 years or both.
+-- s 5A(1): a corporation, unincorporated association or partnership -- $200,000 per specimen (Appendix I) or $100,000 (II, III),
+-- overall cap "$1 million" or the market value, whichever is higher. No imprisonment is provided.
+-- s 5A(2): an officer, partner or manager guilty of the same offence under s 20(2) or 20A(2) -- the s 5A(1) fine, or imprisonment
+-- up to 8 years (Appendix I) or 6 years (II, III), or both.
+-- READING: the maximum is the per-specimen figure times the number of specimens, capped at the higher of the fixed sum and the
+-- market value of all the specimens.
+DECLARE Offender IS ONE OF
+    `an individual`
+    `a corporation, association or partnership`
+    `an officer or partner liable with the body`
+
+GIVEN `the offender` IS AN Offender, `the appendix` IS AN Appendix
+GIVETH A NUMBER
+`the fine per specimen` MEANS
+    CONSIDER `the offender`
+    WHEN `an individual` THEN (IF `the appendix` EQUALS `Appendix I` THEN 100000 ELSE 50000)
+    OTHERWISE (IF `the appendix` EQUALS `Appendix I` THEN 200000 ELSE 100000)
+
+GIVEN `the offender` IS AN Offender
+GIVETH A NUMBER
+`the fixed overall cap` MEANS
+    CONSIDER `the offender`
+    WHEN `an individual` THEN 500000
+    OTHERWISE 1000000
+
+GIVEN `the offender` IS AN Offender, `the appendix` IS AN Appendix, `specimens` IS A NUMBER, `market value` IS A NUMBER
+GIVETH A NUMBER
+`the maximum fine` MEANS
+    `the lesser of` (`the fine per specimen` `the offender` `the appendix` TIMES `specimens`)
+                    (`the greater of` (`the fixed overall cap` `the offender`) `market value`)
+
+GIVEN `the offender` IS AN Offender, `the appendix` IS AN Appendix
+GIVETH A NUMBER
+`the maximum imprisonment in years` MEANS
+    CONSIDER `the offender`
+    WHEN `an individual` THEN (IF `the appendix` EQUALS `Appendix I` THEN 6 ELSE 4)
+    WHEN `a corporation, association or partnership` THEN 0
+    OTHERWISE (IF `the appendix` EQUALS `Appendix I` THEN 8 ELSE 6)
+
+§§ `5, 7(4) -- retrospective and altered CITES documents`
+
+-- s 5(1): every scheduled species in transit must be accompanied by (a) a valid CITES export or re-export document from the
+-- country of export, and (b) "where required by the country of import or final destination", a valid import document from that
+-- country. s 5(4): the owner, importer, exporter or re-exporter who contravenes (1) commits an offence.
+-- s 5(3)(a): an export document issued "after the date of the export or re-export" is not valid unless (i) the species is in
+-- Appendix II or III and (ii) the circumstances "were not caused or contributed to by" the exporter, re-exporter or importer.
+-- (b): a document with an alteration is not valid unless the alteration is endorsed with the authority's seal or stamp AND
+-- authenticated by the signature of the person authorised.
+-- s 7(4): the Director-General "must refuse" a permit application supported by such a document on the same two grounds.
+DECLARE Document HAS
+    `issued after the export` IS A BOOLEAN
+    `species Appendix` IS AN Appendix
+    `trader caused or contributed to the late issue` IS A BOOLEAN
+    `contains an alteration` IS A BOOLEAN
+    `alteration sealed or stamped` IS A BOOLEAN
+    `alteration authenticated by signature` IS A BOOLEAN
+
+GIVEN `the document` IS A Document
+GIVETH A BOOLEAN
+DECIDE `the document is valid` IF
+        (    (NOT `the document`'s `issued after the export`)
+         OR  (    (NOT `the document`'s `species Appendix` EQUALS `Appendix I`)
+              AND (NOT `the document`'s `trader caused or contributed to the late issue`)))
+    AND (    (NOT `the document`'s `contains an alteration`)
+         OR  (`the document`'s `alteration sealed or stamped` AND `the document`'s `alteration authenticated by signature`))
+
+GIVEN `the document` IS A Document
+GIVETH A BOOLEAN
+DECIDE `the Director-General must refuse the permit` IF
+    NOT `the document is valid` `the document`
+
+GIVEN `has a valid export document` IS A BOOLEAN, `destination requires an import document` IS A BOOLEAN,
+      `has a valid import document` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the transit consignment is properly accompanied` IF
+        `has a valid export document`
+    AND ((NOT `destination requires an import document`) OR `has a valid import document`)
+
+§§ `6 -- the due-diligence defence`
+
+-- s 6(1): a defence to an offence under s 4 or 5 for the person charged "to prove" (a) the offence "was due to the act or default
+-- of another person or to some other cause beyond the control of the person charged"; and (b) that the person "took all
+-- reasonable precautions and exercised all due diligence".
+-- (2): where the defence blames another person, the person charged may not rely on it "without the permission of the court"
+-- unless "within a period ending 7 clear days before the hearing" a written notice identifying that person was served on the
+-- prosecutor.
+GIVEN `cause beyond control` IS A BOOLEAN, `took all reasonable precautions` IS A BOOLEAN, `blames another person` IS A BOOLEAN,
+      `clear days notice was served before the hearing` IS A NUMBER, `court gave permission` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the defence may be relied on` IF
+        `cause beyond control`
+    AND `took all reasonable precautions`
+    AND (    (NOT `blames another person`)
+         OR  `clear days notice was served before the hearing` AT LEAST 7
+         OR  `court gave permission`)
+
+§§ `8, 18 -- cancelling a permit, and surrendering it`
+
+-- s 8(1): the Director-General "may at any time cancel a permit if" (a) a condition or restriction is contravened, or (b) the
+-- permit "was issued as a result of a misleading statement or a misrepresentation of a material fact". (2) must notify the
+-- holder immediately; (3) the holder "must immediately surrender the permit"; (4) failing to, "without reasonable excuse", is an
+-- offence.
+-- s 18: an offence "for which no penalty is expressly provided" -- a fine up to $10,000 or imprisonment up to 12 months or both.
+GIVEN `a condition was contravened` IS A BOOLEAN, `issued on a misrepresentation` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the permit may be cancelled` IF
+    `a condition was contravened` OR `issued on a misrepresentation`
+
+GIVEN `was notified of cancellation` IS A BOOLEAN, `surrendered the permit` IS A BOOLEAN, `had a reasonable excuse` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `failing to surrender is an offence` IF
+    `was notified of cancellation` AND (NOT `surrendered the permit`) AND (NOT `had a reasonable excuse`)
+
+GIVETH A NUMBER
+`the general maximum fine` MEANS 10000
+
+GIVETH A NUMBER
+`the general maximum imprisonment in months` MEANS 12
+
+§§ `15 -- which seized conveyances can be forfeited`
+
+-- s 15: "All seized items are liable to forfeiture under section 15A or 15B, except a conveyance which" (a) "is of more than 200
+-- tons net"; or (b) is an aircraft or a train "belonging to a person carrying on a regular passenger service to and from
+-- Singapore" by means of it.
+GIVEN `is a conveyance` IS A BOOLEAN, `net tons` IS A NUMBER, `is a regular passenger aircraft or train` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the seized item is liable to forfeiture` IF
+        (NOT `is a conveyance`)
+    OR  (`net tons` AT MOST 200 AND (NOT `is a regular passenger aircraft or train`))
+
+§§ `15D -- repatriation by the carrier`
+
+-- s 15D(1)(a), (2): after forfeiture, the owner of the conveyance that brought the species in may be directed to repatriate it,
+-- "at the owner's expense". (3): no duty to comply "unless the direction is made within" (a) "12 months after the date on which
+-- the scheduled species ... was brought into Singapore"; or (b) "6 months after the date on which criminal proceedings ... are
+-- concluded or the date on which the offence is compounded", "whichever is the later". (4): failing to comply without reasonable
+-- excuse -- a fine up to $10,000 or imprisonment up to 12 months or both.
+-- INFERENCE: where there are no proceedings and no composition, only (a) can apply; while proceedings are pending the later date
+-- has not yet arrived, so a direction made then is in time.
+DECLARE Proceedings IS ONE OF
+    `none`
+    `pending`
+    `concluded or compounded`
+
+GIVEN `months after arrival` IS A NUMBER, `the proceedings` IS A Proceedings, `months after conclusion` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the repatriation direction binds the carrier` IF
+        `months after arrival` AT MOST 12
+    OR  CONSIDER `the proceedings`
+        WHEN `none` THEN FALSE
+        WHEN `pending` THEN TRUE
+        OTHERWISE `months after conclusion` AT MOST 6
+
+GIVETH A NUMBER
+`the maximum fine for failing to repatriate` MEANS 10000
+
+§§ `15E, 25 -- expenses and composition`
+
+-- s 15E(2): expenses "not paid ... within 14 days after demand" may be reported to a Magistrate's or District Court "and recovered
+-- in the same manner as if it were a fine".
+-- s 25(1): the Director-General "may compound any offence under this Act that is prescribed as a compoundable offence" by
+-- collecting "a sum not exceeding $5,000". (2) the seized items (except a conveyance) remain liable to forfeiture. (3) on payment
+-- "no further proceedings may be taken" for the offence.
+GIVEN `days since demand` IS A NUMBER, `paid` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the expenses are recoverable as a fine` IF
+    (NOT `paid`) AND `days since demand` GREATER THAN 14
+
+GIVEN `is prescribed as compoundable` IS A BOOLEAN, `sum` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the offence may be compounded for the sum` IF
+    `is prescribed as compoundable` AND `sum` AT MOST 5000
