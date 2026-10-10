@@ -1,0 +1,166 @@
+IMPORT prelude
+
+-- Foreign Limitation Periods Act 2012 (Singapore) -- whose limitation law decides whether a claim is out of time when a
+-- Singapore court applies foreign law (s 3), the public-policy, undue-hardship and absence exceptions (s 4), foreign
+-- judgments on limitation points (s 5), what counts as a "law relating to limitation" (s 6), the Government (s 7) and the
+-- transitional cut-off of 1 June 2012 (s 8).
+--
+-- Edition: 2020 Revised Edition, as deposited at ../../registers/source-bundle/FLPA2012.txt. The deposit says it
+-- "incorporates all amendments up to and including 1 December 2021 and comes into operation on 31 December 2021"; its
+-- Legislative History lists only Act 13 of 2012 (commenced 1 June 2012) and the 2013 Revised Edition (Chapter 111A) -- no
+-- amending Act is annotated. The retrieval record calls it the current version as at 1 October 2026.
+--
+-- WHY THIS ACT. Requirement REQ-0046 in ../../../requirements.jsonl: Tier 2 of the remaining Singapore Acts, ordered by
+-- everyday-life relevance. It asks what the Act decides for a person or business it applies to; no scenario has asked a
+-- sharper question yet. The Act is short (eight sections) and is encoded whole, except s 1 (short title) and s 2 (which
+-- only says "country" includes a State or territory). Not encoded: the private international law rules that decide WHICH
+-- country's law governs a matter (the Act takes that as given), and the content of any limitation law itself -- the
+-- Singapore and foreign periods are inputs, not figures from this Act.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Foreign Limitation Periods Act 2012 -- limitation`
+
+DECLARE Claim HAS
+    `commenced before 1 June 2012` IS A BOOLEAN
+    `the Singapore period had expired before 1 June 2012` IS A BOOLEAN
+    `a foreign law governs the matter` IS A BOOLEAN
+    `a foreign law is considered for actionability` IS A BOOLEAN
+    `the foreign choice-of-law rules would refer back to Singapore` IS A BOOLEAN
+    `the Government is a party` IS A BOOLEAN
+    `applying section 3 would conflict with public policy` IS A BOOLEAN
+    `applying section 3 would cause undue hardship to a party` IS A BOOLEAN
+    `the foreign law has a limitation period` IS A BOOLEAN
+    `foreign period in years` IS A NUMBER
+    `foreign extension for a party's absence in years` IS A NUMBER
+    `other foreign extension in years` IS A NUMBER
+    `discretionary extension the foreign courts would allow in years` IS A NUMBER
+    `disregarding the absence extension would conflict with public policy` IS A BOOLEAN
+    `disregarding the absence extension would cause undue hardship to a party` IS A BOOLEAN
+    `Singapore period in years` IS A NUMBER
+    `years from accrual to commencement under Singapore law` IS A NUMBER
+
+§§ `8 -- the transitional cut-off`
+
+-- s 8: "Nothing in this Act -- (a) affects any action, proceedings or arbitration commenced before 1 June 2012; or (b) applies
+-- in relation to any matter if the limitation period which, apart from this Act, would have been applied in respect of that
+-- matter in Singapore EXPIRED before 1 June 2012."
+--
+-- A claim already dead under Singapore's own period on 1 June 2012 is not revived by a longer foreign period.
+GIVEN `the claim` IS A Claim
+GIVETH A BOOLEAN
+DECIDE `the Act reaches the claim` IF
+        (NOT `the claim`'s `commenced before 1 June 2012`)
+    AND (NOT `the claim`'s `the Singapore period had expired before 1 June 2012`)
+
+§§ `3(1), (2), (5) and 7 -- foreign limitation law applies`
+
+-- s 3(1): where in proceedings in a Singapore court "the law of any other country is required (in accordance with rules of
+-- private international law ...) to be applied to determine any matter -- (a) the law of that other country relating to
+-- limitation applies in respect of that matter ...; and (b) the law of Singapore relating to limitation does NOT so apply."
+-- (2): where a foreign law "is required to be considered for the purpose of actionability under a choice of law rule, that
+-- foreign law is DEEMED to apply under subsection (1)".
+-- (5): "law" EXCLUDES the foreign country's rules of private international law -- so no referral back (the renvoi field below
+-- has no effect).
+-- s 7: the Act "binds the Government" and applies to proceedings by or against it as to any others (the Government field has
+-- no effect).
+GIVEN `the claim` IS A Claim
+GIVETH A BOOLEAN
+DECIDE `section 3 is engaged` IF
+        `the Act reaches the claim` `the claim`
+    AND (    `the claim`'s `a foreign law governs the matter`
+         OR  `the claim`'s `a foreign law is considered for actionability`)
+
+§§ `4(1), (2) -- the public-policy exception`
+
+-- s 4(1): where applying s 3 "would to any extent conflict with public policy, that section does not apply to the extent that
+-- its application would so conflict". (2): it conflicts with public policy "to the extent that its application would cause
+-- UNDUE HARDSHIP to a person who is, or might be made, a party".
+--
+-- Undue hardship is not a separate ground; it is a deemed case of public policy.
+GIVEN `the claim` IS A Claim
+GIVETH A BOOLEAN
+DECIDE `section 3 is displaced by public policy` IF
+        `the claim`'s `applying section 3 would conflict with public policy`
+    OR  `the claim`'s `applying section 3 would cause undue hardship to a party`
+
+GIVEN `the claim` IS A Claim
+GIVETH A BOOLEAN
+DECIDE `the foreign limitation law applies` IF
+        `section 3 is engaged` `the claim`
+    AND (NOT `section 3 is displaced by public policy` `the claim`)
+
+-- INFERENCE, not text: where s 3 is not engaged or is displaced, the Act says nothing more; this encoding takes it that
+-- Singapore limitation law then applies as the law of the forum. The Act treats s 3 as the exception to that ("the law of
+-- Singapore relating to limitation does not so apply"), but does not say so in terms. The "to the extent" partial
+-- displacement of s 4(1) is not modelled: displacement here is all or nothing.
+GIVEN `the claim` IS A Claim
+GIVETH A BOOLEAN
+DECIDE `the Singapore limitation law applies` IF
+    NOT `the foreign limitation law applies` `the claim`
+
+§§ `4(3), (4) -- extensions for absence are disregarded`
+
+-- s 4(3): where under the applicable foreign law "a limitation period is or may be extended or interrupted in respect of the
+-- ABSENCE of a party ... from any specified jurisdiction or country, so much of that law as provides for the extension or
+-- interruption is to be DISREGARDED". (4): but not to the extent that disregarding it "would conflict with public policy, or
+-- would cause undue hardship to a person who is, or might be made, a party".
+GIVEN `the claim` IS A Claim
+GIVETH A BOOLEAN
+DECIDE `the absence extension counts` IF
+        `the claim`'s `disregarding the absence extension would conflict with public policy`
+    OR  `the claim`'s `disregarding the absence extension would cause undue hardship to a party`
+
+§§ `3(4), 6(1)(a) -- the foreign period with its extensions`
+
+-- s 6(1): "law relating to limitation" means so much of the relevant law as makes provision for a limitation period, and
+-- includes "(a) ... the application, extension, reduction or interruption of that period". s 6(2): "relevant law" is "the
+-- procedural AND substantive law" of that country, apart from its private international law.
+-- s 3(4): a foreign discretion is "so far as practicable" to be exercised "in the manner in which it is exercised in comparable
+-- cases by the courts of that other country". Modelled as the extension those courts would allow, an input.
+-- Reductions are modelled by giving the reduced period as the foreign period. Interruption is modelled as an extension.
+GIVEN `the claim` IS A Claim
+GIVETH A NUMBER
+`the effective foreign period in years` MEANS
+        `the claim`'s `foreign period in years`
+    PLUS `the claim`'s `other foreign extension in years`
+    PLUS `the claim`'s `discretionary extension the foreign courts would allow in years`
+    PLUS `the absence part`
+    WHERE
+        `the absence part` MEANS
+            IF `the absence extension counts` `the claim`
+            THEN `the claim`'s `foreign extension for a party's absence in years`
+            ELSE 0
+
+§§ `3(3), 6(1)(b) -- is the claim out of time`
+
+-- s 3(3): "the law of Singapore determines whether, and the time at which, proceedings have been commenced". The elapsed time
+-- is therefore measured to commencement as Singapore law sees it, whichever country's period applies.
+-- s 6(1)(b): the law relating to limitation includes, "where under that law there is no limitation period which is so
+-- applicable, ... the rule that such proceedings may be brought within an INDEFINITE period."
+--
+-- A claim with no foreign period is never out of time, even if Singapore's own period would long since have run.
+-- MODELLING CHOICE: a claim is out of time when the elapsed time EXCEEDS the period; the Act does not say how a period is
+-- counted.
+GIVEN `the claim` IS A Claim
+GIVETH A BOOLEAN
+DECIDE `the claim is time-barred` IF
+    IF `the foreign limitation law applies` `the claim`
+    THEN     `the claim`'s `the foreign law has a limitation period`
+         AND `the claim`'s `years from accrual to commencement under Singapore law` GREATER THAN `the effective foreign period in years` `the claim`
+    ELSE `the claim`'s `years from accrual to commencement under Singapore law` GREATER THAN `the claim`'s `Singapore period in years`
+
+§§ `5 -- foreign judgments on limitation points`
+
+-- s 5: where a court outside Singapore "has determined any matter wholly or partly by reference to the law of that or any other
+-- country (including Singapore) relating to limitation", then for the effect to be given to it in Singapore "that court is, to
+-- the extent that it has so determined the matter, DEEMED to have determined it on its MERITS".
+--
+-- A foreign dismissal for being out of time counts as a judgment on the merits. The consequences of that (for example, whether
+-- the claim can be brought again here) are for the law on recognising foreign judgments, which is not encoded.
+GIVEN `the court is outside Singapore` IS A BOOLEAN, `it decided by reference to a law relating to limitation` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the determination is deemed to be on the merits` IF
+        `the court is outside Singapore`
+    AND `it decided by reference to a law relating to limitation`
