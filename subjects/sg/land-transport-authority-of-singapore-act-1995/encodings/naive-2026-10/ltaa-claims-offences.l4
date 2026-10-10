@@ -1,0 +1,341 @@
+IMPORT prelude
+
+-- Land Transport Authority of Singapore Act 1995 (Singapore) -- the rules a member of the public meets: compensation claims for
+-- railway, cross-border railway and road-tunnel works (ss 19, 20, 22, 22A, 23, 25(3) and the Fourth Schedule), outsourced
+-- enforcement officers (ss 11, 11A, 11B), the Authority's enforcement powers and the obstruction offence (s 39(1)(c), (6)),
+-- personal immunity (s 10), secrecy (s 41) and the Authority's symbol (s 42).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/LTASA1995.txt ("version in
+-- force from 23/9/2026"), with amendments to Act 5 of 2026 and S 664/2026 (wef 23/09/2026) shown.
+--
+-- WHY THIS ACT. Cited by 12 of the 527 Singapore Acts deposited in this repository. SCOPED to the provisions with decision content
+-- for claimants, the public and enforcement officers. Not encoded: the Authority's constitution, functions and powers (ss 3-9,
+-- First Schedule), the revenue account and funds (Part 5, Second Schedule), the Compensation Board's constitution and review
+-- powers (ss 26-31), transfers of staff and assets (Part 8), electronic service (ss 43, 43A), the list of specified Acts (Fifth
+-- Schedule) beyond its role in s 39, the claim particulars of s 23(1), and the amount of any compensation.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules conventions. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Land Transport Authority of Singapore Act 1995 -- claims and offences`
+
+§§ `19, 20 -- no remedy except the statutory right to compensation`
+
+-- s 19(1): "No action, claim or proceedings shall lie or be brought against the Authority or any other person" to restrain anything
+-- authorised under the Rapid Transit Systems Act 1995 or the Cross-Border Railways Act 2018, or to recover damages for loss of
+-- land, chattel, trade or business, personal disturbance or inconvenience, or restriction of rights, arising from what is so
+-- authorised, "except pursuant to one of the rights to compensation provided for in section 20". s 19(2): the same for ss 9, 12
+-- and 29 of the Street Works Act 1995 and road-tunnel construction.
+GIVEN `the act was authorised under the railway or street works provisions` IS A BOOLEAN,
+      `the claim is made under a Fourth Schedule item` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a claim for the loss may be brought` IF
+        (NOT `the act was authorised under the railway or street works provisions`)
+    OR  `the claim is made under a Fourth Schedule item`
+
+§§ `Fourth Schedule Part 1 -- items and claim periods`
+
+-- The Part 1 table in the deposit is column-shifted; the periods below are matched to items by order and wording.
+-- 1(a) displacement from an exercise of RTSA s 5 / Street Works s 9 / CBRA s 8: "Before the end of 2 years from the date on which
+--      the notice is issued".
+-- 1(b) other damage to land or building from the same powers: "Before the end of 6 years starting from the date on which the
+--      railway ... is opened or re-opened for use by the public".
+-- 2(a) structural damage from construction or operation of the railway or a road tunnel: "Before the end of 6 years from the date
+--      of the opening for public traffic"; 2(b) displacement from that damage: "Same as in item (a) above".
+-- 3    damage from works under RTSA s 9 (and equivalents): "Before the end of one year from the date of completion of the work".
+-- 4    cost of altering apparatus and repairing street surface: "Before the end of one year from the completion of the alteration
+--      and repair".
+-- 5(a) cost of removing a lawful object or structure: one year "from the date of removal"; 5(b) reinstating or replacing it: one
+--      year "from the date of reinstatement or replacement"; 5(c) loss where it is not reinstated: one year "from the date of
+--      removal".
+DECLARE ClaimItem IS ONE OF
+    `1(a) displacement under a temporary possession notice`
+    `1(b) other damage from temporary possession`
+    `2(a) structural damage from the railway or a road tunnel`
+    `2(b) displacement from structural damage`
+    `3 damage from works on land`
+    `4 cost of altering apparatus and street surface`
+    `5(a) cost of removing an object or structure`
+    `5(b) cost of reinstating an object or structure`
+    `5(c) loss of an object or structure not reinstated`
+
+GIVEN `the item` IS A ClaimItem
+GIVETH A NUMBER
+`the claim period in years` MEANS
+    CONSIDER `the item`
+    WHEN `1(a) displacement under a temporary possession notice` THEN 2
+    WHEN `1(b) other damage from temporary possession` THEN 6
+    WHEN `2(a) structural damage from the railway or a road tunnel` THEN 6
+    WHEN `2(b) displacement from structural damage` THEN 6
+    OTHERWISE 1
+
+§§ `22 -- claims out of time`
+
+-- s 22(1): a claim not served "before the end of the period specified in the fourth column" is barred.
+-- (4): the Compensation Board MAY extend the period if (a) the delay "was occasioned by mistake of fact or mistake of any matter of
+-- law (other than the relevant provision in the fourth column of Part 1 of the Fourth Schedule) or by any other reasonable cause";
+-- OR (b) "the Authority is not materially affected in the conduct of its case or otherwise by the delay".
+-- (5): "not in any case exceeding 6 years from the time when the right to compensation first arose".
+-- A mistake about the claim period itself is not a qualifying mistake; whether it could still be "any other reasonable cause" is not
+-- decided here -- the encoding treats it as not qualifying under (a) (an inference).
+GIVEN `the delay was caused by a mistake of fact or law` IS A BOOLEAN,
+      `the mistake was about the claim period itself` IS A BOOLEAN,
+      `the delay had some other reasonable cause` IS A BOOLEAN,
+      `the Authority is not materially affected by the delay` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Board may extend the claim period` IF
+        (`the delay was caused by a mistake of fact or law` AND (NOT `the mistake was about the claim period itself`))
+    OR  `the delay had some other reasonable cause`
+    OR  `the Authority is not materially affected by the delay`
+
+-- Times are in years. "Before the end of" a period of N years is read as strictly less than N years after its start.
+-- An extension, if granted, is expressed as the number of years after the right first arose by which the claim must be served;
+-- 0 means no extension.
+GIVEN `the item` IS A ClaimItem,
+      `years from the start of the period to service` IS A NUMBER,
+      `years from the right arising to service` IS A NUMBER,
+      `extended to years after the right arose` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the claim is in time` IF
+        `years from the start of the period to service` LESS THAN `the claim period in years` `the item`
+    OR  (    `extended to years after the right arose` GREATER THAN 0
+         AND `extended to years after the right arose` AT MOST 6
+         AND `years from the right arising to service` AT MOST `extended to years after the right arose`)
+
+§§ `22A -- owners who served a notice under the possession provisions`
+
+-- s 22A(1)-(3): an owner whose land was temporarily possessed (RTSA s 5, CBRA s 8, Street Works s 9) and who gives the Authority the
+-- notice under RTSA s 7(1) (or the equivalents) within the claim period "is entitled to claim only for loss due to displacement of
+-- any person in lawful occupation of the land ... and no other item in the Fourth Schedule". Identifying that loss with item 1(a)
+-- is an inference.
+GIVEN `the item` IS A ClaimItem, `the owner gave the possession notice` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the owner may claim the item` IF
+    IF `the owner gave the possession notice`
+    THEN CONSIDER `the item`
+         WHEN `1(a) displacement under a temporary possession notice` THEN TRUE
+         OTHERWISE FALSE
+    ELSE TRUE
+
+§§ `23 -- claims procedure`
+
+-- s 23(3): if a claimant amends a claim before Board proceedings and the Authority considers the amendment substantial, it may,
+-- "within 14 days of the receipt of the amended claim", elect to treat it as a new claim.
+GIVEN `Board proceedings have begun` IS A BOOLEAN, `the amendment is substantial` IS A BOOLEAN,
+      `days since the amended claim was received` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the Authority may treat the amended claim as new` IF
+    (NOT `Board proceedings have begun`) AND `the amendment is substantial` AND `days since the amended claim was received` AT MOST 14
+
+-- s 23(4): if requested particulars "are not supplied ... within a period of 28 days from the date of the notice, or within any
+-- further period that the Authority may in writing allow, the claim or the item ... is deemed to be rejected". Reading the further
+-- period as added to the 28 days is an inference.
+GIVEN `particulars were requested` IS A BOOLEAN, `particulars were supplied` IS A BOOLEAN,
+      `days since the request` IS A NUMBER, `further days allowed in writing` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the claim is deemed rejected` IF
+        `particulars were requested`
+    AND (NOT `particulars were supplied`)
+    AND `days since the request` GREATER THAN (28 PLUS `further days allowed in writing`)
+
+-- s 23(5): the Authority must answer (admit, reject, or part) "within 3 months of the service of a claim".
+GIVETH A NUMBER
+`months for the Authority to answer a claim` MEANS 3
+
+-- s 23(8): "If, at the end of 4 months from the receipt of a claim by the Authority, it has not been settled by agreement, either
+-- the claimant or the Authority may commence proceedings before the Compensation Board".
+GIVEN `months since the claim was received` IS A NUMBER, `the claim has been settled` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `either side may go to the Compensation Board` IF
+    `months since the claim was received` AT LEAST 4 AND (NOT `the claim has been settled`)
+
+§§ `25(3) -- refusing an offer`
+
+-- s 25(3): where an offer is refused and the compensation including costs assessed by the Board "does not exceed" the offer, the
+-- Board "must, unless for special reasons the Board thinks it proper not to do so, order the party who refused the offer to bear the
+-- party's own costs and to pay the costs of the other party" incurred after the offer.
+GIVEN `the offer was refused` IS A BOOLEAN, `the amount assessed` IS A NUMBER, `the amount offered` IS A NUMBER,
+      `the Board finds special reasons` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the refusing party pays the costs after the offer` IF
+    `the offer was refused` AND `the amount assessed` AT MOST `the amount offered` AND (NOT `the Board finds special reasons`)
+
+§§ `Fourth Schedule Part 2 -- assessing compensation`
+
+-- para 2: "compensatable interest" means (a) an unexpired term "of not less than one month" or a tenancy terminable "by giving not
+-- less than one month's notice"; (b) a mortgagee in possession; (c) the holder of a valid option to purchase such an interest;
+-- (d) a purchaser to whom the benefit has passed.
+DECLARE Interest IS ONE OF
+    `an owner or lessee with an unexpired term`
+    `a tenant on periodic notice`
+    `a mortgagee in possession`
+    `a mortgagee not in possession`
+    `an option holder`
+    `a purchaser to whom the benefit has passed`
+    `a licensee`
+
+GIVEN `the interest` IS A Interest, `months of term or notice` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the interest is compensatable` IF
+    CONSIDER `the interest`
+    WHEN `an owner or lessee with an unexpired term` THEN `months of term or notice` AT LEAST 1
+    WHEN `a tenant on periodic notice` THEN `months of term or notice` AT LEAST 1
+    WHEN `a mortgagee in possession` THEN TRUE
+    WHEN `an option holder` THEN TRUE
+    WHEN `a purchaser to whom the benefit has passed` THEN TRUE
+    OTHERWISE FALSE
+
+-- para 3: "no account is to be taken of (a) the financial loss resulting from the interruption of or interference with any trade or
+-- business carried on any land; and (b) any increase or decrease in the value of land ... attributable to" the delineation of the
+-- railway area or "the construction or operation of any railway or road".
+-- para 6: no compensation under item 5(c) for the lost benefit of advertising on a removed sign.
+DECLARE Head IS ONE OF
+    `cost of repairing the damage`
+    `cost of moving to alternative premises`
+    `loss of trade from the works`
+    `fall in land value from the railway`
+    `rise in land value from the railway`
+    `lost advertising benefit of a removed sign`
+
+GIVEN `the head` IS A Head
+GIVETH A BOOLEAN
+DECIDE `the head counts in the assessment` IF
+    CONSIDER `the head`
+    WHEN `cost of repairing the damage` THEN TRUE
+    WHEN `cost of moving to alternative premises` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `11, 11A -- outsourced enforcement officers`
+
+-- s 11(1): the Authority may appoint an individual who "(a) is at least 18 years of age; (b) is not an employee of the Authority;
+-- (c) is not a public officer; and (d) has suitable qualifications or experience".
+GIVEN `age` IS A NUMBER, `is an employee of the Authority` IS A BOOLEAN, `is a public officer` IS A BOOLEAN,
+      `has suitable qualifications or experience` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `may be appointed an outsourced enforcement officer` IF
+        `age` AT LEAST 18
+    AND (NOT `is an employee of the Authority`)
+    AND (NOT `is a public officer`)
+    AND `has suitable qualifications or experience`
+
+-- s 11A(3): "the Chief Executive cannot authorise under this section an outsourced enforcement officer to arrest any individual".
+-- (4): powers may be exercised only "(a) when in uniform, and upon production of the identification card ...; (b) to the extent
+-- authorised ...; and (c) as directed (generally or specially) by an officer or employee of the Authority". (7): direction does not
+-- lapse "by reason only that the officer or employee of the Authority is not present".
+GIVEN `the power is arrest` IS A BOOLEAN, `in uniform` IS A BOOLEAN, `produced the identification card` IS A BOOLEAN,
+      `within the written authorisation` IS A BOOLEAN, `directed by an Authority officer` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the outsourced officer may exercise the power` IF
+        (NOT `the power is arrest`)
+    AND `in uniform`
+    AND `produced the identification card`
+    AND `within the written authorisation`
+    AND `directed by an Authority officer`
+
+-- s 39(1)(c): by contrast an officer or employee of the Authority "if he or she is generally or specially authorised in writing by
+-- the Chief Executive", may "arrest without warrant" a person found committing an offence under a Fifth Schedule law. The
+-- declaration of office and production of the identification card in s 39(1) opening words are required.
+GIVEN `authorised in writing by the Chief Executive` IS A BOOLEAN, `declared office and produced the card` IS A BOOLEAN,
+      `offence under a specified Act` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `an Authority officer may arrest without warrant` IF
+    `authorised in writing by the Chief Executive` AND `declared office and produced the card` AND `offence under a specified Act`
+
+§§ `11B -- impersonation and misuse`
+
+-- s 11B(1): an individual who represents himself or herself "by word or conduct to be an outsourced enforcement officer when he or
+-- she is not" commits an offence. (2): an outsourced enforcement officer who uses issued accoutrement, equipment or identification
+-- card "otherwise than in the course of, or for the purpose of, exercising the functions" commits an offence. Both: $2,500 or
+-- 6 months or both. (3): "it is a defence ... where the accused proves, on a balance of probabilities" use or possession "for the
+-- purposes of a public entertainment provided in compliance with the Public Entertainments Act 1958".
+GIVEN `represented being an outsourced enforcement officer` IS A BOOLEAN, `is an outsourced enforcement officer` IS A BOOLEAN,
+      `proved use for a lawful public entertainment` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `impersonation is an offence` IF
+        `represented being an outsourced enforcement officer`
+    AND (NOT `is an outsourced enforcement officer`)
+    AND (NOT `proved use for a lawful public entertainment`)
+
+GIVEN `is an outsourced enforcement officer` IS A BOOLEAN, `used the issued kit or card` IS A BOOLEAN,
+      `in the course of the officer's functions` IS A BOOLEAN, `proved use for a lawful public entertainment` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `misuse of issued kit is an offence` IF
+        `is an outsourced enforcement officer`
+    AND `used the issued kit or card`
+    AND (NOT `in the course of the officer's functions`)
+    AND (NOT `proved use for a lawful public entertainment`)
+
+§§ `39(6) -- obstructing the Authority`
+
+-- s 39(6): a person who "(a) refuses to give access to, or assaults, obstructs, hinders or delays" an officer; "(b) wilfully
+-- misstates or without lawful excuse refuses to give any information, or without lawful excuse refuses to produce any book,
+-- document"; or "(c) fails to comply with a lawful demand" -- $5,000 or 12 months or both.
+GIVEN `obstructed or refused access` IS A BOOLEAN, `wilfully misstated information` IS A BOOLEAN,
+      `refused information or documents` IS A BOOLEAN, `had a lawful excuse for the refusal` IS A BOOLEAN,
+      `failed to comply with a lawful demand` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `obstructing the Authority is an offence` IF
+        `obstructed or refused access`
+    OR  `wilfully misstated information`
+    OR  (`refused information or documents` AND (NOT `had a lawful excuse for the refusal`))
+    OR  `failed to comply with a lawful demand`
+
+§§ `10 -- personal immunity`
+
+-- s 10: "No liability shall lie personally against any member, officer or employee of the Authority or any other person acting under
+-- the direction of the Authority for anything done or intended to be done in good faith and with reasonable care".
+GIVEN `acting for or under the direction of the Authority` IS A BOOLEAN, `in good faith` IS A BOOLEAN, `with reasonable care` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the individual is personally immune` IF
+    `acting for or under the direction of the Authority` AND `in good faith` AND `with reasonable care`
+
+§§ `41, 42 -- secrecy and the Authority's symbol`
+
+-- s 41(1): a person who "is or has been" a member, officer, employee or agent of the Authority or a committee member must not
+-- disclose information obtained in the performance of duties, "Except for the purpose of the performance of duties or the exercise
+-- of functions or when lawfully required to do so by any court or where required or allowed by the provisions of any written law".
+-- (2): $2,000 or one year or both.
+GIVEN `is or was an insider of the Authority` IS A BOOLEAN, `obtained the information in the course of duties` IS A BOOLEAN,
+      `disclosed in performing duties` IS A BOOLEAN, `required by a court` IS A BOOLEAN,
+      `required or allowed by written law` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the disclosure is an offence` IF
+        `is or was an insider of the Authority`
+    AND `obtained the information in the course of duties`
+    AND (NOT `disclosed in performing duties`)
+    AND (NOT `required by a court`)
+    AND (NOT `required or allowed by written law`)
+
+-- s 42(2): "Any person who uses a symbol or representation identical with that of the Authority, or which so resembles [it] as to
+-- deceive or cause confusion, or to be likely to deceive or to cause confusion" -- $2,000 or 6 months or both. No exception for
+-- the Authority's licensees appears in the section.
+GIVEN `identical to the Authority's symbol` IS A BOOLEAN, `likely to deceive or confuse` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `using the symbol is an offence` IF
+    `identical to the Authority's symbol` OR `likely to deceive or confuse`
+
+§§ `Penalties`
+
+DECLARE Offence IS ONE OF
+    `impersonating an outsourced enforcement officer`
+    `misusing issued kit`
+    `obstructing the Authority`
+    `breaching secrecy`
+    `using the Authority's symbol`
+
+GIVEN `the offence` IS A Offence
+GIVETH A NUMBER
+`the maximum fine` MEANS
+    CONSIDER `the offence`
+    WHEN `impersonating an outsourced enforcement officer` THEN 2500
+    WHEN `misusing issued kit` THEN 2500
+    WHEN `obstructing the Authority` THEN 5000
+    OTHERWISE 2000
+
+GIVEN `the offence` IS A Offence
+GIVETH A NUMBER
+`the maximum imprisonment in months` MEANS
+    CONSIDER `the offence`
+    WHEN `obstructing the Authority` THEN 12
+    WHEN `breaching secrecy` THEN 12
+    OTHERWISE 6
