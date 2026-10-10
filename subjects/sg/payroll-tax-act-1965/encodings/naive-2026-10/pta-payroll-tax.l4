@@ -1,0 +1,227 @@
+IMPORT prelude
+
+-- Payroll Tax Act 1965 (Singapore) -- who is an employee and what is remuneration (s 4), the monthly charge on every employer
+-- (s 5), the rate and the dropped fraction of a dollar (s 6), exempt employers (s 7), the payment deadline and the late-payment
+-- offence (s 8), joint employers, company officers and declared agents (s 10), the penalties regulations may impose (s 11(2)),
+-- and the secrecy offence (s 12(4) to (6), (8)).
+--
+-- Edition: 2020 Revised Edition, informal consolidation ("version in force from 9/3/2025"), as deposited at
+-- ../../registers/source-bundle/PTA1965.txt. The revised edition "incorporates all amendments up to and including 1 December 2021";
+-- the latest amendment annotated in the body is Act 5 of 2025 (wef 09/03/2025), to s 12(2), (3) and (3A).
+--
+-- WHY THIS ACT. Requirement REQ-0064 in ../../../requirements.jsonl: Tier 2 of the remaining Singapore Acts, ordered by
+-- everyday-life relevance. The requirement asks what the Act decides for an employer or employee it applies to; no scenario has
+-- asked a sharper question yet. The Act is short (12 sections), so nearly all of its operative Part 3 is encoded.
+-- Not encoded: Part 2 (s 3, approval of tax forms and the Schedule of "scheduled matters"), s 9 (recovery as a debt due to the
+-- Government) beyond its mention here, s 11(1), (3), (4) (the regulation-making heads), s 12(1) to (3A) and (7) (administration and
+-- the court-production privilege). THE RATE IS NOT IN THE ACT: s 6(1) leaves it to a Minister's order, and no order was deposited,
+-- so the rate is a parameter of every calculation below. No regulations under s 11 were deposited either.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Payroll Tax Act 1965 -- payroll tax`
+
+§§ `4 -- employee`
+
+-- s 4: "employee", in relation to a month, means "an employee rendering in that month services wholly or partly in Singapore and an
+-- employee who is on leave during that month where such leave is attributable to services rendered wholly or partly in Singapore in
+-- any previous month and includes the director of a company and the holder of any other office, but does not include any domestic
+-- servant, gardener or driver, wholly and exclusively employed by an individual otherwise than in connection with his trade,
+-- business, profession or vocation".
+-- INFERENCE: a director or office-holder is treated as needing the same Singapore link in the month as any other employee; the
+-- text adds them to the class but does not say whether the link applies to them.
+DECLARE Worker HAS
+    `is employed or holds a directorship or other office` IS A BOOLEAN
+    `renders services wholly or partly in Singapore this month` IS A BOOLEAN
+    `is on leave attributable to earlier Singapore services` IS A BOOLEAN
+    `is a domestic servant, gardener or driver` IS A BOOLEAN
+    `is employed wholly and exclusively by an individual` IS A BOOLEAN
+    `is employed in connection with the individual's trade, business, profession or vocation` IS A BOOLEAN
+
+GIVEN w IS A Worker
+GIVETH A BOOLEAN
+DECIDE `falls within the household-staff exclusion` IF
+        w's `is a domestic servant, gardener or driver`
+    AND w's `is employed wholly and exclusively by an individual`
+    AND (NOT w's `is employed in connection with the individual's trade, business, profession or vocation`)
+
+GIVEN w IS A Worker
+GIVETH A BOOLEAN
+DECIDE `is an employee for the month` IF
+        w's `is employed or holds a directorship or other office`
+    AND (    w's `renders services wholly or partly in Singapore this month`
+         OR  w's `is on leave attributable to earlier Singapore services`)
+    AND (NOT `falls within the household-staff exclusion` w)
+
+§§ `4 -- remuneration and payroll`
+
+-- s 4: "remuneration" means "any wages, salary, commission, bonuses, allowances (including a housing allowance or other like
+-- allowance) or other emoluments paid in cash by or on behalf of an employer to an employee, and includes any leave pay".
+-- "cash" includes "notes, cheques or any commercial equivalent of money in any currency".
+-- "payroll" means "the total remuneration paid by or on behalf of an employer to his employees in any month and includes a
+-- proportion of the civilian remuneration which an employer is liable to pay to his employees pursuant to section 24 of the
+-- Enlistment Act 1970". The proportion is not stated in this Act; it is an input here.
+DECLARE Payment IS ONE OF
+    `wages`
+    `a salary`
+    `a commission`
+    `a bonus`
+    `a housing allowance`
+    `another allowance`
+    `leave pay`
+    `another emolument`
+
+GIVEN p IS A Payment, `paid in cash, by cheque or a commercial equivalent in any currency` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `counts as remuneration` IF
+    CONSIDER p
+    WHEN `leave pay` THEN TRUE
+    OTHERWISE `paid in cash, by cheque or a commercial equivalent in any currency`
+
+GIVEN `remuneration paid to employees in the month` IS A NUMBER, `the included proportion of Enlistment Act civilian pay` IS A NUMBER
+GIVETH A NUMBER
+`the payroll` MEANS `remuneration paid to employees in the month` PLUS `the included proportion of Enlistment Act civilian pay`
+
+§§ `5 -- the charge`
+
+-- s 5: payroll tax "shall, subject to the provisions of this Act, be charged on every employer and shall be levied and paid on the
+-- payroll of such employer in respect of the month of January 1965 and of each subsequent month".
+-- s 4: "employer" means "any person who pays or is liable to pay any remuneration to an employee".
+GIVEN year IS A NUMBER, month IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the month is a chargeable month` IF year AT LEAST 1965 AND month AT LEAST 1 AND month AT MOST 12
+
+§§ `6, 7 -- rate, fraction of a dollar, exempt employers`
+
+-- s 6(1): levied "at such rate as the Minister may by order from time to time prescribe on the payroll of an employer for each
+-- month". (2): where the tax "results in an amount which contains a fraction of a dollar, the tax payable shall be taken to be that
+-- amount less that fraction".
+-- s 7: exempted are "(a) the Government; (b) any accredited foreign government; (c) any local authority constituted under any written
+-- law ...; (d) subject to such conditions, and whether wholly or to such extent, as may be specified, such public bodies or class of
+-- employers as the Minister may from time to time by notification in the Gazette exempt".
+DECLARE Employer IS ONE OF
+    `the Government`
+    `an accredited foreign government`
+    `a local authority`
+    `a body or class exempted by Gazette notification`
+    `a private company`
+    `a sole proprietor`
+    `a charity not named in any notification`
+
+GIVEN e IS AN Employer
+GIVETH A BOOLEAN
+DECIDE `is wholly exempt by the Act itself` IF
+    CONSIDER e
+    WHEN `the Government` THEN TRUE
+    WHEN `an accredited foreign government` THEN TRUE
+    WHEN `a local authority` THEN TRUE
+    OTHERWISE FALSE
+
+-- `exempt percent` is the extent of a s 7(d) exemption (100 = wholly); it has effect only for a body or class the notification names.
+GIVEN e IS AN Employer, `the monthly payroll` IS A NUMBER, `rate percent` IS A NUMBER, `exempt percent` IS A NUMBER
+GIVETH A NUMBER
+`the payroll tax payable` MEANS
+    IF `is wholly exempt by the Act itself` e THEN 0
+    ELSE IF e EQUALS `a body or class exempted by Gazette notification`
+         THEN FLOOR (`the monthly payroll` TIMES `rate percent` DIVIDED BY 100 TIMES (100 MINUS `exempt percent`) DIVIDED BY 100)
+         ELSE FLOOR (`the monthly payroll` TIMES `rate percent` DIVIDED BY 100)
+
+§§ `8 -- time for payment and the offence`
+
+-- s 8(1): every employer liable for any month "shall pay the tax on or before the 14th day of the month next following or by such
+-- later date as may be provided in accordance with regulations made under this Act". (2): contravention is an offence, "a fine not
+-- exceeding $1,000 or to imprisonment for a term not exceeding 6 months or to both".
+-- Dates are counted as the day of the following month (15 = the 15th of the next month). `later day allowed by regulations` is 0
+-- where regulations allow none.
+GIVEN `day of the following month paid` IS A NUMBER, `later day allowed by regulations` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `paid in time` IF
+    `day of the following month paid` AT MOST 14 OR `day of the following month paid` AT MOST `later day allowed by regulations`
+
+GIVEN `liable for the month` IS A BOOLEAN, `day of the following month paid` IS A NUMBER, `later day allowed by regulations` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `late payment is an offence` IF
+    `liable for the month` AND (NOT `paid in time` `day of the following month paid` `later day allowed by regulations`)
+
+`the maximum fine for late payment` MEANS 1000
+`the maximum imprisonment in months for late payment` MEANS 6
+
+§§ `10 -- joint employers, officers and agents`
+
+-- s 10(1): joint employers are "jointly and severally so liable"; one who has paid "may recover by way of contribution from any
+-- other such persons ... a sum which bears the same proportion to the tax as the share of the payroll which those other persons were
+-- liable to pay bears to the total amount of payroll which all such persons jointly liable to payroll tax were liable to pay".
+GIVEN `the tax paid` IS A NUMBER, `the other's share of the payroll` IS A NUMBER, `the total joint payroll` IS A NUMBER
+GIVETH A NUMBER
+`the contribution recoverable` MEANS `the tax paid` TIMES `the other's share of the payroll` DIVIDED BY `the total joint payroll`
+
+-- s 10(1): each joint employer can be made to pay the whole.
+GIVEN `the joint tax due` IS A NUMBER
+GIVETH A NUMBER
+`the most one joint employer can be made to pay` MEANS `the joint tax due`
+
+-- s 10(2): "The secretary, manager, principal officer or any director in Singapore of every company and the secretary, manager,
+-- principal officer or other officer in Singapore of every body of persons shall be answerable for doing all such acts ... relating
+-- to payroll tax as are required to be done by this Act ... by that company or body of persons."
+DECLARE Officer IS ONE OF
+    `a company secretary in Singapore`
+    `a manager in Singapore`
+    `a principal officer in Singapore`
+    `a director in Singapore`
+    `a director outside Singapore`
+    `a shareholder`
+
+GIVEN o IS AN Officer
+GIVETH A BOOLEAN
+DECIDE `is answerable for the company's payroll tax acts` IF
+    CONSIDER o
+    WHEN `a director outside Singapore` THEN FALSE
+    WHEN `a shareholder` THEN FALSE
+    OTHERWISE TRUE
+
+-- s 10(3): the Comptroller may by written notice declare a person the employer's agent, who "may be required to pay any payroll tax
+-- due from any moneys which may be held by him for, or due by him to, the employer". INFERENCE: the agent's exposure is capped at
+-- those moneys; the text says the tax is paid "from" them and says nothing of paying beyond them.
+GIVEN a IS A NUMBER, b IS A NUMBER
+GIVETH A NUMBER
+`the smaller of` MEANS IF a AT MOST b THEN a ELSE b
+
+GIVEN `declared agent by written notice` IS A BOOLEAN, `the tax due from the employer` IS A NUMBER, `moneys held for or owed to the employer` IS A NUMBER
+GIVETH A NUMBER
+`the most a declared agent may be required to pay` MEANS
+    IF `declared agent by written notice` THEN `the smaller of` `the tax due from the employer` `moneys held for or owed to the employer` ELSE 0
+
+§§ `11(2) -- penalties that regulations may impose`
+
+-- s 11(2): regulations may impose penalties for failure to comply, consisting of "(a) a fine equal to double the amount of payroll tax
+-- due and unpaid; and (b) a further fine not exceeding $5,000 or a term of imprisonment not exceeding 3 years or both". These are
+-- ceilings on what regulations MAY provide; no regulations were deposited.
+GIVEN `payroll tax due and unpaid` IS A NUMBER
+GIVETH A NUMBER
+`the double-tax fine regulations may impose` MEANS 2 TIMES `payroll tax due and unpaid`
+
+GIVEN `payroll tax due and unpaid` IS A NUMBER
+GIVETH A NUMBER
+`the most a fine under regulations can come to` MEANS `the double-tax fine regulations may impose` `payroll tax due and unpaid` PLUS 5000
+
+`the maximum imprisonment in years under regulations` MEANS 3
+
+§§ `12(4) to (6), (8) -- secrecy`
+
+-- s 12(4): officials must treat documents, information and returns relating to remuneration and payroll tax "as secret and
+-- confidential". (5): every person having possession or control of them who, "otherwise than for the purpose of this Act or of any
+-- written law relating to income tax or with the express authority of the Minister", communicates them or lets anyone have access, is
+-- guilty of an offence: "a fine not exceeding $1,000 or to imprisonment for a term not exceeding 6 months or to both". (6): "No
+-- proceedings for an offence under this section shall be taken except by the Public Prosecutor." (8): the Auditor-General or an
+-- authorised officer must be permitted access and is deemed a person employed in carrying out the Act.
+GIVEN `disclosed or allowed access` IS A BOOLEAN, `for this Act or an income tax law` IS A BOOLEAN, `with the Minister's express authority` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `disclosure is a secrecy offence` IF
+    `disclosed or allowed access` AND (NOT `for this Act or an income tax law`) AND (NOT `with the Minister's express authority`)
+
+GIVEN `prosecuted by the Public Prosecutor` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `secrecy proceedings may be taken` IF `prosecuted by the Public Prosecutor`
+
+`the maximum fine for unlawful disclosure` MEANS 1000
