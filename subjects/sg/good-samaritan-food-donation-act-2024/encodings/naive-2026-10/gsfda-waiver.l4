@@ -1,0 +1,157 @@
+IMPORT prelude
+
+-- Good Samaritan Food Donation Act 2024 (Singapore, No. 26 of 2024) -- who is a "food donor" (s 2), the waiver of criminal and civil
+-- liability for death or personal injury from donated food (s 4), and what the Act does not reach (s 5).
+--
+-- Edition: informal consolidation, "version in force from 28/11/2025", as deposited at ../../registers/source-bundle/GSFDA2024.txt
+-- (retrieved 1 October 2026, "Current version as at 01 Oct 2026"). The only amendment annotated is to the definition of "food" in
+-- s 2: [Act 7 of 2025 wef 28/11/2025], which now points to s 4 of the Food Safety and Security Act 2025. The deposit does not give
+-- the commencement date of the Act or of s 4 (s 1: "a date that the Minister appoints by notification in the Gazette").
+--
+-- WHY THIS ACT. Chosen for everyday-life relevance: anyone in Singapore who gives surplus food to a food bank, soup kitchen or
+-- charity -- a bakery, a hotel, a caterer, a home cook -- is the person this Act protects or leaves exposed. The whole operative
+-- Act (ss 2, 4, 5) is encoded; it is five sections long.
+--
+-- NOT ENCODED: s 1 (title and commencement) and s 3 (purpose) beyond comments; the meanings of "food", "unsafe" and "unsuitable",
+-- which are borrowed from the Food Safety and Security Act 2025 and ss 2C and 2D of the Sale of Food Act 1973 (not read -- here they
+-- are a single input flag); and s 4(2), which preserves every other defence (noted, not modelled: a FALSE result below means only
+-- that s 4 does not protect the giver, NOT that the giver is liable).
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Good Samaritan Food Donation Act 2024 -- gifts of food`
+
+-- s 2 "recipient", of food, means "the person directly receiving the food from a food donor". The handling and time-limit warnings in
+-- s 4(1)(b) and (c) must be given to THAT person. Who was told is therefore an input with three values.
+DECLARE Told IS ONE OF
+    `the direct recipient`
+    `only the eventual consumer`
+    `nobody`
+
+-- s 4(1): the waiver is "in respect of any death or personal injury that results from the consumption of the food".
+DECLARE Harm IS ONE OF
+    `death`
+    `personal injury`
+    `damage to property`
+    `pure financial loss`
+
+DECLARE Gift HAS
+    `the giver is an entity` IS A BOOLEAN
+    `given in the course of a business` IS A BOOLEAN
+    `the thing given is food` IS A BOOLEAN
+    `given for a charitable, benevolent or philanthropic purpose` IS A BOOLEAN
+    `the giver received money or money's worth` IS A BOOLEAN
+    `given between individuals as part of a personal relationship` IS A BOOLEAN
+    `supplied with accommodation at a private residence in exchange for services or labour` IS A BOOLEAN
+    `the food was not unsafe and not unsuitable when it left the giver` IS A BOOLEAN
+    `the food became unsafe after it left the giver` IS A BOOLEAN
+    `the food needed particular handling to stay safe and suitable` IS A BOOLEAN
+    `who was told the handling requirements` IS A Told
+    `the food stayed safe and suitable only for a limited time` IS A BOOLEAN
+    `who was told the time limit` IS A Told
+    `the giver took all reasonably practicable measures to comply with food safety and hygiene law` IS A BOOLEAN
+    `the liability arose before section 4 commenced` IS A BOOLEAN
+
+§§ `2 -- donate and food donor`
+
+-- s 2 "donate" means (a) "a person giving to another any thing for a charitable, benevolent, or philanthropic purpose without
+-- receiving any money or money's worth"; or (b) a person giving, on the same terms, "any thing donated by another". Limb (b) catches
+-- a food bank or charity passing on what it was given; both limbs carry the same two conditions, so one rule serves both.
+GIVEN `the gift` IS A Gift
+GIVETH A BOOLEAN
+DECIDE `the giving is a donation` IF
+        `the gift`'s `given for a charitable, benevolent or philanthropic purpose`
+    AND (NOT `the gift`'s `the giver received money or money's worth`)
+
+-- s 2 "food donor" means (a) "any entity which donates food in the course of a business, regardless if the entity is a charity
+-- registered under the Charities Act 1994"; (b) "any other person who donates food". Limb (b) takes in everyone limb (a) does not, so
+-- the entity / business distinction decides nothing here: whoever donates food is a food donor. The two limbs are kept visible.
+GIVEN `the gift` IS A Gift
+GIVETH A BOOLEAN
+DECIDE `the giver is within limb (a)` IF
+        `the gift`'s `the giver is an entity`
+    AND `the gift`'s `given in the course of a business`
+    AND `the gift`'s `the thing given is food`
+    AND `the giving is a donation` `the gift`
+
+GIVEN `the gift` IS A Gift
+GIVETH A BOOLEAN
+DECIDE `the giver is within limb (b)` IF
+        (NOT `the giver is within limb (a)` `the gift`)
+    AND `the gift`'s `the thing given is food`
+    AND `the giving is a donation` `the gift`
+
+GIVEN `the gift` IS A Gift
+GIVETH A BOOLEAN
+DECIDE `the giver is a food donor` IF
+        `the giver is within limb (a)` `the gift`
+    OR  `the giver is within limb (b)` `the gift`
+
+§§ `5(2) -- gifts the Act does not reach`
+
+-- s 5(2): "This Act does not apply to -- (a) any exchanging or giving of food between individuals as part of a personal
+-- relationship; or (b) any supply of food together with accommodation to an individual residing at a private residence in exchange
+-- for services or labour by the individual."
+GIVEN `the gift` IS A Gift
+GIVETH A BOOLEAN
+DECIDE `the Act applies to the gift` IF
+        (NOT `the gift`'s `given between individuals as part of a personal relationship`)
+    AND (NOT `the gift`'s `supplied with accommodation at a private residence in exchange for services or labour`)
+
+§§ `4(1) -- the four conditions`
+
+GIVEN `who` IS A Told
+GIVETH A BOOLEAN
+DECIDE `the recipient was told` IF
+    CONSIDER `who`
+    WHEN `the direct recipient` THEN TRUE
+    OTHERWISE FALSE
+
+-- s 4(1)(b): "where the food was of a nature that required it to be handled in a particular way to ensure that it remained safe and
+-- suitable to consume after it left the possession or control of the food donor, the food donor informed the recipient of the food
+-- of those handling requirements". Naive literal reading: telling only the eventual consumer is not telling "the recipient".
+GIVEN `the gift` IS A Gift
+GIVETH A BOOLEAN
+DECIDE `the handling condition is met` IF
+        (NOT `the gift`'s `the food needed particular handling to stay safe and suitable`)
+    OR  `the recipient was told` (`the gift`'s `who was told the handling requirements`)
+
+-- s 4(1)(c): "where the food would only have remained safe and suitable to consume for a particular period of time after it left
+-- the possession or control of the food donor, the food donor informed the recipient of the food of that time limit".
+GIVEN `the gift` IS A Gift
+GIVETH A BOOLEAN
+DECIDE `the time limit condition is met` IF
+        (NOT `the gift`'s `the food stayed safe and suitable only for a limited time`)
+    OR  `the recipient was told` (`the gift`'s `who was told the time limit`)
+
+GIVEN `the harm` IS A Harm
+GIVETH A BOOLEAN
+DECIDE `the harm is death or personal injury` IF
+    CONSIDER `the harm`
+    WHEN `death` THEN TRUE
+    WHEN `personal injury` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `4 and 5(1) -- the waiver`
+
+-- s 4(1): "A food donor who donates any food shall not be liable in any criminal or civil proceedings in respect of any death or
+-- personal injury that results from the consumption of the food if -- (a) the food was not unsafe and not unsuitable at the time it
+-- left the possession or control of the food donor; (b) [handling]; (c) [time limit]; and (d) the food donor, before donating the
+-- food, took all reasonably practicable measures to comply with any applicable requirement under any written law relating to food
+-- safety and food hygiene when handling the food." The four conditions are joined by "and".
+-- Condition (a) looks only at the moment the food LEFT the donor: `the food became unsafe after it left the giver` is deliberately
+-- not read.
+-- s 5(1): "Section 4 does not apply in relation to liability arising before the commencement of that section."
+-- s 4(2): "This section is additional to any other defence available to the defendant apart from this section." Not modelled.
+GIVEN `the gift` IS A Gift, `the harm` IS A Harm
+GIVETH A BOOLEAN
+DECIDE `section 4 protects the giver` IF
+        `the giver is a food donor` `the gift`
+    AND `the Act applies to the gift` `the gift`
+    AND (NOT `the gift`'s `the liability arose before section 4 commenced`)
+    AND `the harm is death or personal injury` `the harm`
+    AND `the gift`'s `the food was not unsafe and not unsuitable when it left the giver`
+    AND `the handling condition is met` `the gift`
+    AND `the time limit condition is met` `the gift`
+    AND `the gift`'s `the giver took all reasonably practicable measures to comply with food safety and hygiene law`
