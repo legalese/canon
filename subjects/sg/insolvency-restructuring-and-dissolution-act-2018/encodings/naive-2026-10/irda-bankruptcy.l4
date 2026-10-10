@@ -1,0 +1,339 @@
+IMPORT prelude
+
+-- Insolvency, Restructuring and Dissolution Act 2018 (Singapore) -- personal bankruptcy as an individual meets it: who can be made
+-- bankrupt and on what debt (ss 310, 311, 312, 314, 316(2)), referral to a debt repayment scheme instead (ss 316(9), 318(3),
+-- 290(1)(b), 291(7)), what the Official Assignee takes (s 329), gifts and preferences that can be unwound (ss 361-363), discharge by
+-- the Official Assignee's certificate (ss 395, 396(13)), what discharge does not release (s 397), the bankrupt's disqualifications
+-- and disabilities (ss 400, 401), and two bankruptcy offences (ss 412, 413, with the defences in s 404 and the penalty in s 417).
+--
+-- Edition: 2020 Revised Edition, informal consolidation (version in force from 30/9/2026), as deposited at
+-- ../../registers/source-bundle/IRDA2018.txt. The revised edition incorporates amendments up to 1 December 2021; the latest
+-- amendment annotated in the deposit is Act 8 of 2026 wef 29/05/2026 (Second Schedule); s 412(1)(b) to (d) are annotated
+-- Act 1 of 2023 wef 22/05/2026. THE ARRANGEMENT AT THE TOP OF THE DEPOSIT IS ONE NUMBER OUT OF STEP IN PART 20: it lists "Obtaining
+-- credit ..." as s 411, but the body numbers it s 412. This file follows the body.
+--
+-- WHY THIS ACT. Chosen for its everyday-life relevance to ordinary people in Singapore: it is the law under which an individual with
+-- unpaid debts can be made bankrupt, and what bankruptcy then does to them. SCOPED to Parts 13 to 20 as they touch an individual.
+-- The Act is several hundred pages; NOT encoded: corporate insolvency, judicial management, schemes of arrangement and winding up
+-- (Parts 4 to 12), cross-border insolvency (Third Schedule), insolvency practitioners, voluntary arrangements (Part 14), the
+-- running of a debt repayment scheme once it starts (ss 292 to 303), proof of debts and priority (ss 345 to 356), the monthly and
+-- target contribution formula (s 339 lists factors but no formula), annulment and discharge by the Court (ss 392 to 394), and the
+-- other offences in Part 20. The "prescribed amount" ceiling for a debt repayment scheme is in subsidiary legislation, which was not
+-- retrieved, so it enters as a yes/no fact.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules conventions of the example rows. No pipeline, no
+-- coverage table, no independent test pass, no human gate. See NOTES.md.
+
+§ `Insolvency, Restructuring and Dissolution Act 2018 -- personal bankruptcy`
+
+§§ `310, 311 -- who can be made bankrupt, and on what debt`
+
+-- s 310(1): no application against an individual "unless the debtor -- (a) is domiciled in Singapore; (b) has property in Singapore;
+-- or (c) has, at any time within the period of one year immediately preceding" the application, been ordinarily resident or had a
+-- place of residence in Singapore, or carried on business in Singapore.
+GIVEN `domiciled in Singapore` IS A BOOLEAN, `has property in Singapore` IS A BOOLEAN,
+      `resided in Singapore within the last year` IS A BOOLEAN, `did business in Singapore within the last year` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the debtor is within reach of the Act` IF
+        `domiciled in Singapore`
+    OR  `has property in Singapore`
+    OR  `resided in Singapore within the last year`
+    OR  `did business in Singapore within the last year`
+
+-- s 311(1): no application "unless at the time the application is made -- (a) the amount of the debt, or the aggregate amount of the
+-- debts, is not less than $15,000; (b) the debt or each of the debts is for a liquidated sum payable to the applicant creditor
+-- immediately; (c) the debtor is unable to pay ...; and (d) where the debt ... is incurred outside Singapore, such debt is payable
+-- ... by virtue of a judgment or an award which is enforceable by an enforcement order in Singapore." (2): the Minister may change
+-- the $15,000 by order.
+GIVEN `the total debt` IS A NUMBER, `liquidated and payable now` IS A BOOLEAN, `unable to pay` IS A BOOLEAN,
+      `incurred outside Singapore` IS A BOOLEAN, `backed by a judgment enforceable here` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the debt can ground a bankruptcy application` IF
+        `the total debt` AT LEAST 15000
+    AND `liquidated and payable now`
+    AND `unable to pay`
+    AND ((NOT `incurred outside Singapore`) OR `backed by a judgment enforceable here`)
+
+§§ `312, 314, 316(2) -- the statutory demand`
+
+-- s 312: the debtor is "presumed to be unable to pay" an immediately payable debt if (a) a statutory demand was served and "at least
+-- 21 days have elapsed" and the debtor "has neither complied with it nor applied to the Court to set it aside"; (b) an enforcement
+-- order on a judgment debt "has been returned unsatisfied in whole or in part"; or (c) the debtor "departed from or remained outside
+-- Singapore with the intention of defeating, delaying or obstructing a creditor". (Ground (d), failed debt repayment schemes, is not
+-- modelled.) The presumption holds "until the debtor proves to the contrary".
+GIVEN `days since the demand was served` IS A NUMBER, `the demand was complied with` IS A BOOLEAN,
+      `an application to set the demand aside was made` IS A BOOLEAN, `an enforcement order came back unsatisfied` IS A BOOLEAN,
+      `left Singapore to defeat creditors` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the debtor is presumed unable to pay` IF
+        (    `days since the demand was served` AT LEAST 21
+         AND (NOT `the demand was complied with`)
+         AND (NOT `an application to set the demand aside was made`))
+    OR  `an enforcement order came back unsatisfied`
+    OR  `left Singapore to defeat creditors`
+
+-- s 314: an application relying on a statutory demand "may be made before the end of the period of 21 days" if "there is a serious
+-- possibility that the debtor's property ... will be significantly diminished during that period" and the application says so.
+-- s 316(2): even then the Court "must not make a bankruptcy order until at least 21 days have elapsed after the statutory demand was
+-- served".
+GIVEN `days since the demand was served` IS A NUMBER, `property at serious risk of diminishing` IS A BOOLEAN,
+      `the application says so` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the creditor may apply now` IF
+        `days since the demand was served` AT LEAST 21
+    OR  (`property at serious risk of diminishing` AND `the application says so`)
+
+GIVEN `days since the demand was served` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the Court may make the bankruptcy order now` IF
+    `days since the demand was served` AT LEAST 21
+
+§§ `316(9), 318(3), 290, 291 -- the debt repayment scheme comes first`
+
+-- s 316(9) (creditor's application) and s 318(3) (debtor's own): if a bankruptcy order may be made, the Court "MUST, instead of making
+-- the order, adjourn the bankruptcy application for a period of 6 months" and refer it to the Official Assignee for a debt repayment
+-- scheme, "if all of the following qualifying criteria are satisfied": (a) the debts do "not exceed the prescribed amount"; (b) not an
+-- undischarged bankrupt and not a bankrupt within the preceding 5 years; (c) no voluntary arrangement in effect within 5 years;
+-- (d) not subject to a debt repayment scheme within 5 years; (e) "not a sole proprietor, a partner of a firm ... or a partner in a
+-- limited liability partnership". The prescribed amount is not in the Act.
+GIVEN `the debts are within the prescribed amount` IS A BOOLEAN, `bankrupt now or within the last 5 years` IS A BOOLEAN,
+      `under a voluntary arrangement within the last 5 years` IS A BOOLEAN,
+      `under a debt repayment scheme within the last 5 years` IS A BOOLEAN,
+      `a sole proprietor or partner` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Court must refer the debtor for a debt repayment scheme` IF
+        `the debts are within the prescribed amount`
+    AND (NOT `bankrupt now or within the last 5 years`)
+    AND (NOT `under a voluntary arrangement within the last 5 years`)
+    AND (NOT `under a debt repayment scheme within the last 5 years`)
+    AND (NOT `a sole proprietor or partner`)
+
+-- s 290(1)(b): the debtor submits "a debt repayment plan, with a repayment period not exceeding 5 years"; s 291(7): the approved
+-- plan's repayment period "must not exceed 5 years".
+GIVEN `the repayment period in years` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the repayment plan can be approved` IF
+    `the repayment period in years` AT MOST 5
+
+§§ `329 -- what the Official Assignee takes`
+
+-- s 329(1): the bankrupt's estate is all property belonging to the bankrupt at the commencement of the bankruptcy "or is acquired by
+-- or devolves on him or her before his or her discharge". (2) It does not include (a) property held on trust for another; (b) "tools,
+-- books, vehicles and other items of equipment as are needed by the bankrupt for the bankrupt's personal use in the bankrupt's
+-- employment, business or vocation"; (c) clothing, bedding, furniture, household equipment and provisions "necessary for satisfying
+-- the basic domestic needs" of the bankrupt and family; (d) property excluded by other written law; (e) "the remainder of the
+-- bankrupt's monthly income after deducting the bankrupt's monthly contribution"; and (f) "any annual bonus or annual wage supplement".
+DECLARE Asset IS ONE OF
+    `savings in a bank account`
+    `a van the bankrupt needs for work`
+    `necessary household furniture`
+    `an annual bonus`
+    `salary left after the monthly contribution`
+    `money held on trust for someone else`
+    `an inheritance received before discharge`
+    `a second property`
+
+GIVEN `the asset` IS AN Asset
+GIVETH A BOOLEAN
+DECIDE `the asset goes to the creditors` IF
+    CONSIDER `the asset`
+    WHEN `savings in a bank account` THEN TRUE
+    WHEN `an inheritance received before discharge` THEN TRUE
+    WHEN `a second property` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `361, 362, 363 -- gifts and preferences before bankruptcy`
+
+-- s 361: a transaction "at an undervalue" (a gift, a transaction in consideration of marriage, or one for significantly less than
+-- the individual gave) may be unwound. s 362: so may an "unfair preference" to a creditor or surety.
+-- s 363(1): the relevant time is (a) for an undervalue, "the period of 3 years ending on the day of the making of the bankruptcy
+-- application"; (b) for a preference to an associate (not merely an employee), 2 years; (c) any other preference, one year.
+-- (2): only if the individual "is insolvent at that time" or "becomes insolvent in consequence". (3): for an undervalue with an
+-- associate, insolvency "is presumed ... unless the contrary is shown". (The s 312(d) variant is not modelled.)
+DECLARE Transfer IS ONE OF
+    `a gift or undervalue to a stranger`
+    `a gift or undervalue to an associate`
+    `a preference to an associate`
+    `a preference to anyone else`
+
+GIVEN `the transfer` IS A Transfer
+GIVETH A NUMBER
+`the look-back in years` MEANS
+    CONSIDER `the transfer`
+    WHEN `a gift or undervalue to a stranger` THEN 3
+    WHEN `a gift or undervalue to an associate` THEN 3
+    WHEN `a preference to an associate` THEN 2
+    OTHERWISE 1
+
+GIVEN `the transfer` IS A Transfer, `years before the application` IS A NUMBER, `insolvent then or as a result` IS A BOOLEAN,
+      `solvency was shown` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the transfer was at a relevant time` IF
+        `years before the application` AT MOST `the look-back in years` `the transfer`
+    AND (   `insolvent then or as a result`
+         OR (`the transfer` EQUALS `a gift or undervalue to an associate` AND (NOT `solvency was shown`)))
+
+§§ `395, 396 -- discharge by the Official Assignee's certificate`
+
+-- s 395(2)(a), a first bankruptcy: the Official Assignee must not discharge unless (i) the target contribution "has been paid in full"
+-- (or cannot be because of "extenuating circumstances": death, or circumstances such as debilitating illness), AND either 3 years
+-- have lapsed after the administration date with "no objection to the discharge ... by the relevant threshold of creditors", or 5
+-- years have lapsed; or (ii) 7 years have lapsed. (b), a repeat bankruptcy: the same with 5, 7 and 9 years.
+-- (5): any period "during which the bankrupt was outside Singapore" without the Official Assignee's permission is disregarded.
+-- The section says "must not ... unless" and "may, in his or her discretion": these are the conditions for discharge, not a right to it.
+GIVEN `years since the administration date` IS A NUMBER, `years abroad without permission` IS A NUMBER
+GIVETH A NUMBER
+`the years that count` MEANS `years since the administration date` MINUS `years abroad without permission`
+
+GIVEN `a repeat bankruptcy` IS A BOOLEAN, `target contribution paid or excused` IS A BOOLEAN,
+      `years since the administration date` IS A NUMBER, `years abroad without permission` IS A NUMBER,
+      `the threshold of creditors objected` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Official Assignee may discharge` IF
+    IF `a repeat bankruptcy`
+    THEN    (    `target contribution paid or excused`
+             AND (   (`the years that count` `years since the administration date` `years abroad without permission` AT LEAST 5
+                      AND (NOT `the threshold of creditors objected`))
+                  OR `the years that count` `years since the administration date` `years abroad without permission` AT LEAST 7))
+        OR  `the years that count` `years since the administration date` `years abroad without permission` AT LEAST 9
+    ELSE    (    `target contribution paid or excused`
+             AND (   (`the years that count` `years since the administration date` `years abroad without permission` AT LEAST 3
+                      AND (NOT `the threshold of creditors objected`))
+                  OR `the years that count` `years since the administration date` `years abroad without permission` AT LEAST 5))
+        OR  `the years that count` `years since the administration date` `years abroad without permission` AT LEAST 7
+
+-- s 395(6): the "relevant threshold of creditors" is "not less than half in number or more than one-fourth in value, or both, of the
+-- creditors who have proved their debts". Half in number is enough; exactly a quarter in value is not.
+GIVEN `share of creditors by number` IS A NUMBER, `share of debts by value` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the objectors reach the threshold` IF
+    `share of creditors by number` AT LEAST 0.5 OR `share of debts by value` GREATER THAN 0.25
+
+-- s 396(11)(b), (13): on a creditor's objection the Court may bar a certificate "for a period not exceeding 2 years", but not beyond
+-- 9 years after the administration date (11 years for a repeat bankruptcy), save in "an exceptional case" (s 396(14)).
+GIVEN `a repeat bankruptcy` IS A BOOLEAN
+GIVETH A NUMBER
+`the latest an objection can ordinarily push discharge, in years` MEANS
+    IF `a repeat bankruptcy` THEN 11 ELSE 9
+
+§§ `397 -- what discharge does not release`
+
+-- s 397(1): discharge "releases the bankrupt from all the debts provable in the bankruptcy", but (2) not from (a) "any debt due to the
+-- Government", (b) public-revenue offence liabilities, or (c) MediShield Life or CareShield Life premiums -- (3) only the Minister can
+-- release those; (5) not from a debt incurred by "fraud or fraudulent breach of trust" or "a fine imposed for an offence"; and (6) not,
+-- "except to such extent and on such conditions as the Court may direct", from damages for personal injuries, an order under the
+-- Women's Charter 1961 relating to family matters, or a proceeds-of-crime confiscation order. (7) a surety for the bankrupt is not
+-- released either.
+DECLARE Debt IS ONE OF
+    `a credit card debt`
+    `an unsecured bank loan`
+    `a debt due to the Government`
+    `unpaid MediShield Life premiums`
+    `a fine for an offence`
+    `a debt incurred by fraud`
+    `damages for personal injury`
+    `maintenance under a Women's Charter order`
+
+DECLARE Release IS ONE OF
+    `released`
+    `not released`
+    `released only if the Minister certifies`
+    `released only as far as the Court directs`
+
+GIVEN `the debt` IS A Debt
+GIVETH A Release
+`what discharge does to the debt` MEANS
+    CONSIDER `the debt`
+    WHEN `a credit card debt` THEN `released`
+    WHEN `an unsecured bank loan` THEN `released`
+    WHEN `a debt due to the Government` THEN `released only if the Minister certifies`
+    WHEN `unpaid MediShield Life premiums` THEN `released only if the Minister certifies`
+    WHEN `a fine for an offence` THEN `not released`
+    WHEN `a debt incurred by fraud` THEN `not released`
+    OTHERWISE `released only as far as the Court directs`
+
+§§ `400, 401 -- disqualifications and disabilities`
+
+-- s 400(1): a bankrupt "is disqualified from being appointed or acting as a trustee or personal representative ... except with the
+-- permission of the Court"; (2) until annulment or discharge; (3) $10,000 or 2 years.
+GIVEN `discharged or annulled` IS A BOOLEAN, `the Court permits` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the bankrupt may act as executor or trustee` IF
+    `discharged or annulled` OR `the Court permits`
+
+-- s 401(1)(b): an undischarged bankrupt "must not leave, or remain or reside outside, Singapore without the previous permission of the
+-- Official Assignee"; (3) $10,000 or 2 years.
+GIVEN `discharged` IS A BOOLEAN, `left or stayed outside Singapore` IS A BOOLEAN, `had the Official Assignee's prior permission` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the travel is an offence` IF
+    (NOT `discharged`) AND `left or stayed outside Singapore` AND (NOT `had the Official Assignee's prior permission`)
+
+-- s 401(1)(a): without the Official Assignee's previous sanction the bankrupt "is incompetent to commence, continue or defend" any
+-- action "other than -- (A) an action for damages in respect of any injury to the bankrupt's person; or (B) a matrimonial proceeding"
+-- (which must be notified to the Official Assignee 3 days ahead, s 401(2)). "Action" includes arbitration (s 401(4)).
+DECLARE Proceeding IS ONE OF
+    `a personal injury claim`
+    `divorce proceedings`
+    `a contract claim`
+    `an arbitration over a debt`
+
+GIVEN `the proceeding` IS A Proceeding, `the Official Assignee sanctioned it` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the bankrupt may conduct the proceeding` IF
+        `the Official Assignee sanctioned it`
+    OR  `the proceeding` EQUALS `a personal injury claim`
+    OR  `the proceeding` EQUALS `divorce proceedings`
+
+§§ `412, 404, 417 -- obtaining credit, guaranteeing, taking deposits`
+
+-- s 412(1): an undischarged bankrupt commits an offence if, without telling the other person "at the time" that the individual is an
+-- undischarged bankrupt, the individual (a) "obtains credit to the extent of at least $1,000"; (c) provides a guarantee, indemnity or
+-- security "to the extent of at least $1,000"; or (d) "receives money or other consideration of at least $10,000 ... that is advance
+-- payment for the supply of goods or services" (each "or such higher amount as may be prescribed"; none was retrieved).
+-- s 404(1): no offence if the person proves "no intent to defraud or to conceal the state of the person's affairs" -- s 412 is not
+-- among the exclusions. s 404(2): no offence under "412(1)(a), (b) or (c)" if the individual proves "did not know or have any reason
+-- to believe" he or she had been made a bankrupt -- (d) is NOT listed.
+-- s 417: no penalty is expressly provided in s 412, so "a fine not exceeding $10,000 or ... imprisonment for a term not exceeding
+-- 3 years or ... both".
+DECLARE Dealing IS ONE OF
+    `obtaining credit`
+    `giving a guarantee`
+    `taking an advance payment`
+
+GIVEN `the dealing` IS A Dealing
+GIVETH A NUMBER
+`the disclosure threshold` MEANS
+    CONSIDER `the dealing`
+    WHEN `taking an advance payment` THEN 10000
+    OTHERWISE 1000
+
+GIVEN `the dealing` IS A Dealing, `the amount` IS A NUMBER, `told them of the bankruptcy` IS A BOOLEAN,
+      `proved not knowing of the bankruptcy` IS A BOOLEAN, `proved no intent to defraud` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the undischarged bankrupt commits the s 412 offence` IF
+        `the amount` AT LEAST `the disclosure threshold` `the dealing`
+    AND (NOT `told them of the bankruptcy`)
+    AND (NOT `proved no intent to defraud`)
+    AND (   (NOT `proved not knowing of the bankruptcy`)
+         OR `the dealing` EQUALS `taking an advance payment`)
+
+GIVETH A NUMBER
+`the maximum fine for a Part 20 offence with no stated penalty` MEANS 10000
+
+GIVETH A NUMBER
+`the maximum prison years for a Part 20 offence with no stated penalty` MEANS 3
+
+§§ `413 -- business accounts`
+
+-- s 413(1): a bankrupt who was "engaged in any business within 2 years before the making of the bankruptcy application" and did not keep
+-- or preserve proper accounting records commits an offence; (3) but not "(a) if the bankrupt's unsecured liabilities at the
+-- commencement of the bankruptcy did not exceed $15,000; or (b) if the bankrupt proves that ... the omission was honest and
+-- excusable". s 404(1) excludes s 413 from the no-intent-to-defraud defence.
+GIVEN `in business within 2 years before the application` IS A BOOLEAN, `kept proper accounts` IS A BOOLEAN,
+      `unsecured liabilities` IS A NUMBER, `proved the omission honest and excusable` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `failing to keep accounts is an offence` IF
+        `in business within 2 years before the application`
+    AND (NOT `kept proper accounts`)
+    AND `unsecured liabilities` GREATER THAN 15000
+    AND (NOT `proved the omission honest and excusable`)
