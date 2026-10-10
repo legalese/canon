@@ -1,0 +1,326 @@
+IMPORT prelude
+
+-- Patents Act 1994 (Singapore) -- what is patentable (ss 13 to 16), filing abroad by Singapore residents (s 34), the term and
+-- renewal of a patent and its restoration (ss 36, 39), employees' inventions (ss 49, 50), what infringes and the main exceptions
+-- (s 66), the bar on damages against an innocent infringer (s 69), the prior user's right (s 71), groundless threats (s 77), and
+-- the offences of false patent claims and their penalties (ss 34(3), 98, 99, 100).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/PA1994.txt. The deposit
+-- describes itself as incorporating "all amendments up to and including 1 December 2021"; later amendments are annotated in the
+-- text, the latest seen being Act 5 of 2025 (wef 9 March 2025).
+--
+-- WHY THIS ACT. Cited by 6 of the 527 Singapore Acts deposited in this repository. SCOPED to the rules an inventor, an employer, a
+-- competitor or a seller meets. Not encoded: the Registry and its officers (Part 2), priority dates (s 17), entitlement disputes,
+-- the application, search and examination procedure (Parts 5 and 6), extension of term (s 36A), amendment and re-examination,
+-- property in patents and the register, restrictive contract terms (Part 10), licences of right and compulsory licences,
+-- Government use (Part 12), revocation, international applications, legal proceedings, patent agents, and the Schedule. Prescribed
+-- periods and fees live in rules that were not retrieved.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Patents Act 1994 -- patents`
+
+§§ `13 to 16 -- patentable inventions`
+
+-- s 13(1): a patentable invention is one that "(a) the invention is new; (b) it involves an inventive step; and (c) it is capable
+-- of industrial application". (2): an invention "the publication or exploitation of which would be generally expected to
+-- encourage offensive, immoral or anti-social behaviour is not a patentable invention"; (3) but behaviour is not to be so regarded
+-- "only because it is prohibited by any law in force in Singapore".
+GIVEN `is new` IS A BOOLEAN, `involves an inventive step` IS A BOOLEAN, `is capable of industrial application` IS A BOOLEAN,
+      `would be expected to encourage offensive, immoral or anti-social behaviour` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the invention is patentable` IF
+        `is new`
+    AND `involves an inventive step`
+    AND `is capable of industrial application`
+    AND (NOT `would be expected to encourage offensive, immoral or anti-social behaviour`)
+
+-- s 14(1), (2): new "if it does not form part of the state of the art", which is all matter "made available to the public
+-- (whether in Singapore or elsewhere) ... at any time before the priority date". (4): a disclosure is DISREGARDED if it occurred
+-- "later than the beginning of the period of 12 months immediately preceding the date of filing" and was (a), (b) obtained
+-- unlawfully or in breach of confidence, (c) at an international exhibition, (d) a paper before a learned society, or (e) made to
+-- the public by the inventor or someone who obtained it from the inventor. The 12-month window runs back from the FILING date,
+-- not the priority date.
+GIVEN `made available to the public before the priority date` IS A BOOLEAN,
+      `months between the disclosure and the filing date` IS A NUMBER,
+      `the disclosure is of a kind in s 14(4)(a) to (e)` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the invention is new` IF
+        (NOT `made available to the public before the priority date`)
+    OR  (    `months between the disclosure and the filing date` AT MOST 12
+         AND `the disclosure is of a kind in s 14(4)(a) to (e)`)
+
+-- s 16(1): capable of industrial application "if it can be made or used in any kind of industry, including agriculture". (2): "An
+-- invention of a method of treatment of the human or animal body by surgery or therapy or of diagnosis practised on the human or
+-- animal body is not". (3): but a product (substance or composition) invented for use in such a method may be.
+DECLARE InventionKind IS ONE OF
+    `a product`
+    `a process`
+    `a method of treatment or diagnosis of the body`
+    `a substance for use in a method of treatment`
+
+GIVEN `the kind` IS AN InventionKind, `can be made or used in industry` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the invention is capable of industrial application` IF
+    CONSIDER `the kind`
+    WHEN `a method of treatment or diagnosis of the body` THEN FALSE
+    OTHERWISE `can be made or used in industry`
+
+§§ `34 -- filing abroad by Singapore residents`
+
+-- s 34(1): no person resident in Singapore may, "without written authority granted by the Registrar", file outside Singapore unless
+-- "(a) an application for a patent for the same invention has been filed in the Registry at least 2 months before the application
+-- outside Singapore; and (b) no directions have been given under section 33 ... or all such directions have been revoked". (2): not
+-- where the invention was first filed outside Singapore by a person resident outside Singapore. (3): $5,000 or 2 years or both.
+-- (4)(c): "person resident in Singapore" includes a person residing on a valid pass.
+GIVEN `resident in Singapore` IS A BOOLEAN, `has the Registrar's written authority` IS A BOOLEAN,
+      `filed in the Registry first` IS A BOOLEAN, `months between the Singapore and foreign filings` IS A NUMBER,
+      `section 33 directions are in force` IS A BOOLEAN, `first filed abroad by a non-resident` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `filing abroad is an offence` IF
+        `resident in Singapore`
+    AND (NOT `has the Registrar's written authority`)
+    AND (NOT `first filed abroad by a non-resident`)
+    AND (NOT (    `filed in the Registry first`
+              AND `months between the Singapore and foreign filings` AT LEAST 2
+              AND (NOT `section 33 directions are in force`)))
+
+§§ `36, 39 -- term, renewal and restoration`
+
+-- s 36(1): a patent takes effect on the date of issue of the certificate of grant and "continues in force until the end of the
+-- period of 20 years beginning with the date of filing the application" (subject to (2) and s 36A). (2): it "ceases to have effect
+-- at the end of the prescribed period for the payment of any renewal fee if it is not paid". (3): if within a further prescribed
+-- period the renewal fee "and any prescribed additional fee" are paid, it is treated "as if it had never expired".
+-- The 20 years run from FILING, not grant (inference: time before grant counts against the term; s 36A extension not encoded).
+GIVEN `years since the filing date` IS A NUMBER, `renewal fees paid in time` IS A BOOLEAN,
+      `paid late with the additional fee in the grace period` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the patent is in force` IF
+        `years since the filing date` < 20
+    AND (`renewal fees paid in time` OR `paid late with the additional fee in the grace period`)
+
+-- s 39(1): restoration of a patent that lapsed for failure to pay a renewal fee may be applied for "within the prescribed period".
+-- (5): if the Registrar "is satisfied that the failure ... was unintentional, the Registrar MUST by order restore the patent on
+-- payment of any unpaid renewal fee and any prescribed additional fee".
+GIVEN `lapsed for non-payment of a renewal fee` IS A BOOLEAN, `applied within the prescribed period` IS A BOOLEAN,
+      `the failure was unintentional` IS A BOOLEAN, `unpaid and additional fees paid` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Registrar must restore the patent` IF
+        `lapsed for non-payment of a renewal fee`
+    AND `applied within the prescribed period`
+    AND `the failure was unintentional`
+    AND `unpaid and additional fees paid`
+
+§§ `49, 50 -- employees' inventions`
+
+-- s 49(1): "Despite anything in any rule of law", an employee's invention belongs to the employer if (a) made in the course of
+-- normal duties, or duties outside them "but specifically assigned", AND "an invention might reasonably be expected to result"; or
+-- (b) made in the course of duties when the employee "had a special obligation to further the interests of the employer's
+-- undertaking". (2): any other invention belongs to the employee.
+-- s 50(1): the Part does not apply unless the employee was (a) mainly employed in Singapore, or (b) not mainly employed anywhere
+-- (or the place cannot be determined) but attached to the employer's place of business in Singapore. (4): nothing precludes "the
+-- operation of an agreement or a contract in relation to the right to an invention" (not encoded beyond this comment).
+DECLARE EmployeeInvention HAS
+    `mainly employed in Singapore` IS A BOOLEAN
+    `not mainly employed anywhere` IS A BOOLEAN
+    `attached to the employer's Singapore place of business` IS A BOOLEAN
+    `made in the course of normal duties` IS A BOOLEAN
+    `made in the course of specifically assigned duties` IS A BOOLEAN
+    `an invention might reasonably be expected to result` IS A BOOLEAN
+    `made in the course of duties` IS A BOOLEAN
+    `had a special obligation to further the employer's interests` IS A BOOLEAN
+
+GIVEN `the invention` IS AN EmployeeInvention
+GIVETH A BOOLEAN
+DECIDE `Part 9 applies` IF
+        `the invention`'s `mainly employed in Singapore`
+    OR  (    `the invention`'s `not mainly employed anywhere`
+         AND `the invention`'s `attached to the employer's Singapore place of business`)
+
+GIVEN `the invention` IS AN EmployeeInvention
+GIVETH A BOOLEAN
+DECIDE `the invention belongs to the employer` IF
+        `Part 9 applies` `the invention`
+    AND (    (    (`the invention`'s `made in the course of normal duties` OR `the invention`'s `made in the course of specifically assigned duties`)
+              AND `the invention`'s `an invention might reasonably be expected to result`)
+         OR  (    `the invention`'s `made in the course of duties`
+              AND `the invention`'s `had a special obligation to further the employer's interests`))
+
+GIVEN `the invention` IS AN EmployeeInvention
+GIVETH A BOOLEAN
+DECIDE `the invention belongs to the employee` IF
+        `Part 9 applies` `the invention`
+    AND (NOT `the invention belongs to the employer` `the invention`)
+
+§§ `66 -- infringement and its exceptions`
+
+-- s 66(1): a person infringes "if, but only if, while the patent is in force, the person does any of the following things IN
+-- SINGAPORE ... WITHOUT THE CONSENT of the proprietor": for a product, "makes, disposes of, offers to dispose of, uses or imports
+-- the product or keeps it"; for a process, uses it (or offers it for use with knowledge), or deals in "any product obtained
+-- directly by means of that process".
+-- (2) not an infringement if: (a) "done privately AND for purposes which are not commercial"; (b) "for experimental purposes
+-- relating to the subject matter of the invention"; (c) extemporaneous preparation of a medicine on a doctor's or dentist's
+-- prescription; (d)-(f) foreign vessels and aircraft passing through; (g) import or dealing in a product made "by or with the
+-- consent (conditional or otherwise) of the proprietor ... or any person licensed by the proprietor", a foreign patent counting;
+-- (h) acts to support an application for marketing approval of a pharmaceutical product; (i) named-patient imports.
+-- (3): (g) does NOT protect importing a patented pharmaceutical product if (a) it has not previously been sold or distributed in
+-- Singapore with the proprietor's consent, (b) the import would breach a contract between the proprietor and a licensee
+-- distributing outside Singapore, and (c) the importer has actual or constructive knowledge of (b).
+DECLARE Dealing HAS
+    `the patent is in force` IS A BOOLEAN
+    `in Singapore` IS A BOOLEAN
+    `with the proprietor's consent` IS A BOOLEAN
+    `an act listed in s 66(1)` IS A BOOLEAN
+    `done privately` IS A BOOLEAN
+    `for non-commercial purposes` IS A BOOLEAN
+    `for experimental purposes on the invention` IS A BOOLEAN
+    `extemporaneous preparation of a medicine on prescription` IS A BOOLEAN
+    `to support a pharmaceutical marketing approval application` IS A BOOLEAN
+    `dealing in goods put on the market by or with the proprietor's consent` IS A BOOLEAN
+    `a pharmaceutical never sold in Singapore with consent` IS A BOOLEAN
+    `the import breaches a distribution contract of the proprietor` IS A BOOLEAN
+    `the importer knows or has notice of the breach` IS A BOOLEAN
+
+GIVEN `the dealing` IS A Dealing
+GIVETH A BOOLEAN
+DECIDE `the parallel import exception is lost under s 66(3)` IF
+        `the dealing`'s `a pharmaceutical never sold in Singapore with consent`
+    AND `the dealing`'s `the import breaches a distribution contract of the proprietor`
+    AND `the dealing`'s `the importer knows or has notice of the breach`
+
+GIVEN `the dealing` IS A Dealing
+GIVETH A BOOLEAN
+DECIDE `an exception in s 66(2) applies` IF
+        (`the dealing`'s `done privately` AND `the dealing`'s `for non-commercial purposes`)
+    OR  `the dealing`'s `for experimental purposes on the invention`
+    OR  `the dealing`'s `extemporaneous preparation of a medicine on prescription`
+    OR  `the dealing`'s `to support a pharmaceutical marketing approval application`
+    OR  (    `the dealing`'s `dealing in goods put on the market by or with the proprietor's consent`
+         AND (NOT `the parallel import exception is lost under s 66(3)` `the dealing`))
+
+GIVEN `the dealing` IS A Dealing
+GIVETH A BOOLEAN
+DECIDE `the dealing infringes` IF
+        `the dealing`'s `the patent is in force`
+    AND `the dealing`'s `in Singapore`
+    AND (NOT `the dealing`'s `with the proprietor's consent`)
+    AND `the dealing`'s `an act listed in s 66(1)`
+    AND (NOT `an exception in s 66(2) applies` `the dealing`)
+
+§§ `69 -- the innocent infringer`
+
+-- s 69(1): "damages must not be awarded and no order may be made for an account of profits against a defendant who proves that at
+-- the date of the infringement the defendant was not aware, and had no reasonable grounds for supposing, that the patent existed".
+-- (2): marking a product "patent" or "patented" does not give reasonable grounds "unless the number of the patent accompanied the
+-- word or words". (1) names only damages and an account of profits, not an injunction.
+GIVEN `the defendant knew of the patent` IS A BOOLEAN, `had other reasonable grounds` IS A BOOLEAN,
+      `the product was marked patented` IS A BOOLEAN, `the marking gave the patent number` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `damages and an account of profits are barred` IF
+        (NOT `the defendant knew of the patent`)
+    AND (NOT `had other reasonable grounds`)
+    AND (NOT (`the product was marked patented` AND `the marking gave the patent number`))
+
+§§ `71 -- the prior user`
+
+-- s 71(1): a person who in Singapore before the priority date "(a) does in good faith an act which would constitute an
+-- infringement ... or (b) makes in good faith effective and serious preparations to do such an act, has the right to continue to do
+-- the act". (2): the right "does not extend to granting a licence to another person". (3): if done in the course of a business, the
+-- right may be assigned to "any person who acquires that part of the business".
+GIVEN `in Singapore before the priority date` IS A BOOLEAN, `in good faith` IS A BOOLEAN,
+      `did the act` IS A BOOLEAN, `made effective and serious preparations` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `may continue despite the patent` IF
+        `in Singapore before the priority date`
+    AND `in good faith`
+    AND (`did the act` OR `made effective and serious preparations`)
+
+GIVEN `has the prior user right` IS A BOOLEAN, `the act was in the course of a business` IS A BOOLEAN,
+      `the assignee acquires that part of the business` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the prior user right may be assigned` IF
+        `has the prior user right`
+    AND `the act was in the course of a business`
+    AND `the assignee acquires that part of the business`
+
+§§ `77 -- groundless threats`
+
+-- s 77(1): where a person "by circulars, advertisements or otherwise threatens another person with proceedings for any
+-- infringement", a person aggrieved (whether or not the person threatened) may sue. (2): the claimant is entitled to relief unless
+-- the defendant proves the acts infringe AND the patent "is not shown by the claimant to be invalid". (4): no action for a threat
+-- about "making or importing a product for disposal or of using a process". (5): "A mere notification of the existence of a patent
+-- does not constitute a threat". (6): an advocate and solicitor acting for a client is not liable (not encoded).
+GIVEN `threatened infringement proceedings` IS A BOOLEAN, `the claimant is aggrieved` IS A BOOLEAN,
+      `a mere notification that the patent exists` IS A BOOLEAN, `the threat is only about making or importing or using a process` IS A BOOLEAN,
+      `the defendant proves infringement` IS A BOOLEAN, `the claimant shows the patent invalid` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `relief for groundless threats is available` IF
+        `threatened infringement proceedings`
+    AND `the claimant is aggrieved`
+    AND (NOT `a mere notification that the patent exists`)
+    AND (NOT `the threat is only about making or importing or using a process`)
+    AND (    (NOT `the defendant proves infringement`)
+         OR  `the claimant shows the patent invalid`)
+
+§§ `99, 100 -- false claims to patent rights`
+
+-- s 99(1): falsely representing "that anything disposed of by the person for value is a patented product". (2): marking it
+-- "patent" or "patented" is such a representation. (3): not for a reasonable period after the patent expired or was revoked.
+-- (4): "it is a defence for the accused to prove that the accused used due diligence". $10,000 or 12 months or both.
+GIVEN `disposed of for value` IS A BOOLEAN, `represented or marked as patented` IS A BOOLEAN,
+      `the product is patented` IS A BOOLEAN, `within a reasonable period after expiry or revocation` IS A BOOLEAN,
+      `proved due diligence` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the false patent claim is an offence` IF
+        `disposed of for value`
+    AND `represented or marked as patented`
+    AND (NOT `the product is patented`)
+    AND (NOT `within a reasonable period after expiry or revocation`)
+    AND (NOT `proved due diligence`)
+
+-- s 100(1): representing that a patent has been applied for (including "patent applied for" or "patent pending", (3)) for an article
+-- disposed of for value where "(a) no such application has been made; or (b) any such application has been refused, withdrawn or
+-- treated as having been abandoned". (2): (b) does not apply within a reasonable period after the refusal, withdrawal or
+-- abandonment. (4): due diligence defence. $10,000 or 12 months or both.
+DECLARE ApplicationStatus IS ONE OF
+    `no application made`
+    `application pending`
+    `patent granted`
+    `application refused, withdrawn or abandoned`
+
+GIVEN `the status` IS AN ApplicationStatus, `marked patent pending and disposed of for value` IS A BOOLEAN,
+      `within a reasonable period after the refusal` IS A BOOLEAN, `the seller proved due diligence` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the patent pending claim is an offence` IF
+        `marked patent pending and disposed of for value`
+    AND (NOT `the seller proved due diligence`)
+    AND (CONSIDER `the status`
+         WHEN `no application made` THEN TRUE
+         WHEN `application refused, withdrawn or abandoned` THEN NOT `within a reasonable period after the refusal`
+         OTHERWISE FALSE)
+
+§§ `34(3), 98, 99, 100 -- maximum penalties`
+
+-- s 34(3): "$5,000 or ... 2 years". s 98 (false entry in a register): "$5,000 or ... 12 months". s 99(1) and s 100(1): "$10,000 or
+-- ... 12 months". Each "or to both".
+DECLARE PatentOffence IS ONE OF
+    `filing abroad without authority`
+    `falsifying the register`
+    `falsely claiming a patented product`
+    `falsely claiming a patent has been applied for`
+
+GIVEN `the offence` IS A PatentOffence
+GIVETH A NUMBER
+DECIDE `the maximum fine` IS
+    CONSIDER `the offence`
+    WHEN `filing abroad without authority` THEN 5000
+    WHEN `falsifying the register` THEN 5000
+    OTHERWISE 10000
+
+GIVEN `the offence` IS A PatentOffence
+GIVETH A NUMBER
+DECIDE `the maximum imprisonment in months` IS
+    CONSIDER `the offence`
+    WHEN `filing abroad without authority` THEN 24
+    OTHERWISE 12
