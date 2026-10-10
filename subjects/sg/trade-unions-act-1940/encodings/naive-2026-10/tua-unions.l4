@@ -1,0 +1,294 @@
+IMPORT prelude
+
+-- Trade Unions Act 1940 (Singapore) -- the deadline to register and the consequences of not registering (ss 8, 19), immunity
+-- from suit in trade disputes (s 22), strikes and industrial action (s 27), who may be a member, officer or trustee (ss 28, 30,
+-- 43), what union funds may be spent and invested on (ss 47-49), and a handful of deadlines and penalties (ss 17, 37, 51(4), 59).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/TUA1940.txt. The deposit
+-- describes itself as incorporating amendments up to 1 December 2021; the latest amendment annotated in the text is Act 30 of
+-- 2024 (in force 1 January 2025, the Platform Workers Act changes: "combined federations").
+--
+-- WHY THIS ACT. Cited by 8 of the 527 Singapore Acts deposited in this repository. SCOPED to the rules a union, its members and
+-- its officers actually meet. Not encoded: the Registrar's appointment (ss 3-6), the grounds for refusing or cancelling
+-- registration (ss 10, 14, 15) beyond the notice period, freezing of bank accounts (s 16), the Minister's appeal powers (s 18),
+-- winding up (s 20), liability in tort and contract (ss 23, 24), statutory boards (s 29), change of name and amalgamation (ss
+-- 33-36), rules and the Schedule (s 38), secret-ballot procedure (s 39) beyond s 39(2), notifications (ss 40-42), property (ss
+-- 44-46), accounts and returns (ss 51-54) beyond s 51(4), and the residual offences (ss 55-58, 60-66).
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Trade Unions Act 1940`
+
+GIVEN a IS A NUMBER, b IS A NUMBER
+GIVETH A NUMBER
+`the smaller of` MEANS IF a AT MOST b THEN a ELSE b
+
+§§ `8 and 19 -- registering in time`
+
+-- s 8(1): "Every trade union shall apply to be registered under this Act within a period of one month reckoned from the date on
+-- which it is so established." (2): the Registrar may extend that period, "provided that no such period shall, in any particular
+-- case, be so extended as to exceed a period of 6 months in the aggregate". Read here as: the extended period may not exceed 6
+-- months in all (an inference; the text could also be read as 6 months of extension on top of the first month).
+GIVEN `extension granted in months` IS A NUMBER
+GIVETH A NUMBER
+`the registration deadline in months` MEANS `the smaller of` (1 PLUS `extension granted in months`) 6
+
+GIVEN `months since establishment` IS A NUMBER, `extension granted in months` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the application is in time` IF
+    `months since establishment` AT MOST `the registration deadline in months` `extension granted in months`
+
+-- s 8(4), (5): for a prosecution, absent proof of the agreement date, the union is deemed established on the date a member is
+-- proved to have been admitted or the date an act in furtherance of its objects is proved; where both are proved, "the earlier
+-- of such dates".
+GIVEN `day a member was admitted` IS A NUMBER, `day of an act in furtherance` IS A NUMBER
+GIVETH A NUMBER
+`the deemed day of establishment` MEANS `the smaller of` `day a member was admitted` `day of an act in furtherance`
+
+-- s 19: if a union "does not apply for registration in due time, or if the registration ... is refused, withdrawn or cancelled",
+-- it "shall be deemed to be an unlawful association", may not take part in any trade dispute or strike, and "shall be dissolved".
+GIVEN `applied in due time` IS A BOOLEAN, `registration refused` IS A BOOLEAN, `registration withdrawn or cancelled` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the union is deemed an unlawful association` IF
+    (NOT `applied in due time`) OR `registration refused` OR `registration withdrawn or cancelled`
+
+-- s 17: appeal to the Minister "within a period of 30 days reckoned from the date of the refusal or order". s 18(3): the Minister's
+-- decision "shall be final and shall not be called in question in any court".
+GIVEN `days since the refusal or order` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the appeal to the Minister is in time` IF `days since the refusal or order` AT MOST 30
+
+§§ `22 -- immunity from civil suit`
+
+-- s 22(1): no civil suit against a REGISTERED union, officer or member "in respect of any act done in contemplation or in
+-- furtherance of a trade dispute to which a member of the trade union is a party on the ground only that" the act induces a
+-- breach of a contract of employment or interferes with another's trade, business or employment. (2): "Subsection (1) does not
+-- apply to any registered trade union which is a combined federation." s 21: an unregistered union enjoys none of these.
+GIVEN `the union is registered` IS A BOOLEAN, `the union is a combined federation` IS A BOOLEAN,
+      `the act furthers a trade dispute a member is party to` IS A BOOLEAN,
+      `the only ground is inducing breach or interference` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the union is immune from the suit` IF
+        `the union is registered`
+    AND (NOT `the union is a combined federation`)
+    AND `the act furthers a trade dispute a member is party to`
+    AND `the only ground is inducing breach or interference`
+
+§§ `27 and 39(2) -- strikes and industrial action`
+
+DECLARE `Strike facts` HAS
+    `the union is a combined federation` IS A BOOLEAN
+    `members affected` IS A NUMBER
+    `represented executives among them` IS A NUMBER
+    `votes in favour` IS A NUMBER
+    `most members are non-executive employees` IS A BOOLEAN
+    `the dispute is between represented executives and their employer` IS A BOOLEAN
+    `the union is recognised by the employer for those members` IS A BOOLEAN
+    `the strike is within the union's rules` IS A BOOLEAN
+
+-- s 27(1): a union "shall not commence, promote, organise or finance any strike or any form of industrial action affecting the
+-- whole or any section of its members without obtaining the consent, by secret ballot, of the majority of the members so
+-- affected". The majority is of the members AFFECTED, not of those voting (contrast "requisite consent" in s 2, a majority of
+-- members voting). (16) and s 39(2): where most members are non-executive employees, executive employees represented under
+-- s 30A of the Industrial Relations Act 1960 do not vote and are not counted.
+GIVEN f IS A `Strike facts`
+GIVETH A NUMBER
+`the members whose consent counts` MEANS
+    IF f's `most members are non-executive employees`
+    THEN f's `members affected` MINUS f's `represented executives among them`
+    ELSE f's `members affected`
+
+GIVEN f IS A `Strike facts`
+GIVETH A BOOLEAN
+DECIDE `the strike ballot carries` IF
+    f's `votes in favour` TIMES 2 GREATER THAN `the members whose consent counts` f
+
+-- s 2 "requisite consent" (a): the consent, by secret ballot, of "the majority of the members of the trade union voting".
+GIVEN `votes in favour of the motion` IS A NUMBER, `votes cast` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the requisite consent is obtained` IF
+    `votes in favour of the motion` TIMES 2 GREATER THAN `votes cast`
+
+-- s 27(2): a mostly non-executive union shall not strike "in connection with any trade dispute between members who are executive
+-- employees that are represented by the trade union under section 30A ... and their employer". (7): nothing in (2) or (6)
+-- precludes a union "that is recognised by the employer in the manner prescribed under Part 3" of that Act from striking in
+-- accordance with (1). (2A): a combined federation "shall not commence, promote, organise or finance any strike or any form of
+-- industrial action" at all.
+GIVEN f IS A `Strike facts`
+GIVETH A BOOLEAN
+DECIDE `the executive-dispute bar applies` IF
+        f's `most members are non-executive employees`
+    AND f's `the dispute is between represented executives and their employer`
+    AND (NOT f's `the union is recognised by the employer for those members`)
+
+GIVEN f IS A `Strike facts`
+GIVETH A BOOLEAN
+DECIDE `the union may lawfully call the strike` IF
+        (NOT f's `the union is a combined federation`)
+    AND `the strike ballot carries` f
+    AND (NOT `the executive-dispute bar applies` f)
+
+-- s 27(4): members who "commence, promote, organise, participate or otherwise act in furtherance of" a strike (a) without the
+-- majority consent by secret ballot or (b) "taken in contravention of the rules or by-laws" commit an offence. (5): a member who
+-- is a represented executive shall not take part in ANY strike "taken by the trade union" -- s 27(7) saves only (2) and (6), not
+-- (5). (6): no member of a mostly non-executive union may take part in the executive-dispute strike. (14): the onus of proving
+-- compliance with (1), (3), (4) or (9) is on the accused.
+GIVEN f IS A `Strike facts`, `the member is a represented executive` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a member taking part commits an offence` IF
+        (NOT `the strike ballot carries` f)
+    OR  (NOT f's `the strike is within the union's rules`)
+    OR  `the member is a represented executive`
+    OR  `the executive-dispute bar applies` f
+
+-- Maximum fines: s 27(3) the union and "every member of its executive", $3,000; (3A) the same for a combined federation; (4) and
+-- (8) a member, $2,000; (9) anyone who "instigates or incites others", $3,000; (11), (13) failing to appear before the Registrar or
+-- to state the facts truly, $2,000. No imprisonment is provided for any of them.
+DECLARE `Strike role` IS ONE OF
+    `the union`
+    `a member of its executive`
+    `a member taking part`
+    `an instigator or inciter`
+    `a witness who fails to appear`
+
+GIVEN r IS A `Strike role`
+GIVETH A NUMBER
+`the maximum fine for the strike offence` MEANS
+    CONSIDER r
+    WHEN `the union` THEN 3000
+    WHEN `a member of its executive` THEN 3000
+    WHEN `a member taking part` THEN 2000
+    WHEN `an instigator or inciter` THEN 3000
+    WHEN `a witness who fails to appear` THEN 2000
+
+§§ `28 -- membership`
+
+-- s 28(1): "A person above the age of 16 years may be a member of a registered trade union, unless provision is made in the rules
+-- thereof to the contrary". (3): "No Government employee shall join or be a member of any trade union", (4) unless exempted by
+-- the President by Gazette notification.
+GIVEN `age` IS A NUMBER, `the rules provide otherwise` IS A BOOLEAN, `is a Government employee` IS A BOOLEAN,
+      `is exempted by the President` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the person may be a member` IF
+        `age` GREATER THAN 16
+    AND (NOT `the rules provide otherwise`)
+    AND ((NOT `is a Government employee`) OR `is exempted by the President`)
+
+-- s 28(2): a member "who is under the age of 21 years, but above the age of 18 years, shall not be a member of the executive or a
+-- trustee of the trade union unless he has obtained the written approval of the Minister". Read literally, a member of 17 is not
+-- caught (see NOTES).
+GIVEN `age` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the Minister's approval is needed to join the executive` IF
+    `age` GREATER THAN 18 AND `age` LESS THAN 21
+
+§§ `30 and 43 -- officers and trustees`
+
+DECLARE Candidate HAS
+    `is an undischarged bankrupt` IS A BOOLEAN
+    `convicted of criminal breach of trust, extortion or criminal intimidation` IS A BOOLEAN
+    `convicted of an offence involving fraud or dishonesty` IS A BOOLEAN
+    `the Minister is satisfied the person has reformed` IS A BOOLEAN
+    `the Minister has approved` IS A BOOLEAN
+    `is a citizen of Singapore` IS A BOOLEAN
+    `holds the office of president, chairman, treasurer or secretary` IS A BOOLEAN
+
+-- s 30(1): a person "shall not act as an officer" if "an undischarged bankrupt or has been convicted by any court of criminal
+-- breach of trust, extortion or criminal intimidation" (or of an offence the Minister considers renders him unfit). (2): not where
+-- "the Minister is satisfied that the person so convicted has reformed" -- the bankrupt has no such route. (3): a non-citizen
+-- needs "the prior written approval of the Minister".
+GIVEN c IS A Candidate
+GIVETH A BOOLEAN
+DECIDE `the candidate may act as an officer` IF
+        (NOT c's `is an undischarged bankrupt`)
+    AND ((NOT c's `convicted of criminal breach of trust, extortion or criminal intimidation`)
+         OR c's `the Minister is satisfied the person has reformed`)
+    AND (c's `is a citizen of Singapore` OR c's `the Minister has approved`)
+
+-- s 43(2): no undischarged bankrupt may be or remain a trustee. (3): "Except with the approval of the Minister", no one convicted of
+-- "an offence involving fraud or dishonesty". (4): no one holding "the office of president, chairman, treasurer, secretary or other
+-- similar office" and no non-citizen "without the prior written approval of the Minister". (1): the rules must ensure "at least 3
+-- trustees". One approval flag stands for the approvals in (3) and (4) -- a simplification.
+GIVEN c IS A Candidate
+GIVETH A BOOLEAN
+DECIDE `the candidate may be a trustee` IF
+        (NOT c's `is an undischarged bankrupt`)
+    AND ((NOT c's `convicted of an offence involving fraud or dishonesty`) OR c's `the Minister has approved`)
+    AND ((c's `is a citizen of Singapore` AND (NOT c's `holds the office of president, chairman, treasurer or secretary`))
+         OR c's `the Minister has approved`)
+
+-- s 30(4): "not less than two-thirds of the total number of the officers of every registered trade union shall be persons actually
+-- engaged or employed in a trade, occupation or industry with which the trade union is connected".
+GIVEN `officers engaged in the trade` IS A NUMBER, `total officers` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the officers meet the two-thirds rule` IF
+    `officers engaged in the trade` TIMES 3 AT LEAST `total officers` TIMES 2
+
+§§ `47, 48 and 49 -- spending and investing union funds`
+
+-- s 47(1): funds "may be expended only for" (a) officers' salaries and expenses; (b) administration including audit; (c) legal
+-- proceedings to protect the union's or a member's employment rights; (d) the conduct of trade disputes; (e) compensating members
+-- for loss from trade disputes; (f) allowances for death, old age, sickness, accidents or unemployment; (g) any object the Minister
+-- declares by Gazette. s 48: funds "shall not be applied either directly or indirectly in payment of the whole or part of any fine
+-- or penalty imposed upon any person". s 49(1)(a): nor "in payment of contributions to a political party or for a political
+-- purpose".
+DECLARE Expenditure IS ONE OF
+    `the general secretary's salary`
+    `the annual audit fee`
+    `a member's wrongful dismissal claim`
+    `strike pay during a trade dispute`
+    `a member's sickness allowance`
+    `a member's court fine`
+    `a donation to a political party`
+    `a Gazetted object`
+    `a gift to a charity not Gazetted`
+
+GIVEN e IS A Expenditure
+GIVETH A BOOLEAN
+DECIDE `the funds may be spent on` IF
+    CONSIDER e
+    WHEN `a member's court fine` THEN FALSE
+    WHEN `a donation to a political party` THEN FALSE
+    WHEN `a gift to a charity not Gazetted` THEN FALSE
+    OTHERWISE TRUE
+
+-- s 49(1)(b): funds "shall ... be invested only in" (i) investments authorised by law for trust money; (ii) interest-earning
+-- deposits in banks or finance companies; (iii) shares of co-operative societies established by a registered trade union or
+-- registered platform work association; (iv) a Singapore Labour Foundation undertaking "as the Minister may approve".
+DECLARE Investment IS ONE OF
+    `a trustee investment`
+    `a fixed deposit with a bank`
+    `shares in a union-established co-operative`
+    `a Minister-approved Labour Foundation scheme`
+    `an unapproved Labour Foundation scheme`
+    `listed company shares`
+
+GIVEN i IS A Investment
+GIVETH A BOOLEAN
+DECIDE `the funds may be invested in` IF
+    CONSIDER i
+    WHEN `an unapproved Labour Foundation scheme` THEN FALSE
+    WHEN `listed company shares` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `37, 51(4) and 59 -- other deadlines and penalties`
+
+-- s 51(4): "No trade union shall cause the accounts to be audited ... by the same person for a continuous period of more than 5
+-- years without the prior written approval of the Minister."
+GIVEN `continuous years with the same auditor` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the Minister's approval is needed to keep the auditor` IF `continuous years with the same auditor` GREATER THAN 5
+
+-- s 37(3): a union operating without a registered office or without notice of it, or at a moved office without notice, is liable
+-- to "a fine not exceeding $50 for every day during which it is so in operation"; (4) every officer is liable to a like amount.
+GIVEN `days in operation` IS A NUMBER
+GIVETH A NUMBER
+`the maximum fine for operating without a notified office` MEANS 50 TIMES `days in operation`
+
+-- s 59: offences prescribed by regulations as compoundable may be compounded by the Registrar for "a sum not exceeding $200".
+-- s 60: no prosecution "except by or at the instance of or with the written consent of the Public Prosecutor".
+GIVEN `the offence is prescribed as compoundable` IS A BOOLEAN, `sum offered` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the Registrar may compound for that sum` IF
+    `the offence is prescribed as compoundable` AND `sum offered` AT MOST 200
