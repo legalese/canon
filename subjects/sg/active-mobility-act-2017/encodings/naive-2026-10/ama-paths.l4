@@ -1,0 +1,302 @@
+IMPORT prelude
+
+-- Active Mobility Act 2017 (Singapore) -- which vehicle may be ridden on which kind of path (ss 15, 16, 17), the maximum
+-- penalties for the path-conduct offences and who is a repeat offender (ss 2, 15-23C), using a phone while riding (s 22A), the
+-- driver's duties after an accident (s 23), and riding under the minimum age and facilitating it (ss 23A, 23B).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/AMA2017.txt, with amendments to
+-- Act 5 of 2026 (provisions in force 27 February, 4 May and 1 June 2026) shown.
+--
+-- WHY THIS ACT. Cited by 12 of the 527 Singapore Acts deposited in this repository. SCOPED to the conduct rules a rider of a bicycle,
+-- power-assisted bicycle (PAB), personal mobility device (PMD) or mobility vehicle actually meets on a public path. Not encoded:
+-- declaring public paths and access agreements (Part 2), rights of passage (ss 12-14), banned and non-compliant vehicles beyond their
+-- penalties (ss 18-20), registration marks beyond the penalty (s 20A, Parts 3A, 3B), competency tests and certificates of medical
+-- need (Divisions 2A, 2B), codes of conduct, signs and obstruction (ss 24-28), dealing in devices (Part 4), enforcement (Part 5),
+-- insurance of hired and employed riders (s 58A), and anything prescribed by regulations -- the speed limits, minimum riding and
+-- supervising ages and banned descriptions are all left to regulations, none of which was retrieved.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Active Mobility Act 2017 -- conduct on public paths`
+
+-- s 2(1) defines each vehicle. A "bicycle" is built "to be propelled solely by human power"; a PAB is a bicycle "equipped with an
+-- electric motor"; a PMD is a wheeled vehicle built to transport people, propelled by an electric motor or human power or both, and
+-- "includes a skateboard" but not a bicycle, PAB, motor car, mobility vehicle or wheelchair. A "mobility vehicle" is a mobility
+-- scooter, a motorised wheelchair or a prescribed vehicle for someone "unable to walk or has difficulty in walking". A "mechanised
+-- sweeper" is a motor vehicle for sweeping or cleansing paths.
+DECLARE Vehicle IS ONE OF
+    `a bicycle`
+    `a power-assisted bicycle`
+    `a motorised PMD such as an e-scooter`
+    `a non-motorised PMD such as a kick-scooter or skateboard`
+    `a mobility vehicle`
+    `a mechanised sweeper`
+    `a motorcycle or motor car`
+
+-- s 2(1): a "pedestrian-only path" is "provided solely for pedestrians to use"; a "footpath" is "provided for pedestrians to use, or
+-- individuals to ride a bicycle or non-motorised personal mobility device on"; a "shared path" is "provided for use by both riders and
+-- pedestrians". Each starts and ends at signs, markings, a road or the natural end of the path.
+DECLARE PathKind IS ONE OF
+    `a pedestrian-only path`
+    `a footpath`
+    `a shared path`
+
+§§ `15, 16, 17 -- who may ride where`
+
+-- s 15(1): "an individual must not ride a bicycle, a PAB or a personal mobility device, or drive or ride a motor vehicle that is not a
+-- mobility vehicle, on a public path that is a pedestrian-only path." (2) Not where the individual riding a bicycle, PAB or PMD is
+-- "crossing ... by the shortest safe route" and stays no longer than necessary; or where an adjacent road, footpath or shared path is
+-- obstructed, travel there is impracticable, and the individual travels "no more than reasonably necessary" to avoid the obstruction.
+-- (3) Not a mechanised sweeper driven "in the course of his or her employment" to clean paths.
+--
+-- s 16(1): an individual must not "(a) ride a PAB or a motorised personal mobility device on a footpath; or (b) drive on a footpath a
+-- motor vehicle that is not a mobility vehicle." (2) The same crossing and obstruction exceptions, for a PAB or motorised PMD only.
+-- (3) The same sweeper exception.
+--
+-- s 17(1): an individual must not "drive or ride on a shared path any motor vehicle that is not a PAB, personal mobility device or
+-- mobility vehicle." (2) The sweeper exception. There is no crossing or obstruction exception in s 17.
+--
+-- A bicycle and a non-motorised PMD are therefore barred only from pedestrian-only paths; a PAB and an e-scooter from pedestrian-only
+-- paths and footpaths; a mobility vehicle from none (s 2(1) counts its rider as a "pedestrian").
+GIVEN `the vehicle` IS A Vehicle
+GIVETH A BOOLEAN
+DECIDE `the crossing and obstruction exceptions can apply to it` IF
+    CONSIDER `the vehicle`
+    WHEN `a bicycle` THEN TRUE
+    WHEN `a power-assisted bicycle` THEN TRUE
+    WHEN `a motorised PMD such as an e-scooter` THEN TRUE
+    WHEN `a non-motorised PMD such as a kick-scooter or skateboard` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN `the vehicle` IS A Vehicle, `the path` IS A PathKind
+GIVETH A BOOLEAN
+DECIDE `the vehicle is barred from the path` IF
+    CONSIDER `the path`
+    WHEN `a pedestrian-only path` THEN
+        CONSIDER `the vehicle`
+        WHEN `a mobility vehicle` THEN FALSE
+        OTHERWISE TRUE
+    WHEN `a footpath` THEN
+        CONSIDER `the vehicle`
+        WHEN `a power-assisted bicycle` THEN TRUE
+        WHEN `a motorised PMD such as an e-scooter` THEN TRUE
+        WHEN `a mechanised sweeper` THEN TRUE
+        WHEN `a motorcycle or motor car` THEN TRUE
+        OTHERWISE FALSE
+    OTHERWISE
+        CONSIDER `the vehicle`
+        WHEN `a mechanised sweeper` THEN TRUE
+        WHEN `a motorcycle or motor car` THEN TRUE
+        OTHERWISE FALSE
+
+GIVEN `the vehicle` IS A Vehicle, `the path` IS A PathKind,
+      `crossing by the shortest safe route and staying no longer than necessary` IS A BOOLEAN,
+      `avoiding an obstruction on an adjacent area no more than reasonably necessary` IS A BOOLEAN,
+      `sweeping paths in the course of employment` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `riding there is an offence` IF
+        `the vehicle is barred from the path` `the vehicle` `the path`
+    AND NOT (    `the vehicle` EQUALS `a mechanised sweeper` AND `sweeping paths in the course of employment`)
+    AND NOT (    `the crossing and obstruction exceptions can apply to it` `the vehicle`
+             AND (NOT (`the path` EQUALS `a shared path`))
+             AND (   `crossing by the shortest safe route and staying no longer than necessary`
+                  OR `avoiding an obstruction on an adjacent area no more than reasonably necessary`))
+
+§§ `2 and Division 2 of Part 3 -- maximum penalties and repeat offenders`
+
+-- s 2(1): a "repeat offender" is a person convicted of an offence who "has been convicted or found guilty of the same offence on at
+-- least one other earlier occasion within the period of 5 years immediately before" the current conviction. (ss 16(5), 19(6) and
+-- 19A(5) widen "the same offence" to include a pre-3 April 2020 s 16 offence and, for s 19 and s 19A, each other -- not modelled.)
+-- The 5-year window is taken as inclusive (AT MOST 5); the text does not settle an earlier conviction exactly 5 years before.
+GIVEN `has an earlier conviction for the same offence` IS A BOOLEAN, `years since that earlier conviction` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `is a repeat offender` IF
+    `has an earlier conviction for the same offence` AND `years since that earlier conviction` AT MOST 5
+
+-- The penalty provisions, first offence / repeat offender:
+--   s 15(4), 16(4), 17(3) wrong path: $2,000 or 3 months / $5,000 or 6 months
+--   s 18(5) banned vehicle: $5,000 or 6 months / $10,000 or 12 months
+--   s 19(3) non-compliant vehicle: $10,000 or 6 months / $20,000 or 12 months
+--   s 20A(4) registration marks not displayed: $1,000 or 3 months / $2,000 or 6 months
+--   s 21(3) speeding: $2,000 or 6 months / $5,000 or 12 months
+--   s 22(2) dangerous riding: "$10,000 or to imprisonment for a term not exceeding 12 months" -- no repeat-offender tier
+--   s 22A(2) phone: $1,000 or 3 months / $2,000 or 6 months
+--   s 23(3) accident duties: $3,000 or 12 months / $5,000 or 2 years
+--   s 23A(2), 23B(2) under-aged riding and facilitating it: $1,000 or 3 months / $2,000 or 6 months
+-- Each is "a fine not exceeding ... or ... imprisonment for a term not exceeding ... or ... both".
+DECLARE Offence IS ONE OF
+    `riding on a barred path`
+    `riding a banned vehicle`
+    `riding a non-compliant vehicle`
+    `not displaying registration marks`
+    `speeding`
+    `dangerous riding`
+    `using a phone while riding`
+    `failing in the duties after an injury accident`
+    `under-aged riding`
+    `facilitating under-aged riding`
+
+GIVEN `the offence` IS AN Offence, `repeat offender` IS A BOOLEAN
+GIVETH A NUMBER
+`the maximum fine` MEANS
+    CONSIDER `the offence`
+    WHEN `riding on a barred path` THEN (IF `repeat offender` THEN 5000 ELSE 2000)
+    WHEN `riding a banned vehicle` THEN (IF `repeat offender` THEN 10000 ELSE 5000)
+    WHEN `riding a non-compliant vehicle` THEN (IF `repeat offender` THEN 20000 ELSE 10000)
+    WHEN `speeding` THEN (IF `repeat offender` THEN 5000 ELSE 2000)
+    WHEN `dangerous riding` THEN 10000
+    WHEN `failing in the duties after an injury accident` THEN (IF `repeat offender` THEN 5000 ELSE 3000)
+    OTHERWISE (IF `repeat offender` THEN 2000 ELSE 1000)
+
+GIVEN `the offence` IS AN Offence, `repeat offender` IS A BOOLEAN
+GIVETH A NUMBER
+`the maximum imprisonment in months` MEANS
+    CONSIDER `the offence`
+    WHEN `riding on a barred path` THEN (IF `repeat offender` THEN 6 ELSE 3)
+    WHEN `riding a banned vehicle` THEN (IF `repeat offender` THEN 12 ELSE 6)
+    WHEN `riding a non-compliant vehicle` THEN (IF `repeat offender` THEN 12 ELSE 6)
+    WHEN `speeding` THEN (IF `repeat offender` THEN 12 ELSE 6)
+    WHEN `dangerous riding` THEN 12
+    WHEN `failing in the duties after an injury accident` THEN (IF `repeat offender` THEN 24 ELSE 12)
+    OTHERWISE (IF `repeat offender` THEN 6 ELSE 3)
+
+§§ `22A -- mobile communication devices`
+
+-- s 22A(1): the driver or rider of a vehicle "must not hold in his or her hand a mobile communication device and operate any of its
+-- communication or other functions, when the vehicle is moving on a public path." (3) "To avoid doubt", it does not apply "(a) to a
+-- vehicle or motor vehicle when it is driving itself; or (b) to ... a wearable device (such as a smart watch), when it is worn by the
+-- driver or rider in the manner intended by the manufacturer". (4) A "mobile communication device" is a mobile phone or a wireless
+-- handheld or wearable device capable of a communication function. Operating "other functions" (a map, music) counts too.
+DECLARE PhoneUse HAS
+    `holding the device in hand` IS A BOOLEAN
+    `operating any of its functions` IS A BOOLEAN
+    `the vehicle is moving on a public path` IS A BOOLEAN
+    `the vehicle is driving itself` IS A BOOLEAN
+    `the device is a wearable worn as the manufacturer intended` IS A BOOLEAN
+
+GIVEN `the use` IS A PhoneUse
+GIVETH A BOOLEAN
+DECIDE `using the device is an offence` IF
+        `the use`'s `holding the device in hand`
+    AND `the use`'s `operating any of its functions`
+    AND `the use`'s `the vehicle is moving on a public path`
+    AND (NOT `the use`'s `the vehicle is driving itself`)
+    AND (NOT `the use`'s `the device is a wearable worn as the manufacturer intended`)
+
+§§ `23 -- duties after an accident`
+
+-- s 23(1): where an accident occurs owing to the presence of a vehicle on a public path and "any individual is injured or any property
+-- (including any animal) is damaged or destroyed", the driver must, as far as circumstances permit: (a) "immediately stop"; (b)
+-- "immediately render such assistance as he or she can"; (c) give name, residential address, whether insured and the insurer, and the
+-- owner's name and address, to the injured person or property owner or their representative; (d) give them to any police officer,
+-- authorised officer or public path warden present; (e) if anyone is injured and no officer is present, report in person at the most
+-- accessible police station; (f) likewise if property is damaged and neither its owner nor an officer is present.
+-- s 23(3): the OFFENCE arises only if "an individual is killed or suffers injury", the driver "knows or ought reasonably to have known"
+-- it, and the driver fails to comply with "subsection (1)(a), (b), (c), (d) or (e)". Paragraph (f), and property-only accidents, are
+-- outside s 23(3).
+DECLARE Accident HAS
+    `an individual was killed or injured` IS A BOOLEAN
+    `property or an animal was damaged or destroyed` IS A BOOLEAN
+    `the driver knew or ought reasonably to have known of the death or injury` IS A BOOLEAN
+    `stopped immediately` IS A BOOLEAN
+    `rendered such assistance as possible` IS A BOOLEAN
+    `gave particulars to those affected` IS A BOOLEAN
+    `gave particulars to any officer present` IS A BOOLEAN
+    `reported the injury at a police station if no officer was present` IS A BOOLEAN
+    `reported the property damage at a police station if no one was present` IS A BOOLEAN
+
+GIVEN `the accident` IS AN Accident
+GIVETH A BOOLEAN
+DECIDE `the driver must comply with section 23(1)` IF
+        `the accident`'s `an individual was killed or injured`
+    OR  `the accident`'s `property or an animal was damaged or destroyed`
+
+GIVEN `the accident` IS AN Accident
+GIVETH A BOOLEAN
+DECIDE `the driver complied with paragraphs (a) to (e)` IF
+        `the accident`'s `stopped immediately`
+    AND `the accident`'s `rendered such assistance as possible`
+    AND `the accident`'s `gave particulars to those affected`
+    AND `the accident`'s `gave particulars to any officer present`
+    AND `the accident`'s `reported the injury at a police station if no officer was present`
+
+GIVEN `the accident` IS AN Accident
+GIVETH A BOOLEAN
+DECIDE `the driver commits the section 23(3) offence` IF
+        `the accident`'s `an individual was killed or injured`
+    AND `the accident`'s `the driver knew or ought reasonably to have known of the death or injury`
+    AND (NOT `the driver complied with paragraphs (a) to (e)` `the accident`)
+
+§§ `23A, 23B -- under-aged riding of motorised PMDs on shared paths`
+
+-- s 23A(1): an individual "commits an offence if the individual rides a motorised personal mobility device on a shared path when he or
+-- she is below the prescribed minimum riding age". (3) Not where riding "under escort by one or more appropriate supervisors (whether
+-- or not a parent or guardian)". (4) An "appropriate supervisor" has "attained a minimum supervising age prescribed"; "riding under
+-- escort" means (a) by arrangement, a supervisor "on or in the vicinity of the shared path" and (b) riding so that the supervisor "has
+-- a clear and unobstructed line of sight". (5) The ages are prescribed by regulations; here they are inputs.
+DECLARE Escort HAS
+    `the supervisor's age` IS A NUMBER
+    `the prescribed minimum supervising age` IS A NUMBER
+    `escort arranged for the purpose` IS A BOOLEAN
+    `the supervisor is on or near the shared path` IS A BOOLEAN
+    `the supervisor has a clear line of sight` IS A BOOLEAN
+
+GIVEN `the escort` IS AN Escort
+GIVETH A BOOLEAN
+DECIDE `the rider is riding under escort` IF
+        `the escort`'s `the supervisor's age` AT LEAST `the escort`'s `the prescribed minimum supervising age`
+    AND `the escort`'s `escort arranged for the purpose`
+    AND `the escort`'s `the supervisor is on or near the shared path`
+    AND `the escort`'s `the supervisor has a clear line of sight`
+
+GIVEN `the vehicle` IS A Vehicle, `the path` IS A PathKind, `rider age` IS A NUMBER, `prescribed minimum riding age` IS A NUMBER,
+      `the escort` IS AN Escort
+GIVETH A BOOLEAN
+DECIDE `the rider commits the under-aged riding offence` IF
+        `the vehicle` EQUALS `a motorised PMD such as an e-scooter`
+    AND `the path` EQUALS `a shared path`
+    AND `rider age` LESS THAN `prescribed minimum riding age`
+    AND (NOT `the rider is riding under escort` `the escort`)
+
+-- s 23B(1): a person commits an offence if (a) the person "invites, allows or facilitates" an individual below the minimum riding age
+-- to ride a motorised PMD on a shared path; (b) knows or is negligent as to whether BOTH the individual is under age AND is not escorted
+-- by an appropriate supervisor; and (c) the individual does so ride. (4) "facilitate" requires intent or recklessness and "excludes
+-- mere advertising and selling (but not letting for hire)". (3) Defence, proved on a balance of probabilities: reasonable grounds to
+-- believe and reasonable inquiries that the rider was not under age, or reasonably accepting evidence from the rider that he or she was
+-- not. The intent-or-recklessness element belongs to "facilitate" in (4); it is not applied here to inviting or allowing.
+DECLARE Conduct IS ONE OF
+    `inviting the child to ride`
+    `allowing the child to ride`
+    `lending the device`
+    `letting the device for hire`
+    `merely selling the device`
+    `merely advertising the device`
+
+GIVEN `the conduct` IS A Conduct
+GIVETH A BOOLEAN
+DECIDE `the conduct can be inviting, allowing or facilitating` IF
+    CONSIDER `the conduct`
+    WHEN `merely selling the device` THEN FALSE
+    WHEN `merely advertising the device` THEN FALSE
+    OTHERWISE TRUE
+
+DECLARE Facilitation HAS
+    `the conduct` IS A Conduct
+    `intended or reckless that it would enable the riding` IS A BOOLEAN
+    `knew or was negligent that the child was under age and unescorted` IS A BOOLEAN
+    `the child did ride a motorised PMD on a shared path under age` IS A BOOLEAN
+    `made reasonable inquiries on reasonable grounds` IS A BOOLEAN
+    `reasonably accepted evidence of age from the rider` IS A BOOLEAN
+
+GIVEN `the case` IS A Facilitation
+GIVETH A BOOLEAN
+DECIDE `the person commits the facilitation offence` IF
+        `the conduct can be inviting, allowing or facilitating` (`the case`'s `the conduct`)
+    AND (    `the case`'s `intended or reckless that it would enable the riding`
+         OR  `the case`'s `the conduct` EQUALS `inviting the child to ride`
+         OR  `the case`'s `the conduct` EQUALS `allowing the child to ride`)
+    AND `the case`'s `knew or was negligent that the child was under age and unescorted`
+    AND `the case`'s `the child did ride a motorised PMD on a shared path under age`
+    AND (NOT `the case`'s `made reasonable inquiries on reasonable grounds`)
+    AND (NOT `the case`'s `reasonably accepted evidence of age from the rider`)
