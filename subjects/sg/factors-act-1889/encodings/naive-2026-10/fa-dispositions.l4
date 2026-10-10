@@ -1,0 +1,227 @@
+IMPORT prelude
+
+-- Factors Act 1889 (Singapore) -- when a person who is not the owner can nevertheless pass good title to goods: dispositions by a
+-- mercantile agent (ss 1, 2, 6), pledges of documents and the limits on what a pledgee takes (ss 3, 4, 5), the consignee's lien (s 7),
+-- the seller left in possession and the buyer let into possession (ss 8, 9), transfers that defeat a vendor's lien (s 10), how a
+-- document is transferred (s 11), and what the true owner keeps (s 12).
+--
+-- Edition: 2020 Revised Edition, as deposited at ../../registers/source-bundle/FA1889.txt. The deposit says the revised edition
+-- "incorporates all amendments up to and including 1 December 2021 and comes into operation on 31 December 2021"; no later amendment
+-- is annotated in the text. The deposit's metadata records it as the current version as at 1 October 2026.
+--
+-- WHY THIS ACT. Requirement REQ-0036 in subjects/sg/requirements.jsonl: Tier 2 of the remaining Singapore Acts, ordered by
+-- everyday-life relevance. The requirement asks what the Act decides for a person or business it applies to; no scenario has asked a
+-- sharper question yet. SCOPED to the operative sections 1 to 12, which is nearly the whole Act (it has 14 sections). Not encoded:
+-- s 13 (construction "in amplification and not in derogation" of an agent's common-law powers -- nothing to compute), s 14 (short
+-- title), the meaning of "ordinary course of business", "good faith" and "notice" (taken as given facts), the civil and criminal
+-- liability s 12(1) preserves (only that it survives is encoded), and the Sale of Goods Act provisions this Act sits beside.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Factors Act 1889 -- dispositions`
+
+GIVEN `a` IS A NUMBER, `b` IS A NUMBER
+GIVETH A NUMBER
+`the lesser of` MEANS IF `a` AT MOST `b` THEN `a` ELSE `b`
+
+GIVEN `x` IS A NUMBER
+GIVETH A NUMBER
+`not below zero` MEANS IF `x` LESS THAN 0 THEN 0 ELSE `x`
+
+§§ `1, 2, 6 -- dispositions by a mercantile agent`
+
+-- s 1(1): "mercantile agent" means one "having in the customary course of his business as such agent authority either to sell goods,
+-- or to consign goods for the purpose of sale, or to buy goods, or to raise money on the security of goods".
+-- s 1(2): a person is "deemed to be in possession" where the goods or documents "are in the person's actual custody or are held by any
+-- other person subject to his control or for him or on his behalf".
+-- s 6: an agreement made "through a clerk or other person authorised in the ordinary course of business to make contracts of sale or
+-- pledge on his behalf shall be deemed to be an agreement with the agent".
+DECLARE Disposition HAS
+    `the agent is a mercantile agent` IS A BOOLEAN
+    `made by the agent or an authorised clerk` IS A BOOLEAN
+    `the agent had actual custody` IS A BOOLEAN
+    `another held the goods for the agent` IS A BOOLEAN
+    `there is evidence the owner did not consent` IS A BOOLEAN
+    `the documents came from consented possession` IS A BOOLEAN
+    `the owner's consent had ended` IS A BOOLEAN
+    `in the ordinary course of business` IS A BOOLEAN
+    `the taker acted in good faith` IS A BOOLEAN
+    `the taker had notice of no authority` IS A BOOLEAN
+    `the taker had notice consent had ended` IS A BOOLEAN
+
+GIVEN `d` IS A Disposition
+GIVETH A BOOLEAN
+DECIDE `the agent is in possession` IF
+    `d`'s `the agent had actual custody` OR `d`'s `another held the goods for the agent`
+
+-- s 2(3): where the agent obtained documents of title "by reason of his being or having been, with the consent of the owner, in
+-- possession of the goods ... his possession of the first-mentioned documents shall ... be deemed to be with the consent of the owner".
+-- s 2(4): "the consent of the owner shall be presumed in the absence of evidence to the contrary".
+GIVEN `d` IS A Disposition
+GIVETH A BOOLEAN
+DECIDE `the owner consented to the agent's possession` IF
+    `d`'s `the documents came from consented possession` OR (NOT `d`'s `there is evidence the owner did not consent`)
+
+-- s 2(1): where a mercantile agent is, with the consent of the owner, in possession of goods or documents of title, "any sale, pledge,
+-- or other disposition of the goods, made by him when acting in the ordinary course of business of a mercantile agent, shall ... be as
+-- valid as if he were expressly authorised by the owner": "Provided that the person taking under the disposition acts in good faith,
+-- and has not at the time of the disposition notice that the person making the disposition has no authority to make the same."
+-- s 2(2): a disposition "which would have been valid if the consent had continued, shall be valid notwithstanding the determination
+-- of the consent: Provided that the person taking under the disposition has not at the time thereof notice that the consent has been
+-- determined."
+GIVEN `d` IS A Disposition
+GIVETH A BOOLEAN
+DECIDE `the disposition binds the owner` IF
+        `d`'s `the agent is a mercantile agent`
+    AND `d`'s `made by the agent or an authorised clerk`
+    AND `the agent is in possession` `d`
+    AND `the owner consented to the agent's possession` `d`
+    AND `d`'s `in the ordinary course of business`
+    AND `d`'s `the taker acted in good faith`
+    AND (NOT `d`'s `the taker had notice of no authority`)
+    AND (    (NOT `d`'s `the owner's consent had ended`)
+          OR (NOT `d`'s `the taker had notice consent had ended`))
+
+§§ `3, 4, 5 -- pledges`
+
+-- s 3: "A pledge of the documents of title to goods shall be deemed to be a pledge of the goods."
+GIVEN `pledged the documents of title` IS A BOOLEAN, `pledged the goods themselves` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the goods are pledged` IF `pledged the documents of title` OR `pledged the goods themselves`
+
+-- s 4: where an agent pledges goods "as security for a debt or liability due from the pledgor to the pledgee before the time of the
+-- pledge, the pledgee shall acquire no further right to the goods than could have been enforced by the pledgor at the time of the
+-- pledge".
+-- s 5: consideration may be cash, other goods, a document of title, a negotiable security "or any other valuable consideration"; "but
+-- where goods are pledged by a mercantile agent in consideration of the delivery or transfer of other goods, or of a document of title
+-- to goods, or of a negotiable security, the pledgee shall acquire no right or interest in the goods so pledged in excess of the value
+-- of the goods, documents, or security when so delivered or transferred in exchange".
+-- For a fresh cash advance the Act sets no cap of its own; returning the amount advanced is an INFERENCE that the pledge, being valid
+-- under s 2, secures what was advanced.
+DECLARE Consideration IS ONE OF
+    `a fresh cash advance`
+    `goods, documents or a negotiable security given in exchange`
+    `a debt already owed by the agent`
+
+GIVEN `what was given` IS A Consideration, `amount advanced or owed` IS A NUMBER, `value of what was exchanged` IS A NUMBER, `what the agent could enforce` IS A NUMBER
+GIVETH A NUMBER
+`the most the pledgee can claim on the goods` MEANS
+    CONSIDER `what was given`
+    WHEN `a fresh cash advance` THEN `amount advanced or owed`
+    WHEN `goods, documents or a negotiable security given in exchange` THEN `the lesser of` `amount advanced or owed` `value of what was exchanged`
+    WHEN `a debt already owed by the agent` THEN `the lesser of` `amount advanced or owed` `what the agent could enforce`
+
+§§ `7 -- consignees`
+
+-- s 7(1): where the owner "has given possession of the goods to another person for the purpose of consignment or sale, or has shipped
+-- the goods in the name of another person, and the consignee of the goods has not had notice that such person is not the owner of the
+-- goods, the consignee shall, in respect of advances made to or for the use of such person, have the same lien on the goods as if such
+-- person were the owner of the goods, and may transfer any such lien to another person".
+GIVEN `the owner gave possession for consignment or sale, or shipped in another's name` IS A BOOLEAN, `the consignee had notice the consignor was not the owner` IS A BOOLEAN, `the consignee made advances to the consignor` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the consignee has a lien against the owner` IF
+        `the owner gave possession for consignment or sale, or shipped in another's name`
+    AND (NOT `the consignee had notice the consignor was not the owner`)
+    AND `the consignee made advances to the consignor`
+
+§§ `8, 9 -- sellers and buyers left in possession`
+
+DECLARE Resale HAS
+    `the seller stayed in possession after selling` IS A BOOLEAN
+    `the buyer got possession with the seller's consent` IS A BOOLEAN
+    `the goods or documents were delivered or transferred` IS A BOOLEAN
+    `the second taker acted in good faith` IS A BOOLEAN
+    `the second taker had notice of the first sale` IS A BOOLEAN
+    `the second taker had notice of the seller's lien or right` IS A BOOLEAN
+    `in the ordinary course of business` IS A BOOLEAN
+
+-- s 8: where a person, having sold goods, continues in possession of the goods or documents, "the delivery or transfer by that person
+-- ... under any sale, pledge, or other disposition thereof, or under any agreement for sale ... to any person receiving the same in
+-- good faith and without notice of the previous sale, shall have the same effect as if the person making the delivery or transfer
+-- were expressly authorised by the owner".
+GIVEN `r` IS A Resale
+GIVETH A BOOLEAN
+DECIDE `the seller's second disposition binds the first buyer` IF
+        `r`'s `the seller stayed in possession after selling`
+    AND `r`'s `the goods or documents were delivered or transferred`
+    AND `r`'s `the second taker acted in good faith`
+    AND (NOT `r`'s `the second taker had notice of the first sale`)
+
+-- s 9: where a person, "having bought or agreed to buy goods, obtains with the consent of the seller possession of the goods or the
+-- documents", delivery or transfer by him "to any person receiving the same in good faith and without notice of any lien or other
+-- right of the original seller ... shall have the same effect as if the person making the delivery or transfer were a mercantile agent
+-- in possession of the goods or documents of title with the consent of the owner".
+-- "The same effect as if ... a mercantile agent" sends the reader back to s 2(1), whose effect requires the agent to act "in the
+-- ordinary course of business of a mercantile agent". Carrying that condition into s 9 is an INFERENCE from the words; s 9 does not
+-- state it.
+GIVEN `r` IS A Resale
+GIVETH A BOOLEAN
+DECIDE `the buyer's disposition defeats the original seller` IF
+        `r`'s `the buyer got possession with the seller's consent`
+    AND `r`'s `the goods or documents were delivered or transferred`
+    AND `r`'s `the second taker acted in good faith`
+    AND (NOT `r`'s `the second taker had notice of the seller's lien or right`)
+    AND `r`'s `in the ordinary course of business`
+
+§§ `10, 11 -- transfer of documents of title`
+
+-- s 10: where a document of title "has been lawfully transferred to a person as a buyer or owner of the goods, and that person
+-- transfers the document to a person who takes the document in good faith and for valuable consideration, the last-mentioned transfer
+-- shall have the same effect for defeating any vendor's lien or right of stoppage in transitu as the transfer of a bill of lading".
+GIVEN `the document was lawfully transferred to the buyer` IS A BOOLEAN, `the buyer transferred it on` IS A BOOLEAN, `the transferee took in good faith` IS A BOOLEAN, `the transferee gave valuable consideration` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the vendor's lien or stoppage is defeated` IF
+        `the document was lawfully transferred to the buyer`
+    AND `the buyer transferred it on`
+    AND `the transferee took in good faith`
+    AND `the transferee gave valuable consideration`
+
+-- s 11: "the transfer of a document may be by endorsement, or, where the document is by custom or by its express terms transferable by
+-- delivery or makes the goods deliverable to the bearer, then by delivery".
+DECLARE Method IS ONE OF `by endorsement`, `by delivery alone`
+
+GIVEN `how` IS A Method, `transferable by delivery by custom or its terms` IS A BOOLEAN, `deliverable to bearer` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the document is transferred` IF
+    CONSIDER `how`
+    WHEN `by endorsement` THEN TRUE
+    WHEN `by delivery alone` THEN `transferable by delivery by custom or its terms` OR `deliverable to bearer`
+
+§§ `12 -- what the true owner keeps`
+
+-- s 12(1): nothing in the Act authorises an agent "to exceed or depart from his authority as between himself and his principal, or
+-- exempt him from any liability, civil or criminal, for so doing". So the agent's exposure does not depend on whether the disposition
+-- binds the owner.
+GIVEN `the agent exceeded his authority` IS A BOOLEAN, `the disposition bound the owner` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the agent remains answerable to the owner` IF `the agent exceeded his authority`
+
+-- s 12(2): nothing prevents the owner "from recovering the goods from any agent or his trustee in bankruptcy at any time before the
+-- sale or pledge thereof".
+GIVEN `the agent has sold the goods` IS A BOOLEAN, `the agent has pledged the goods` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the owner may take the goods back from the agent` IF
+    (NOT `the agent has sold the goods`) AND (NOT `the agent has pledged the goods`)
+
+-- s 12(2): the owner of goods pledged by an agent may "redeem the goods at any time before the sale thereof, on satisfying the claim for
+-- which the goods were pledged, and paying to the agent, if by him required, any money in respect of which the agent would by law be
+-- entitled to retain the goods ... by way of lien as against the owner".
+GIVEN `the pledgee's claim` IS A NUMBER, `the agent's lien` IS A NUMBER, `the agent requires payment` IS A BOOLEAN
+GIVETH A NUMBER
+`the cost of redeeming the goods` MEANS
+    IF `the agent requires payment` THEN `the pledgee's claim` PLUS `the agent's lien` ELSE `the pledgee's claim`
+
+-- s 12(2): or "from recovering from any person with whom the goods have been pledged any balance of money remaining in his hands as the
+-- produce of the sale of the goods after deducting the amount of his lien". Flooring at zero is an INFERENCE (a "balance" cannot be
+-- negative).
+GIVEN `the sale produced` IS A NUMBER, `the pledgee's lien` IS A NUMBER
+GIVETH A NUMBER
+`the surplus the owner may recover from the pledgee` MEANS `not below zero` (`the sale produced` MINUS `the pledgee's lien`)
+
+-- s 12(3): nothing prevents the owner of goods sold by an agent "from recovering from the buyer the price agreed to be paid for the same,
+-- or any part of that price, subject to any right of set off on the part of the buyer against the agent". Flooring at zero is an
+-- INFERENCE.
+GIVEN `the unpaid price` IS A NUMBER, `the buyer's set-off against the agent` IS A NUMBER
+GIVETH A NUMBER
+`the price the owner may recover from the buyer` MEANS `not below zero` (`the unpaid price` MINUS `the buyer's set-off against the agent`)
