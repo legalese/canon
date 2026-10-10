@@ -1,0 +1,317 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `gst-types`
+
+-- Goods and Services Tax Act 1993 — GOAL 1: IS TAX CHARGED, AT WHAT RATE,
+-- ON WHAT VALUE, AND WHEN?
+--
+--   "Is this supply standard-rated, zero-rated, exempt or outside the scope;
+--    is it made in Singapore; at what rate and on what value is tax charged;
+--    when does it take place; does the recipient account for it under the
+--    reverse charge; and how is a supply spanning a rate change split?"
+--
+-- Source: ../source/GSTA1993.txt — Part 3 (ss 7-18A), ss 21-23, Part 6A
+-- (ss 39-40), the Second, Third, Fourth, Seventh and Eighth Schedules.
+
+§ `Goal 1 — the charge to tax`
+
+§§ `Where the supply is made (ss 13, 15)`
+
+-- s 15(3): the supplier belongs in a country if "(a) the supplier has in that
+-- country a business establishment or some other fixed establishment and no
+-- such establishment elsewhere; (b) the supplier has no such establishment in
+-- any country but the supplier's usual place of residence is in that country;
+-- or (c) the supplier has such establishments both in that country and
+-- elsewhere and the supplier's establishment which is most directly concerned
+-- with the supply is in that country". s 33(3A) and s 33B(5) use the same test.
+@ref ss 15(3), 33(3A), 33B(5)
+GIVEN e IS AN Establishment
+GIVETH A BOOLEAN
+DECIDE `belongs in Singapore` e IF
+    CONSIDER e
+    WHEN `a business or fixed establishment only in Singapore`                       THEN TRUE
+    WHEN `no establishment; usual residence in Singapore`                            THEN TRUE
+    WHEN `establishments in Singapore and abroad; the one most concerned is in Singapore` THEN TRUE
+    OTHERWISE FALSE
+
+-- s 13(2): goods not removed "are treated as supplied in Singapore if they are
+-- in Singapore"; (3): goods removed from Singapore are supplied in Singapore,
+-- and removed to Singapore are supplied outside. (4): services are supplied in
+-- Singapore "if the supplier belongs in Singapore".
+@ref s 13(2)-(4)
+GIVEN s IS A Supply
+GIVETH A BOOLEAN
+DECIDE `the supply is made in Singapore` s IF
+    CONSIDER s's `kind`
+    WHEN `services` THEN `belongs in Singapore` (s's `supplier`)
+    WHEN `goods`    THEN
+        CONSIDER s's `goods movement`
+        WHEN `not removed from or to Singapore, and in Singapore` THEN TRUE
+        WHEN `removed from Singapore`                             THEN TRUE
+        OTHERWISE FALSE
+
+§§ `Standard-rated, zero-rated, exempt or outside the scope (ss 8, 10, 21, 22)`
+
+-- s 8(1): tax is charged on a supply made in Singapore "where it is a taxable
+-- supply made by a taxable person in the course or furtherance of any business
+-- carried on by the taxable person"; (1A): likewise on a Seventh Schedule
+-- supply. (2A)(a): a taxable supply is one "other than an exempt supply".
+-- s 10(2)(a): "supply" does not include "anything done otherwise than for a
+-- consideration". s 21(2): a zero-rated supply is a taxable supply at nil.
+-- s 22(1), Fourth Schedule Part 1: exempt supplies.
+@ref ss 8(1)-(2A), 10(2), 21(1)-(2), 22(1)
+GIVEN s IS A Supply
+GIVETH A `Tax treatment`
+`the tax treatment of` s MEANS
+    BRANCH IF NOT `in scope`                                  THEN `outside the scope of the tax`
+           IF NOT s's `exempt category` EQUALS `none`         THEN `exempt`
+           IF NOT s's `zero-rating ground` EQUALS `none`      THEN `zero-rated`
+           OTHERWISE                                               `standard-rated`
+    WHERE
+        `in scope` MEANS
+                s's `for a consideration, or deemed a supply by the Second Schedule`
+            AND s's `by a taxable person`
+            AND s's `in the course or furtherance of business`
+            AND (`the supply is made in Singapore` s OR s's `a Seventh Schedule supply`)
+
+-- Second Schedule para 5(2): a business gift "where the cost to the donor is
+-- not more than $200", or a commercial sample to a customer, is not a supply.
+-- Para 5(1): otherwise a transfer of business assets is a supply "whether or
+-- not for a consideration".
+@ref Second Schedule para 5(1)-(2)
+GIVEN `a gift` IS A BOOLEAN, `cost to the donor` IS A NUMBER, `a sample` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the transfer of business goods is a supply, gift:` `a gift` `, cost` `cost to the donor` `, sample:` `a sample` IF
+    (NOT `a sample`) AND (NOT (`a gift` AND `cost to the donor` AT MOST 200))
+
+-- Second Schedule para 7(1)(c): on ceasing to be taxable, business goods are
+-- deemed supplied unless "the value of deemed supply would not be more than
+-- $10,000" (or the business is transferred as a going concern, or carried on
+-- by a deemed taxable person).
+@ref Second Schedule para 7(1)
+GIVEN value IS A NUMBER, `transferred as a going concern or carried on under s 32(4)` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `goods are deemed supplied on deregistration, value` value `, transferred or carried on:` `transferred as a going concern or carried on under s 32(4)` IF
+    (NOT `transferred as a going concern or carried on under s 32(4)`) AND value GREATER THAN 10000
+
+§§ `The rate (s 16)`
+
+-- s 16: "(a) 4% for the period from 1 January 2003 to 31 December 2003 ...;
+-- (b) 5% ... 1 January 2004 to 30 June 2007 ...; (c) 7% ... 1 July 2007 to
+-- 31 December 2022 ...; (ca) 8% ... 1 January 2023 to 31 December 2023 ...;
+-- and (cb) 9% from and including 1 January 2024". The consolidation states no
+-- rate before 2003.
+@ref s 16
+GIVEN `time of supply` IS A DATE
+GIVETH A NUMBER
+`the rate of tax per cent on` `time of supply` MEANS
+    BRANCH IF `time of supply` AT LEAST YMD 2024 1 1 THEN 9
+           IF `time of supply` AT LEAST YMD 2023 1 1 THEN 8
+           IF `time of supply` AT LEAST YMD 2007 7 1 THEN 7
+           IF `time of supply` AT LEAST YMD 2004 1 1 THEN 5
+           IF `time of supply` AT LEAST YMD 2003 1 1 THEN 4
+           OTHERWISE REFUSE "s 16 as consolidated states no rate before 1 January 2003"
+
+§§ `The value (s 17; Third Schedule)`
+
+-- s 17(2): for a consideration in money, the value is "such amount as, with
+-- the addition of the tax chargeable, is equal to the consideration". So the
+-- tax is the tax fraction of the consideration.
+@ref s 17(2)
+GIVEN consideration IS A NUMBER, rate IS A NUMBER
+GIVETH A NUMBER
+`the tax within a consideration of` consideration `at` rate `per cent` MEANS
+    consideration TIMES rate DIVIDED BY (100 PLUS rate)
+
+@ref s 17(2)
+GIVEN consideration IS A NUMBER, rate IS A NUMBER
+GIVETH A NUMBER
+`the value of a supply for` consideration `at` rate `per cent` MEANS
+    consideration TIMES 100 DIVIDED BY (100 PLUS rate)
+
+-- Third Schedule para 14: a used motor vehicle's value "shall be reduced by
+-- 50%". Para 10(2): employee catering or hotel accommodation is nil "unless
+-- the supply is for a consideration consisting wholly or partly of money".
+@ref Third Schedule paras 10, 14
+GIVEN v IS A `Special value`, value IS A NUMBER
+GIVETH A NUMBER
+`the value after the special rule` v `, value` value MEANS
+    CONSIDER v
+    WHEN `a used motor vehicle (Third Schedule para 14)`                    THEN value DIVIDED BY 2
+    WHEN `employee catering or hotel accommodation, no money paid (para 10)` THEN 0
+    WHEN `a business gift costing not more than $200 (Second Schedule para 5(2)(a))` THEN 0
+    WHEN `an industrial or commercial sample given to a customer (para 5(2)(b))` THEN 0
+    WHEN `none`                                                              THEN value
+
+-- Third Schedule para 1(2): an open market value direction cannot be given
+-- "more than 3 years after the time of the supply".
+@ref Third Schedule para 1(2)
+GIVEN `time of supply` IS A DATE
+GIVETH A DATE
+`the last day for an open market value direction, supply on` `time of supply` MEANS `add years` `time of supply` 3
+
+§§ `The time of supply (ss 11-11B)`
+
+-- s 11(2): when the supplier "issues an invoice or receives any consideration
+-- ... or (b) where both events occur, the first". s 11(3)-(4): for land, an
+-- election or an agent's supply, the removal, making available or performance
+-- — unless an invoice or consideration comes first. s 11A(6): goods on
+-- approval or sale or return, "12 months after the removal", or the earlier
+-- invoice or consideration. s 11B(3): between connected persons, "the end of
+-- 12 months after" removal or performance, to the extent not already covered
+-- by an invoice or consideration.
+@ref ss 11(2)-(4), 11A(6), 11B(3)
+GIVEN s IS A Supply
+GIVETH A MAYBE DATE
+`the time of supply of` s MEANS
+    CONSIDER s's `time rule`
+    WHEN `general (s 11(2))` THEN `earliest` (LIST (s's `invoice issued on`), (s's `consideration received on`))
+    WHEN `land, or by election, or agent's supply (s 11(3)-(4))` THEN
+        `earliest` (LIST (s's `invoice issued on`), (s's `consideration received on`), (s's `goods removed, made available, or services performed on`))
+    OTHERWISE
+        `earliest` (LIST (s's `invoice issued on`), (s's `consideration received on`), `twelve months after removal`)
+    WHERE
+        `twelve months after removal` MEANS
+            CONSIDER s's `goods removed, made available, or services performed on`
+            WHEN JUST r  THEN JUST (`add months` r 12)
+            WHEN NOTHING THEN NOTHING
+
+GIVEN ds IS A LIST OF MAYBE DATE
+GIVETH A MAYBE DATE
+`earliest` ds MEANS
+    CONSIDER ds
+    WHEN EMPTY THEN NOTHING
+    WHEN d FOLLOWED BY rest THEN
+        CONSIDER d
+        WHEN NOTHING THEN `earliest` rest
+        WHEN JUST x  THEN
+            CONSIDER `earliest` rest
+            WHEN NOTHING THEN JUST x
+            WHEN JUST y  THEN JUST (`the earlier of` x y)
+
+§§ `Supplies from abroad (s 14; Seventh and Eighth Schedules)`
+
+-- s 2(1) "distantly taxable goods": not dutiable (or duty waived); not an
+-- exempt supply; "located outside the customs territory"; each item with an
+-- entry value that "does not exceed the entry value threshold" ($400, s 2(1A));
+-- and delivered "by postal services or following an importation by air".
+@ref s 2(1) "distantly taxable goods", (1A)
+GIVEN g IS A `Low-value goods facts`
+GIVETH A BOOLEAN
+DECIDE `distantly taxable goods` g IF
+        (NOT g's `dutiable, duty not waived`)
+    AND (NOT g's `an exempt supply`)
+    AND g's `outside the customs territory at the point of sale`
+    AND g's `entry value of the item` AT MOST 400
+    AND g's `delivered by post or after import by air`
+
+-- s 14(1): the recipient "(A) belongs in Singapore; (B) is a registered person,
+-- or ... liable to be registered ...; and (C) is not receiving the goods [or
+-- services] as an individual in the private or personal capacity", and "is not
+-- entitled to credit for the full amount of the recipient's input tax". (3):
+-- not to the extent excluded by the Eighth Schedule. (5), (6): the recipient
+-- may elect in.
+@ref s 14(1)-(3), (5)-(6)
+GIVEN r IS A `Reverse charge facts`
+GIVETH A BOOLEAN
+DECIDE `the recipient accounts for tax under the reverse charge` r IF
+        (r's `the supply is of services by an overseas supplier, or between branches` OR r's `the supply is of distantly taxable goods`)
+    AND r's `recipient belongs in Singapore`
+    AND r's `recipient registered or liable to be registered`
+    AND (NOT r's `received as an individual privately`)
+    AND ((NOT r's `recipient entitled to full input tax credit`) OR r's `recipient elected under s 14(5) or (6)`)
+    AND ((NOT r's `excluded by the Eighth Schedule`) OR r's `recipient elected under s 14(5) or (6)`)
+
+-- Seventh Schedule para 2(1): a Seventh Schedule supply is made to a
+-- "customer" unless the person "(a) is registered under this Act; and (b)
+-- receives the supply in the course or furtherance of any business". Para
+-- 3(4): the supplier treats the person as unregistered unless it gives its
+-- registration number.
+@ref Seventh Schedule paras 2(1), 3(4)
+GIVEN `registered` IS A BOOLEAN, `for the business` IS A BOOLEAN, `gave the registration number` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a customer for the Seventh Schedule, registered:` `registered` `, for business:` `for the business` `, gave its number:` `gave the registration number` IF
+    NOT (`registered` AND `for the business` AND `gave the registration number`)
+
+-- Seventh Schedule para 4(1): the marketplace operator is treated as the
+-- supplier if "any" of (a) it authorises the charge, (b) it authorises
+-- delivery, (c) it sets the terms, (d) the documents identify it, (e) it so
+-- agreed in writing.
+@ref Seventh Schedule para 4(1)
+GIVEN conditions IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the marketplace operator is treated as the supplier, conditions met` conditions IF
+    conditions AT LEAST 1
+
+§§ `A change in the rate (Part 6A; s 40)`
+
+-- s 39B(1) (an increase; performed in part before the change, invoiced or paid
+-- on or after): the supplier may elect for the old rate on "the higher of —
+-- (i) the value of the supply for which any consideration is received before
+-- the date of the specified change; and (ii) the value of the supply
+-- performed before that date", and the new rate on the rest. Without the
+-- election, the time of supply rules apply: s 11(2) puts any consideration
+-- received before the change at the old rate (to the extent it covers the
+-- supply), and the rest at the new rate (FORK F2).
+@ref s 39B(1)
+GIVEN s IS A `Spanning supply`, elects IS A BOOLEAN
+GIVETH A NUMBER
+`the tax on a supply performed before an increase,` s `, elects:` elects MEANS
+    IF elects
+    THEN `at old` `old part` PLUS `at new` (s's `value of the supply` MINUS `old part`)
+    ELSE `at old` (s's `consideration received before the change`) PLUS `at new` (s's `value of the supply` MINUS s's `consideration received before the change`)
+    WHERE
+        `old part` MEANS
+            IF s's `consideration received before the change` AT LEAST s's `value performed before the change`
+            THEN s's `consideration received before the change`
+            ELSE s's `value performed before the change`
+        `at old` v MEANS v TIMES s's `old rate` DIVIDED BY 100
+        `at new` v MEANS v TIMES s's `new rate` DIVIDED BY 100
+
+-- s 39C (an increase; invoiced before, not fully paid or performed): the new
+-- rate on "the lower of — (A) the value of the supply for which any
+-- consideration is received on or after the date ...; and (B) the value of
+-- the supply performed on or after that date", and the old rate on the rest.
+@ref s 39C
+GIVEN s IS A `Spanning supply`
+GIVETH A NUMBER
+`the tax on a supply invoiced before an increase,` s MEANS
+    `at new` `new part` PLUS `at old` (s's `value of the supply` MINUS `new part`)
+    WHERE
+        `paid on or after`      MEANS s's `value of the supply` MINUS s's `consideration received before the change`
+        `performed on or after` MEANS s's `value of the supply` MINUS s's `value performed before the change`
+        `new part` MEANS IF `paid on or after` AT MOST `performed on or after` THEN `paid on or after` ELSE `performed on or after`
+        `at old` v MEANS v TIMES s's `old rate` DIVIDED BY 100
+        `at new` v MEANS v TIMES s's `new rate` DIVIDED BY 100
+
+-- s 39D(2): a replacement tax invoice "within 14 days after the date of the
+-- specified change"; s 39E(1)(c): accounted for by the 14th day at the latest.
+@ref ss 39D(2), 39E(1)(c)
+GIVEN change IS A DATE
+GIVETH A DATE
+`a new tax invoice is due by, rate changed on` change MEANS change PLUS 14
+
+-- s 40(1): after a contract and before the supply, a change in tax lets the
+-- supplier add (or requires a deduction of) the change, "unless express
+-- provision for the exclusion of any such change ... is contained in the
+-- contract or where the change in the tax has been taken into account".
+@ref s 40(1)
+GIVEN `excluded by the contract` IS A BOOLEAN, `already taken into account` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the contract price moves with the tax, excluded:` `excluded by the contract` `, taken into account:` `already taken into account` IF
+    (NOT `excluded by the contract`) AND (NOT `already taken into account`)
+
+§§ `Provisions carried as text`
+
+@ref ss 1-7, 9, 10(1), (3)-(5), 10A, 11(1), (5), 11A(1)-(5), 11B(1)-(2), (4)-(7), 11C, 12, 12A, 14(1AA)-(1B), (3A)-(4), (7)-(10), 15(4)-(7), 17(2A)-(7), 18, 18A, 21(3)-(10), 21A-21C, 22(1A)-(3), 23-27A, 39, 39A, 39D-39F; Second, Third, Fourth, Seventh and Eighth Schedules
+GIVETH A LIST OF STRING
+`charge provisions carried as text` MEANS
+    LIST "ss 1-6: title, definitions (including digital payment tokens and business), the Comptroller, delegation and official secrecy"
+         "s 10, 10A: what a supply is (with the Second Schedule); bare trustees"
+         "ss 11-12A: the time-of-supply detail — self-billing, business-asset rules, ceasing to be taxable, reverse charge timing, directions and regulations"
+         "ss 14-15: reverse charge beneficiaries, reimbursements, branches; where a recipient belongs"
+         "ss 17-18A: value with non-money consideration, related services, imported goods, entry value"
+         "s 21(3)-(10): the list of international services and the export conditions, read as the zero-rating input; ss 21A-21C the special zero-ratings"
+         "ss 22-27A: exemptions and imports, the margin scheme, reliefs, refunds, customs law, import schemes"
+         "ss 39-39F: the definitions and accounting for supplies spanning a change; the s 39(4) table (its columns are interleaved in the deposited text)"
+         "Second to Fourth, Seventh and Eighth Schedules: what is a supply, special valuations, connected persons, exempt finance, land and precious metals, the overseas vendor and marketplace rules, reverse charge exclusions"

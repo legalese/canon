@@ -1,0 +1,679 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `bsma-types`
+IMPORT `bsma-meetings`
+IMPORT `bsma-developer`
+IMPORT `bsma-corporation`
+IMPORT `bsma-council`
+IMPORT `bsma-boards-offences`
+IMPORT `bsma-goal`
+
+-- Independent tests for the BSMA 2004 encoding. Every expected value comes
+-- from independent-expectations.md, written from the source before any .l4
+-- file was read. Each assertion carries its E-number. Expected values were
+-- NOT changed after reading the encoding.
+
+§ `Independent tests`
+
+§§ `Helpers (inputs only, no rules)`
+
+GIVEN d IS A NUMBER, f IS A NUMBER, a IS A NUMBER
+GIVETH A Motion
+`hands, day` d `, for` f `, against` a MEANS
+    Motion WITH
+        `a duly convened general meeting`                   IS TRUE
+        `days from notice to meeting`                       IS d
+        `a poll taken`                                      IS FALSE
+        `valid votes for`                                   IS f
+        `valid votes against`                               IS a
+        `share value of lots with valid votes for`          IS f
+        `share value of lots with valid votes against`      IS a
+        `weeks since the meeting`                           IS 0
+        `share value voting for, at the end of 12 weeks`    IS 0
+        `aggregate share value of all subsidiary proprietors, at the end of 12 weeks` IS 0
+        `every subsidiary proprietor supports it in writing, at the end of 12 weeks` IS FALSE
+
+GIVEN d IS A NUMBER, hf IS A NUMBER, ha IS A NUMBER, sf IS A NUMBER, sa IS A NUMBER, p IS A BOOLEAN
+GIVETH A Motion
+`votes, day` d `, hands` hf `:` ha `, share value` sf `:` sa `, poll:` p MEANS
+    Motion WITH
+        `a duly convened general meeting`                   IS TRUE
+        `days from notice to meeting`                       IS d
+        `a poll taken`                                      IS p
+        `valid votes for`                                   IS hf
+        `valid votes against`                               IS ha
+        `share value of lots with valid votes for`          IS sf
+        `share value of lots with valid votes against`      IS sa
+        `weeks since the meeting`                           IS 0
+        `share value voting for, at the end of 12 weeks`    IS 0
+        `aggregate share value of all subsidiary proprietors, at the end of 12 weeks` IS 0
+        `every subsidiary proprietor supports it in writing, at the end of 12 weeks` IS FALSE
+
+GIVEN d IS A NUMBER, w IS A NUMBER, sf IS A NUMBER, agg IS A NUMBER, everyone IS A BOOLEAN
+GIVETH A Motion
+`twelve-week motion, day` d `, weeks` w `, for` sf `of` agg `, everyone in writing:` everyone MEANS
+    Motion WITH
+        `a duly convened general meeting`                   IS TRUE
+        `days from notice to meeting`                       IS d
+        `a poll taken`                                      IS TRUE
+        `valid votes for`                                   IS 0
+        `valid votes against`                               IS 0
+        `share value of lots with valid votes for`          IS 0
+        `share value of lots with valid votes against`      IS 0
+        `weeks since the meeting`                           IS w
+        `share value voting for, at the end of 12 weeks`    IS sf
+        `aggregate share value of all subsidiary proprietors, at the end of 12 weeks` IS agg
+        `every subsidiary proprietor supports it in writing, at the end of 12 weeks` IS everyone
+
+GIVEN age IS A NUMBER, cap IS A `Candidate capacity`, arrears IS A BOOLEAN, bankrupt IS A BOOLEAN, declared IS A BOOLEAN, elected IS A BOOLEAN, office IS A `Council office`, terms IS A NUMBER
+GIVETH A Candidate
+`candidate aged` age `as` cap `, arrears:` arrears `, bankrupt:` bankrupt `, declared:` declared `, already elected:` elected `, for` office `, treasurer terms` terms MEANS
+    Candidate WITH
+        `age`                                               IS age
+        `capacity`                                          IS cap
+        `arrears on the lot 3 days before the election`     IS arrears
+        `a joint proprietor whose co-proprietor also stands or nominates` IS FALSE
+        `the nominator's nominees exceed its threshold number` IS FALSE
+        `an undischarged bankrupt`                          IS bankrupt
+        `bankruptcy declared in writing at nomination`      IS declared
+        `already elected to another of chairperson, secretary, treasurer` IS elected
+        `standing for`                                      IS office
+        `consecutive terms already served as treasurer`     IS terms
+
+GIVEN due IS A DATE, paid IS A MAYBE DATE, demand IS A MAYBE DATE, nointerest IS A BOOLEAN
+GIVETH A `Contribution facts`
+`contribution due` due `, paid` paid `, demand` demand `, no interest:` nointerest MEANS
+    `Contribution facts` WITH
+        `due on`                                            IS due
+        `paid on`                                           IS paid
+        `demand served on`                                  IS demand
+        `the corporation resolved it bears no interest`     IS nointerest
+
+GIVEN lots IS A NUMBER, sold IS A NUMBER, buyers IS A NUMBER
+GIVETH A `Development facts`
+`development of` lots `lots,` sold `sold to` buyers `purchasers` MEANS
+    `Development facts` WITH
+        `planning permission for strata subdivision after completion` IS TRUE
+        `lots or proposed lots`                             IS lots
+        `lots sold`                                         IS sold
+        `purchasers`                                        IS buyers
+        `first temporary occupation permit issued on`       IS NOTHING
+        `the Division first applied on`                     IS NOTHING
+        `has limited common property`                       IS FALSE
+
+GIVEN accepted IS A BOOLEAN, shortlease IS A BOOLEAN
+GIVETH A Disposal
+`disposal, schedule accepted:` accepted `, lease of 21 years or less:` shortlease MEANS
+    Disposal WITH
+        `a schedule of strata units showing the share value accepted` IS accepted
+        `a lease of 21 years or less without option to renew or purchase` IS shortlease
+        `under a collective sale contract, before legal completion` IS FALSE
+
+GIVEN sr IS A BOOLEAN, pub IS A MAYBE DATE, paid IS A BOOLEAN, action IS A BOOLEAN, asat IS A DATE
+GIVETH A `Sale facts`
+`sale facts, special resolution:` sr `, published` pub `, paid:` paid `, action pending:` action `, as at` asat MEANS
+    `Sale facts` WITH
+        `a special resolution to sell`                      IS sr
+        `notice of sale published in an approved daily newspaper on` IS pub
+        `paid in full after publication`                    IS paid
+        `legal action pending to restrain the sale`         IS action
+        `as at`                                             IS asat
+
+GIVEN made IS A DATE, period IS A NUMBER, renewed IS A BOOLEAN, asat IS A DATE
+GIVETH A `Interim order facts`
+`interim order made` made `for` period `months, renewed:` renewed `, as at` asat MEANS
+    `Interim order facts` WITH
+        `made on`                                           IS made
+        `period specified in months`                        IS period
+        `renewal requested on`                              IS (IF renewed THEN JUST made ELSE NOTHING)
+        `renewal decided`                                   IS renewed
+        `renewed`                                           IS renewed
+        `as at`                                             IS asat
+
+§§ `A. The six resolutions (s 2(2)-(8))`
+
+-- E01
+#ASSERT `the motion is decided as` `an ordinary resolution` `, on` (`hands, day` 15 `, for` 10 `, against` 9)
+-- E02
+#ASSERT NOT `the motion is decided as` `an ordinary resolution` `, on` (`hands, day` 14 `, for` 10 `, against` 9)
+-- E03
+#ASSERT NOT `the motion is decided as` `an ordinary resolution` `, on` (`hands, day` 15 `, for` 10 `, against` 10)
+-- E04
+#ASSERT `the motion is decided as` `an ordinary resolution` `, on` (`votes, day` 20 `, hands` 1 `:` 1 `, share value` 501 `:` 500 `, poll:` TRUE)
+-- E05
+#ASSERT NOT `the motion is decided as` `an ordinary resolution` `, on` (`votes, day` 20 `, hands` 1 `:` 1 `, share value` 500 `:` 500 `, poll:` TRUE)
+-- E06
+#ASSERT NOT `the motion is decided as` `an ordinary resolution` `, on` (`votes, day` 20 `, hands` 10 `:` 2 `, share value` 300 `:` 700 `, poll:` TRUE)
+-- E07
+#ASSERT `the motion is decided as` `a special resolution` `, on` (`votes, day` 22 `, hands` 3 `:` 1 `, share value` 750 `:` 250 `, poll:` TRUE)
+-- E08
+#ASSERT NOT `the motion is decided as` `a special resolution` `, on` (`votes, day` 22 `, hands` 3 `:` 1 `, share value` 749 `:` 251 `, poll:` TRUE)
+-- E09
+#ASSERT NOT `the motion is decided as` `a special resolution` `, on` (`votes, day` 21 `, hands` 9 `:` 1 `, share value` 900 `:` 100 `, poll:` TRUE)
+-- E10 (unmarked slips are left out of the inputs, per the Motion contract)
+#ASSERT `the motion is decided as` `a special resolution` `, on` (`votes, day` 22 `, hands` 3 `:` 1 `, share value` 750 `:` 200 `, poll:` TRUE)
+-- E11 (votes marked both ways are left out of the inputs)
+#ASSERT `the motion is decided as` `a special resolution` `, on` (`votes, day` 22 `, hands` 3 `:` 1 `, share value` 750 `:` 250 `, poll:` TRUE)
+-- E12
+#ASSERT `the motion is decided as` `a 90% resolution` `, on` (`votes, day` 22 `, hands` 9 `:` 1 `, share value` 900 `:` 100 `, poll:` TRUE)
+-- E13
+#ASSERT NOT `the motion is decided as` `a 90% resolution` `, on` (`votes, day` 22 `, hands` 9 `:` 1 `, share value` 899 `:` 101 `, poll:` TRUE)
+-- E14
+#ASSERT NOT `the motion is decided as` `a 90% resolution` `, on` (`votes, day` 21 `, hands` 9 `:` 0 `, share value` 1000 `:` 0 `, poll:` TRUE)
+-- E15
+#ASSERT `the motion is decided as` `a unanimous resolution` `, on` (`hands, day` 22 `, for` 20 `, against` 0)
+-- E16
+#ASSERT NOT `the motion is decided as` `a unanimous resolution` `, on` (`hands, day` 22 `, for` 20 `, against` 1)
+-- E17 (void slips left out)
+#ASSERT `the motion is decided as` `a unanimous resolution` `, on` (`hands, day` 22 `, for` 20 `, against` 0)
+-- E18
+#ASSERT NOT `the motion is decided as` `a unanimous resolution` `, on` (`hands, day` 21 `, for` 20 `, against` 0)
+-- E19
+#ASSERT `the motion is decided as` `a comprehensive resolution` `, on` (`twelve-week motion, day` 22 `, weeks` 12 `, for` 9000 `of` 10000 `, everyone in writing:` FALSE)
+-- E20
+#ASSERT NOT `the motion is decided as` `a comprehensive resolution` `, on` (`twelve-week motion, day` 22 `, weeks` 12 `, for` 8999 `of` 10000 `, everyone in writing:` FALSE)
+-- E21
+#ASSERT NOT `the motion is decided as` `a comprehensive resolution` `, on` (`twelve-week motion, day` 22 `, weeks` 12 `, for` 5000 `of` 10000 `, everyone in writing:` FALSE)
+-- E22
+#ASSERT NOT `the motion is decided as` `a comprehensive resolution` `, on` (`twelve-week motion, day` 21 `, weeks` 12 `, for` 10000 `of` 10000 `, everyone in writing:` FALSE)
+-- E23
+#ASSERT `the motion is decided as` `a resolution by consensus` `, on` (`twelve-week motion, day` 22 `, weeks` 12 `, for` 0 `of` 10000 `, everyone in writing:` TRUE)
+-- E24
+#ASSERT NOT `the motion is decided as` `a resolution by consensus` `, on` (`twelve-week motion, day` 22 `, weeks` 12 `, for` 0 `of` 10000 `, everyone in writing:` FALSE)
+-- E25
+#ASSERT NOT `the motion is decided as` `a resolution by consensus` `, on` (`twelve-week motion, day` 21 `, weeks` 12 `, for` 0 `of` 10000 `, everyone in writing:` TRUE)
+-- E26: inexpressible (no date function for the end of the 12 weeks).
+-- E27 (a defaulter's vote does not count on an ordinary motion)
+#ASSERT NOT `the proprietor's vote counts, on the roll:` TRUE `, paid up:` FALSE `, unanimous or consensus:` FALSE `, first mortgagee votes:` FALSE `, s 65(8) notice outstanding:` FALSE
+
+§§ `B. The resolution each matter needs`
+
+-- E28
+#ASSERT `the resolution needed for` `improving common property: facilities, use or structures (s 29(1)(d))` EQUALS `a special resolution`
+-- E29
+#ASSERT `the resolution needed for` (`leasing common property for a fixed EV charger` 10) EQUALS `an ordinary resolution`
+-- E30
+#ASSERT `the resolution needed for` `making, amending or repealing by-laws (s 32(3))` EQUALS `a special resolution`
+-- E31
+#ASSERT `the resolution needed for` `a by-law for parking lots with fixed EV chargers (s 32(3A))` EQUALS `an ordinary resolution`
+-- E32
+#ASSERT `the resolution needed for` (`an exclusive use by-law` 0.5) EQUALS `an ordinary resolution`
+-- E33
+#ASSERT `the resolution needed for` (`an exclusive use by-law` 1) EQUALS `an ordinary resolution`
+-- E34
+#ASSERT `the resolution needed for` (`an exclusive use by-law` 2) EQUALS `a special resolution`
+-- E35
+#ASSERT `the resolution needed for` (`an exclusive use by-law` 3) EQUALS `a special resolution`
+-- E36
+#ASSERT `the resolution needed for` (`an exclusive use by-law` 3.003) EQUALS `a 90% resolution`
+#ASSERT `the resolution needed for` (`an exclusive use by-law` 4) EQUALS `a 90% resolution`
+-- E37 (expressed only as the aggregate term with renewal, 4 years)
+#ASSERT `the resolution needed for` (`an exclusive use by-law` 4) EQUALS `a 90% resolution`
+-- E38: inexpressible (the proprietor's written consent is not modelled).
+-- E39
+#ASSERT `the resolution needed for` `transferring common property (s 34(1)(a))` EQUALS `a 90% resolution`
+-- E40
+#ASSERT `the resolution needed for` (`leasing common property` 5) EQUALS `a 90% resolution`
+-- E41
+#ASSERT `the resolution needed for` (`leasing common property` 2) EQUALS `a special resolution`
+-- E42
+#ASSERT `the resolution needed for` (`leasing common property` 1) EQUALS `an ordinary resolution`
+-- E43
+#ASSERT `the resolution needed for` `accepting land to create additional common property (s 34(3))` EQUALS `a special resolution`
+-- E44
+#ASSERT `the resolution needed for` `approving a subdivision or amalgamation of lots creating common property (s 34(4))` EQUALS `an ordinary resolution`
+-- E45
+#ASSERT `the resolution needed for` `amalgamating common property of 2 or more corporations (s 34(5))` EQUALS `a special resolution`
+-- E46
+#ASSERT `the resolution needed for` (`leasing common property for a fixed EV charger` 11) EQUALS `a 90% resolution`
+-- E47
+#ASSERT `the resolution needed for` `granting, accepting or surrendering an easement or restrictive covenant (s 35)` EQUALS `a unanimous resolution`
+-- E48
+#ASSERT `the resolution needed for` `authorising an improvement increasing floor area (s 37(2))` EQUALS `a 90% resolution`
+-- E49: "which resolution?" is inexpressible (no Matter for an appearance
+-- improvement; expected REFUSE). The s 37(4) limbs (a) and (b) are asserted:
+#ASSERT `the corporation may authorise an appearance improvement, in keeping:` TRUE `, structurally sound:` TRUE
+#ASSERT NOT `the corporation may authorise an appearance improvement, in keeping:` TRUE `, structurally sound:` FALSE
+#ASSERT NOT `the corporation may authorise an appearance improvement, in keeping:` FALSE `, structurally sound:` TRUE
+-- E50
+#ASSERT `the proprietor may make the improvement` `safety equipment under s 37A` `, 90% resolution:` FALSE `, corporation's authority:` FALSE
+-- E51
+#ASSERT `the resolution needed for` `determining contributions (s 39)` EQUALS `an ordinary resolution`
+-- E52
+#ASSERT `the resolution needed for` `levying contributions by a different formula after a change of use (s 41(6))` EQUALS `a comprehensive resolution`
+-- E53
+#ASSERT `the resolution needed for` `levying contributions by any other method (s 41(8))` EQUALS `a resolution by consensus`
+-- E54
+#ASSERT `the resolution needed for` `allowing a discount for early payment (s 41(9))` EQUALS `a special resolution`
+-- E55
+#ASSERT `the resolution needed for` `selling a lot under a charge for unpaid contributions (s 43(3)(a))` EQUALS `a special resolution`
+-- E56
+#ASSERT `the resolution needed for` `altering or building on common property during the initial period (s 50)` EQUALS `a special resolution`
+-- E57
+#ASSERT `the resolution needed for` `removing a council member at a general meeting (s 54(2)(b))` EQUALS `an ordinary resolution`
+-- E58
+#ASSERT `the resolution needed for` `reserving matters to the general meeting (s 59)` EQUALS `an ordinary resolution`
+-- E59
+#ASSERT `the resolution needed for` `appointing or terminating a managing agent (ss 66(1)(a), (6)(a))` EQUALS `an ordinary resolution`
+-- E60
+#ASSERT `the resolution needed for` `delegating council functions to the managing agent (s 67(3))` EQUALS `an ordinary resolution`
+-- E61
+#ASSERT `the resolution needed for` `not insuring the building under a damage policy (s 70(1))` EQUALS `a resolution by consensus`
+-- E62
+#ASSERT `the resolution needed for` `an insurance decision under s 71 (s 71(3A))` EQUALS `an ordinary resolution`
+-- E63
+#ASSERT `the resolution needed for` `designating limited common property (s 78(1)(a)(ii), (b))` EQUALS `a comprehensive resolution`
+-- E64
+#ASSERT `the resolution needed for` `terminating the strata scheme (s 84(1))` EQUALS `a resolution by consensus`
+-- E65
+#ASSERT `the resolution needed for` `dissolving a subsidiary management corporation (s 84(2))` EQUALS `a comprehensive resolution`
+-- E66
+#ASSERT `the resolution needed for` `instituting proceedings or representing subsidiary proprietors (s 85(1A))` EQUALS `an ordinary resolution`
+-- E67
+#ASSERT `the resolution needed for` `proceedings or an appeal on a non-lot acquisition (s 85A(1))` EQUALS `an ordinary resolution`
+#ASSERT `the resolution needed for` `claiming compensation on a non-lot acquisition (s 85A(2))` EQUALS `an ordinary resolution`
+#ASSERT `the resolution needed for` `distributing non-lot acquisition compensation (s 85A(4))` EQUALS `a special resolution`
+#ASSERT `the resolution needed for` `asking for the whole land to be acquired (s 85A(5))` EQUALS `a resolution by consensus`
+-- E68
+#ASSERT `the resolution needed for` `a general meeting on short notice (First Schedule para 1A(6))` EQUALS `a special resolution`
+-- E69
+#ASSERT `the resolution needed to amend or revoke a` `a special resolution` EQUALS `a special resolution`
+-- E70
+#ASSERT `the resolution needed for` `approving a budget for social activities or legal services (s 38(3A))` EQUALS `an ordinary resolution`
+-- E71
+#ASSERT `the resolution needed for` `holding meetings at a physical place (First Schedule para 1C(2)(b))` EQUALS `an ordinary resolution`
+
+§§ `C. General meetings, voting, proxies, requisitions`
+
+-- E72
+#ASSERT `the general meeting had enough notice, given` (Date 1 3 2026) `, meeting` (Date 15 3 2026) `, short notice directed:` FALSE
+#ASSERT NOT `the motion is decided as` `an ordinary resolution` `, on` (`hands, day` 14 `, for` 10 `, against` 1)
+-- E73
+#ASSERT `the general meeting may transact business, share value present` 300 `, aggregate` 1000 `, minutes waited` 0 `, in person` 0 `, on requisition:` FALSE
+-- E74
+#ASSERT NOT `the general meeting may transact business, share value present` 299 `, aggregate` 1000 `, minutes waited` 0 `, in person` 0 `, on requisition:` FALSE
+-- E75
+#ASSERT `the general meeting may transact business, share value present` 100 `, aggregate` 1000 `, minutes waited` 30 `, in person` 2 `, on requisition:` FALSE
+-- E76
+#ASSERT NOT `the general meeting may transact business, share value present` 100 `, aggregate` 1000 `, minutes waited` 30 `, in person` 1 `, on requisition:` FALSE
+-- E77
+#ASSERT NOT `the general meeting may transact business, share value present` 100 `, aggregate` 1000 `, minutes waited` 30 `, in person` 2 `, on requisition:` TRUE
+-- E78: no function for a resumed meeting as such; asserted through the
+-- general 14-day notice rule (para 3A(3) uses the same 14 days). 13 days:
+#ASSERT NOT `the general meeting had enough notice, given` (Date 1 3 2026) `, meeting` (Date 14 3 2026) `, short notice directed:` FALSE
+-- E79
+#ASSERT NOT `the proprietor's vote counts, on the roll:` TRUE `, paid up:` FALSE `, unanimous or consensus:` FALSE `, first mortgagee votes:` FALSE `, s 65(8) notice outstanding:` FALSE
+-- E80
+#ASSERT `the proprietor's vote counts, on the roll:` TRUE `, paid up:` FALSE `, unanimous or consensus:` TRUE `, first mortgagee votes:` FALSE `, s 65(8) notice outstanding:` FALSE
+-- E81
+#ASSERT `the proprietor's vote counts, on the roll:` TRUE `, paid up:` TRUE `, unanimous or consensus:` FALSE `, first mortgagee votes:` FALSE `, s 65(8) notice outstanding:` FALSE
+-- E82
+#ASSERT NOT `the proprietor's vote counts, on the roll:` TRUE `, paid up:` TRUE `, unanimous or consensus:` FALSE `, first mortgagee votes:` TRUE `, s 65(8) notice outstanding:` FALSE
+-- E83, E84: inexpressible (joint proprietors' seniority; company representative notice).
+-- E85
+#ASSERT NOT `the proprietor's vote counts, on the roll:` TRUE `, paid up:` TRUE `, unanimous or consensus:` FALSE `, first mortgagee votes:` FALSE `, s 65(8) notice outstanding:` TRUE
+-- E86
+#ASSERT `the most lots one proxy may represent, lots in the development` 100 EQUALS 2
+-- E87
+#ASSERT `the most lots one proxy may represent, lots in the development` 50 EQUALS 2
+-- E88
+#ASSERT `the most lots one proxy may represent, lots in the development` 249 EQUALS 4
+-- E89
+#ASSERT `the most lots one proxy may represent, lots in the development` 250 EQUALS 5
+-- E90 (3 instruments exceed the limit)
+#ASSERT `the most lots one proxy may represent, lots in the development` 100 LESS THAN 3
+-- E91: inexpressible.
+-- E92
+#ASSERT NOT `lodged in time, hours before the meeting` 47
+#ASSERT `lodged in time, hours before the meeting` 48
+-- E93
+#ASSERT `the value of the vote, share value` 7 `, a proposed lot:` TRUE EQUALS 1
+-- E94 (special decided by share value though no poll was demanded)
+#ASSERT `the motion is decided as` `a special resolution` `, on` (`votes, day` 22 `, hands` 1 `:` 10 `, share value` 800 `:` 200 `, poll:` FALSE)
+-- E95: inexpressible.
+-- E96
+#ASSERT `the requisition obliges a meeting, share value` 200 `of` 1000 `, proprietors` 1 `of` 100 `, before the first AGM:` FALSE
+-- E97
+#ASSERT NOT `the requisition obliges a meeting, share value` 190 `of` 1000 `, proprietors` 24 `of` 100 `, before the first AGM:` FALSE
+-- E98
+#ASSERT `the requisition obliges a meeting, share value` 50 `of` 1000 `, proprietors` 25 `of` 100 `, before the first AGM:` FALSE
+-- E99
+#ASSERT `a requisitioned meeting must be held by, received` (Date 1 3 2026) EQUALS (Date 12 4 2026)
+-- E100
+#ASSERT `a requisitionists' meeting must be held by, deposited` (Date 1 3 2026) EQUALS (Date 1 6 2026)
+-- E101
+#ASSERT NOT `the requisition obliges a meeting, share value` 200 `of` 1000 `, proprietors` 50 `of` 100 `, before the first AGM:` TRUE
+#ASSERT `the requisition obliges a meeting, share value` 250 `of` 1000 `, proprietors` 1 `of` 100 `, before the first AGM:` TRUE
+-- E102: inexpressible.
+
+§§ `D. Initial period and AGMs`
+
+-- E103
+#ASSERT `the initial period ends, constituted` (Date 1 3 2025) `, first AGM` NOTHING EQUALS (Date 1 3 2026)
+-- E104
+#ASSERT `the initial period ends, constituted` (Date 1 3 2025) `, first AGM` (JUST (Date 1 10 2025)) EQUALS (Date 1 10 2025)
+-- E105
+#ASSERT `the first AGM must be held by, constituted` (Date 1 3 2025) `, request received` NOTHING `, lots requesting` 0 `of` 100 EQUALS (Date 1 4 2026)
+-- E106
+#ASSERT `the first AGM must be held by, constituted` (Date 1 3 2025) `, request received` (JUST (Date 1 6 2025)) `, lots requesting` 10 `of` 100 EQUALS (Date 27 7 2025)
+-- E107
+#ASSERT `the first AGM must be held by, constituted` (Date 1 3 2025) `, request received` (JUST (Date 1 6 2025)) `, lots requesting` 9 `of` 100 EQUALS (Date 1 4 2026)
+-- E108
+#ASSERT (`the maximum penalty for` `s 26(9) failing to hold the first annual general meeting`)'s `fine` EQUALS 5000
+#ASSERT (`the maximum penalty for` `s 26(9) failing to hold the first annual general meeting`)'s `fine per day continuing` EQUALS 100
+-- E109
+#ASSERT `the developer must deliver the s 26(4) documents by, first AGM` (Date 1 3 2026) EQUALS (Date 15 3 2026)
+-- E110
+#ASSERT `the first budget starts on, first AGM` (Date 15 3 2026) EQUALS (Date 1 4 2026)
+-- E111
+#ASSERT `the next AGM is in time, last` (Date 15 3 2025) `, next` (Date 10 6 2026)
+-- E112
+#ASSERT NOT `the next AGM is in time, last` (Date 15 3 2025) `, next` (Date 20 6 2026)
+#ASSERT `the chairperson and secretary commit an offence, AGM in time:` FALSE `, due diligence:` FALSE
+-- E113
+#ASSERT NOT `the next AGM is in time, last` (Date 1 12 2025) `, next` (Date 15 1 2027)
+-- E114
+#ASSERT (`the maximum penalty for` `s 27(4) annual general meeting not held in time`)'s `fine` EQUALS 10000
+#ASSERT NOT `the chairperson and secretary commit an offence, AGM in time:` FALSE `, due diligence:` TRUE
+
+§§ `E. The owner developer`
+
+-- E115
+#ASSERT (`the maximum penalty for` `s 14 selling without an accepted schedule, or changing it`)'s `fine` EQUALS 10000
+#ASSERT (`the maximum penalty for` `s 14 selling without an accepted schedule, or changing it`)'s `imprisonment in months` EQUALS 12
+#ASSERT (`the maximum penalty for` `s 14 selling without an accepted schedule, or changing it`)'s `fine and imprisonment both`
+#ASSERT NOT `the developer may make the disposal` (`disposal, schedule accepted:` FALSE `, lease of 21 years or less:` FALSE) `in` (`development of` 10 `lots,` 2 `sold to` 2 `purchasers`)
+-- E116
+#ASSERT `the Commissioner must decide on the schedule by, filed` (Date 1 3 2026) EQUALS (Date 12 4 2026)
+-- E117 (21 years: exempt; 22 years: not exempt, so the input flag is FALSE)
+#ASSERT `the developer may make the disposal` (`disposal, schedule accepted:` FALSE `, lease of 21 years or less:` TRUE) `in` (`development of` 10 `lots,` 2 `sold to` 2 `purchasers`)
+#ASSERT NOT `the developer may make the disposal` (`disposal, schedule accepted:` FALSE `, lease of 21 years or less:` FALSE) `in` (`development of` 10 `lots,` 2 `sold to` 2 `purchasers`)
+-- E118
+#ASSERT `Division 1 applies to` (`development of` 5 `lots,` 2 `sold to` 2 `purchasers`)
+#ASSERT NOT `Division 1 applies to` (`development of` 4 `lots,` 2 `sold to` 2 `purchasers`)
+-- E119
+#ASSERT NOT `Division 1 applies to` (`development of` 10 `lots,` 1 `sold to` 1 `purchasers`)
+#ASSERT NOT `Division 1 applies to` (`development of` 10 `lots,` 2 `sold to` 1 `purchasers`)
+-- E120
+#ASSERT (`the maximum penalty for` `s 16(4) failing to establish maintenance funds`)'s `fine` EQUALS 10000
+#ASSERT (`the maximum penalty for` `s 16(4) failing to establish maintenance funds`)'s `fine per day continuing` EQUALS 100
+-- E121
+#ASSERT `sold lots' charges are payable into the fund from, first TOP` (Date 1 3 2026) `, fund established` (Date 10 3 2026) EQUALS (Date 29 3 2026)
+-- E122
+#ASSERT `the maintenance fund accounts must be audited by, MC constituted` (Date 1 3 2026) EQUALS (Date 1 7 2026)
+#ASSERT `audited accounts must be filed and opened for inspection by, audited` (Date 1 7 2026) EQUALS (Date 29 7 2026)
+-- E123
+#ASSERT `the register of purchasers must be sent by, requested` (Date 1 3 2026) EQUALS (Date 15 3 2026)
+-- E124
+#ASSERT (`the maximum penalty for` `s 17(9) maintenance fund payment, trust or accounts duties`)'s `fine` EQUALS 10000
+#ASSERT (`the maximum penalty for` `s 17(9) maintenance fund payment, trust or accounts duties`)'s `fine per day continuing` EQUALS 100
+#ASSERT (`the maximum penalty for` `s 17(10) inspection, register of purchasers or copy duties`)'s `fine` EQUALS 2000
+#ASSERT (`the maximum penalty for` `s 17(10) inspection, register of purchasers or copy duties`)'s `fine per day continuing` EQUALS 100
+-- E125
+#ASSERT (`the maximum penalty for` `s 18(2) collecting maintenance charges without approval`)'s `fine` EQUALS 10000
+#ASSERT NOT `the collection is lawful, approved:` FALSE `, by a management corporation:` FALSE
+-- E126
+#ASSERT `the Commissioner may appoint a managing agent from, notice served` (Date 1 3 2026) EQUALS (Date 15 3 2026)
+#ASSERT `the last day to appeal the Commissioner's appointment, gazetted` (Date 1 3 2026) EQUALS (Date 22 3 2026)
+-- E127
+#ASSERT (`the maximum penalty for` `s 20(8) a Commissioner's managing agent failing to pay in or report`)'s `fine` EQUALS 5000
+#ASSERT `the Commissioner's managing agent must report by, appointed` (Date 1 3 2026) EQUALS (Date 1 5 2026)
+-- E128
+#ASSERT `unpaid maintenance charges become a debt after, demand served` (Date 1 3 2026) EQUALS (Date 29 3 2026)
+-- E129
+#ASSERT `the developer must hand over control by, first AGM` (Date 1 3 2026) EQUALS (Date 8 3 2026)
+-- E130
+#ASSERT `the developer must keep financial records until, control transferred` (Date 8 3 2026) EQUALS (Date 8 3 2028)
+
+§§ `F. Contributions, charges, records`
+
+-- E131
+#ASSERT `interest runs on the contribution from` (`contribution due` (Date 1 3 2026) `, paid` (JUST (Date 31 3 2026)) `, demand` NOTHING `, no interest:` FALSE) EQUALS NOTHING
+-- E132
+#ASSERT `interest runs on the contribution from` (`contribution due` (Date 1 3 2026) `, paid` (JUST (Date 1 4 2026)) `, demand` NOTHING `, no interest:` FALSE) EQUALS JUST (Date 31 3 2026)
+#ASSERT `interest runs on the contribution from` (`contribution due` (Date 1 3 2026) `, paid` (JUST (Date 1 4 2026)) `, demand` NOTHING `, no interest:` TRUE) EQUALS NOTHING
+-- E133
+#ASSERT `a demand may be served from, for` (`contribution due` (Date 1 3 2026) `, paid` NOTHING `, demand` NOTHING `, no interest:` FALSE) EQUALS (Date 1 4 2026)
+-- E134
+#ASSERT NOT `the proprietor commits the s 40(10) offence on` (`contribution due` (Date 1 3 2026) `, paid` (JUST (Date 14 6 2026)) `, demand` (JUST (Date 1 6 2026)) `, no interest:` FALSE) `, as at` (Date 20 6 2026)
+#ASSERT `the proprietor commits the s 40(10) offence on` (`contribution due` (Date 1 3 2026) `, paid` (JUST (Date 15 6 2026)) `, demand` (JUST (Date 1 6 2026)) `, no interest:` FALSE) `, as at` (Date 20 6 2026)
+#ASSERT `the proprietor commits the s 40(10) offence on` (`contribution due` (Date 1 3 2026) `, paid` NOTHING `, demand` (JUST (Date 1 6 2026)) `, no interest:` FALSE) `, as at` (Date 20 6 2026)
+#ASSERT (`the maximum penalty for` `s 40(10) not paying contributions 14 days after a demand`)'s `fine` EQUALS 10000
+#ASSERT (`the maximum penalty for` `s 40(10) not paying contributions 14 days after a demand`)'s `fine per day continuing` EQUALS 100
+-- E135
+#ASSERT `the lot's contribution, levy` 1000 `, share value` 1 `of` 1 `, proposed lot without TOP:` TRUE EQUALS 250
+-- E136
+#ASSERT `the lot's contribution, levy` 100000 `, share value` 10 `of` 1000 `, proposed lot without TOP:` FALSE EQUALS 1000
+-- E137
+#ASSERT `the corporation may lodge a charge for` (`contribution due` (Date 1 1 2026) `, paid` NOTHING `, demand` (JUST (Date 1 3 2026)) `, no interest:` FALSE) `, as at` (Date 31 3 2026)
+#ASSERT NOT `the corporation may lodge a charge for` (`contribution due` (Date 1 1 2026) `, paid` NOTHING `, demand` (JUST (Date 1 3 2026)) `, no interest:` FALSE) `, as at` (Date 30 3 2026)
+-- E138
+#ASSERT `the corporation may sell the charged lot,` (`sale facts, special resolution:` TRUE `, published` (JUST (Date 1 3 2026)) `, paid:` FALSE `, action pending:` FALSE `, as at` (Date 20 4 2026))
+#ASSERT NOT `the corporation may sell the charged lot,` (`sale facts, special resolution:` FALSE `, published` (JUST (Date 1 3 2026)) `, paid:` FALSE `, action pending:` FALSE `, as at` (Date 20 4 2026))
+#ASSERT NOT `the corporation may sell the charged lot,` (`sale facts, special resolution:` TRUE `, published` NOTHING `, paid:` FALSE `, action pending:` FALSE `, as at` (Date 20 4 2026))
+#ASSERT NOT `the corporation may sell the charged lot,` (`sale facts, special resolution:` TRUE `, published` (JUST (Date 1 3 2026)) `, paid:` TRUE `, action pending:` FALSE `, as at` (Date 20 4 2026))
+#ASSERT NOT `the corporation may sell the charged lot,` (`sale facts, special resolution:` TRUE `, published` (JUST (Date 1 3 2026)) `, paid:` FALSE `, action pending:` TRUE `, as at` (Date 20 4 2026))
+#ASSERT NOT `the corporation may sell the charged lot,` (`sale facts, special resolution:` TRUE `, published` (JUST (Date 1 3 2026)) `, paid:` FALSE `, action pending:` FALSE `, as at` (Date 1 4 2026))
+-- E139
+#ASSERT `the fund may pay for, sinking fund:` FALSE `, purpose` `legal services for the corporation`
+#ASSERT `the fund may pay for, sinking fund:` FALSE `, purpose` `a social, cultural, educational or sports activity for all`
+#ASSERT NOT `the fund may pay for, sinking fund:` FALSE `, purpose` `a collective sale, other than its general meeting`
+-- E140
+#ASSERT `the council must appoint an auditor by, AGM concluded` (Date 1 3 2026) EQUALS (Date 30 5 2026)
+-- E141
+#ASSERT `the inspection must take place by, application received` (Date 1 3 2026) EQUALS (Date 22 3 2026)
+-- E142
+#ASSERT `records and keys must be delivered by, notice served` (Date 1 3 2026) EQUALS (Date 8 3 2026)
+#ASSERT (`the maximum penalty for` `s 48(1A) failing to deliver records, keys or property`)'s `fine` EQUALS 5000
+-- E143
+#ASSERT `records must be kept until, financial year ended` (Date 31 12 2025) EQUALS (Date 31 12 2030)
+#ASSERT (`the maximum penalty for` `s 48(3) failing to retain records for 5 years`)'s `fine` EQUALS 10000
+-- E144
+#ASSERT NOT `the by-law has effect, lodged:` FALSE `, restricts dealings or easements:` FALSE `, inconsistent with prescribed by-laws:` FALSE
+#ASSERT `the by-law must be lodged by, resolution passed` (Date 1 3 2026) EQUALS (Date 15 4 2026)
+-- E145
+#ASSERT `notice must be given by, decided` (Date 1 3 2026) EQUALS (Date 8 3 2026)
+
+§§ `G. The initial period (ss 49-51)`
+
+-- E146
+#ASSERT NOT `the management corporation may do` `(c) granting an easement or restrictive covenant` `, in the initial period:` TRUE `, special resolution:` TRUE `, Commissioner's order:` FALSE
+#ASSERT `the management corporation may do` `(c) granting an easement or restrictive covenant` `, in the initial period:` TRUE `, special resolution:` FALSE `, Commissioner's order:` TRUE
+-- E147
+#ASSERT `the management corporation may do` `(b) altering or building on common property` `, in the initial period:` TRUE `, special resolution:` TRUE `, Commissioner's order:` FALSE
+#ASSERT NOT `the management corporation may do` `(b) altering or building on common property` `, in the initial period:` TRUE `, special resolution:` FALSE `, Commissioner's order:` TRUE
+-- E148
+#ASSERT `the management corporation may do` `(f) borrowing or giving securities` `, in the initial period:` TRUE `, special resolution:` FALSE `, Commissioner's order:` TRUE
+#ASSERT NOT `the management corporation may do` `(f) borrowing or giving securities` `, in the initial period:` TRUE `, special resolution:` FALSE `, Commissioner's order:` FALSE
+
+§§ `H. Windows, improvements, entry, insurance`
+
+-- E149
+#ASSERT `the exterior window is part of the lot, movable:` TRUE `, plan says otherwise:` FALSE
+-- E150
+#ASSERT NOT `the exterior window is part of the lot, movable:` FALSE `, plan says otherwise:` FALSE
+-- E151
+#ASSERT `the corporation may enter the lot, emergency:` TRUE `, reasonable time:` FALSE `, notice:` FALSE
+#ASSERT NOT `the corporation may enter the lot, emergency:` FALSE `, reasonable time:` TRUE `, notice:` FALSE
+-- E152
+#ASSERT (`the maximum penalty for` `s 31(2) obstructing entry by the management corporation`)'s `fine` EQUALS 10000
+-- E153
+#ASSERT `the mortgaged-lot insurer pays, insured` 500000 `, loss` 300000 `, to discharge` 400000 EQUALS 300000
+-- E154
+#ASSERT `the corporation must keep a damage policy, consensus otherwise:` FALSE
+#ASSERT NOT `the corporation must keep a damage policy, consensus otherwise:` TRUE
+
+§§ `I. The council`
+
+-- E155: "15 is not allowed" cannot be asserted as a rejection (the encoding
+-- clamps the size to 14); asserted only that 15 seats do not result:
+#ASSERT NOT (`the council's size, proprietors` 20 `, seats decided` 15 EQUALS 15)
+#ASSERT `the council's size, proprietors` 20 `, seats decided` 14 EQUALS 14
+-- E156
+#ASSERT `the council's size, proprietors` 3 `, seats decided` 9 EQUALS 3
+#ASSERT `the council's size, proprietors` 4 `, seats decided` 5 EQUALS 5
+-- E157
+#ASSERT NOT `eligible for election to the council` (`candidate aged` 20 `as` `a subsidiary proprietor` `, arrears:` FALSE `, bankrupt:` FALSE `, declared:` FALSE `, already elected:` FALSE `, for` `an ordinary member` `, treasurer terms` 0)
+#ASSERT `eligible for election to the council` (`candidate aged` 21 `as` `a subsidiary proprietor` `, arrears:` FALSE `, bankrupt:` FALSE `, declared:` FALSE `, already elected:` FALSE `, for` `an ordinary member` `, treasurer terms` 0)
+-- E158
+#ASSERT NOT `eligible for election to the council` (`candidate aged` 40 `as` `a subsidiary proprietor` `, arrears:` TRUE `, bankrupt:` FALSE `, declared:` FALSE `, already elected:` FALSE `, for` `an ordinary member` `, treasurer terms` 0)
+#ASSERT NOT `eligible for election to the council` (`candidate aged` 40 `as` `nominated by a company subsidiary proprietor` `, arrears:` TRUE `, bankrupt:` FALSE `, declared:` FALSE `, already elected:` FALSE `, for` `an ordinary member` `, treasurer terms` 0)
+-- E159
+#ASSERT `eligible for election to the council` (`candidate aged` 40 `as` `an immediate family member nominated by a subsidiary proprietor` `, arrears:` FALSE `, bankrupt:` FALSE `, declared:` FALSE `, already elected:` FALSE `, for` `an ordinary member` `, treasurer terms` 0)
+#ASSERT NOT `eligible for election to the council` (`candidate aged` 40 `as` `none of these` `, arrears:` FALSE `, bankrupt:` FALSE `, declared:` FALSE `, already elected:` FALSE `, for` `an ordinary member` `, treasurer terms` 0)
+-- E160
+#ASSERT `the threshold number, share value` 30 `of` 100 `, seats` 9 EQUALS 2
+-- E161
+#ASSERT `the threshold number, share value` 60 `of` 100 `, seats` 9 EQUALS 4
+-- E162
+#ASSERT `the threshold number, share value` 5 `of` 100 `, seats` 10 EQUALS 0
+-- E163
+#ASSERT NOT `eligible for election to the council` (`candidate aged` 40 `as` `a subsidiary proprietor` `, arrears:` FALSE `, bankrupt:` TRUE `, declared:` FALSE `, already elected:` FALSE `, for` `an ordinary member` `, treasurer terms` 0)
+#ASSERT `eligible for election to the council` (`candidate aged` 40 `as` `a subsidiary proprietor` `, arrears:` FALSE `, bankrupt:` TRUE `, declared:` TRUE `, already elected:` FALSE `, for` `an ordinary member` `, treasurer terms` 0)
+-- E164
+#ASSERT NOT `eligible for election to the council` (`candidate aged` 40 `as` `a subsidiary proprietor` `, arrears:` FALSE `, bankrupt:` FALSE `, declared:` FALSE `, already elected:` TRUE `, for` `chairperson` `, treasurer terms` 0)
+-- E165
+#ASSERT NOT `eligible for election to the council` (`candidate aged` 40 `as` `a subsidiary proprietor` `, arrears:` FALSE `, bankrupt:` FALSE `, declared:` FALSE `, already elected:` FALSE `, for` `treasurer` `, treasurer terms` 2)
+#ASSERT `eligible for election to the council` (`candidate aged` 40 `as` `a subsidiary proprietor` `, arrears:` FALSE `, bankrupt:` FALSE `, declared:` FALSE `, already elected:` FALSE `, for` `treasurer` `, treasurer terms` 1)
+-- E166
+#ASSERT NOT `lodged in time, hours before the meeting` 47
+#ASSERT `lodged in time, hours before the meeting` 48
+-- E167
+#ASSERT `the council member's office is vacated by` (`(c) missed council meetings without permission` 3)
+#ASSERT NOT `the council member's office is vacated by` (`(c) missed council meetings without permission` 2)
+-- E168
+#ASSERT NOT `the corporation may remove the council member, months in arrears` 3 `, ordinary resolution:` FALSE
+#ASSERT `the corporation may remove the council member, months in arrears` 3.5 `, ordinary resolution:` FALSE
+-- E169
+#ASSERT `the council meeting is quorate, members` 9 `, present` 5
+#ASSERT NOT `the council meeting is quorate, members` 9 `, present` 4
+#ASSERT `the council meeting is quorate, members` 8 `, present` 5
+#ASSERT NOT `the council meeting is quorate, members` 8 `, present` 4
+#ASSERT `the council meeting is quorate, members` 2 `, present` 2
+#ASSERT NOT `the council meeting is quorate, members` 2 `, present` 1
+#ASSERT `the council meeting is quorate, members` 1 `, present` 1
+-- E170, E171: inexpressible (no council-decision or council-notice function).
+-- E172
+#ASSERT NOT `the council's decision binds the corporation, restricted matter:` FALSE `, lots opposing` 34 `of` 100
+#ASSERT `the council's decision binds the corporation, restricted matter:` FALSE `, lots opposing` 33 `of` 100
+#ASSERT NOT `the council's decision binds the corporation, restricted matter:` FALSE `, lots opposing` 33 `of` 99
+-- E173
+#ASSERT NOT `the council's decision binds the corporation, restricted matter:` TRUE `, lots opposing` 0 `of` 100
+-- E174
+#ASSERT (`the maximum penalty for` `s 60(10) failing to disclose an interest`)'s `fine` EQUALS 5000
+#ASSERT (`the maximum penalty for` `s 60(10) failing to disclose an interest`)'s `imprisonment in months` EQUALS 12
+-- E175
+#ASSERT (`the maximum penalty for` `s 61(3)(b) a council member's or officer's dishonesty or misuse of position`)'s `fine` EQUALS 5000
+#ASSERT (`the maximum penalty for` `s 61(3)(b) a council member's or officer's dishonesty or misuse of position`)'s `imprisonment in months` EQUALS 12
+-- E176
+#ASSERT `minutes must be displayed by, general meeting:` FALSE `, meeting` (Date 1 3 2026) EQUALS (Date 15 3 2026)
+#ASSERT `minutes must be displayed by, general meeting:` TRUE `, meeting` (Date 1 3 2026) EQUALS (Date 15 4 2026)
+-- E177: inexpressible.
+
+§§ `J. Strata Titles Boards`
+
+-- E178
+#ASSERT `the Board is properly constituted, presided:` TRUE `, members` 2
+#ASSERT `the Board is properly constituted, presided:` TRUE `, members` 4
+#ASSERT NOT `the Board is properly constituted, presided:` TRUE `, members` 3
+-- E179
+#ASSERT `mediation is within its limit, days` 3
+#ASSERT NOT `mediation is within its limit, days` 4
+-- E180
+#ASSERT `the Board's final order is due by, constituted` (Date 1 3 2026) `, extended to` NOTHING EQUALS (Date 1 9 2026)
+-- E181
+#ASSERT `the corporation is deemed to have refused, applied` (Date 1 3 2026) `, acted or answered:` FALSE `, as at` (Date 1 5 2026)
+#ASSERT NOT `the corporation is deemed to have refused, applied` (Date 1 3 2026) `, acted or answered:` FALSE `, as at` (Date 30 4 2026)
+-- E182
+#ASSERT NOT `a Board may order on a power exercised by` `a special resolution`
+#ASSERT `a Board may order on a power exercised by` `an ordinary resolution`
+-- E183
+#ASSERT `the Board may refuse to invalidate, no prejudice:` TRUE `, same result:` TRUE
+#ASSERT NOT `the Board may refuse to invalidate, no prejudice:` TRUE `, same result:` FALSE
+#ASSERT NOT `the Board may refuse to invalidate, no prejudice:` FALSE `, same result:` TRUE
+-- E184
+#ASSERT `the last day to apply to nullify a resolution, meeting` (Date 1 3 2026) EQUALS (Date 22 3 2026)
+-- E185
+#ASSERT `the Board may dismiss the application on` (LIST `(d) the applicant proprietor has unpaid contributions`)
+-- E186
+#ASSERT `the interim order is in force,` (`interim order made` (Date 1 3 2026) `for` 3 `months, renewed:` FALSE `, as at` (Date 31 5 2026))
+#ASSERT NOT `the interim order is in force,` (`interim order made` (Date 1 3 2026) `for` 3 `months, renewed:` FALSE `, as at` (Date 1 6 2026))
+#ASSERT NOT `the interim order is in force,` (`interim order made` (Date 1 3 2026) `for` 5 `months, renewed:` FALSE `, as at` (Date 1 7 2026))
+#ASSERT `the interim order is in force,` (`interim order made` (Date 1 3 2026) `for` 3 `months, renewed:` TRUE `, as at` (Date 31 8 2026))
+#ASSERT NOT `the interim order is in force,` (`interim order made` (Date 1 3 2026) `for` 3 `months, renewed:` TRUE `, as at` (Date 1 9 2026))
+-- E187
+#ASSERT (`the maximum penalty for` `s 120(2) contravening a Board order`)'s `fine` EQUALS 10000
+#ASSERT (`the maximum penalty for` `s 120(2) contravening a Board order`)'s `imprisonment in months` EQUALS 60
+-- E188
+#ASSERT (`the maximum penalty for` `s 96(2) disobeying a Board summons`)'s `fine` EQUALS 5000
+#ASSERT (`the maximum penalty for` `s 96(2) disobeying a Board summons`)'s `imprisonment in months` EQUALS 24
+-- E189
+#ASSERT (`the maximum penalty for` `s 118(7) a false statement for an interim order`)'s `fine` EQUALS 5000
+#ASSERT (`the maximum penalty for` `s 118(7) a false statement for an interim order`)'s `imprisonment in months` EQUALS 6
+
+§§ `K. Offences, composition, service`
+
+-- E190
+#ASSERT (`the maximum penalty for` `s 126(6) obstructing or refusing the Commissioner`)'s `fine` EQUALS 2000
+#ASSERT (`the maximum penalty for` `s 126(6) obstructing or refusing the Commissioner`)'s `imprisonment in months` EQUALS 3
+-- E191
+#ASSERT (`the maximum penalty for` `s 127 false information to the Commissioner, or falsifying records`)'s `fine` EQUALS 5000
+#ASSERT (`the maximum penalty for` `s 127 false information to the Commissioner, or falsifying records`)'s `imprisonment in months` EQUALS 6
+-- E192
+#ASSERT (`the maximum penalty for` `s 28(4) failing to notify a change of address`)'s `fine` EQUALS 10000
+#ASSERT (`the maximum penalty for` `s 68(3) a managing agent canvassing at an election`)'s `fine` EQUALS 10000
+#ASSERT (`the maximum penalty for` `s 134(4) breaching an exemption condition`)'s `fine` EQUALS 10000
+#ASSERT (`the maximum penalty for` `s 68(3) a managing agent canvassing at an election`)'s `imprisonment in months` EQUALS 0
+-- E193
+#ASSERT (`the maximum penalty for` `a lift or escalator regulation (s 136(4)(a))`)'s `fine` EQUALS 20000
+#ASSERT (`the maximum penalty for` `a lift or escalator regulation (s 136(4)(a))`)'s `imprisonment in months` EQUALS 12
+#ASSERT (`the maximum penalty for` `any other regulation (s 136(4)(b))`)'s `fine` EQUALS 5000
+-- E194
+#ASSERT `the most that may be collected to compound` `s 120(2) contravening a Board order` `, prescribed:` TRUE EQUALS JUST 5000
+#ASSERT `the most that may be collected to compound` `s 17(10) inspection, register of purchasers or copy duties` `, prescribed:` TRUE EQUALS JUST 1000
+#ASSERT `the most that may be collected to compound` `a lift or escalator regulation (s 136(4)(a))` `, prescribed:` TRUE EQUALS JUST 5000
+#ASSERT `the most that may be collected to compound` `s 20(8) a Commissioner's managing agent failing to pay in or report` `, prescribed:` TRUE EQUALS JUST 2500
+-- E195
+#ASSERT `the most that may be collected to compound` `s 120(2) contravening a Board order` `, prescribed:` FALSE EQUALS NOTHING
+-- E196
+#ASSERT `the notice is served on, mode` `by prepaid registered post` `, sent` (Date 9 10 2026) `, public holidays` EMPTY EQUALS (Date 14 10 2026)
+#ASSERT `the notice is served on, mode` `by ordinary post` `, sent` (Date 9 10 2026) `, public holidays` EMPTY EQUALS (Date 15 10 2026)
+-- E197
+#ASSERT `the notice is served on, mode` `by prepaid registered post` `, sent` (Date 24 12 2026) `, public holidays` (LIST (Date 25 12 2026)) EQUALS (Date 30 12 2026)
+-- E198
+#ASSERT `the notice is served on, mode` `by delivery to, or affixing on, the front door of the lot` `, sent` (Date 9 10 2026) `, public holidays` EMPTY EQUALS (Date 9 10 2026)
+-- E199
+#ASSERT `an emailed notice to a proprietor is served on, also posted:` FALSE `, post date` (Date 14 10 2026) `, email date` (Date 9 10 2026) EQUALS NOTHING
+-- E200
+#ASSERT (`the maximum penalty for` `s 14 selling without an accepted schedule, or changing it`)'s `fine` EQUALS 10000
+
+§§ `L. Gaps`
+
+-- E201 (the Commissioner's satisfaction is an input; without it, no levy)
+#ASSERT NOT `an additional contribution may be levied, ground:` TRUE `, reasonable:` FALSE `, heard:` TRUE
+-- E202, E203: inexpressible (an input, and a regulation amount).
+
+§§ `Top-level goal (combines E07, E158, E134, E182)`
+
+GIVEN cand IS A MAYBE Candidate
+GIVETH A `Strata position`
+`the sample position, candidate` cand MEANS
+    `the strata position for` (`Strata case` WITH
+        `matter`       IS `selling a lot under a charge for unpaid contributions (s 43(3)(a))`
+        `motion`       IS (`votes, day` 22 `, hands` 3 `:` 1 `, share value` 750 `:` 250 `, poll:` TRUE)
+        `candidate`    IS cand
+        `contribution` IS JUST (`contribution due` (Date 1 3 2026) `, paid` NOTHING `, demand` (JUST (Date 1 6 2026)) `, no interest:` FALSE)
+        `as at`        IS (Date 20 6 2026))
+
+GIVETH A Candidate
+`the defaulting candidate` MEANS
+    `candidate aged` 40 `as` `a subsidiary proprietor` `, arrears:` TRUE `, bankrupt:` FALSE `, declared:` FALSE `, already elected:` FALSE `, for` `an ordinary member` `, treasurer terms` 0
+
+-- E07 via the goal
+#ASSERT (`the sample position, candidate` NOTHING)'s `the matter is validly decided`
+-- E158 via the goal
+#ASSERT ((`the sample position, candidate` (JUST `the defaulting candidate`))'s `the candidate is eligible for the council`) EQUALS JUST FALSE
+-- E134 via the goal
+#ASSERT (`the sample position, candidate` NOTHING)'s `the proprietor has committed the s 40(10) offence`
+-- E182 via the goal (special-resolution matter: no s 101 order)
+#ASSERT NOT (`the sample position, candidate` NOTHING)'s `a Board may order on the matter`
