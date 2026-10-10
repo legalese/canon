@@ -148,7 +148,7 @@ FORKS = [
      "Điều 81(2)(c), src:1561-1568; Law 139 Điều 1(5), src:a:90-99.",
      "(i) one field for both; (ii) two fields.",
      "(i); the V2 widening for the chief executive (insurer-only versus any insurance, finance or banking organisation) is encoded with two fields.",
-     "The sources do not define either word; a witness would have no way to tell them apart."),
+     "The sources do not define either word; a witness would have no way to tell them apart. The V2 text also adds 'trực tiếp' ('tại tổ chức hoạt động trực tiếp trong lĩnh vực', Law 139 src:a:92-93, 98), which the V1 text lacks (src:1563-1564, 1567-1568); the one field does not carry that qualifier, and it is not listed as a reading."),
     ("F30", "Điều 127(1) (V1): 'cùng loại hình bảo hiểm' is tested by the two principals carrying on a type of insurance in common.",
      "Điều 127(1), src:2735-2743.",
      "(i) overlap of the types each principal may carry on; (ii) the principals' own primary types.",
