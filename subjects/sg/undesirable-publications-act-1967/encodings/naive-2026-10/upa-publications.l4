@@ -1,0 +1,366 @@
+IMPORT prelude
+
+-- Undesirable Publications Act 1967 (Singapore) -- what counts as a publication and as supply (s 2), obscene and objectionable
+-- (ss 3, 4), the offences and penalties for prohibited publications (ss 6, 7), forfeiture (s 9), the offences for obscene and
+-- objectionable publications (ss 11, 12), return of seized items (s 13(3)), searches without warrant (s 10(2)), declarations at the
+-- border (s 16), corporate officers (s 17), detention, destruction and appeal (ss 15, 16, 20), and exemptions (s 21).
+--
+-- Edition: 2020 Revised Edition (incorporating amendments up to 1 December 2021, in operation 31 December 2021), informal
+-- consolidation, version in force from 9/3/2025, as deposited at ../../registers/source-bundle/UPA1967.txt. The latest amendment
+-- annotated is Act 5 of 2025 (wef 09/03/2025), to s 18 (appointment of controllers).
+--
+-- WHY THIS ACT. Requirement REQ-0055 in ../../../requirements.jsonl: Tier 2 of the remaining Singapore Acts, ordered by
+-- everyday-life relevance. The requirement asks what the Act decides for a person or business it applies to; no scenario has
+-- asked a sharper question yet. The Act is short, so almost all of it is here. Not encoded: the Minister's power to make a
+-- prohibition order (s 5) beyond its effect, the s 4(2) list of matters a controller must consider, package examination (s 8),
+-- Magistrate's warrants (ss 10(1), 13(1)), the court's disposal order (s 13(2)), arrest (s 14), the bar to legal proceedings
+-- (s 19), the appointment of controllers (s 18), and any prohibition order or regulation (none was retrieved).
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Undesirable Publications Act 1967 -- publications`
+
+§§ `2 -- publication and supply`
+
+-- s 2: "publication" means any of the following "other than a film": (a) any book, magazine or periodical, "whether in manuscript
+-- or final form"; (b) any sound recording; (c) any picture or drawing, "whether made by computer graphics or otherwise"; (d) any
+-- photograph or negative; (e) any paper, tape, disc, article or thing with words or signs on it, or on which information is stored
+-- that a computer can reproduce as a picture, word or sign; "and includes a copy of any publication".
+DECLARE Item IS ONE OF
+    `a printed book`
+    `a handwritten manuscript`
+    `a music CD`
+    `a computer-generated drawing`
+    `a photographic negative`
+    `a USB stick holding image files`
+    `a cinema film`
+
+GIVEN `the item` IS AN Item
+GIVETH A BOOLEAN
+DECIDE `the item is a publication` IF
+    CONSIDER `the item`
+    WHEN `a cinema film` THEN FALSE
+    OTHERWISE TRUE
+
+-- s 2: "supply" includes (a) supply "by means of the electronic transmission of the contents"; (b) "hire, exchange or loan".
+-- "electronic transmission" includes "facsimile transmission, electronic mail" but "excludes broadcasting".
+-- INFERENCE: the definition of supply is inclusive ("includes"), so the text does not say broadcasting can never be supply; it says
+-- only that broadcasting is not electronic transmission. The encoding treats broadcasting as falling outside supply.
+DECLARE Mode IS ONE OF
+    `handing over a copy`
+    `lending a copy`
+    `hiring out a copy`
+    `exchanging a copy`
+    `emailing the contents`
+    `faxing the contents`
+    `broadcasting the contents`
+
+GIVEN `the mode` IS A Mode
+GIVETH A BOOLEAN
+DECIDE `the mode is supply` IF
+    CONSIDER `the mode`
+    WHEN `broadcasting the contents` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `3, 4 -- obscene and objectionable`
+
+-- s 3: a publication is obscene if its effect "or ... the effect of any one of its parts or items is, if taken as a whole, such as
+-- to tend to deprave and corrupt persons who are likely ... to read, see or hear" it.
+GIVEN `the whole tends to deprave and corrupt` IS A BOOLEAN, `any one distinct part tends to deprave and corrupt` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the publication is obscene` IF
+    `the whole tends to deprave and corrupt` OR `any one distinct part tends to deprave and corrupt`
+
+-- s 4(1): objectionable "if, IN THE OPINION OF ANY CONTROLLER, it or ... any one of its parts or items" deals with (a) "matters
+-- such as sex, horror, crime, cruelty, violence or the consumption of drugs" so that its availability "is likely to be injurious to
+-- the public good"; or (b) "matters of race or religion" so that it "is likely to cause feelings of enmity, hatred, ill will or
+-- hostility between different racial or religious groups". s 4(3): the question is "a matter for the expert judgment" of the person
+-- deciding, and evidence "is not essential to its determination".
+GIVEN `a controller thinks it injurious to the public good` IS A BOOLEAN, `a controller thinks it likely to cause racial or religious enmity` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the publication is objectionable` IF
+    `a controller thinks it injurious to the public good` OR `a controller thinks it likely to cause racial or religious enmity`
+
+§ `Undesirable Publications Act 1967 -- offences`
+
+§§ `6 -- prohibited publications`
+
+-- s 6(1): any person who "imports, publishes, sells, offers for sale, supplies, offers to supply, exhibits, distributes or
+-- reproduces any prohibited publication or any extract therefrom" -- first offence: fine up to $10,000 or imprisonment up to
+-- 3 years or both; "for a subsequent offence to imprisonment for a term not exceeding 4 years".
+-- s 6(2): "without reasonable excuse has in his possession" a prohibited publication or extract -- first offence: fine up to $2,000
+-- or imprisonment up to 12 months or both; subsequent offence: imprisonment up to 2 years.
+-- s 6(3): on a possession charge the accused "shall be presumed, until the contrary is proved, to have known the contents".
+-- A "prohibited publication" is one whose importation, sale or circulation the Minister has prohibited by Gazette order (s 5).
+DECLARE Dealing IS ONE OF
+    `importing`
+    `publishing`
+    `selling`
+    `offering for sale`
+    `supplying`
+    `offering to supply`
+    `exhibiting`
+    `distributing`
+    `reproducing`
+    `possessing`
+
+GIVEN `the dealing` IS A Dealing, `the publication or extract is prohibited` IS A BOOLEAN, `has a reasonable excuse` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the dealing is a section 6 offence` IF
+        `the publication or extract is prohibited`
+    AND CONSIDER `the dealing`
+        WHEN `possessing` THEN NOT `has a reasonable excuse`
+        OTHERWISE TRUE
+
+-- No fine is provided for a subsequent offence under s 6(1) or (2); the encoding returns 0 for "no fine provided".
+GIVEN `the dealing` IS A Dealing, `is a subsequent offence` IS A BOOLEAN
+GIVETH A NUMBER
+`the section 6 maximum fine` MEANS
+    IF `is a subsequent offence` THEN 0
+    ELSE CONSIDER `the dealing`
+         WHEN `possessing` THEN 2000
+         OTHERWISE 10000
+
+GIVEN `the dealing` IS A Dealing, `is a subsequent offence` IS A BOOLEAN
+GIVETH A NUMBER
+`the section 6 maximum imprisonment in months` MEANS
+    CONSIDER `the dealing`
+    WHEN `possessing` THEN (IF `is a subsequent offence` THEN 24 ELSE 12)
+    OTHERWISE (IF `is a subsequent offence` THEN 48 ELSE 36)
+
+GIVEN `the dealing` IS A Dealing
+GIVETH A BOOLEAN
+DECIDE `knowledge of the contents is presumed` IF
+    CONSIDER `the dealing`
+    WHEN `possessing` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `7 -- delivery to a police station`
+
+-- s 7(1): a person (a) to whom a prohibited publication "is sent without his knowledge or privity or is sent in response to a request
+-- made by that person before the prohibition ... came into effect"; or (b) who has it "in his possession at the time when the
+-- prohibition ... comes into effect", shall "forthwith" deliver it to the officer in charge of a police station. (2): failure -- fine
+-- up to $1,000 or imprisonment up to 12 months or both.
+DECLARE Receipt IS ONE OF
+    `sent unsolicited`
+    `ordered before the prohibition`
+    `already held when the prohibition took effect`
+    `ordered after the prohibition`
+
+GIVEN `the receipt` IS A Receipt
+GIVETH A BOOLEAN
+DECIDE `must deliver it to a police station` IF
+    CONSIDER `the receipt`
+    WHEN `ordered after the prohibition` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the receipt` IS A Receipt, `delivered it to a police station` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `failing to deliver is an offence` IF
+    `must deliver it to a police station` `the receipt` AND (NOT `delivered it to a police station`)
+
+GIVETH A NUMBER
+`the section 7 maximum fine` MEANS 1000
+
+§§ `9 -- forfeiture`
+
+-- s 9: a court "if satisfied that any document produced in the proceedings is a prohibited publication ... shall, whether the alleged
+-- offender is convicted or not, order such publication ... to be forfeited to the Commissioner of Police".
+GIVEN `the court is satisfied it is prohibited` IS A BOOLEAN, `the accused is convicted` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court must order forfeiture` IF
+    `the court is satisfied it is prohibited`
+
+§§ `11, 12 -- obscene and objectionable publications`
+
+-- s 11 (obscene) and s 12 (objectionable), each "not being a prohibited publication": any person who (a) "makes or reproduces, or
+-- makes or reproduces for the purposes of sale, supply, exhibition or distribution to any other person"; (b) "imports or has in his
+-- possession for the purposes of sale, supply, exhibition or distribution to any other person"; or (c) "sells, offers for sale,
+-- supplies, offers to supply, exhibits or distributes to any other person", "knowing or having reasonable cause to believe" it to be
+-- obscene (objectionable). s 11: fine up to $10,000 or imprisonment up to 2 years or both. s 12: fine up to $5,000 or imprisonment up
+-- to 12 months or both. No higher penalty for a subsequent offence.
+-- Limb (a) begins "makes or reproduces" with no purpose attached; the encoding reads it literally, so making for oneself is caught.
+-- Limb (b) needs a purpose of passing it on, so importing or keeping one for oneself is not.
+DECLARE Conduct IS ONE OF
+    `making it for own use`
+    `making it to sell`
+    `copying it for own use`
+    `importing it for own use`
+    `importing it to sell`
+    `keeping it for own use`
+    `keeping it to distribute`
+    `selling it`
+    `giving it to a friend`
+    `showing it to others`
+
+GIVEN `the conduct` IS A Conduct
+GIVETH A BOOLEAN
+DECIDE `the conduct is caught by sections 11 and 12` IF
+    CONSIDER `the conduct`
+    WHEN `importing it for own use` THEN FALSE
+    WHEN `keeping it for own use` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the conduct` IS A Conduct, `it is obscene` IS A BOOLEAN, `it is prohibited` IS A BOOLEAN, `knew or had reasonable cause to believe` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the conduct is a section 11 offence` IF
+        `the conduct is caught by sections 11 and 12` `the conduct`
+    AND `it is obscene`
+    AND (NOT `it is prohibited`)
+    AND `knew or had reasonable cause to believe`
+
+GIVEN `the conduct` IS A Conduct, `it is objectionable` IS A BOOLEAN, `it is prohibited` IS A BOOLEAN, `knew or had reasonable cause to believe` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the conduct is a section 12 offence` IF
+        `the conduct is caught by sections 11 and 12` `the conduct`
+    AND `it is objectionable`
+    AND (NOT `it is prohibited`)
+    AND `knew or had reasonable cause to believe`
+
+DECLARE Kind IS ONE OF
+    `obscene`
+    `objectionable`
+
+GIVEN `the kind` IS A Kind
+GIVETH A NUMBER
+`the section 11 or 12 maximum fine` MEANS
+    CONSIDER `the kind`
+    WHEN `obscene` THEN 10000
+    WHEN `objectionable` THEN 5000
+
+GIVEN `the kind` IS A Kind
+GIVETH A NUMBER
+`the section 11 or 12 maximum imprisonment in months` MEANS
+    CONSIDER `the kind`
+    WHEN `obscene` THEN 24
+    WHEN `objectionable` THEN 12
+
+§§ `16 -- declarations at the border`
+
+-- s 16(1): any importer and any person entering Singapore shall, "if he is required to do so by a controller or any authorised
+-- officer", declare whether he has any publication and produce it. (4): failure -- (a) person entering Singapore, fine up to $1,000;
+-- (b) importer, fine up to $5,000. No imprisonment is provided.
+DECLARE Arrival IS ONE OF
+    `a person entering Singapore`
+    `an importer`
+
+GIVEN `who` IS AN Arrival, `was required by a controller or authorised officer` IS A BOOLEAN, `declared and produced` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `failing to declare is an offence` IF
+    `was required by a controller or authorised officer` AND (NOT `declared and produced`)
+
+GIVEN `who` IS AN Arrival
+GIVETH A NUMBER
+`the section 16 maximum fine` MEANS
+    CONSIDER `who`
+    WHEN `a person entering Singapore` THEN 1000
+    WHEN `an importer` THEN 5000
+
+§§ `17 -- officers of companies and associations`
+
+-- s 17(1): where an offence by a body corporate "is proved to have been committed with the consent or connivance of, or to be
+-- attributable to any neglect on the part of, an officer", the officer as well as the body corporate is guilty. (4), (5): the same
+-- for partners and for officers or governing-body members of unincorporated associations.
+GIVEN `the organisation committed an offence` IS A BOOLEAN, `consented` IS A BOOLEAN, `connived` IS A BOOLEAN, `neglect is attributable to the officer` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the officer is also guilty` IF
+    `the organisation committed an offence` AND (`consented` OR `connived` OR `neglect is attributable to the officer`)
+
+§ `Undesirable Publications Act 1967 -- seizure, detention and appeal`
+
+§§ `10(2) -- search without warrant`
+
+-- s 10(2): a police officer "not below the rank of sergeant" with reasonable cause to believe a prohibited publication is concealed in
+-- any place, and "good grounds for believing that, by reason of the delay in obtaining a search warrant, the object of the search is
+-- likely to be frustrated", may enter and search as if under a warrant.
+DECLARE Rank IS ONE OF
+    `constable`
+    `corporal`
+    `sergeant`
+    `inspector`
+
+GIVEN `the rank` IS A Rank
+GIVETH A BOOLEAN
+DECIDE `the rank is sergeant or above` IF
+    CONSIDER `the rank`
+    WHEN `constable` THEN FALSE
+    WHEN `corporal` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the rank` IS A Rank, `has reasonable cause to believe` IS A BOOLEAN, `delay would frustrate the search` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `may search without a warrant` IF
+    `the rank is sergeant or above` `the rank` AND `has reasonable cause to believe` AND `delay would frustrate the search`
+
+§§ `13(3) -- return of seized obscene or objectionable publications`
+
+-- s 13(3): where (a) in proceedings under s 11 or 12 "no order is made" for disposal, or (b) "no such proceedings are instituted
+-- within 3 months of the seizure", the publication or equipment "shall be returned" to the person from whom it was seized (or, if
+-- that is not reasonably practicable, disposed of as lost or unclaimed property).
+GIVEN `months since seizure` IS A NUMBER, `proceedings were instituted` IS A BOOLEAN, `proceedings ended without a disposal order` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the seized item must be returned` IF
+        `proceedings ended without a disposal order`
+    OR  ((NOT `proceedings were instituted`) AND `months since seizure` GREATER THAN 3)
+
+§§ `15, 16, 20 -- detention, destruction and appeal`
+
+-- s 15(2)(b), s 16(3): where no proceedings are instituted within 3 months of the detention, the controller "may return" the article,
+-- or "if the publication is obscene or objectionable or returning the article is not reasonably practicable", may "subject to
+-- section 20" destroy it (s 16(3) also allows an order to export it).
+-- s 20(5): no article "shall be destroyed under section 15 or 16 unless its detention has not been appealed against or an appeal
+-- against its detention has been dismissed or abandoned".
+DECLARE Appeal IS ONE OF
+    `no appeal`
+    `appeal pending`
+    `appeal dismissed`
+    `appeal abandoned`
+    `appeal allowed`
+
+GIVEN `the appeal` IS AN Appeal
+GIVETH A BOOLEAN
+DECIDE `the appeal does not bar destruction` IF
+    CONSIDER `the appeal`
+    WHEN `no appeal` THEN TRUE
+    WHEN `appeal dismissed` THEN TRUE
+    WHEN `appeal abandoned` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN `months since detention` IS A NUMBER, `proceedings were instituted` IS A BOOLEAN, `believed obscene or objectionable` IS A BOOLEAN, `return is not reasonably practicable` IS A BOOLEAN, `the appeal` IS AN Appeal
+GIVETH A BOOLEAN
+DECIDE `the controller may destroy it` IF
+        (NOT `proceedings were instituted`)
+    AND `months since detention` GREATER THAN 3
+    AND (`believed obscene or objectionable` OR `return is not reasonably practicable`)
+    AND `the appeal does not bar destruction` `the appeal`
+
+-- s 20(1): a person aggrieved by detention under s 15 or 16 may appeal to the Minister, "whose decision shall be final". (2): no appeal
+-- unless "notice of appeal in writing together with the reasons" is given "within 14 days of the date of service" of the notification.
+-- (4): a posted notification is served on "the day on which [it] would be received in the ordinary course of post".
+GIVEN `days after service` IS A NUMBER, `in writing with reasons` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the appeal is allowed to proceed` IF
+    `in writing with reasons` AND `days after service` AT MOST 14
+
+§§ `21 -- exemptions`
+
+-- s 21(3): the Minister, "if satisfied that the publication should be made available to a limited class of persons or to a particular
+-- person for educational, professional, scientific, artistic or technical reasons", may exempt that class or person, for a period and
+-- (4) absolutely or on conditions. (2): application on the Chief Controller's form with the prescribed fee.
+DECLARE Reason IS ONE OF
+    `educational`
+    `professional`
+    `scientific`
+    `artistic`
+    `technical`
+    `personal enjoyment`
+    `selling to the general public`
+
+GIVEN `the reason` IS A Reason
+GIVETH A BOOLEAN
+DECIDE `the reason can support an exemption` IF
+    CONSIDER `the reason`
+    WHEN `personal enjoyment` THEN FALSE
+    WHEN `selling to the general public` THEN FALSE
+    OTHERWISE TRUE
