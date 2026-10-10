@@ -1,0 +1,205 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `gst-types`
+
+-- Goods and Services Tax Act 1993 — GOAL 2: MUST THE PERSON REGISTER?
+--
+--   "Is this person liable to be registered — on the retrospective or the
+--    prospective test, as an overseas vendor, or as a reverse charge
+--    recipient; by when must it notify; from when is it registered; and when
+--    may it leave?"
+--
+-- Source: ../source/GSTA1993.txt — First Schedule; ss 8(2), 9, 31-34, 91.
+
+§ `Goal 2 — registration`
+
+§§ `Liability to be registered (First Schedule paras 1, 1A, 1B)`
+
+-- Para 1(1)(a)(ii): at the end of a calendar year "if the total value of all
+-- ... the person's taxable supplies made in Singapore ... in that calendar year
+-- has exceeded $1 million" — unless (3)(b) the Comptroller is satisfied the
+-- next year will not exceed $1 million. Para 1(1)(b): "at any time, if there
+-- are reasonable grounds for believing that the total value ... in the period
+-- of 12 months then beginning will exceed $1 million". Para 1C(2): capital
+-- asset supplies are left out (an input); para 16: values exclude tax.
+@ref First Schedule para 1(1), (3)(b)
+GIVEN r IS A `Registration facts`
+GIVETH A BOOLEAN
+DECIDE `liable to register on the retrospective test` r IF
+    r's `taxable supplies in the last calendar year` GREATER THAN 1000000
+    AND (NOT r's `Comptroller satisfied next year will not exceed $1 million`)
+
+@ref First Schedule para 1(1)(b)
+GIVEN r IS A `Registration facts`
+GIVETH A BOOLEAN
+DECIDE `liable to register on the prospective test` r IF
+    r's `taxable supplies expected in the next 12 months` GREATER THAN 1000000
+
+-- Para 1A(1): a person belonging abroad making Seventh Schedule supplies, if
+-- "the total value of all the person's taxable supplies, and supplies outside
+-- Singapore which would have been taxable supplies if made in Singapore, has
+-- exceeded $1 million; and ... the total value of the person's Seventh Schedule
+-- supplies has exceeded $100,000" — for the calendar year, or expected in the
+-- next 12 months.
+@ref First Schedule para 1A(1)
+GIVEN r IS A `Registration facts`
+GIVETH A BOOLEAN
+DECIDE `an overseas vendor liable to register` r IF
+        (NOT r's `belongs in Singapore`)
+    AND (   (r's `global supplies in the last calendar year` GREATER THAN 1000000 AND r's `Seventh Schedule supplies in the last calendar year` GREATER THAN 100000)
+         OR (r's `global supplies expected in the next 12 months` GREATER THAN 1000000 AND r's `Seventh Schedule supplies expected in the next 12 months` GREATER THAN 100000))
+
+-- Para 1B(1): a recipient of s 14(1) goods or services, if their value "has
+-- exceeded $1 million, and the person is not entitled to credit for the full
+-- amount of input tax".
+@ref First Schedule para 1B(1)
+GIVEN r IS A `Registration facts`
+GIVETH A BOOLEAN
+DECIDE `a reverse charge recipient liable to register` r IF
+        (NOT r's `entitled to full input tax credit`)
+    AND (   r's `reverse charge services received last calendar year` GREATER THAN 1000000
+         OR r's `reverse charge services expected in the next 12 months` GREATER THAN 1000000)
+
+@ref First Schedule paras 1, 1A, 1B
+GIVEN r IS A `Registration facts`
+GIVETH A BOOLEAN
+DECIDE `liable to be registered` r IF
+       `liable to register on the retrospective test` r
+    OR `liable to register on the prospective test` r
+    OR `an overseas vendor liable to register` r
+    OR `a reverse charge recipient liable to register` r
+
+§§ `Notifying and the date of registration (paras 4-6)`
+
+-- Para 4(1A): on the retrospective test, notify "within 30 days after the end
+-- of that calendar year"; (2) registered from "the day immediately after the
+-- end of the month that follows the month in which the 30th day falls".
+@ref First Schedule para 4(1A)-(2)
+GIVEN `year ended` IS A DATE
+GIVETH A DATE
+`must notify the retrospective liability by, year ended` `year ended` MEANS `year ended` PLUS 30
+
+@ref First Schedule para 4(2)
+GIVEN `year ended` IS A DATE
+GIVETH A DATE
+`registered on the retrospective test from, year ended` `year ended` MEANS
+    `add months` (Date 1 (DATE_MONTH `the 30th day`) (DATE_YEAR `the 30th day`)) 2
+    WHERE
+        `the 30th day` MEANS `year ended` PLUS 30
+
+-- Para 5(1): on the prospective test, notify "within 30 days after the first
+-- day of that period" (day X). (2)(a)(ii): where day X is on or after 1 July
+-- 2025, registered from "the day in the second month (month M + 2) following
+-- the month (month M) in which day X falls, that corresponds numerically to day
+-- X" — or the last day of month M + 2 if there is none; (2)(a)(i): before
+-- 1 July 2025, the day after the 30 days.
+@ref First Schedule para 5(1)
+GIVEN `day X` IS A DATE
+GIVETH A DATE
+`must notify the prospective liability by, day X` `day X` MEANS `day X` PLUS 30
+
+@ref First Schedule para 5(2)(a)
+GIVEN `day X` IS A DATE
+GIVETH A DATE
+`registered on the prospective test from, day X` `day X` MEANS
+    IF `day X` AT LEAST YMD 2025 7 1
+    THEN `add months` `day X` 2
+    ELSE `day X` PLUS 31
+
+-- Para 6: on a transfer of a going concern, notify within 30 days and register
+-- "with effect from the day on which the business is transferred". Para 4(5),
+-- 5(2C), 6(5): a later registration after a refusal not earlier than 30 days
+-- after notice.
+@ref First Schedule para 6(1)-(2)
+GIVEN transferred IS A DATE
+GIVETH A DATE
+`must notify a transfer liability by, transferred` transferred MEANS transferred PLUS 30
+
+@ref First Schedule paras 4(5)(b), 5(2C)(b), 6(5)(b)
+GIVEN notified IS A DATE
+GIVETH A DATE
+`a deferred registration may take effect no earlier than, notified` notified MEANS notified PLUS 30
+
+-- Para 1A(5), 10, 11, 15(2)-(3), 17(4): changes notified "within 30 days".
+@ref First Schedule paras 1A(5), 10, 11, 15(2)-(3), 17(4)
+GIVEN event IS A DATE
+GIVETH A DATE
+`a change must be notified by, event` event MEANS event PLUS 30
+
+§§ `Leaving the register (paras 3, 8, 12-14)`
+
+-- Para 3: liability ends if in the next 12 months taxable supplies "will not
+-- exceed $1 million", for a reason other than ceasing or suspending supplies
+-- for 30 days or more.
+@ref First Schedule para 3
+GIVEN `expected next 12 months` IS A NUMBER, `because supplies cease or pause 30 days or more` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `liability to be registered ends, expected` `expected next 12 months` `, ceasing or pausing:` `because supplies cease or pause 30 days or more` IF
+    `expected next 12 months` AT MOST 1000000 AND (NOT `because supplies cease or pause 30 days or more`)
+
+-- Para 8(2): a voluntary registration lasts "not less than 2 years or such
+-- other shorter period as the Comptroller may determine".
+@ref First Schedule para 8(2)
+GIVEN registered IS A DATE, `shorter period allowed until` IS A MAYBE DATE
+GIVETH A DATE
+`a voluntary registration lasts at least until, registered` registered `, shorter period` `shorter period allowed until` MEANS
+    CONSIDER `shorter period allowed until`
+    WHEN JUST d  THEN d
+    WHEN NOTHING THEN `add years` registered 2
+
+-- Para 8(1): voluntary registration if the person makes taxable supplies (or
+-- qualifying exempt international supplies), intends to in a business, is an
+-- overseas Seventh Schedule supplier, or is a s 14(1) recipient.
+@ref First Schedule para 8(1)
+GIVEN `makes or intends taxable or qualifying supplies` IS A BOOLEAN, `an overseas Seventh Schedule supplier or s 14(1) recipient` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `may register voluntarily, supplies:` `makes or intends taxable or qualifying supplies` `, overseas or recipient:` `an overseas Seventh Schedule supplier or s 14(1) recipient` IF
+    `makes or intends taxable or qualifying supplies` OR `an overseas Seventh Schedule supplier or s 14(1) recipient`
+
+§§ `Who registers and who is liable (ss 31-34)`
+
+-- s 31(3): until a change in a partnership is notified in writing, a
+-- departing partner "is regarded as continuing to be a partner". s 31(7): a
+-- part-period partner's share is "such proportion ... as may be just".
+@ref s 31(3)
+GIVEN `change notified in writing` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the former partner is still liable as a partner, change notified:` `change notified in writing` IF
+    NOT `change notified in writing`
+
+-- s 32(6): a person carrying on a dead, insolvent or incapacitated person's
+-- business must inform the Comptroller "within 21 days after commencing".
+@ref s 32(6)
+GIVEN commenced IS A DATE
+GIVETH A DATE
+`must inform the Comptroller of carrying on the business by, commenced` commenced MEANS commenced PLUS 21
+
+-- s 33(1): an overseas registrant "must" appoint a section 33(1) agent unless
+-- it is a pay-only Seventh Schedule registrant, which "may"; (1B)(b) notify
+-- "not more than 30 days after" appointment; (1B)(c) a change "not less than
+-- 30 days before".
+@ref s 33(1), (1B)-(1C)
+GIVEN `usual residence in Singapore` IS A BOOLEAN, `a pay-only Seventh Schedule registrant` IS A BOOLEAN, `waived by the Comptroller` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `must appoint a section 33(1) agent, resident:` `usual residence in Singapore` `, pay-only:` `a pay-only Seventh Schedule registrant` `, waived:` `waived by the Comptroller` IF
+    (NOT `usual residence in Singapore`) AND (NOT `a pay-only Seventh Schedule registrant`) AND (NOT `waived by the Comptroller`)
+
+-- s 30(2): group members "shall be liable jointly and severally for any tax due
+-- from the representative member"; s 30(1)(a): intra-group supplies are
+-- disregarded, but (1A) not a reverse charge supply.
+@ref s 30(1)(a), (1A)
+GIVEN `between group members` IS A BOOLEAN, `would give rise to a reverse charge` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the supply is disregarded, intra-group:` `between group members` `, reverse charge:` `would give rise to a reverse charge` IF
+    `between group members` AND (NOT `would give rise to a reverse charge`)
+
+§§ `Provisions carried as text`
+
+@ref ss 9, 28, 28A, 29, 30(2)-(4), 31(1)-(2), (4)-(8), 32(1)-(5), 33(1A), (1D)-(5), 33AA, 33A, 33B, 34, 34A, 91; First Schedule paras 1(2), (3A)-(4), 1A(2)-(4), 1B(2), 1C, 2, 3A-3C, 4(3)-(4), 5(2A)-(4), 6(3)-(4), 7, 7A, 9, 12-14A, 15(1)-(1A), 16-19
+GIVETH A LIST OF STRING
+`registration provisions carried as text` MEANS
+    LIST "ss 28-29: public agencies; pay-only overseas registrants; deemed input tax on insurance payments"
+         "ss 30-33AA: groups, partnerships, divisions, clubs, trusts, umbrella VCCs and sub-funds, agents and section 33(1) agents"
+         "ss 33A-34A: refunds to overseas businesses, processed imports, transfers of going concerns"
+         "s 91: the 2019 and 2022 transitional registrations"
+         "First Schedule: going-concern transferees, VCC mergers, Comptroller's aggregation directions, the end of liability for overseas vendors and recipients, refusal, conditions, cancellation, exemption for zero-rated suppliers, forms and the register"

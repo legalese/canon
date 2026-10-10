@@ -1,0 +1,290 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `gst-types`
+IMPORT `gst-charge`
+IMPORT `gst-registration`
+IMPORT `gst-credit`
+IMPORT `gst-administration`
+IMPORT `gst-penalties`
+IMPORT `gst-goal`
+
+-- Goods and Services Tax Act 1993 — TESTS.
+-- Expected values are worked from ../source/GSTA1993.txt, not from the code.
+
+§ `Tests`
+
+§§ `Helpers`
+
+-- a local supply of services, invoiced and paid on given dates
+GIVEN taxable IS A BOOLEAN, business IS A BOOLEAN, paid IS A BOOLEAN, amount IS A NUMBER, ex IS AN `Exempt category`, zr IS A `Zero-rating ground`, inv IS A MAYBE DATE, rec IS A MAYBE DATE
+GIVETH A Supply
+`local services` taxable business paid amount ex zr inv rec MEANS
+    Supply OF `services`, `not removed from or to Singapore, and in Singapore`, `a business or fixed establishment only in Singapore`, taxable, business, paid, amount, ex, zr, `general (s 11(2))`, inv, rec, NOTHING, FALSE, FALSE
+
+`a plain supply` MEANS `local services` TRUE TRUE TRUE 1090 `none` `none` (JUST (YMD 2024 3 15)) NOTHING
+
+GIVEN k IS A `Supply kind`, mv IS A `Goods movement`, e IS AN Establishment, seventh IS A BOOLEAN
+GIVETH A Supply
+`a supply of` k `moving` mv `by` e `, Seventh Schedule:` seventh MEANS
+    Supply OF k, mv, e, TRUE, TRUE, TRUE, 1000, `none`, `none`, `general (s 11(2))`, NOTHING, NOTHING, NOTHING, seventh, FALSE
+
+GIVEN rule IS A `Time-of-supply rule`, inv IS A MAYBE DATE, rec IS A MAYBE DATE, done IS A MAYBE DATE
+GIVETH A Supply
+`timed by` rule `, invoice` inv `, paid` rec `, performed` done MEANS
+    Supply OF `goods`, `not removed from or to Singapore, and in Singapore`, `a business or fixed establishment only in Singapore`, TRUE, TRUE, TRUE, 1000, `none`, `none`, rule, inv, rec, done, FALSE, FALSE
+
+GIVEN services IS A BOOLEAN, belongs IS A BOOLEAN, registered IS A BOOLEAN, private IS A BOOLEAN, full IS A BOOLEAN, excluded IS A BOOLEAN, elected IS A BOOLEAN
+GIVETH A `Reverse charge facts`
+`reverse charge` services belongs registered private full excluded elected MEANS
+    `Reverse charge facts` OF services, FALSE, belongs, registered, private, full, excluded, elected
+
+GIVEN business IS A BOOLEAN, attributable IS A BOOLEAN, arrangement IS A BOOLEAN, knew IS A BOOLEAN, risk IS A BOOLEAN, reasonable IS A BOOLEAN
+GIVETH AN `Input tax facts`
+`input` business attributable arrangement knew risk reasonable MEANS
+    `Input tax facts` OF business, 100, attributable, arrangement, knew, risk, reasonable
+
+GIVEN last IS A NUMBER, next IS A NUMBER, satisfied IS A BOOLEAN
+GIVETH A `Registration facts`
+`a local business with` last `last year,` next `expected, Comptroller satisfied:` satisfied MEANS
+    `Registration facts` OF TRUE, last, next, satisfied, 0, 0, 0, 0, 0, 0, TRUE
+
+GIVEN global IS A NUMBER, seventh IS A NUMBER
+GIVETH A `Registration facts`
+`an overseas vendor with` global `global and` seventh `Seventh Schedule supplies last year` MEANS
+    `Registration facts` OF FALSE, 0, 0, FALSE, global, seventh, 0, 0, 0, 0, TRUE
+
+GIVEN received IS A NUMBER, full IS A BOOLEAN
+GIVETH A `Registration facts`
+`a recipient of` received `in reverse charge services, full credit:` full MEANS
+    `Registration facts` OF TRUE, 0, 0, FALSE, 0, 0, 0, 0, received, 0, full
+
+§§ `Goal 1 — where and whether tax is charged`
+
+#ASSERT `belongs in Singapore` `a business or fixed establishment only in Singapore`
+#ASSERT NOT `belongs in Singapore` `a business or fixed establishment only abroad`
+#ASSERT `belongs in Singapore` `no establishment; usual residence in Singapore`
+#ASSERT NOT `belongs in Singapore` `establishments in Singapore and abroad; the one most concerned is abroad`
+#ASSERT `the supply is made in Singapore` (`a supply of` `services` `moving` `not removed from or to Singapore, and in Singapore` `by` `a business or fixed establishment only in Singapore` `, Seventh Schedule:` FALSE)
+#ASSERT NOT `the supply is made in Singapore` (`a supply of` `services` `moving` `not removed from or to Singapore, and in Singapore` `by` `a business or fixed establishment only abroad` `, Seventh Schedule:` FALSE)
+#ASSERT `the supply is made in Singapore` (`a supply of` `goods` `moving` `removed from Singapore` `by` `a business or fixed establishment only abroad` `, Seventh Schedule:` FALSE)
+#ASSERT NOT `the supply is made in Singapore` (`a supply of` `goods` `moving` `removed to Singapore` `by` `a business or fixed establishment only in Singapore` `, Seventh Schedule:` FALSE)
+#ASSERT `the tax treatment of` `a plain supply` EQUALS `standard-rated`
+#ASSERT `the tax treatment of` (`local services` TRUE TRUE TRUE 1090 `residential land or property (para 2)` `none` NOTHING NOTHING) EQUALS `exempt`
+#ASSERT `the tax treatment of` (`local services` TRUE TRUE TRUE 1090 `none` `international services under s 21(3)` NOTHING NOTHING) EQUALS `zero-rated`
+#ASSERT `the tax treatment of` (`local services` TRUE TRUE FALSE 0 `none` `none` NOTHING NOTHING) EQUALS `outside the scope of the tax`
+#ASSERT `the tax treatment of` (`local services` FALSE TRUE TRUE 1090 `none` `none` NOTHING NOTHING) EQUALS `outside the scope of the tax`
+#ASSERT `the tax treatment of` (`local services` TRUE FALSE TRUE 1090 `none` `none` NOTHING NOTHING) EQUALS `outside the scope of the tax`
+-- s 8(1A): an overseas supplier's Seventh Schedule supply is charged
+#ASSERT `the tax treatment of` (`a supply of` `services` `moving` `not removed from or to Singapore, and in Singapore` `by` `a business or fixed establishment only abroad` `, Seventh Schedule:` TRUE) EQUALS `standard-rated`
+-- Second Schedule para 5(2): gifts up to $200 and samples
+#ASSERT NOT `the transfer of business goods is a supply, gift:` TRUE `, cost` 200 `, sample:` FALSE
+#ASSERT `the transfer of business goods is a supply, gift:` TRUE `, cost` 201 `, sample:` FALSE
+#ASSERT NOT `the transfer of business goods is a supply, gift:` FALSE `, cost` 5000 `, sample:` TRUE
+-- Second Schedule para 7(1)(c): deemed supply on deregistration over $10,000
+#ASSERT NOT `goods are deemed supplied on deregistration, value` 10000 `, transferred or carried on:` FALSE
+#ASSERT `goods are deemed supplied on deregistration, value` 10001 `, transferred or carried on:` FALSE
+#ASSERT NOT `goods are deemed supplied on deregistration, value` 50000 `, transferred or carried on:` TRUE
+
+§§ `Goal 1 — rate, value and time`
+
+#ASSERT `the rate of tax per cent on` (YMD 2024 1 1) EQUALS 9
+#ASSERT `the rate of tax per cent on` (YMD 2023 12 31) EQUALS 8
+#ASSERT `the rate of tax per cent on` (YMD 2023 1 1) EQUALS 8
+#ASSERT `the rate of tax per cent on` (YMD 2022 12 31) EQUALS 7
+#ASSERT `the rate of tax per cent on` (YMD 2007 7 1) EQUALS 7
+#ASSERT `the rate of tax per cent on` (YMD 2007 6 30) EQUALS 5
+#ASSERT `the rate of tax per cent on` (YMD 2004 1 1) EQUALS 5
+#ASSERT `the rate of tax per cent on` (YMD 2003 12 31) EQUALS 4
+#ASSERT REFUSED `the rate of tax per cent on` (YMD 2002 12 31)
+-- s 17(2): $109 at 9% is $100 plus $9 tax
+#ASSERT `the tax within a consideration of` 109 `at` 9 `per cent` EQUALS 9
+#ASSERT `the value of a supply for` 109 `at` 9 `per cent` EQUALS 100
+#ASSERT `the value after the special rule` `a used motor vehicle (Third Schedule para 14)` `, value` 10000 EQUALS 5000
+#ASSERT `the value after the special rule` `employee catering or hotel accommodation, no money paid (para 10)` `, value` 300 EQUALS 0
+#ASSERT `the last day for an open market value direction, supply on` (YMD 2024 3 1) EQUALS YMD 2027 3 1
+-- s 11(2): the earlier of invoice and payment
+#ASSERT `the time of supply of` (`timed by` `general (s 11(2))` `, invoice` (JUST (YMD 2026 3 10)) `, paid` (JUST (YMD 2026 3 5)) `, performed` NOTHING) EQUALS JUST (YMD 2026 3 5)
+#ASSERT `the time of supply of` (`timed by` `general (s 11(2))` `, invoice` (JUST (YMD 2026 3 10)) `, paid` NOTHING `, performed` NOTHING) EQUALS JUST (YMD 2026 3 10)
+#ASSERT `the time of supply of` (`timed by` `general (s 11(2))` `, invoice` NOTHING `, paid` NOTHING `, performed` (JUST (YMD 2026 3 1))) EQUALS NOTHING
+-- s 11(3)-(4): performance, unless invoiced or paid first
+#ASSERT `the time of supply of` (`timed by` `land, or by election, or agent's supply (s 11(3)-(4))` `, invoice` (JUST (YMD 2026 3 15)) `, paid` NOTHING `, performed` (JUST (YMD 2026 3 1))) EQUALS JUST (YMD 2026 3 1)
+#ASSERT `the time of supply of` (`timed by` `land, or by election, or agent's supply (s 11(3)-(4))` `, invoice` (JUST (YMD 2026 2 20)) `, paid` NOTHING `, performed` (JUST (YMD 2026 3 1))) EQUALS JUST (YMD 2026 2 20)
+-- s 11A(6): sale or return — 12 months after removal
+#ASSERT `the time of supply of` (`timed by` `sale or return goods (s 11A(6))` `, invoice` NOTHING `, paid` NOTHING `, performed` (JUST (YMD 2025 1 1))) EQUALS JUST (YMD 2026 1 1)
+#ASSERT `the time of supply of` (`timed by` `sale or return goods (s 11A(6))` `, invoice` (JUST (YMD 2025 6 1)) `, paid` NOTHING `, performed` (JUST (YMD 2025 1 1))) EQUALS JUST (YMD 2025 6 1)
+#ASSERT `the time of supply of` (`timed by` `between connected persons (s 11B(3))` `, invoice` NOTHING `, paid` NOTHING `, performed` (JUST (YMD 2025 1 1))) EQUALS JUST (YMD 2026 1 1)
+
+§§ `Goal 1 — supplies from abroad, and a change of rate`
+
+#ASSERT `distantly taxable goods` (`Low-value goods facts` OF FALSE, FALSE, TRUE, 400, TRUE)
+#ASSERT NOT `distantly taxable goods` (`Low-value goods facts` OF FALSE, FALSE, TRUE, 401, TRUE)
+#ASSERT NOT `distantly taxable goods` (`Low-value goods facts` OF TRUE, FALSE, TRUE, 50, TRUE)
+#ASSERT NOT `distantly taxable goods` (`Low-value goods facts` OF FALSE, FALSE, TRUE, 50, FALSE)
+#ASSERT `the recipient accounts for tax under the reverse charge` (`reverse charge` TRUE TRUE TRUE FALSE FALSE FALSE FALSE)
+#ASSERT NOT `the recipient accounts for tax under the reverse charge` (`reverse charge` TRUE TRUE TRUE FALSE TRUE FALSE FALSE)
+#ASSERT NOT `the recipient accounts for tax under the reverse charge` (`reverse charge` TRUE TRUE TRUE TRUE FALSE FALSE FALSE)
+#ASSERT NOT `the recipient accounts for tax under the reverse charge` (`reverse charge` TRUE TRUE TRUE FALSE FALSE TRUE FALSE)
+#ASSERT `the recipient accounts for tax under the reverse charge` (`reverse charge` TRUE TRUE TRUE FALSE TRUE FALSE TRUE)
+#ASSERT NOT `the recipient accounts for tax under the reverse charge` (`reverse charge` TRUE FALSE TRUE FALSE FALSE FALSE FALSE)
+#ASSERT NOT `a customer for the Seventh Schedule, registered:` TRUE `, for business:` TRUE `, gave its number:` TRUE
+#ASSERT `a customer for the Seventh Schedule, registered:` TRUE `, for business:` TRUE `, gave its number:` FALSE
+#ASSERT NOT `the marketplace operator is treated as the supplier, conditions met` 0
+#ASSERT `the marketplace operator is treated as the supplier, conditions met` 1
+-- s 39B: $1,000, $600 performed and $200 paid before an increase from 8% to 9%
+#ASSERT `the tax on a supply performed before an increase,` (`Spanning supply` OF 1000, 600, 200, FALSE, 8, 9) `, elects:` TRUE EQUALS 84
+#ASSERT `the tax on a supply performed before an increase,` (`Spanning supply` OF 1000, 600, 200, FALSE, 8, 9) `, elects:` FALSE EQUALS 88
+-- s 39C: invoiced before; $300 paid and $700 performed before: the new rate on the lower of $700 and $300
+#ASSERT `the tax on a supply invoiced before an increase,` (`Spanning supply` OF 1000, 700, 300, TRUE, 8, 9) EQUALS 83
+#ASSERT `a new tax invoice is due by, rate changed on` (YMD 2024 1 1) EQUALS YMD 2024 1 15
+#ASSERT `the contract price moves with the tax, excluded:` FALSE `, taken into account:` FALSE
+#ASSERT NOT `the contract price moves with the tax, excluded:` TRUE `, taken into account:` FALSE
+
+§§ `Goal 2 — registration`
+
+#ASSERT `liable to register on the retrospective test` (`a local business with` 1000001 `last year,` 0 `expected, Comptroller satisfied:` FALSE)
+#ASSERT NOT `liable to register on the retrospective test` (`a local business with` 1000000 `last year,` 0 `expected, Comptroller satisfied:` FALSE)
+#ASSERT NOT `liable to register on the retrospective test` (`a local business with` 1500000 `last year,` 0 `expected, Comptroller satisfied:` TRUE)
+#ASSERT `liable to register on the prospective test` (`a local business with` 0 `last year,` 1000001 `expected, Comptroller satisfied:` FALSE)
+#ASSERT NOT `liable to be registered` (`a local business with` 1000000 `last year,` 1000000 `expected, Comptroller satisfied:` FALSE)
+#ASSERT `an overseas vendor liable to register` (`an overseas vendor with` 2000000 `global and` 100001 `Seventh Schedule supplies last year`)
+#ASSERT NOT `an overseas vendor liable to register` (`an overseas vendor with` 2000000 `global and` 100000 `Seventh Schedule supplies last year`)
+#ASSERT NOT `an overseas vendor liable to register` (`an overseas vendor with` 1000000 `global and` 500000 `Seventh Schedule supplies last year`)
+#ASSERT `a reverse charge recipient liable to register` (`a recipient of` 1000001 `in reverse charge services, full credit:` FALSE)
+#ASSERT NOT `a reverse charge recipient liable to register` (`a recipient of` 5000000 `in reverse charge services, full credit:` TRUE)
+-- para 4: notify within 30 days of the year end; registered from the day after the end of the following month
+#ASSERT `must notify the retrospective liability by, year ended` (YMD 2025 12 31) EQUALS YMD 2026 1 30
+#ASSERT `registered on the retrospective test from, year ended` (YMD 2025 12 31) EQUALS YMD 2026 3 1
+-- para 5: day X on or after 1 July 2025 — the same day in month M + 2, or its last day
+#ASSERT `must notify the prospective liability by, day X` (YMD 2025 8 15) EQUALS YMD 2025 9 14
+#ASSERT `registered on the prospective test from, day X` (YMD 2025 8 15) EQUALS YMD 2025 10 15
+#ASSERT `registered on the prospective test from, day X` (YMD 2025 12 31) EQUALS YMD 2026 2 28
+#ASSERT `registered on the prospective test from, day X` (YMD 2025 3 1) EQUALS YMD 2025 4 1
+#ASSERT `must notify a transfer liability by, transferred` (YMD 2026 3 1) EQUALS YMD 2026 3 31
+#ASSERT `a deferred registration may take effect no earlier than, notified` (YMD 2026 3 1) EQUALS YMD 2026 3 31
+#ASSERT `a change must be notified by, event` (YMD 2026 3 1) EQUALS YMD 2026 3 31
+#ASSERT `liability to be registered ends, expected` 1000000 `, ceasing or pausing:` FALSE
+#ASSERT NOT `liability to be registered ends, expected` 900000 `, ceasing or pausing:` TRUE
+#ASSERT `a voluntary registration lasts at least until, registered` (YMD 2025 3 1) `, shorter period` NOTHING EQUALS YMD 2027 3 1
+#ASSERT `may register voluntarily, supplies:` FALSE `, overseas or recipient:` TRUE
+#ASSERT `the former partner is still liable as a partner, change notified:` FALSE
+#ASSERT `must inform the Comptroller of carrying on the business by, commenced` (YMD 2026 3 1) EQUALS YMD 2026 3 22
+#ASSERT `must appoint a section 33(1) agent, resident:` FALSE `, pay-only:` FALSE `, waived:` FALSE
+#ASSERT NOT `must appoint a section 33(1) agent, resident:` FALSE `, pay-only:` TRUE `, waived:` FALSE
+#ASSERT `the supply is disregarded, intra-group:` TRUE `, reverse charge:` FALSE
+#ASSERT NOT `the supply is disregarded, intra-group:` TRUE `, reverse charge:` TRUE
+
+§§ `Goal 3 — input tax`
+
+#ASSERT `the input tax may be credited` (`input` TRUE TRUE FALSE FALSE FALSE FALSE)
+#ASSERT NOT `the input tax may be credited` (`input` FALSE TRUE FALSE FALSE FALSE FALSE)
+#ASSERT NOT `the input tax may be credited` (`input` TRUE TRUE TRUE TRUE FALSE FALSE)
+#ASSERT NOT `the input tax may be credited` (`input` TRUE TRUE TRUE FALSE TRUE FALSE)
+#ASSERT `the input tax may be credited` (`input` TRUE TRUE TRUE FALSE TRUE TRUE)
+#ASSERT `the input tax may be credited` (`input` TRUE TRUE TRUE FALSE FALSE FALSE)
+#ASSERT `the creditable input tax, facts` (`Input tax facts` OF TRUE, 60, TRUE, FALSE, FALSE, FALSE, FALSE) `, tax charged` 100 EQUALS 60
+-- s 41(7): under $5 either way is zero
+#ASSERT `the net tax due, output` 1004 `, input` 1000 EQUALS 0
+#ASSERT `the net tax due, output` 1005 `, input` 1000 EQUALS 5
+#ASSERT `the net tax due, output` 1000 `, input` 1003 EQUALS 0
+#ASSERT `the net tax due, output` 1000 `, input` 1010 EQUALS (0 MINUS 10)
+#ASSERT `unpaid input tax must be repaid in the period containing, payment due` (YMD 2025 3 1) EQUALS YMD 2026 3 1
+#ASSERT `repaid input tax may be reclaimed until, first claim period ended` (YMD 2006 12 31) EQUALS YMD 2012 12 31
+#ASSERT `repaid input tax may be reclaimed until, first claim period ended` (YMD 2025 3 31) EQUALS YMD 2030 3 31
+#ASSERT `the surcharge on a tainted claim of` 5000 EQUALS 500
+#ASSERT `the deemed input tax on a going concern's assets, value` 100000 `, rate` 9 EQUALS 9000
+
+§§ `Goal 4 — assessment, review and appeal`
+
+#ASSERT `the Comptroller may still assess, period ended` (YMD 2020 12 31) `, fraud:` FALSE `, as at` (YMD 2025 12 31)
+#ASSERT NOT `the Comptroller may still assess, period ended` (YMD 2020 12 31) `, fraud:` FALSE `, as at` (YMD 2026 1 1)
+#ASSERT `the Comptroller may still assess, period ended` (YMD 2010 12 31) `, fraud:` TRUE `, as at` (YMD 2026 1 1)
+#ASSERT `the Comptroller may still assess, period ended` (YMD 2006 12 31) `, fraud:` FALSE `, as at` (YMD 2013 12 31)
+#ASSERT NOT `the Comptroller may still assess, period ended` (YMD 2006 12 31) `, fraud:` FALSE `, as at` (YMD 2014 1 1)
+#ASSERT `records must be kept until, period ended` (YMD 2025 3 31) EQUALS YMD 2030 3 31
+#ASSERT `the Comptroller must counteract the arrangement, tax advantage:` TRUE `, bona fide:` FALSE
+#ASSERT NOT `the Comptroller must counteract the arrangement, tax advantage:` TRUE `, bona fide:` TRUE
+#ASSERT `the s 47A surcharge on additional tax` 10000 `, period starting` (YMD 2021 1 1) EQUALS 5000
+#ASSERT `the s 47A surcharge on additional tax` 10000 `, period starting` (YMD 2020 10 1) EQUALS 0
+#ASSERT `a surcharge or additional tax is due by, notice served` (YMD 2026 1 15) EQUALS YMD 2026 2 15
+#ASSERT `the most penal tax on undercharged tax of` 1000 EQUALS 3000
+#ASSERT `the last day to object, notified` (YMD 2026 3 1) EQUALS YMD 2026 3 31
+#ASSERT `the last day to give notice of appeal, review decided` (YMD 2026 3 1) EQUALS YMD 2026 3 31
+#ASSERT `the last day to lodge the petition of appeal, notice lodged` (YMD 2026 3 31) EQUALS YMD 2026 4 30
+#ASSERT NOT `the Board may hear the appeal, returns:` TRUE `, tax matter:` TRUE `, paid:` FALSE `, hardship:` FALSE
+#ASSERT `the Board may hear the appeal, returns:` TRUE `, tax matter:` TRUE `, paid:` FALSE `, hardship:` TRUE
+#ASSERT `the Board may hear the appeal, returns:` TRUE `, tax matter:` FALSE `, paid:` FALSE `, hardship:` FALSE
+#ASSERT NOT `the Board may hear the appeal, returns:` FALSE `, tax matter:` FALSE `, paid:` TRUE `, hardship:` FALSE
+#ASSERT `notice of the Board hearing is due by, hearing` (YMD 2026 3 15) EQUALS YMD 2026 3 1
+#ASSERT `may appeal to the High Court, amount` 500 `, on law:` TRUE
+#ASSERT NOT `may appeal to the High Court, amount` 499 `, on law:` TRUE
+#ASSERT `the Board is properly constituted, members` 3 `, chair or deputy:` TRUE
+#ASSERT NOT `the Board is properly constituted, members` 2 `, chair or deputy:` TRUE
+#ASSERT `the Board is properly constituted, members` 1 `, chair or deputy:` TRUE
+#ASSERT NOT `the Board is properly constituted, members` 3 `, chair or deputy:` FALSE
+
+§§ `Goal 5 — collection, refunds, rulings`
+
+#ASSERT `the last day to claim a refund, from` (YMD 2025 3 31) EQUALS YMD 2030 3 31
+#ASSERT `moneys held until this day are caught by the agency notice, received` (YMD 2026 3 1) EQUALS YMD 2026 5 30
+#ASSERT `an agent must pay over from a joint account by, notice received` (YMD 2026 3 1) EQUALS YMD 2026 4 12
+#ASSERT `the presumed share of one joint holder, balance` 900 `, holders` 3 EQUALS 300
+#ASSERT `the detention is within time, hours` 48
+#ASSERT NOT `the detention is within time, hours` 49
+#ASSERT `the most an advance ruling costs, hours` 4 `, expedited:` FALSE EQUALS 660
+#ASSERT `the most an advance ruling costs, hours` 5 `, expedited:` FALSE EQUALS 825
+#ASSERT `the most an advance ruling costs, hours` 4.5 `, expedited:` FALSE EQUALS 825
+#ASSERT `the most an advance ruling costs, hours` 6 `, expedited:` TRUE EQUALS 2970
+-- Fifth Schedule para 6(b): 3 years "beginning on the date the ruling is made" — the last day is the day before the anniversary
+#ASSERT `an advance ruling applies until, made` (YMD 2026 3 1) EQUALS YMD 2029 2 28
+#ASSERT `the notice is served on, mode` `the electronic service` `, sent` (YMD 2026 3 1) `, post would arrive` (YMD 2026 3 3) EQUALS YMD 2026 3 1
+#ASSERT `the notice is served on, mode` `ordinary or registered post` `, sent` (YMD 2026 3 1) `, post would arrive` (YMD 2026 3 3) EQUALS YMD 2026 3 3
+
+§§ `Goal 6 — penalties and offences`
+
+-- s 60(1): 5%, then 2% a completed month after the 60 days, capped at 50%
+#ASSERT `the late payment penalty on` 10000 `, days after the 5% penalty` 30 `, completed months since due` 1 EQUALS 500
+#ASSERT `the late payment penalty on` 10000 `, days after the 5% penalty` 60 `, completed months since due` 3 EQUALS 1100
+#ASSERT `the late payment penalty on` 10000 `, days after the 5% penalty` 900 `, completed months since due` 30 EQUALS 5500
+-- s 60(2): $200 plus $200 a completed month, to $10,000
+#ASSERT `the late return penalty, completed months late` 0 EQUALS 200
+#ASSERT `the late return penalty, completed months late` 10 EQUALS 2200
+#ASSERT `the late return penalty, completed months late` 49 EQUALS 10000
+#ASSERT `the late return penalty, completed months late` 100 EQUALS 10000
+#ASSERT `the failure-to-register penalty on` 10000 `, years or parts` 2 EQUALS 2000
+#ASSERT (`the maximum penalty for` `s 62 wilful evasion`) EQUALS `GST penalty` OF 3, 10000, 84, TRUE, 0
+#ASSERT (`the maximum penalty for` `s 62C(1) participating in a fraudulent arrangement`)'s `fine` EQUALS 500000
+#ASSERT (`the maximum penalty for` `s 46(6) records, second or later conviction`) EQUALS `GST penalty` OF 0, 10000, 36, TRUE, 0
+#ASSERT (`the maximum penalty for` `s 59(2) an incorrect return without reasonable excuse or through negligence`)'s `penalty as a multiple of the tax` EQUALS 2
+#ASSERT (`the maximum penalty for` `s 84(2D) not complying with a notice`)'s `fine per day continuing` EQUALS 100
+#ASSERT NOT `the director, partner or proprietor is guilty under s 62C(4), used:` TRUE `, without knowledge:` TRUE `, due diligence:` TRUE
+#ASSERT `the director, partner or proprietor is guilty under s 62C(4), used:` TRUE `, without knowledge:` FALSE `, due diligence:` TRUE
+#ASSERT NOT `the officer is deemed guilty, without consent:` TRUE `, diligence:` TRUE
+#ASSERT `the most that may be collected to compound, prescribed:` TRUE EQUALS JUST 5000
+#ASSERT `the Public Prosecutor's consent is needed for` `s 62 wilful evasion`
+#ASSERT NOT `the Public Prosecutor's consent is needed for` `s 59(2) an incorrect return without reasonable excuse or through negligence`
+#ASSERT `a notice to attend court may be used for` `s 66 obstructing the Comptroller`
+#ASSERT NOT `a notice to attend court may be used for` `s 62 wilful evasion`
+
+§§ `The top-level goal`
+
+-- a $1,090 local supply of services invoiced on 15 March 2024
+`case A` MEANS `the GST position for` (`Supply case` OF `a plain supply`, `none`, NOTHING)
+#ASSERT `case A`'s `treatment` EQUALS `standard-rated`
+#ASSERT `case A`'s `time of supply` EQUALS JUST (YMD 2024 3 15)
+#ASSERT `case A`'s `rate per cent` EQUALS JUST 9
+#ASSERT `case A`'s `tax on the supply` EQUALS JUST 90
+#ASSERT NOT `case A`'s `the recipient accounts under the reverse charge`
+-- a used car sold for $10,900 in 2024: value $10,000, halved
+`case B` MEANS `the GST position for` (`Supply case` OF (`local services` TRUE TRUE TRUE 10900 `none` `none` (JUST (YMD 2024 6 1)) NOTHING), `a used motor vehicle (Third Schedule para 14)`, NOTHING)
+#ASSERT `case B`'s `tax on the supply` EQUALS JUST 450
+-- an export: zero-rated, no tax
+`case C` MEANS `the GST position for` (`Supply case` OF (`local services` TRUE TRUE TRUE 5000 `none` `goods exported` (JUST (YMD 2024 6 1)) NOTHING), `none`, NOTHING)
+#ASSERT `case C`'s `treatment` EQUALS `zero-rated`
+#ASSERT `case C`'s `tax on the supply` EQUALS JUST 0
+#ASSERT NOT `case C`'s `the recipient accounts under the reverse charge`
+-- a partly exempt registrant buys $10,000 of services from an overseas supplier in 2024:
+-- s 14(2) reverse charge; s 17(3A), (2A)(a) tax added on top — $900
+`case D` MEANS `the GST position for` (`Supply case` OF (Supply OF `services`, `not removed from or to Singapore, and in Singapore`, `a business or fixed establishment only abroad`, TRUE, TRUE, TRUE, 10000, `none`, `none`, `general (s 11(2))`, (JUST (YMD 2024 6 1)), NOTHING, NOTHING, FALSE, FALSE), `none`, (JUST (`reverse charge` TRUE TRUE TRUE FALSE FALSE FALSE FALSE)))
+#ASSERT `case D`'s `treatment` EQUALS `standard-rated`
+#ASSERT `case D`'s `tax on the supply` EQUALS JUST 900
+#ASSERT `case D`'s `the recipient accounts under the reverse charge`

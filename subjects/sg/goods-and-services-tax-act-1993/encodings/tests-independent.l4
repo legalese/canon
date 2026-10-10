@@ -1,0 +1,765 @@
+-- Independent tests: Goods and Services Tax Act 1993 (Singapore).
+--
+-- Every expected value was fixed in independent-expectations.md (E01-E195) from
+-- BRIEF.md and ../source/GSTA1993.txt alone, BEFORE any gst-*.l4 module was
+-- opened. This file was then written from the modules' function names and input
+-- shapes; gst-tests.l4 was not read. A failing assertion is a finding: no expected
+-- value here was changed to match the encoding.
+--
+-- Each assertion carries its E-number. Expectations that the encoding's names
+-- cannot express are listed in INDEPENDENT-TEST-REPORT.md.
+--
+-- Reading the output: `#ASSERT e` where e REFUSES prints "assertion refused" at
+-- Warning severity; `#ASSERT REFUSED e` where e yields a value is an error. Grep
+-- for both, not only check.sh's columns.
+
+IMPORT prelude
+IMPORT daydate
+IMPORT `gst-types`
+IMPORT `gst-charge`
+IMPORT `gst-registration`
+IMPORT `gst-credit`
+IMPORT `gst-administration`
+IMPORT `gst-penalties`
+IMPORT `gst-goal`
+
+-- ======================================================================
+-- Builders (records are built field by field; no expected values here)
+-- ======================================================================
+
+GIVEN k   IS A `Supply kind`
+      mv  IS A `Goods movement`
+      est IS AN Establishment
+      tp  IS A BOOLEAN
+      biz IS A BOOLEAN
+      con IS A BOOLEAN
+      ex  IS AN `Exempt category`
+      zr  IS A `Zero-rating ground`
+      sev IS A BOOLEAN
+GIVETH A Supply
+`scope supply` MEANS
+    Supply WITH
+        `kind`                                    IS k
+        `goods movement`                          IS mv
+        `supplier`                                IS est
+        `by a taxable person`                     IS tp
+        `in the course or furtherance of business` IS biz
+        `for a consideration, or deemed a supply by the Second Schedule` IS con
+        `consideration in money`                  IS 109
+        `exempt category`                         IS ex
+        `zero-rating ground`                      IS zr
+        `time rule`                               IS `general (s 11(2))`
+        `invoice issued on`                       IS JUST (Date 1 3 2025)
+        `consideration received on`               IS NOTHING
+        `goods removed, made available, or services performed on` IS NOTHING
+        `a Seventh Schedule supply`               IS sev
+        `customer accounts for the tax (s 38, 38A)` IS FALSE
+
+GIVEN mv IS A `Goods movement`
+GIVETH A Supply
+`goods moving` MEANS `scope supply` `goods` mv `a business or fixed establishment only in Singapore` TRUE TRUE TRUE `none` `none` FALSE
+
+GIVEN est IS AN Establishment
+GIVETH A Supply
+`services by` MEANS `scope supply` `services` `not removed from or to Singapore, and in Singapore` est TRUE TRUE TRUE `none` `none` FALSE
+
+GIVEN rule IS A `Time-of-supply rule`
+      inv  IS A MAYBE DATE
+      paid IS A MAYBE DATE
+      perf IS A MAYBE DATE
+GIVETH A Supply
+`timed supply` MEANS
+    Supply WITH
+        `kind`                                    IS `goods`
+        `goods movement`                          IS `not removed from or to Singapore, and in Singapore`
+        `supplier`                                IS `a business or fixed establishment only in Singapore`
+        `by a taxable person`                     IS TRUE
+        `in the course or furtherance of business` IS TRUE
+        `for a consideration, or deemed a supply by the Second Schedule` IS TRUE
+        `consideration in money`                  IS 109
+        `exempt category`                         IS `none`
+        `zero-rating ground`                      IS `none`
+        `time rule`                               IS rule
+        `invoice issued on`                       IS inv
+        `consideration received on`               IS paid
+        `goods removed, made available, or services performed on` IS perf
+        `a Seventh Schedule supply`               IS FALSE
+        `customer accounts for the tax (s 38, 38A)` IS FALSE
+
+GIVEN cons IS A NUMBER
+      zr   IS A `Zero-rating ground`
+      inv  IS A DATE
+GIVETH A Supply
+`priced supply` MEANS
+    Supply WITH
+        `kind`                                    IS `goods`
+        `goods movement`                          IS `not removed from or to Singapore, and in Singapore`
+        `supplier`                                IS `a business or fixed establishment only in Singapore`
+        `by a taxable person`                     IS TRUE
+        `in the course or furtherance of business` IS TRUE
+        `for a consideration, or deemed a supply by the Second Schedule` IS TRUE
+        `consideration in money`                  IS cons
+        `exempt category`                         IS `none`
+        `zero-rating ground`                      IS zr
+        `time rule`                               IS `general (s 11(2))`
+        `invoice issued on`                       IS JUST inv
+        `consideration received on`               IS NOTHING
+        `goods removed, made available, or services performed on` IS NOTHING
+        `a Seventh Schedule supply`               IS FALSE
+        `customer accounts for the tax (s 38, 38A)` IS FALSE
+
+-- Services of $10,000 by a supplier belonging abroad, invoiced 1 Mar 2025.
+`overseas services for 10000` MEANS
+    Supply WITH
+        `kind`                                    IS `services`
+        `goods movement`                          IS `not removed from or to Singapore, and in Singapore`
+        `supplier`                                IS `a business or fixed establishment only abroad`
+        `by a taxable person`                     IS TRUE
+        `in the course or furtherance of business` IS TRUE
+        `for a consideration, or deemed a supply by the Second Schedule` IS TRUE
+        `consideration in money`                  IS 10000
+        `exempt category`                         IS `none`
+        `zero-rating ground`                      IS `none`
+        `time rule`                               IS `general (s 11(2))`
+        `invoice issued on`                       IS JUST (Date 1 3 2025)
+        `consideration received on`               IS NOTHING
+        `goods removed, made available, or services performed on` IS NOTHING
+        `a Seventh Schedule supply`               IS FALSE
+        `customer accounts for the tax (s 38, 38A)` IS FALSE
+
+GIVEN s  IS A Supply
+      sv IS A `Special value`
+GIVETH A `Supply case`
+`case of` MEANS
+    `Supply case` WITH
+        `supply`         IS s
+        `special value`  IS sv
+        `reverse charge` IS NOTHING
+
+GIVEN s  IS A Supply
+      r  IS A `Reverse charge facts`
+GIVETH A `Supply case`
+`rc case of` MEANS
+    `Supply case` WITH
+        `supply`         IS s
+        `special value`  IS `none`
+        `reverse charge` IS JUST r
+
+GIVEN dut IS A BOOLEAN
+      ex  IS A BOOLEAN
+      out IS A BOOLEAN
+      ev  IS A NUMBER
+      air IS A BOOLEAN
+GIVETH A `Low-value goods facts`
+`low-value goods` MEANS
+    `Low-value goods facts` WITH
+        `dutiable, duty not waived`                          IS dut
+        `an exempt supply`                                   IS ex
+        `outside the customs territory at the point of sale` IS out
+        `entry value of the item`                            IS ev
+        `delivered by post or after import by air`           IS air
+
+GIVEN svc  IS A BOOLEAN
+      dtg  IS A BOOLEAN
+      bel  IS A BOOLEAN
+      reg  IS A BOOLEAN
+      priv IS A BOOLEAN
+      full IS A BOOLEAN
+      excl IS A BOOLEAN
+      elec IS A BOOLEAN
+GIVETH A `Reverse charge facts`
+`reverse charge case` MEANS
+    `Reverse charge facts` WITH
+        `the supply is of services by an overseas supplier, or between branches` IS svc
+        `the supply is of distantly taxable goods`          IS dtg
+        `recipient belongs in Singapore`                    IS bel
+        `recipient registered or liable to be registered`   IS reg
+        `received as an individual privately`               IS priv
+        `recipient entitled to full input tax credit`       IS full
+        `excluded by the Eighth Schedule`                   IS excl
+        `recipient elected under s 14(5) or (6)`            IS elec
+
+GIVEN val  IS A NUMBER
+      perf IS A NUMBER
+      paid IS A NUMBER
+      inv  IS A BOOLEAN
+GIVETH A `Spanning supply`
+`spanning 8 to 9` MEANS
+    `Spanning supply` WITH
+        `value of the supply`                IS val
+        `value performed before the change`  IS perf
+        `consideration received before the change` IS paid
+        `invoice issued before the change`   IS inv
+        `old rate`                           IS 8
+        `new rate`                           IS 9
+
+GIVEN bel  IS A BOOLEAN
+      last IS A NUMBER
+      next IS A NUMBER
+      sat  IS A BOOLEAN
+      gl   IS A NUMBER
+      s7l  IS A NUMBER
+      gn   IS A NUMBER
+      s7n  IS A NUMBER
+      rcl  IS A NUMBER
+      rcn  IS A NUMBER
+      full IS A BOOLEAN
+GIVETH A `Registration facts`
+`registration case` MEANS
+    `Registration facts` WITH
+        `belongs in Singapore`                              IS bel
+        `taxable supplies in the last calendar year`        IS last
+        `taxable supplies expected in the next 12 months`   IS next
+        `Comptroller satisfied next year will not exceed $1 million` IS sat
+        `global supplies in the last calendar year`         IS gl
+        `Seventh Schedule supplies in the last calendar year` IS s7l
+        `global supplies expected in the next 12 months`    IS gn
+        `Seventh Schedule supplies expected in the next 12 months` IS s7n
+        `reverse charge services received last calendar year` IS rcl
+        `reverse charge services expected in the next 12 months` IS rcn
+        `entitled to full input tax credit`                 IS full
+
+GIVEN biz   IS A BOOLEAN
+      share IS A NUMBER
+      attr  IS A BOOLEAN
+      arr   IS A BOOLEAN
+      knew  IS A BOOLEAN
+      risk  IS A BOOLEAN
+      ok    IS A BOOLEAN
+GIVETH AN `Input tax facts`
+`input case` MEANS
+    `Input tax facts` WITH
+        `for the purpose of the business`                   IS biz
+        `share used for business purposes, per cent`        IS share
+        `attributable to supplies within s 20(2)`           IS attr
+        `part of an arrangement causing loss of revenue`    IS arr
+        `knew it`                                           IS knew
+        `circumstances carried a reasonable risk`           IS risk
+        `took reasonable steps and reasonably concluded it was not` IS ok
+
+-- ======================================================================
+-- A. Scope (s 8)
+-- ======================================================================
+
+-- E01 standard-rated
+#ASSERT `the tax treatment of` (`scope supply` `goods` `not removed from or to Singapore, and in Singapore` `a business or fixed establishment only in Singapore` TRUE TRUE TRUE `none` `none` FALSE) EQUALS `standard-rated`
+-- E02 exempt
+#ASSERT `the tax treatment of` (`scope supply` `goods` `not removed from or to Singapore, and in Singapore` `a business or fixed establishment only in Singapore` TRUE TRUE TRUE `residential land or property (para 2)` `none` FALSE) EQUALS `exempt`
+-- E03 not a taxable person: outside scope
+#ASSERT `the tax treatment of` (`scope supply` `goods` `not removed from or to Singapore, and in Singapore` `a business or fixed establishment only in Singapore` FALSE TRUE TRUE `none` `none` FALSE) EQUALS `outside the scope of the tax`
+-- E04 not in the course of business: outside scope
+#ASSERT `the tax treatment of` (`scope supply` `goods` `not removed from or to Singapore, and in Singapore` `a business or fixed establishment only in Singapore` TRUE FALSE TRUE `none` `none` FALSE) EQUALS `outside the scope of the tax`
+-- E05 goods outside Singapore, not removed: outside scope
+#ASSERT `the tax treatment of` (`scope supply` `goods` `not removed from or to Singapore, and outside Singapore` `a business or fixed establishment only in Singapore` TRUE TRUE TRUE `none` `none` FALSE) EQUALS `outside the scope of the tax`
+-- E06 required-to-be-registered person is taxable (entered as a taxable person, s 8(2))
+#ASSERT `the tax treatment of` (`scope supply` `services` `not removed from or to Singapore, and in Singapore` `a business or fixed establishment only in Singapore` TRUE TRUE TRUE `none` `none` FALSE) EQUALS `standard-rated`
+-- E07 Seventh Schedule supply by an overseas supplier: charged under s 8(1A)
+#ASSERT `the tax treatment of` (`scope supply` `services` `not removed from or to Singapore, and in Singapore` `a business or fixed establishment only abroad` TRUE TRUE TRUE `none` `none` TRUE) EQUALS `standard-rated`
+
+-- ======================================================================
+-- B. Place (s 13)
+-- ======================================================================
+
+-- E08
+#ASSERT `the supply is made in Singapore` (`goods moving` `not removed from or to Singapore, and in Singapore`)
+-- E09
+#ASSERT NOT `the supply is made in Singapore` (`goods moving` `not removed from or to Singapore, and outside Singapore`)
+-- E10
+#ASSERT `the supply is made in Singapore` (`goods moving` `removed from Singapore`)
+-- E11
+#ASSERT NOT `the supply is made in Singapore` (`goods moving` `removed to Singapore`)
+-- E12
+#ASSERT `the supply is made in Singapore` (`services by` `a business or fixed establishment only in Singapore`)
+-- E13
+#ASSERT NOT `the supply is made in Singapore` (`services by` `a business or fixed establishment only abroad`)
+
+-- ======================================================================
+-- C. Belonging (s 15)
+-- ======================================================================
+
+-- E14
+#ASSERT `belongs in Singapore` `a business or fixed establishment only in Singapore`
+-- E15
+#ASSERT `belongs in Singapore` `no establishment; usual residence in Singapore`
+-- E16
+#ASSERT NOT `belongs in Singapore` `no establishment; usual residence abroad`
+-- E17
+#ASSERT `belongs in Singapore` `establishments in Singapore and abroad; the one most concerned is in Singapore`
+-- E18
+#ASSERT NOT `belongs in Singapore` `establishments in Singapore and abroad; the one most concerned is abroad`
+-- E20 (approximation: the recipient test s 15(5)(b) through the supplier enum)
+#ASSERT NOT `belongs in Singapore` `establishments in Singapore and abroad; the one most concerned is abroad`
+-- E21 a company incorporated in Singapore, no establishment: residence = Singapore
+#ASSERT `belongs in Singapore` `no establishment; usual residence in Singapore`
+
+-- ======================================================================
+-- D. Rate (s 16)
+-- ======================================================================
+
+-- E22 / E193 REFUSE before 2003
+#ASSERT REFUSED `the rate of tax per cent on` (Date 31 12 2002)
+-- E23
+#ASSERT `the rate of tax per cent on` (Date 1 1 2003) EQUALS 4
+-- E24
+#ASSERT `the rate of tax per cent on` (Date 31 12 2003) EQUALS 4
+-- E25
+#ASSERT `the rate of tax per cent on` (Date 1 1 2004) EQUALS 5
+-- E26
+#ASSERT `the rate of tax per cent on` (Date 30 6 2007) EQUALS 5
+-- E27
+#ASSERT `the rate of tax per cent on` (Date 1 7 2007) EQUALS 7
+-- E28
+#ASSERT `the rate of tax per cent on` (Date 31 12 2022) EQUALS 7
+-- E29
+#ASSERT `the rate of tax per cent on` (Date 1 1 2023) EQUALS 8
+-- E30
+#ASSERT `the rate of tax per cent on` (Date 31 12 2023) EQUALS 8
+-- E31
+#ASSERT `the rate of tax per cent on` (Date 1 1 2024) EQUALS 9
+-- E32
+#ASSERT `the rate of tax per cent on` (Date 10 10 2026) EQUALS 9
+
+-- ======================================================================
+-- E. Value (s 17)
+-- ======================================================================
+
+-- E33
+#ASSERT `the value of a supply for` 109 `at` 9 `per cent` EQUALS 100
+#ASSERT `the tax within a consideration of` 109 `at` 9 `per cent` EQUALS 9
+-- E34
+#ASSERT `the tax within a consideration of` 108 `at` 8 `per cent` EQUALS 8
+-- E35
+#ASSERT `the tax within a consideration of` 1070 `at` 7 `per cent` EQUALS 70
+-- E36 the tax fraction 9/109
+#ASSERT `the tax within a consideration of` 1 `at` 9 `per cent` EQUALS (9 DIVIDED BY 109)
+
+-- Goal-level: E01 + E31 + E33: $109 invoiced 1 Mar 2025, standard-rated: tax $9
+#ASSERT (`the GST position for` (`case of` (`priced supply` 109 `none` (Date 1 3 2025)) `none`))'s `tax on the supply` EQUALS JUST 9
+#ASSERT (`the GST position for` (`case of` (`priced supply` 109 `none` (Date 1 3 2025)) `none`))'s `rate per cent` EQUALS JUST 9
+-- Zero-rated export: no tax (s 21(2))
+#ASSERT (`the GST position for` (`case of` (`priced supply` 109 `goods exported` (Date 1 3 2025)) `none`))'s `tax on the supply` EQUALS JUST 0
+-- E38 reverse charge: $10,000 of services from an overseas supplier to a partly
+-- exempt Singapore business, invoiced 1 Mar 2025. The recipient accounts; tax is
+-- 9% ON TOP of $10,000 (s 17(3A), (2A)(a)), i.e. $900.
+#ASSERT (`the GST position for` (`rc case of` `overseas services for 10000` (`reverse charge case` TRUE FALSE TRUE TRUE FALSE FALSE FALSE FALSE)))'s `the recipient accounts under the reverse charge`
+#ASSERT (`the GST position for` (`rc case of` `overseas services for 10000` (`reverse charge case` TRUE FALSE TRUE TRUE FALSE FALSE FALSE FALSE)))'s `tax on the supply` EQUALS JUST 900
+-- E28 at goal level: $107 invoiced 31 Dec 2022: tax $7
+#ASSERT (`the GST position for` (`case of` (`priced supply` 107 `none` (Date 31 12 2022)) `none`))'s `tax on the supply` EQUALS JUST 7
+
+-- ======================================================================
+-- F. Time of supply (ss 11, 11A, 11B)
+-- ======================================================================
+
+-- E39
+#ASSERT `the time of supply of` (`timed supply` `general (s 11(2))` (JUST (Date 5 3 2025)) (JUST (Date 10 3 2025)) NOTHING) EQUALS JUST (Date 5 3 2025)
+-- E40
+#ASSERT `the time of supply of` (`timed supply` `general (s 11(2))` (JUST (Date 20 3 2025)) (JUST (Date 1 3 2025)) NOTHING) EQUALS JUST (Date 1 3 2025)
+-- E41
+#ASSERT `the time of supply of` (`timed supply` `general (s 11(2))` (JUST (Date 5 3 2025)) NOTHING NOTHING) EQUALS JUST (Date 5 3 2025)
+-- E42 land: made available 1 Jun, invoice 15 Jun
+#ASSERT `the time of supply of` (`timed supply` `land, or by election, or agent's supply (s 11(3)-(4))` (JUST (Date 15 6 2025)) (JUST (Date 15 6 2025)) (JUST (Date 1 6 2025))) EQUALS JUST (Date 1 6 2025)
+-- E43 land: invoice 20 May before making available
+#ASSERT `the time of supply of` (`timed supply` `land, or by election, or agent's supply (s 11(3)-(4))` (JUST (Date 20 5 2025)) NOTHING (JUST (Date 1 6 2025))) EQUALS JUST (Date 20 5 2025)
+-- E44 sale or return, no invoice or payment
+#ASSERT `the time of supply of` (`timed supply` `sale or return goods (s 11A(6))` NOTHING NOTHING (JUST (Date 1 3 2025))) EQUALS JUST (Date 1 3 2026)
+-- E45 invoice before 12 months expire
+#ASSERT `the time of supply of` (`timed supply` `sale or return goods (s 11A(6))` (JUST (Date 15 2 2026)) NOTHING (JUST (Date 1 3 2025))) EQUALS JUST (Date 15 2 2026)
+-- E46 invoice after 12 months expire
+#ASSERT `the time of supply of` (`timed supply` `sale or return goods (s 11A(6))` (JUST (Date 15 3 2026)) NOTHING (JUST (Date 1 3 2025))) EQUALS JUST (Date 1 3 2026)
+-- E47 connected persons, no invoice
+#ASSERT `the time of supply of` (`timed supply` `between connected persons (s 11B(3))` NOTHING NOTHING (JUST (Date 1 4 2025))) EQUALS JUST (Date 1 4 2026)
+-- E48 connected persons, invoice covering the whole on 1 May 2025
+#ASSERT `the time of supply of` (`timed supply` `between connected persons (s 11B(3))` (JUST (Date 1 5 2025)) NOTHING (JUST (Date 1 4 2025))) EQUALS JUST (Date 1 5 2025)
+
+-- ======================================================================
+-- G. Distantly taxable goods
+-- ======================================================================
+
+-- E49 $400 by post
+#ASSERT `distantly taxable goods` (`low-value goods` FALSE FALSE TRUE 400 TRUE)
+-- E50 $400.01
+#ASSERT NOT `distantly taxable goods` (`low-value goods` FALSE FALSE TRUE 400.01 TRUE)
+-- E51 imported by sea
+#ASSERT NOT `distantly taxable goods` (`low-value goods` FALSE FALSE TRUE 400 FALSE)
+-- E52 by air
+#ASSERT `distantly taxable goods` (`low-value goods` FALSE FALSE TRUE 100 TRUE)
+-- E53 located in Singapore
+#ASSERT NOT `distantly taxable goods` (`low-value goods` FALSE FALSE FALSE 100 TRUE)
+-- E54 dutiable, not waived
+#ASSERT NOT `distantly taxable goods` (`low-value goods` TRUE FALSE TRUE 100 TRUE)
+-- E55 dutiable, duty waived (entered as not "dutiable, duty not waived")
+#ASSERT `distantly taxable goods` (`low-value goods` FALSE FALSE TRUE 100 TRUE)
+-- E56 exempt supply
+#ASSERT NOT `distantly taxable goods` (`low-value goods` FALSE TRUE TRUE 100 TRUE)
+
+-- ======================================================================
+-- H. Reverse charge (s 14)
+-- ======================================================================
+
+-- E57 partially exempt registered recipient
+#ASSERT `the recipient accounts for tax under the reverse charge` (`reverse charge case` TRUE FALSE TRUE TRUE FALSE FALSE FALSE FALSE)
+-- E58 fully taxable, no election
+#ASSERT NOT `the recipient accounts for tax under the reverse charge` (`reverse charge case` TRUE FALSE TRUE TRUE FALSE TRUE FALSE FALSE)
+-- E59 fully taxable, elects under s 14(5)
+#ASSERT `the recipient accounts for tax under the reverse charge` (`reverse charge case` TRUE FALSE TRUE TRUE FALSE TRUE FALSE TRUE)
+-- E60 individual, private capacity
+#ASSERT NOT `the recipient accounts for tax under the reverse charge` (`reverse charge case` TRUE FALSE TRUE TRUE TRUE FALSE FALSE FALSE)
+-- E61 neither registered nor liable
+#ASSERT NOT `the recipient accounts for tax under the reverse charge` (`reverse charge case` TRUE FALSE TRUE FALSE FALSE FALSE FALSE FALSE)
+-- E62 / E63 excluded by the Eighth Schedule (exempt-type or international services)
+#ASSERT NOT `the recipient accounts for tax under the reverse charge` (`reverse charge case` TRUE FALSE TRUE TRUE FALSE FALSE TRUE FALSE)
+-- E64 supplier belongs in Singapore (not services by an overseas supplier; not DTG)
+#ASSERT NOT `the recipient accounts for tax under the reverse charge` (`reverse charge case` FALSE FALSE TRUE TRUE FALSE FALSE FALSE FALSE)
+
+-- ======================================================================
+-- I. Seventh Schedule
+-- ======================================================================
+
+-- E66 registered, for business, gave its number: not a customer
+#ASSERT NOT `a customer for the Seventh Schedule, registered:` TRUE `, for business:` TRUE `, gave its number:` TRUE
+-- E67 registered, private
+#ASSERT `a customer for the Seventh Schedule, registered:` TRUE `, for business:` FALSE `, gave its number:` TRUE
+-- E68 unregistered business
+#ASSERT `a customer for the Seventh Schedule, registered:` FALSE `, for business:` TRUE `, gave its number:` FALSE
+-- E69 registered business that gives no number
+#ASSERT `a customer for the Seventh Schedule, registered:` TRUE `, for business:` TRUE `, gave its number:` FALSE
+-- E72 one condition met
+#ASSERT `the marketplace operator is treated as the supplier, conditions met` 1
+-- E73 none met
+#ASSERT NOT `the marketplace operator is treated as the supplier, conditions met` 0
+
+-- ======================================================================
+-- J. Second Schedule
+-- ======================================================================
+
+-- E76 gift costing $200: not a supply
+#ASSERT NOT `the transfer of business goods is a supply, gift:` TRUE `, cost` 200 `, sample:` FALSE
+-- E77 gift costing $200.01: a supply
+#ASSERT `the transfer of business goods is a supply, gift:` TRUE `, cost` 200.01 `, sample:` FALSE
+-- E79 deregistration, $10,000: no deemed supply
+#ASSERT NOT `goods are deemed supplied on deregistration, value` 10000 `, transferred or carried on:` FALSE
+-- E80 $10,000.01: deemed supply
+#ASSERT `goods are deemed supplied on deregistration, value` 10000.01 `, transferred or carried on:` FALSE
+-- E81 going concern
+#ASSERT NOT `goods are deemed supplied on deregistration, value` 50000 `, transferred or carried on:` TRUE
+
+-- ======================================================================
+-- K. Third Schedule
+-- ======================================================================
+
+-- E83 used motor vehicle: value halved
+#ASSERT `the value after the special rule` `a used motor vehicle (Third Schedule para 14)` `, value` (5000000 DIVIDED BY 109) EQUALS (2500000 DIVIDED BY 109)
+-- E83 at goal level: $50,000 on 1 Mar 2025: tax 9% of 2,500,000/109
+#ASSERT (`the GST position for` (`case of` (`priced supply` 50000 `none` (Date 1 3 2025)) `a used motor vehicle (Third Schedule para 14)`))'s `tax on the supply` EQUALS JUST (225000 DIVIDED BY 109)
+-- E85 / E87 employee catering or hotel accommodation, free: nil
+#ASSERT `the value after the special rule` `employee catering or hotel accommodation, no money paid (para 10)` `, value` 500 EQUALS 0
+-- E88 direction exactly 3 years after: last permitted day is 1 Mar 2026
+#ASSERT `the last day for an open market value direction, supply on` (Date 1 3 2023) EQUALS Date 1 3 2026
+-- E89 2 Mar 2026 is too late
+#ASSERT Date 2 3 2026 GREATER THAN `the last day for an open market value direction, supply on` (Date 1 3 2023)
+
+-- ======================================================================
+-- L. Rate change 8% -> 9% (ss 39B, 39C, 39D)
+-- ======================================================================
+
+-- E91 39C: invoice before, nothing paid or performed: 9% on 10,000 = 900
+#ASSERT `the tax on a supply invoiced before an increase,` (`spanning 8 to 9` 10000 0 0 TRUE) EQUALS 900
+-- E92 39C: 4,000 paid, 3,000 performed before: 9% x 6,000 + 8% x 4,000 = 860
+#ASSERT `the tax on a supply invoiced before an increase,` (`spanning 8 to 9` 10000 3000 4000 TRUE) EQUALS 860
+-- E93 39C: fully paid before, nothing performed: all at 8% = 800
+#ASSERT `the tax on a supply invoiced before an increase,` (`spanning 8 to 9` 10000 0 10000 TRUE) EQUALS 800
+-- E94 fully paid and performed before: old rate throughout = 800
+#ASSERT `the tax on a supply invoiced before an increase,` (`spanning 8 to 9` 10000 10000 10000 TRUE) EQUALS 800
+-- E95 39B election: 6,000 performed, 0 paid before: 8% x 6,000 + 9% x 4,000 = 840
+#ASSERT `the tax on a supply performed before an increase,` (`spanning 8 to 9` 10000 6000 0 FALSE) `, elects:` TRUE EQUALS 840
+-- E96 39B election: 6,000 performed, 7,000 paid before: 8% x 7,000 + 9% x 3,000 = 830
+#ASSERT `the tax on a supply performed before an increase,` (`spanning 8 to 9` 10000 6000 7000 FALSE) `, elects:` TRUE EQUALS 830
+-- E99 new tax invoice within 14 days of 1 Jan 2024
+#ASSERT `a new tax invoice is due by, rate changed on` (Date 1 1 2024) EQUALS Date 15 1 2024
+
+-- ======================================================================
+-- M. Section 40
+-- ======================================================================
+
+-- E100 silent contract: price moves
+#ASSERT `the contract price moves with the tax, excluded:` FALSE `, taken into account:` FALSE
+-- E101 excluded by the contract
+#ASSERT NOT `the contract price moves with the tax, excluded:` TRUE `, taken into account:` FALSE
+-- E102 decrease: the same rule lets the supplier deduct
+#ASSERT `the contract price moves with the tax, excluded:` FALSE `, taken into account:` FALSE
+
+-- ======================================================================
+-- N. Registration (First Schedule)
+-- ======================================================================
+
+-- E103 exactly $1m: not liable
+#ASSERT NOT `liable to register on the retrospective test` (`registration case` TRUE 1000000 0 FALSE 0 0 0 0 0 0 TRUE)
+-- E104 $1,000,001: liable
+#ASSERT `liable to register on the retrospective test` (`registration case` TRUE 1000001 0 FALSE 0 0 0 0 0 0 TRUE)
+-- E105 capital assets excluded by the caller: $800,001: not liable (approximation)
+#ASSERT NOT `liable to be registered` (`registration case` TRUE 800001 0 FALSE 0 0 0 0 0 0 TRUE)
+-- E106 Comptroller satisfied next year below $1m
+#ASSERT NOT `liable to register on the retrospective test` (`registration case` TRUE 1000001 0 TRUE 0 0 0 0 0 0 TRUE)
+-- E107 notify by 30 Jan 2026; registered from 1 Mar 2026
+#ASSERT `must notify the retrospective liability by, year ended` (Date 31 12 2025) EQUALS Date 30 1 2026
+#ASSERT `registered on the retrospective test from, year ended` (Date 31 12 2025) EQUALS Date 1 3 2026
+-- E108 prospective, day X 15 Aug 2025: notify by 14 Sep 2025; registered 15 Oct 2025
+#ASSERT `must notify the prospective liability by, day X` (Date 15 8 2025) EQUALS Date 14 9 2025
+#ASSERT `registered on the prospective test from, day X` (Date 15 8 2025) EQUALS Date 15 10 2025
+-- E109 day X 31 Dec 2025 -> 28 Feb 2026
+#ASSERT `registered on the prospective test from, day X` (Date 31 12 2025) EQUALS Date 28 2 2026
+-- E110 day X 30 Dec 2027 -> 29 Feb 2028
+#ASSERT `registered on the prospective test from, day X` (Date 30 12 2027) EQUALS Date 29 2 2028
+-- E111 day X 1 Jul 2025 -> 1 Sep 2025
+#ASSERT `registered on the prospective test from, day X` (Date 1 7 2025) EQUALS Date 1 9 2025
+-- E112 day X 30 Jun 2025 (old rule) -> 31 Jul 2025
+#ASSERT `registered on the prospective test from, day X` (Date 30 6 2025) EQUALS Date 31 7 2025
+-- Prospective threshold: $1,000,000 expected is not "will exceed"
+#ASSERT NOT `liable to register on the prospective test` (`registration case` TRUE 0 1000000 FALSE 0 0 0 0 0 0 TRUE)
+#ASSERT `liable to register on the prospective test` (`registration case` TRUE 0 1000001 FALSE 0 0 0 0 0 0 TRUE)
+-- E113 overseas vendor, Seventh Schedule supplies exactly $100,000
+#ASSERT NOT `an overseas vendor liable to register` (`registration case` FALSE 0 0 FALSE 1500000 100000 0 0 0 0 TRUE)
+-- E114 $100,001
+#ASSERT `an overseas vendor liable to register` (`registration case` FALSE 0 0 FALSE 1500000 100001 0 0 0 0 TRUE)
+-- E115 global exactly $1m
+#ASSERT NOT `an overseas vendor liable to register` (`registration case` FALSE 0 0 FALSE 1000000 500000 0 0 0 0 TRUE)
+-- E116 reverse charge recipient, not fully creditable
+#ASSERT `a reverse charge recipient liable to register` (`registration case` TRUE 0 0 FALSE 0 0 0 0 1200000 0 FALSE)
+-- E117 fully creditable
+#ASSERT NOT `a reverse charge recipient liable to register` (`registration case` TRUE 0 0 FALSE 0 0 0 0 1200000 0 TRUE)
+-- E118 voluntary: at least 2 years
+#ASSERT `a voluntary registration lasts at least until, registered` (Date 1 3 2025) `, shorter period` NOTHING EQUALS Date 1 3 2027
+-- E119 going concern: notify within 30 days
+#ASSERT `must notify a transfer liability by, transferred` (Date 1 6 2025) EQUALS Date 1 7 2025
+-- E120 deferred registration not earlier than 30 days after notice
+#ASSERT `a deferred registration may take effect no earlier than, notified` (Date 1 3 2025) EQUALS Date 31 3 2025
+
+-- ======================================================================
+-- O. Special persons (ss 30-33)
+-- ======================================================================
+
+-- E121
+#ASSERT `the supply is disregarded, intra-group:` TRUE `, reverse charge:` FALSE
+-- E122
+#ASSERT NOT `the supply is disregarded, intra-group:` TRUE `, reverse charge:` TRUE
+-- E123 change not yet notified: still a partner
+#ASSERT `the former partner is still liable as a partner, change notified:` FALSE
+#ASSERT NOT `the former partner is still liable as a partner, change notified:` TRUE
+-- E124
+#ASSERT `must inform the Comptroller of carrying on the business by, commenced` (Date 1 6 2025) EQUALS Date 22 6 2025
+-- E125
+#ASSERT `must appoint a section 33(1) agent, resident:` FALSE `, pay-only:` FALSE `, waived:` FALSE
+-- E126
+#ASSERT NOT `must appoint a section 33(1) agent, resident:` FALSE `, pay-only:` TRUE `, waived:` FALSE
+
+-- ======================================================================
+-- P. Input tax
+-- ======================================================================
+
+-- E128
+#ASSERT `the input tax may be credited` (`input case` TRUE 100 TRUE FALSE FALSE FALSE FALSE)
+-- E129 60% business use of $900
+#ASSERT `the creditable input tax, facts` (`input case` TRUE 60 TRUE FALSE FALSE FALSE FALSE) `, tax charged` 900 EQUALS 540
+-- E132 knew
+#ASSERT NOT `the input tax may be credited` (`input case` TRUE 100 TRUE TRUE TRUE FALSE FALSE)
+-- E133 risk, no reasonable steps
+#ASSERT `the person should have known of the arrangement` (`input case` TRUE 100 TRUE TRUE FALSE TRUE FALSE)
+#ASSERT NOT `the input tax may be credited` (`input case` TRUE 100 TRUE TRUE FALSE TRUE FALSE)
+-- E134 reasonable steps, reasonable conclusion
+#ASSERT NOT `the person should have known of the arrangement` (`input case` TRUE 100 TRUE TRUE FALSE TRUE TRUE)
+#ASSERT `the input tax may be credited` (`input case` TRUE 100 TRUE TRUE FALSE TRUE TRUE)
+-- E135 steps taken but unable to conclude
+#ASSERT `the person should have known of the arrangement` (`input case` TRUE 100 TRUE TRUE FALSE TRUE FALSE)
+-- E136 no reasonable risk
+#ASSERT NOT `the person should have known of the arrangement` (`input case` TRUE 100 TRUE TRUE FALSE FALSE FALSE)
+-- E130 unpaid consideration due 1 Mar 2025
+#ASSERT `unpaid input tax must be repaid in the period containing, payment due` (Date 1 3 2025) EQUALS Date 1 3 2026
+-- E131 subsequent specified period
+#ASSERT `repaid input tax may be reclaimed until, first claim period ended` (Date 31 3 2025) EQUALS Date 31 3 2030
+#ASSERT `repaid input tax may be reclaimed until, first claim period ended` (Date 31 12 2006) EQUALS Date 31 12 2012
+-- E137
+#ASSERT `the net tax due, output` 4.99 `, input` 0 EQUALS 0
+-- E138
+#ASSERT `the net tax due, output` 5 `, input` 0 EQUALS 5
+-- E139
+#ASSERT `the net tax due, output` 0 `, input` 4.99 EQUALS 0
+
+-- ======================================================================
+-- Q. Assessment, records, surcharges
+-- ======================================================================
+
+-- E140
+#ASSERT `the Comptroller may still assess, period ended` (Date 31 12 2020) `, fraud:` FALSE `, as at` (Date 31 12 2025)
+-- E141
+#ASSERT NOT `the Comptroller may still assess, period ended` (Date 31 12 2020) `, fraud:` FALSE `, as at` (Date 1 1 2026)
+-- E142
+#ASSERT `the Comptroller may still assess, period ended` (Date 31 12 2020) `, fraud:` TRUE `, as at` (Date 1 1 2026)
+-- E143
+#ASSERT `the Comptroller may still assess, period ended` (Date 31 12 2006) `, fraud:` FALSE `, as at` (Date 31 12 2013)
+#ASSERT NOT `the Comptroller may still assess, period ended` (Date 31 12 2006) `, fraud:` FALSE `, as at` (Date 1 1 2014)
+-- E144
+#ASSERT `the surcharge on a tainted claim of` 50000 EQUALS 5000
+-- E145
+#ASSERT `records must be kept until, period ended` (Date 31 12 2025) EQUALS Date 31 12 2030
+#ASSERT `records must be kept until, period ended` (Date 31 12 2006) EQUALS Date 31 12 2013
+-- E146
+#ASSERT `the s 47A surcharge on additional tax` 20000 `, period starting` (Date 1 1 2021) EQUALS 10000
+-- E147
+#ASSERT `the s 47A surcharge on additional tax` 20000 `, period starting` (Date 1 10 2020) EQUALS 0
+-- E149
+#ASSERT `the most penal tax on undercharged tax of` 10000 EQUALS 30000
+
+-- ======================================================================
+-- R. Objections and appeals
+-- ======================================================================
+
+-- E150
+#ASSERT `the last day to object, notified` (Date 1 3 2025) EQUALS Date 31 3 2025
+-- E151
+#ASSERT `the last day to give notice of appeal, review decided` (Date 1 4 2025) EQUALS Date 1 5 2025
+#ASSERT `the last day to lodge the petition of appeal, notice lodged` (Date 20 4 2025) EQUALS Date 20 5 2025
+-- E152 assessment appeal, tax unpaid, no hardship
+#ASSERT NOT `the Board may hear the appeal, returns:` TRUE `, tax matter:` TRUE `, paid:` FALSE `, hardship:` FALSE
+#ASSERT `the Board may hear the appeal, returns:` TRUE `, tax matter:` TRUE `, paid:` TRUE `, hardship:` FALSE
+-- E153 outstanding returns
+#ASSERT NOT `the Board may hear the appeal, returns:` FALSE `, tax matter:` FALSE `, paid:` TRUE `, hardship:` FALSE
+-- E154
+#ASSERT NOT `may appeal to the High Court, amount` 499 `, on law:` TRUE
+#ASSERT `may appeal to the High Court, amount` 500 `, on law:` TRUE
+-- E155
+#ASSERT `the Board is properly constituted, members` 3 `, chair or deputy:` TRUE
+#ASSERT NOT `the Board is properly constituted, members` 2 `, chair or deputy:` TRUE
+#ASSERT NOT `the Board is properly constituted, members` 3 `, chair or deputy:` FALSE
+-- E156
+#ASSERT `the Board is properly constituted, members` 1 `, chair or deputy:` TRUE
+#ASSERT NOT `the Board is properly constituted, members` 1 `, chair or deputy:` FALSE
+
+-- ======================================================================
+-- S. Collection, refunds, rulings, service
+-- ======================================================================
+
+-- E157
+#ASSERT `the last day to claim a refund, from` (Date 31 3 2021) EQUALS Date 31 3 2026
+#ASSERT Date 1 4 2026 GREATER THAN `the last day to claim a refund, from` (Date 31 3 2021)
+-- E159
+#ASSERT `moneys held until this day are caught by the agency notice, received` (Date 1 3 2025) EQUALS Date 30 5 2025
+-- E160 pay over within 42 days
+#ASSERT `an agent must pay over from a joint account by, notice received` (Date 1 3 2025) EQUALS Date 12 4 2025
+-- E162
+#ASSERT `the most an advance ruling costs, hours` 4 `, expedited:` FALSE EQUALS 660
+-- E163
+#ASSERT `the most an advance ruling costs, hours` 4.5 `, expedited:` FALSE EQUALS 825
+-- E164
+#ASSERT `the most an advance ruling costs, hours` 6 `, expedited:` FALSE EQUALS 990
+-- E165
+#ASSERT `the most an advance ruling costs, hours` 6 `, expedited:` TRUE EQUALS 2970
+-- E166 (my expectation: last day 28 Feb 2028)
+#ASSERT `an advance ruling applies until, made` (Date 1 3 2025) EQUALS Date 28 2 2028
+-- E167 ordinary post: when it would be received; electronic: when it enters the account
+#ASSERT `the notice is served on, mode` `ordinary or registered post` `, sent` (Date 1 3 2025) `, post would arrive` (Date 3 3 2025) EQUALS Date 3 3 2025
+#ASSERT `the notice is served on, mode` `the electronic service` `, sent` (Date 1 3 2025) `, post would arrive` (Date 3 3 2025) EQUALS Date 1 3 2025
+
+-- ======================================================================
+-- T. Penalties
+-- ======================================================================
+
+-- E168 / E169 5%, paid within 60 days
+#ASSERT `the late payment penalty on` 10000 `, days after the 5% penalty` 30 `, completed months since due` 1 EQUALS 500
+-- E170 3 completed months, past 60 days
+#ASSERT `the late payment penalty on` 10000 `, days after the 5% penalty` 70 `, completed months since due` 3 EQUALS 1100
+-- E171 40 months: capped
+#ASSERT `the late payment penalty on` 10000 `, days after the 5% penalty` 1200 `, completed months since due` 40 EQUALS 5500
+-- E172
+#ASSERT `the late return penalty, completed months late` 0 EQUALS 200
+-- E173
+#ASSERT `the late return penalty, completed months late` 3 EQUALS 800
+-- E174
+#ASSERT `the late return penalty, completed months late` 60 EQUALS 10000
+-- E175
+#ASSERT `the failure-to-register penalty on` 50000 `, years or parts` 1 EQUALS 5000
+#ASSERT (`the maximum penalty for` `s 61 failing to register or notify`)'s `fine` EQUALS 10000
+#ASSERT (`the maximum penalty for` `s 61 failing to register or notify`)'s `fine per day continuing` EQUALS 50
+-- E176
+#ASSERT (`the maximum penalty for` `s 59(1) an incorrect return`)'s `penalty as a multiple of the tax` EQUALS 1
+#ASSERT (`the maximum penalty for` `s 59(2) an incorrect return without reasonable excuse or through negligence`)'s `penalty as a multiple of the tax` EQUALS 2
+#ASSERT (`the maximum penalty for` `s 59(2) an incorrect return without reasonable excuse or through negligence`)'s `fine` EQUALS 5000
+#ASSERT (`the maximum penalty for` `s 59(2) an incorrect return without reasonable excuse or through negligence`)'s `imprisonment in months` EQUALS 36
+-- E177
+#ASSERT (`the maximum penalty for` `s 62 wilful evasion`)'s `penalty as a multiple of the tax` EQUALS 3
+#ASSERT (`the maximum penalty for` `s 62 wilful evasion`)'s `fine` EQUALS 10000
+#ASSERT (`the maximum penalty for` `s 62 wilful evasion`)'s `imprisonment in months` EQUALS 84
+-- E178
+#ASSERT (`the maximum penalty for` `s 63 improperly obtaining a refund`)'s `penalty as a multiple of the tax` EQUALS 3
+#ASSERT (`the maximum penalty for` `s 63 improperly obtaining a refund`)'s `fine` EQUALS 10000
+#ASSERT (`the maximum penalty for` `s 63 improperly obtaining a refund`)'s `imprisonment in months` EQUALS 36
+-- E179
+#ASSERT (`the maximum penalty for` `s 64 dealing in goods or services where tax is evaded`)'s `fine` EQUALS 5000
+#ASSERT (`the maximum penalty for` `s 64 dealing in goods or services where tax is evaded`)'s `penalty as a multiple of the tax` EQUALS 3
+#ASSERT (`the maximum penalty for` `s 64 dealing in goods or services where tax is evaded`)'s `imprisonment in months` EQUALS 0
+-- E180
+#ASSERT (`the maximum penalty for` `s 64A(1) collecting tax without authority`)'s `imprisonment in months` EQUALS 0
+#ASSERT (`the maximum penalty for` `s 64A(1) collecting tax without authority`)'s `fine` EQUALS 10000
+#ASSERT (`the maximum penalty for` `s 64A(2) collecting tax without authority, negligently`)'s `imprisonment in months` EQUALS 36
+#ASSERT (`the maximum penalty for` `s 64A(4) a registered person over-collecting, negligently`)'s `imprisonment in months` EQUALS 36
+-- E181
+#ASSERT (`the maximum penalty for` `s 62A misrepresenting status to an overseas supplier`)'s `penalty as a multiple of the tax` EQUALS 1
+#ASSERT (`the maximum penalty for` `s 62A misrepresenting status to an overseas supplier`)'s `fine` EQUALS 10000
+#ASSERT (`the maximum penalty for` `s 62A misrepresenting status to an overseas supplier`)'s `imprisonment in months` EQUALS 0
+#ASSERT (`the maximum penalty for` `s 62B wilfully misrepresenting status`)'s `penalty as a multiple of the tax` EQUALS 3
+#ASSERT (`the maximum penalty for` `s 62B wilfully misrepresenting status`)'s `imprisonment in months` EQUALS 84
+-- E182
+#ASSERT (`the maximum penalty for` `s 62C(1) participating in a fraudulent arrangement`)'s `fine` EQUALS 500000
+#ASSERT (`the maximum penalty for` `s 62C(1) participating in a fraudulent arrangement`)'s `imprisonment in months` EQUALS 120
+#ASSERT (`the maximum penalty for` `s 62C(4) a business used for a fraudulent arrangement`)'s `fine` EQUALS 50000
+#ASSERT (`the maximum penalty for` `s 62C(4) a business used for a fraudulent arrangement`)'s `imprisonment in months` EQUALS 12
+-- E183
+#ASSERT (`the maximum penalty for` `s 65 an officer's or impersonator's misconduct`)'s `imprisonment in months` EQUALS 36
+#ASSERT (`the maximum penalty for` `s 65 an officer's or impersonator's misconduct`)'s `fine` EQUALS 10000
+#ASSERT (`the maximum penalty for` `s 66 obstructing the Comptroller`)'s `imprisonment in months` EQUALS 12
+#ASSERT (`the maximum penalty for` `s 66 obstructing the Comptroller`)'s `fine` EQUALS 10000
+-- E184
+#ASSERT (`the maximum penalty for` `s 44(4) receipts`)'s `fine` EQUALS 5000
+#ASSERT (`the maximum penalty for` `s 81(4) failing to give security`)'s `fine` EQUALS 5000
+#ASSERT (`the maximum penalty for` `s 58 an offence with no penalty provided`)'s `fine` EQUALS 5000
+#ASSERT (`the maximum penalty for` `s 58 an offence with no penalty provided`)'s `imprisonment in months` EQUALS 6
+-- E185
+#ASSERT (`the maximum penalty for` `s 46(6) records, first conviction`)'s `fine` EQUALS 5000
+#ASSERT (`the maximum penalty for` `s 46(6) records, first conviction`)'s `imprisonment in months` EQUALS 6
+#ASSERT (`the maximum penalty for` `s 46(6) records, second or later conviction`)'s `fine` EQUALS 10000
+#ASSERT (`the maximum penalty for` `s 46(6) records, second or later conviction`)'s `imprisonment in months` EQUALS 36
+-- E186
+#ASSERT (`the maximum penalty for` `s 83I(4) refusing to answer on examination`)'s `imprisonment in months` EQUALS 12
+#ASSERT (`the maximum penalty for` `s 83I(9) false information on examination`)'s `imprisonment in months` EQUALS 24
+#ASSERT (`the maximum penalty for` `s 83I(9) false information on examination`)'s `fine` EQUALS 10000
+-- E187
+#ASSERT (`the maximum penalty for` `s 84(2D) not complying with a notice`)'s `imprisonment in months` EQUALS 12
+#ASSERT (`the maximum penalty for` `s 84(2D) not complying with a notice`)'s `fine per day continuing` EQUALS 100
+#ASSERT (`the maximum penalty for` `s 84(2E) false information to the Comptroller`)'s `imprisonment in months` EQUALS 24
+-- E188
+#ASSERT (`the maximum penalty for` `s 86(1) contravening orders or regulations`)'s `fine` EQUALS 10000
+#ASSERT (`the maximum penalty for` `s 86(1) contravening orders or regulations`)'s `imprisonment in months` EQUALS 24
+
+-- ======================================================================
+-- U. Proceedings
+-- ======================================================================
+
+-- E189
+#ASSERT `the Public Prosecutor's consent is needed for` `s 62 wilful evasion`
+#ASSERT `the Public Prosecutor's consent is needed for` `s 62C(1) participating in a fraudulent arrangement`
+#ASSERT `the Public Prosecutor's consent is needed for` `s 63 improperly obtaining a refund`
+#ASSERT `the Public Prosecutor's consent is needed for` `s 65 an officer's or impersonator's misconduct`
+#ASSERT `the Public Prosecutor's consent is needed for` `s 66 obstructing the Comptroller`
+#ASSERT NOT `the Public Prosecutor's consent is needed for` `s 59(1) an incorrect return`
+#ASSERT NOT `the Public Prosecutor's consent is needed for` `s 64 dealing in goods or services where tax is evaded`
+-- E190
+#ASSERT `a notice to attend court may be used for` `s 66 obstructing the Comptroller`
+#ASSERT `a notice to attend court may be used for` `s 44(4) receipts`
+#ASSERT NOT `a notice to attend court may be used for` `s 62 wilful evasion`
+#ASSERT NOT `a notice to attend court may be used for` `s 62C(1) participating in a fraudulent arrangement`
+-- E191
+#ASSERT NOT `the officer is deemed guilty, without consent:` TRUE `, diligence:` TRUE
+#ASSERT `the officer is deemed guilty, without consent:` TRUE `, diligence:` FALSE
+#ASSERT `the officer is deemed guilty, without consent:` FALSE `, diligence:` TRUE
+-- E192
+#ASSERT `the most that may be collected to compound, prescribed:` TRUE EQUALS JUST 5000
+#ASSERT `the most that may be collected to compound, prescribed:` FALSE EQUALS NOTHING

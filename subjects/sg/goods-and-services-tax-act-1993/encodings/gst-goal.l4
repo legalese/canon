@@ -1,0 +1,68 @@
+IMPORT prelude
+IMPORT daydate
+IMPORT `gst-types`
+IMPORT `gst-charge`
+IMPORT `gst-registration`
+IMPORT `gst-credit`
+IMPORT `gst-administration`
+IMPORT `gst-penalties`
+
+-- Goods and Services Tax Act 1993 — THE TOP-LEVEL GOAL.
+--
+--   "For this supply: is GST charged on it, and how — standard-rated,
+--    zero-rated, exempt or outside the scope; when does it take place; at
+--    what rate; how much tax is in the price; and who accounts for it?"
+--
+-- One answer through Goal 1. Registration (Goal 2), input tax (Goal 3),
+-- assessment and appeal (Goal 4), collection and rulings (Goal 5) and
+-- penalties (Goal 6) answer their own questions in their modules.
+
+§ `The top-level goal`
+
+DECLARE `GST position` HAS
+    `treatment`                                      IS A `Tax treatment`
+    `made in Singapore`                              IS A BOOLEAN
+    `time of supply`                                 IS A MAYBE DATE
+    `rate per cent`                                  IS A MAYBE NUMBER
+    `tax on the supply`                              IS A MAYBE NUMBER
+    `the recipient accounts under the reverse charge` IS A BOOLEAN
+    `the customer accounts under s 38 or 38A`        IS A BOOLEAN
+
+@ref ss 8, 11, 13, 14(2), 16, 17(2), (2A), (3A), 21, 22, 38, 38A; Third Schedule
+GIVEN c IS A `Supply case`
+GIVETH A `GST position`
+`the GST position for` c MEANS
+    `GST position` WITH
+        `treatment`                                      IS
+            IF (`the case is reverse charged` c) THEN `standard-rated` ELSE `the tax treatment of` (c's `supply`)
+        `made in Singapore`                              IS `the supply is made in Singapore` (c's `supply`)
+        `time of supply`                                 IS `the time of supply of` (c's `supply`)
+        `rate per cent`                                  IS
+            CONSIDER `the time of supply of` (c's `supply`)
+            WHEN JUST t  THEN JUST (`the rate of tax per cent on` t)
+            WHEN NOTHING THEN NOTHING
+        `tax on the supply`                              IS
+            CONSIDER `the time of supply of` (c's `supply`)
+            WHEN NOTHING THEN NOTHING
+            WHEN JUST t  THEN
+                IF (`the case is reverse charged` c)
+                THEN JUST (c's `supply`'s `consideration in money` TIMES (`the rate of tax per cent on` t) DIVIDED BY 100)
+                ELSE IF `the tax treatment of` (c's `supply`) EQUALS `standard-rated`
+                     THEN JUST (`the value after the special rule` (c's `special value`) `, value` (`the value of a supply for` (c's `supply`'s `consideration in money`) `at` (`the rate of tax per cent on` t) `per cent`) TIMES (`the rate of tax per cent on` t) DIVIDED BY 100)
+                     ELSE JUST 0
+        `the recipient accounts under the reverse charge` IS
+            CONSIDER c's `reverse charge`
+            WHEN JUST r  THEN `the recipient accounts for tax under the reverse charge` r
+            WHEN NOTHING THEN FALSE
+        `the customer accounts under s 38 or 38A`        IS c's `supply`'s `customer accounts for the tax (s 38, 38A)`
+
+-- s 14(2): the recipient is treated as making a taxable supply in Singapore;
+-- s 17(3A), (2A)(a): its value is the whole consideration, and the tax is
+-- added to it, not taken out of it.
+@ref s 14(2)
+GIVEN c IS A `Supply case`
+GIVETH A BOOLEAN
+DECIDE `the case is reverse charged` c IF
+    CONSIDER c's `reverse charge`
+    WHEN JUST r  THEN `the recipient accounts for tax under the reverse charge` r
+    WHEN NOTHING THEN FALSE
