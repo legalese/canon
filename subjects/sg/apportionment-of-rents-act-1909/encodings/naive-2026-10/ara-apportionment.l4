@@ -1,0 +1,205 @@
+IMPORT prelude
+
+-- Apportionment of Rents Act 1909 (Singapore) -- splitting the rent reserved to the Government under a State lease or grant when
+-- the land is subdivided: who must notify the Collector and the offence for not doing so (s 3(1), (5)), the Collector's
+-- determination and its $1 minimum and 50-cent rounding (s 3(2), (3)), apportionment without notification (s 4), substituted
+-- service (s 5), objections (s 6), when the order may be made and whom it binds (s 7), and what the order does to the rent and to
+-- the old covenants (s 8). Definitions in s 2 are used where a rule turns on them.
+--
+-- Edition: 2020 Revised Edition, as deposited at ../../registers/source-bundle/ARA1909.txt. The deposit says the revised edition
+-- "incorporates all amendments up to and including 1 December 2021 and comes into operation on 31 December 2021"; the latest
+-- amendment annotated in the text is [17/2001] (ss 2, 5, 7(5), the references to the Singapore Land Authority).
+--
+-- WHY THIS ACT. Requirement REQ-0040 in ../../../requirements.jsonl: Tier 2 of the remaining Singapore Acts, ordered by
+-- everyday-life relevance. The requirement asks what the Act decides for a person or business it applies to; no scenario has asked
+-- a sharper question yet. The Act is short (nine sections), so it is encoded nearly whole. Not encoded: s 1 (short title), s 9
+-- (the Record of Apportionment of Rents and the evidential weight of its entries), the Collector's seal and "under his hand"
+-- formalities, and HOW the Collector arrives at each subdivision's rent -- the Act gives no formula, so the determined amount is an
+-- input here.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Apportionment of Rents Act 1909`
+
+§§ `2 -- who is a lessee or grantee`
+
+-- s 2: "grant" means "a grant in perpetuity"; "grantee" means "the owner of a grant in perpetuity"; "lessee" means "the lessee of
+-- land held under a State lease, and includes the assignee of the ENTIRETY of the land comprised in any State lease and the legal
+-- representatives of a State lessee".
+-- An assignee of only part of the land is not within the definition. (That such a person is therefore outside s 3(1) is a reading
+-- of the definition, not something the Act says in terms.)
+DECLARE Holder IS ONE OF
+    `a State lessee`
+    `an assignee of the whole State lease`
+    `the legal representative of a State lessee`
+    `an assignee of part of the land in a State lease`
+    `a grantee in perpetuity`
+    `an owner of land held under neither`
+
+GIVEN `the holder` IS A Holder
+GIVETH A BOOLEAN
+DECIDE `is a lessee or grantee` IF
+    CONSIDER `the holder`
+    WHEN `an assignee of part of the land in a State lease` THEN FALSE
+    WHEN `an owner of land held under neither` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `3(1), (5) -- the duty to notify the Collector, and the offence`
+
+-- s 3(1): every lessee or grantee "shall, within one month from the date of obtaining any subdivision permission from the competent
+-- authority", inform the Collector IN WRITING of the permission "together with a copy of the approved plan showing the subdivision
+-- and particulars of the persons entitled as beneficial owners to the parts".
+-- (5): "Any person who fails to comply with subsection (1) shall be guilty of an offence and shall be liable on conviction to a fine
+-- not exceeding $500." No imprisonment; no defence of reasonable excuse is written in.
+GIVEN `the holder` IS A Holder, `obtained subdivision permission` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `must notify the Collector` IF
+    `is a lessee or grantee` `the holder` AND `obtained subdivision permission`
+
+GIVEN `informed the Collector in writing` IS A BOOLEAN, `sent the approved plan` IS A BOOLEAN,
+      `sent the beneficial owners' particulars` IS A BOOLEAN, `did so within one month of the permission` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the notification complies` IF
+        `informed the Collector in writing`
+    AND `sent the approved plan`
+    AND `sent the beneficial owners' particulars`
+    AND `did so within one month of the permission`
+
+GIVEN `the holder` IS A Holder, `obtained subdivision permission` IS A BOOLEAN, `informed the Collector in writing` IS A BOOLEAN,
+      `sent the approved plan` IS A BOOLEAN, `sent the beneficial owners' particulars` IS A BOOLEAN,
+      `did so within one month of the permission` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `failing to notify is an offence` IF
+        `must notify the Collector` `the holder` `obtained subdivision permission`
+    AND (NOT `the notification complies` `informed the Collector in writing` `sent the approved plan` `sent the beneficial owners' particulars` `did so within one month of the permission`)
+
+GIVEN `the holder` IS A Holder, `obtained subdivision permission` IS A BOOLEAN, `informed the Collector in writing` IS A BOOLEAN,
+      `sent the approved plan` IS A BOOLEAN, `sent the beneficial owners' particulars` IS A BOOLEAN,
+      `did so within one month of the permission` IS A BOOLEAN
+GIVETH A NUMBER
+`the maximum fine in dollars` MEANS
+    IF `failing to notify is an offence` `the holder` `obtained subdivision permission` `informed the Collector in writing` `sent the approved plan` `sent the beneficial owners' particulars` `did so within one month of the permission`
+    THEN 500
+    ELSE 0
+
+§§ `3(2), 4 -- when the Collector determines the rents`
+
+-- s 3(2): "The Collector SHALL determine the rent payable in respect of each subdivision" (on a notification under (1)).
+-- s 4: whenever it appears that land held under a State lease or grant "has been subdivided and no notification ... has been given
+-- under section 3, the Collector MAY determine the rent", and the Act then applies "as if the determination has been made ... under
+-- section 3(2)".
+GIVEN `held under a State lease or grant` IS A BOOLEAN, `notified under section 3` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Collector must determine the rents` IF
+    `held under a State lease or grant` AND `notified under section 3`
+
+GIVEN `held under a State lease or grant` IS A BOOLEAN, `the land appears subdivided` IS A BOOLEAN, `notified under section 3` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Collector may determine the rents of his own motion` IF
+    `held under a State lease or grant` AND `the land appears subdivided` AND (NOT `notified under section 3`)
+
+§§ `3(3) -- the minimum rent and the 50-cent rule`
+
+-- s 3(3): "The minimum rent in respect of any subdivision shall be $1 and any fraction of 50 cents shall count as 50 cents."
+-- Read here as: a part of 50 cents is rounded UP to a whole 50 cents, then the $1 floor applies. (The reading of "fraction of 50
+-- cents" as rounding up to the next 50-cent step is an inference from the words.) Done in integer cents because MODULO is unreliable
+-- on non-integers in this toolchain; the result is in dollars.
+GIVEN `the cents` IS A NUMBER
+GIVETH A NUMBER
+`rounded up to 50 cents` MEANS
+    IF `the cents` MODULO 50 EQUALS 0
+    THEN `the cents`
+    ELSE `the cents` MINUS (`the cents` MODULO 50) PLUS 50
+
+GIVEN `the determined rent in cents` IS A NUMBER
+GIVETH A NUMBER
+`the subdivision rent in dollars` MEANS
+    IF `rounded up to 50 cents` `the determined rent in cents` LESS THAN 100
+    THEN 1
+    ELSE `rounded up to 50 cents` `the determined rent in cents` DIVIDED BY 100
+
+§§ `5 -- service where the person cannot be found`
+
+-- s 5: "If the Collector is unable to find any person upon whom service ought to be effected, he may serve the notice upon that person
+-- by posting it on the land AND at the office of the Authority, and such posting shall be deemed to be good service."
+-- (That personal service is good service is taken from the heading "Mode of service of notice where not personal"; the body does
+-- not say so.)
+GIVEN `served personally` IS A BOOLEAN, `the Collector could not find the person` IS A BOOLEAN,
+      `posted on the land` IS A BOOLEAN, `posted at the Authority's office` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the notice is well served` IF
+        `served personally`
+    OR  (`the Collector could not find the person` AND `posted on the land` AND `posted at the Authority's office`)
+
+§§ `6, 7(1), (2) -- objections, and when the order may be made`
+
+-- s 6: a person served who objects "shall send his objection IN WRITING to the Collector within one month of the service of the
+-- notice". s 7(2): "If any objection has been received by the Collector under section 6, he shall consider the objection prior to
+-- making his order". (That a late or oral objection need not be considered follows from "under section 6"; it is an inference.)
+-- s 7(1): "On the expiration of one month from the date of the service of the LAST served of such notices, the Collector may ...
+-- make an order of apportionment".
+GIVEN `in writing` IS A BOOLEAN, `within one month of service` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Collector must consider the objection` IF
+    `in writing` AND `within one month of service`
+
+GIVEN `one month has passed since the last notice was served` IS A BOOLEAN, `a valid objection was received` IS A BOOLEAN,
+      `the objection has been considered` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Collector may make the order` IF
+        `one month has passed since the last notice was served`
+    AND ((NOT `a valid objection was received`) OR `the objection has been considered`)
+
+§§ `7(3) -- whom the order binds`
+
+-- s 7(3): an order "shall be final and binding on every lessee or grantee and holder of a subdivision, NOTWITHSTANDING that notice
+-- may not have been served on all the persons entitled". Whether this person was served is therefore irrelevant.
+GIVEN `an order has been made` IS A BOOLEAN, `this holder was served a notice` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the order binds this holder` IF
+    `an order has been made`
+
+§§ `8 -- what the order does`
+
+-- s 8(a)(i): from the date of the order the apportioned rent is due by the person entitled to each subdivision "and shall, if the
+-- rent for the current year upon the State lease or grant remains unpaid, be payable FORTHWITH"; (ii) otherwise at the time and
+-- place the lease rent was payable; (iii) recoverable as rents due to the Government.
+GIVEN `an order has been made` IS A BOOLEAN, `this year's rent on the lease is unpaid` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the apportioned rent is payable at once` IF
+    `an order has been made` AND `this year's rent on the lease is unpaid`
+
+-- s 8(b): the lessee's or grantee's covenant to pay the rent in the State lease or grant shall -- (i) where he "has by DULY
+-- REGISTERED deeds assigned or conveyed the entirety of the land", be DISCHARGED; (ii) where he "retains a part only", be modified
+-- "to apply only to the rent apportioned ... to that part ... which is retained".
+-- Neither limb in terms covers an assignment of the whole by deeds NOT duly registered; the covenant is then left unchanged here. (An
+-- inference from the silence.)
+DECLARE Covenant IS ONE OF
+    `unchanged`
+    `discharged`
+    `limited to the retained part`
+
+GIVEN `an order has been made` IS A BOOLEAN, `conveyed the whole by registered deeds` IS A BOOLEAN, `retains a part` IS A BOOLEAN
+GIVETH A Covenant
+`the original covenant becomes` MEANS
+    IF NOT `an order has been made` THEN `unchanged`
+    ELSE IF `conveyed the whole by registered deeds` THEN `discharged`
+         ELSE IF `retains a part` THEN `limited to the retained part`
+              ELSE `unchanged`
+
+GIVEN `an order has been made` IS A BOOLEAN, `conveyed the whole by registered deeds` IS A BOOLEAN, `retains a part` IS A BOOLEAN,
+      `the lease rent` IS A NUMBER, `the rent apportioned to the retained part` IS A NUMBER
+GIVETH A NUMBER
+`the rent the original holder covenants to pay` MEANS
+    CONSIDER `the original covenant becomes` `an order has been made` `conveyed the whole by registered deeds` `retains a part`
+    WHEN `discharged` THEN 0
+    WHEN `limited to the retained part` THEN `the rent apportioned to the retained part`
+    OTHERWISE `the lease rent`
+
+-- s 8(c): "any covenant by any person entitled to a subdivision to pay to the lessee or grantee a portion of the rent shall be
+-- discharged."
+GIVEN `an order has been made` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a buyer's covenant to pay the lessee a share of the rent survives` IF
+    NOT `an order has been made`
