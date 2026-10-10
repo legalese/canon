@@ -1,4 +1,4 @@
-# CLAUDE.md — `legalese/canon`
+# CLAUDE.md — `legalese/commons`
 
 Notes for a coding assistant working in this repository.
 It holds **law**: sources, and L4 encodings of them.
