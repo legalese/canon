@@ -1,0 +1,351 @@
+IMPORT prelude
+
+-- Amusement Rides Safety Act 2011 (Singapore) -- what counts as an amusement ride (s 2), who is the "person responsible" (s 2), the
+-- conditions for operating a ride lawfully (s 13), the term of an operating permit (s 15), ride managers (ss 16, 17), the permit
+-- holder's safety duty and stop directions (s 18), lapse and revocation of the operating permit (s 22), maintenance (s 31),
+-- closure for safety (s 35), adverse incidents (s 54), the penalties in Parts 2 to 8 and the general penalty (s 56), the defences
+-- in ss 19(3) and 59(2), and composition (s 62).
+--
+-- Edition: 2020 Revised Edition, informal consolidation (version in force from 18/12/2023), as deposited at
+-- ../../registers/source-bundle/ARSA2011.txt. The revised edition "incorporates all amendments up to and including 1 December
+-- 2021"; the latest amendment annotated is Act 23 of 2023 (wef 18/12/2023), which touches only the building-plan approval steps
+-- in ss 6 and 24 (not encoded here).
+--
+-- WHY THIS ACT. Requirement REQ-0063 in ../../../requirements.jsonl: Tier 2 of the remaining Singapore Acts, ordered by
+-- everyday-life relevance. It asks what the Act decides for a person or business it applies to; no scenario has asked a
+-- sharper question yet. SCOPED to what an operator, a ride manager, a premises owner and a rider meet. Not encoded: installation
+-- and modification permit procedure (ss 5-12, 23-30, beyond their penalties), relocation (s 34), the fire and rescue management
+-- system (Part 6), qualified persons (Part 7), enforcement powers (ss 48, 50-53), evidence, forfeiture, service, appeals to the
+-- Minister (s 69), exemptions (s 70), and everything left to regulations (major amusement rides, insurance minimum limits, compoundable offences).
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Amusement Rides Safety Act 2011 -- operation`
+
+GIVEN a IS A NUMBER, b IS A NUMBER
+GIVETH A NUMBER
+`the lower of` a b MEANS
+    IF a AT MOST b THEN a ELSE b
+
+§§ `2 -- what is an amusement ride`
+
+-- s 2(1) "amusement ride": "any mechanised or power-driven device ... which (a) is designed to carry patrons on, along, around, over
+-- or through a fixed or restricted course, or within a defined area, for the primary purpose of giving those patrons amusement,
+-- pleasure, thrills or excitement; and (b) is available for use by members of the public upon their payment of a fee or otherwise,
+-- whether or not [it] is erected to remain as a lasting part of any premises or is regularly relocated, and (c) includes such other
+-- device ... as may be prescribed ...; but (d) does not include any (i) coin-operated ride; (ii) playground equipment; or (iii)
+-- device ... prescribed as not being an amusement ride".
+-- "power-driven" "does not include being driven solely by human physical effort". "coin-operated ride": "(a) is fixed to a
+-- non-moving base; and (b) upon the insertion of any coin, slug, token, plate or disc, operates as a ride for children".
+-- "playground equipment" includes "swings, seesaws, stationary spring-mounted animal features, rider-propelled merry-go-rounds,
+-- climbers, slides, trampolines and physical fitness devices".
+DECLARE Device HAS
+    `mechanised or power-driven` IS A BOOLEAN
+    `driven solely by human physical effort` IS A BOOLEAN
+    `designed to carry patrons on a course for amusement` IS A BOOLEAN
+    `available to members of the public` IS A BOOLEAN
+    `fixed to a non-moving base` IS A BOOLEAN
+    `operates as a children's ride on inserting a coin or token` IS A BOOLEAN
+    `playground equipment` IS A BOOLEAN
+    `prescribed to be an amusement ride` IS A BOOLEAN
+    `prescribed as not being an amusement ride` IS A BOOLEAN
+
+GIVEN d IS A Device
+GIVETH A BOOLEAN
+DECIDE `is a coin-operated ride` IF
+    d's `fixed to a non-moving base` AND d's `operates as a children's ride on inserting a coin or token`
+
+-- Reading "mechanised or power-driven" with the definition of "power-driven": a device moved only by its riders is treated here as
+-- not mechanised or power-driven. That the exclusion reaches "mechanised" too is an inference; the text defines only "power-driven".
+GIVEN d IS A Device
+GIVETH A BOOLEAN
+DECIDE `is an amusement ride` IF
+        (    (    d's `mechanised or power-driven`
+              AND (NOT d's `driven solely by human physical effort`)
+              AND d's `designed to carry patrons on a course for amusement`
+              AND d's `available to members of the public`)
+         OR  d's `prescribed to be an amusement ride`)
+    AND (NOT `is a coin-operated ride` d)
+    AND (NOT d's `playground equipment`)
+    AND (NOT d's `prescribed as not being an amusement ride`)
+
+§§ `2 -- the person responsible`
+
+-- s 2(1) "person responsible": "(a) the person who holds the operating permit in respect of the amusement ride; or (b) if no person
+-- holds an operating permit ... for the time being -- any of the following persons: (i) the owner of the amusement ride or the
+-- person who has the charge, management or control of [it]; (ii) the owner of the premises on which [it] is installed; (iii) [the
+-- holder of a Public Entertainments Act 1958 licence for the approved place where it is installed]; (iv) the person who is allowed
+-- by virtue of section 75 to operate the amusement ride without an operating permit; or (v) any other person ... prescribed".
+-- Section 75 is not in the 2020 Revised Edition: the Comparative Table lists 2012 Ed. ss 75 and 76 as "[Omitted as spent]".
+DECLARE Role IS ONE OF
+    `the operating permit holder`
+    `the owner of the ride`
+    `the person in charge of the ride`
+    `the owner of the premises`
+    `the public entertainment licensee for the approved place`
+    `a ride manager`
+    `a patron`
+
+GIVEN `the role` IS A Role, `someone holds an operating permit` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `is a person responsible` IF
+    IF `someone holds an operating permit`
+    THEN CONSIDER `the role`
+         WHEN `the operating permit holder` THEN TRUE
+         OTHERWISE FALSE
+    ELSE CONSIDER `the role`
+         WHEN `the owner of the ride` THEN TRUE
+         WHEN `the person in charge of the ride` THEN TRUE
+         WHEN `the owner of the premises` THEN TRUE
+         WHEN `the public entertainment licensee for the approved place` THEN TRUE
+         OTHERWISE FALSE
+
+§§ `13 -- operating lawfully`
+
+-- s 13(1): "A person must not operate an amusement ride unless (a) the person holds a valid operating permit and operates the
+-- amusement ride in accordance with the conditions of the operating permit; and (b) at all times when the amusement ride is being
+-- operated (i) [it] is in a state of good repair and safe working condition, and is fit for operation; (ii) there is in force a
+-- certificate of compliance in respect of the fire and rescue management system ...; (iii) there is in force an insurance covering
+-- the person responsible ... against liability for any injury to, or the death of, any person ... in an amount that is not less
+-- than the prescribed minimum limits; and (iv) there is appointed ... at least one ride manager".
+-- (The prescribed minimum limits are in regulations not retrieved; the insurance is a flag here.)
+DECLARE Operation HAS
+    `holds a valid operating permit` IS A BOOLEAN
+    `within the permit conditions` IS A BOOLEAN
+    `in good repair and safe working condition` IS A BOOLEAN
+    `fire and rescue certificate of compliance in force` IS A BOOLEAN
+    `liability insurance at the prescribed minimum in force` IS A BOOLEAN
+    `ride managers appointed` IS A NUMBER
+
+GIVEN o IS AN Operation
+GIVETH A BOOLEAN
+DECIDE `the operation is lawful` IF
+        o's `holds a valid operating permit`
+    AND o's `within the permit conditions`
+    AND o's `in good repair and safe working condition`
+    AND o's `fire and rescue certificate of compliance in force`
+    AND o's `liability insurance at the prescribed minimum in force`
+    AND o's `ride managers appointed` AT LEAST 1
+
+§§ `15 -- term of an operating permit`
+
+-- s 15(1): an operating permit "(a) is valid ... for such period, not exceeding 12 months starting on the date of its issue, as may
+-- be specified in the operating permit; and (b) may be renewed upon its expiry".
+GIVEN `months since issue` IS A NUMBER, `months specified` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the permit is still within its term` IF
+    `months since issue` LESS THAN `the lower of` `months specified` 12
+
+§§ `16 -- ride managers`
+
+-- s 16(2): when a ride manager vacates the appointment, "(a) both the holder of the operating permit and the ride manager must each,
+-- within 14 days after the vacation of the appointment, notify the Commissioner"; and the holder must "(i) without delay appoint
+-- ... another ride manager" and "(ii) within 7 days thereafter, notify the Commissioner of that substitute appointment".
+-- (3): if the departing manager "is the only ride manager", the holder "must not commence or ... must immediately cease the
+-- operation ... until [it] has appointed a substitute ride manager ... and notified the Commissioner".
+GIVEN `days after the vacancy` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the vacancy notice is in time` IF
+    `days after the vacancy` AT MOST 14
+
+GIVEN `days after the substitute appointment` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the substitute notice is in time` IF
+    `days after the substitute appointment` AT MOST 7
+
+GIVEN `managers remaining` IS A NUMBER, `substitute appointed` IS A BOOLEAN, `substitute notified to the Commissioner` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the ride may keep running after a ride manager leaves` IF
+        `managers remaining` AT LEAST 1
+    OR  (`substitute appointed` AND `substitute notified to the Commissioner`)
+
+§§ `18 -- stop directions`
+
+-- s 18(2): the Commissioner may direct the holder to cease operation and take remedial measures, "and the operation of the
+-- amusement ride must not be resumed without the written consent of the Commissioner". (5): failing to comply, or resuming
+-- "without the written consent of the Commissioner", is an offence ($50,000 or 6 months).
+GIVEN `a stop direction was given` IS A BOOLEAN, `the ride was resumed` IS A BOOLEAN, `written consent was given` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `resuming is an offence` IF
+    `a stop direction was given` AND `the ride was resumed` AND (NOT `written consent was given`)
+
+§§ `22 -- lapse, revocation and suspension of an operating permit`
+
+-- s 22(1): the permit "automatically lapses (a) if the holder ... (i) dies, is wound up or otherwise dissolved ...; or (ii) ceases to
+-- be the operator of the amusement ride; (b) if the insurance required under section 13(1)(b)(iii) ceases to be in force".
+-- (2)(a): the Commissioner may revoke if "the amusement ride (not being an amusement ride that is capable of being relocated) has
+-- not been in operation for a continuous period of more than 3 months". (4), (5): no revocation or suspension without a hearing,
+-- unless the holder is bankrupt or in liquidation, a receiver is appointed, the holder is convicted of an offence under the Act or
+-- of fraud or dishonesty, or the fire and rescue certificate has been withdrawn under s 37.
+DECLARE Event IS ONE OF
+    `the holder dies`
+    `the holder company is wound up`
+    `the holder stops operating the ride`
+    `the liability insurance lapses`
+    `the ride is idle for four months`
+    `the holder is convicted of an offence under the Act`
+
+GIVEN `the event` IS AN Event
+GIVETH A BOOLEAN
+DECIDE `the permit lapses automatically` IF
+    CONSIDER `the event`
+    WHEN `the holder dies` THEN TRUE
+    WHEN `the holder company is wound up` THEN TRUE
+    WHEN `the holder stops operating the ride` THEN TRUE
+    WHEN `the liability insurance lapses` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN `idle months` IS A NUMBER, `capable of being relocated` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `idleness permits revocation` IF
+    (NOT `capable of being relocated`) AND `idle months` GREATER THAN 3
+
+GIVEN `bankrupt or in liquidation` IS A BOOLEAN, `receiver appointed` IS A BOOLEAN, `convicted under the Act or of dishonesty` IS A BOOLEAN,
+      `fire certificate withdrawn` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `may revoke without a hearing` IF
+    `bankrupt or in liquidation` OR `receiver appointed` OR `convicted under the Act or of dishonesty` OR `fire certificate withdrawn`
+
+§§ `35 and 54 -- closure and adverse incidents`
+
+-- s 2(1) "adverse incident" includes "(a) any malfunction ...; (b) any accident arising from the operation ...; (c) any occurrence of
+-- fire ...; (d) the collapse, breakage, dislodgement or disengagement of any structure or component ...; (e) any occurrence ...
+-- that results or is likely to result in (i) any injury to, or the death of, any person who is using or operating, or in the
+-- vicinity of, the amusement ride; or (ii) any person being stranded or trapped".
+-- s 54(1): "The person responsible for an amusement ride and the ride manager ... must, as soon as practicable, upon the occurrence
+-- of any adverse incident ..., inform the Commissioner". (5): $50,000 or 6 months.
+-- s 35(1): the person responsible "must wholly or partially close or cordon off the amusement ride whenever such action appears
+-- reasonably necessary (a) for the safety of persons ...; or (b) in the case of the occurrence of any adverse incident".
+DECLARE Occurrence IS ONE OF
+    `a control system malfunction`
+    `a patron injured by a restraint`
+    `a small fire in a gondola`
+    `a car detaching from the track`
+    `riders stranded at the top`
+    `a near miss likely to have injured a bystander`
+    `a long queue`
+    `a patron feeling dizzy after a normal ride`
+    `a scheduled closure for cleaning`
+
+GIVEN `the occurrence` IS AN Occurrence
+GIVETH A BOOLEAN
+DECIDE `is an adverse incident` IF
+    CONSIDER `the occurrence`
+    WHEN `a long queue` THEN FALSE
+    WHEN `a patron feeling dizzy after a normal ride` THEN FALSE
+    WHEN `a scheduled closure for cleaning` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the role` IS A Role, `someone holds an operating permit` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `must report an adverse incident` IF
+    `is a person responsible` `the role` `someone holds an operating permit`
+    OR  CONSIDER `the role`
+        WHEN `a ride manager` THEN TRUE
+        OTHERWISE FALSE
+
+GIVEN `the occurrence` IS AN Occurrence, `closure appears reasonably necessary for safety` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the ride must be closed or cordoned off` IF
+    `is an adverse incident` `the occurrence` OR `closure appears reasonably necessary for safety`
+
+§§ `19(3) and 59(2) -- defences`
+
+-- s 19(1): a permit holder or ride manager who "knows or ought reasonably to know of any contravention ... relating to the operation
+-- of the amusement ride" must notify the Commissioner "as soon as practicable". (3): "It is a defence ... for the person charged to
+-- prove ... that the person did not know and could not reasonably have discovered the contravention".
+GIVEN `knew or ought to have known` IS A BOOLEAN, `notified` IS A BOOLEAN, `proved could not reasonably have discovered it` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `failing to notify a contravention is an offence` IF
+    `knew or ought to have known` AND (NOT `notified`) AND (NOT `proved could not reasonably have discovered it`)
+
+-- s 59(2): where a thing must be done by the person responsible or the ride manager "and there is more than one", it is a defence
+-- "for the accused to prove (a) that that thing was done by another person responsible ... or by another ride manager ...; or (b)
+-- that any notice or order ... was served on another ... and not on the person charged".
+GIVEN `more than one person responsible or ride manager` IS A BOOLEAN, `proved another did it` IS A BOOLEAN,
+      `proved the notice was served on another and not on the accused` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the shared-duty defence succeeds` IF
+    `more than one person responsible or ride manager`
+    AND (`proved another did it` OR `proved the notice was served on another and not on the accused`)
+
+§§ `Penalties (ss 5, 13, 16-19, 23, 31-33, 35, 49, 54-56)`
+
+-- Maximum penalties on conviction, as stated in each section. Where the section provides for a continuing contravention it adds "an
+-- additional fine not exceeding $X for each day or part of a day during which the contravention continues", and a further fine for
+-- each day after conviction. A zero below means the section provides no daily fine.
+DECLARE Penalty HAS
+    `maximum fine` IS A NUMBER
+    `maximum imprisonment in months` IS A NUMBER
+    `daily fine while continuing` IS A NUMBER
+    `daily fine after conviction` IS A NUMBER
+
+DECLARE Offence IS ONE OF
+    `installing without an installation permit`
+    `operating outside section 13`
+    `ignoring a cessation notice`
+    `operating without a ride manager`
+    `a permit holder not notifying a ride manager vacancy`
+    `a ride manager neglecting duties`
+    `breaching the duty to operate safely`
+    `defying a stop direction`
+    `not notifying a contravention`
+    `major modification without a permit`
+    `failing to maintain the ride`
+    `ignoring a repair notice`
+    `minor modification without notice`
+    `not closing an unsafe ride`
+    `not notifying a closure`
+    `giving false information`
+    `not reporting an adverse incident`
+    `obstructing an enforcement officer`
+    `an offence with no penalty expressly provided`
+
+-- s 5(2), 13(2), 23(2): $200,000 or 2 years; $1,000 a day; $2,000 a day after conviction.
+-- s 18(4), 31(2): $100,000 or 12 months; $500 a day; $1,000 a day after conviction. s 49(1): $100,000 or 12 months.
+-- s 16(4), 17(2), 32(3), 33(3): $50,000 or 6 months; $500 a day; $1,000 a day after conviction.
+-- s 13(4), 18(5), 35(3), 54(5), 55: $50,000 or 6 months.
+-- s 16(6), 19(2), 35(4), 56: $20,000 or 3 months.
+GIVEN `the offence` IS AN Offence
+GIVETH A Penalty
+`the penalty for` MEANS
+    CONSIDER `the offence`
+    WHEN `installing without an installation permit` THEN Penalty 200000 24 1000 2000
+    WHEN `operating outside section 13` THEN Penalty 200000 24 1000 2000
+    WHEN `major modification without a permit` THEN Penalty 200000 24 1000 2000
+    WHEN `breaching the duty to operate safely` THEN Penalty 100000 12 500 1000
+    WHEN `failing to maintain the ride` THEN Penalty 100000 12 500 1000
+    WHEN `giving false information` THEN Penalty 100000 12 0 0
+    WHEN `operating without a ride manager` THEN Penalty 50000 6 500 1000
+    WHEN `a ride manager neglecting duties` THEN Penalty 50000 6 500 1000
+    WHEN `ignoring a repair notice` THEN Penalty 50000 6 500 1000
+    WHEN `minor modification without notice` THEN Penalty 50000 6 500 1000
+    WHEN `ignoring a cessation notice` THEN Penalty 50000 6 0 0
+    WHEN `defying a stop direction` THEN Penalty 50000 6 0 0
+    WHEN `not closing an unsafe ride` THEN Penalty 50000 6 0 0
+    WHEN `not reporting an adverse incident` THEN Penalty 50000 6 0 0
+    WHEN `obstructing an enforcement officer` THEN Penalty 50000 6 0 0
+    WHEN `a permit holder not notifying a ride manager vacancy` THEN Penalty 20000 3 0 0
+    WHEN `not notifying a contravention` THEN Penalty 20000 3 0 0
+    WHEN `not notifying a closure` THEN Penalty 20000 3 0 0
+    OTHERWISE Penalty 20000 3 0 0
+
+-- The most a court may fine for one conviction covering a contravention that continued for a number of days before conviction:
+-- the fine plus the daily fine for each day or part of a day. (Reading the daily fine as cumulative with the fine is an inference
+-- from "additional".)
+GIVEN `the offence` IS AN Offence, `days continuing` IS A NUMBER
+GIVETH A NUMBER
+`the maximum fine for` MEANS
+    (`the penalty for` `the offence`)'s `maximum fine`
+    PLUS (`the penalty for` `the offence`)'s `daily fine while continuing` TIMES `days continuing`
+
+§§ `62 -- composition`
+
+-- s 62(1): the Commissioner may compound an offence "which is prescribed as a compoundable offence by collecting ... a sum not
+-- exceeding the lower of the following: (a) one half of the amount of the maximum fine that is prescribed for the offence; (b)
+-- $5,000". (2): on payment "no further proceedings are to be taken". Which offences are compoundable is left to regulations.
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+`the most a composition can be` MEANS
+    `the lower of` ((`the penalty for` `the offence`)'s `maximum fine` DIVIDED BY 2) 5000
