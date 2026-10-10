@@ -7,8 +7,9 @@ pass, no human gate.
 **Edition:** 2020 Revised Edition, informal consolidation in force from
 1 July 2026.
 
-**Checks:** `l4 run cpf-cases.l4`, `l4 run cpf-medisave-cases.l4` and `l4 run cpf-rates-and-death-cases.l4` -- 101
-assertions satisfied, 0 errors (60 before 11 October 2026; 41 added for requirements REQ-0001 and REQ-0012).
+**Checks:** `l4 run cpf-cases.l4`, `l4 run cpf-medisave-cases.l4`, `l4 run cpf-rates-and-death-cases.l4` and
+`l4 run cpf-allocation-and-exemption-cases.l4` -- 136 assertions satisfied, 0 errors. Of these, 60 predate
+11 October 2026. On that day 41 were added for REQ-0001 and REQ-0012, and 35 for REQ-0002 and REQ-0003.
 
 ## Scope — read this first
 
@@ -188,11 +189,61 @@ One trap is s 25(5)(a): a nomination is **revoked by the member's marriage**. A 
 made before marrying does not survive the wedding, and the moneys then go through the
 Public Trustee route. Asserted.
 
+## Allocation and the Exemption Order (added 11 October 2026 for REQ-0002 and REQ-0003)
+
+### Allocation into the accounts is a ministerial direction, published by the Board
+
+Section 13(4) requires the Board to credit each contribution to the member's accounts "in such manner as the
+Minister may direct". The direction is not subsidiary legislation. The ratios in `cpf-allocation.l4` therefore
+come from the CPF Board's one-page **"CPF Allocation Rates from 1 January 2026"**, supplied by hand. Because
+it is not legislation, it is not deposited.
+
+The Board's method:
+- Medisave is computed first, then the special account (the retirement account above 55).
+- The ordinary account gets the remainder.
+
+The examples are in cents, but the page does not say how a fraction of a cent is rounded. The encoding rounds
+each of the first two credits to the nearest cent; that is the encoder's reading. Both of the page's examples
+are asserted.
+
+**REQ-0002:** $1,554 at age 23 gives medisave **$335.97**, special **$251.90** and ordinary **$966.13**.
+The ledger expected 336 / 252 / 966, which is the same split rounded to whole dollars.
+
+Not modelled: the footnote on members aged 55 and above after the special account closes. Their contributions
+go to the retirement account only up to the Full Retirement Sum, and to the ordinary account after that.
+
+### The Exemption Order: an approved internship is exempt, but this is the 2018 text
+
+`cpf-exemption.l4` encodes the **Central Provident Fund (Exemption) Order 2018** (S 61/2018), made under s 69.
+The text is deposited at `../../registers/source-bundle/CPFA1953-S61-2018.txt`. **The PDF supplied is the
+version as made, in force from 1 January to 1 February 2018; later amendments have not been checked.**
+
+What it exempts:
+- Para 3: no contributions for an employee who is neither a citizen nor a PR.
+- Para 2 and the Schedule: no contributions for specified employees. These include:
+  - domestic workers on 14 hours a week or less;
+  - UN staff;
+  - certain seamen;
+  - SHATEC trainees;
+  - students (paras 5 to 8).
+
+The students covered:
+- Para 5: a student of a university "whose function of providing university education is determined by
+  any written law", of ITE, of a polytechnic, or of certain schools, "employed for training approved by the
+  institution concerned".
+- Para 6: private-institution students on MOE-subsidised full-time programmes.
+- Para 7: overseas students required to train here for 6 months or less, who give the employer written
+  confirmation.
+- Para 8: school pupils on holiday jobs, but not once they have done A levels.
+
+**REQ-0003:** an NUS student whose internship is part of the course is exempt under para 5(a). No
+contributions are payable on the $1,200. The test is whether the *institution approved the training*,
+not whether she is full-time. An internship the university has not approved is not exempt. Both are asserted.
+
 ## Still a small fraction of the Act
 
 911,000 characters, of which this encodes s 7, s 15(1)–(6), s 16 and s 25(1).
-Not encoded: the First Schedule contribution rates, s 13 (crediting into the
-three accounts), s 15AA, s 15(4), the housing and investment charges, the rest
+Since 11 October 2026 the First Schedule rates and s 13(4) allocation are encoded (see above). Not encoded: s 15AA, s 15(4), the housing and investment charges, the rest
 of s 25, and everything from Part 3A onwards.
 
 **A caution carried over from the Work Injury Compensation Act.** The First

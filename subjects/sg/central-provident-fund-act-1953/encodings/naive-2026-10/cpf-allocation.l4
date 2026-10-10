@@ -1,0 +1,71 @@
+IMPORT prelude
+IMPORT `cpf-rates-and-death`
+
+-- Central Provident Fund Act 1953 (Singapore), s 13(4) -- how a month's contribution is credited to the member's ordinary,
+-- special (or retirement) and medisave accounts.
+--
+-- SOURCE: NOT LEGISLATION. Section 13(4) says the Board must credit contributions to the accounts "in such manner as the Minister
+-- may direct"; the direction itself is not published as subsidiary legislation. The ratios are as the CPF Board publishes them in
+-- "CPF Allocation Rates from 1 January 2026" (one-page PDF, private sector and non-pensionable employees), supplied by hand on
+-- 11 October 2026. Its two worked examples are asserted as cases.
+--
+-- WHY. Added on 11 October 2026 for REQ-0002 in subjects/sg/requirements.jsonl (cradle-to-grave-simone, event e041: the split of
+-- a $1,554 contribution for a member aged 23).
+--
+-- ROUNDING. The publication computes medisave first, then special/retirement, and gives the ordinary account the remainder; its
+-- examples are in cents. It does not say how a fraction of a cent is rounded. The encoding rounds each of the first two to the
+-- nearest cent (half a cent up). That is the encoder's reading.
+--
+-- NOT ENCODED: the publication's footnote 1 -- after the special account closes, contributions for members aged 55 and above go
+-- to the retirement account only up to the Full Retirement Sum, and to the ordinary account after that (the second column is
+-- treated as the retirement account throughout); pensionable public-sector employees; rates before 1 January 2026.
+--
+-- NAIVE ENCODING. Written with the writing-l4-rules skill. No pipeline, no coverage table, no independent test pass, no human
+-- gate. See NOTES.md.
+
+§ `CPF allocation from 1 January 2026, as published by the CPF Board`
+
+DECLARE `Allocation ratios` HAS
+    `to the special or retirement account` IS A NUMBER
+    `to the medisave account` IS A NUMBER
+
+-- 35 and below: OA 0.6217, SA 0.1621, MA 0.2162.  Above 35-45: 0.5677, 0.1891, 0.2432.  Above 45-50: 0.5136, 0.2162, 0.2702.
+-- Above 50-55: 0.4055, 0.3108, 0.2837.  (From here the second account is the retirement account.)  Above 55-60: 0.353, 0.3382,
+-- 0.3088.  Above 60-65: 0.14, 0.44, 0.42.  Above 65-70: 0.0607, 0.303, 0.6363.  Above 70: 0.08, 0.08, 0.84.
+-- The ordinary account's ratio is not used: it takes the remainder.
+GIVEN age IS A NUMBER
+GIVETH A `Allocation ratios`
+`the allocation ratios for` age MEANS
+    IF age AT MOST 35 THEN `Allocation ratios` WITH `to the special or retirement account` IS 0.1621, `to the medisave account` IS 0.2162
+         ELSE IF age AT MOST 45 THEN `Allocation ratios` WITH `to the special or retirement account` IS 0.1891, `to the medisave account` IS 0.2432
+              ELSE IF age AT MOST 50 THEN `Allocation ratios` WITH `to the special or retirement account` IS 0.2162, `to the medisave account` IS 0.2702
+                   ELSE IF age AT MOST 55 THEN `Allocation ratios` WITH `to the special or retirement account` IS 0.3108, `to the medisave account` IS 0.2837
+                        ELSE IF age AT MOST 60 THEN `Allocation ratios` WITH `to the special or retirement account` IS 0.3382, `to the medisave account` IS 0.3088
+                             ELSE IF age AT MOST 65 THEN `Allocation ratios` WITH `to the special or retirement account` IS 0.44, `to the medisave account` IS 0.42
+                                  ELSE IF age AT MOST 70 THEN `Allocation ratios` WITH `to the special or retirement account` IS 0.303, `to the medisave account` IS 0.6363
+                                       ELSE `Allocation ratios` WITH `to the special or retirement account` IS 0.08, `to the medisave account` IS 0.84
+
+GIVEN x IS A NUMBER
+GIVETH A NUMBER
+`to the nearest cent` x MEANS FLOOR (x TIMES 100 PLUS 0.5) DIVIDED BY 100
+
+GIVEN age IS A NUMBER, contribution IS A NUMBER
+GIVETH A NUMBER
+`the medisave credit` age contribution MEANS
+    `to the nearest cent` (contribution TIMES (`the allocation ratios for` age)'s `to the medisave account`)
+
+GIVEN age IS A NUMBER, contribution IS A NUMBER
+GIVETH A NUMBER
+`the special or retirement account credit` age contribution MEANS
+    `to the nearest cent` (contribution TIMES (`the allocation ratios for` age)'s `to the special or retirement account`)
+
+GIVEN age IS A NUMBER, contribution IS A NUMBER
+GIVETH A NUMBER
+`the ordinary account credit` age contribution MEANS
+    contribution MINUS `the medisave credit` age contribution MINUS `the special or retirement account credit` age contribution
+
+-- From wages straight to the ordinary account credit, through the First Schedule contribution in cpf-rates-and-death.l4.
+GIVEN age IS A NUMBER, wages IS A NUMBER, year IS A NUMBER
+GIVETH A NUMBER
+`the ordinary account credit for wages` age wages year MEANS
+    `the ordinary account credit` age (`the total CPF contribution` age wages year)
