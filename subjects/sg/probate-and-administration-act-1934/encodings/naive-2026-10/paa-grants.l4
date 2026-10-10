@@ -1,0 +1,313 @@
+IMPORT prelude
+
+-- Probate and Administration Act 1934 (Singapore) -- who may take a grant and on what terms: renunciation by citation (s 4),
+-- the number of personal representatives (s 6), the order of priority for letters of administration with the will annexed
+-- (s 13(2)), infants and persons lacking capacity (ss 21, 22), the oath (s 28), administration security (s 29), caveats (s 33),
+-- the receiver offence (s 42), grants to the Public Trustee on delay (s 55), small estates (ss 56(2), 62, 63, 64), the commission
+-- cap (s 66) and the order in which a solvent estate's assets answer its debts (s 57(4) and the Second Schedule).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/PAA1934.txt. The cover
+-- says the revised edition incorporates amendments "up to and including 1 December 2021"; the body also shows amendments by
+-- Act 18 of 2023 (in force 15 October 2024) to ss 4(2), 4(3), 22 and 39.
+--
+-- WHY THIS ACT. Cited by 7 of the 527 Singapore Acts deposited in this repository. SCOPED to the rules with decision content that
+-- a family member, creditor or practitioner meets in taking out or resisting a grant. Not encoded: the kinds of limited grant
+-- (ss 9-12, 14-20, 23-27), revocation (s 32), District Court transitional rules (s 35), vesting in the Public Trustee pending a
+-- grant (ss 37, 38), receivers beyond the offence (ss 39-41, 43, 44), re-sealing of foreign grants (Part 10), charges on property
+-- (s 58), consular administration (ss 59-61, Third Schedule), the insolvent-estate rules (First Schedule), and ss 65, 67-70.
+--
+-- NAIVE ENCODING. Straight from the deposited text, following the conventions of the earlier naive rows (the writing-l4-rules
+-- skill was not available in this session). No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Probate and Administration Act 1934 -- grants`
+
+§§ `4 -- constructive renunciation`
+
+-- s 4(1): an interested person or creditor may cause a citation to issue "calling upon the person cited to accept or renounce".
+-- (2): the person cited may file a notice of intention to contest or not to contest, "but if he fails to file the notice within the
+-- time permitted, he shall be deemed to have renounced his right". (3): if he files a notice to contest but does not apply, the
+-- citor may obtain an order that he be deemed to have renounced unless he obtains a grant within the time limited by the order.
+-- s 5(1): renunciation "shall preclude the person so renouncing from applying thereafter"; (2) the court may allow withdrawal
+-- "if it is shown that the withdrawal is for the benefit of the estate or of those interested".
+GIVEN `filed a notice in time` IS A BOOLEAN, `an order under s 4(3) was made` IS A BOOLEAN, `obtained a grant within the order's time` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the person cited is deemed to have renounced` IF
+        (NOT `filed a notice in time`)
+    OR  (`an order under s 4(3) was made` AND (NOT `obtained a grant within the order's time`))
+
+GIVEN `has renounced` IS A BOOLEAN, `court allows withdrawal for the benefit of the estate` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `may still apply for a grant` IF
+    (NOT `has renounced`) OR `court allows withdrawal for the benefit of the estate`
+
+§§ `6 -- number of personal representatives`
+
+-- s 6(1): a grant "shall not be granted to more than 4 persons in respect of the same property". (2): LETTERS OF ADMINISTRATION
+-- shall, "if there is a minority or if a life interest arises under the will", be granted "either to a trust corporation, with or
+-- without an individual, or to not less than 2 individuals". (6): "trust corporation" means the Public Trustee or a licensed
+-- trust company. Subsection (2) speaks only of letters of administration; a grant of probate to one executor is not caught by it.
+GIVEN `is letters of administration` IS A BOOLEAN, `number of individuals` IS A NUMBER, `includes a trust corporation` IS A BOOLEAN,
+      `there is a minority or life interest` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the grant is within s 6` IF
+        `the number of grantees` AT MOST 4
+    AND (    (NOT `is letters of administration`)
+          OR (NOT `there is a minority or life interest`)
+          OR `includes a trust corporation`
+          OR `number of individuals` AT LEAST 2)
+    WHERE
+        `the number of grantees` MEANS
+            IF `includes a trust corporation` THEN `number of individuals` PLUS 1 ELSE `number of individuals`
+
+§§ `13(2) -- priority for letters of administration with the will annexed`
+
+-- s 13(1): where no executor is appointed, all are incapable or have renounced, none survives, all die before probate, or they do
+-- not extract probate, letters with the will annexed may go to "the fittest". (2): "A prior right ... shall belong to the following
+-- persons in the following order": (a) universal or residuary legatee; (b) legal personal representative of a deceased universal
+-- or residuary legatee; (c) beneficiaries under the will who would have been entitled on intestacy; (d) a legatee having a
+-- beneficial interest; (e) a creditor of the deceased.
+DECLARE Claimant IS ONE OF
+    `a residuary legatee`
+    `the personal representative of a deceased residuary legatee`
+    `a will beneficiary who would take on intestacy`
+    `a legatee with a beneficial interest`
+    `a creditor`
+    `a stranger to the estate`
+
+GIVEN `the claimant` IS A Claimant
+GIVETH A NUMBER
+`the s 13(2) rank` MEANS
+    CONSIDER `the claimant`
+    WHEN `a residuary legatee` THEN 1
+    WHEN `the personal representative of a deceased residuary legatee` THEN 2
+    WHEN `a will beneficiary who would take on intestacy` THEN 3
+    WHEN `a legatee with a beneficial interest` THEN 4
+    WHEN `a creditor` THEN 5
+    OTHERWISE 0
+
+GIVEN `first` IS A Claimant, `second` IS A Claimant
+GIVETH A BOOLEAN
+DECIDE `has the prior right over` IF
+        `the s 13(2) rank` `first` GREATER THAN 0
+    AND (    `the s 13(2) rank` `second` EQUALS 0
+          OR `the s 13(2) rank` `first` LESS THAN `the s 13(2) rank` `second`)
+
+§§ `21, 22 -- infants and persons lacking capacity`
+
+-- s 21(1): "No probate or letters of administration shall be granted to a person while he is an infant." (2): a grant may instead
+-- go to the infant's guardian or a fit person, "limited until the infant obtains a grant to himself".
+-- s 22(1): none to a person who lacks mental capacity (Mental Capacity Act 2008) to manage "property and affairs"; (2) letters may
+-- go to the person to whom the care of the estate is committed, or a fit person, for that person's use and benefit.
+GIVEN `is an infant` IS A BOOLEAN, `lacks capacity over property and affairs` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `may take a grant personally` IF
+    (NOT `is an infant`) AND (NOT `lacks capacity over property and affairs`)
+
+§§ `28 -- oath`
+
+-- s 28(1): "the grantee shall take an oath in the prescribed form, faithfully to administer the estate and to account for the same".
+-- (2): not "where the grantee is the Public Trustee or a trust company".
+DECLARE Grantee IS ONE OF
+    `an individual`
+    `the Public Trustee`
+    `a trust company`
+
+GIVEN `the grantee` IS A Grantee
+GIVETH A BOOLEAN
+DECIDE `must take the oath` IF
+    CONSIDER `the grantee`
+    WHEN `an individual` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `29 -- administration security`
+
+-- s 29(7): "in the case of administrations whether with or without the will annexed" the grantee "shall give security", subject to
+-- (8): a grantee of letters "from a Family Court shall not be required to give security ... unless (a) the person for whose use and
+-- benefit the grant is made is an infant; or (b) the Family Court thinks fit". (4): the Public Trustee "shall not be required to give
+-- security". No subsection requires security on a grant of PROBATE; that probate needs none is an inference from that silence.
+-- (2): ordinarily a bond by the grantee and 2 sureties "in the amount at which the estate within the jurisdiction is sworn, without
+-- deduction of any debts due by the deceased, other than debts secured by mortgage". (3) the court or registrar may vary the
+-- sureties or reduce the bond; (5) where the administrator takes the whole estate after debts, sureties "may ordinarily be
+-- dispensed with".
+GIVEN `is letters of administration` IS A BOOLEAN, `the grantee` IS A Grantee, `granted by a Family Court` IS A BOOLEAN,
+      `the grant is for an infant's use and benefit` IS A BOOLEAN, `the Family Court thinks fit` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `security is required` IF
+        `is letters of administration`
+    AND (NOT `the grantee is the Public Trustee`)
+    AND (    (NOT `granted by a Family Court`)
+          OR `the grant is for an infant's use and benefit`
+          OR `the Family Court thinks fit`)
+    WHERE
+        `the grantee is the Public Trustee` MEANS
+            CONSIDER `the grantee`
+            WHEN `the Public Trustee` THEN TRUE
+            OTHERWISE FALSE
+
+GIVEN `the sworn value of the estate` IS A NUMBER, `mortgage debts` IS A NUMBER, `other debts` IS A NUMBER
+GIVETH A NUMBER
+`the ordinary bond amount` MEANS `the sworn value of the estate` MINUS `mortgage debts`
+
+GIVEN `administrator takes the whole estate after debts` IS A BOOLEAN
+GIVETH A NUMBER
+`the ordinary number of sureties` MEANS
+    IF `administrator takes the whole estate after debts` THEN 0 ELSE 2
+
+§§ `33 -- caveats`
+
+-- s 33(1): any person "having or claiming to have interest" may, after the death and before a grant, enter a general caveat "so that
+-- no probate or letters of administration shall be granted without notice to the caveator". (2): "no such grant shall be made until
+-- the caveator has been given opportunity to contest".
+GIVEN `a caveat has been entered` IS A BOOLEAN, `the caveator has had the opportunity to contest` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a grant may be made` IF
+    (NOT `a caveat has been entered`) OR `the caveator has had the opportunity to contest`
+
+§§ `42 -- interfering with property under a receiver`
+
+-- s 42: any person who, "without lawful authority, removes or attempts to remove from Singapore any portion of the property of which
+-- a receiver has been appointed under section 39, or destroys, conceals, or refuses to yield up the same to the receiver" is guilty
+-- of an offence; on conviction by a Magistrates' Court, a fine not exceeding $1,000 or imprisonment up to 6 months or both.
+GIVEN `a receiver is appointed under s 39` IS A BOOLEAN, `removed, attempted to remove, destroyed, concealed or withheld the property` IS A BOOLEAN,
+      `had lawful authority` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `commits the s 42 offence` IF
+        `a receiver is appointed under s 39`
+    AND `removed, attempted to remove, destroyed, concealed or withheld the property`
+    AND (NOT `had lawful authority`)
+
+`the s 42 maximum fine` MEANS 1000
+`the s 42 maximum imprisonment in months` MEANS 6
+
+§§ `55 -- grant to the Public Trustee on delay`
+
+-- s 55(1): letters may go to the Public Trustee or another fit person (a) after 6 months from death with no application; (b) where an
+-- application made within the 6 months "has not within that period been proceeded with, or has been withdrawn or refused"; (c) where
+-- an administrator "neglects within one month of the date of the grant" to give required security; (f) where 6 months have elapsed
+-- since the death of the last surviving executor or administrator with no application. (Paragraphs (d) and (e) are not encoded.)
+-- (2): nothing prevents the Public Trustee applying "before the expiration of a period of 6 months of the death".
+GIVEN `months since death` IS A NUMBER, `an application was made and proceeded with` IS A BOOLEAN,
+      `the administrator neglected security for a month` IS A BOOLEAN, `the applicant is the Public Trustee` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a grant may go to the Public Trustee or another fit person under s 55` IF
+        `the applicant is the Public Trustee`
+    OR  (`months since death` AT LEAST 6 AND (NOT `an application was made and proceeded with`))
+    OR  `the administrator neglected security for a month`
+
+§§ `56(2) -- small intestate estates and funds in court`
+
+-- s 56(2): where no administration has been taken out to an intestate "whose assets do not exceed $500", including the funds in
+-- court, the funds may be paid to the person "who, being a widower, widow, child, father, mother, brother or sister of the
+-- deceased, would be entitled to take administration", on a declaration in the prescribed form.
+DECLARE Relative IS ONE OF
+    `spouse`
+    `child`
+    `parent`
+    `sibling`
+    `grandchild`
+    `nephew or niece`
+
+GIVEN `the relative` IS A Relative, `assets including the funds` IS A NUMBER, `administration has been taken out` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the funds may be paid out on a declaration` IF
+        (NOT `administration has been taken out`)
+    AND `assets including the funds` AT MOST 500
+    AND `is a listed relative`
+    WHERE
+        `is a listed relative` MEANS
+            CONSIDER `the relative`
+            WHEN `grandchild` THEN FALSE
+            WHEN `nephew or niece` THEN FALSE
+            OTHERWISE TRUE
+
+§§ `62 -- administration by the Public Trustee without a grant`
+
+-- s 62(1): where a person dies leaving property in Singapore "not exceeding $50,000 in value (without deduction for debts)", the
+-- Public Trustee, "after satisfying himself that no application for letters of administration is pending", may by signed writing
+-- declare that he undertakes to administer it. (2): the $50,000 does not include (a) property held as trustee and not beneficially;
+-- (b) for deaths on or after 17 September 2005, moneys payable under the Dependants' Protection Insurance Scheme or an equivalent
+-- CPF Board scheme. (3): he may then administer "as though letters of administration ... had been granted to him".
+GIVEN `gross value in Singapore` IS A NUMBER, `value held as trustee` IS A NUMBER, `DPS moneys` IS A NUMBER,
+      `died on or after 17 September 2005` IS A BOOLEAN
+GIVETH A NUMBER
+`the s 62 value` MEANS
+    `gross value in Singapore` MINUS `value held as trustee` MINUS `the DPS deduction`
+    WHERE
+        `the DPS deduction` MEANS IF `died on or after 17 September 2005` THEN `DPS moneys` ELSE 0
+
+GIVEN `gross value in Singapore` IS A NUMBER, `value held as trustee` IS A NUMBER, `DPS moneys` IS A NUMBER,
+      `died on or after 17 September 2005` IS A BOOLEAN, `an application is pending` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Public Trustee may administer without a grant` IF
+        (NOT `an application is pending`)
+    AND `the s 62 value` `gross value in Singapore` `value held as trustee` `DPS moneys` `died on or after 17 September 2005` AT MOST 50000
+
+§§ `63 -- payments for a minor out of small estates held by the Public Trustee`
+
+-- s 63(1): where property "not exceeding $25,000 in value" is held by the Public Trustee on trust for a person, he may during that
+-- person's minority pay "the whole or such part of the income and capital money ... as may in all the circumstances be reasonable".
+-- (2): when the property "exceeds $25,000 but does not exceed $50,000", he "may make such payments of capital money to the extent of
+-- $25,000". Above $50,000 the section gives no power (inference from its terms; 0 below means "none under s 63").
+GIVEN `value held` IS A NUMBER
+GIVETH A NUMBER
+`the s 63 capital ceiling` MEANS
+    IF `value held` AT MOST 25000
+        THEN `value held`
+        ELSE IF `value held` AT MOST 50000
+                THEN 25000
+                ELSE 0
+
+§§ `64 -- distribution without advertisement`
+
+-- s 64(1): where the total value of property administered by the Public Trustee (without deduction for debts, excluding property
+-- held as trustee) "does not exceed $10,000", he need not advertise his intention to distribute, and may distribute having regard only
+-- to claims of which he has notice; (2) he is then not liable to a claimant of whom he had no notice. The section heading says
+-- "property of LESS THAN $10,000"; the operative words include exactly $10,000. This encoding follows the operative words.
+GIVEN `gross value` IS A NUMBER, `value held as trustee` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the Public Trustee may distribute without advertising` IF
+    `gross value` MINUS `value held as trustee` AT MOST 10000
+
+§§ `66 -- commission`
+
+-- s 66(1): the court "may in its or his discretion allow the executors or administrators a commission not exceeding 5% on the value
+-- of the assets collected by them", guided by its approval of their conduct; (2) the registrar may exercise the power on taking
+-- accounts.
+GIVEN `assets collected` IS A NUMBER
+GIVETH A NUMBER
+`the maximum commission` MEANS `assets collected` TIMES 5 DIVIDED BY 100
+
+§§ `57(4) and Second Schedule -- order in which a solvent estate's assets answer debts`
+
+-- s 57(4): a solvent estate is applicable to funeral, testamentary and administration expenses, debts and liabilities "in the order
+-- mentioned in the Second Schedule", subject to the Rules of Court, s 58 and the will. Second Schedule: 1 property undisposed of by
+-- will (keeping a fund for pecuniary legacies); 2 property in a residuary gift (same); 3 property appropriated for payment of
+-- debts; 4 property charged with or given subject to a charge for debts; 5 the fund retained for pecuniary legacies; 6 property
+-- specifically devised or bequeathed, rateably; 7 property appointed by will under a general power, rateably. Paragraph 8(a): "the
+-- order of application may be varied by the will". s 57(1): an INSOLVENT estate follows the First Schedule instead (not encoded).
+DECLARE AssetClass IS ONE OF
+    `property undisposed of by the will`
+    `the residuary gift`
+    `property set aside to pay debts`
+    `property charged with debts`
+    `the fund kept for pecuniary legacies`
+    `specific gifts`
+    `property appointed under a general power`
+
+GIVEN `the class` IS A AssetClass
+GIVETH A NUMBER
+`the Second Schedule order` MEANS
+    CONSIDER `the class`
+    WHEN `property undisposed of by the will` THEN 1
+    WHEN `the residuary gift` THEN 2
+    WHEN `property set aside to pay debts` THEN 3
+    WHEN `property charged with debts` THEN 4
+    WHEN `the fund kept for pecuniary legacies` THEN 5
+    WHEN `specific gifts` THEN 6
+    OTHERWISE 7
+
+GIVEN `first` IS A AssetClass, `second` IS A AssetClass
+GIVETH A BOOLEAN
+DECIDE `is used for debts before` IF
+    `the Second Schedule order` `first` LESS THAN `the Second Schedule order` `second`
