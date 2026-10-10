@@ -1,0 +1,351 @@
+IMPORT prelude
+
+-- Plant Varieties Protection Act 2004 (Singapore) -- who may apply (s 2 "breeder"), when a variety is new and the foreign
+-- priority claim that moves the novelty date (ss 14, 22), when the Registrar must grant protection (s 21), how long it lasts and how
+-- it ends (ss 24 to 27), what it lets the grantee stop and the exceptions (ss 28 to 32), money remedies for infringement (s 30),
+-- compulsory licences (s 34), denominations (s 36), offences and composition (ss 10, 11, 44 to 46, 52) and appeals (s 48).
+--
+-- Edition: 2020 Revised Edition (incorporating amendments up to 1 December 2021), informal consolidation (version in force from
+-- 10 June 2022), as deposited at ../../registers/source-bundle/PVPA2004.txt. The latest amendments annotated are Act 7 of 2022 (wef
+-- 26 May 2022) and Act 23 of 2019 (wef 10 June 2022, s 52).
+--
+-- WHY THIS ACT. Requirement REQ-0084 in ../../../requirements.jsonl: Tier 2 of the remaining Singapore Acts, ordered by everyday-life
+-- relevance. It asks what the Act decides for a person or business it applies to; no scenario has asked a sharper question yet.
+-- SCOPED to what a breeder, a nursery, a farmer or a home gardener meets. Not encoded: administration (ss 5 to 9, 12), application
+-- procedure and publication (ss 13, 15 to 19), provisional protection (s 20), competing independent breeders (s 23), the
+-- transitional novelty rule for genera added in 2014 (s 22(4)), assignment and licences binding successors (s 28(3) to (6)),
+-- notice of protection (s 35), use of denominations beyond the offence (s 37), the register (ss 39 to 43), and anything in rules
+-- (no subsidiary legislation was retrieved: the prescribed periods, fees and the genera exempt under s 31(2) are unknown here).
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Plant Varieties Protection Act 2004 -- protection`
+
+§§ `2 -- the breeder`
+
+-- s 2 "breeder": (a) "a person who bred, or discovered and developed, the plant variety"; (b) if bred "in the course of performing the
+-- person's duties or functions as an employee of another person, that other person"; or (c) "the successor in title" to (a) or (b).
+-- s 13(1): an application "must be made by the breeder".
+DECLARE Breeder IS ONE OF
+    `the person who bred it`
+    `the employer`
+    `the successor in title`
+
+GIVEN `bred in the course of employment` IS A BOOLEAN, `rights passed to a successor` IS A BOOLEAN
+GIVETH A Breeder
+`who is the breeder` MEANS
+    IF `rights passed to a successor` THEN `the successor in title`
+    ELSE IF `bred in the course of employment` THEN `the employer`
+         ELSE `the person who bred it`
+
+§§ `14, 22(1) to (3) -- novelty and the priority claim`
+
+-- s 22(1)(a): new if harvested or propagating material "has not been sold or otherwise disposed of to another person, by or with the
+-- breeder's consent for the purposes of exploitation" (i) "earlier than 12 months before the date the application is made" where the
+-- sale and exploitation is in Singapore; (ii) "earlier than 6 years before that date in the case of trees or vines, or earlier than
+-- 4 years before that date in any other case" where outside Singapore.
+-- s 22(2): no account is taken of a sale under an arrangement to increase stock or test, where unused material and its produce
+-- return to the breeder. s 22(3): novelty survives sale of (a) material that is neither propagating nor harvested material, or
+-- (b) surplus propagating material of the breeding work sold "without variety identification for purposes of consumption".
+-- s 14(1): a breeder who applied in another UPOV member and applies here "within 12 months after" the earliest foreign application
+-- may claim priority, and "sections 22 and 23 apply ... as if it had been made on the date the foreign application ... was made".
+-- Periods are in months (6 years = 72, 4 years = 48). A sale exactly 12 months before is not "earlier than" 12 months, so it is
+-- harmless. Mixed cases (sold in Singapore, exploited abroad) are not addressed by the text and not modelled.
+DECLARE Sale HAS
+    `in Singapore` IS A BOOLEAN
+    `months before the Singapore application` IS A NUMBER
+    `by or with the breeder's consent for exploitation` IS A BOOLEAN
+    `under a stock-increase or testing arrangement` IS A BOOLEAN
+    `of material neither propagating nor harvested` IS A BOOLEAN
+    `of surplus breeding material sold unidentified for consumption` IS A BOOLEAN
+
+GIVEN `claims priority` IS A BOOLEAN, `months after the earliest foreign application` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the priority claim is good` IF
+    `claims priority` AND `months after the earliest foreign application` AT MOST 12
+
+GIVEN `the sale` IS A Sale, `a tree or vine` IS A BOOLEAN, `claims priority` IS A BOOLEAN,
+      `months after the earliest foreign application` IS A NUMBER
+GIVETH A NUMBER
+`months before the effective application date` MEANS
+    IF `the priority claim is good` `claims priority` `months after the earliest foreign application`
+    THEN `the sale`'s `months before the Singapore application` MINUS `months after the earliest foreign application`
+    ELSE `the sale`'s `months before the Singapore application`
+
+GIVEN `the sale` IS A Sale, `a tree or vine` IS A BOOLEAN
+GIVETH A NUMBER
+`the grace period in months` MEANS
+    IF `the sale`'s `in Singapore` THEN 12
+    ELSE IF `a tree or vine` THEN 72
+         ELSE 48
+
+GIVEN `the sale` IS A Sale, `a tree or vine` IS A BOOLEAN, `claims priority` IS A BOOLEAN,
+      `months after the earliest foreign application` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the sale destroys novelty` IF
+        `the sale`'s `by or with the breeder's consent for exploitation`
+    AND (NOT `the sale`'s `under a stock-increase or testing arrangement`)
+    AND (NOT `the sale`'s `of material neither propagating nor harvested`)
+    AND (NOT `the sale`'s `of surplus breeding material sold unidentified for consumption`)
+    AND `months before the effective application date` `the sale` `a tree or vine` `claims priority` `months after the earliest foreign application`
+            GREATER THAN `the grace period in months` `the sale` `a tree or vine`
+
+§§ `21 -- the Registrar must grant`
+
+-- s 21(1): the Registrar "must" (a) except where withdrawn or lapsed under s 19, grant every eligible application and (b) decline
+-- every other. (2): eligible "if, and only if" (a) the applicant complied with s 13 and s 17 or 18, and (b) the Registrar (i) approved
+-- the denomination, (ii) is satisfied the applicant is the breeder, and (iii) is satisfied the variety is "new, distinct, stable and
+-- uniform within the meaning of section 22".
+DECLARE Application HAS
+    `complied with section 13` IS A BOOLEAN
+    `complied with section 17 or 18` IS A BOOLEAN
+    `denomination approved` IS A BOOLEAN
+    `applicant is the breeder` IS A BOOLEAN
+    `new` IS A BOOLEAN
+    `distinct` IS A BOOLEAN
+    `stable` IS A BOOLEAN
+    `uniform` IS A BOOLEAN
+    `withdrawn or lapsed` IS A BOOLEAN
+
+GIVEN `the application` IS AN Application
+GIVETH A BOOLEAN
+DECIDE `the Registrar must grant protection` IF
+        (NOT `the application`'s `withdrawn or lapsed`)
+    AND `the application`'s `complied with section 13`
+    AND `the application`'s `complied with section 17 or 18`
+    AND `the application`'s `denomination approved`
+    AND `the application`'s `applicant is the breeder`
+    AND `the application`'s `new`
+    AND `the application`'s `distinct`
+    AND `the application`'s `stable`
+    AND `the application`'s `uniform`
+
+§§ `24 to 27 -- term, cancellation, invalidity, renunciation`
+
+-- s 24(2): "the term of a grant of protection is a period of 25 calendar years from the date of the grant", subject to ss 25 and 26.
+-- (3) an annual fee; (4) a late fee may be imposed by rules. s 26(2): the grant "must be cancelled by the Registrar" if (a) the
+-- grantee fails to provide requested material verifying maintenance, (b) "in any particular year" the annual or late fee "has not been
+-- paid within the prescribed period", or (c) the grantee fails to propose a new denomination under s 38. s 27: the grantee may
+-- renounce in writing. A grant removed from the register (ss 25(3), 26(4), 27(2)) is treated here as no longer in force -- an
+-- inference; the text says it must be removed, not when it stops having effect.
+GIVEN `years since the grant` IS A NUMBER, `removed from the register` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the grant is in force` IF
+    `years since the grant` LESS THAN 25 AND (NOT `removed from the register`)
+
+GIVEN `failed to verify maintenance when asked` IS A BOOLEAN, `a year's fee unpaid in the prescribed period` IS A BOOLEAN,
+      `failed to propose a new denomination when asked` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Registrar must cancel` IF
+        `failed to verify maintenance when asked`
+    OR  `a year's fee unpaid in the prescribed period`
+    OR  `failed to propose a new denomination when asked`
+
+-- s 25(2): the Court must declare the grant invalid if (a) the variety "is not new or distinct"; (b) "where the grant of protection was
+-- made on the basis of an examination report by an Examiner lodged under section 18" (a foreign report), the variety was not stable or
+-- uniform at the time of the grant; or (c) the grant was made to a person not entitled to it, "unless it has since been transferred
+-- to the person who is so entitled". s 26(3): the Court cancels a grant if the variety "is no longer stable or uniform".
+GIVEN `not new or distinct` IS A BOOLEAN, `granted on a foreign examination report` IS A BOOLEAN,
+      `not stable or uniform when granted` IS A BOOLEAN, `granted to a person not entitled` IS A BOOLEAN,
+      `since transferred to the person entitled` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Court must declare the grant invalid` IF
+        `not new or distinct`
+    OR  (`granted on a foreign examination report` AND `not stable or uniform when granted`)
+    OR  (`granted to a person not entitled` AND (NOT `since transferred to the person entitled`))
+
+§§ `29 -- essentially derived varieties`
+
+-- s 29(1): the grant "also extends to" (a) a variety essentially derived from the original, (b) a variety "not distinct" from it, and
+-- (c) a variety "the production of which requires the repeated use of the original". (2): essentially derived if (a) predominantly
+-- derived from the original (or from a variety itself predominantly derived from it); (b) it retains the essential characteristics
+-- of the original's genotype; (c) it "is clearly distinguishable from the original"; and (d) apart from the derivation, it conforms
+-- to the original in those essential characteristics.
+GIVEN `predominantly derived` IS A BOOLEAN, `retains the essential characteristics` IS A BOOLEAN,
+      `clearly distinguishable` IS A BOOLEAN, `otherwise conforms` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the variety is essentially derived` IF
+    `predominantly derived` AND `retains the essential characteristics` AND `clearly distinguishable` AND `otherwise conforms`
+
+GIVEN `essentially derived` IS A BOOLEAN, `clearly distinguishable` IS A BOOLEAN, `needs repeated use of the original` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the grant extends to the other variety` IF
+    `essentially derived` OR (NOT `clearly distinguishable`) OR `needs repeated use of the original`
+
+§§ `28, 30 to 32 -- infringement and its exceptions`
+
+-- s 28(1): the grantee may prevent, without authorisation, these acts in respect of propagating material: (a) production or
+-- reproduction; (b) conditioning for propagation; (c) offering for sale; (d) selling or other marketing; (e) export; (f) import;
+-- (g) stocking for any of those. (7): the same rights apply to harvested material "obtained through the unauthorised use of
+-- propagating material ... unless the grantee has had a reasonable opportunity" to act against that use first.
+-- s 30(1): infringed by a person who (a) not entitled, does in Singapore any s 28(1) act on propagating or harvested material;
+-- (c) imports without consent harvested material of the protected variety from a non-UPOV country (or a UPOV member where no
+-- equivalent protection is possible). "Harvested material" is defined in s 2 by reference to s 28(7); this encoding reads the
+-- s 30(1)(c) limb as covering any harvested material, since otherwise it would add nothing to (a) -- an inference.
+-- s 31(1): not an infringement to do "(a) any act privately and for a non-commercial purpose; (b) any act for any experimental or
+-- research purpose; or (c) any act for the purposes of breeding any other plant variety". (2): farm-saved seed, only for genera
+-- "prescribed ... as exempt". s 32(1): an act concerning material "sold or otherwise marketed in Singapore by or with the grantee's
+-- consent" does not infringe, "unless such act involves (c) further propagation" or (d) export of propagable material to a country
+-- not protecting the genus, "except where the exported material is for final consumption purposes".
+DECLARE Act IS ONE OF
+    `producing or reproducing`
+    `conditioning for propagation`
+    `offering for sale`
+    `selling or marketing`
+    `exporting`
+    `importing`
+    `stocking for any of those`
+    `displaying or consuming`
+
+DECLARE Conduct HAS
+    `the act` IS AN Act
+    `on propagating material` IS A BOOLEAN
+    `on harvested material from unauthorised propagation` IS A BOOLEAN
+    `the grantee had a reasonable opportunity earlier` IS A BOOLEAN
+    `imports harvested material from a non-protecting country` IS A BOOLEAN
+    `authorised by the grantee` IS A BOOLEAN
+    `done in Singapore` IS A BOOLEAN
+    `private and non-commercial` IS A BOOLEAN
+    `experimental or research` IS A BOOLEAN
+    `for breeding another variety` IS A BOOLEAN
+    `farm-saved under a prescribed exemption` IS A BOOLEAN
+    `material first sold in Singapore with consent` IS A BOOLEAN
+    `involves further propagation` IS A BOOLEAN
+    `exports propagable material to a non-protecting country, not for consumption` IS A BOOLEAN
+
+GIVEN `the conduct` IS A Conduct
+GIVETH A BOOLEAN
+DECIDE `the act is listed in section 28(1)` IF
+    CONSIDER `the conduct`'s `the act`
+    WHEN `displaying or consuming` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `the conduct` IS A Conduct
+GIVETH A BOOLEAN
+DECIDE `the material is covered` IF
+        `the conduct`'s `on propagating material`
+    OR  (`the conduct`'s `on harvested material from unauthorised propagation` AND (NOT `the conduct`'s `the grantee had a reasonable opportunity earlier`))
+
+GIVEN `the conduct` IS A Conduct
+GIVETH A BOOLEAN
+DECIDE `an exception applies` IF
+        `the conduct`'s `private and non-commercial`
+    OR  `the conduct`'s `experimental or research`
+    OR  `the conduct`'s `for breeding another variety`
+    OR  `the conduct`'s `farm-saved under a prescribed exemption`
+    OR  (    `the conduct`'s `material first sold in Singapore with consent`
+         AND (NOT `the conduct`'s `involves further propagation`)
+         AND (NOT `the conduct`'s `exports propagable material to a non-protecting country, not for consumption`))
+
+GIVEN `the conduct` IS A Conduct
+GIVETH A BOOLEAN
+DECIDE `the conduct infringes` IF
+        (NOT `the conduct`'s `authorised by the grantee`)
+    AND (NOT `an exception applies` `the conduct`)
+    AND (    (    `the act is listed in section 28(1)` `the conduct`
+              AND `the material is covered` `the conduct`
+              AND `the conduct`'s `done in Singapore`)
+         OR  `the conduct`'s `imports harvested material from a non-protecting country`)
+
+-- s 30(2): relief includes an injunction and "either damages or an account of profits". (3) additional damages for flagrancy.
+-- (4): where the defendant proves he "was not aware and had no reasonable grounds for supposing that it was an infringement", the
+-- claimant "is not entitled ... to any damages" but "is entitled instead to an account of profits". (5) other relief unaffected.
+GIVEN `infringement established` IS A BOOLEAN, `defendant proved innocence` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `damages are available` IF
+    `infringement established` AND (NOT `defendant proved innocence`)
+
+GIVEN `infringement established` IS A BOOLEAN, `defendant proved innocence` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `an account of profits is available` IF
+    `infringement established`
+
+§§ `34 -- compulsory licences`
+
+-- s 34(2): the Court may order a compulsory licence "if, and only if" satisfied it "is in the public interest"; (5) not to a person
+-- unable to show it can exploit the variety "in a manner acceptable to the Court"; (6) not unless the applicant "has first taken all
+-- reasonable steps to obtain authorisation from the grantee on reasonable commercial terms" and failed within a reasonable time.
+GIVEN `in the public interest` IS A BOOLEAN, `can exploit acceptably` IS A BOOLEAN, `first sought a licence and failed` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Court may grant a compulsory licence` IF
+    `in the public interest` AND `can exploit acceptably` AND `first sought a licence and failed`
+
+§§ `36(3) -- denominations the Registrar must refuse`
+
+-- s 36(3): the Registrar "must not approve or register" a denomination which (a) "consists solely of figures, except where this is an
+-- established practice"; (b) is likely to mislead or confuse about the variety or the breeder; (c) is contrary to law or public order
+-- or offensive; (d) or (e) is likely to cause confusion with another's trade mark or rights (or the applicant's own mark for other
+-- material).
+GIVEN `figures only` IS A BOOLEAN, `figures are established practice` IS A BOOLEAN, `misleading` IS A BOOLEAN,
+      `unlawful or offensive` IS A BOOLEAN, `confusable with a trade mark or other right` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Registrar must refuse the denomination` IF
+        (`figures only` AND (NOT `figures are established practice`))
+    OR  `misleading`
+    OR  `unlawful or offensive`
+    OR  `confusable with a trade mark or other right`
+
+§§ `10, 11, 44 to 46, 52 -- offences and composition`
+
+-- s 10(3), 11(2): failing to obey a summons or refusing to give evidence -- "a fine not exceeding $2,000 or ... imprisonment for a term
+-- not exceeding 3 months or ... both". s 44: falsifying the register, knowingly -- "$50,000 or ... 5 years or ... both". s 45: falsely
+-- representing a variety as protected, knowingly -- "a fine not exceeding $10,000" (no imprisonment). s 46: "wilfully or negligently"
+-- contravening s 37(1), (2) or (3) on denominations -- "a fine not exceeding $10,000".
+-- s 52(1): an offence PRESCRIBED as compoundable may be compounded for "a sum not exceeding the lower of" (a) "one half of the amount
+-- of the maximum fine" and (b) "$5,000". (Which offences are prescribed was not retrieved.)
+DECLARE Offence IS ONE OF
+    `disobeying a summons of the Registrar`
+    `refusing to give evidence`
+    `falsifying the register`
+    `falsely representing a variety as protected`
+    `misusing a denomination`
+
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+`the maximum fine` MEANS
+    CONSIDER `the offence`
+    WHEN `disobeying a summons of the Registrar` THEN 2000
+    WHEN `refusing to give evidence` THEN 2000
+    WHEN `falsifying the register` THEN 50000
+    OTHERWISE 10000
+
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+`the maximum imprisonment in months` MEANS
+    CONSIDER `the offence`
+    WHEN `disobeying a summons of the Registrar` THEN 3
+    WHEN `refusing to give evidence` THEN 3
+    WHEN `falsifying the register` THEN 60
+    OTHERWISE 0
+
+GIVEN `a` IS A NUMBER, `b` IS A NUMBER
+GIVETH A NUMBER
+`the lower of` MEANS
+    IF `a` LESS THAN `b` THEN `a` ELSE `b`
+
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+`the most a composition can collect` MEANS
+    `the lower of` (`the maximum fine` `the offence` DIVIDED BY 2) 5000
+
+§§ `48 -- appeals`
+
+-- s 48(1): "there is no appeal to the Court from a decision of the Registrar" except under (2) or rules. (2): appealable are decisions
+-- (a) to decline to make a grant, (b) to make a grant, (c) "approving or disapproving a proposed denomination". (Appeals provided for
+-- by rules were not retrieved.)
+DECLARE Decision IS ONE OF
+    `declining a grant`
+    `making a grant`
+    `approving or disapproving a denomination`
+    `cancelling a grant for an unpaid fee`
+    `awarding costs`
+
+GIVEN `the decision` IS A Decision
+GIVETH A BOOLEAN
+DECIDE `the Act gives an appeal to the Court` IF
+    CONSIDER `the decision`
+    WHEN `declining a grant` THEN TRUE
+    WHEN `making a grant` THEN TRUE
+    WHEN `approving or disapproving a denomination` THEN TRUE
+    OTHERWISE FALSE
