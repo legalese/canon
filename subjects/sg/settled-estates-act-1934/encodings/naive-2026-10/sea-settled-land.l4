@@ -1,0 +1,272 @@
+IMPORT prelude
+
+-- Settled Estates Act 1934 (Singapore) -- what land is a settled estate (s 2, s 3), the court's power to authorise sales and
+-- leases and the lease limits (ss 4 to 6, 8), who may apply (s 7), whose consent is needed and what happens to those who do not
+-- give it (ss 9 to 13), who may be heard (s 15(2)), who acts for a minor, a bankrupt or a person lacking capacity (s 16(2)), the
+-- separate examination of a married woman (s 17), conditions in leasing orders (s 24), and what sale money may be spent on
+-- (ss 27, 29(2)).
+--
+-- Edition: 2020 Revised Edition, informal consolidation (version in force from 1 April 2022), as deposited at
+-- ../../registers/source-bundle/SEA1934.txt. The revised edition "incorporates all amendments up to and including 1 December
+-- 2021"; the latest amendment annotated in the body is Act 25 of 2021, in force 1 April 2022, against s 15(2).
+--
+-- WHY THIS ACT. Requirement REQ-0041 in ../../../requirements.jsonl: Tier 2 of the remaining Singapore Acts, ordered by
+-- everyday-life relevance. The requirement asks what the Act decides for a person or business it applies to; no scenario has
+-- asked a sharper question yet. The Act is short (32 sections), so most of it is in scope. Not encoded: s 3(2) (facts at the
+-- date the settlement took effect), the conduct of sales and the conveyance (s 4(1), (3) to (5)), lease covenants and preliminary
+-- contracts (s 5(5), (6)), service of notice on trustees and newspaper notice (ss 14, 15(1)), who examines a married woman
+-- (ss 18, 19), the mechanics of approving leases and vesting leasing powers (ss 20 to 23, 25, 26), the trustees' route to apply
+-- money (s 28), interim investment (s 29(1)), money paid for limited interests (s 30), the counterpart presumption (s 31), and
+-- costs (s 32). Every power of the court in this Act is a discretion; the encoding takes the court's satisfaction as a given fact.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Settled Estates Act 1934 -- settled land`
+
+§§ `2 -- settled estates`
+
+-- s 2: "settled estates" (a) "means all immovable property and all estates or interests therein, which are the subject of a
+-- settlement"; and (b) "includes any immovable property of or to which a minor is seised or entitled in his own right other than a
+-- lease not exceeding 3 years which is executed by a minor who has attained the age of 18 years as a principal".
+-- "settlement" means any statute, deed, agreement, will or other instrument under which immovable property stands "limited to, or
+-- in trust for, any person or persons, by way of succession".
+GIVEN `held under a settlement` IS A BOOLEAN,
+      `a minor is entitled in his own right` IS A BOOLEAN,
+      `it is a lease the minor executed as principal` IS A BOOLEAN,
+      `lease term in years` IS A NUMBER,
+      `the minor's age when executing` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the property is a settled estate` IF
+        `held under a settlement`
+    OR  (    `a minor is entitled in his own right`
+         AND NOT (    `it is a lease the minor executed as principal`
+                  AND `lease term in years` AT MOST 3
+                  AND `the minor's age when executing` AT LEAST 18))
+
+§§ `4 to 6, 8 -- authorising a sale or lease`
+
+-- s 4(1): the court or a judge, "if it is considered proper and consistent with due regard for the interests of all parties entitled
+-- under the settlement", may authorise a sale of the whole or any part of any settled estates.
+-- s 5(1): leases may be authorised "not exceeding 99 years for building or repairing leases, or for leases for other purposes in
+-- cases where the court or judge considers that a lease for 21 years is not sufficient, or 21 years for other leases".
+-- s 5(2): "there shall be reserved the best rent ... that can be reasonably obtained without taking any fine or other benefit in the
+-- nature of a fine". s 5(4): "Every such lease shall be by deed, and the lessee shall execute a counterpart thereof."
+-- s 6: the court "shall not authorise any sale or other act beyond the extent to which ... the same might have been authorised in
+-- and by the settlement, by the settlor or settlors".
+-- s 8(1): the court "shall be satisfied by sufficient evidence" that exercising the powers is proper; (2) the affidavit must say why.
+DECLARE `Lease purpose` IS ONE OF
+    `a building lease`
+    `a repairing lease`
+    `another purpose for which 21 years is not sufficient`
+    `any other purpose`
+
+GIVEN `the purpose` IS A `Lease purpose`
+GIVETH A NUMBER
+`the longest lease the court may authorise in years` MEANS
+    CONSIDER `the purpose`
+    WHEN `any other purpose` THEN 21
+    OTHERWISE 99
+
+GIVEN `court satisfied on affidavit evidence that it is proper` IS A BOOLEAN,
+      `the settlor could have authorised it` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may authorise the sale` IF
+    `court satisfied on affidavit evidence that it is proper` AND `the settlor could have authorised it`
+
+GIVEN `the purpose` IS A `Lease purpose`,
+      `term in years` IS A NUMBER,
+      `court satisfied on affidavit evidence that it is proper` IS A BOOLEAN,
+      `the settlor could have authorised it` IS A BOOLEAN,
+      `a fine is taken` IS A BOOLEAN,
+      `the lease is by deed with a counterpart` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may authorise the lease` IF
+        `term in years` AT MOST `the longest lease the court may authorise in years` `the purpose`
+    AND `court satisfied on affidavit evidence that it is proper`
+    AND `the settlor could have authorised it`
+    AND (NOT `a fine is taken`)
+    AND `the lease is by deed with a counterpart`
+
+§§ `7 -- who may apply`
+
+-- s 7: by or on behalf of (a) "any person entitled to the possession, or to the receipt of the rents and profits, of any settled
+-- estates for a term of years determinable on his death, or for an estate for life, or any greater estate"; (b) such a person's
+-- assignee; or (c) "any trustees for any such person".
+-- A remainderman is not "entitled to the possession, or to the receipt of the rents and profits" while the prior interest lasts, and
+-- a lessee for a fixed term is not entitled for a term "determinable on his death" (both read from the words of s 7).
+DECLARE Applicant IS ONE OF
+    `a life tenant in possession`
+    `a person entitled for a term of years ending on his death`
+    `an owner of a greater estate in possession`
+    `an assignee of a life tenant`
+    `trustees for a life tenant`
+    `a remainderman awaiting the life tenant's death`
+    `a lessee for a fixed term of years`
+    `a neighbour with no interest`
+
+GIVEN `the applicant` IS AN Applicant
+GIVETH A BOOLEAN
+DECIDE `may apply under the Act` IF
+    CONSIDER `the applicant`
+    WHEN `a remainderman awaiting the life tenant's death` THEN FALSE
+    WHEN `a lessee for a fixed term of years` THEN FALSE
+    WHEN `a neighbour with no interest` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `3, 9 -- whose concurrence or consent is sought`
+
+-- s 9: "The parties to concur or consent shall be all the persons in existence having any beneficial estate or interest under or by
+-- virtue of the settlement, and also all trustees having any estate or interest on behalf of any unborn child."
+-- s 3(1): remainders or reversions "not disposed of by a settlement, and reverting to the settlor, or descending to the next-of-kin
+-- of a testator, shall be deemed to be estates coming to such settlor or next-of-kin, under or by virtue of the settlement".
+-- Other trustees are not named in s 9; s 14 requires notice to be served on them instead (not encoded).
+DECLARE Person IS ONE OF
+    `a living beneficiary`
+    `trustees for an unborn child`
+    `an unborn child`
+    `a settlor keeping an undisposed reversion`
+    `a testator's next-of-kin taking an undisposed reversion`
+    `a settlor who gave everything away`
+    `trustees for adult beneficiaries only`
+
+GIVEN `the person` IS A Person
+GIVETH A BOOLEAN
+DECIDE `is a party whose consent is sought` IF
+    CONSIDER `the person`
+    WHEN `an unborn child` THEN FALSE
+    WHEN `a settlor who gave everything away` THEN FALSE
+    WHEN `trustees for adult beneficiaries only` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `10 to 13 -- parties who do not consent`
+
+-- s 10(1): a non-consenting party is given notice requiring him to say, within the stated time, whether he assents, dissents or
+-- "submits his rights or interests ... to be dealt with by the court". (3): if no notification is delivered in time he "shall be
+-- deemed to have submitted his rights and interests to be dealt with by the court or judge".
+-- s 11: where the person "cannot be found", or "it is uncertain whether he is living or dead", or notice "cannot be given ... without
+-- expense disproportionate to the value of the subject matter", the court "may by order dispense with notice", and the person
+-- "shall thereupon be deemed to have submitted".
+-- s 12(1): an order may be made "notwithstanding that the concurrence or consent ... has not been obtained, or has been refused";
+-- (3) it has "the same effect as if all such persons had been consenting parties thereto".
+-- s 13: the court may give effect to the application "subject to and so as not to affect the rights" of anyone who refused, who
+-- has not submitted and is not deemed to have submitted, or "whose rights, estate or interests ought in the opinion of the court to
+-- be excepted".
+DECLARE Response IS ONE OF
+    `consented`
+    `submitted to the court`
+    `dissented`
+    `did not reply within the time`
+    `notice dispensed with`
+    `still within the time to reply`
+
+GIVEN `the response` IS A Response
+GIVETH A BOOLEAN
+DECIDE `has submitted or is deemed to have submitted` IF
+    CONSIDER `the response`
+    WHEN `submitted to the court` THEN TRUE
+    WHEN `did not reply within the time` THEN TRUE
+    WHEN `notice dispensed with` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN `cannot be found` IS A BOOLEAN,
+      `uncertain whether living or dead` IS A BOOLEAN,
+      `notice would cost more than the matter warrants` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may dispense with notice` IF
+    `cannot be found` OR `uncertain whether living or dead` OR `notice would cost more than the matter warrants`
+
+GIVEN `the response` IS A Response, `the court thinks the interest ought to be excepted` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may save the party's rights from the order` IF
+        `the court thinks the interest ought to be excepted`
+    OR  CONSIDER `the response`
+        WHEN `consented` THEN FALSE
+        OTHERWISE NOT `has submitted or is deemed to have submitted` `the response`
+
+§§ `15(2) -- who may be heard`
+
+-- s 15(2): "Any person or body corporate, whether interested in the estate or not, may apply to the court or a judge by summons for
+-- permission to be heard in opposition to or in support of any application". (3): the court "may permit" it.
+GIVEN `interested in the estate` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `may apply for permission to be heard` IF
+    `interested in the estate` OR NOT `interested in the estate`
+
+§§ `16(2) -- who gives or receives notices for a party`
+
+-- s 16(2): notices may be given by or to (a) "guardians on behalf of minors"; (b) "the Official Assignee on behalf of bankrupts";
+-- (c) for an individual who lacks capacity within the meaning of the Mental Capacity Act 2008, a donee of a lasting power of attorney,
+-- or a deputy, in either case only one who has authority or power "to make decisions in relation to that individual for the purposes
+-- of this Act".
+DECLARE Party IS ONE OF
+    `a minor`
+    `a bankrupt`
+    `a person lacking capacity with an LPA covering this Act`
+    `a person lacking capacity with a deputy empowered for this Act`
+    `a person lacking capacity whose donee or deputy lacks that authority`
+
+DECLARE Representative IS ONE OF
+    `a guardian`
+    `the Official Assignee`
+    `the donee of the lasting power of attorney`
+    `the deputy`
+    `no one named in section 16(2)`
+
+GIVEN `the party` IS A Party
+GIVETH A Representative
+`who gives or receives notices for the party` MEANS
+    CONSIDER `the party`
+    WHEN `a minor` THEN `a guardian`
+    WHEN `a bankrupt` THEN `the Official Assignee`
+    WHEN `a person lacking capacity with an LPA covering this Act` THEN `the donee of the lasting power of attorney`
+    WHEN `a person lacking capacity with a deputy empowered for this Act` THEN `the deputy`
+    OTHERWISE `no one named in section 16(2)`
+
+§§ `17 -- married women`
+
+-- s 17(1): "In cases where a married woman applies to the court or a judge, or consents to an application ... she shall first be
+-- examined apart from her husband ... touching her knowledge of the nature and effect of the application, and it shall be
+-- ascertained that she freely desires to make or consent to the application."
+-- (2): this applies "whether the property is her separate property under any special Act or not". No corresponding examination of
+-- a married man is provided anywhere in the Act.
+GIVEN `is a married woman` IS A BOOLEAN,
+      `applies or consents` IS A BOOLEAN,
+      `the property is her separate property` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `must first be examined apart from her husband` IF
+    `is a married woman` AND `applies or consents`
+
+§§ `24 -- conditions in leasing orders`
+
+-- s 24: in orders vesting powers of leasing in trustees "no conditions shall be inserted requiring that the leases ... should be
+-- submitted to or be settled by the court ... or be made conformable with a model lease ... save only" where the applicants
+-- "desire to have any such condition inserted", or there is "some special reason rendering the insertion of such a condition
+-- necessary or expedient".
+GIVEN `the applicants want the condition` IS A BOOLEAN, `there is a special reason` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a court-settlement condition may be inserted` IF
+    `the applicants want the condition` OR `there is a special reason`
+
+§§ `27, 29(2) -- what sale money and rents may be spent on`
+
+-- s 27: sale moneys or lease rents may be paid to approved trustees or into court and "applied as the judge from time to time
+-- directs" to (a) "the discharge or redemption of any incumbrance" on that property or on other property under the same settlement;
+-- (b) "the permanent improvement of any immovable property subject to such settlement"; (c) "the purchase of other immovable
+-- property to be settled in the same manner"; (d) "the payment to any person becoming absolutely entitled".
+-- s 29(2): until then, the income of the investments "shall be paid to the person who would have been entitled to the rents and
+-- profits of the immovable property" -- the capital is not his to spend.
+DECLARE Use IS ONE OF
+    `paying off a mortgage on the land sold`
+    `paying off a mortgage on other land in the same settlement`
+    `a permanent improvement to settled land`
+    `buying other land to hold on the same trusts`
+    `paying someone who has become absolutely entitled`
+    `the life tenant's living expenses out of capital`
+
+GIVEN `the use` IS A Use
+GIVETH A BOOLEAN
+DECIDE `the judge may direct the money to the use` IF
+    CONSIDER `the use`
+    WHEN `the life tenant's living expenses out of capital` THEN FALSE
+    OTHERWISE TRUE
