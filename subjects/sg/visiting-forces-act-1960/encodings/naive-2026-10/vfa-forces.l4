@@ -1,0 +1,287 @@
+IMPORT prelude
+
+-- Visiting Forces Act 1960 (Singapore) -- who counts as connected with a visiting force (ss 2, 4, 5), whose service courts may
+-- exercise jurisdiction here (s 6), when a Singapore prosecution may go ahead (s 7), custody after arrest (s 9), claims the courts
+-- will not hear (s 10), death inquiries and removal of bodies (s 11), the weight of certificates (ss 14, 16, 18), deserters (s 15)
+-- and attachment of Singapore personnel (s 17).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/VFA1960.txt. The deposit says
+-- it "incorporates all amendments up to and including 1 December 2021 and comes into operation on 31 December 2021"; no later
+-- amendment is annotated in the text.
+--
+-- WHY THIS ACT. Cited by 6 of the 527 Singapore Acts deposited in this repository. SCOPED to the provisions with decision content
+-- for a person, a police officer, a prosecutor, a coroner or a court. Not encoded: the President's orders designating countries and
+-- modifying the Act (s 3), the power to extend Singapore-forces law to visiting forces (s 12), claims settlement arrangements (s 13),
+-- the passport presumptions (s 14(3)), mutual powers of command (s 17(2)-(4)) and the identity presumptions of s 18(2), (3). Which
+-- countries are designated, and what any treaty says about primary jurisdiction, lies outside the deposit.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Visiting Forces Act 1960`
+
+§§ `2 -- dependants and reservists`
+
+-- s 2(1): "dependant", in relation to a member of a force or civilian component, means a person who is "not ordinarily resident in
+-- Singapore" and who is (a) the wife or husband of any such member; (b) wholly or mainly maintained or employed by any such member;
+-- or (c) in the custody, charge or care, or forms part of the family, of any such member.
+-- s 2(5): time spent in Singapore as a member, civilian or dependant does not count towards ordinary residence.
+GIVEN `ordinarily resident in Singapore` IS A BOOLEAN,
+      `spouse of the member` IS A BOOLEAN,
+      `wholly or mainly maintained or employed by the member` IS A BOOLEAN,
+      `in the member's care or part of the family` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `is a dependant` IF
+        (NOT `ordinarily resident in Singapore`)
+    AND (    `spouse of the member`
+          OR `wholly or mainly maintained or employed by the member`
+          OR `in the member's care or part of the family`)
+
+-- s 2(2): a member of a reserve or auxiliary force is deemed a member of that country's forces "so long as, but only so long as, he
+-- is called into actual service ... or is called out for training".
+GIVEN `called into actual service` IS A BOOLEAN, `called out for training` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a reservist counts as a member` IF
+    `called into actual service` OR `called out for training`
+
+§§ `4 -- member of a civilian component (Part 2)`
+
+-- s 4(1): a person "for the time being fulfilling all the following conditions": (a) holds a passport issued by a government, "not
+-- being a passport issued by the passport authorities of Singapore"; (b) the passport contains an uncancelled entry by the
+-- appropriate authority of the sending country stating that he is a member of a civilian component; (c) the passport contains a
+-- note of recognition of that entry by the Minister for immigration "which has not been cancelled and as respects which no
+-- notification in writing has been given ... stating that the recognition is withdrawn".
+GIVEN `holds a non-Singapore passport` IS A BOOLEAN,
+      `passport has an uncancelled sending-country entry` IS A BOOLEAN,
+      `passport has a note of recognition` IS A BOOLEAN,
+      `recognition cancelled` IS A BOOLEAN,
+      `withdrawal of recognition notified in writing` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `is a member of a civilian component` IF
+        `holds a non-Singapore passport`
+    AND `passport has an uncancelled sending-country entry`
+    AND `passport has a note of recognition`
+    AND (NOT `recognition cancelled`)
+    AND (NOT `withdrawal of recognition notified in writing`)
+
+§§ `5 -- relevant association (Part 2)`
+
+-- s 5: a relevant association means being (a) "a member of that visiting force or a member of a civilian component of that force";
+-- or (b) "a person (not being a citizen of Singapore or ordinarily resident in Singapore) being a dependant" of such a member.
+DECLARE Connection IS ONE OF
+    `a member of the visiting force`
+    `a member of its civilian component`
+    `a dependant of a member`
+    `no connection`
+
+GIVEN `the connection` IS A Connection, `citizen of Singapore` IS A BOOLEAN, `ordinarily resident here` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `has a relevant association` IF
+    CONSIDER `the connection`
+    WHEN `a member of the visiting force` THEN TRUE
+    WHEN `a member of its civilian component` THEN TRUE
+    WHEN `a dependant of a member` THEN (NOT `citizen of Singapore`) AND (NOT `ordinarily resident here`)
+    OTHERWISE FALSE
+
+§§ `6 -- service courts sitting in Singapore`
+
+-- s 6(1): the service courts and service authorities of a designated country "may within Singapore ... exercise over persons subject
+-- to their jurisdiction ... all such powers as are exercisable by them according to the law of that country".
+-- s 6(2): those persons are (a) "members of any visiting force of that country"; (b) persons "not being citizens of Singapore"
+-- seconded or attached to the Singapore Armed Forces under a treaty, whose terms of service subject them to that jurisdiction; and
+-- (c) all other persons "being neither citizens of Singapore nor ordinarily resident in Singapore" subject to that country's service
+-- law otherwise than as members. Proviso: a person is NOT treated as a member of a visiting force if he became (or last became) a
+-- member "at a time when he was in Singapore, unless it is shown that he then became a member of those forces with his consent".
+-- Paragraph (a) carries no citizenship condition.
+DECLARE ServiceStatus IS ONE OF
+    `serving in the visiting force`
+    `attached to the Singapore Armed Forces under a treaty`
+    `otherwise subject to the service law`
+    `not subject to the service law`
+
+GIVEN `the status` IS A ServiceStatus,
+      `a Singapore citizen` IS A BOOLEAN,
+      `ordinarily resident` IS A BOOLEAN,
+      `joined the force while in Singapore` IS A BOOLEAN,
+      `consent to joining shown` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `is subject to the service courts' jurisdiction` IF
+    CONSIDER `the status`
+    WHEN `serving in the visiting force` THEN NOT (`joined the force while in Singapore` AND (NOT `consent to joining shown`))
+    WHEN `attached to the Singapore Armed Forces under a treaty` THEN NOT `a Singapore citizen`
+    WHEN `otherwise subject to the service law` THEN (NOT `a Singapore citizen`) AND (NOT `ordinarily resident`)
+    OTHERWISE FALSE
+
+-- s 6(4): "a sentence of death passed by a service court ... shall not be carried out in Singapore unless under the law of Singapore
+-- a sentence of death could have been passed in a similar case."
+GIVEN `Singapore law could have imposed death in a similar case` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a service court death sentence may be carried out in Singapore` IF
+    `Singapore law could have imposed death in a similar case`
+
+§§ `7 -- prosecution in a Singapore court`
+
+-- s 7(1): "No prosecution for an offence alleged to have been committed by a member of a visiting force shall be instituted in any
+-- court of Singapore unless" the Public Prosecutor certifies either (a) that Singapore has exclusive or primary jurisdiction under a
+-- treaty and has not waived it; or (b) that the service authorities have the primary right but it has been waived by them or by
+-- their government. s 14(6): the certificate is "conclusive evidence of the facts stated therein".
+DECLARE PrimaryRight IS ONE OF
+    `Singapore has exclusive or primary jurisdiction`
+    `the service authorities have primary jurisdiction`
+
+GIVEN `who holds the right` IS A PrimaryRight, `Singapore waived` IS A BOOLEAN, `the service side waived` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Public Prosecutor can certify` IF
+    CONSIDER `who holds the right`
+    WHEN `Singapore has exclusive or primary jurisdiction` THEN NOT `Singapore waived`
+    WHEN `the service authorities have primary jurisdiction` THEN `the service side waived`
+
+-- s 7(2): a person tried by a service court under s 6(1) powers duly exercised under a treaty "shall not be tried for the same
+-- offence by any court of Singapore". s 7(3): the President may extend s 7(1) by order to other persons with a relevant association.
+-- s 7(4): arrest, warrant and remand may proceed without a certificate, "but the case shall not be further prosecuted until such a
+-- certificate has been given".
+GIVEN `a member of a visiting force` IS A BOOLEAN,
+      `brought within s 7(1) by Presidential order` IS A BOOLEAN,
+      `the Public Prosecutor has certified` IS A BOOLEAN,
+      `already tried by a service court for the same offence` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Singapore prosecution may proceed` IF
+        (NOT `already tried by a service court for the same offence`)
+    AND (    `the Public Prosecutor has certified`
+          OR (     (NOT `a member of a visiting force`)
+               AND (NOT `brought within s 7(1) by Presidential order`)))
+
+§§ `9 -- custody after arrest by the police`
+
+-- s 9(2): where a person to whom the section applies is taken into custody by a police officer and not released, and (a) "it is
+-- apparent that he has a relevant association with a visiting force", he "shall as soon as practicable thereafter, be delivered or
+-- remanded into the custody of a service authority"; or (b) it is not apparent but there are reasonable grounds for believing that he
+-- is subject to the service courts' jurisdiction, "he may be detained in custody for a period not exceeding 24 hours; but if within
+-- that period he is not delivered into the custody of a service authority ... he shall be released on bail or brought before a
+-- Magistrate".
+DECLARE CustodyOutcome IS ONE OF
+    `deliver to the service authority as soon as practicable`
+    `may hold up to 24 hours to decide`
+    `ordinary Singapore procedure`
+
+GIVEN `association apparent` IS A BOOLEAN, `reasonable grounds to believe subject to service courts` IS A BOOLEAN
+GIVETH A CustodyOutcome
+DECIDE `what the police do with the arrested person` IS
+    IF `association apparent`
+    THEN `deliver to the service authority as soon as practicable`
+    ELSE IF `reasonable grounds to believe subject to service courts`
+         THEN `may hold up to 24 hours to decide`
+         ELSE `ordinary Singapore procedure`
+
+GIVETH A NUMBER
+DECIDE `the maximum hours of holding to decide` IS 24
+
+GIVEN `hours held` IS A NUMBER, `delivered to the service authority` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `must now be bailed or brought before a Magistrate` IF
+    (NOT `delivered to the service authority`) AND `hours held` > `the maximum hours of holding to decide`
+
+§§ `10 -- claims the Singapore courts will not entertain`
+
+-- s 10: "No proceedings shall be entertained by any court of Singapore with regard to the pay of any person in respect of service as a
+-- member of a visiting force or as a member of a civilian component of such a force, with regard to the terms of such service or with
+-- regard to a person's discharge from such service."
+DECLARE ClaimSubject IS ONE OF
+    `pay for service with the force`
+    `the terms of that service`
+    `discharge from that service`
+    `injury in a road accident`
+    `an unpaid private debt`
+
+GIVEN `the claim` IS A ClaimSubject
+GIVETH A BOOLEAN
+DECIDE `a Singapore court may entertain the claim` IF
+    CONSIDER `the claim`
+    WHEN `pay for service with the force` THEN FALSE
+    WHEN `the terms of that service` THEN FALSE
+    WHEN `discharge from that service` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `11 -- death inquiries and removal of bodies`
+
+-- s 11(1): if the Magistrate or Coroner is satisfied the deceased had a relevant association with a visiting force, "then unless the
+-- Minister otherwise directs" he "shall not hold the inquiry or, if the inquiry has been begun but not completed, shall adjourn" it.
+-- s 11(2): likewise, unless the Minister otherwise directs, he shall adjourn if a person subject to the service courts "has been charged
+-- before a court of that country with causing the death", or is being detained with a view to being so charged.
+GIVEN `deceased had a relevant association` IS A BOOLEAN,
+      `someone charged before a service court with causing the death` IS A BOOLEAN,
+      `someone detained with a view to such a charge` IS A BOOLEAN,
+      `the Minister directs otherwise` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the inquiry must not proceed` IF
+        (NOT `the Minister directs otherwise`)
+    AND (    `deceased had a relevant association`
+          OR `someone charged before a service court with causing the death`
+          OR `someone detained with a view to such a charge`)
+
+-- s 11(4): any law restricting removal of a body out of Singapore "shall not apply to the body of a person who at the time of his death
+-- had a relevant association with a visiting force"; (5) except where, by a Minister's direction under (1) or (3), an inquiry is
+-- required to be held or resumed.
+GIVEN `the deceased had a relevant association` IS A BOOLEAN, `the Minister has required an inquiry` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the body may be removed free of the usual restrictions` IF
+    `the deceased had a relevant association` AND (NOT `the Minister has required an inquiry`)
+
+§§ `14, 16, 18 -- what certificates prove`
+
+-- s 14(1): an appropriate authority's certificate that a person was or was not a member of a visiting force is "sufficient evidence ...
+-- unless the contrary is proved". s 14(2): a certificate of a service court sentence, of detention, or of trial is "conclusive evidence".
+-- s 14(4): a passport entry that a person is a dependant is "sufficient evidence ... unless the contrary is proved". s 14(5): a
+-- certificate that an alleged offence "arose out of and in the course of his duty" is "sufficient evidence ... unless the contrary is
+-- proved". s 14(6): the Public Prosecutor's s 7(1) certificate is "conclusive evidence". s 16(b): a commanding officer's certificate that a
+-- person is a deserter or absentee is "sufficient evidence, unless the contrary is proved". s 18(1)(a): a certificate that a body of forces
+-- is or was present in Singapore is "conclusive evidence".
+DECLARE Certificate IS ONE OF
+    `membership of a visiting force`
+    `a service court sentence, detention or trial`
+    `a passport entry naming a dependant`
+    `an offence arising in the course of duty`
+    `the Public Prosecutor's section 7 certificate`
+    `a deserter or absentee`
+    `presence of the force in Singapore`
+
+DECLARE Weight IS ONE OF
+    `conclusive`
+    `sufficient unless the contrary is proved`
+
+GIVEN `the certificate` IS A Certificate
+GIVETH A Weight
+DECIDE `the weight of the certificate` IS
+    CONSIDER `the certificate`
+    WHEN `a service court sentence, detention or trial` THEN `conclusive`
+    WHEN `the Public Prosecutor's section 7 certificate` THEN `conclusive`
+    WHEN `presence of the force in Singapore` THEN `conclusive`
+    OTHERWISE `sufficient unless the contrary is proved`
+
+§§ `15 -- deserters from a foreign force`
+
+-- s 15(1): the Singapore Armed Forces Act 1972 provisions on apprehending deserters and absentees "apply in relation to deserters and
+-- absentees without leave from the forces of any country to which this section applies"; (2) the powers "shall not be exercised in
+-- relation to a person except in compliance with a request (whether specific or general) of the appropriate authority of the country to
+-- which he belongs".
+GIVEN `the country is designated for s 15` IS A BOOLEAN, `its appropriate authority has requested` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the deserter may be apprehended` IF
+    `the country is designated for s 15` AND `its appropriate authority has requested`
+
+§§ `17 -- lending Singapore personnel to a foreign force`
+
+-- s 17(1)(b): the Armed Forces Council, "subject to anything to the contrary in the conditions applicable to his service", may place a
+-- member of a Singapore force at the disposal of a designated country's service authorities, "except that the power ... shall not be
+-- exercisable in relation to any person without his consent".
+GIVEN `the member consents` IS A BOOLEAN, `conditions of service forbid it` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a Singapore serviceman may be placed at a foreign force's disposal` IF
+    `the member consents` AND (NOT `conditions of service forbid it`)
+
+-- s 17(5): forces are deemed to be serving together or acting in combination "if and only if they are declared to be so serving or so
+-- acting by order of the President".
+GIVEN `declared by Presidential order` IS A BOOLEAN, `exercising side by side in fact` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the forces are serving together` IF
+    `declared by Presidential order`
