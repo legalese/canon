@@ -1,0 +1,241 @@
+IMPORT prelude
+
+-- Apostille Act 2020 (Singapore) -- which foreign documents escape legalisation and when an apostille may be demanded for them
+-- (ss 2, 5-13), which Singapore documents can be apostilled, by whom, and when the authority must or may refuse (ss 14-17 and the
+-- Second Schedule).
+--
+-- Edition: 2020 Revised Edition, as deposited at ../../registers/source-bundle/AA2020.txt. The deposit says the revised edition
+-- "incorporates all amendments up to and including 1 December 2021" and came into operation on 31 December 2021; its legislative
+-- history lists only Act 38 of 2020 (commencement 20 January 2021 for s 21(2), 16 September 2021 for the rest). Section 21 is
+-- "Omitted as having had effect" in the revised edition. No later amendment is annotated in the deposit.
+--
+-- WHY THIS ACT. Requirement REQ-0048 in ../../../requirements.jsonl: Tier 2 of the remaining Singapore Acts, ordered by
+-- everyday-life relevance. The requirement asks what the Act decides for a person or business it applies to; no scenario has asked
+-- a sharper question yet. A person who brings a foreign birth certificate, degree or power of attorney into Singapore, or who needs
+-- a Singapore document accepted abroad, meets this Act.
+--
+-- NOT ENCODED: s 5 (application -- "any purpose" is assumed); the s 10 test of whether a purported certificate really is a
+-- Convention certificate beyond two flags; the register of certificates and its verification (s 18); the Minister's powers (ss 19,
+-- 20); the Convention text in the First Schedule except where compared with ss 6 and 14; and every matter left to regulations
+-- ("prescribed" documents, information, fees and grounds), none of which was retrieved. Each prescribed matter is an input flag.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules conventions of the example rows. No pipeline, no
+-- coverage table, no independent test pass, no human gate. See NOTES.md.
+
+§ `Apostille Act 2020 -- documents`
+
+-- The categories of ss 6(a)(i) and 14(a)(i) are the same four: (A) documents from an authority or official connected with the
+-- courts or tribunals; (B) "an administrative document"; (C) "a notarial act"; (D) "an official certificate that is placed on a
+-- document signed by a person in his or her private capacity". The Convention, Article 1, further says it "shall not apply ... (b)
+-- to administrative documents dealing directly with commercial or customs operations". Neither s 6 nor s 14 repeats that exclusion,
+-- so a commercial or customs administrative document is here treated as category (B). That reading is the text's, not a court's.
+DECLARE Category IS ONE OF
+    `a court or tribunal document`
+    `an administrative document`
+    `a commercial or customs administrative document`
+    `a notarial act`
+    `an official certificate on a privately signed document`
+    `a privately signed document with no official certificate`
+
+GIVEN `the category` IS A Category
+GIVETH A BOOLEAN
+DECIDE `the category is a listed public category` IF
+    CONSIDER `the category`
+    WHEN `a privately signed document with no official certificate` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `2 -- Convention State`
+
+-- s 2: "Convention State" means a State Party to the Convention "other than Singapore", but does not include (a) any State Party
+-- that objected to Singapore's accession; and (b) any State Party whose accession Singapore objected to.
+DECLARE State HAS
+    `is a State Party to the Convention` IS A BOOLEAN
+    `is Singapore` IS A BOOLEAN
+    `objected to Singapore's accession` IS A BOOLEAN
+    `Singapore objected to its accession` IS A BOOLEAN
+
+GIVEN `the State` IS A State
+GIVETH A BOOLEAN
+DECIDE `the State is a Convention State` IF
+        `the State`'s `is a State Party to the Convention`
+    AND (NOT `the State`'s `is Singapore`)
+    AND (NOT `the State`'s `objected to Singapore's accession`)
+    AND (NOT `the State`'s `Singapore objected to its accession`)
+
+§§ `6 -- foreign public document`
+
+-- s 6: "foreign public document" (a) means (i) a document executed in the territory of a Convention State and falling within
+-- categories (A) to (D); or (ii) a document "(including a document that is not signed, sealed or stamped)" that emanates from a
+-- Convention State and "is treated as a public document by the law of that State"; but (b) "does not include a document executed by
+-- a diplomatic or consular agent". The encoding assumes the State of execution and the State of emanation are the same State.
+DECLARE `Foreign Document` HAS
+    `State` IS A State
+    `category` IS A Category
+    `treated as public by the law of that State` IS A BOOLEAN
+    `executed by a diplomatic or consular agent` IS A BOOLEAN
+
+GIVEN `the document` IS A `Foreign Document`
+GIVETH A BOOLEAN
+DECIDE `the document is a foreign public document` IF
+        `the State is a Convention State` (`the document`'s `State`)
+    AND (NOT `the document`'s `executed by a diplomatic or consular agent`)
+    AND (    `the category is a listed public category` (`the document`'s `category`)
+         OR  `the document`'s `treated as public by the law of that State`)
+
+§§ `8, 9 -- legalisation barred`
+
+-- s 8: legalisation is "the formality by which the diplomatic or consular agents of Singapore certify the origin" of a foreign public
+-- document. s 9(1): "Legalisation is not required, and may not be performed, in relation to a foreign public document"; (2) "despite
+-- any written law or rule of law to the contrary". The Act says nothing about legalisation of any other document.
+GIVEN `the document` IS A `Foreign Document`
+GIVETH A BOOLEAN
+DECIDE `legalisation may not be required or performed` IF
+    `the document is a foreign public document` `the document`
+
+§§ `10, 11 -- effect of an apostille`
+
+-- s 10: a "Convention certificate" is issued (a) to certify the document for the purposes of the Convention; and (b) by an authority
+-- that, at the time of issue, is designated by the State concerned as competent.
+GIVEN `issued to certify for the Convention` IS A BOOLEAN, `issuer designated as competent at the time` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the certificate is a Convention certificate` IF
+    `issued to certify for the Convention` AND `issuer designated as competent at the time`
+
+-- s 11(2): where a purported Convention certificate is placed on or attached to a purported foreign public document, "the origin of
+-- the certified document is presumed to be sufficiently proven". (3): not (a) if the contrary is proven; (b) if it is proven the
+-- document is not a foreign public document; (c) if it is proven the certificate is not a Convention certificate; or (d) if, and to
+-- the extent that, it is proven that the certificate suffers from a listed defect -- (A) not in, or substantially in, the form of the
+-- Model Certificate; (B) required information omitted; (C) damaged, tampered with or modified; (D) no longer placed on or attached
+-- to the document -- AND "the defect affects the authenticity or reliability" of the certificate. "To the extent that" is reduced to
+-- a yes/no here.
+DECLARE Challenge HAS
+    `a purported apostille is placed on or attached` IS A BOOLEAN
+    `the contrary is proven` IS A BOOLEAN
+    `proven not a foreign public document` IS A BOOLEAN
+    `proven not a Convention certificate` IS A BOOLEAN
+    `a listed defect is proven` IS A BOOLEAN
+    `the defect affects authenticity or reliability` IS A BOOLEAN
+
+GIVEN `the challenge` IS A Challenge
+GIVETH A BOOLEAN
+DECIDE `origin is presumed sufficiently proven` IF
+        `the challenge`'s `a purported apostille is placed on or attached`
+    AND (NOT `the challenge`'s `the contrary is proven`)
+    AND (NOT `the challenge`'s `proven not a foreign public document`)
+    AND (NOT `the challenge`'s `proven not a Convention certificate`)
+    AND (NOT (`the challenge`'s `a listed defect is proven` AND `the challenge`'s `the defect affects authenticity or reliability`))
+
+§§ `12 -- may an apostille be demanded`
+
+-- s 12(1): a person proving the origin of a foreign public document "(a) is not required to do so by means of a Convention
+-- certificate; and (b) is not required to comply with any more rigorous formality". (2): for a "specified foreign public document"
+-- the person "(a) may be required to do so by means of a Convention certificate; but (b) is not required to comply with any more
+-- rigorous formality". (3): despite any written law or rule of law to the contrary. (4): a "specified foreign public document" is
+-- one in (a) "any class of documents for which legalisation is or may be required by or under any written law or any practice
+-- before the date of Singapore's accession"; or (b) "any class of documents that did not exist before" that date.
+DECLARE Formality IS ONE OF
+    `no particular formality`
+    `an apostille`
+    `whatever other law requires -- this Act is silent`
+
+GIVEN `the document` IS A `Foreign Document`, `class needed legalisation before accession` IS A BOOLEAN, `class did not exist before accession` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the document is a specified foreign public document` IF
+        `the document is a foreign public document` `the document`
+    AND (`class needed legalisation before accession` OR `class did not exist before accession`)
+
+GIVEN `the document` IS A `Foreign Document`, `class needed legalisation before accession` IS A BOOLEAN, `class did not exist before accession` IS A BOOLEAN
+GIVETH A Formality
+DECIDE `the most that may be demanded to prove origin` IS
+    IF NOT `the document is a foreign public document` `the document`
+    THEN `whatever other law requires -- this Act is silent`
+    ELSE IF `the document is a specified foreign public document` `the document` `class needed legalisation before accession` `class did not exist before accession`
+         THEN `an apostille`
+         ELSE `no particular formality`
+
+§§ `14 -- Singapore public document`
+
+-- s 14: "Singapore public document" (a) means (i) a document executed in Singapore within categories (A) to (D); or (ii) a document
+-- "(including a document that is not signed, sealed or stamped) that is prescribed to be a Singapore public document"; but (b) "does
+-- not include" (i) a document executed by a diplomatic or consular agent; (ii) "a prescribed private document".
+DECLARE `Singapore Document` HAS
+    `executed in Singapore` IS A BOOLEAN
+    `category` IS A Category
+    `prescribed to be a Singapore public document` IS A BOOLEAN
+    `executed by a diplomatic or consular agent` IS A BOOLEAN
+    `a prescribed private document` IS A BOOLEAN
+
+GIVEN `the document` IS A `Singapore Document`
+GIVETH A BOOLEAN
+DECIDE `the document is a Singapore public document` IF
+        (NOT `the document`'s `executed by a diplomatic or consular agent`)
+    AND (NOT `the document`'s `a prescribed private document`)
+    AND (    (`the document`'s `executed in Singapore` AND `the category is a listed public category` (`the document`'s `category`))
+         OR  `the document`'s `prescribed to be a Singapore public document`)
+
+§§ `15 and Second Schedule -- competent authority`
+
+-- s 15: an authority in the first column of the Second Schedule is competent for the documents opposite it. Second Schedule, as
+-- deposited: "1. Singapore Academy of Law" -- "Any Singapore public document". No other authority is listed. That the other
+-- authorities below are NOT competent is an inference from the Schedule having one entry.
+DECLARE Authority IS ONE OF
+    `the Singapore Academy of Law`
+    `the Ministry of Foreign Affairs`
+    `a notary public`
+    `a foreign embassy in Singapore`
+
+GIVEN `the authority` IS AN Authority
+GIVETH A BOOLEAN
+DECIDE `the authority is competent` IF
+    CONSIDER `the authority`
+    WHEN `the Singapore Academy of Law` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `16, 17 -- issuing or refusing the apostille`
+
+-- s 16(1): "Subject to section 17, a competent authority must issue a certificate for a Singapore public document on the request of
+-- (a) the person who signed the document; or (b) any bearer of the document."
+-- s 17(1): an authority "must refuse" if (a) the document is not a Singapore public document; (b) there are reasonable grounds to
+-- believe it is forged or falsified; (c) the authority is not competent; (d) the requester fails to provide prescribed or other
+-- required information; (e) "the prescribed fee is not paid"; (f) any prescribed ground.
+-- s 17(2): a competent authority "may refuse" if (a) it "is unable to verify the authenticity of the signature, seal or stamp"; (b)
+-- any prescribed ground.
+-- A request by someone who neither signed nor bears the document is outside s 16(1); the Act imposes no duty either way.
+DECLARE Outcome IS ONE OF
+    `must issue`
+    `must refuse`
+    `may refuse`
+    `no duty under section 16 -- requester neither signed nor bears it`
+
+DECLARE Request HAS
+    `document` IS A `Singapore Document`
+    `authority` IS AN Authority
+    `requester signed the document` IS A BOOLEAN
+    `requester bears the document` IS A BOOLEAN
+    `reasonable grounds to believe forged or falsified` IS A BOOLEAN
+    `required information provided` IS A BOOLEAN
+    `prescribed fee paid` IS A BOOLEAN
+    `a prescribed mandatory ground applies` IS A BOOLEAN
+    `unable to verify signature, seal or stamp` IS A BOOLEAN
+    `a prescribed discretionary ground applies` IS A BOOLEAN
+
+GIVEN `the request` IS A Request
+GIVETH A BOOLEAN
+DECIDE `a ground in section 17(1) applies` IF
+        (NOT `the document is a Singapore public document` (`the request`'s `document`))
+    OR  `the request`'s `reasonable grounds to believe forged or falsified`
+    OR  (NOT `the authority is competent` (`the request`'s `authority`))
+    OR  (NOT `the request`'s `required information provided`)
+    OR  (NOT `the request`'s `prescribed fee paid`)
+    OR  `the request`'s `a prescribed mandatory ground applies`
+
+GIVEN `the request` IS A Request
+GIVETH AN Outcome
+DECIDE `what the authority must do` IS
+    IF `a ground in section 17(1) applies` `the request`
+    THEN `must refuse`
+    ELSE IF NOT (`the request`'s `requester signed the document` OR `the request`'s `requester bears the document`)
+         THEN `no duty under section 16 -- requester neither signed nor bears it`
+         ELSE IF `the request`'s `unable to verify signature, seal or stamp` OR `the request`'s `a prescribed discretionary ground applies`
+              THEN `may refuse`
+              ELSE `must issue`
