@@ -726,7 +726,7 @@ Run from this directory as the brief states, with every `.l4` and every `.md` fi
 
 Last line:
 
-    vnsrc check: 9042 src: lines, 1409 Vietnamese runs, 0 problems
+    vnsrc check: 9042 src: lines, 1411 Vietnamese runs, 0 problems
 
 (The tool finds the other two raw files from the `src:law08-2022-qh15-577-578:N` and `src:law139-2025-qh15:N` lines.)
 
@@ -734,6 +734,88 @@ After the encoder finished, the lead added `COMPLETION-law08-2022-qh15.md`, `COM
 Last line of that run, on 2026-10-10:
 
     vnsrc check: 9042 src: lines, 1953 Vietnamese runs, 0 problems
+
+### 7.1 Source locators
+
+Under each unit of `-- src:` quote lines that is followed by a declaration, the modules carry one `@ref` line that names the raw lines the unit quotes.
+A unit is one quote run, or several runs separated only by blank lines and plain comments.
+`src:A-B` is lines A to B of `law08-2022-qh15.txt`.
+`src:ID:A-B` is lines A to B of `ID.txt` in `source/raw/`.
+One line may carry several locators.
+A real one, from `law08-ch1-general.l4`, under a run that quotes both the Law and the amending Law:
+
+    @ref Dieu 6 (src:214-217; src:law139-2025-qh15:333-334)
+
+The text outside the locators (`Dieu 6`) is the citation as a reader would write it.
+It is generated from the raw text: it names every article that the unit's quoted lines lie in, by the `Điều N.` headings of the raw file, and nothing else.
+A bare `Dieu N` is an article of Law 08/2022/QH15, which includes the second gazette issue (`law08-2022-qh15-577-578`).
+A unit that quotes only the amending Law 139/2025/QH15 is labelled with that law's name, as in `Law 139/2025/QH15 Dieu 1`, and the article is Law 139's own.
+A unit before the first `Điều N.` heading has no article and no label.
+The label is written in ASCII like the rule names, so that Vietnamese appears only in the quote lines.
+A locator does not reach over a raw line that its unit leaves out, other than a blank line, the gazette's running header or a page number: such a unit gets one locator for each stretch.
+The quote lines are comments and are unchanged.
+The `@ref` line is an L4 annotation, not a comment, and the parser reads it.
+The lines were added by `tools/switch_to_ref_locators.py`, to the modules and to `templates/*.l4.in` alike so that `tools/expand.py` reproduces them.
+The script only adds lines, and a second run changes nothing.
+The `@ref` goes directly above the first declaration its unit supports, and never above a `§` / `§§` heading, a `#ASSERT` or the end of a file.
+The pinned `l4` warns about an `@ref` at the end of a file and says nothing about one above a heading or a `#ASSERT`, so running the modules cannot find a misplaced one.
+A unit that is followed by a heading, a directive or the end of a file therefore has no `@ref`, and the gate does not ask for one; the table below counts those runs by module.
+
+The gate (it exits 1 on any problem):
+
+`python3 -I tools/srcrefs.py check --strict ../../source/raw/law08-2022-qh15.txt *.l4`
+
+`--strict` asks for more than `--refs`.
+Each locator must be covered by the quote run above it, and not by a quote line elsewhere in the file.
+Each run must be overlapped by a locator on an `@ref` in its own block, and not by a locator elsewhere in the file.
+In each block, the locators must reach exactly the lowest and the highest raw line that the runs of the block quote.
+This row's `@ref` lines are generated to meet it, so it is the command to run after any edit.
+Its output when this file was generated, and the same for `--refs`, with what the modules contain:
+
+    $ python3 -I tools/srcrefs.py check --strict ../../source/raw/law08-2022-qh15.txt *.l4
+    srcrefs check: 9042 src: lines, 597 runs, 633 locators, 0 problems
+
+    $ python3 -I tools/srcrefs.py check --refs ../../source/raw/law08-2022-qh15.txt *.l4
+    srcrefs check: 9042 src: lines, 597 runs, 633 locators, 0 problems
+
+- `@ref` lines in the modules: 556 (the gate counts their locators above).
+- Quote runs: 597, of which 41 are followed by a heading, a directive or the end of a file, so take no `@ref`.
+
+| Module | Runs that take no `@ref` | What follows the run |
+| --- | --- | --- |
+| `law08-tests-ch1.l4` | 4 | `#ASSERT` |
+| `law08-tests-ch2-general.l4` | 5 | `#ASSERT` |
+| `law08-tests-ch2-life-health.l4` | 1 | `#ASSERT` |
+| `law08-tests-ch2-property.l4` | 2 | `#ASSERT` |
+| `law08-tests-ch3-licensing.l4` | 2 | `#ASSERT` |
+| `law08-tests-ch3-products.l4` | 1 | `#ASSERT` |
+| `law08-tests-ch3-scope.l4` | 3 | `#ASSERT` |
+| `law08-tests-ch3-solvency.l4` | 1 | `#ASSERT` |
+| `law08-tests-ch4-intermediaries.l4` | 5 | `#ASSERT` |
+| `law08-tests-ch5-ch6-micro-state.l4` | 2 | `#ASSERT` |
+| `law08-tests-ch7-commencement.l4` | 8 | `#ASSERT` |
+| `law08-tests-findings.l4` | 5 | `#ASSERT` |
+| `law08-vintage.l4` | 2 | `§` |
+
+Problems: none.
+
+Loud failures, which the gate reports with file and line and exits 1 on:
+
+- a quote line that is not a verbatim slice of the raw lines it names, or whose lines do not exist, or that quotes no text (rule R1);
+- a locator whose first or last line no quote line covers, that runs past the end of the raw file, that names a raw file which does not exist, or that is malformed, including a range written with a dash other than `-` (R2);
+- a quote run, followed by a declaration, that no locator overlaps, "orphan quotation" (R3);
+- with `--strict`, a locator narrowed or shifted by a line, a locator that reaches the next run, and a run whose only overlapping locator is elsewhere in the file.
+
+Silent failures, which exit 0 with a wrong or missing answer:
+
+- running without `--refs` or `--strict`, which checks R1 only and does not say so in its summary line;
+- running with `--refs` only, which accepts a locator from anywhere in the file, so that deleting an `@ref` whose run another `@ref` still overlaps, or one wide `@ref` at the end of a file, goes unnoticed;
+- a locator that is wrong but lies inside the quoted lines;
+- a label (`Dieu N`) that is wrong, because it lies outside the locators and nothing checks it (the switch script derives it from the raw headings, and `tools/srcrefs.py` never reads it);
+- an `@ref` above the wrong declaration, or above a heading, because the gate checks that a locator overlaps a run and not where the `@ref` sits relative to the declaration;
+- a quote run that skips lines inside its locator, which the gate allows because a footer is often left out of a quotation;
+- a quote that is a verbatim slice of the wrong raw file;
+- a run followed by a heading, a directive or the end of a file that should have had an `@ref`, which the gate exempts.
 
 ## 8. Open questions for a Vietnamese-qualified reviewer
 
