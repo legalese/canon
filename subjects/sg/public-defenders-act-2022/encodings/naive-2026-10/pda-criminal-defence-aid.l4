@@ -1,0 +1,305 @@
+IMPORT prelude
+
+-- Public Defenders Act 2022 (Singapore) -- who is a minor and who is a guardian (s 2), which offences criminal defence aid
+-- cannot cover (s 8 and the Schedule) and when it can cover them anyway (s 12(8)), repeat applications (s 9(3), (4)), turning
+-- 21 mid-case (s 10(3) to (5)), the conditions for a Grant of Aid and a provisional grant (s 12(1) to (4), (7)), who pays
+-- contributions (s 17(2)), discharging the assigned solicitor (s 18), costs against the aided person (s 19), aid for an
+-- appeal (s 20), privilege (s 22(1), (4)) and the false-statement offence (s 23).
+--
+-- Edition: Act 23 of 2022, informal consolidation "version in force from 1/5/2026", as deposited at
+-- ../../registers/source-bundle/PDA2022.txt. Amendment annotations in the deposit: Act 32 of 2024 (wef 25/11/2024), Act 31 of
+-- 2023 (wef 01/12/2025) and, the latest, S 247/2026 (wef 01/05/2026, renaming an Act in Part 3 of the Schedule).
+--
+-- WHY THIS ACT. Chosen for its everyday-life relevance: it decides whether a person of limited means who is charged with a crime
+-- gets a state-funded defence lawyer. SCOPED to what an accused person and his or her family meet. Not encoded: the appointment
+-- of the Chief Public Defender and public defenders (s 3), panels, removal and fees of solicitors (ss 4 to 6), protection from
+-- personal liability (s 7), the inquiry powers (s 11), who acts for the aided person and notice to the court (s 13), co-accused
+-- (s 14), variation and cancellation (ss 15, 16, whose circumstances are left to regulations), contribution amounts and recovery
+-- (s 17(1), (3) to (5)), costs against the Office (s 21), rules and regulations (ss 24, 25) and the consequential amendments
+-- (ss 26 to 28). The PRESCRIBED MEANS CRITERIA, the prescribed offences and the prescribed times are in subsidiary legislation
+-- that was not retrieved; they appear here as yes/no inputs.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Public Defenders Act 2022 -- criminal defence aid`
+
+§§ `2 -- minors and guardians`
+
+-- s 2(1): "'minor' means an individual who is below 21 years of age".
+-- s 2(2): a guardian of a minor is "(a) a parent (whether biological or adoptive)"; "(b) an individual who ... is lawfully appointed
+-- by deed or will or by an order of a competent court"; or "(c) any other individual whom the Chief Public Defender has reasonable
+-- grounds to believe -- (i) has for the time being the charge, custody, or care and control, of the minor; or (ii) is for the time
+-- being making financial provision for the support of the minor."
+GIVEN `age in years` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the person is a minor` IF
+    `age in years` LESS THAN 21
+
+DECLARE Carer IS ONE OF
+    `a biological parent`
+    `an adoptive parent`
+    `a guardian appointed by deed, will or court order`
+    `a grandparent believed to have care and control`
+    `an aunt believed to be supporting the minor financially`
+    `a family friend with neither care nor support`
+
+GIVEN `the carer` IS A Carer
+GIVETH A BOOLEAN
+DECIDE `the carer is a guardian` IF
+    CONSIDER `the carer`
+    WHEN `a family friend with neither care nor support` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `8, 12(8) and the Schedule -- excluded offences`
+
+-- s 8(1): criminal defence aid "may be granted to a citizen or permanent resident of Singapore" in respect of "(a) any criminal
+-- proceedings instituted against him or her in respect of an offence that is not an excluded offence" and appeals and
+-- applications arising from them.
+-- The Schedule, Part 1: an offence is excluded if (1) "it is punishable by death"; (2) it is under an Act in Part 2 (gambling,
+-- casino, massage establishment, organised crime and terrorism Acts); (3) it is under an Act in Part 3 AND "the accused person is
+-- served a notice to attend court or a summons for the offence"; (4) the notice or summons is served "by an officer of a statutory
+-- body"; or (5) "it is prosecuted or to be prosecuted by a private person".
+-- Part 3 lists 39 Acts, among them the Road Traffic Act 1961, the Employment of Foreign Manpower Act 1990, the Immigration Act
+-- 1959 and the Personal Data Protection Act 2012. Neither Part lists the Penal Code 1871 or the Misuse of Drugs Act 1973.
+DECLARE ScheduledAct IS ONE OF
+    `the Penal Code 1871`
+    `the Misuse of Drugs Act 1973`
+    `the Organised Crime Act 2015`
+    `the Casino Control Act 2006`
+    `the Massage Establishments Act 2017`
+    `the Road Traffic Act 1961`
+    `the Employment of Foreign Manpower Act 1990`
+    `the Personal Data Protection Act 2012`
+
+GIVEN `the Act` IS A ScheduledAct
+GIVETH A BOOLEAN
+DECIDE `the Act is in Part 2 of the Schedule` IF
+    CONSIDER `the Act`
+    WHEN `the Organised Crime Act 2015` THEN TRUE
+    WHEN `the Casino Control Act 2006` THEN TRUE
+    WHEN `the Massage Establishments Act 2017` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN `the Act` IS A ScheduledAct
+GIVETH A BOOLEAN
+DECIDE `the Act is in Part 3 of the Schedule` IF
+    CONSIDER `the Act`
+    WHEN `the Road Traffic Act 1961` THEN TRUE
+    WHEN `the Employment of Foreign Manpower Act 1990` THEN TRUE
+    WHEN `the Personal Data Protection Act 2012` THEN TRUE
+    OTHERWISE FALSE
+
+DECLARE Charge HAS
+    `under` IS A ScheduledAct
+    `punishable by death` IS A BOOLEAN
+    `begun by a notice to attend court or a summons` IS A BOOLEAN
+    `served by an officer of a statutory body` IS A BOOLEAN
+    `prosecuted by a private person` IS A BOOLEAN
+
+GIVEN `the charge` IS A Charge
+GIVETH A BOOLEAN
+DECIDE `the charge is an excluded offence` IF
+        `the charge`'s `punishable by death`
+    OR  `the Act is in Part 2 of the Schedule` (`the charge`'s `under`)
+    OR  (`the Act is in Part 3 of the Schedule` (`the charge`'s `under`) AND `the charge`'s `begun by a notice to attend court or a summons`)
+    OR  (`the charge`'s `begun by a notice to attend court or a summons` AND `the charge`'s `served by an officer of a statutory body`)
+    OR  `the charge`'s `prosecuted by a private person`
+
+-- s 12(8): "Despite section 8(1)", a Grant of Aid "may extend to any proceedings in respect of an excluded offence if -- (a) the
+-- applicant faces charges for 2 or more offences (one or more of which is an excluded offence)" in the proceedings, or (b) an
+-- appeal or application arises from them.
+-- READING (an inference, not words of the Act): s 12(8)(a) refers to "the criminal proceedings mentioned in subsection (1)(b)(i)",
+-- which are proceedings "mentioned in section 8(1)(a)" -- proceedings for an offence that is NOT excluded. So at least one charge
+-- must be a non-excluded offence; two capital charges alone would not qualify.
+GIVEN `number of charges` IS A NUMBER, `number of excluded charges` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `aid can cover the proceedings` IF
+        (`number of charges` AT LEAST 1 AND `number of excluded charges` EQUALS 0)
+    OR  (`number of charges` AT LEAST 2 AND `number of excluded charges` LESS THAN `number of charges`)
+
+§§ `9(3), (4) -- applying again`
+
+-- s 9(3): where an application "is not approved under section 12 or 20, the Chief Public Defender may refuse to consider any
+-- subsequent application ... in respect of the same matter". (4): not if there are "reasonable grounds to believe that there is any
+-- change in circumstances".
+GIVEN `an earlier application was not approved` IS A BOOLEAN, `same matter` IS A BOOLEAN, `reasonable grounds to believe circumstances changed` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Chief Public Defender may refuse to consider the new application` IF
+    `an earlier application was not approved` AND `same matter` AND (NOT `reasonable grounds to believe circumstances changed`)
+
+§§ `10(3) to (5) -- turning 21 during the case`
+
+-- s 10(1): an application for a minor "must be made on behalf of the minor by a guardian". (3): where the aided person was a minor
+-- when aid was granted, the proceedings "have not concluded" when he or she attains 21, and he or she wishes to continue, he or she
+-- "must give to the Chief Public Defender a written consent", (4) "within the prescribed time". (5): the consent is "deemed to have
+-- made a fresh application ... in his or her own right".
+GIVEN `aided while a minor` IS A BOOLEAN, `proceedings concluded before turning 21` IS A BOOLEAN, `wishes to continue` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `written consent at 21 is required` IF
+    `aided while a minor` AND (NOT `proceedings concluded before turning 21`) AND `wishes to continue`
+
+§§ `12(1), (7) -- the Grant of Aid`
+
+-- s 12(1): the Chief Public Defender "may approve" and issue a Grant of Aid if (a) "the applicant satisfies the prescribed means
+-- criteria; or (ii) if the applicant is an unmarried minor, the minor and the guardian who made the application ... satisfy the
+-- prescribed means criteria"; (b) the applicant is "a citizen or permanent resident" who is an accused person in proceedings in
+-- s 8(1)(a) or a party to an appeal or application in s 8(1)(b); (c) there are merits -- (i) where the application concerns only
+-- prescribed offences, in the Chief Public Defender's opinion; (ii) otherwise, in the opinion of "a board (consisting of the Chief
+-- Public Defender and at least 2 solicitors ...)" by "the majority of its members" -- because the applicant "requires legal
+-- representation to plead guilty", there are "reasonable grounds for defending", or there are merits to the appeal; and (d) the
+-- Chief Public Defender thinks a grant "appropriate in the circumstances".
+-- s 12(7)(a): "Despite this section", the Minister may authorise a grant "in the interests of justice". (b): the Minister may direct
+-- a grant "even though" the applicant does not satisfy the prescribed means criteria, if "just and proper".
+-- READINGS (inferences): a direction under (7)(b) waives only the means criteria; the other limbs of (1) still apply. (7)(a) is
+-- "despite this section", not despite s 8(1), and s 12(8) treats grants under (7) as otherwise bound by s 8(1); so even a
+-- Ministerial grant needs a citizen or permanent resident and proceedings aid can cover.
+DECLARE Application HAS
+    `citizen or permanent resident` IS A BOOLEAN
+    `proceedings aid can cover` IS A BOOLEAN
+    `an unmarried minor` IS A BOOLEAN
+    `the applicant meets the prescribed means criteria` IS A BOOLEAN
+    `the guardian meets the prescribed means criteria` IS A BOOLEAN
+    `the Minister directed despite the means criteria` IS A BOOLEAN
+    `only prescribed offences` IS A BOOLEAN
+    `the Chief Public Defender finds merit` IS A BOOLEAN
+    `a board majority finds merit` IS A BOOLEAN
+    `the Chief Public Defender thinks a grant appropriate` IS A BOOLEAN
+    `the Minister authorised in the interests of justice` IS A BOOLEAN
+
+GIVEN `the application` IS AN Application
+GIVETH A BOOLEAN
+DECIDE `the means limb is met` IF
+        `the application`'s `the Minister directed despite the means criteria`
+    OR  (`the application`'s `the applicant meets the prescribed means criteria`
+         AND ((NOT `the application`'s `an unmarried minor`) OR `the application`'s `the guardian meets the prescribed means criteria`))
+
+GIVEN `the application` IS AN Application
+GIVETH A BOOLEAN
+DECIDE `the merits limb is met` IF
+    IF `the application`'s `only prescribed offences`
+    THEN `the application`'s `the Chief Public Defender finds merit`
+    ELSE `the application`'s `a board majority finds merit`
+
+GIVEN `the application` IS AN Application
+GIVETH A BOOLEAN
+DECIDE `a Grant of Aid may be issued` IF
+        `the application`'s `citizen or permanent resident`
+    AND `the application`'s `proceedings aid can cover`
+    AND (    `the application`'s `the Minister authorised in the interests of justice`
+         OR  (`the means limb is met` `the application`
+              AND `the merits limb is met` `the application`
+              AND `the application`'s `the Chief Public Defender thinks a grant appropriate`))
+
+-- The board: the Chief Public Defender "and at least 2 solicitors", deciding "by the majority of its members".
+GIVEN `board members` IS A NUMBER, `members finding merit` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the board finds merit` IF
+    `board members` AT LEAST 3 AND `members finding merit` TIMES 2 GREATER THAN `board members`
+
+§§ `12(2), (3) -- what may be weighed`
+
+-- s 12(2): for appropriateness, regard may be had to (a) likely loss of "personal liberty or livelihood" or serious damage to
+-- reputation; (b) "a substantial question of law"; (c) "tracing, interviewing or cross-examination of witnesses"; (d) benefit or
+-- detriment to the applicant or the public; (e) the Office's resources and the availability of panel solicitors.
+-- (3): the benefit or detriment "must not be determined by whether the interests of the applicant are, or may be, adverse to the
+-- interests of -- (a) the prosecution; or (b) any law enforcement agency".
+DECLARE Consideration IS ONE OF
+    `the applicant is likely to lose his liberty or livelihood`
+    `a substantial question of law`
+    `witnesses must be traced or cross-examined`
+    `the resources of the Public Defender's Office`
+    `the applicant's interests are adverse to the prosecution`
+    `the applicant's interests are adverse to the investigating agency`
+
+GIVEN `the consideration` IS A Consideration
+GIVETH A BOOLEAN
+DECIDE `the consideration may be weighed` IF
+    CONSIDER `the consideration`
+    WHEN `the applicant's interests are adverse to the prosecution` THEN FALSE
+    WHEN `the applicant's interests are adverse to the investigating agency` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `12(4) -- provisional grant`
+
+-- s 12(4): pending determination, a provisional grant if "(a) the applicant requires criminal defence aid as a matter of urgency;
+-- (b) subsection (1)(b) applies; and (c) subsection (1)(a), (c) and (d) is likely to apply".
+GIVEN `urgent` IS A BOOLEAN, `citizen or PR in proceedings aid can cover` IS A BOOLEAN, `means, merits and appropriateness likely` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a provisional Grant of Aid may be issued` IF
+    `urgent` AND `citizen or PR in proceedings aid can cover` AND `means, merits and appropriateness likely`
+
+§§ `17(2) -- who pays contributions`
+
+-- s 17(2): where the application is made for a minor by a guardian, the individual liable to contribute is "(a) in the case where
+-- the minor is unmarried -- both the guardian and the minor; and (b) in any other case -- the minor only".
+GIVEN `made by a guardian for a minor` IS A BOOLEAN, `the minor is married` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the guardian may be required to contribute` IF
+    `made by a guardian for a minor` AND (NOT `the minor is married`)
+
+§§ `18 -- keeping the lawyer`
+
+-- s 18(1): an aided accused person "must not discharge a solicitor assigned to act" without the Chief Public Defender's
+-- permission. (2), (3): the assigned solicitor must not discontinue without permission, but may instruct another panel solicitor
+-- "to assist".
+GIVEN `the Chief Public Defender permitted it` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the aided person may discharge the assigned solicitor` IF
+    `the Chief Public Defender permitted it`
+
+§§ `19 -- costs against the aided person`
+
+-- s 19(1), (2): the court may order the aided person to pay the costs of the public defender or assigned solicitor where "(a) the
+-- Grant of Aid ... has been obtained by fraud or misrepresentation" or "(b) the aided accused person acted improperly in defending
+-- or contesting any proceedings, or in the conduct of those proceedings". (4): this reaches a person whose grant was cancelled
+-- before the order.
+GIVEN `obtained by fraud or misrepresentation` IS A BOOLEAN, `acted improperly in the proceedings` IS A BOOLEAN, `the grant was since cancelled` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may order the aided person to pay costs` IF
+    `obtained by fraud or misrepresentation` OR `acted improperly in the proceedings`
+
+§§ `20 -- aid for an appeal`
+
+-- s 20(1): when the trial for which aid was granted has concluded, the aided person "must make a fresh application ... within the
+-- prescribed time" for aid on appeal. (3): a late application may still be considered if "(a) the aided accused person had filed
+-- the notice of appeal or the criminal application before making the fresh application; or (b) ... there are extenuating
+-- circumstances".
+GIVEN `applied within the prescribed time` IS A BOOLEAN, `filed the notice of appeal first` IS A BOOLEAN, `extenuating circumstances` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the appeal application may be considered` IF
+    `applied within the prescribed time` OR `filed the notice of appeal first` OR `extenuating circumstances`
+
+§§ `22(1), (4) -- privilege`
+
+-- s 22(1): solicitor-client privileges arise between the applicant or aided person and the Chief Public Defender, public defenders
+-- and assigned solicitors. (4): "the privileges ... do not arise in relation to any information given to the Chief Public Defender
+-- concerning the means and other circumstances of the applicant".
+DECLARE Communication IS ONE OF
+    `an account of the facts to a public defender acting for the aided person`
+    `instructions to an assigned solicitor`
+    `information about income and savings given with the application`
+
+GIVEN `the communication` IS A Communication
+GIVETH A BOOLEAN
+DECIDE `the communication is privileged` IF
+    CONSIDER `the communication`
+    WHEN `information about income and savings given with the application` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `23 -- false or misleading statement`
+
+-- s 23: an individual who applies for or receives aid and "(a) knowingly makes any false or misleading statement or representation
+-- in the application"; "(b) fails to make full and frank disclosure of the individual's means"; or "(c) fails to inform the Chief
+-- Public Defender of any change to the means or other circumstances ... which may render him or her ineligible", is liable to "a
+-- fine not exceeding $5,000 or to imprisonment for a term not exceeding 6 months or to both".
+-- Only limb (a) says "knowingly"; (b) and (c) state no mental element.
+GIVEN `knowingly made a false statement` IS A BOOLEAN, `failed to disclose means fully` IS A BOOLEAN, `failed to report a change that may make him ineligible` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the section 23 offence is committed` IF
+    `knowingly made a false statement` OR `failed to disclose means fully` OR `failed to report a change that may make him ineligible`
+
+GIVEN `fine` IS A NUMBER, `months of imprisonment` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the sentence is within section 23` IF
+    `fine` AT MOST 5000 AND `months of imprisonment` AT MOST 6
