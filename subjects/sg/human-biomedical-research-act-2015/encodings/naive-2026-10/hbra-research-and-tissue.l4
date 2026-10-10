@@ -1,0 +1,297 @@
+IMPORT prelude
+
+-- Human Biomedical Research Act 2015 (Singapore) -- what counts as human biomedical research and as human tissue (ss 2, 3, First
+-- and Second Schedules), who gives consent for minors, adults lacking capacity and the dead (ss 7, 8, 11, 13(2)), withdrawing
+-- consent (s 14), the deception defence (s 26(2)), paying for tissue (ss 32, 33), removing and using tissue (s 37(2), (3), (9)),
+-- and the maximum penalties (ss 22(6), 26 to 33, 37 to 39, 50).
+--
+-- Edition: 2020 Revised Edition (incorporating amendments up to 1 December 2021, in operation 31 December 2021), informal
+-- consolidation, version in force from 5/12/2025, as deposited at ../../registers/source-bundle/HBRA2015.txt. The latest amendment
+-- in its legislative history is Act 19 of 2025 (Statutes (Miscellaneous Amendments) Act 2025), commencement 5 December 2025; the
+-- body annotates Act 11 of 2023 (wef 01/05/2023) and Act 19 of 2025 (wef 05/12/2025).
+--
+-- WHY THIS ACT. Requirement REQ-0025 in subjects/sg/requirements.jsonl: Tier 2 of the remaining Singapore Acts, ordered by
+-- everyday-life relevance. The requirement asks what the Act decides for a person or business it applies to; no scenario has asked
+-- a sharper question yet. SCOPED to what a research subject, tissue donor, family member, researcher or tissue dealer meets.
+-- Not encoded: administration (Part 2), institutional review boards (Part 4) beyond the waiver in s 13(2), research institutions'
+-- duties and declarations (ss 23, 24), tissue banks (ss 34 to 36), codes of practice (Part 7), enforcement powers, prohibition
+-- orders and inquiries (Part 8 other than s 50), appeals (Part 9), the Fifth Schedule waivers, s 8(1)(d) and s 10 (minors lacking
+-- capacity, and tissue from minors), the "comparable effectiveness" condition for adults in s 7(1), the consent formalities in
+-- s 6 and the information list in s 12.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Human Biomedical Research Act 2015 -- research and tissue`
+
+§§ `2 -- adult and minor`
+
+-- s 2: "adult" means "a person who is 21 years of age or older or a person below 21 years of age who was or is married";
+-- "minor" means "a person who is below 21 years of age and who has never been married".
+GIVEN `age in years` IS A NUMBER, `has ever married` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the person is an adult` IF
+    `age in years` AT LEAST 21 OR `has ever married`
+
+§§ `3 and Second Schedule -- what is human biomedical research`
+
+-- s 3(2): research intended to study (a) "the prevention, prognostication, diagnosis or alleviation of any disease, disorder or
+-- injury", (b) aesthetic appearance "through clinical procedures or techniques", or (c) "the performance or endurance of human
+-- individuals", WHERE the research involves (d) an intervention with "a physical, mental or physiological effect", (e)
+-- "individually-identifiable human biological material", or (f) "individually-identifiable health information".
+-- s 3(3): ANY research involving human gametes or embryos, cytoplasmic hybrid embryos, human-animal combination embryos, or human
+-- stem cells or neural cells introduced into an animal.
+-- s 3(4) and Second Schedule: excluded -- 1, 2 normal psychology and intelligence studies at no more than minimal risk; 3 national
+-- public health research (Infectious Diseases Act s 59A); 4 the National Registry of Diseases; 5 statistics under the Statistics
+-- Act; 6 clinical trials of health products under the Health Products Act 2007; 7 clinical trials of medicinal products under the
+-- Medicines Act 1975 (S 334/2019).
+DECLARE Study HAS
+    `studies disease, aesthetics or performance` IS A BOOLEAN
+    `involves an intervention on the body` IS A BOOLEAN
+    `uses identifiable biological material` IS A BOOLEAN
+    `uses identifiable health information` IS A BOOLEAN
+    `involves gametes, embryos or human-animal combinations` IS A BOOLEAN
+    `is a clinical trial under the Health Products or Medicines Act` IS A BOOLEAN
+    `studies normal psychology or intelligence at minimal risk` IS A BOOLEAN
+    `is public health research, a registry or statistics` IS A BOOLEAN
+
+GIVEN `the study` IS A Study
+GIVETH A BOOLEAN
+DECIDE `the study is excluded by the Second Schedule` IF
+        `the study`'s `is a clinical trial under the Health Products or Medicines Act`
+    OR  `the study`'s `studies normal psychology or intelligence at minimal risk`
+    OR  `the study`'s `is public health research, a registry or statistics`
+
+GIVEN `the study` IS A Study
+GIVETH A BOOLEAN
+DECIDE `the study is human biomedical research` IF
+        (NOT `the study is excluded by the Second Schedule` `the study`)
+    AND (    `the study`'s `involves gametes, embryos or human-animal combinations`
+         OR  (    `the study`'s `studies disease, aesthetics or performance`
+              AND (    `the study`'s `involves an intervention on the body`
+                   OR  `the study`'s `uses identifiable biological material`
+                   OR  `the study`'s `uses identifiable health information`)))
+
+§§ `2 and First Schedule -- what is human tissue`
+
+-- s 2: "human tissue" means "any human biological material but excludes human biological material specified in the First
+-- Schedule". First Schedule: 1 "Hair shaft, cut without dermal hair root or follicle"; 2 "Nail plate, cut without underlying dermal
+-- tissue"; 3 "Naturally excreted bodily fluids and waste products such as saliva, sweat, urine and faeces"; 4 material that is
+-- "not individually-identifiable" AND substantially manipulated -- but NOT "merely" by cutting, grinding, centrifugation, freezing,
+-- cryopreservation and the other methods listed in 4(2).
+DECLARE Material IS ONE OF
+    `a cut hair shaft without the root`
+    `a plucked hair with its follicle`
+    `a nail clipping`
+    `saliva`
+    `urine`
+    `a blood sample`
+    `a tumour biopsy`
+    `anonymised cells substantially manipulated in culture`
+    `anonymised tissue that has only been frozen`
+
+GIVEN `the material` IS A Material
+GIVETH A BOOLEAN
+DECIDE `the material is human tissue` IF
+    CONSIDER `the material`
+    WHEN `a cut hair shaft without the root` THEN FALSE
+    WHEN `a nail clipping` THEN FALSE
+    WHEN `saliva` THEN FALSE
+    WHEN `urine` THEN FALSE
+    WHEN `anonymised cells substantially manipulated in culture` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `8 and 13(2) -- consent for a minor as a research subject`
+
+-- s 8(1)(a): a minor with "sufficient understanding and intelligence" -- consent "from both the minor and at least one adult parent
+-- or guardian"; (b) the minor alone where an IRB has waived the parent's consent under s 13(2); (c) a minor without sufficient
+-- understanding -- one adult parent or guardian, where "there are reasonable grounds for believing that biomedical research of
+-- comparable effectiveness cannot be carried out without the participation of the class of minors to which the minor belongs".
+-- s 13(2) waiver: no more than minimal risk, rights and welfare not adversely affected, and not practicable without the waiver
+-- (e.g. "neglected or abused minors", "adolescents in studies concerning treatment of sexually transmitted diseases").
+-- (s 8(1)(d), minors lacking mental capacity, is not modelled.)
+GIVEN `the minor understands` IS A BOOLEAN, `the minor consented` IS A BOOLEAN, `a parent consented` IS A BOOLEAN,
+      `parental consent was waived` IS A BOOLEAN, `the research needs minors of this class` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `consent for the minor is sufficient` IF
+    IF `the minor understands`
+    THEN `the minor consented` AND (`a parent consented` OR `parental consent was waived`)
+    ELSE `a parent consented` AND `the research needs minors of this class`
+
+§§ `7(1)(b) and 11(1) -- who consents for an adult lacking capacity, and for the dead`
+
+-- s 7(1)(b) (no donee or deputy authorised): "in the order of priority stated, when persons in prior classes are not available": (i)
+-- the spouse; (ii) an adult son or daughter; (iii) either parent or a guardian; (iv) an adult brother or sister; (v) "any other
+-- person named by the adult as someone to be consulted". (A donee or deputy authorised to consent comes first: s 7(1)(a).)
+-- s 11(1) (deceased person): (c) the spouse; (d) an adult son or daughter; (e) either parent or a guardian; (f) an adult brother or
+-- sister; (g) "the administrator or executor of the estate"; (h) "any other person authorised or under obligation to dispose of
+-- the body". Both: "in the absence of actual notice of contrary indications" by the person, "or actual notice of opposition of a
+-- member of the same class or a prior class".
+-- Rank 0 means the person is not in the list.
+DECLARE Relative IS ONE OF
+    `the spouse`
+    `an adult son or daughter`
+    `a parent or guardian`
+    `an adult brother or sister`
+    `a person the adult named to be consulted`
+    `the executor or administrator`
+    `the person bound to dispose of the body`
+
+GIVEN `the relative` IS A Relative
+GIVETH A NUMBER
+`the rank for an adult lacking capacity` MEANS
+    CONSIDER `the relative`
+    WHEN `the spouse` THEN 1
+    WHEN `an adult son or daughter` THEN 2
+    WHEN `a parent or guardian` THEN 3
+    WHEN `an adult brother or sister` THEN 4
+    WHEN `a person the adult named to be consulted` THEN 5
+    OTHERWISE 0
+
+GIVEN `the relative` IS A Relative
+GIVETH A NUMBER
+`the rank for a deceased person` MEANS
+    CONSIDER `the relative`
+    WHEN `the spouse` THEN 1
+    WHEN `an adult son or daughter` THEN 2
+    WHEN `a parent or guardian` THEN 3
+    WHEN `an adult brother or sister` THEN 4
+    WHEN `the executor or administrator` THEN 5
+    WHEN `the person bound to dispose of the body` THEN 6
+    OTHERWISE 0
+
+GIVEN `the relative` IS A Relative, `a higher class is available` IS A BOOLEAN, `the deceased objected` IS A BOOLEAN,
+      `the same or a prior class opposes` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the relative may consent for the deceased` IF
+        `the rank for a deceased person` `the relative` GREATER THAN 0
+    AND (NOT `a higher class is available`)
+    AND (NOT `the deceased objected`)
+    AND (NOT `the same or a prior class opposes`)
+
+§§ `14 -- withdrawal of consent`
+
+-- s 14(1): a research subject may "at any time" withdraw consent to participation. (2): a tissue donor may withdraw consent to use
+-- of the tissue for research if "(a) the tissue is individually-identifiable and has not been used for the research; or (b) ... has
+-- been used for the research but it is practicable to discontinue further use". (3) information obtained before withdrawal "may be
+-- retained and used". (4): "Any penalty or damages imposed solely by reason of the withdrawal ... is void and unenforceable."
+GIVEN `the tissue is identifiable` IS A BOOLEAN, `the tissue has been used` IS A BOOLEAN,
+      `discontinuing is practicable` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the donor may withdraw consent` IF
+    `the tissue is identifiable` AND ((NOT `the tissue has been used`) OR `discontinuing is practicable`)
+
+§§ `26(1)(c) and (2) -- deceiving a person into research`
+
+-- s 26(1)(c): causing a person "by means of deception or misrepresentation" to participate -- $100,000 or 10 years. (2): "It is a
+-- defence ... if the defendant proves ALL of the following: (a) the deception or misrepresentation was a necessary requirement of
+-- the human biomedical research; (b) the possibility of the deception or misrepresentation was disclosed to the research subject;
+-- (c) the research was conducted in accordance with the research proposal approved by the reviewing authority."
+GIVEN `the deception was necessary to the research` IS A BOOLEAN, `its possibility was disclosed` IS A BOOLEAN,
+      `the approved proposal was followed` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the deception defence is made out` IF
+    `the deception was necessary to the research` AND `its possibility was disclosed` AND `the approved proposal was followed`
+
+§§ `32 and 33 -- paying for human tissue`
+
+-- s 32(1): a contract "for valuable consideration" for "the sale or supply of any human tissue from his or her body or from the body
+-- of another person" is void; (2) entering into one -- $100,000 or 10 years; (3) giving, receiving, offering or negotiating
+-- valuable consideration for another's tissue -- the same. (4) Not caught: (a) reimbursement of expenses necessarily incurred in
+-- removal under other written law; (b) "any scheme introduced or approved by the Government granting medical benefits or privileges"
+-- to a donor and family; (c) defraying costs of "removal, transportation, preparation, preservation, quality control or storage",
+-- a living donor's "travel, accommodation, domestic help or child care" or "loss of earnings", and medical care or insurance.
+-- s 33: no advertisement "relating to the buying or selling in Singapore of any human tissue" -- $100,000 or 10 years.
+-- (s 32(6): ss 32 and 33 do not apply where the Human Organ Transplant Act 1987 ss 13, 14 or the Human Cloning and Other
+-- Prohibited Practices Act 2004 s 13 applies -- organs, blood, eggs, sperm and embryos. Not modelled.)
+DECLARE Arrangement IS ONE OF
+    `selling one's own tissue for money`
+    `paying another person for their tissue`
+    `reimbursing a living donor's travel, child care and lost earnings`
+    `paying for the storage and quality control of tissue`
+    `a Government scheme of medical benefits for donors`
+    `advertising to buy tissue in Singapore`
+
+GIVEN `the arrangement` IS A Arrangement
+GIVETH A BOOLEAN
+DECIDE `the arrangement is an offence` IF
+    CONSIDER `the arrangement`
+    WHEN `reimbursing a living donor's travel, child care and lost earnings` THEN FALSE
+    WHEN `paying for the storage and quality control of tissue` THEN FALSE
+    WHEN `a Government scheme of medical benefits for donors` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `37(2), (3) and (9) -- removing and using tissue`
+
+-- s 37(2): no removal of human tissue from an adult lacking mental capacity, a minor lacking mental capacity, or "a minor who lacks
+-- sufficient understanding and intelligence to give consent" "unless the removal of the tissue was primarily for a therapeutic or
+-- diagnostic purpose". (3) An IRB may waive that if "(a) the removal of the tissue involves no more than minimal risk" and "(b)
+-- there are reasonable grounds for believing that the proposed areas of research cannot be carried out without the use of the
+-- tissue from the class of persons". (9) Tissue removed for treatment may not be stored, supplied or used for research "unless the
+-- medical practitioner or healthcare institution ... had completed all necessary therapeutic or diagnostic procedures and no longer
+-- requires the tissue". (11): $50,000 or 5 years.
+GIVEN `primarily therapeutic or diagnostic` IS A BOOLEAN, `the IRB waived that requirement` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `tissue may be removed from a person unable to consent` IF
+    `primarily therapeutic or diagnostic` OR `the IRB waived that requirement`
+
+GIVEN `research consent was obtained` IS A BOOLEAN, `the treating doctor no longer needs it` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `leftover clinical tissue may be used for research` IF
+    `research consent was obtained` AND `the treating doctor no longer needs it`
+
+§§ `22(6), 26 to 33, 37 to 39 and 50 -- maximum penalties`
+
+-- s 22(6) research outside an institution, without IRB review or consent: "$50,000 or ... 5 years or to both"; s 26 compelling or
+-- deceiving into research: $100,000 or 10 years; s 27(2) failing to safeguard identifiable information or material: $10,000 or 12
+-- months; s 28(3) re-identifying anonymised information: $20,000 or 2 years; s 29(3) disclosing a research subject's information:
+-- $20,000 or 2 years; s 30(2) prohibited research (Third Schedule): $100,000 or 10 years; s 31(4) restricted research: $100,000 or
+-- 10 years; ss 32, 33 tissue trading and advertising: $100,000 or 10 years; s 37(11) tissue removal, storage, supply or use:
+-- $50,000 or 5 years; s 38 compelling tissue donation: $100,000 or 10 years; s 39(3) disclosing a donor's information: $20,000 or
+-- 2 years.
+-- s 50: a body corporate convicted may be fined "not exceeding 2 times the maximum amount that the court could, but for this
+-- section, impose as a fine for that offence".
+DECLARE Offence IS ONE OF
+    `research without an institution, review or consent`
+    `compelling or deceiving a person into research`
+    `failing to safeguard identifiable data`
+    `re-identifying anonymised data`
+    `disclosing a research subject's information`
+    `prohibited research`
+    `restricted research outside the requirements`
+    `trading in human tissue`
+    `advertising human tissue for sale`
+    `unlawful removal or use of tissue`
+    `compelling a person to donate tissue`
+    `disclosing a tissue donor's information`
+
+GIVEN `the offence` IS A Offence
+GIVETH A NUMBER
+`the maximum fine for an individual` MEANS
+    CONSIDER `the offence`
+    WHEN `research without an institution, review or consent` THEN 50000
+    WHEN `unlawful removal or use of tissue` THEN 50000
+    WHEN `failing to safeguard identifiable data` THEN 10000
+    WHEN `re-identifying anonymised data` THEN 20000
+    WHEN `disclosing a research subject's information` THEN 20000
+    WHEN `disclosing a tissue donor's information` THEN 20000
+    OTHERWISE 100000
+
+GIVEN `the offence` IS A Offence
+GIVETH A NUMBER
+`the maximum imprisonment in months` MEANS
+    CONSIDER `the offence`
+    WHEN `research without an institution, review or consent` THEN 60
+    WHEN `unlawful removal or use of tissue` THEN 60
+    WHEN `failing to safeguard identifiable data` THEN 12
+    WHEN `re-identifying anonymised data` THEN 24
+    WHEN `disclosing a research subject's information` THEN 24
+    WHEN `disclosing a tissue donor's information` THEN 24
+    OTHERWISE 120
+
+GIVEN `the offence` IS A Offence, `convicted as a body corporate` IS A BOOLEAN
+GIVETH A NUMBER
+`the maximum fine` MEANS
+    IF `convicted as a body corporate`
+    THEN `the maximum fine for an individual` `the offence` TIMES 2
+    ELSE `the maximum fine for an individual` `the offence`
