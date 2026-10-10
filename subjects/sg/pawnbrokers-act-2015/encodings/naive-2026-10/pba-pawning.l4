@@ -1,0 +1,251 @@
+IMPORT prelude
+
+-- Pawnbrokers Act 2015 (Singapore) -- pawning goods and getting them back: who needs a licence (s 6), deemed pawning by sale and
+-- repurchase (s 3(4), First Schedule), valuation and pawn ticket (ss 48, 49), permitted profit and fees (s 50, Second Schedule),
+-- extensions (s 51), redemption (ss 54, 56, 57), compensation for lost or damaged pledges (s 60), forfeiture (ss 61, 63),
+-- realisation other than by forfeiture (s 65), the rightful owner's notice (s 67), offences by pawnbrokers (s 72), and cash
+-- transaction reports (s 74A, Third Schedule paragraphs 1 and 15).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/PA2015.txt. The revised edition
+-- "incorporates all amendments up to and including 1 December 2021"; later amendments are annotated in the text, the latest seen
+-- being Act 32 of 2024 (wef 25 November 2024). S 986/2022 (wef 1 January 2023) is annotated in the Second Schedule.
+--
+-- WHY THIS ACT. Cited by 7 of the 527 Singapore Acts deposited in this repository. SCOPED to the rules a pawner and a pawnbroker meet
+-- across the counter. Not encoded: licence grant, renewal and refusal (ss 7-11), approval of shareholders, directors and managers
+-- (ss 12-17), licence conditions and statutory duties (ss 18-29), investigative and regulatory powers (ss 30-42), waivers
+-- (ss 43-47), the replacement-ticket procedure (s 66) beyond its fee, the customer due diligence and other anti-money-laundering
+-- measures (ss 74, 75, 76 and Third Schedule Parts 2-4) beyond the cash transaction report, and the miscellaneous provisions except
+-- the general penalty (s 79).
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules conventions. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Pawnbrokers Act 2015 -- pawning`
+
+§§ `6 -- no pawnbroking without licence`
+
+-- s 6(1): "it shall be an offence for a person to carry on the business of pawnbroking in Singapore or to hold out that the person is
+-- carrying on that business", except (2) in accordance with (a) a licence, (b) the Registrar's directions under s 41, (c) a waiver
+-- certificate under s 43, or (d) a class waiver under s 46.
+-- (3): (a) no previous qualifying conviction -- fine not exceeding $50,000; (b) with one -- $50,000 or 12 months or both.
+-- s 4: the Act does not apply to an entity regulated or exempted by the Monetary Authority of Singapore to the extent it is permitted
+-- to pawnbroke, or not prohibited, under that law.
+GIVEN `carries on or holds out pawnbroking in Singapore` IS A BOOLEAN,
+      `holds a licence` IS A BOOLEAN,
+      `acts under Registrar's directions under section 41` IS A BOOLEAN,
+      `holds a waiver certificate or class waiver` IS A BOOLEAN,
+      `is a MAS-regulated entity permitted to pawnbroke` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `unlicensed pawnbroking is an offence` IF
+        `carries on or holds out pawnbroking in Singapore`
+    AND (NOT `holds a licence`)
+    AND (NOT `acts under Registrar's directions under section 41`)
+    AND (NOT `holds a waiver certificate or class waiver`)
+    AND (NOT `is a MAS-regulated entity permitted to pawnbroke`)
+
+GIVEN `has a previous qualifying conviction` IS A BOOLEAN
+GIVETH A NUMBER
+DECIDE `section 6 maximum imprisonment in months` IS
+    IF `has a previous qualifying conviction` THEN 12 ELSE 0
+
+`section 6 maximum fine` MEANS 50000
+
+§§ `3(4) and First Schedule -- sale and repurchase deemed a pawn`
+
+-- First Schedule para 1: where "X sells goods to Y for a price" and "X is required to re-purchase the goods from Y at a higher
+-- price", (a) the goods are deemed to be pawned; (b) X is the pawner; (c) the sale price is the sum loaned; (d) the difference
+-- between sale price and repurchase price is the profit taken for the loan.
+-- s 3(3)(a): regard must be had "to the substance of the transaction and not to its form".
+GIVEN `the seller is required to repurchase` IS A BOOLEAN, `the sale price` IS A NUMBER, `the repurchase price` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the goods are deemed pawned` IF
+    `the seller is required to repurchase` AND `the repurchase price` > `the sale price`
+
+GIVEN `the sale price` IS A NUMBER, `the repurchase price` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the deemed profit` IS `the repurchase price` - `the sale price`
+
+§§ `48, 49 -- valuation and pawn ticket`
+
+-- s 48(1): the pawnbroker must, "before taking goods in pawn", give a valuation; (2) otherwise the loan agreement "is voidable at the
+-- instance of the pawner". s 49(1)-(4): a pawn ticket with a unique number and prescribed particulars, signed by the pawner, with a
+-- signed copy kept by the pawnbroker; (5) otherwise voidable at the instance of the pawner.
+GIVEN `valuation given beforehand` IS A BOOLEAN,
+      `ticket issued with unique number and prescribed particulars` IS A BOOLEAN,
+      `pawner signed a copy` IS A BOOLEAN,
+      `pawnbroker kept the signed copy` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the loan agreement is voidable by the pawner` IF
+        (NOT `valuation given beforehand`)
+    OR  (NOT `ticket issued with unique number and prescribed particulars`)
+    OR  (NOT `pawner signed a copy`)
+    OR  (NOT `pawnbroker kept the signed copy`)
+
+§§ `50 and Second Schedule -- permitted profit and fees`
+
+-- Second Schedule para 1: profit "must not exceed" (a) 1.5% of the total amount of the loan for each whole month of the term; and (b)
+-- 1.5% for the balance of the term that is part of a month. Para 2: no profit "2 months after the expiry of the redemption period".
+-- s 50(2): the agreement is void to the extent of any excess; (3) taking it is an offence (penalty: s 79 general penalty).
+-- Read here: a part month is charged as a full 1.5%, and the chargeable term stops 2 months after the redemption period ends.
+GIVEN `the loan` IS A NUMBER, `whole months` IS A NUMBER, `has a part month` IS A BOOLEAN
+GIVETH A NUMBER
+DECIDE `the maximum profit` IS
+    `the loan` * 15 / 1000 * (`whole months` + `part month count` `has a part month`)
+
+GIVEN `has a part month` IS A BOOLEAN
+GIVETH A NUMBER
+DECIDE `part month count` IS IF `has a part month` THEN 1 ELSE 0
+
+GIVEN `the redemption period in months` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the last month on which profit may run` IS `the redemption period in months` + 2
+
+GIVEN `the loan` IS A NUMBER, `whole months` IS A NUMBER, `has a part month` IS A BOOLEAN, `the profit taken` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `excess profit is an offence` IF
+    `the profit taken` > `the maximum profit` `the loan` `whole months` `has a part month`
+
+-- Para 4: a fee "of up to $2" for issuing a pawn ticket, but only if (a) the ticket is not issued only to change contact or business
+-- details or correct an error in an earlier ticket, and (b) the pawnbroker offers payment by debit card, electronic funds transfer
+-- or e-money "even if the mode of payment is not used by the pawner". Paras 5, 6: $10 for a s 66 application; $10 for a s 67 notice.
+GIVEN `issued only to change details or correct an error` IS A BOOLEAN, `offers an electronic mode of payment` IS A BOOLEAN
+GIVETH A NUMBER
+DECIDE `the maximum pawn ticket fee` IS
+    IF (NOT `issued only to change details or correct an error`) AND `offers an electronic mode of payment` THEN 2 ELSE 0
+
+`the fee for a lost ticket application under section 66` MEANS 10
+`the fee for an owner's notice under section 67` MEANS 10
+
+§§ `51 -- extending the redemption period`
+
+-- s 51(1): ss 48-50 apply to an extension "as if the pledge is offered to be pawned for the first time". (5): if the pawnbroker fails
+-- to give a valuation, or charges contrary to s 50(1), "(a) the validity of the agreement to extend ... is not thereby affected; but
+-- (b) the pawnbroker is not entitled to take any profit on the loan in respect of the extended redemption period".
+GIVEN `valuation given on extension` IS A BOOLEAN, `charged within the Second Schedule` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `profit is allowed for the extended period` IF
+    `valuation given on extension` AND `charged within the Second Schedule`
+
+§§ `54 -- redemption period`
+
+-- s 54(2): "the redemption period is 6 months after the date on which the pledge was made, or any longer period that the parties may
+-- agree". (1): a pledge can be redeemed during the period and after it "but before the pledge is forfeited".
+GIVEN `the agreed period in months` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the redemption period` IS
+    IF `the agreed period in months` > 6 THEN `the agreed period in months` ELSE 6
+
+§§ `56, 57 -- redeeming a pledge`
+
+-- s 56: a person entitled may redeem by (a) presenting the pawn ticket (a replacement counts, a cancelled ticket does not), (b)
+-- repaying the loan and profit, (c) providing identification information. s 57(1): the pawnbroker "must allow" redemption, except
+-- (2) it must not where (a) it knows the presenter is not entitled; (b) it has reason to believe so and "continues to have reason to so
+-- believe even after taking reasonable steps"; (c) the ticket is a s 66 replacement and it later has reason to believe the
+-- application was materially false or incomplete. s 54(1): only before forfeiture.
+DECLARE `Redemption attempt` HAS
+    `presents an uncancelled pawn ticket` IS A BOOLEAN
+    `repays loan and profit` IS A BOOLEAN
+    `provides identification information` IS A BOOLEAN
+    `pledge already forfeited` IS A BOOLEAN
+    `pawnbroker knows presenter not entitled` IS A BOOLEAN
+    `doubt persists after reasonable steps` IS A BOOLEAN
+    `replacement ticket application found false` IS A BOOLEAN
+
+GIVEN `the attempt` IS A `Redemption attempt`
+GIVETH A BOOLEAN
+DECIDE `the pawnbroker must allow redemption` IF
+        `the attempt`'s `presents an uncancelled pawn ticket`
+    AND `the attempt`'s `repays loan and profit`
+    AND `the attempt`'s `provides identification information`
+    AND (NOT `the attempt`'s `pledge already forfeited`)
+    AND (NOT `the attempt`'s `pawnbroker knows presenter not entitled`)
+    AND (NOT `the attempt`'s `doubt persists after reasonable steps`)
+    AND (NOT `the attempt`'s `replacement ticket application found false`)
+
+§§ `60 -- pledge lost or damaged`
+
+-- s 60(2): unable to produce the pledge -- compensation "for the value of the pledge". (3): produced in worse condition -- the person
+-- chooses (a) compensation for the value (and (4) the pledge becomes the pawnbroker's), or (b) return plus compensation for "any
+-- decrease in the value". (5): value is the s 48(1) valuation when the pawnbroker first took possession.
+GIVEN `the original valuation` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `compensation for a lost pledge` IS `the original valuation`
+
+GIVEN `the original valuation` IS A NUMBER, `the decrease in value` IS A NUMBER, `chooses to take the pledge back` IS A BOOLEAN
+GIVETH A NUMBER
+DECIDE `compensation for a damaged pledge` IS
+    IF `chooses to take the pledge back` THEN `the decrease in value` ELSE `the original valuation`
+
+§§ `61, 63, 64 -- forfeiture`
+
+-- s 61(1): a pledge is forfeited "one month after the pawnbroker serves a notice of forfeiture in accordance with sections 62 and 63,
+-- unless it is earlier redeemed". (2): it becomes the pawnbroker's absolute property and the loan and profit are deemed repaid.
+-- s 63(1)(a): the notice must be served "within 2 months after the expiry of the redemption period". s 64: forfeiture is the
+-- pawnbroker's sole remedy; it "cannot sue, in debt or otherwise".
+GIVEN `months after redemption period when notice served` IS A NUMBER,
+      `months since notice served` IS A NUMBER,
+      `redeemed earlier` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the pledge is forfeited` IF
+        `months after redemption period when notice served` <= 2
+    AND `months since notice served` >= 1
+    AND (NOT `redeemed earlier`)
+
+§§ `65 -- realising the pledge other than by forfeiture`
+
+-- s 65(1): (a) if the value exceeds the loan and profit, the pawnbroker is liable for the surplus; (b) if equal or less, "the loan and
+-- profit are extinguished"; (c) the pawnbroker acquires no property in the pledge. (2): value is the s 48(1) valuation.
+GIVEN `the original valuation` IS A NUMBER, `loan plus profit` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the surplus owed to the person entitled to redeem` IS
+    IF `the original valuation` > `loan plus profit` THEN `the original valuation` - `loan plus profit` ELSE 0
+
+§§ `67 -- rightful owner's notice`
+
+-- s 67(4)(b): with no court order, the pawnbroker "may refuse to deal with the pledge" (i) for 3 months after the notice, or (ii) if
+-- an action is commenced within that period, "for so long as that action is pending". (6): no profit during that refusal.
+GIVEN `months since owner's notice` IS A NUMBER, `action commenced within 3 months and pending` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the pawnbroker may refuse to deal with the pledge` IF
+    `months since owner's notice` < 3 OR `action commenced within 3 months and pending`
+
+§§ `72 -- offences by pawnbroker`
+
+-- s 72(1): an offence to take goods in pawn (a) from a person who "appears to be intoxicated"; (b) from a person "below 18 years of
+-- age"; or (c) without reasonable steps to satisfy itself the goods were not stolen or obtained by fraud or dishonesty. (2): an
+-- offence to advance "in any manner other than in money that is legal tender in Singapore". No penalty is stated; s 79 applies.
+DECLARE `Pawn taken` HAS
+    `pawner's age` IS A NUMBER
+    `pawner appears intoxicated` IS A BOOLEAN
+    `took reasonable steps on provenance` IS A BOOLEAN
+    `advanced in Singapore legal tender` IS A BOOLEAN
+
+GIVEN `the pawn` IS A `Pawn taken`
+GIVETH A BOOLEAN
+DECIDE `the pawnbroker commits an offence under section 72` IF
+        `the pawn`'s `pawner's age` < 18
+    OR  `the pawn`'s `pawner appears intoxicated`
+    OR  (NOT `the pawn`'s `took reasonable steps on provenance`)
+    OR  (NOT `the pawn`'s `advanced in Singapore legal tender`)
+
+§§ `79 -- general penalty`
+
+-- s 79: an offence "for which no penalty is expressly provided" -- fine not exceeding $20,000 or 12 months or both.
+`general penalty maximum fine` MEANS 20000
+`general penalty maximum imprisonment in months` MEANS 12
+
+§§ `74A and Third Schedule paragraphs 1, 15 -- cash transaction reports`
+
+-- Third Schedule para 1(1): "relevant transaction" means (a) a sale of any precious stone, metal or product to a customer "for which
+-- cash or a cash equivalent exceeding $20,000 is received", or (b) 2 or more such sales in a single day to the same customer (or
+-- customers known to act for the same person) with cash or cash equivalent "in total exceeding $20,000".
+-- s 74A(1): a report to a Suspicious Transaction Reporting Officer; para 15: within "the 15th business day" after the transaction, and
+-- (2) a copy kept for 5 years. s 74A(4): $20,000 or 2 years or both.
+GIVEN `is a sale of precious stone, metal or product` IS A BOOLEAN, `cash received that day from that customer` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `a cash transaction report is required` IF
+    `is a sale of precious stone, metal or product` AND `cash received that day from that customer` > 20000
+
+`cash transaction report deadline in business days` MEANS 15
+`cash transaction report retention in years` MEANS 5
+`section 74A maximum imprisonment in months` MEANS 24
