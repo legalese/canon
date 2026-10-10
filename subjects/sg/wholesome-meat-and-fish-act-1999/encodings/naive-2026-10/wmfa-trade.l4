@@ -1,0 +1,301 @@
+IMPORT prelude
+
+-- Wholesome Meat and Fish Act 1999 (Singapore) -- adulteration (s 2(2)), the licence and per-consignment permit for import,
+-- export and transhipment (ss 5, 6) and the due diligence defence (s 6(5), (6)), appeals (s 9), licensed slaughter (s 11),
+-- the slaughter-house duty and its defence (s 17), the sale offence (s 23), the officer's identification (s 4), forfeiture
+-- (s 32), officers of bodies corporate (s 31(1)), composition (s 39), the cap on rule offences (s 42(3)), and the maximum
+-- penalties for the main offences.
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/WMFA1999.txt. The
+-- deposit says the revised edition "incorporates all amendments up to and including 1 December 2021" and is the current
+-- version as at 01 Oct 2026; the latest annotation seen is Act 25 of 2021 wef 01/04/2022 (ss 6(6), 20(4), 23(4)).
+--
+-- WHY THIS ACT. Cited by 6 of the 527 Singapore Acts deposited in this repository. SCOPED to what a trader, slaughter-house
+-- or seller meets: when a consignment may move, when meat or fish may be sold, the defences, and the exposure. Not encoded:
+-- administration and appointments (s 3), licence application criteria and conditions (ss 7, 13) beyond the appeal window,
+-- the show-cause procedure (ss 8, 14), examinations and closure orders (ss 16, 18, 19, 21), enforcement powers (ss 24 to
+-- 27), documents, service and evidence (ss 33 to 35, 38), exemptions (s 40), and everything left to the rules (prescribed
+-- standards, labelling, fees, compoundable offences).
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Wholesome Meat and Fish Act 1999 -- trade`
+
+§§ `2(2) -- adulterated`
+
+-- s 2(2): a meat or fish product "is deemed to be adulterated if (a) it does not comply with the prescribed standards; or
+-- (b) it contains any chemical, drug or other substance which renders [it] injurious to health or unfit for human
+-- consumption."
+GIVEN `meets the prescribed standards` IS A BOOLEAN, `contains an injurious substance` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the product is adulterated` IF
+    (NOT `meets the prescribed standards`) OR `contains an injurious substance`
+
+§§ `5, 6 -- licence and per-consignment permit`
+
+-- s 5(1): "A person must not import, export or tranship any meat product or fish product except under and in accordance
+-- with the conditions of a licence". s 6(1): a licensee must not import for sale, supply or distribution in Singapore unless
+-- (a) it has "a permit ... in respect of each consignment" and complies with its conditions; (b) "the whole consignment
+-- conforms to the description" in the permit; (c) it "meets with the prescribed standards"; (d) it is "packaged and
+-- labelled in the prescribed manner".
+-- s 6(2): export also requires (c) for meat, derivation "from animals which have been slaughtered in slaughter-houses
+-- licensed under this Act or from meat products which have been imported in accordance with this Act"; (d) "the whole
+-- consignment has been processed in a processing establishment licensed under this Act"; (e) a licensed cold store if it
+-- requires cold storage; (f) "satisfactory evidence that the whole consignment meets with the requirements of the country
+-- to which it is being exported"; (g) prescribed packaging and labelling.
+-- s 6(3): transhipment needs only the per-consignment permit and its conditions.
+--
+-- Read literally, s 6(2)(d) requires EVERY exported consignment, fish included, to have been processed in a licensed
+-- processing establishment. The encoding follows the words.
+DECLARE Movement IS ONE OF
+    `import for sale in Singapore`
+    `export`
+    `transhipment`
+
+DECLARE Consignment HAS
+    `the trader holds a section 5 licence` IS A BOOLEAN
+    `has a permit for this consignment` IS A BOOLEAN
+    `complies with the permit conditions` IS A BOOLEAN
+    `conforms to the permit description` IS A BOOLEAN
+    `meets the prescribed standards` IS A BOOLEAN
+    `packaged and labelled as prescribed` IS A BOOLEAN
+    `is meat` IS A BOOLEAN
+    `derived from licensed slaughter or lawful import` IS A BOOLEAN
+    `processed in a licensed processing establishment` IS A BOOLEAN
+    `requires cold storage` IS A BOOLEAN
+    `kept in a licensed cold store` IS A BOOLEAN
+    `evidence it meets the destination country's requirements` IS A BOOLEAN
+
+GIVEN `the c` IS A Consignment
+GIVETH A BOOLEAN
+DECIDE `the permit is complied with` IF
+    `the c`'s `has a permit for this consignment` AND `the c`'s `complies with the permit conditions`
+
+GIVEN `the c` IS A Consignment
+GIVETH A BOOLEAN
+DECIDE `the import conditions are met` IF
+        `the permit is complied with` `the c`
+    AND `the c`'s `conforms to the permit description`
+    AND `the c`'s `meets the prescribed standards`
+    AND `the c`'s `packaged and labelled as prescribed`
+
+GIVEN `the c` IS A Consignment
+GIVETH A BOOLEAN
+DECIDE `the export conditions are met` IF
+        `the permit is complied with` `the c`
+    AND `the c`'s `conforms to the permit description`
+    AND ((NOT `the c`'s `is meat`) OR `the c`'s `derived from licensed slaughter or lawful import`)
+    AND `the c`'s `processed in a licensed processing establishment`
+    AND ((NOT `the c`'s `requires cold storage`) OR `the c`'s `kept in a licensed cold store`)
+    AND `the c`'s `evidence it meets the destination country's requirements`
+    AND `the c`'s `packaged and labelled as prescribed`
+
+GIVEN `the movement` IS A Movement, `the c` IS A Consignment
+GIVETH A BOOLEAN
+DECIDE `the movement is lawful` IF
+        `the c`'s `the trader holds a section 5 licence`
+    AND CONSIDER `the movement`
+        WHEN `import for sale in Singapore` THEN `the import conditions are met` `the c`
+        WHEN `export` THEN `the export conditions are met` `the c`
+        WHEN `transhipment` THEN `the permit is complied with` `the c`
+
+§§ `6(5), (6), 23(3), (4) -- the due diligence defence`
+
+-- s 6(5) (and s 23(3) in the same words): "it is a defence for the person charged to prove (a) that the commission of the
+-- offence was due to the act or default of another person or to some other cause beyond the control of the person charged;
+-- and (b) that the person charged took all reasonable precautions and exercised all due diligence".
+-- s 6(6): if the defence blames another person, the accused may not rely on it "without permission of the court ... unless,
+-- within a period ending 7 clear days before the hearing", written notice identifying that person was served on the
+-- prosecutor. Clear days are counted here as whole days strictly between service and the hearing (an interpretation).
+GIVEN `due to another person or a cause beyond control` IS A BOOLEAN, `took all reasonable precautions` IS A BOOLEAN, `blames another person` IS A BOOLEAN, `clear days between notice and hearing` IS A NUMBER, `court gave permission` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the due diligence defence is available` IF
+        `due to another person or a cause beyond control`
+    AND `took all reasonable precautions`
+    AND (    (NOT `blames another person`)
+          OR `clear days between notice and hearing` AT LEAST 7
+          OR `court gave permission`)
+
+§§ `9 -- appeal to the Minister`
+
+-- s 9(1): a person aggrieved by conditions, refusal, suspension or revocation "may, within 7 days of the date of receipt of
+-- the notice ... appeal in writing to the Minister whose decision is final." (2): despite a pending appeal, the condition,
+-- suspension or revocation "takes effect from the date specified in the notice ... unless the Minister otherwise orders."
+GIVEN `days since the notice was received` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the appeal is in time` IF
+    `days since the notice was received` AT MOST 7
+
+GIVEN `an appeal is pending` IS A BOOLEAN, `the Minister otherwise orders` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the suspension takes effect on the notified date` IF
+    NOT `the Minister otherwise orders`
+
+§§ `11 -- where animals may be slaughtered`
+
+-- s 11(1): no person may slaughter an animal intended for human consumption, or permit it, on any premises unless "(a) those
+-- premises have been licensed ... as a slaughter-house" or "(b) the Director-General has granted a permit ... for any
+-- special reason", and in either case the slaughter is "carried out in accordance with the rules and the conditions".
+-- "animal" means "any bird, mammal, reptile or amphibian" (s 2(1)) -- not fish.
+-- s 11(3): the OCCUPIER of the premises "is deemed to have slaughtered that animal, until the occupier proves that it was
+-- slaughtered without the occupier's knowledge or consent."
+GIVEN `intended for human consumption` IS A BOOLEAN, `licensed slaughter-house` IS A BOOLEAN, `special permit` IS A BOOLEAN, `per the rules and conditions` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the slaughter contravenes section 11` IF
+        `intended for human consumption`
+    AND NOT ((`licensed slaughter-house` OR `special permit`) AND `per the rules and conditions`)
+
+GIVEN `the slaughter contravened section 11` IS A BOOLEAN, `occupier proves no knowledge or consent` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the occupier is deemed to have slaughtered` IF
+    `the slaughter contravened section 11` AND (NOT `occupier proves no knowledge or consent`)
+
+§§ `17 -- the slaughter-house duty`
+
+-- s 17(1): the owner and occupier of a licensed slaughter-house must ensure "(a) that no animal which is diseased or ...
+-- unfit for human consumption is slaughtered" and "(b) that the carcase of any animal which ... is found to have any
+-- disease or to be otherwise unfit ... is destroyed or disposed of in the prescribed manner."
+-- s 17(3): the defence -- did not know and "could not with reasonable diligence have ascertained" until slaughter, AND all
+-- reasonable precautions -- is given only for "the owner's or occupier's duty under subsection (1)(a)". No defence is
+-- written for the disposal duty in (1)(b).
+DECLARE SlaughterDuty IS ONE OF
+    `not to slaughter an unfit animal`
+    `to dispose of an unfit carcase`
+
+GIVEN `the duty` IS A SlaughterDuty, `could not have known before slaughter` IS A BOOLEAN, `took all reasonable precautions` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the section 17 defence is available` IF
+    CONSIDER `the duty`
+    WHEN `not to slaughter an unfit animal` THEN `could not have known before slaughter` AND `took all reasonable precautions`
+    WHEN `to dispose of an unfit carcase` THEN FALSE
+
+§§ `23 -- selling meat and fish`
+
+-- s 23(1): a person must not sell, supply, possess for sale or supply, or advertise any meat or fish product "(a) which has
+-- been imported in contravention of section 5 or 6; (b) which has not been inspected, examined and certified by an
+-- authorised examiner as required under section 10; (c) ... derived from any animal ... slaughtered in Singapore in
+-- contravention of section 11, 17 or 18; (d) ... processed in a processing establishment; or ... kept ... in a cold store,
+-- that has not been licensed; (e) which has not been marked, branded or tagged in accordance with section 20; (f) which has
+-- not been labelled in the prescribed manner or ... labelled with any information that is false, inaccurate or misleading;
+-- (g) ... obtained from a wholesale market that has not been licensed; or (h) which is diseased, adulterated or unfit for
+-- human consumption".
+-- (5): a product found on premises used for sale or storage for sale "is deemed to be in that person's possession for sale
+-- until the contrary is proved."
+--
+-- Para (e), read alone, catches every product not marked under s 20; s 20 marks only carcases slaughtered in a licensed
+-- slaughter-house. The encoding takes (e) as applying where s 20 requires a mark (an inference).
+DECLARE Product HAS
+    `imported in contravention of section 5 or 6` IS A BOOLEAN
+    `inspected and certified under section 10` IS A BOOLEAN
+    `from an animal slaughtered unlawfully in Singapore` IS A BOOLEAN
+    `processed or stored in an unlicensed establishment or cold store` IS A BOOLEAN
+    `lacks a mark required by section 20` IS A BOOLEAN
+    `labelled as prescribed` IS A BOOLEAN
+    `labelled falsely or misleadingly` IS A BOOLEAN
+    `from an unlicensed wholesale market` IS A BOOLEAN
+    `diseased, adulterated or unfit` IS A BOOLEAN
+
+GIVEN `the p` IS A Product
+GIVETH A BOOLEAN
+DECIDE `the product may not be sold` IF
+        `the p`'s `imported in contravention of section 5 or 6`
+    OR  (NOT `the p`'s `inspected and certified under section 10`)
+    OR  `the p`'s `from an animal slaughtered unlawfully in Singapore`
+    OR  `the p`'s `processed or stored in an unlicensed establishment or cold store`
+    OR  `the p`'s `lacks a mark required by section 20`
+    OR  (NOT `the p`'s `labelled as prescribed`)
+    OR  `the p`'s `labelled falsely or misleadingly`
+    OR  `the p`'s `from an unlicensed wholesale market`
+    OR  `the p`'s `diseased, adulterated or unfit`
+
+GIVEN `found on premises used for sale or storage for sale` IS A BOOLEAN, `the contrary is proved` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the product is deemed possessed for sale` IF
+    `found on premises used for sale or storage for sale` AND (NOT `the contrary is proved`)
+
+§§ `4(2) -- officer identification`
+
+-- s 4(2): "It is not an offence for any person to refuse to comply with any request, demand or order made or given by any
+-- authorised officer if the authorised officer is not in uniform and refuses to declare his or her office and produce his
+-- or her identification card, on demand being made by the person."
+GIVEN `officer in uniform` IS A BOOLEAN, `person demanded identification` IS A BOOLEAN, `officer refused to identify` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `refusing the officer is not an offence` IF
+    (NOT `officer in uniform`) AND `person demanded identification` AND `officer refused to identify`
+
+§§ `31(1) -- officers of bodies corporate`
+
+-- s 31(1): where a body corporate, partnership or unincorporated association commits an offence, a "director, manager,
+-- partner, secretary or other similar officer ... shall be guilty of that offence unless he or she proves (a) that the
+-- offence was committed without his or her consent or connivance; and (b) that he or she had exercised all such diligence".
+GIVEN `the body committed an offence` IS A BOOLEAN, `was an officer at the time` IS A BOOLEAN, `proves no consent or connivance` IS A BOOLEAN, `proves due diligence` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the officer is guilty` IF
+        `the body committed an offence`
+    AND `was an officer at the time`
+    AND NOT (`proves no consent or connivance` AND `proves due diligence`)
+
+§§ `32(5), (8), (9) -- deemed forfeiture`
+
+-- s 32(5): absent prosecution, the Director-General gives notice that the item, "on the expiry of 7 days of the date
+-- specified in the notice, is deemed to be forfeited unless a claim ... is made before then". (8): no claim on expiry --
+-- deemed forfeited. (9): where the owner "consents to its disposal, the item is thereupon deemed to be forfeited."
+GIVEN `owner consents to disposal` IS A BOOLEAN, `days since the notified date` IS A NUMBER, `a claim was made` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the item is deemed forfeited` IF
+        `owner consents to disposal`
+    OR  (`days since the notified date` AT LEAST 7 AND (NOT `a claim was made`))
+
+§§ `39 -- composition`
+
+-- s 39(1): the Director-General may compound "any offence ... that is prescribed as a compoundable offence by collecting
+-- ... a sum of money not exceeding $1,000." Which offences are compoundable is left to rules.
+GIVEN `prescribed as compoundable` IS A BOOLEAN, `the sum` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the offence may be compounded for the sum` IF
+    `prescribed as compoundable` AND `the sum` AT MOST 1000
+
+§§ `Penalties`
+
+-- ss 5(2), 23(2): fine up to $50,000 or 2 years or both; second or subsequent conviction $100,000 or 3 years or both.
+-- s 6(4): $10,000 or 12 months; second or subsequent $20,000 or 2 years.
+-- ss 9(3), 10(3), 11(2), 12(2), 17(2), 20(2), 22(2), 28, 30: $10,000 or 12 months, with no uplift for a repeat.
+-- s 42(3): a rule offence may carry no more than "$10,000 and, in the case of a continuing offence, the sum of $100 for
+-- every day or part of a day during which the offence continues after conviction."
+DECLARE Offence IS ONE OF
+    `trading without a section 5 licence`
+    `breaching a consignment permit requirement`
+    `selling a prohibited product`
+    `not having an import inspected`
+    `slaughtering off licensed premises`
+    `running an unlicensed processing establishment or cold store`
+    `slaughtering an unfit animal`
+    `a carcase marking offence`
+    `running an unlicensed wholesale market`
+    `not surrendering a suspended licence`
+    `obstructing an officer`
+    `a false declaration`
+
+GIVEN `the offence` IS AN Offence, `a repeat conviction` IS A BOOLEAN
+GIVETH A NUMBER
+DECIDE `the maximum fine` IS
+    CONSIDER `the offence`
+    WHEN `trading without a section 5 licence` THEN IF `a repeat conviction` THEN 100000 ELSE 50000
+    WHEN `selling a prohibited product` THEN IF `a repeat conviction` THEN 100000 ELSE 50000
+    WHEN `breaching a consignment permit requirement` THEN IF `a repeat conviction` THEN 20000 ELSE 10000
+    OTHERWISE 10000
+
+GIVEN `the offence` IS AN Offence, `a repeat conviction` IS A BOOLEAN
+GIVETH A NUMBER
+DECIDE `the maximum imprisonment in months` IS
+    CONSIDER `the offence`
+    WHEN `trading without a section 5 licence` THEN IF `a repeat conviction` THEN 36 ELSE 24
+    WHEN `selling a prohibited product` THEN IF `a repeat conviction` THEN 36 ELSE 24
+    WHEN `breaching a consignment permit requirement` THEN IF `a repeat conviction` THEN 24 ELSE 12
+    OTHERWISE 12
+
+GIVEN `days the offence continues after conviction` IS A NUMBER
+GIVETH A NUMBER
+DECIDE `the maximum fine a rule may prescribe` IS
+    10000 + 100 * `days the offence continues after conviction`
