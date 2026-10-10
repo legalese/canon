@@ -15,7 +15,7 @@ An entry is a **brief**, not a complaint. It must carry enough for an encoder wh
 | field | what it holds |
 | --- | --- |
 | `id` | `REQ-` and four or more digits, assigned in order, never reused |
-| `raised` | the date the entry was first written, and `by`: `hand`, `replay`, `simulation` or `lqa` |
+| `raised` | the date the entry was first written, and `by`: `hand`, `encoder` (raised while encoding something else), `replay`, `simulation` or `lqa` |
 | `status` | `open` → `claimed` → `satisfied`, or `declined` or `superseded`; see lifecycle |
 | `kind` | which way the law ran out; one of the nine kinds below |
 | `instrument` | the thing that needs encoding: its type, title, citation if known, the subject slug if one exists, and the provision |
@@ -26,7 +26,7 @@ An entry is a **brief**, not a complaint. It must carry enough for an encoder wh
 | `assumption` | what the simulation assumed in order to proceed, and the trace ids it tainted |
 | `attach_to` | where the encoding goes: scope enlargement of an existing row, a fork in an existing row's register, a new row on an existing subject, a new subject, or an "as published" policy row |
 | `count`, `first_seen`, `last_seen` | how often the same requirement has recurred; the simulation increments rather than duplicating |
-| `priority` | optional number; the checker ranks by it, then by count |
+| `priority` | an integer, lower is sooner. **1**: raised by a scenario, a replay or the simulation; these skip the queue. **2, 3, 4**: the three scheduled tiers of remaining Acts. The checker ranks ascending, then by count descending |
 | `closes_when` | the closing condition, normally the seed and event at which the raising run must replay untainted |
 | `resolution` | filled on close: the subject, row and commit that satisfied it, or the reason it was declined, or the id it was merged into |
 

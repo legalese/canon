@@ -111,12 +111,12 @@ def main():
 
     print(f"{len(entries)} entries, {failures} failing")
     open_q = [e for e in entries if e.get("status") in ("open", "claimed")]
-    open_q.sort(key=lambda e: (-(e.get("priority") or 0), -e.get("count", 1), e["id"]))
+    open_q.sort(key=lambda e: (e.get("priority") or 99, -e.get("count", 1), e["id"]))
     if open_q:
         print(f"\nopen queue ({len(open_q)}):")
         for e in open_q:
             inst = e["instrument"]
-            print(f"  {e['id']}  {e['status']:8} {e['kind']:14} x{e['count']:<3} {inst['title']}"
+            print(f"  {e['id']}  p{e.get('priority') or '-'} {e['status']:8} {e['kind']:14} x{e['count']:<3} {inst['title']}"
                   f"{' ' + inst['provision'] if inst.get('provision') else ''}  -> {e['attach_to']['how']}")
     return 1 if failures else 0
 
