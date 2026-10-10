@@ -1,0 +1,309 @@
+IMPORT prelude
+
+-- Bills of Exchange Act 1949 (Singapore) -- the cheque in an ordinary person's or business's hands: what makes an instrument a
+-- bill and a cheque (ss 3, 9(2), 11(2), 13(2), 73), days of grace and business days (ss 14, 101), signatures by minors, forgers
+-- and agents (ss 22(3), 24, 26), the holder in due course and good faith (ss 29, 99), material alteration (s 64), late
+-- presentment of a cheque (s 74), stopping a cheque and the drawer's death (s 75), notice of dishonour (ss 48, 49(m), 50(3)),
+-- and crossings, "not negotiable" and "account payee" (ss 76, 79, 81, 82).
+--
+-- Edition: 2020 Revised Edition, as deposited at ../../registers/source-bundle/BEA1949.txt. The deposit says it "incorporates
+-- all amendments up to and including 1 December 2021" and came into operation on 31 December 2021; the latest amending Act in
+-- its legislative history is Act 7 of 2009 (Civil Law (Amendment) Act 2009, s 22(3), annotated [7/2009]), with the
+-- rectification order S 30/2010 (annotated at s 76(1)). The arrangement of sections at the top of the deposit is out of step
+-- with the body from s 23 onwards; the BODY's numbering is followed here.
+--
+-- WHY THIS ACT. Requirement REQ-0034 (subjects/sg/requirements.jsonl): Tier 2 of the remaining Singapore Acts, ordered by
+-- everyday-life relevance. It asks what the Act decides for a person or business it applies to; no scenario has asked a sharper
+-- question yet. SCOPED to cheques, because a cheque is the bill of exchange an ordinary person or business actually meets.
+-- Not encoded: acceptance and qualified acceptance (ss 17-19, 39-44), inchoate instruments (s 20), presentment rules in detail
+-- (ss 41, 45, 46), noting and protest (s 51), liabilities and estoppels of parties (ss 53-58), discharge (ss 59-63),
+-- acceptance and payment for honour (ss 65-68), lost bills and sets (ss 69-71), conflict of laws (s 72), the bankers'
+-- protections for unindorsed cheques and collection (ss 83-88), cheque truncation (ss 89-91), promissory notes (Part 4) and
+-- most of Part 5.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill conventions (the skill itself was not
+-- loadable in this session; the example rows were followed). No pipeline, no coverage table, no independent test pass, no
+-- human gate. See NOTES.md.
+
+§ `Bills of Exchange Act 1949 -- cheques`
+
+§§ `3, 11(2), 13(2) and 73 -- a bill, and a cheque`
+
+-- s 3(1): "A bill of exchange is an unconditional order in writing, addressed by one person to another, signed by the person
+-- giving it, requiring the person to whom it is addressed to pay on demand or at a fixed or determinable future time a sum
+-- certain in money to, or to the order of, a specified person, or to bearer."
+-- (2): an instrument "which orders any act to be done in addition to the payment of money, is not a bill of exchange".
+-- (3): "An order to pay out of a particular fund is not unconditional"; (4) but an indication of the account to be debited is.
+-- (5): "A bill is not invalid by reason -- (a) that it is not dated". s 13(2): "not invalid by reason only that it is antedated or
+-- post-dated". s 11(2): "An instrument expressed to be payable on a contingency is not a bill, and the happening of the event does
+-- not cure the defect."
+-- s 73(1): "A cheque is a bill of exchange drawn on a banker payable on demand."
+DECLARE Instrument HAS
+    `an order rather than a promise` IS A BOOLEAN
+    `in writing` IS A BOOLEAN
+    `signed by the drawer` IS A BOOLEAN
+    `drawn on a banker` IS A BOOLEAN
+    `payable on demand` IS A BOOLEAN
+    `payable at a fixed or determinable future time` IS A BOOLEAN
+    `payable on a contingency` IS A BOOLEAN
+    `for a sum certain in money` IS A BOOLEAN
+    `to a specified person or to bearer` IS A BOOLEAN
+    `payable only out of a particular fund` IS A BOOLEAN
+    `orders some act besides paying money` IS A BOOLEAN
+    `names the account to be debited` IS A BOOLEAN
+    `undated` IS A BOOLEAN
+    `post-dated` IS A BOOLEAN
+
+-- The last three fields are deliberately ignored: s 3(4)(a), s 3(5)(a) and s 13(2) say they do not defeat a bill.
+GIVEN `the instrument` IS AN Instrument
+GIVETH A BOOLEAN
+DECIDE `the instrument is a bill of exchange` IF
+        `the instrument`'s `an order rather than a promise`
+    AND `the instrument`'s `in writing`
+    AND `the instrument`'s `signed by the drawer`
+    AND (`the instrument`'s `payable on demand` OR `the instrument`'s `payable at a fixed or determinable future time`)
+    AND (NOT `the instrument`'s `payable on a contingency`)
+    AND `the instrument`'s `for a sum certain in money`
+    AND `the instrument`'s `to a specified person or to bearer`
+    AND (NOT `the instrument`'s `payable only out of a particular fund`)
+    AND (NOT `the instrument`'s `orders some act besides paying money`)
+
+GIVEN `the instrument` IS AN Instrument
+GIVETH A BOOLEAN
+DECIDE `the instrument is a cheque` IF
+        `the instrument is a bill of exchange` `the instrument`
+    AND `the instrument`'s `drawn on a banker`
+    AND `the instrument`'s `payable on demand`
+
+§§ `9(2) -- words and figures`
+
+-- s 9(2): "Where the sum payable is expressed in words and also in figures, and there is a discrepancy between the 2, the sum
+-- denoted by the words is the amount payable."
+GIVEN `the sum in words` IS A NUMBER, `the sum in figures` IS A NUMBER
+GIVETH A NUMBER
+`the sum payable` MEANS `the sum in words`
+
+§§ `14 and 101 -- days of grace and business days`
+
+-- s 14(a): "3 days, called days of grace, are, in every case where the bill itself does not otherwise provide, added to the time
+-- of payment" -- but only "Where a bill is not payable on demand". So a cheque (payable on demand, s 73) has none.
+-- s 14(a) proviso: for a Singapore bill (one "drawn payable in Singapore currency", s 2) a last day of grace on a Sunday, public
+-- holiday or bank holiday rolls to the next business day; for any other bill a Saturday does too.
+-- s 101(2): "non-business days" are Sundays, bank or public holidays, and "in the case of bills other than Singapore bills" (or
+-- bills the Minister prescribes) "-- Saturday". (3): "Any other day is a business day." Ministerial prescriptions are not modelled.
+GIVEN `payable on demand` IS A BOOLEAN, `the bill provides otherwise` IS A BOOLEAN
+GIVETH A NUMBER
+`the days of grace` MEANS
+    IF `payable on demand` THEN 0
+    ELSE IF `the bill provides otherwise` THEN 0
+         ELSE 3
+
+GIVEN `a Saturday` IS A BOOLEAN, `a Sunday` IS A BOOLEAN, `a bank or public holiday` IS A BOOLEAN, `a Singapore bill` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the day is a non-business day` IF
+        `a Sunday`
+    OR  `a bank or public holiday`
+    OR  (`a Saturday` AND (NOT `a Singapore bill`))
+
+§§ `22(3) -- a drawer below 18`
+
+-- s 22(1): "Capacity to incur liability as a party to a bill is coextensive with capacity to contract."
+-- (3): "Where a bill is drawn or indorsed by a person below the age of 18 years ..., the drawing or indorsement entitles the holder
+-- to receive payment of the bill, and to enforce it against any other party thereto." [7/2009]
+-- Whether the minor is himself liable turns on capacity to contract under other law, which was not read; not encoded.
+GIVEN `the drawer's age` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `section 22(3) saves the holder's rights against the other parties` IF `the drawer's age` LESS THAN 18
+
+§§ `24 and 26 -- forged signatures and agents`
+
+-- s 24(1): a forged or unauthorised signature "is wholly inoperative, and no right ... to enforce payment thereof against any party
+-- thereto can be acquired through or under that signature, unless the party against whom it is sought to retain or enforce
+-- payment of the bill is precluded from setting up the forgery or want of authority".
+GIVEN `the signature was forged or unauthorised` IS A BOOLEAN, `the party is precluded from setting it up` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `rights can be acquired through the signature` IF
+        (NOT `the signature was forged or unauthorised`)
+    OR  `the party is precluded from setting it up`
+
+-- s 26(1): a person who "adds words to his signature, indicating that he signs for or on behalf of a principal, or in a
+-- representative character, ... is not personally liable thereon; but the mere addition to his signature of words describing him
+-- as an agent, or as filling a representative character, does not exempt him from personal liability."
+DECLARE Signing IS ONE OF
+    `a bare signature`
+    `signed for and on behalf of the company`
+    `signed with the word director added`
+
+GIVEN `the signing` IS A Signing
+GIVETH A BOOLEAN
+DECIDE `the signer is personally liable` IF
+    CONSIDER `the signing`
+    WHEN `signed for and on behalf of the company` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `29, 99 and 81 -- the holder in due course`
+
+-- s 29(1): a holder in due course has taken a bill "complete and regular on the face of it", (a) "before it was overdue, and
+-- without notice that it had been previously dishonoured, if such was the fact", (b) "in good faith and for value, and ... had
+-- no notice of any defect in the title of the person who negotiated it".
+-- s 99: "A thing is deemed to be done in good faith ... where it is in fact done honestly, whether it is done negligently or not."
+-- s 38(1)(b): a holder in due course "holds the bill free from any defect of title of prior parties".
+-- s 81: a person who "takes a crossed cheque which bears on it the words 'not negotiable', ... shall not have and shall not be
+-- capable of giving a better title to the cheque than that which the person from whom he took it had."
+DECLARE Taking HAS
+    `complete and regular on its face` IS A BOOLEAN
+    `taken before it was overdue` IS A BOOLEAN
+    `without notice of a previous dishonour` IS A BOOLEAN
+    `taken honestly` IS A BOOLEAN
+    `taken negligently` IS A BOOLEAN
+    `for value` IS A BOOLEAN
+    `without notice of any defect in title` IS A BOOLEAN
+    `a crossed cheque marked not negotiable` IS A BOOLEAN
+
+GIVEN `honestly` IS A BOOLEAN, `negligently` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `done in good faith` IF `honestly`
+
+GIVEN `the taking` IS A Taking
+GIVETH A BOOLEAN
+DECIDE `the taker is a holder in due course` IF
+        `the taking`'s `complete and regular on its face`
+    AND `the taking`'s `taken before it was overdue`
+    AND `the taking`'s `without notice of a previous dishonour`
+    AND `done in good faith` (`the taking`'s `taken honestly`) (`the taking`'s `taken negligently`)
+    AND `the taking`'s `for value`
+    AND `the taking`'s `without notice of any defect in title`
+
+GIVEN `the taking` IS A Taking
+GIVETH A BOOLEAN
+DECIDE `the taker holds free of a prior party's defect of title` IF
+        `the taker is a holder in due course` `the taking`
+    AND (NOT `the taking`'s `a crossed cheque marked not negotiable`)
+
+§§ `64 -- material alteration`
+
+-- s 64(1): where a bill "is materially altered without the assent of all parties liable on the bill, the bill is avoided except as
+-- against a party who has himself made, authorised or assented to the alteration, and subsequent indorsers".
+-- (2): where the alteration "is not apparent, and the bill is in the hands of a holder in due course, such holder may ... enforce
+-- payment of it according to its original tenor". (3): altering "the date, the sum payable, the time of payment, the place of
+-- payment" is material.
+GIVEN `the party made, authorised or assented to it` IS A BOOLEAN, `the party indorsed after it` IS A BOOLEAN,
+      `the holder is in due course` IS A BOOLEAN, `the alteration is apparent` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the party is still bound on the altered bill or its original tenor` IF
+        `the party made, authorised or assented to it`
+    OR  `the party indorsed after it`
+    OR  (`the holder is in due course` AND (NOT `the alteration is apparent`))
+
+§§ `74 -- presenting a cheque late`
+
+-- s 74(a): where a cheque "is not presented for payment within a reasonable time of its issue, and the drawer ... had the right at
+-- the time of such presentment as between him and the banker to have the cheque paid and suffers actual damage through the delay,
+-- he is discharged to the extent of such damage"; (c) the holder becomes a creditor of the banker "in lieu of" the drawer "to the
+-- extent of such discharge". Late presentment does NOT otherwise discharge the drawer of a cheque.
+GIVEN `presented within a reasonable time` IS A BOOLEAN, `the drawer had the right to have it paid` IS A BOOLEAN,
+      `the drawer's actual damage from the delay` IS A NUMBER
+GIVETH A NUMBER
+`the extent of the drawer's discharge` MEANS
+    IF `presented within a reasonable time` THEN 0
+    ELSE IF `the drawer had the right to have it paid` THEN `the drawer's actual damage from the delay`
+         ELSE 0
+
+§§ `75 -- stopping a cheque, and the drawer's death`
+
+-- s 75: "The duty and authority of a banker to pay a cheque drawn on him by his customer are determined by -- (a) countermand of
+-- payment; (b) notice of the customer's death." It is NOTICE of death, not the death, that ends the authority.
+GIVEN `payment was countermanded` IS A BOOLEAN, `the customer has died` IS A BOOLEAN, `the banker has notice of the death` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the banker still has authority to pay` IF
+        (NOT `payment was countermanded`)
+    AND (NOT `the banker has notice of the death`)
+
+§§ `48, 49(m) and 50(3) -- notice of dishonour`
+
+-- s 48(1): when a bill is dishonoured "notice of dishonour must be given to the drawer and each indorser, and any drawer or indorser
+-- to whom such notice is not given is discharged".
+-- s 49(m): notice "must be given within a reasonable time"; absent special circumstances that means, where the parties "reside in
+-- the same place", notice "given or sent off in time to reach the latter on the day after the dishonour", and where they "reside in
+-- different places", notice "sent off on the day after the dishonour" (or the next post).
+-- s 101(1): where the time limited "is less than 3 days, in reckoning time non-business days shall be excluded" -- so "the day
+-- after" is counted here in business days (an inference that s 101(1) reaches s 49(m)).
+-- s 50(3): notice is dispensed with "(b) by waiver", and as regards the drawer "(v) where the drawer has countermanded payment".
+GIVEN `the parties reside in the same place` IS A BOOLEAN, `business days until it reached the drawer` IS A NUMBER,
+      `business days until it was sent off` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `notice of dishonour was in time` IF
+    IF `the parties reside in the same place` THEN `business days until it reached the drawer` AT MOST 1
+    ELSE `business days until it was sent off` AT MOST 1
+
+GIVEN `due notice was given` IS A BOOLEAN, `notice was waived` IS A BOOLEAN, `the drawer countermanded payment` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the drawer is discharged for want of notice` IF
+        (NOT `due notice was given`)
+    AND (NOT `notice was waived`)
+    AND (NOT `the drawer countermanded payment`)
+
+§§ `76 -- general and special crossings`
+
+-- s 76(1): a cheque is "crossed generally" where it bears across its face "(a) the words 'and company' or any abbreviation thereof
+-- between 2 parallel transverse lines, either with or without the words 'not negotiable'; or (b) 2 parallel transverse lines
+-- simply, either with or without the words 'not negotiable'". [S 30/2010]
+-- (2): "Where a cheque bears across its face an addition of the name of a banker, either with or without the words 'not
+-- negotiable', that addition constitutes a crossing, and the cheque is crossed specially and to that banker." No lines are needed.
+DECLARE Face IS ONE OF
+    `nothing written across it`
+    `two parallel lines`
+    `two parallel lines enclosing and company`
+    `two parallel lines enclosing not negotiable`
+    `and company written without lines`
+    `not negotiable written without lines`
+    `the name of a bank written without lines`
+    `the name of a bank between two lines`
+
+DECLARE Crossing IS ONE OF
+    `uncrossed`
+    `crossed generally`
+    `crossed specially`
+
+GIVEN `the face` IS A Face
+GIVETH A Crossing
+`the crossing` MEANS
+    CONSIDER `the face`
+    WHEN `two parallel lines` THEN `crossed generally`
+    WHEN `two parallel lines enclosing and company` THEN `crossed generally`
+    WHEN `two parallel lines enclosing not negotiable` THEN `crossed generally`
+    WHEN `the name of a bank written without lines` THEN `crossed specially`
+    WHEN `the name of a bank between two lines` THEN `crossed specially`
+    OTHERWISE `uncrossed`
+
+§§ `79 -- the paying banker and the true owner`
+
+-- s 79(2): a banker who pays "a cheque crossed generally otherwise than to a banker, or if crossed specially otherwise than to the
+-- banker to whom it is crossed, or his agent for collection being a banker, ... is liable to the true owner of the cheque for any
+-- loss he may sustain". There is no good-faith defence in (2).
+-- (3): where the cheque "does not at the time of presentment appear to be crossed, or to have had a crossing which has been
+-- obliterated", the banker "paying the cheque in good faith and without negligence shall not be responsible".
+-- The specially-crossed-to-two-bankers case in s 79(1) is not modelled.
+GIVEN `how it is crossed` IS A Crossing, `paid to a banker` IS A BOOLEAN, `paid to the named banker or its collecting agent` IS A BOOLEAN,
+      `the crossing was apparent` IS A BOOLEAN, `paid in good faith and without negligence` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the paying banker is liable to the true owner` IF
+        (`the crossing was apparent` OR (NOT `paid in good faith and without negligence`))
+    AND CONSIDER `how it is crossed`
+        WHEN `crossed generally` THEN NOT `paid to a banker`
+        WHEN `crossed specially` THEN NOT `paid to the named banker or its collecting agent`
+        OTHERWISE FALSE
+
+§§ `82 and 8(1) -- account payee and words prohibiting transfer`
+
+-- s 82(1): "Where a cheque is crossed and bears across its face the words 'account payee' or 'a/c payee', either with or without
+-- the word 'only', the cheque shall not be transferable, but shall only be valid as between the parties thereto."
+-- s 8(1): a bill containing "words prohibiting transfer, or indicating an intention that it should not be transferable, ... is
+-- valid as between the parties thereto, but is not negotiable."
+-- s 82 needs a crossing. Whether "a/c payee" on an UNCROSSED cheque is itself caught by s 8(1) is a matter of construction the
+-- text does not settle; it is left to the separate flag.
+GIVEN `the cheque is crossed` IS A BOOLEAN, `marked account payee` IS A BOOLEAN, `bears words prohibiting transfer` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the cheque can be transferred to someone else` IF
+        (NOT (`the cheque is crossed` AND `marked account payee`))
+    AND (NOT `bears words prohibiting transfer`)
