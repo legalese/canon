@@ -1,0 +1,267 @@
+IMPORT prelude
+
+-- Extradition Act 1968 (Singapore) -- when a request from abroad concerns an "extradition offence" (s 2(1), (3)), the bars to
+-- surrender to a foreign State and to a declared Commonwealth territory (ss 8, 9, 28), the Minister's duty and discretion to refuse
+-- (ss 8(8), 10, 29), and the clocks a person in extradition proceedings meets (ss 15A, 17, 18, 19, 22), with the Malaysian
+-- route's offence threshold and discharge clock (ss 32(2), 38).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/EA1968.txt, with amendments
+-- annotated to Act 15 of 2026 (in force 1 July 2026; a First Schedule entry) shown. Most of the provisions encoded here were
+-- substituted by Act 17 of 2022 (wef 1 July 2022) and Act 31 of 2022 (wef 1 November 2022).
+--
+-- WHY THIS ACT. Cited by 12 of the 527 Singapore Acts deposited in this repository. SCOPED to the questions a fugitive's counsel
+-- meets first: is the offence extraditable, does a bar apply, can the Minister refuse, and what deadlines run. Not encoded: how the
+-- Act comes to apply to a State (ss 3-6, 40, 41), warrants and search (ss 11-15), bail (s 14), surrender by consent beyond its
+-- clock (s 21), property (s 20), extradition to Singapore (ss 23-26), the Malaysian route beyond ss 32(2), 36 and
+-- 38, evidence (ss 42-46), simultaneous requests (s 49), and the First Schedule's list of excluded offences, which turns on the
+-- Mutual Assistance in Criminal Matters Act 2000 and is taken here as a given fact.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Extradition Act 1968 -- requests`
+
+DECLARE Requester IS ONE OF
+    `a foreign State`
+    `a declared Commonwealth territory`
+
+-- One request for the surrender of one person for one offence, as the Act's tests see it.
+DECLARE Request
+    HAS `requester`                                     IS A Requester
+        `maximum years abroad`                          IS A NUMBER
+        `conduct would be an offence in Singapore`      IS A BOOLEAN
+        `maximum years in Singapore`                    IS A NUMBER
+        `the Singapore offence is excluded`             IS A BOOLEAN
+        `political in character`                        IS A BOOLEAN
+        `against a head of state, head of government or minister, or murder` IS A BOOLEAN
+        `speciality protection is provided`             IS A BOOLEAN
+        `held, on bail or serving a sentence in Singapore` IS A BOOLEAN
+        `acquitted, pardoned or punished already`       IS A BOOLEAN
+        `convicted in absence`                          IS A BOOLEAN
+        `deliberately absent from trial`                IS A BOOLEAN
+        `entitled to a retrial in presence`             IS A BOOLEAN
+        `time-barred in the requesting place`           IS A BOOLEAN
+        `military offence only`                         IS A BOOLEAN
+        `Minister believes persecution`                 IS A BOOLEAN
+        `Minister satisfied surrender unjust or oppressive` IS A BOOLEAN
+        `committed outside both and not extra-territorial there` IS A BOOLEAN
+        `immune from prosecution or punishment`         IS A BOOLEAN
+
+§§ `2(1), (3) -- extradition offence`
+
+-- s 2(1) "extradition offence" (b), in relation to a request made by a foreign State or a declared Commonwealth territory: (i) an
+-- offence against the law of that State or territory "that carries a maximum punishment of imprisonment for not less than 2 years or
+-- any more severe punishment"; and (ii) the act or omission "would, if it took place in or within the jurisdiction of Singapore,
+-- constitute an offence against the law in force in Singapore that -- (A) carries a maximum punishment of imprisonment for not less
+-- than 2 years or any more severe punishment; and (B) is not an excluded offence".
+-- s 2(3): an offence is not prevented from being an extradition offence "merely because it is an offence of a purely fiscal
+-- character" -- so there is no fiscal flag here at all.
+-- The "more severe punishment" limb (eg death) is not modelled; give it as a long maximum in years.
+GIVEN `the request` IS A Request
+GIVETH A BOOLEAN
+DECIDE `the offence is an extradition offence` IF
+        `the request`'s `maximum years abroad` AT LEAST 2
+    AND `the request`'s `conduct would be an offence in Singapore`
+    AND `the request`'s `maximum years in Singapore` AT LEAST 2
+    AND (NOT `the request`'s `the Singapore offence is excluded`)
+
+§§ `8(1), 9(1), 28 -- offences of a political character`
+
+-- ss 8(1), 9(1): not liable to be surrendered if the offence "is an offence of a political character" or is one "by reason of the
+-- circumstances". s 28(1): "For the purposes of section 9(1)" -- declared Commonwealth territories only -- an offence against the
+-- life or person of a head of state or of his or her immediate family, of a head of government or a minister, murder, and
+-- accessory, attempt and conspiracy offences to these, "are not offences of a political character". s 8 has no such list.
+-- (s 28(2) lets the Minister restrict the list by order for a territory with similar laws; not modelled.)
+GIVEN `the request` IS A Request
+GIVETH A BOOLEAN
+DECIDE `the political-offence bar applies` IF
+        `the request`'s `political in character`
+    AND CONSIDER `the request`'s `requester`
+        WHEN `a foreign State` THEN TRUE
+        WHEN `a declared Commonwealth territory` THEN NOT `the request`'s `against a head of state, head of government or minister, or murder`
+
+§§ `8(5), (6) -- bars that apply to a foreign State only`
+
+-- s 8(5): not liable if "convicted of that offence in the foreign State in his or her absence, unless -- (a) the person had
+-- deliberately absented himself or herself ...; or (b) the person would, if surrendered, be entitled to a retrial in his or her
+-- presence". s 8(6): not liable if prosecution is "barred by the passage of time" under the foreign State's law.
+-- s 9 has neither. For a declared Commonwealth territory the same facts are only grounds on which the Minister "may decline" (s 29).
+GIVEN `the request` IS A Request
+GIVETH A BOOLEAN
+DECIDE `the in-absence conviction bar applies` IF
+        `the request`'s `convicted in absence`
+    AND (NOT `the request`'s `deliberately absent from trial`)
+    AND (NOT `the request`'s `entitled to a retrial in presence`)
+
+GIVEN `the request` IS A Request
+GIVETH A BOOLEAN
+DECIDE `a foreign-State-only bar applies` IF
+    CONSIDER `the request`'s `requester`
+    WHEN `a foreign State` THEN
+            `the in-absence conviction bar applies` `the request`
+        OR  `the request`'s `time-barred in the requesting place`
+    OTHERWISE FALSE
+
+§§ `8 and 9 -- not liable to be surrendered`
+
+-- ss 8(2), 9(2): not liable "unless provision is made" (by law, treaty, or for a territory an agreement or undertaking) that the
+-- person will not be detained or tried for other earlier offences, or re-surrendered elsewhere ("speciality").
+-- ss 8(3), 9(3): not liable while "held in custody, or ... released on bail, in Singapore in respect of an offence that is alleged to
+-- have been committed in Singapore" or "undergoing a sentence for a conviction in Singapore", until discharged.
+-- ss 8(4), 9(4): not liable if "acquitted or pardoned" or has "undergone the punishment" in any state or territory for that offence
+-- or another constituted by the same act or omission.
+-- ss 8(7), 9(5): not liable if the conduct would be an offence "under the military law applicable in Singapore but not also under
+-- the ordinary criminal law of Singapore".
+GIVEN `the request` IS A Request
+GIVETH A BOOLEAN
+DECIDE `a bar to surrender applies` IF
+        `the political-offence bar applies` `the request`
+    OR  (NOT `the request`'s `speciality protection is provided`)
+    OR  `the request`'s `held, on bail or serving a sentence in Singapore`
+    OR  `the request`'s `acquitted, pardoned or punished already`
+    OR  `the request`'s `military offence only`
+    OR  `a foreign-State-only bar applies` `the request`
+
+GIVEN `the request` IS A Request
+GIVETH A BOOLEAN
+DECIDE `the person is liable to be surrendered` IF
+        `the offence is an extradition offence` `the request`
+    AND (NOT `a bar to surrender applies` `the request`)
+
+§§ `10, 21(7) -- the Minister must refuse`
+
+-- s 10(1): the Minister "must not" give a notice under s 11(1) or issue a surrender warrant if "the Minister has substantial grounds
+-- for believing" that the request was made to prosecute or punish the person "on account of his or her race, religion, sex, ethnic
+-- origin, nationality or political opinions", or that the person may be prejudiced at trial or punished for those reasons.
+-- s 10(2): nor if, by reason of triviality, bad faith, "the passage of time" or "any other sufficient cause", "it would be unjust,
+-- oppressive or too severe a punishment to surrender the fugitive".
+-- s 21(7) (surrender by consent): "if any of the restrictions on surrender in those sections [8, 9 and 10] are applicable, the
+-- Minister is not to issue a warrant of surrender".
+GIVEN `the request` IS A Request
+GIVETH A BOOLEAN
+DECIDE `the Minister must refuse under section 10` IF
+        `the request`'s `Minister believes persecution`
+    OR  `the request`'s `Minister satisfied surrender unjust or oppressive`
+
+GIVEN `the request` IS A Request
+GIVETH A BOOLEAN
+DECIDE `the Minister may order surrender` IF
+        `the person is liable to be surrendered` `the request`
+    AND (NOT `the Minister must refuse under section 10` `the request`)
+
+§§ `29 -- declared Commonwealth territories: the Minister may decline`
+
+-- s 29: the Minister "may decline" for a fugitive from a declared Commonwealth territory if (a) the judgment was rendered in his or
+-- her absence (same two exceptions as s 8(5)); (b) the offence "was committed outside Singapore and the declared Commonwealth
+-- territory" and "is not an extra-territorial offence" under that territory's law; or (c) the fugitive has "become immune from
+-- prosecution or punishment because of any reason, including lapse of time or amnesty".
+GIVEN `the request` IS A Request
+GIVETH A BOOLEAN
+DECIDE `the Minister may decline under section 29` IF
+    CONSIDER `the request`'s `requester`
+    WHEN `a declared Commonwealth territory` THEN
+            `the in-absence conviction bar applies` `the request`
+        OR  `the request`'s `committed outside both and not extra-territorial there`
+        OR  `the request`'s `immune from prosecution or punishment`
+    OTHERWISE FALSE
+
+§§ `8(8) -- short remaining sentences, foreign States`
+
+-- s 8(8): where a foreign State asks for surrender to enforce a sentence on a convicted fugitive, the Minister "may determine that
+-- the person is not to be surrendered" if the remaining period "(a) is shorter than the period specified as being a minimal period
+-- in the provisions of any existing extradition treaty ...; or (b) is less than 6 months, if no period mentioned in paragraph (a) is
+-- specified". Months in, a discretion out; s 8(8) names only foreign States.
+GIVEN `requester` IS A Requester, `months remaining` IS A NUMBER, `the treaty specifies a minimal period` IS A BOOLEAN,
+      `treaty minimal months` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the Minister may refuse for a short remaining sentence` IF
+    CONSIDER `requester`
+    WHEN `a foreign State` THEN
+        IF `the treaty specifies a minimal period`
+        THEN `months remaining` < `treaty minimal months`
+        ELSE `months remaining` < 6
+    OTHERWISE FALSE
+
+§§ `15A, 17, 18, 19 -- clocks in the Magistrate's and the High Court's proceedings`
+
+-- s 15A(2): the Magistrate may remand "for a period or periods not exceeding 7 days at any one time".
+GIVEN `days` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the remand period is within section 15A` IF
+    `days` AT MOST 7
+
+-- s 17(4)(b): notice of an application for review of the Magistrate's order "must be filed with the Registrar of the State Courts
+-- not later than 15 days after the order is made".
+GIVEN `days after the order` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the review notice is in time` IF
+    `days after the order` AT MOST 15
+
+-- s 18(3)(a): an application for permission to refer, or the Attorney-General's reference, of a question of law of public interest
+-- to the Court of Appeal "must be made within 15 days, or any longer period as the Court of Appeal may permit".
+GIVEN `days after the determination` IS A NUMBER, `the Court of Appeal permitted longer` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the reference to the Court of Appeal is in time` IF
+        `days after the determination` AT MOST 15
+    OR  `the Court of Appeal permitted longer`
+
+-- s 18(1), (2): a party needs the Court of Appeal's permission; "The Attorney-General may refer ... without the permission".
+GIVEN `the party is the Attorney-General` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `permission to refer is needed` IF
+    NOT `the party is the Attorney-General`
+
+-- s 19(1)(b), (2): the prisoner "will not be surrendered until after the expiry of the period of 15 days after the date of the
+-- committal or order, unless the prisoner waives" the right to review; the Minister's warrant comes after the later of that expiry
+-- and the High Court's final determination of any review. s 19(5), (8): on a recorded waiver the Minister may issue the warrant
+-- "after the date of the recording of the consent". The "after the expiry" is read as from day 16.
+GIVEN `days since committal` IS A NUMBER, `waiver recorded` IS A BOOLEAN, `review pending` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Minister may now issue a surrender warrant` IF
+    IF `waiver recorded`
+    THEN TRUE
+    ELSE `days since committal` > 15 AND (NOT `review pending`)
+
+§§ `22, 32(2), 36, 38 -- discharge if not conveyed out, and the Malaysian route`
+
+DECLARE Route IS ONE OF
+    `Part 3 -- a foreign State or declared Commonwealth territory`
+    `Part 6 -- Malaysia`
+
+-- s 22(1): a person committed and "in custody in Singapore at the expiry of 2 months after the latest of" committal, the High
+-- Court's final determination of a review, or the Court of Appeal's on a reference "may apply ... to be released"; (2) the court "is
+-- to order that the person be released" on proof of reasonable notice to the Minister; (3) not "if reasonable cause is shown for the
+-- delay". s 38 (Malaysia): the same, but "at the expiration of one month", with notice to the person holding him or her in custody.
+GIVEN `the route` IS A Route
+GIVETH A NUMBER
+DECIDE `the discharge period in months` IS
+    CONSIDER `the route`
+    WHEN `Part 3 -- a foreign State or declared Commonwealth territory` THEN 2
+    WHEN `Part 6 -- Malaysia` THEN 1
+
+GIVEN `the route` IS A Route, `months since the latest date` IS A NUMBER, `reasonable notice given` IS A BOOLEAN,
+      `reasonable cause for delay shown` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the High Court must order release` IF
+        `months since the latest date` AT LEAST `the discharge period in months` `the route`
+    AND `reasonable notice given`
+    AND (NOT `reasonable cause for delay shown`)
+
+-- s 32(2): in Part 6 "offence" means "an arrestable offence or an offence punishable on conviction with imprisonment for 6 months or
+-- more or any more severe punishment under the law of Malaysia". Part 6 does not use "extradition offence"; whether s 2(1)'s
+-- double-criminality test also reaches Malaysian requests is not something the text of Part 6 says (inference: it does not).
+GIVEN `arrestable under Malaysian law` IS A BOOLEAN, `maximum months in Malaysia` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the offence is within Part 6` IF
+        `arrestable under Malaysian law`
+    OR  `maximum months in Malaysia` AT LEAST 6
+
+-- s 36: the Magistrate "may" release, defer surrender or make another order where, by reason of triviality, bad faith or "the passage
+-- of time", "it would be unjust, oppressive or too severe a punishment to surrender the person to Malaysia". Under s 10(2) the same
+-- finding binds the Minister ("must not"); under s 36 it leaves the Magistrate a choice.
+GIVEN `the route` IS A Route
+GIVETH A BOOLEAN
+DECIDE `an unjust-or-oppressive finding compels refusal` IF
+    CONSIDER `the route`
+    WHEN `Part 3 -- a foreign State or declared Commonwealth territory` THEN TRUE
+    WHEN `Part 6 -- Malaysia` THEN FALSE
