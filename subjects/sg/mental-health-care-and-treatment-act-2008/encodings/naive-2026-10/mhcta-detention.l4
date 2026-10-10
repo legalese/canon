@@ -1,0 +1,287 @@
+IMPORT prelude
+
+-- Mental Health (Care and Treatment) Act 2008 (Singapore) -- police apprehension (s 7), refusing to produce a person for police
+-- inspection (s 8(3), (4)), the ladder of involuntary detention orders (ss 10, 13), who may not sign an order (s 11), discharge
+-- (ss 12, 14), leave of absence and retaking (s 15), offences against patients (s 22), protection of persons acting under the Act
+-- (s 25), improper reception or detention (s 26), maximum penalties (ss 8(4), 22(7), 26(1), 32(3)) and composition (s 30).
+--
+-- Edition: 2020 Revised Edition, informal consolidation, as deposited at ../../registers/source-bundle/MHCTA2008.txt. The deposit
+-- labels itself the 2020 Revised Edition incorporating amendments up to 1 December 2021, and shows later amendments to Act 16 of
+-- 2024 (wef 1 January 2025, s 7). Its metadata says "Current version as at 01 Oct 2026".
+--
+-- WHY THIS ACT. Cited by 6 of the 527 Singapore Acts deposited in this repository. SCOPED to the rules a police officer, doctor,
+-- carer or institution actually meets: when a person must be apprehended, how long each detention order lasts and what the next one
+-- needs, who may sign, discharge and leave, and the offences. Not encoded: designation and management of institutions (ss 3-5),
+-- visitors' inspections, transfer and removal from Singapore (ss 16-19), maintenance orders (ss 20, 21, 27, 28), the evidential
+-- effect of orders (s 24), rules (s 32 beyond its penalty cap), the Schedule forms beyond what s 10 says about them.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules conventions. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Mental Health (Care and Treatment) Act 2008 -- detention`
+
+§§ `7 -- apprehension by the police`
+
+-- s 7(1): "It is the duty of every police officer or special police officer to apprehend any person ("P") where the police officer
+-- or special police officer believes that P may endanger P's or any other person's life or personal safety, and P's conduct is
+-- reasonably suspected to be attributable to a mental disorder", and take P "without delay" to a medical practitioner (s 9) or a
+-- designated medical practitioner at a psychiatric institution (s 10).
+-- s 7(2)(a) [Act 16 of 2024]: a reasonable belief that P is endangering P's OWN life or safety "is sufficient basis" for the suspicion
+-- that P's conduct is attributable to a mental disorder. (aa): it is sufficient that the danger is "only reasonably likely to occur
+-- and need not be imminent, and actual harm is not required".
+-- Imminence and actual harm are therefore not inputs: they cannot change the answer.
+GIVEN `danger is reasonably likely` IS A BOOLEAN, `danger to P's own life or safety` IS A BOOLEAN,
+      `danger to another person's life or safety` IS A BOOLEAN, `conduct suspected to stem from mental disorder` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the officer must apprehend P` IF
+        `danger is reasonably likely`
+    AND (`danger to P's own life or safety` OR `danger to another person's life or safety`)
+    AND (`conduct suspected to stem from mental disorder` OR `danger to P's own life or safety`)
+
+§§ `8(3), (4) -- producing P for police inspection`
+
+-- s 8(3): a police officer "not below the rank of sergeant" may visit a person supposed to be mentally disordered in the care of a
+-- relative or other person, to see whether P is properly cared for or ill-treated or neglected.
+-- s 8(4): that relative or other person "is legally bound to produce P for the inspection of the police officer" and on refusal is
+-- guilty of an offence, fine up to $4,000.
+-- Inference: the duty is owed to an officer visiting under subsection (3), so a refusal to an officer below sergeant is not encoded
+-- as the offence.
+GIVEN `has charge of P` IS A BOOLEAN, `the officer is sergeant or above` IS A BOOLEAN, `refused to produce P` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `refusing to produce P is an offence` IF
+    `has charge of P` AND `the officer is sergeant or above` AND `refused to produce P`
+
+§§ `10 and 13 -- the ladder of detention orders`
+
+-- s 10(1): a designated medical practitioner (DMP) may sign a Form 1 order; the person "may be detained for a period of 72 hours".
+-- s 10(2): a further "one month" if, before the 72 hours end, "another designated medical practitioner" examines the patient, is of
+-- the opinion that further treatment is required, and signs Form 2.
+-- s 10(3)-(5): no further detention unless, before the month ends, the patient is brought before "2 designated medical practitioners
+-- ... one of whom must be a psychiatrist, who have examined the patient separately and who are both satisfied"; each signs Form 3;
+-- two such orders authorise detention "for a period not exceeding 6 months".
+-- s 13(1)-(3), (6): the visitors must apply (Form 4) to a Magistrate for a patient detained under s 10(3) who should be further
+-- detained; the Magistrate's order (Form 5) authorises "a period not exceeding 12 months"; further applications may be made.
+DECLARE Order IS ONE OF
+    `a Form 1 order`
+    `a Form 2 order`
+    `two Form 3 orders`
+    `a Magistrate's order`
+
+GIVEN `the order` IS AN Order
+GIVETH A STRING
+DECIDE `the longest detention authorised by` IS
+    CONSIDER `the order`
+    WHEN `a Form 1 order` THEN "72 hours"
+    WHEN `a Form 2 order` THEN "1 month"
+    WHEN `two Form 3 orders` THEN "6 months"
+    WHEN `a Magistrate's order` THEN "12 months"
+
+GIVEN `the order` IS AN Order
+GIVETH AN Order
+DECIDE `the next order needed after` IS
+    CONSIDER `the order`
+    WHEN `a Form 1 order` THEN `a Form 2 order`
+    WHEN `a Form 2 order` THEN `two Form 3 orders`
+    WHEN `two Form 3 orders` THEN `a Magistrate's order`
+    WHEN `a Magistrate's order` THEN `a Magistrate's order`
+
+GIVEN `examined before the 72 hours end` IS A BOOLEAN, `by a different DMP` IS A BOOLEAN,
+      `of opinion further treatment needed` IS A BOOLEAN, `the signer is barred by s 11` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Form 2 order is valid` IF
+        `examined before the 72 hours end` AND `by a different DMP` AND `of opinion further treatment needed`
+    AND (NOT `the signer is barred by s 11`)
+
+GIVEN `seen before the month ends` IS A BOOLEAN, `number of DMPs` IS A NUMBER, `one is a psychiatrist` IS A BOOLEAN,
+      `examined separately` IS A BOOLEAN, `all satisfied further treatment needed` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the Form 3 orders are valid` IF
+        `seen before the month ends` AND `number of DMPs` AT LEAST 2 AND `one is a psychiatrist`
+    AND `examined separately` AND `all satisfied further treatment needed`
+
+-- s 10(6): "A person must not be detained at a psychiatric institution for treatment unless -- (a) the person is suffering from a
+-- mental disorder which warrants the detention ... and (b) it is necessary in the interests of the health or safety of the person or
+-- for the protection of other persons".
+GIVEN `a mental disorder warranting detention` IS A BOOLEAN, `necessary for the person's health or safety` IS A BOOLEAN,
+      `necessary to protect others` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `detention is permitted` IF
+    `a mental disorder warranting detention` AND (`necessary for the person's health or safety` OR `necessary to protect others`)
+
+§§ `11 -- who must not sign an order`
+
+-- s 11: a medical practitioner who "(a) is the husband, wife, father, father-in-law, mother, mother-in-law, son, son-in-law,
+-- daughter, daughter-in-law, brother, brother-in-law, sister or sister-in-law of the patient; (b) stands in a fiduciary relationship
+-- to the patient; or (c) is treating the patient, must not sign any order under this Act".
+-- The list is narrower than "relative" in s 2: grandparents, grandchildren, uncles, aunts, nephews and nieces are not in it.
+DECLARE Relation IS ONE OF
+    `no relation`
+    `spouse`
+    `parent`
+    `parent-in-law`
+    `child`
+    `child-in-law`
+    `sibling`
+    `sibling-in-law`
+    `grandparent`
+    `grandchild`
+    `uncle or aunt`
+    `nephew or niece`
+    `cousin`
+
+GIVEN `the relation` IS A Relation
+GIVETH A BOOLEAN
+DECIDE `the relation bars signing` IF
+    CONSIDER `the relation`
+    WHEN `spouse` THEN TRUE
+    WHEN `parent` THEN TRUE
+    WHEN `parent-in-law` THEN TRUE
+    WHEN `child` THEN TRUE
+    WHEN `child-in-law` THEN TRUE
+    WHEN `sibling` THEN TRUE
+    WHEN `sibling-in-law` THEN TRUE
+    OTHERWISE FALSE
+
+GIVEN `the relation` IS A Relation, `in a fiduciary relationship` IS A BOOLEAN, `is treating the patient` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the practitioner may sign an order` IF
+    (NOT `the relation bars signing` `the relation`) AND (NOT `in a fiduciary relationship`) AND (NOT `is treating the patient`)
+
+§§ `12 and 14 -- discharge`
+
+-- s 12: "the principal officer or a psychiatrist of a psychiatric institution may by writing under his or her hand order the
+-- discharge of any patient". s 14: "2 of the visitors ... of whom one must be a medical practitioner" may order the discharge.
+GIVEN `signed by the principal officer` IS A BOOLEAN, `signed by a psychiatrist of the institution` IS A BOOLEAN,
+      `visitors signing` IS A NUMBER, `a signing visitor is a medical practitioner` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the discharge is validly ordered` IF
+        `signed by the principal officer`
+    OR  `signed by a psychiatrist of the institution`
+    OR  (`visitors signing` AT LEAST 2 AND `a signing visitor is a medical practitioner`)
+
+§§ `15 -- leave of absence and retaking`
+
+-- s 15(1): two visitors, on the principal officer's written recommendation, may permit absence "for as long as they think fit".
+-- (2): a certificate of 2 DMPs before the end of the absence that detention is no longer necessary -- the patient "is deemed to be
+-- discharged". (3): if the patient does not return "within 28 days of the end of the period of absence", and no certificate has been
+-- received, the patient "may be retaken as in the case of an escape".
+-- (4): the principal officer may permit absence "for any period not exceeding 6 months", and if "upon the end of the period of
+-- absence the patient does not return", the patient may be retaken. No 28-day grace is given under (4).
+-- Inference: the (2) certificate is read as applying to absence under (1) only, as (2) and (3) are framed together.
+DECLARE Leave IS ONE OF
+    `leave from two visitors`
+    `leave from the principal officer`
+
+GIVEN `the leave` IS A Leave, `days overdue` IS A NUMBER, `a discharge certificate was received` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the patient may be retaken` IF
+    CONSIDER `the leave`
+    WHEN `leave from two visitors` THEN `days overdue` > 28 AND (NOT `a discharge certificate was received`)
+    WHEN `leave from the principal officer` THEN `days overdue` > 0
+
+GIVEN `months of leave` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the principal officer may grant the leave` IF
+    `months of leave` AT MOST 6
+
+§§ `22 -- offences against patients`
+
+-- s 22(1): any medical practitioner, nurse, attendant or other person "employed by or rendering service in any psychiatric
+-- institution or hospital mentioned in section 15(5), who ill-treats any patient" is guilty of an offence.
+-- (2): ill-treatment is (a) physical or sexual abuse; (b) wilfully or unreasonably doing an act endangering safety or causing
+-- unnecessary pain, emotional injury or injury to health; (c) wilfully or unreasonably neglecting the patient in such circumstances.
+-- (3): neglecting to provide "adequate food, clothing, medical aid or care" is deemed such neglect.
+-- (4): conviction is possible even though injury was "obviated by the action of another person", or "despite the death of the patient".
+GIVEN `works in the institution or s 15(5) hospital` IS A BOOLEAN, `physical or sexual abuse` IS A BOOLEAN,
+      `wilful act endangering or harming the patient` IS A BOOLEAN, `wilful neglect endangering or harming the patient` IS A BOOLEAN,
+      `wilfully failed to provide food, clothing, medical aid or care` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `ill-treatment of a patient is an offence` IF
+        `works in the institution or s 15(5) hospital`
+    AND (   `physical or sexual abuse`
+         OR `wilful act endangering or harming the patient`
+         OR `wilful neglect endangering or harming the patient`
+         OR `wilfully failed to provide food, clothing, medical aid or care`)
+
+-- s 22(5): "Any person who has sexual intercourse with a patient of a psychiatric institution, while in that institution, shall be
+-- guilty of an offence." (6): "Consent is not a defence ... if the accused knew or had reason to suspect" the person was a patient.
+-- Not limited to staff. Inference: consent is a defence only where the accused neither knew nor had reason to suspect.
+GIVEN `the other person is a patient there` IS A BOOLEAN, `in the institution` IS A BOOLEAN, `the patient consented` IS A BOOLEAN,
+      `knew or had reason to suspect a patient` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `sexual intercourse with a patient is an offence` IF
+        `the other person is a patient there` AND `in the institution`
+    AND ((NOT `the patient consented`) OR `knew or had reason to suspect a patient`)
+
+§§ `8(4), 22(7), 26(1), 32(3) -- maximum penalties`
+
+-- s 8(4): fine up to $4,000. s 22(7)(a)(i): ill-treatment causing death, $20,000 or 7 years or both; (ii) otherwise $5,000 or 4 years
+-- or both. (b): sexual intercourse, $20,000 or 10 years or both. s 26(1): $5,000 or 3 years or both. s 32(3): rules may make a
+-- contravention punishable with up to $5,000 or 6 months or both.
+DECLARE Offence IS ONE OF
+    `refusing to produce P`
+    `ill-treatment causing death`
+    `ill-treatment not causing death`
+    `sexual intercourse with a patient`
+    `improper reception or detention`
+    `breach of the rules`
+
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+DECIDE `the maximum fine for` IS
+    CONSIDER `the offence`
+    WHEN `refusing to produce P` THEN 4000
+    WHEN `ill-treatment causing death` THEN 20000
+    WHEN `ill-treatment not causing death` THEN 5000
+    WHEN `sexual intercourse with a patient` THEN 20000
+    WHEN `improper reception or detention` THEN 5000
+    WHEN `breach of the rules` THEN 5000
+
+GIVEN `the offence` IS AN Offence
+GIVETH A NUMBER
+DECIDE `the maximum months of imprisonment for` IS
+    CONSIDER `the offence`
+    WHEN `refusing to produce P` THEN 0
+    WHEN `ill-treatment causing death` THEN 84
+    WHEN `ill-treatment not causing death` THEN 48
+    WHEN `sexual intercourse with a patient` THEN 120
+    WHEN `improper reception or detention` THEN 36
+    WHEN `breach of the rules` THEN 6
+
+§§ `25 -- protection of persons acting under the Act`
+
+-- s 25(1): a person who did anything under the Act "shall not be liable to any civil or criminal proceedings ... unless the person
+-- has acted in bad faith or without reasonable care". (2): no proceedings "without the permission of the court", and permission is
+-- not given unless there is "substantial ground for the contention" of bad faith or want of reasonable care. (3): notice of the
+-- application must be given to the person, who may be heard.
+GIVEN `acted in bad faith` IS A BOOLEAN, `acted without reasonable care` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the person acting under the Act may be liable` IF
+    `acted in bad faith` OR `acted without reasonable care`
+
+GIVEN `substantial ground shown` IS A BOOLEAN, `notice given to the person` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may permit proceedings` IF
+    `substantial ground shown` AND `notice given to the person`
+
+§§ `26 -- improper reception or detention`
+
+-- s 26(1): subject to s 25, any person who "(a) otherwise than in accordance with the provisions of this Act receives or detains in a
+-- psychiatric institution a person who is or is alleged to be mentally disordered; or (b) for gain detains in any place that is not a
+-- psychiatric institution, 2 or more mentally disordered persons" commits an offence. (2): prosecution only "with the consent of the
+-- Public Prosecutor".
+GIVEN `detained in an institution outside the Act` IS A BOOLEAN, `for gain` IS A BOOLEAN,
+      `the place is a psychiatric institution` IS A BOOLEAN, `mentally disordered persons detained` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `improper detention is an offence` IF
+        (`the place is a psychiatric institution` AND `detained in an institution outside the Act`)
+    OR  (`for gain` AND (NOT `the place is a psychiatric institution`) AND `mentally disordered persons detained` AT LEAST 2)
+
+§§ `30 -- composition`
+
+-- s 30(1): the Director-General or an authorised officer may compound an offence "prescribed as a compoundable offence" by collecting
+-- "a sum not exceeding $2,000". (2): on payment, no further proceedings.
+GIVEN `prescribed as compoundable` IS A BOOLEAN, `the sum` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the offence may be compounded for` IF
+    `prescribed as compoundable` AND `the sum` AT MOST 2000
