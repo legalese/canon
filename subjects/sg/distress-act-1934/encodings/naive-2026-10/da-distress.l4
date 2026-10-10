@@ -1,0 +1,251 @@
+IMPORT prelude
+
+-- Distress Act 1934 (Singapore) -- distress for rent: when a landlord may have a writ of distress and for how much (ss 3, 4, 5),
+-- what may not be seized (s 8), the notice before sale (s 9), release of an under-tenant's, lodger's or stranger's goods and what
+-- they must pay (ss 10, 12, 13, 15), how the sale proceeds are applied (s 19), the six-month cap where goods are already under an
+-- enforcement order (s 20), following removed goods and the bona fide purchaser (ss 21, 22), deserted premises (s 23) and the
+-- penalty for an unlawful sale (s 24).
+--
+-- Edition: 2020 Revised Edition (incorporating all amendments up to and including 1 December 2021, in operation 31 December 2021),
+-- informal consolidation, version in force from 1/4/2022, as deposited at ../../registers/source-bundle/DA1934.txt. The latest
+-- amendment annotated is Act 25 of 2021, with effect from 1 April 2022 (ss 5(1), 20).
+--
+-- WHY THIS ACT. Requirement REQ-0032 in ../../../requirements.jsonl: Tier 2 of the remaining Singapore Acts, ordered by
+-- everyday-life relevance. The requirement asks what the Act decides for a person or business it applies to; no scenario has
+-- asked a sharper question yet. The Act is short (24 sections); this row encodes nearly all of its substantive rules. Not
+-- encoded: the definitions beyond their effect (s 2), joint owners (s 6), the form of the writ (s 7), the s 11 deeming and
+-- deduction machinery, the s 14 notice diverting an under-tenant's rent, the judge's discretions under ss 16-18 and 23(3)-(4),
+-- and anything in the Rules of Court (not retrieved).
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Distress Act 1934 -- distress for rent`
+
+GIVEN a IS A NUMBER, b IS A NUMBER
+GIVETH A NUMBER
+`the lesser of` a b MEANS IF a AT MOST b THEN a ELSE b
+
+GIVEN a IS A NUMBER
+GIVETH A NUMBER
+`not below zero` a MEANS IF a AT MOST 0 THEN 0 ELSE a
+
+§§ `3, 4, 5 -- the writ of distress`
+
+-- s 3: "This Act shall not apply to rents due to the Government." s 4: "No landlord shall distrain for rent except in the manner
+-- provided by this Act."
+-- s 5(1): a landlord may apply without notice to a judge or registrar for a writ of distress "for the recovery of rent due ... for a
+-- period not exceeding 12 completed months of the tenancy immediately preceding the date of the application".
+-- s 5(3): arrears may be distrained for "after the determination of the tenancy, provided that either the tenant is still in
+-- occupation of the premises ... or any goods of the tenant are still on the premises".
+GIVEN `the rent is due to the Government` IS A BOOLEAN, `the tenancy has ended` IS A BOOLEAN,
+      `the tenant is still in occupation` IS A BOOLEAN, `the tenant's goods are still on the premises` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a writ of distress is available` IF
+        (NOT `the rent is due to the Government`)
+    AND (    (NOT `the tenancy has ended`)
+         OR  `the tenant is still in occupation`
+         OR  `the tenant's goods are still on the premises`)
+
+-- Inference: with a constant monthly rent, the most a writ can recover is the arrears falling within the last 12 completed months.
+-- The text counts "completed months of the tenancy immediately preceding the date of the application"; older arrears are outside
+-- the Act (and, by s 4, cannot be distrained for at all).
+GIVEN `monthly rent` IS A NUMBER, `completed months in arrear` IS A NUMBER
+GIVETH A NUMBER
+`the most rent the writ can recover` MEANS
+    `monthly rent` TIMES `the lesser of` `completed months in arrear` 12
+
+§§ `8 -- property exempted from seizure`
+
+-- s 8: property seizable "shall not include -- (a) things in actual use in the hands of a person at the time of the seizure;
+-- (b) tools and implements not in use where there is other movable property ... sufficient to cover such amount and costs;
+-- (c) the tenant's necessary wearing apparel and necessary bedding for himself and his family; (d) goods in the possession of the
+-- tenant for the purpose of being carried, wrought, worked up, or otherwise dealt with in the course of his ordinary trade or
+-- business; (e) goods belonging to guests at an inn; and (f) goods in the custody of the law."
+DECLARE Item IS ONE OF
+    `a television in the living room`
+    `a laptop being used when the sheriff arrives`
+    `tools of trade not in use`
+    `the tenant's necessary clothing`
+    `the family's necessary bedding`
+    `a customer's watch left with the tenant for repair`
+    `a hotel guest's luggage`
+    `goods already attached by the court`
+    `stock in trade for sale`
+
+GIVEN `the item` IS AN Item, `other property suffices to cover the rent and costs` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the item may be seized` IF
+    CONSIDER `the item`
+    WHEN `a laptop being used when the sheriff arrives` THEN FALSE
+    WHEN `tools of trade not in use` THEN NOT `other property suffices to cover the rent and costs`
+    WHEN `the tenant's necessary clothing` THEN FALSE
+    WHEN `the family's necessary bedding` THEN FALSE
+    WHEN `a customer's watch left with the tenant for repair` THEN FALSE
+    WHEN `a hotel guest's luggage` THEN FALSE
+    WHEN `goods already attached by the court` THEN FALSE
+    OTHERWISE TRUE
+
+§§ `9 -- notice of seizure and the time before sale`
+
+-- s 9(1): the notice informs the tenant that the property "will be sold at a time and place to be named therein (not being less
+-- than 6 days from the date thereof), unless he pays the amount due within 5 days from the date thereof, or obtains an order
+-- restraining such sale". (2): if the tenant is absent, notice may go to an occupier or be posted conspicuously.
+GIVEN `days from the notice to the named sale` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the named sale date is lawful` IF `days from the notice to the named sale` AT LEAST 6
+
+GIVEN `days from the notice to payment` IS A NUMBER, `obtained a restraining order` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the tenant has stopped the sale` IF
+    `days from the notice to payment` AT MOST 5 OR `obtained a restraining order`
+
+§§ `10, 12, 13, 15 -- goods of under-tenants, lodgers and strangers`
+
+-- s 10(1): an under-tenant, a lodger, or "any other person whatsoever not being a tenant ... and not having any beneficial interest
+-- in any tenancy" whose goods are seized for a superior landlord's rent may apply to discharge or suspend the writ or release the
+-- article. (2): no order unless the applicant shows "the tenant has no right of property or beneficial interest" in the goods and
+-- they are the applicant's property or in his lawful possession; "and also in the case of an under-tenant or a lodger unless" he
+-- pays "an amount equal to the arrears of rent" to the landlord or into court AND undertakes to pay the landlord future rent due
+-- from him to the tenant.
+-- s 12: s 10 does not apply to (a) the tenant's spouse's goods, goods under a bill of sale, hire-purchase agreement or settlement made
+-- by the tenant, or goods of which the tenant is reputed owner; (b) a partner's goods; (c) goods "(not being goods of a lodger)" where
+-- tenant and under-tenant share a business; (d) goods "(not being goods of a lodger)" in offices or warehouses whose owner neglects
+-- for one calendar month after notice to remove them; (e) a company's goods in its offices where the tenant is its director, officer
+-- or employee. s 13: nor to an under-tenant whose under-tenancy "has been created in breach of any covenant or agreement in writing".
+-- s 15: "tenant" and "under-tenant" do not include a lodger.
+DECLARE Claimant IS ONE OF
+    `an under-tenant`
+    `a lodger`
+    `a stranger to the tenancy`
+
+DECLARE Goods IS ONE OF
+    `the claimant's own goods`
+    `goods of the tenant's spouse`
+    `goods on hire-purchase to the tenant`
+    `goods of the tenant's partner`
+    `goods in a business shared with the tenant`
+    `goods left in an office a month after notice`
+    `goods of a company the tenant works for`
+
+GIVEN `the claimant` IS A Claimant, `the goods` IS A Goods
+GIVETH A BOOLEAN
+DECIDE `section 12 excludes the goods` IF
+    CONSIDER `the goods`
+    WHEN `the claimant's own goods` THEN FALSE
+    WHEN `goods in a business shared with the tenant` THEN NOT (`the claimant` EQUALS `a lodger`)
+    WHEN `goods left in an office a month after notice` THEN NOT (`the claimant` EQUALS `a lodger`)
+    OTHERWISE TRUE
+
+GIVEN `the claimant` IS A Claimant, `the goods` IS A Goods, `under-tenancy breaches a written covenant` IS A BOOLEAN,
+      `tenant has an interest in the goods` IS A BOOLEAN, `paid the arrears to the landlord or into court` IS A BOOLEAN,
+      `undertook to pay future rent to the landlord` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may release the goods` IF
+        (NOT `section 12 excludes the goods` `the claimant` `the goods`)
+    AND (NOT (`the claimant` EQUALS `an under-tenant` AND `under-tenancy breaches a written covenant`))
+    AND (NOT `tenant has an interest in the goods`)
+    AND (    `the claimant` EQUALS `a stranger to the tenancy`
+         OR  (`paid the arrears to the landlord or into court` AND `undertook to pay future rent to the landlord`))
+
+-- s 10(3): "In no case shall such under-tenant paying at least 75% of the full monthly letting value of the premises comprised in
+-- the under-tenancy or lodger be liable ... to pay to the landlord or into court a sum greater than the rent which he owes to his
+-- immediate landlord." (4): a lodger's rent includes what he pays for "lodging, board, attendance and use of furniture".
+-- A stranger pays nothing under s 10(2); an under-tenant paying less than 75% gets no cap.
+GIVEN `the claimant` IS A Claimant, `the tenant's arrears` IS A NUMBER, `rent the claimant owes his own landlord` IS A NUMBER,
+      `pays at least 75% of the monthly letting value` IS A BOOLEAN
+GIVETH A NUMBER
+`the sum the claimant must pay for release` MEANS
+    CONSIDER `the claimant`
+    WHEN `a stranger to the tenancy` THEN 0
+    WHEN `a lodger` THEN `the lesser of` `the tenant's arrears` `rent the claimant owes his own landlord`
+    WHEN `an under-tenant` THEN
+        IF `pays at least 75% of the monthly letting value`
+        THEN `the lesser of` `the tenant's arrears` `rent the claimant owes his own landlord`
+        ELSE `the tenant's arrears`
+
+§§ `19 -- applying the proceeds of sale`
+
+-- s 19(1): "the net proceeds of sale shall be applied first in payment of the sheriff's fees and expenses and then in satisfaction
+-- of the rent and costs due by the tenant to the landlord." (2): "The balance, if any, remaining over after such payments shall be
+-- returned to the tenant."
+GIVEN `net proceeds` IS A NUMBER, `sheriff's fees and expenses` IS A NUMBER
+GIVETH A NUMBER
+`the sheriff's share` MEANS `the lesser of` `net proceeds` `sheriff's fees and expenses`
+
+GIVEN `net proceeds` IS A NUMBER, `sheriff's fees and expenses` IS A NUMBER, `rent and costs due` IS A NUMBER
+GIVETH A NUMBER
+`the landlord's share` MEANS
+    `the lesser of` (`not below zero` (`net proceeds` MINUS `sheriff's fees and expenses`)) `rent and costs due`
+
+GIVEN `net proceeds` IS A NUMBER, `sheriff's fees and expenses` IS A NUMBER, `rent and costs due` IS A NUMBER
+GIVETH A NUMBER
+`the balance returned to the tenant` MEANS
+    `not below zero` (`net proceeds` MINUS `sheriff's fees and expenses` MINUS `rent and costs due`)
+
+§§ `20 -- goods already seized under an enforcement order`
+
+-- s 20(1): goods already seized under an enforcement order are not seized under the writ, but the officer in possession, once
+-- notified, must pay "out of the proceeds of sale ... after payment thereout of the expenses of the sale, but in priority to any
+-- other payment the amount appearing to be due to the landlord except that such payment shall not in any case exceed the amount
+-- due for the last 6 months' rent".
+GIVEN `sale proceeds` IS A NUMBER, `expenses of the sale` IS A NUMBER, `rent appearing due` IS A NUMBER, `rent per month` IS A NUMBER
+GIVETH A NUMBER
+`the landlord's priority payment` MEANS
+    `the lesser of` (`not below zero` (`sale proceeds` MINUS `expenses of the sale`))
+                    (`the lesser of` `rent appearing due` (`rent per month` TIMES 6))
+
+§§ `21, 22 -- goods removed to avoid distress`
+
+-- s 21(1): where property is removed "with the intention of hindering or preventing the distraint thereof", a judge may authorise
+-- the sheriff "within 30 days of such removal, to follow and seize such property ... wherever it may be found". (2): the sheriff may,
+-- "without an order to that effect", seize property "discovered by him while in process of removal".
+-- s 22(1): property sold "for fair value ... to a bona fide purchaser not knowing or having the means of knowing" of the liability or
+-- the purpose of removal "shall not be seized, or, if seized, shall be restored to the purchaser".
+GIVEN `removed to hinder the distress` IS A BOOLEAN, `caught in the process of removal` IS A BOOLEAN,
+      `days since removal` IS A NUMBER, `a judge has authorised it` IS A BOOLEAN, `bought in good faith for fair value` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the sheriff may follow and seize the goods` IF
+        `removed to hinder the distress`
+    AND (NOT `bought in good faith for fair value`)
+    AND (    `caught in the process of removal`
+         OR  (`a judge has authorised it` AND `days since removal` AT MOST 30))
+
+-- s 22(2): a claimed bona fide purchaser may apply for restoration "within 4 days of such seizure, or such further time as a judge
+-- may allow".
+GIVEN `days since seizure` IS A NUMBER, `a judge allowed further time` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the purchaser's application is in time` IF
+    `days since seizure` AT MOST 4 OR `a judge allowed further time`
+
+§§ `23 -- deserted premises`
+
+-- s 23(1): where "(a) immovable property is let at a rack rent or a rent not less than 75% of its annual value; (b) rent is in arrears
+-- for not less than 2 months of the tenancy; and (c) the tenant has abandoned possession of the premises, and left thereon no
+-- sufficient property out of which the arrears of rent may be recovered by distress", a judge may authorise the sheriff to enter,
+-- by force if necessary, and post notice that possession will go to the landlord "unless within 10 days" a judge otherwise orders.
+-- (2): if no application within 10 days, the landlord is put in possession and the tenancy "deemed to be determined".
+-- (5): "This section shall not apply to District Courts."
+GIVEN `let at a rack rent` IS A BOOLEAN, `annual rent` IS A NUMBER, `annual value` IS A NUMBER, `months in arrear` IS A NUMBER,
+      `tenant abandoned the premises` IS A BOOLEAN, `sufficient property left to distrain` IS A BOOLEAN,
+      `proceedings in a District Court` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `a judge may authorise the sheriff to take possession` IF
+        (`let at a rack rent` OR `annual rent` TIMES 100 AT LEAST `annual value` TIMES 75)
+    AND `months in arrear` AT LEAST 2
+    AND `tenant abandoned the premises`
+    AND (NOT `sufficient property left to distrain`)
+    AND (NOT `proceedings in a District Court`)
+
+GIVEN `days since the notice was posted` IS A NUMBER, `an interested person applied` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the landlord is put in possession and the tenancy ends` IF
+    `days since the notice was posted` AT LEAST 10 AND (NOT `an interested person applied`)
+
+§§ `24 -- penalty`
+
+-- s 24: any person who "sells or abets the sale of any property seized under a writ of distress in contravention of" the Act or the
+-- Rules of Court "shall be liable on conviction to a fine not exceeding $200".
+GIVEN `sold or abetted an unlawful sale` IS A BOOLEAN
+GIVETH A NUMBER
+`the maximum fine` MEANS IF `sold or abetted an unlawful sale` THEN 200 ELSE 0
