@@ -1,0 +1,293 @@
+IMPORT prelude
+
+-- Marine Insurance Act 1906 (Singapore) -- whether a marine insurer must pay, and how much: gaming policies and insurable interest
+-- (ss 4, 6), the assured's duty of disclosure (ss 17, 18), warranties and seaworthiness (ss 33, 34, 39), deviation and delay (ss 46,
+-- 48, 49), the losses an insurer is and is not liable for (s 55), total loss and notice of abandonment (ss 57, 60 to 62), the
+-- measure of indemnity (ss 67 to 69, 71, 81) and return of premium (s 84).
+--
+-- Edition: 2020 Revised Edition, as deposited at ../../registers/source-bundle/MIA1906.txt. The deposit says the revised edition
+-- "incorporates all amendments up to and including 1 December 2021 and comes into operation on 31 December 2021"; SSO's retrieval
+-- record gives it as the version current at 1 October 2026. No amending Act is annotated in the body. The Legislative History says
+-- this is the English Act 6 Edw. VII, c. 41 (commenced 1 January 1907), declared by the Application of English Law Act 1993 to apply
+-- in Singapore from 12 November 1993, and revised as Chapter 387 in 1994. THE ARRANGEMENT OF SECTIONS AT THE TOP OF THE DEPOSIT IS
+-- OUT OF STEP WITH THE BODY from s 22 on (it prints "23. Voyage and time policies", the body's s 25); the body's numbers are used.
+--
+-- WHY THIS ACT. Requirement REQ-0039 in ../../../requirements.jsonl: Tier 2 of the remaining Singapore Acts, ordered by everyday-life
+-- relevance. It asks what the Act decides for a person or business it applies to; no scenario has asked a sharper question yet.
+-- The person it applies to is a shipowner, cargo owner, charterer or trader who buys marine cover, and that person's insurer.
+-- SCOPED to the points at which a claim is won or lost. Not encoded: the definitions in ss 1 to 3, the minor insurable interests
+-- (ss 7 to 15), insurable value (s 16), misrepresentation (s 20), the form and construction of the policy (ss 22 to 30 and the Schedule's rules), double
+-- insurance and contribution (ss 32, 80), the special warranties (ss 35 to 38, 40, 41), commencement of risk and change of voyage (ss
+-- 42 to 45, 47), assignment (ss 50, 51), brokers and premium (ss 52 to 54), general average and salvage (ss 64 to 66, 73), freight
+-- and liability measures (ss 70, 72, 74 to 78), subrogation (s 79), mutual insurance (s 85) and the Schedule's form of policy.
+-- Nearly every rule here gives way to the policy's own terms ("unless the policy otherwise provides"; s 87 lets implied terms be
+-- varied by agreement or usage); this encoding assumes a policy that is silent.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules conventions. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Marine Insurance Act 1906 -- claims`
+
+GIVEN a IS A NUMBER, b IS A NUMBER
+GIVETH A NUMBER
+`the lesser of` a b MEANS IF a AT MOST b THEN a ELSE b
+
+§§ `4, 6 -- gaming policies and insurable interest`
+
+-- s 4(1): "Every contract of marine insurance by way of gaming or wagering is void." (2) It is deemed gaming (a) "where the assured
+-- has not an insurable interest ... and the contract is entered into with no expectation of acquiring such an interest"; or (b)
+-- where the policy is made "interest or no interest", or "without further proof of interest than the policy itself", or "without
+-- benefit of salvage to the insurer" -- the last allowed "where there is no possibility of salvage".
+GIVEN `has an insurable interest` IS A BOOLEAN, `expects to acquire one` IS A BOOLEAN, `made interest or no interest` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the policy is void as gaming` IF
+        `made interest or no interest`
+    OR  ((NOT `has an insurable interest`) AND (NOT `expects to acquire one`))
+
+-- s 6(1): "The assured must be interested in the subject-matter insured at the time of the loss though he need not be interested
+-- when the insurance is effected". Proviso: insured "lost or not lost", the assured may recover though the interest came after the
+-- loss, "unless at the time of effecting the contract of insurance the assured was aware of the loss, and the insurer was not."
+GIVEN `interested at the time of loss` IS A BOOLEAN, `insured lost or not lost` IS A BOOLEAN,
+      `assured knew of the loss when contracting` IS A BOOLEAN, `insurer knew of the loss when contracting` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the interest requirement is met` IF
+        `interested at the time of loss`
+    OR  (`insured lost or not lost`
+         AND (NOT (`assured knew of the loss when contracting` AND (NOT `insurer knew of the loss when contracting`))))
+
+§§ `17, 18 -- utmost good faith and disclosure`
+
+-- s 17: "a contract based upon the utmost good faith"; if not observed by either party the contract "may be avoided by the other".
+-- s 18(1): the assured must disclose, before the contract is concluded, "every material circumstance which is known to the assured",
+-- and is deemed to know what "in the ordinary course of business, ought to be known by him"; if not, "the insurer may avoid the
+-- contract". (2) Material = "would influence the judgment of a prudent insurer in fixing the premium or determining whether he will
+-- take the risk". (3) "In the absence of inquiry" need not be disclosed: (a) what diminishes the risk; (b) what is known or presumed
+-- known to the insurer (matters of common notoriety); (c) what the insurer waives; (d) what is superfluous by reason of a warranty.
+DECLARE Circumstance HAS
+    `material` IS A BOOLEAN
+    `known or ought to be known to the assured` IS A BOOLEAN
+    `disclosed` IS A BOOLEAN
+    `the insurer asked about it` IS A BOOLEAN
+    `it diminishes the risk` IS A BOOLEAN
+    `known or presumed known to the insurer` IS A BOOLEAN
+    `information waived by the insurer` IS A BOOLEAN
+    `superfluous because of a warranty` IS A BOOLEAN
+
+GIVEN c IS A Circumstance
+GIVETH A BOOLEAN
+DECIDE `it falls in an exception to disclosure` IF
+        (NOT c's `the insurer asked about it`)
+    AND (    c's `it diminishes the risk`
+         OR  c's `known or presumed known to the insurer`
+         OR  c's `information waived by the insurer`
+         OR  c's `superfluous because of a warranty`)
+
+GIVEN c IS A Circumstance
+GIVETH A BOOLEAN
+DECIDE `the insurer may avoid for non-disclosure` IF
+        c's `material`
+    AND c's `known or ought to be known to the assured`
+    AND (NOT c's `disclosed`)
+    AND (NOT `it falls in an exception to disclosure` c)
+
+§§ `33, 34, 39 -- warranties and seaworthiness`
+
+-- s 33(3): a warranty "is a condition which must be exactly complied with, whether it be material to the risk or not"; if not, "the
+-- insurer is discharged from liability as from the date of the breach ... but without prejudice to any liability incurred by him
+-- before that date". s 34(1): excused when the warranty "ceases to be applicable" by change of circumstances, or compliance is made
+-- "unlawful by any subsequent law". (2): the assured "cannot avail himself of the defence that the breach has been remedied ...
+-- before loss". (3): "A breach of warranty may be waived by the insurer."
+-- Materiality and remedy are carried as fields so that the cases can show they change nothing.
+DECLARE WarrantyFacts HAS
+    `broken` IS A BOOLEAN
+    `material to the risk` IS A BOOLEAN
+    `remedied before the loss` IS A BOOLEAN
+    `excused by changed circumstances or a later law` IS A BOOLEAN
+    `waived by the insurer` IS A BOOLEAN
+    `the loss came before the breach` IS A BOOLEAN
+
+GIVEN w IS A WarrantyFacts
+GIVETH A BOOLEAN
+DECIDE `the insurer is still liable despite the warranty` IF
+        (NOT w's `broken`)
+    OR  w's `excused by changed circumstances or a later law`
+    OR  w's `waived by the insurer`
+    OR  w's `the loss came before the breach`
+
+-- s 39(1): "In a voyage policy, there is an implied warranty that, at the commencement of the voyage, the ship shall be seaworthy".
+-- (5): "In a time policy, there is no implied warranty that the ship shall be seaworthy at any stage", but where "with the privity of
+-- the assured, the ship is sent to sea in an unseaworthy state, the insurer is not liable for any loss attributable to
+-- unseaworthiness". A voyage-policy breach discharges the insurer under s 33(3) whether or not the loss was caused by it.
+DECLARE PolicyKind IS ONE OF
+    `voyage policy`
+    `time policy`
+
+GIVEN `the kind` IS A PolicyKind, `unseaworthy when she sailed` IS A BOOLEAN, `with the assured's privity` IS A BOOLEAN,
+      `loss attributable to unseaworthiness` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `unseaworthiness defeats the claim` IF
+    CONSIDER `the kind`
+    WHEN `voyage policy` THEN `unseaworthy when she sailed`
+    WHEN `time policy` THEN `unseaworthy when she sailed` AND `with the assured's privity` AND `loss attributable to unseaworthiness`
+
+§§ `46, 48, 49 -- deviation and delay`
+
+-- s 46(1): where a ship "without lawful excuse, deviates from the voyage contemplated by the policy, the insurer is discharged from
+-- liability as from the time of deviation, and it is immaterial that the ship may have regained her route before any loss occurs".
+-- (3) "The intention to deviate is immaterial; there must be a deviation in fact". s 48: in a voyage policy, unreasonable delay
+-- without lawful excuse likewise discharges. s 49(1): excused (a) where authorised by the policy; (b) circumstances beyond the
+-- control of the master and his employer; (c) to comply with a warranty; (d) for the safety of the ship or subject-matter; (e) "for
+-- the purpose of saving human life, or aiding a ship in distress where human life may be in danger"; (f) to obtain medical or surgical
+-- aid for any person on board; (g) barratry of the master or crew, "if barratry be one of the perils insured against".
+DECLARE Reason IS ONE OF
+    `authorised by the policy`
+    `beyond the control of the master and owner`
+    `to comply with a warranty`
+    `for the safety of the ship`
+    `to save human life`
+    `to aid a ship in distress with lives at risk`
+    `to aid a ship in distress to earn salvage`
+    `to get medical aid for someone on board`
+    `barratry, which the policy covers`
+    `barratry, which the policy does not cover`
+    `to load extra cargo`
+
+GIVEN `the reason` IS A Reason
+GIVETH A BOOLEAN
+DECIDE `the deviation is excused` IF
+    CONSIDER `the reason`
+    WHEN `to aid a ship in distress to earn salvage` THEN FALSE
+    WHEN `barratry, which the policy does not cover` THEN FALSE
+    WHEN `to load extra cargo` THEN FALSE
+    OTHERWISE TRUE
+
+GIVEN `deviated in fact` IS A BOOLEAN, `the reason` IS A Reason
+GIVETH A BOOLEAN
+DECIDE `the insurer is discharged by the deviation` IF
+    `deviated in fact` AND (NOT `the deviation is excused` `the reason`)
+
+§§ `55 -- included and excluded losses`
+
+-- s 55(1): the insurer "is liable for any loss proximately caused by a peril insured against", and not otherwise. (2)(a) not liable
+-- for "any loss attributable to the wilful misconduct of the assured", but liable even though the loss "would not have happened but
+-- for the misconduct or negligence of the master or crew"; (b) on ship or goods, not liable for loss proximately caused by delay,
+-- "although the delay be caused by a peril insured against"; (c) not liable for "ordinary wear and tear, ordinary leakage and
+-- breakage, inherent vice, or nature of the subject-matter insured", "rats or vermin", or injury to machinery not caused by maritime
+-- perils. (b) and (c), and the crew limb of (a), apply "unless the policy otherwise provides"; the assured's wilful misconduct does not.
+DECLARE Cause IS ONE OF
+    `a storm, crew negligence aside`
+    `a storm made worse by crew negligence`
+    `the assured's wilful misconduct`
+    `delay caused by a storm`
+    `ordinary wear and tear`
+    `inherent vice`
+    `rats`
+
+GIVEN `the cause` IS A Cause, `the policy expressly covers it` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the insurer is liable for the loss` IF
+    CONSIDER `the cause`
+    WHEN `a storm, crew negligence aside` THEN TRUE
+    WHEN `a storm made worse by crew negligence` THEN TRUE
+    WHEN `the assured's wilful misconduct` THEN FALSE
+    OTHERWISE `the policy expressly covers it`
+
+§§ `57, 60, 61, 62 -- total loss and notice of abandonment`
+
+-- s 57(1): actual total loss where the subject-matter is destroyed, ceases to be a thing of the kind insured, or the assured "is
+-- irretrievably deprived thereof"; (2) "no notice of abandonment need be given". s 61: on a constructive total loss the assured may
+-- treat it as partial, or abandon and treat it as actual. s 62(1): the assured who abandons "must give notice of abandonment; and if
+-- he fails to do so, the loss can only be treated as a partial loss". (7) notice is unnecessary where "there would be no possibility
+-- of benefit to the insurer"; (8) "Notice of abandonment may be waived by the insurer."
+DECLARE LossKind IS ONE OF
+    `actual total loss`
+    `constructive total loss`
+    `partial loss`
+
+GIVEN `the loss` IS A LossKind, `notice of abandonment given` IS A BOOLEAN, `notice excused or waived` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the loss is paid as a total loss` IF
+    CONSIDER `the loss`
+    WHEN `actual total loss` THEN TRUE
+    WHEN `constructive total loss` THEN `notice of abandonment given` OR `notice excused or waived`
+    OTHERWISE FALSE
+
+-- s 60(2)(b): a damaged ship is a constructive total loss where "the cost of repairing the damage would exceed the value of the ship
+-- when repaired"; the proviso: no deduction for general average contributions payable by other interests, "but account is to be
+-- taken of the expense of future salvage operations". s 27(4): the agreed value in a valued policy "is not conclusive" for this.
+GIVEN `cost of repairs` IS A NUMBER, `future salvage` IS A NUMBER, `value when repaired` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the damaged ship is a constructive total loss` IF
+    `cost of repairs` PLUS `future salvage` GREATER THAN `value when repaired`
+
+§§ `67, 68, 69, 71, 81 -- the measure of indemnity`
+
+-- s 68: on a total loss, (a) valued policy -- "the sum fixed by the policy"; (b) unvalued -- "the insurable value". s 27(3): the
+-- agreed value is "conclusive of the insurable value", absent fraud.
+GIVEN `valued` IS A BOOLEAN, `agreed value` IS A NUMBER, `insurable value` IS A NUMBER
+GIVETH A NUMBER
+`the measure of indemnity for a total loss` MEANS
+    IF `valued` THEN `agreed value` ELSE `insurable value`
+
+-- s 67(2): each insurer "is liable for such proportion of the measure of indemnity as the amount of his subscription bears to the value
+-- fixed by the policy" (valued) "or to the insurable value" (unvalued). s 81: an assured insured for less "is deemed to be his own
+-- insurer in respect of the uninsured balance".
+GIVEN `measure` IS A NUMBER, `subscription` IS A NUMBER, `value` IS A NUMBER
+GIVETH A NUMBER
+`the insurer's share` MEANS `measure` TIMES `subscription` DIVIDED BY `value`
+
+-- s 71(c): goods delivered damaged -- such proportion of the sum fixed (valued) or the insurable value (unvalued) "as the difference
+-- between the gross sound and damaged values at the place of arrival bears to the gross sound value".
+GIVEN `base` IS A NUMBER, `gross sound value` IS A NUMBER, `gross damaged value` IS A NUMBER
+GIVETH A NUMBER
+`the measure for goods delivered damaged` MEANS
+    `base` TIMES (`gross sound value` MINUS `gross damaged value`) DIVIDED BY `gross sound value`
+
+-- s 69: a ship damaged but not totally lost -- (a) repaired: "the reasonable cost of the repairs, less the customary deductions, but
+-- not exceeding the sum insured in respect of any one casualty"; (b) partially repaired: those repairs plus reasonable depreciation,
+-- "provided that the aggregate amount shall not exceed the cost of repairing the whole damage"; (c) unrepaired and unsold: "the
+-- reasonable depreciation ... but not exceeding the reasonable cost of repairing such damage".
+GIVEN `cost of the repairs` IS A NUMBER, `customary deductions` IS A NUMBER, `sum insured` IS A NUMBER
+GIVETH A NUMBER
+`the measure for a repaired ship` MEANS
+    `the lesser of` (`cost of the repairs` MINUS `customary deductions`) `sum insured`
+
+GIVEN `repairs done` IS A NUMBER, `depreciation` IS A NUMBER, `cost to repair everything` IS A NUMBER
+GIVETH A NUMBER
+`the measure for a partially repaired ship` MEANS
+    `the lesser of` (`repairs done` PLUS `depreciation`) `cost to repair everything`
+
+GIVEN `depreciation` IS A NUMBER, `cost to repair` IS A NUMBER
+GIVETH A NUMBER
+`the measure for an unrepaired ship` MEANS
+    `the lesser of` `depreciation` `cost to repair`
+
+§§ `84 -- return of premium`
+
+-- s 84(1): where the consideration "totally fails, and there has been no fraud or illegality on the part of the assured", the
+-- premium is returnable. (3)(a) void or avoided from commencement: returnable absent fraud or illegality, "but if the risk is not
+-- apportionable, and has once attached, the premium is not returnable"; (b) never imperilled: returnable -- but insured "lost or not
+-- lost" and already arrived safely, not returnable "unless, at such time, the insurer knew of the safe arrival"; (c) no insurable
+-- interest throughout: returnable, but not for "a policy effected by way of gaming or wagering"; (d) a defeasible interest ended
+-- during the risk: "not returnable"; (f) double insurance "effected knowingly by the assured": "no premium is returnable".
+DECLARE PremiumEvent IS ONE OF
+    `the cargo never sailed`
+    `insured lost or not lost, already arrived, insurer unaware`
+    `insured lost or not lost, already arrived, insurer knew`
+    `no insurable interest at any time during the risk`
+    `a gaming policy`
+    `a defeasible interest ended during the risk`
+    `avoided for the assured's fraud`
+    `avoided for innocent non-disclosure before the risk attached`
+    `avoided for innocent non-disclosure after an indivisible risk attached`
+    `double insurance taken out knowingly`
+
+GIVEN `the event` IS A PremiumEvent
+GIVETH A BOOLEAN
+DECIDE `the premium is returnable` IF
+    CONSIDER `the event`
+    WHEN `the cargo never sailed` THEN TRUE
+    WHEN `insured lost or not lost, already arrived, insurer knew` THEN TRUE
+    WHEN `no insurable interest at any time during the risk` THEN TRUE
+    WHEN `avoided for innocent non-disclosure before the risk attached` THEN TRUE
+    OTHERWISE FALSE
