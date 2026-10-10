@@ -1,0 +1,174 @@
+IMPORT prelude
+
+-- Innkeepers Act 1970 (Singapore) -- the limit on an innkeeper's liability for a guest's lost or damaged goods (Part 1: ss 2 to 5)
+-- and the innkeeper's power to sell goods left by a guest who owes for board or lodging (Part 2: ss 6, 7). That is the whole Act
+-- apart from the short title (s 1).
+--
+-- Edition: 2020 Revised Edition, as deposited at ../../registers/source-bundle/IA1970.txt. The deposit says the revised edition
+-- "incorporates all amendments up to and including 1 December 2021" and came into operation on 31 December 2021; the body carries
+-- no amendment annotations. The Legislative History (not part of the Act) traces it to the Innkeepers' Ordinance 1951 and the
+-- Innkeepers Liability Ordinance 1921, consolidated in the 1970 Revised Edition (in operation 1 March 1971).
+--
+-- WHY THIS ACT. Requirement REQ-0062 in ../../../requirements.jsonl: Tier 2 of the remaining Singapore Acts, ordered by
+-- everyday-life relevance. The requirement asks what the Act decides for a person or business it applies to; no scenario has asked
+-- a sharper question yet. Not encoded: the common-law liability of an innkeeper itself (the Act only limits it, so every amount
+-- below assumes the innkeeper would otherwise be liable for the whole loss -- an inference), the ordinary lien that s 7 adds to,
+-- and what happens to a shortfall when the sale does not cover the debt (the Act is silent).
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Innkeepers Act 1970 -- liability and sale`
+
+§§ `2 and 6 -- what is an inn`
+
+-- s 2 (Part 1): "inn" means "any hotel, tavern, public house, restaurant or other place of refreshment, the keeper of which is now by
+-- law responsible for the goods and property of his guests"; "innkeeper" includes a company or corporation.
+-- s 6 (Part 2): "inn" means "any hotel, tavern or public house"; "goods" includes any vehicle.
+-- So a restaurant can claim the Part 1 limit but has no Part 2 power of sale. A shop is neither.
+DECLARE Premises IS ONE OF
+    `a hotel`
+    `a tavern`
+    `a public house`
+    `a restaurant`
+    `another place of refreshment`
+    `a shop`
+
+GIVEN `the place` IS A Premises, `the keeper is by law responsible for guests' goods` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the place is an inn for Part 1` IF
+        `the keeper is by law responsible for guests' goods`
+    AND CONSIDER `the place`
+        WHEN `a shop` THEN FALSE
+        OTHERWISE TRUE
+
+GIVEN `the place` IS A Premises
+GIVETH A BOOLEAN
+DECIDE `the place is an inn for Part 2` IF
+    CONSIDER `the place`
+    WHEN `a hotel` THEN TRUE
+    WHEN `a tavern` THEN TRUE
+    WHEN `a public house` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `3 to 5 -- the limit on liability`
+
+-- s 3(1): no innkeeper is liable to make good to his guest loss of or injury to goods or property brought to his inn, "not being a
+-- horse or other live animal, or any gear appertaining thereto or any car or carriage, to a greater amount than the sum of $500",
+-- except (a) where they were "stolen, lost or injured through the wilful act, default or neglect of the innkeeper or any servant in
+-- his employ"; or (b) where they were "deposited expressly for safe custody with the innkeeper or his manager".
+DECLARE Property IS ONE OF
+    `ordinary goods`
+    `a horse or other live animal`
+    `gear for an animal`
+    `a car or carriage`
+
+GIVEN `the item` IS A Property
+GIVETH A BOOLEAN
+DECIDE `the item can fall under the $500 limit` IF
+    CONSIDER `the item`
+    WHEN `ordinary goods` THEN TRUE
+    OTHERWISE FALSE
+
+-- s 3(2): on a deposit the innkeeper or manager may require, "as a condition of his liability", (a) that the guest declare the value
+-- and (b) that the goods be deposited in a box or receptacle "fastened and sealed by the person depositing the same".
+-- s 3(3): the innkeeper may refuse to receive for safe custody goods of any one guest "the declared value of which exceeds $5,000",
+-- and "shall in no case be liable" for goods so deposited "to an amount exceeding the declared value thereof".
+-- s 4: if the innkeeper refuses goods declared at NOT more than $5,000, or the guest "is unable, through any default of the innkeeper
+-- or manager, to deposit the goods", the innkeeper "shall not be entitled to the benefit of this Part" for them.
+-- s 5: the innkeeper must exhibit at least one copy of section 3 "printed in plain type in English" in "a conspicuous part of the hall
+-- or entrance", and has the benefit of this Part only for goods "brought to his inn while such copy is so exhibited".
+DECLARE Claim HAS
+    `the premises` IS A Premises
+    `the keeper is responsible by law` IS A BOOLEAN
+    `the property` IS A Property
+    `the loss` IS A NUMBER
+    `wilful act, default or neglect of the innkeeper or a servant` IS A BOOLEAN
+    `deposited expressly for safe custody` IS A BOOLEAN
+    `a value was declared` IS A BOOLEAN
+    `the declared value` IS A NUMBER
+    `a condition the innkeeper required was not met` IS A BOOLEAN
+    `safe custody was refused` IS A BOOLEAN
+    `the guest could not deposit through the innkeeper's default` IS A BOOLEAN
+    `section 3 was exhibited when the goods were brought` IS A BOOLEAN
+
+GIVEN `declared` IS A NUMBER
+GIVETH A BOOLEAN
+DECIDE `the innkeeper may refuse safe custody` IF
+    `declared` GREATER THAN 5000
+
+GIVEN `the claim` IS A Claim
+GIVETH A BOOLEAN
+DECIDE `the innkeeper has the benefit of Part 1` IF
+        `the place is an inn for Part 1` (`the claim`'s `the premises`) (`the claim`'s `the keeper is responsible by law`)
+    AND `the claim`'s `section 3 was exhibited when the goods were brought`
+    AND (NOT `the claim`'s `the guest could not deposit through the innkeeper's default`)
+    AND (    (NOT `the claim`'s `safe custody was refused`)
+         OR  `the innkeeper may refuse safe custody` (`the claim`'s `the declared value`))
+
+-- Reading: a deposit meets exception (b) only if any condition the innkeeper required under s 3(2) was met; if one was not, the
+-- goods are treated as never deposited and the ordinary $500 rule applies (an inference -- the Act says only "as a condition of his
+-- liability"). The s 3(3) cap at the declared value applies "in no case" -- read as applying even where the innkeeper was negligent.
+GIVEN `the claim` IS A Claim
+GIVETH A BOOLEAN
+DECIDE `the deposit exception applies` IF
+        `the claim`'s `deposited expressly for safe custody`
+    AND (NOT `the claim`'s `a condition the innkeeper required was not met`)
+
+GIVEN `x` IS A NUMBER, `y` IS A NUMBER
+GIVETH A NUMBER
+`the smaller of` MEANS
+    IF `x` AT MOST `y` THEN `x` ELSE `y`
+
+-- The most the guest can recover, assuming the innkeeper would otherwise be liable for the whole loss (an inference: the Act limits
+-- liability, it does not create it).
+GIVEN `the claim` IS A Claim
+GIVETH A NUMBER
+`the most the guest can recover` MEANS
+    IF (NOT `the innkeeper has the benefit of Part 1` `the claim`)
+        OR (NOT `the item can fall under the $500 limit` (`the claim`'s `the property`))
+    THEN `the claim`'s `the loss`
+    ELSE IF `the deposit exception applies` `the claim`
+         THEN IF `the claim`'s `a value was declared`
+              THEN `the smaller of` (`the claim`'s `the loss`) (`the claim`'s `the declared value`)
+              ELSE `the claim`'s `the loss`
+         ELSE IF `the claim`'s `wilful act, default or neglect of the innkeeper or a servant`
+              THEN `the claim`'s `the loss`
+              ELSE `the smaller of` (`the claim`'s `the loss`) 500
+
+§§ `7 -- the power to sell a debtor-guest's goods`
+
+-- s 7: an innkeeper, "in addition to his ordinary lien", may "absolutely ... sell by public auction" any goods deposited with him or
+-- left in the inn "or in any garage, car park or other premises appurtenant thereto" where the person who left them "is or becomes
+-- indebted to the innkeeper for any board or lodging", provided (a) no sale "until after the goods have been for the space of 6 weeks"
+-- in his charge without the debt being paid; (d) "at least one month before any such sale" a notice is advertised "in a newspaper
+-- circulating in Singapore", describing the goods and naming the owner or depositor "where known".
+DECLARE Sale HAS
+    `the inn` IS A Premises
+    `the debt is for board or lodging` IS A BOOLEAN
+    `left in the inn or its garage, car park or other appurtenant premises` IS A BOOLEAN
+    `weeks held with the debt unpaid` IS A NUMBER
+    `a newspaper notice appeared at least one month before` IS A BOOLEAN
+    `by public auction` IS A BOOLEAN
+
+GIVEN `the sale` IS A Sale
+GIVETH A BOOLEAN
+DECIDE `the innkeeper may sell the goods` IF
+        `the place is an inn for Part 2` (`the sale`'s `the inn`)
+    AND `the sale`'s `the debt is for board or lodging`
+    AND `the sale`'s `left in the inn or its garage, car park or other appurtenant premises`
+    AND `the sale`'s `weeks held with the debt unpaid` GREATER THAN 6
+    AND `the sale`'s `a newspaper notice appeared at least one month before`
+    AND `the sale`'s `by public auction`
+
+-- Reading: "until after ... the space of 6 weeks" is read as strictly more than 6 weeks.
+-- s 7(b): after paying himself the debt "together with the costs and expenses of the sale", the innkeeper "shall on demand pay" the
+-- surplus to the person who left the goods. (c): the debt satisfied by the sale may not be "any other or greater debt" than the one
+-- for which he could retain the goods under his lien -- so other debts the guest owes are not taken from the proceeds. Here the
+-- lien debt is taken to be the board-or-lodging debt (an inference; the lien itself is common law).
+GIVEN `proceeds` IS A NUMBER, `the lien debt` IS A NUMBER, `costs of sale` IS A NUMBER, `other debts owed` IS A NUMBER
+GIVETH A NUMBER
+`the surplus owed to the guest` MEANS
+    IF `proceeds` MINUS `the lien debt` MINUS `costs of sale` GREATER THAN 0
+    THEN `proceeds` MINUS `the lien debt` MINUS `costs of sale`
+    ELSE 0
