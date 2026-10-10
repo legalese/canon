@@ -1,0 +1,303 @@
+IMPORT prelude
+
+-- Partnership Act 1890 (Singapore) -- whether a partnership exists (ss 1-3), when a partner binds the firm and who is liable for
+-- its debts (ss 5, 7-9, 14, 17, 36), the default rules between partners (ss 19, 24, 25), dissolution (ss 32-35), the outgoing
+-- partner's 5% option (s 42) and the order of distribution when accounts are settled (s 44).
+--
+-- Edition: 2020 Revised Edition, informal consolidation (version in force from 1/4/2022), as deposited at
+-- ../../registers/source-bundle/PA1890.txt. The latest amendment annotated is Act 25 of 2021 (Courts (Civil and Criminal Justice)
+-- Reform Act 2021), commenced 1 April 2022, at s 23(1). The Act was declared to apply in Singapore on 12 November 1993 by the
+-- Application of English Law Act 1993. THE ARRANGEMENT OF SECTIONS AT THE TOP OF THE DEPOSIT IS OUT OF STEP WITH THE BODY (it puts
+-- "Definition of partnership" at 2); this encoding follows the body's numbering, in which the definition is s 1 and the short
+-- title s 47.
+--
+-- WHY THIS ACT. Requirement REQ-0028 in ../../../requirements.jsonl: Tier 2 of the remaining Singapore Acts, ordered by
+-- everyday-life relevance. The requirement asks what the Act decides for a person or business it applies to; no scenario has
+-- asked a sharper question yet. SCOPED to the provisions two or three people running a business together actually meet. Not
+-- encoded: s 4 (meaning of firm), s 6 beyond actual authority, ss 10-13 (wrongs, misapplication, joint and several liability for them, trust property), ss 15,
+-- 16 (admissions, notice), s 18 (guarantees), ss 20-23 (partnership property, land, charging orders), ss 26-31 (at-will notice
+-- by deed, continuance, accounts, private profits, competition, assignees), ss 37-41 and 43 (notifying dissolution, winding-up
+-- authority, premiums, rescission for fraud, share as debt), ss 45-47. Limited partnerships and LLPs are under other Acts and
+-- are not touched.
+--
+-- NAIVE ENCODING. Straight from the deposited text with the writing-l4-rules skill. No pipeline, no coverage table,
+-- no independent test pass, no human gate. See NOTES.md.
+
+§ `Partnership Act 1890 -- partners`
+
+GIVEN a IS A NUMBER, b IS A NUMBER
+GIVETH A NUMBER
+`the lesser of` MEANS IF a AT MOST b THEN a ELSE b
+
+GIVEN a IS A NUMBER, b IS A NUMBER
+GIVETH A NUMBER
+`the greater of` MEANS IF a AT LEAST b THEN a ELSE b
+
+§§ `1 -- definition of partnership`
+
+-- s 1(1): "Partnership is the relation which subsists between persons carrying on a business in common with a view of profit."
+-- (2): the relation between members of a company "registered as a company under the Companies Act 1967" or "formed or
+-- incorporated by or in pursuance of any other Act of Parliament" is NOT a partnership. s 45: "business" includes "every trade,
+-- occupation or profession".
+GIVEN `carrying on a business in common` IS A BOOLEAN, `with a view of profit` IS A BOOLEAN,
+      `registered as a company` IS A BOOLEAN, `incorporated under another Act` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the relation is a partnership` IF
+        `carrying on a business in common`
+    AND `with a view of profit`
+    AND (NOT `registered as a company`)
+    AND (NOT `incorporated under another Act`)
+
+§§ `2 and 3 -- sharing profits, and lenders paid out of profits`
+
+-- s 2(c): "the receipt by a person of a share of the profits of a business is prima facie evidence that he is a partner", but
+-- "does not of itself make him a partner". (a) co-ownership and (b) "the sharing of gross returns" do not of themselves create
+-- a partnership. (c)(iv): a loan at "a rate of interest varying with the profits", or for "a share of the profits", does not of
+-- itself make the lender a partner -- "Provided that the contract is in writing, and signed by or on behalf of all the parties".
+--
+-- The Act only says what is NOT of itself enough. This section encodes the two things it does decide: whether a receipt is
+-- prima facie evidence, and whether the (c)(iv) shelter is available to a lender.
+GIVEN `receives a share of net profits` IS A BOOLEAN, `receives only a share of gross returns` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the receipt is prima facie evidence of partnership` IF
+    `receives a share of net profits` AND (NOT `receives only a share of gross returns`)
+
+GIVEN `lent money for a profit-linked return` IS A BOOLEAN, `the contract is in writing` IS A BOOLEAN,
+      `signed by or for all the parties` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the lender has the s 2(c)(iv) shelter` IF
+    `lent money for a profit-linked return` AND `the contract is in writing` AND `signed by or for all the parties`
+
+-- s 3: if the borrower (or a buyer of goodwill for a share of profits) is "adjudged a bankrupt, entering into an arrangement to pay
+-- his creditors less than the full amount owed, or dying in insolvent circumstances", the lender "shall not be entitled to recover
+-- anything in respect of his loan" until "the claims of the other creditors ... for valuable consideration" are satisfied.
+-- s 3 refers to "such a contract as is mentioned in section 2" -- read here as any profit-linked loan, whether or not the writing
+-- proviso is met. That reading is an INFERENCE; the text does not say whether the proviso is part of the description.
+GIVEN `lent money for a profit-linked return` IS A BOOLEAN, `sold goodwill for a share of profits` IS A BOOLEAN,
+      `the borrower is bankrupt` IS A BOOLEAN, `the borrower compounded with creditors` IS A BOOLEAN,
+      `the borrower died insolvent` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the lender is postponed to other creditors` IF
+        (`lent money for a profit-linked return` OR `sold goodwill for a share of profits`)
+    AND (`the borrower is bankrupt` OR `the borrower compounded with creditors` OR `the borrower died insolvent`)
+
+§§ `5, 7 and 8 -- when a partner binds the firm`
+
+-- s 5: "Every partner is an agent of the firm"; acts "for carrying on in the usual way business of the kind carried on by the firm"
+-- bind the firm "unless the partner so acting has in fact no authority ..., and the person with whom he is dealing either knows that
+-- he has no authority, or does not know or believe him to be a partner".
+-- s 7: pledging the firm's credit "for a purpose apparently not connected with the firm's ordinary course of business" does not
+-- bind the firm "unless he is in fact specially authorised".
+-- s 8: an act in contravention of an agreed restriction is not binding "with respect to persons having notice of the agreement".
+-- Notice of the restriction is folded into "knew he lacked authority" here.
+GIVEN `the partner was actually authorised` IS A BOOLEAN, `in the usual way of the firm's business` IS A BOOLEAN,
+      `the other party knew he lacked authority` IS A BOOLEAN, `the other party knew or believed him a partner` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the act binds the firm` IF
+        `the partner was actually authorised`
+    OR  (    `in the usual way of the firm's business`
+         AND (NOT `the other party knew he lacked authority`)
+         AND `the other party knew or believed him a partner`)
+
+§§ `9, 12, 14 and 17 -- who is liable for a firm debt`
+
+-- s 9: "Every partner in a firm is liable jointly with the other partners for all debts and obligations of the firm incurred while
+-- he is a partner". (s 12, joint and several liability for wrongs under ss 10, 11, is not encoded.)
+-- s 17(1): an incoming partner is not liable "for anything done before he became a partner". (2): a retiring partner "does not
+-- thereby cease to be liable" for earlier debts. (3): he may be discharged by "an agreement to that effect between himself and the
+-- members of the firm as newly constituted and the creditors" -- express or inferred from the course of dealing.
+-- s 14: one who "represents himself, or who knowingly suffers himself to be represented, as a partner" is liable "to any one who
+-- has on the faith of any such representation given credit to the firm".
+GIVEN `was a partner when the debt was incurred` IS A BOOLEAN, `discharged by agreement with the new firm and the creditor` IS A BOOLEAN,
+      `held himself out as a partner to this creditor` IS A BOOLEAN, `the creditor gave credit on the faith of it` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the person is liable for the debt` IF
+        (`was a partner when the debt was incurred` AND (NOT `discharged by agreement with the new firm and the creditor`))
+    OR  (`held himself out as a partner to this creditor` AND `the creditor gave credit on the faith of it`)
+
+§§ `36 -- debts contracted after a partner leaves`
+
+-- s 36(1): a person dealing with a firm after a change "is entitled to treat all apparent members of the old firm as still being
+-- members of the firm until he has notice of the change". (2): "An advertisement in the Gazette shall be notice as to persons who
+-- had no dealings with the firm before" the change. (3): the estate of a partner who dies or becomes bankrupt, or of one who,
+-- "not having been known to the person dealing with the firm to be a partner, retires", is not liable for later debts.
+GIVEN `left by death or bankruptcy` IS A BOOLEAN, `the creditor knew him as a partner` IS A BOOLEAN,
+      `the creditor had actual notice of the change` IS A BOOLEAN, `the change was advertised in the Gazette` IS A BOOLEAN,
+      `the creditor dealt with the firm before the change` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the former partner is liable for a later debt` IF
+        (NOT `left by death or bankruptcy`)
+    AND `the creditor knew him as a partner`
+    AND (NOT `the creditor had actual notice of the change`)
+    AND (NOT (`the change was advertised in the Gazette` AND (NOT `the creditor dealt with the firm before the change`)))
+
+§§ `19, 24 and 25 -- decisions between partners`
+
+-- All of s 24 is "subject to any agreement express or implied between the partners". s 19: terms may be varied "by the consent of
+-- all the partners", express or "inferred from a course of dealing".
+-- s 24(g): "no person may be introduced as a partner without the consent of all existing partners". (h): "any difference arising as
+-- to ordinary matters ... may be decided by a majority of the partners, but no change may be made in the nature of the partnership
+-- business without the consent of all existing partners".
+-- s 25: "No majority of the partners can expel any partner unless a power to do so has been conferred by express agreement".
+-- Where such a power exists its own terms govern; it is modelled here as exercisable by a majority (an ASSUMPTION, not text).
+-- "Majority" is read as more than half of all partners (an INFERENCE; the text does not say of all, or of those voting).
+DECLARE Matter IS ONE OF
+    `an ordinary business matter`
+    `a change in the nature of the business`
+    `admitting a new partner`
+    `varying the partnership terms`
+    `expelling a partner`
+
+GIVEN `the matter` IS A Matter, `partners in favour` IS A NUMBER, `partners in all` IS A NUMBER,
+      `an express power of expulsion exists` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the decision is carried` IF
+    CONSIDER `the matter`
+    WHEN `an ordinary business matter` THEN `partners in favour` TIMES 2 GREATER THAN `partners in all`
+    WHEN `expelling a partner` THEN `an express power of expulsion exists` AND `partners in favour` TIMES 2 GREATER THAN `partners in all`
+    OTHERWISE `partners in favour` EQUALS `partners in all`
+
+-- s 24(a): "all the partners are entitled to share equally in the capital and profits of the business, and must contribute equally
+-- towards the losses". (f): "no partner shall be entitled to remuneration for acting in the partnership business".
+-- (c): a partner advancing money "beyond the amount of capital which he has agreed to subscribe, is entitled to interest at the rate
+-- of 5% per annum from the date of the payment or advance". (d): no interest on capital "before the ascertainment of profits".
+-- Simple, not compound, interest is assumed for (c) -- the text says only "5% per annum" (an INFERENCE).
+GIVEN `the profits` IS A NUMBER, `number of partners` IS A NUMBER
+GIVETH A NUMBER
+`each partner's default share` MEANS `the profits` DIVIDED BY `number of partners`
+
+GIVEN `the advance` IS A NUMBER, `years outstanding` IS A NUMBER
+GIVETH A NUMBER
+`interest on a partner's advance` MEANS `the advance` TIMES 5 DIVIDED BY 100 TIMES `years outstanding`
+
+GIVEN `a salary was agreed` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the partner is entitled to remuneration` IF `a salary was agreed`
+
+§§ `32 to 34 -- dissolution without the court`
+
+-- s 32(1), "Subject to any agreement": dissolved (a) at the end of a fixed term; (b) at the end of a single adventure; (c) if for an
+-- undefined time, "by any partner giving notice". s 33(1), "Subject to any agreement": dissolved "as regards all the partners by the
+-- death or bankruptcy of any partner". (2): a charge on a partner's share for his separate debt lets the others dissolve "at the
+-- option of the other partners" -- not automatic. s 34: dissolved "in every case" by an event making the business unlawful.
+DECLARE Event IS ONE OF
+    `the fixed term expired`
+    `the single adventure ended`
+    `a partner gave notice in a partnership of undefined time`
+    `a partner died`
+    `a partner became bankrupt`
+    `a partner's share was charged for his own debt`
+    `the business became unlawful`
+    `a partner became permanently incapable`
+    `the business can only run at a loss`
+
+GIVEN `the event` IS A Event, `the partners agreed otherwise` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the partnership is dissolved automatically` IF
+    CONSIDER `the event`
+    WHEN `the business became unlawful` THEN TRUE
+    WHEN `a partner's share was charged for his own debt` THEN FALSE
+    WHEN `a partner became permanently incapable` THEN FALSE
+    WHEN `the business can only run at a loss` THEN FALSE
+    OTHERWISE NOT `the partners agreed otherwise`
+
+GIVEN `the event` IS A Event
+GIVETH A BOOLEAN
+DECIDE `the other partners may elect to dissolve` IF
+    CONSIDER `the event`
+    WHEN `a partner's share was charged for his own debt` THEN TRUE
+    OTHERWISE FALSE
+
+-- s 32(2): dissolved "as from the date mentioned in the notice as the date of dissolution, or, if no date is so mentioned, as from
+-- the date of the communication of the notice". Days are numbered.
+GIVEN `the notice names a date` IS A BOOLEAN, `the named date` IS A NUMBER, `the day it was communicated` IS A NUMBER
+GIVETH A NUMBER
+`the day of dissolution by notice` MEANS
+    IF `the notice names a date` THEN `the named date` ELSE `the day it was communicated`
+
+§§ `35 -- dissolution by the court`
+
+-- s 35: "On application by a partner, the court may decree a dissolution" where (a) a partner "other than the partner suing" becomes
+-- "permanently incapable"; (b) such a partner's conduct "is calculated to prejudicially affect the carrying on of the business";
+-- (c) such a partner "wilfully or persistently commits a breach of the partnership agreement" or makes it "not reasonably
+-- practicable" to carry on with him; (d) "the business of the partnership can only be carried on at a loss"; (e) it is "just and
+-- equitable". Grounds (a)-(c) must concern a partner other than the applicant.
+DECLARE Ground IS ONE OF
+    `permanent incapacity`
+    `prejudicial conduct`
+    `persistent breach of the agreement`
+    `trading only at a loss`
+    `just and equitable`
+    `a mere wish to leave a fixed-term partnership`
+
+GIVEN `the ground` IS A Ground, `the ground concerns the applicant himself` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the court may decree dissolution` IF
+    CONSIDER `the ground`
+    WHEN `permanent incapacity` THEN NOT `the ground concerns the applicant himself`
+    WHEN `prejudicial conduct` THEN NOT `the ground concerns the applicant himself`
+    WHEN `persistent breach of the agreement` THEN NOT `the ground concerns the applicant himself`
+    WHEN `trading only at a loss` THEN TRUE
+    WHEN `just and equitable` THEN TRUE
+    OTHERWISE FALSE
+
+§§ `42 -- the outgoing partner's share of later profits`
+
+-- s 42: where the continuing partners "carry on the business of the firm with its capital or assets without any final settlement
+-- of accounts", then "in the absence of any agreement to the contrary", the outgoing partner or his estate may elect a share of
+-- profits attributable to his share of the assets, "or to interest at the rate of 5% per annum on the amount of his share".
+-- Proviso: if a contractual option to buy him out "is duly exercised", there is no further share -- but a partner who does not
+-- "in all material respects comply with the terms" of the option "is liable to account". Simple interest assumed (INFERENCE).
+GIVEN `the business continued with the firm's assets` IS A BOOLEAN, `accounts were finally settled` IS A BOOLEAN,
+      `agreed otherwise` IS A BOOLEAN, `a buy-out option was duly exercised` IS A BOOLEAN
+GIVETH A BOOLEAN
+DECIDE `the outgoing partner has the s 42 election` IF
+        `the business continued with the firm's assets`
+    AND (NOT `accounts were finally settled`)
+    AND (NOT `agreed otherwise`)
+    AND (NOT `a buy-out option was duly exercised`)
+
+GIVEN `his share of the assets` IS A NUMBER, `years since dissolution` IS A NUMBER
+GIVETH A NUMBER
+`the s 42 interest` MEANS `his share of the assets` TIMES 5 DIVIDED BY 100 TIMES `years since dissolution`
+
+§§ `44 -- distribution on final settlement`
+
+-- s 44, "subject to any agreement": (b) the assets, "including the sums, if any, contributed by the partners to make up losses or
+-- deficiencies of capital", are applied (i) "in paying the debts and liabilities of the firm to persons who are not partners";
+-- (ii) "rateably what is due ... for advances as distinguished from capital"; (iii) "rateably what is due ... in respect of
+-- capital"; (iv) "the ultimate residue, if any, shall be divided among the partners in the proportion in which profits are
+-- divisible". (a): losses, "including losses and deficiencies of capital", are paid "first out of profits, next out of capital, and
+-- lastly, if necessary, by the partners individually in the proportion in which they were entitled to share profits".
+--
+-- The first three functions apply the firm's own assets in the (b) order, before any partner contributes. The last two give a
+-- partner's contribution to the deficiency under (a) and his net result when every partner pays his contribution.
+GIVEN `the assets` IS A NUMBER, `outside debts` IS A NUMBER
+GIVETH A NUMBER
+`paid to outside creditors` MEANS `the lesser of` `the assets` `outside debts`
+
+GIVEN `the assets` IS A NUMBER, `outside debts` IS A NUMBER, `advances` IS A NUMBER
+GIVETH A NUMBER
+`paid on partners' advances` MEANS
+    `the lesser of` `advances` (`the greater of` 0 (`the assets` MINUS `outside debts`))
+
+GIVEN `the assets` IS A NUMBER, `outside debts` IS A NUMBER, `advances` IS A NUMBER, `capital` IS A NUMBER
+GIVETH A NUMBER
+`paid on partners' capital` MEANS
+    `the lesser of` `capital` (`the greater of` 0 (`the assets` MINUS `outside debts` MINUS `advances`))
+
+GIVEN `the assets` IS A NUMBER, `outside debts` IS A NUMBER, `advances` IS A NUMBER, `capital` IS A NUMBER,
+      `profit share percent` IS A NUMBER
+GIVETH A NUMBER
+`the partner's contribution to the deficiency` MEANS
+    (`the greater of` 0 (`outside debts` PLUS `advances` PLUS `capital` MINUS `the assets`)) TIMES `profit share percent` DIVIDED BY 100
+
+-- His net result: his own advance and capital repaid, plus his share of any residue, less his contribution to any deficiency.
+GIVEN `the assets` IS A NUMBER, `outside debts` IS A NUMBER, `advances` IS A NUMBER, `capital` IS A NUMBER,
+      `his advance` IS A NUMBER, `his capital` IS A NUMBER, `profit share percent` IS A NUMBER
+GIVETH A NUMBER
+`the partner's net result` MEANS
+        `his advance`
+    PLUS `his capital`
+    PLUS (`the greater of` 0 (`the assets` MINUS `outside debts` MINUS `advances` MINUS `capital`)) TIMES `profit share percent` DIVIDED BY 100
+    MINUS (`the partner's contribution to the deficiency` `the assets` `outside debts` `advances` `capital` `profit share percent`)
