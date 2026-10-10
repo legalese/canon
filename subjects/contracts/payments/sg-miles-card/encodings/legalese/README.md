@@ -35,7 +35,8 @@ cabal run -v0 dmnmd -- -t l4 <this dir>/categorize.dmn.md   # emitted name f1 ->
 ```
 
 The ditto-chain MCC tables inside two issuer modules were emitted by scripts, never hand-aligned, because a caret that is one column out fails silently by copying the wrong token.
-The scripts are preserved beside the sources: `source/gen-womans-tables.py` (DBS Woman's cl.11 Tables 1 and 2) and `source/gen-hsbc-mcc.py` (HSBC cl.4.2 and cl.7 chains).
+The scripts are in `source/`, beside `fetch.sh`, which downloads the issuer documents and renders the text they read: `source/gen-womans-tables.py` (DBS Woman's cl.11 Tables 1 and 2) and `source/gen-hsbc-mcc.py` (HSBC cl.4.2 and cl.7 chains).
+Table 1's output is still the module's block verbatim; Table 2's is not, because the module later stopped encoding Table 2 as a ditto chain and records it in comments instead.
 The UOB cl.34 block was generated the same way but its script was not preserved, so that block is now the source of record; regenerate it by following the HSBC script's shape.
 
 ## Run

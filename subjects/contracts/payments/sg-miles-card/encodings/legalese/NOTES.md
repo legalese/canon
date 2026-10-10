@@ -39,8 +39,9 @@ research fixture.
 **This one encodes the reward-programme terms and conditions of eight Singapore consumer cards**, as
 the issuers published them and as retrieved on 2026-09-21: DBS yuu, DBS Woman's World, UOB Lady's
 Solitaire, HSBC Revolution, Citi Rewards, POSB PAssion, UOB PRVI Miles and Citi PremierMiles.
-The PDFs are committed at `jl4/examples/legal/miles-card/source/` so an issuer's revision shows
-up as a diff; the issuers say in each document that they may vary the terms without notice.
+The PDFs are not committed to any public repository.
+`registers/source-bundle.json` pins each by its issuer URL and `sha256`, and `source/fetch.sh` downloads them and refuses any whose bytes differ, so an issuer's revision is a loud failure when the script runs — and silent until it does.
+The issuers say in each document that they may vary the terms without notice.
 
 Nothing produced from this subject is advice about what any card will actually pay.
 The encoding states what the text says, with the clause cited, and marks as `Unconfirmed` or
@@ -302,6 +303,9 @@ They are reconciled here to l4-ide's bytes at `7df7a3ca6`:
 
 - **`tests/{citi-rewards,flat-cards,posb-passion}.nlg.golden`** — re-blessed in l4-ide by #458 (a heralded call in a directive reads as its sentence). The copies here predated it and would have failed l4-ide's harness.
 - **`registers/source-bundle.json`** — l4-ide's bytes, which give every document an `integrity.local_path` into l4-ide, with this repository's `CANON NOTE` appended to its `note`. The PDFs and their text extractions stay in l4-ide at `jl4/examples/legal/miles-card/source/` (ruled 2026-09-23, M2), together with the two table generators `gen-hsbc-mcc.py` and `gen-womans-tables.py`. So the digest checks run there.
+  **Superseded 2026-10-01 by Meng** for this row: an openly published document is cited by its authoritative URL and digest and fetched from its publisher, not redistributed, and a public repository does not point into a private one.
+  No document carries `local_path` now; the two generators moved to this row's `source/`, beside `fetch.sh`.
+  Checked that day: all ten URLs served the recorded bytes, and `pdftotext -layout` (poppler 25.12.0) over them reproduced l4-ide's ten committed `.txt` files byte for byte, so nothing the encoding was read from is lost.
 
 Three files that were only in l4-ide are added:
 
